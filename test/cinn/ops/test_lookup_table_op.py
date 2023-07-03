@@ -14,17 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
 import paddle.nn.functional as F
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestLookupTableOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -32,12 +34,14 @@ class TestLookupTableOp(OpTest):
 
     def prepare_inputs(self):
         self.table_np = self.random(
-            shape=self.case["table_shape"], dtype=self.case["table_dtype"])
+            shape=self.case["table_shape"], dtype=self.case["table_dtype"]
+        )
         self.ids_np = self.random(
             shape=self.case["ids_shape"],
             dtype=self.case["ids_dtype"],
             low=0,
-            high=self.case["table_shape"][0])
+            high=self.case["table_shape"][0],
+        )
 
     def build_paddle_program(self, target):
         table = paddle.to_tensor(self.table_np, stop_gradient=False)
@@ -48,15 +52,20 @@ class TestLookupTableOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("lookup_table")
         table = builder.create_input(
-            self.nptype2cinntype(self.table_np.dtype), self.table_np.shape,
-            "table")
+            self.nptype2cinntype(self.table_np.dtype),
+            self.table_np.shape,
+            "table",
+        )
         ids = builder.create_input(
-            self.nptype2cinntype(self.ids_np.dtype), self.ids_np.shape + (1, ),
-            "ids")
+            self.nptype2cinntype(self.ids_np.dtype),
+            self.ids_np.shape + (1,),
+            "ids",
+        )
         out = builder.lookup_table(table, ids, self.case["padding_idx"])
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [table, ids],
-                                   [self.table_np, self.ids_np], [out])
+        res = self.get_cinn_output(
+            prog, target, [table, ids], [self.table_np, self.ids_np], [out]
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):

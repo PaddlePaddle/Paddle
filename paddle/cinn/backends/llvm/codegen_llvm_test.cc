@@ -43,11 +43,12 @@ namespace {
 
 auto CreateCodeGenLLVMTestLLVM() {
   auto context = std::make_unique<llvm::LLVMContext>();
-  auto b       = std::make_unique<llvm::IRBuilder<>>(*context);
-  auto m       = std::make_unique<llvm::Module>("test_codegen_llvm", *context);
+  auto b = std::make_unique<llvm::IRBuilder<>>(*context);
+  auto m = std::make_unique<llvm::Module>("test_codegen_llvm", *context);
   auto emitter = std::make_unique<CodeGenLLVM>(m.get(), b.get());
 
-  return std::make_tuple(std::move(m), std::move(b), std::move(context), std::move(emitter));
+  return std::make_tuple(
+      std::move(m), std::move(b), std::move(context), std::move(emitter));
 }
 
 auto CreateTensor() {
@@ -60,22 +61,27 @@ auto CreateTensor() {
 
   lang::Buffer c_buf(common::Float(32));
 
-  return std::make_tuple(std::move(a), std::move(b), std::move(c), std::move(c_buf));
+  return std::make_tuple(
+      std::move(a), std::move(b), std::move(c), std::move(c_buf));
 }
 
 auto CreateLLVMType(llvm::LLVMContext *context) {
-  llvm::Type *i8   = llvm::Type::getInt8Ty(*context);
-  llvm::Type *i32  = llvm::Type::getInt32Ty(*context);
-  llvm::Type *i64  = llvm::Type::getInt64Ty(*context);
-  llvm::Type *u32  = llvm::Type::getInt32Ty(*context);
-  llvm::Type *f32  = llvm::Type::getFloatTy(*context);
-  llvm::Type *f16  = llvm::Type::getHalfTy(*context);
+  llvm::Type *i8 = llvm::Type::getInt8Ty(*context);
+  llvm::Type *i32 = llvm::Type::getInt32Ty(*context);
+  llvm::Type *i64 = llvm::Type::getInt64Ty(*context);
+  llvm::Type *u32 = llvm::Type::getInt32Ty(*context);
+  llvm::Type *f32 = llvm::Type::getFloatTy(*context);
+  llvm::Type *f16 = llvm::Type::getHalfTy(*context);
   llvm::Type *bf16 = llvm::Type::getBFloatTy(*context);
 
   return std::make_tuple(i8, i32, i64, u32, f32, f16, bf16);
 }
 
-template <typename OT, typename NT1, typename T1, typename NT2 = NT1, typename T2 = T1>
+template <typename OT,
+          typename NT1,
+          typename T1,
+          typename NT2 = NT1,
+          typename T2 = T1>
 auto CreateBinaryOp(common::Type t, T1 x, T2 y) {
   auto px = std::make_unique<NT1>(t, x);
   auto py = std::make_unique<NT2>(t, y);
@@ -86,7 +92,10 @@ auto CreateBinaryOp(common::Type t, T1 x, T2 y) {
   return std::make_unique<OT>(std::move(ex), std::move(ey));
 }
 
-auto CreateIrBuffer(common::Type t, std::string name, std::vector<int> shape, int data_alignment = 0) {
+auto CreateIrBuffer(common::Type t,
+                    std::string name,
+                    std::vector<int> shape,
+                    int data_alignment = 0) {
   CHECK_GE(data_alignment, 0);
   auto buffer = ir::_Buffer_::Make(std::move(name), std::move(t));
 
@@ -125,14 +134,14 @@ using cinn::common::float16;
 
 TEST(CodeGenLLVM, Imm) {
   auto context = std::make_unique<llvm::LLVMContext>();
-  auto b       = std::make_unique<llvm::IRBuilder<>>(*context);
-  auto m       = std::make_unique<llvm::Module>("test_codegen_llvm", *context);
+  auto b = std::make_unique<llvm::IRBuilder<>>(*context);
+  auto m = std::make_unique<llvm::Module>("test_codegen_llvm", *context);
   auto emitter = std::make_unique<CodeGenLLVM>(m.get(), b.get());
 
-  llvm::Type *i32  = llvm::Type::getInt32Ty(*context);
-  llvm::Type *u32  = llvm::Type::getInt32Ty(*context);
-  llvm::Type *f32  = llvm::Type::getFloatTy(*context);
-  llvm::Type *f16  = llvm::Type::getHalfTy(*context);
+  llvm::Type *i32 = llvm::Type::getInt32Ty(*context);
+  llvm::Type *u32 = llvm::Type::getInt32Ty(*context);
+  llvm::Type *f32 = llvm::Type::getFloatTy(*context);
+  llvm::Type *f16 = llvm::Type::getHalfTy(*context);
   llvm::Type *bf16 = llvm::Type::getBFloatTy(*context);
 
   llvm::Value *value = nullptr;
@@ -166,20 +175,20 @@ TEST(CodeGenLLVM, Imm) {
 
 TEST(CodeGenLLVM, Expr) {
   auto context = std::make_unique<llvm::LLVMContext>();
-  auto b       = std::make_unique<llvm::IRBuilder<>>(*context);
-  auto m       = std::make_unique<llvm::Module>("test_binary_op", *context);
+  auto b = std::make_unique<llvm::IRBuilder<>>(*context);
+  auto m = std::make_unique<llvm::Module>("test_binary_op", *context);
   auto emitter = std::make_unique<CodeGenLLVM>(m.get(), b.get());
 
-  llvm::Type *i1   = llvm::Type::getInt1Ty(*context);
-  llvm::Type *i8   = llvm::Type::getInt8Ty(*context);
-  llvm::Type *i32  = llvm::Type::getInt32Ty(*context);
-  llvm::Type *i64  = llvm::Type::getInt64Ty(*context);
-  llvm::Type *u32  = llvm::Type::getInt32Ty(*context);
-  llvm::Type *f32  = llvm::Type::getFloatTy(*context);
-  llvm::Type *f16  = llvm::Type::getHalfTy(*context);
+  llvm::Type *i1 = llvm::Type::getInt1Ty(*context);
+  llvm::Type *i8 = llvm::Type::getInt8Ty(*context);
+  llvm::Type *i32 = llvm::Type::getInt32Ty(*context);
+  llvm::Type *i64 = llvm::Type::getInt64Ty(*context);
+  llvm::Type *u32 = llvm::Type::getInt32Ty(*context);
+  llvm::Type *f32 = llvm::Type::getFloatTy(*context);
+  llvm::Type *f16 = llvm::Type::getHalfTy(*context);
   llvm::Type *bf16 = llvm::Type::getBFloatTy(*context);
 
-  llvm::Value *value        = nullptr;
+  llvm::Value *value = nullptr;
   llvm::Value *expect_value = nullptr;
 
   std::string outs;
@@ -187,12 +196,12 @@ TEST(CodeGenLLVM, Expr) {
 
   // +
   do {
-    int x   = 2;
-    int y   = 3;
+    int x = 2;
+    int y = 3;
     auto op = CreateBinaryOp<ir::Add, ir::IntImm, int>(common::Int(32), x, y);
 
     expect_value = llvm::ConstantInt::get(i32, x + y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), i32);
     ASSERT_EQ(value, expect_value);
     // value->print(llvm::outs(), false);
@@ -204,10 +213,11 @@ TEST(CodeGenLLVM, Expr) {
   do {
     float x = 2.5;
     float y = 3.5;
-    auto op = CreateBinaryOp<ir::Sub, ir::FloatImm, float>(common::Float(32), x, y);
+    auto op =
+        CreateBinaryOp<ir::Sub, ir::FloatImm, float>(common::Float(32), x, y);
 
     expect_value = llvm::ConstantFP::get(f32, x - y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), f32);
     ASSERT_EQ(value, expect_value);
   } while (false);
@@ -216,10 +226,11 @@ TEST(CodeGenLLVM, Expr) {
   do {
     float16 x{2.5};
     float16 y{3.5};
-    auto op = CreateBinaryOp<ir::Sub, ir::FloatImm, float16>(common::Float16(), x, y);
+    auto op =
+        CreateBinaryOp<ir::Sub, ir::FloatImm, float16>(common::Float16(), x, y);
 
     expect_value = llvm::ConstantFP::get(f16, x - y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), f16);
     ASSERT_EQ(value, expect_value);
   } while (false);
@@ -228,32 +239,34 @@ TEST(CodeGenLLVM, Expr) {
   do {
     bfloat16 x{2.5};
     bfloat16 y{3.5};
-    auto op = CreateBinaryOp<ir::Sub, ir::FloatImm, bfloat16>(common::BFloat16(), x, y);
+    auto op = CreateBinaryOp<ir::Sub, ir::FloatImm, bfloat16>(
+        common::BFloat16(), x, y);
 
     expect_value = llvm::ConstantFP::get(bf16, x - y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), bf16);
     ASSERT_EQ(value, expect_value);
   } while (false);
 
   // *
   do {
-    int x        = 5;
-    int y        = 3;
-    auto op      = CreateBinaryOp<ir::Mul, ir::IntImm, float>(common::Int(64), x, y);
+    int x = 5;
+    int y = 3;
+    auto op = CreateBinaryOp<ir::Mul, ir::IntImm, float>(common::Int(64), x, y);
     expect_value = llvm::ConstantInt::get(i64, x * y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), i64);
     ASSERT_EQ(value, expect_value);
   } while (false);
 
   // /
   do {
-    float x      = 6;
-    float y      = 4;
-    auto op      = CreateBinaryOp<ir::Div, ir::FloatImm, float>(common::Float(32), x, y);
+    float x = 6;
+    float y = 4;
+    auto op =
+        CreateBinaryOp<ir::Div, ir::FloatImm, float>(common::Float(32), x, y);
     expect_value = llvm::ConstantFP::get(f32, x / y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), f32);
     ASSERT_EQ(value, expect_value);
   } while (false);
@@ -262,9 +275,10 @@ TEST(CodeGenLLVM, Expr) {
   do {
     float16 x{6};
     float16 y{4};
-    auto op      = CreateBinaryOp<ir::Div, ir::FloatImm, float16>(common::Float16(), x, y);
+    auto op =
+        CreateBinaryOp<ir::Div, ir::FloatImm, float16>(common::Float16(), x, y);
     expect_value = llvm::ConstantFP::get(f16, x / y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), f16);
     ASSERT_EQ(value, expect_value);
   } while (false);
@@ -273,31 +287,32 @@ TEST(CodeGenLLVM, Expr) {
   do {
     bfloat16 x{6};
     bfloat16 y{4};
-    auto op      = CreateBinaryOp<ir::Div, ir::FloatImm, bfloat16>(common::BFloat16(), x, y);
+    auto op = CreateBinaryOp<ir::Div, ir::FloatImm, bfloat16>(
+        common::BFloat16(), x, y);
     expect_value = llvm::ConstantFP::get(bf16, x / y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), bf16);
     ASSERT_EQ(value, expect_value);
   } while (false);
 
   // %
   do {
-    int x        = 25;
-    int y        = 7;
-    auto op      = CreateBinaryOp<ir::Mod, ir::IntImm, int>(common::Int(32), x, y);
+    int x = 25;
+    int y = 7;
+    auto op = CreateBinaryOp<ir::Mod, ir::IntImm, int>(common::Int(32), x, y);
     expect_value = llvm::ConstantInt::get(i32, x % y);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), i32);
     ASSERT_EQ(value, expect_value);
   } while (false);
 
   // ==
   do {
-    int x        = 3;
-    int y        = 3;
-    auto op      = CreateBinaryOp<ir::EQ, ir::IntImm, int>(common::Int(32), x, y);
+    int x = 3;
+    int y = 3;
+    auto op = CreateBinaryOp<ir::EQ, ir::IntImm, int>(common::Int(32), x, y);
     expect_value = llvm::ConstantInt::get(i1, 1);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), i1);
     ASSERT_EQ(value, expect_value);
   } while (false);
@@ -307,19 +322,20 @@ TEST(CodeGenLLVM, Expr) {
     float x = 3;
     float y = 3;
 
-    auto op      = CreateBinaryOp<ir::NE, ir::FloatImm, float>(common::Float(32), x, y);
+    auto op =
+        CreateBinaryOp<ir::NE, ir::FloatImm, float>(common::Float(32), x, y);
     expect_value = llvm::ConstantInt::get(i1, 0);
-    value        = emitter->Visit(op.get());
+    value = emitter->Visit(op.get());
     ASSERT_EQ(value->getType(), i1);
     ASSERT_EQ(value, expect_value);
   } while (false);
 
   // <
   do {
-    int x        = 6;
-    int y        = 6;
-    auto op      = CreateBinaryOp<ir::LT, ir::IntImm, int>(common::Int(32), x, y);
-    value        = emitter->Visit(op.get());
+    int x = 6;
+    int y = 6;
+    auto op = CreateBinaryOp<ir::LT, ir::IntImm, int>(common::Int(32), x, y);
+    value = emitter->Visit(op.get());
     expect_value = llvm::ConstantInt::get(i1, 0);
     ASSERT_EQ(value->getType(), i1);
     ASSERT_EQ(value, expect_value);
@@ -327,10 +343,10 @@ TEST(CodeGenLLVM, Expr) {
 
   // <=
   do {
-    int x        = 6;
-    int y        = 6;
-    auto op      = CreateBinaryOp<ir::LE, ir::IntImm, int>(common::Int(32), x, y);
-    value        = emitter->Visit(op.get());
+    int x = 6;
+    int y = 6;
+    auto op = CreateBinaryOp<ir::LE, ir::IntImm, int>(common::Int(32), x, y);
+    value = emitter->Visit(op.get());
     expect_value = llvm::ConstantInt::get(i1, 1);
     ASSERT_EQ(value->getType(), i1);
     ASSERT_EQ(value, expect_value);
@@ -338,10 +354,10 @@ TEST(CodeGenLLVM, Expr) {
 
   // >
   do {
-    int x        = 6;
-    int y        = 6;
-    auto op      = CreateBinaryOp<ir::GT, ir::IntImm, int>(common::Int(32), x, y);
-    value        = emitter->Visit(op.get());
+    int x = 6;
+    int y = 6;
+    auto op = CreateBinaryOp<ir::GT, ir::IntImm, int>(common::Int(32), x, y);
+    value = emitter->Visit(op.get());
     expect_value = llvm::ConstantInt::get(i1, 0);
     ASSERT_EQ(value->getType(), i1);
     ASSERT_EQ(value, expect_value);
@@ -349,10 +365,10 @@ TEST(CodeGenLLVM, Expr) {
 
   // >=
   do {
-    int x        = 6;
-    int y        = 6;
-    auto op      = CreateBinaryOp<ir::GE, ir::IntImm, int>(common::Int(32), x, y);
-    value        = emitter->Visit(op.get());
+    int x = 6;
+    int y = 6;
+    auto op = CreateBinaryOp<ir::GE, ir::IntImm, int>(common::Int(32), x, y);
+    value = emitter->Visit(op.get());
     expect_value = llvm::ConstantInt::get(i1, 1);
     ASSERT_EQ(value->getType(), i1);
     ASSERT_EQ(value, expect_value);
@@ -364,10 +380,10 @@ TEST(CodeGenLLVM, Expr) {
 
   // min
   do {
-    int x        = 2;
-    int y        = 3;
-    auto op      = CreateBinaryOp<ir::Min, ir::IntImm, int>(common::Int(32), x, y);
-    value        = emitter->Visit(op.get());
+    int x = 2;
+    int y = 3;
+    auto op = CreateBinaryOp<ir::Min, ir::IntImm, int>(common::Int(32), x, y);
+    value = emitter->Visit(op.get());
     expect_value = llvm::ConstantInt::get(i32, std::min(x, y));
     ASSERT_EQ(value->getType(), i32);
     ASSERT_EQ(value, expect_value);
@@ -375,10 +391,11 @@ TEST(CodeGenLLVM, Expr) {
 
   // max
   do {
-    float x      = 2;
-    float y      = 3;
-    auto op      = CreateBinaryOp<ir::Max, ir::FloatImm, float>(common::Float(32), x, y);
-    value        = emitter->Visit(op.get());
+    float x = 2;
+    float y = 3;
+    auto op =
+        CreateBinaryOp<ir::Max, ir::FloatImm, float>(common::Float(32), x, y);
+    value = emitter->Visit(op.get());
     expect_value = llvm::ConstantFP::get(f32, std::max(x, y));
     ASSERT_EQ(value->getType(), f32);
     ASSERT_EQ(value, expect_value);
@@ -394,33 +411,33 @@ TEST(CodeGenLLVM, Expr) {
 
     // i32 -> f32
     LOG(INFO) << "test i32 -> f32";
-    int v2       = 2;
-    auto x2      = std::make_unique<ir::IntImm>(common::Int(32), v2);
-    auto ex2     = ir::Expr(x2.release());
-    auto op2     = ir::Cast::Make(common::Float(32), std::move(ex2));
-    value        = emitter->Visit(&op2);
+    int v2 = 2;
+    auto x2 = std::make_unique<ir::IntImm>(common::Int(32), v2);
+    auto ex2 = ir::Expr(x2.release());
+    auto op2 = ir::Cast::Make(common::Float(32), std::move(ex2));
+    value = emitter->Visit(&op2);
     expect_value = llvm::ConstantFP::get(f32, v2);
     ASSERT_EQ(value->getType(), f32);
     ASSERT_EQ(value, expect_value);
 
     // f32 -> i32
     LOG(INFO) << "test f32 -> i32";
-    float v3     = 3;
-    auto x3      = std::make_unique<ir::FloatImm>(common::Float(32), v3);
-    auto ex3     = ir::Expr(x3.release());
-    auto op3     = ir::Cast::Make(common::Int(32), std::move(ex3));
-    value        = emitter->Visit(&op3);
+    float v3 = 3;
+    auto x3 = std::make_unique<ir::FloatImm>(common::Float(32), v3);
+    auto ex3 = ir::Expr(x3.release());
+    auto op3 = ir::Cast::Make(common::Int(32), std::move(ex3));
+    value = emitter->Visit(&op3);
     expect_value = llvm::ConstantInt::get(i32, v3);
     ASSERT_EQ(value->getType(), i32);
     ASSERT_EQ(value, expect_value);
 
     // i32 -> f16
     LOG(INFO) << "test i32 -> f16";
-    int v4       = 4;
-    auto x4      = std::make_unique<ir::IntImm>(common::Int(32), v4);
-    auto ex4     = ir::Expr(x4.release());
-    auto op4     = ir::Cast::Make(common::Float16(), std::move(ex4));
-    value        = emitter->Visit(&op4);
+    int v4 = 4;
+    auto x4 = std::make_unique<ir::IntImm>(common::Int(32), v4);
+    auto ex4 = ir::Expr(x4.release());
+    auto op4 = ir::Cast::Make(common::Float16(), std::move(ex4));
+    value = emitter->Visit(&op4);
     expect_value = llvm::ConstantFP::get(f16, v4);
     ASSERT_EQ(value->getType(), f16);
     ASSERT_EQ(value, expect_value);
@@ -428,21 +445,21 @@ TEST(CodeGenLLVM, Expr) {
     // f16 -> f32
     LOG(INFO) << "test f16 -> f32";
     float16 v5{5};
-    auto x5      = std::make_unique<ir::FloatImm>(common::Float16(), v5);
-    auto ex5     = ir::Expr(x5.release());
-    auto op5     = ir::Cast::Make(common::Float(32), std::move(ex5));
-    value        = emitter->Visit(&op5);
+    auto x5 = std::make_unique<ir::FloatImm>(common::Float16(), v5);
+    auto ex5 = ir::Expr(x5.release());
+    auto op5 = ir::Cast::Make(common::Float(32), std::move(ex5));
+    value = emitter->Visit(&op5);
     expect_value = llvm::ConstantFP::get(f32, v5);
     ASSERT_EQ(value->getType(), f32);
     ASSERT_EQ(value, expect_value);
 
     // i32 -> bf16
     LOG(INFO) << "test i32 -> bf16";
-    int v6       = 4;
-    auto x6      = std::make_unique<ir::IntImm>(common::Int(32), v6);
-    auto ex6     = ir::Expr(x6.release());
-    auto op6     = ir::Cast::Make(common::BFloat16(), std::move(ex6));
-    value        = emitter->Visit(&op6);
+    int v6 = 4;
+    auto x6 = std::make_unique<ir::IntImm>(common::Int(32), v6);
+    auto ex6 = ir::Expr(x6.release());
+    auto op6 = ir::Cast::Make(common::BFloat16(), std::move(ex6));
+    value = emitter->Visit(&op6);
     expect_value = llvm::ConstantFP::get(bf16, v6);
     ASSERT_EQ(value->getType(), bf16);
     ASSERT_EQ(value, expect_value);
@@ -450,10 +467,10 @@ TEST(CodeGenLLVM, Expr) {
     // bf16 -> f32
     LOG(INFO) << "test bf16 -> f32";
     bfloat16 v7{5};
-    auto x7      = std::make_unique<ir::FloatImm>(common::BFloat16(), v7);
-    auto ex7     = ir::Expr(x7.release());
-    auto op7     = ir::Cast::Make(common::Float(32), std::move(ex7));
-    value        = emitter->Visit(&op7);
+    auto x7 = std::make_unique<ir::FloatImm>(common::BFloat16(), v7);
+    auto ex7 = ir::Expr(x7.release());
+    auto op7 = ir::Cast::Make(common::Float(32), std::move(ex7));
+    value = emitter->Visit(&op7);
     expect_value = llvm::ConstantFP::get(f32, v7);
     ASSERT_EQ(value->getType(), f32);
     ASSERT_EQ(value, expect_value);
@@ -466,52 +483,56 @@ TEST(CodeGenLLVM, Statement) {
   llvm::raw_string_ostream ss(outs);
 
   do {
-    auto _m_b_context_emitter_        = CreateCodeGenLLVMTestLLVM();  // NOLINT
-    auto &m                           = std::get<0>(_m_b_context_emitter_);
-    auto &b                           = std::get<1>(_m_b_context_emitter_);
-    auto &context                     = std::get<2>(_m_b_context_emitter_);
-    auto &emitter                     = std::get<3>(_m_b_context_emitter_);
-    auto _i8_i32_i64_u32_f32_f16_     = CreateLLVMType(context.get());  // NOLINT
-    auto &i8                          = std::get<0>(_i8_i32_i64_u32_f32_f16_);
-    auto &i32                         = std::get<1>(_i8_i32_i64_u32_f32_f16_);
-    auto &i64                         = std::get<2>(_i8_i32_i64_u32_f32_f16_);
-    auto &u32                         = std::get<3>(_i8_i32_i64_u32_f32_f16_);
-    auto &f32                         = std::get<4>(_i8_i32_i64_u32_f32_f16_);
-    auto &f16                         = std::get<4>(_i8_i32_i64_u32_f32_f16_);
+    auto _m_b_context_emitter_ = CreateCodeGenLLVMTestLLVM();  // NOLINT
+    auto &m = std::get<0>(_m_b_context_emitter_);
+    auto &b = std::get<1>(_m_b_context_emitter_);
+    auto &context = std::get<2>(_m_b_context_emitter_);
+    auto &emitter = std::get<3>(_m_b_context_emitter_);
+    auto _i8_i32_i64_u32_f32_f16_ = CreateLLVMType(context.get());  // NOLINT
+    auto &i8 = std::get<0>(_i8_i32_i64_u32_f32_f16_);
+    auto &i32 = std::get<1>(_i8_i32_i64_u32_f32_f16_);
+    auto &i64 = std::get<2>(_i8_i32_i64_u32_f32_f16_);
+    auto &u32 = std::get<3>(_i8_i32_i64_u32_f32_f16_);
+    auto &f32 = std::get<4>(_i8_i32_i64_u32_f32_f16_);
+    auto &f16 = std::get<4>(_i8_i32_i64_u32_f32_f16_);
     llvm::FunctionType *function_type = llvm::FunctionType::get(i32, {}, false);
-    llvm::Function *function          = llvm::Function::Create(
-        function_type, llvm::Function::ExternalLinkage, "codegen_llvm_test.Alloc_Store_Load_Free", m.get());
+    llvm::Function *function =
+        llvm::Function::Create(function_type,
+                               llvm::Function::ExternalLinkage,
+                               "codegen_llvm_test.Alloc_Store_Load_Free",
+                               m.get());
 
     std::string module_str;
     module_str += "; ModuleID = 'test_codegen_llvm'";
     module_str += "\nsource_filename = \"test_codegen_llvm\"\n";
     module_str += "\ndefine i32 @codegen_llvm_test.Alloc_Store_Load_Free()";
 
-    llvm::BasicBlock *entry = llvm::BasicBlock::Create(*context, "entry", function);
+    llvm::BasicBlock *entry =
+        llvm::BasicBlock::Create(*context, "entry", function);
     b->SetInsertPoint(entry);
 
     module_str += " {\nentry:";
 
     // ir::Tensor
-    auto tensor_op    = CreateIrTensor("x", {2, 3});
+    auto tensor_op = CreateIrTensor("x", {2, 3});
     tensor_op->buffer = CreateIrBuffer(common::Int(32), "", {2, 3});
 
     // ir::Alloc
-    auto alloc_op         = std::make_unique<ir::Alloc>();
+    auto alloc_op = std::make_unique<ir::Alloc>();
     alloc_op->destination = ir::Expr(tensor_op->buffer);
 
     // ir::Store
-    auto store_op    = std::make_unique<ir::Store>();
+    auto store_op = std::make_unique<ir::Store>();
     store_op->tensor = ir::Expr(tensor_op);
     for (int i : {1, 1}) {
       auto pi = std::make_unique<ir::IntImm>(common::Int(32), std::move(i));
       store_op->indices.emplace_back(pi.release());
     }
     auto store_value = std::make_unique<ir::IntImm>(common::Int(32), 5);
-    store_op->value  = ir::Expr(store_value.release());
+    store_op->value = ir::Expr(store_value.release());
 
     // ir::Load
-    auto load_op    = std::make_unique<ir::Load>();
+    auto load_op = std::make_unique<ir::Load>();
     load_op->tensor = ir::Expr(tensor_op);
     for (int i : {1, 1}) {
       auto pi = std::make_unique<ir::IntImm>(common::Int(32), std::move(i));
@@ -519,20 +540,23 @@ TEST(CodeGenLLVM, Statement) {
     }
 
     // ir::Free
-    auto free_op         = std::make_unique<ir::Free>();
+    auto free_op = std::make_unique<ir::Free>();
     free_op->destination = ir::Expr(tensor_op->buffer);
 
     // ir::Call
-    auto call_op  = std::make_unique<ir::Call>(common::Int(32));
+    auto call_op = std::make_unique<ir::Call>(common::Int(32));
     call_op->name = "codegen_llvm_test.Alloc_Store_Load_Free";
 
     // Emit llvm ir
-    auto *alloc_inst = llvm::dyn_cast<llvm::AllocaInst>(emitter->Visit(alloc_op.get()));
+    auto *alloc_inst =
+        llvm::dyn_cast<llvm::AllocaInst>(emitter->Visit(alloc_op.get()));
     module_str += "\n  %0 = alloca [6 x i32]";
-    auto *store_inst = llvm::dyn_cast<llvm::StoreInst>(emitter->Visit(store_op.get()));
+    auto *store_inst =
+        llvm::dyn_cast<llvm::StoreInst>(emitter->Visit(store_op.get()));
     module_str += "\n  %1 = getelementptr [6 x i32], [6 x i32]* %0, i32 1";
     module_str += "\n  store i32 5, [6 x i32]* %1";
-    auto *load_inst = llvm::dyn_cast<llvm::LoadInst>(emitter->Visit(load_op.get()));
+    auto *load_inst =
+        llvm::dyn_cast<llvm::LoadInst>(emitter->Visit(load_op.get()));
     module_str += "\n  %2 = getelementptr [6 x i32], [6 x i32]* %0, i32 1";
     module_str += "\n  %3 = load [6 x i32], [6 x i32]* %2";
 
@@ -573,21 +597,21 @@ TEST(CodeGenLLVM, LowerFunc) {
     auto emitter = std::make_unique<CodeGenLLVM>(m.get(), b.get());
 
     auto _i8_i32_i64_u32_f32_f16_ = CreateLLVMType(context.get());  // NOLINT
-    auto &i8                      = std::get<0>(_i8_i32_i64_u32_f32_f16_);
-    auto &i32                     = std::get<1>(_i8_i32_i64_u32_f32_f16_);
-    auto &i64                     = std::get<2>(_i8_i32_i64_u32_f32_f16_);
-    auto &u32                     = std::get<3>(_i8_i32_i64_u32_f32_f16_);
-    auto &f32                     = std::get<4>(_i8_i32_i64_u32_f32_f16_);
-    auto &f16                     = std::get<5>(_i8_i32_i64_u32_f32_f16_);
-    auto _x_y_z_z_buf_            = CreateTensor();  // NOLINT
-    auto &x                       = std::get<0>(_x_y_z_z_buf_);
-    auto &y                       = std::get<1>(_x_y_z_z_buf_);
-    auto &z                       = std::get<2>(_x_y_z_z_buf_);
-    auto &z_buf                   = std::get<3>(_x_y_z_z_buf_);
+    auto &i8 = std::get<0>(_i8_i32_i64_u32_f32_f16_);
+    auto &i32 = std::get<1>(_i8_i32_i64_u32_f32_f16_);
+    auto &i64 = std::get<2>(_i8_i32_i64_u32_f32_f16_);
+    auto &u32 = std::get<3>(_i8_i32_i64_u32_f32_f16_);
+    auto &f32 = std::get<4>(_i8_i32_i64_u32_f32_f16_);
+    auto &f16 = std::get<5>(_i8_i32_i64_u32_f32_f16_);
+    auto _x_y_z_z_buf_ = CreateTensor();  // NOLINT
+    auto &x = std::get<0>(_x_y_z_z_buf_);
+    auto &y = std::get<1>(_x_y_z_z_buf_);
+    auto &z = std::get<2>(_x_y_z_z_buf_);
+    auto &z_buf = std::get<3>(_x_y_z_z_buf_);
 
     z->Bind(z_buf);
 
-    auto stages   = CreateStages({x, y, z});
+    auto stages = CreateStages({x, y, z});
     auto function = lang::Lower("add1", stages, {x, y, z});
     ir::Expr func_expr(function);
 

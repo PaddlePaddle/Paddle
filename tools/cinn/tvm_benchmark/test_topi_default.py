@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import timeit
+
+import numpy
 import tvm
 import tvm.testing
-from tvm import te
-import numpy
-import timeit
-from tvm.contrib import tar, ndk
-import os
-from tvm import topi
+from tvm import te, topi
+from tvm.contrib import ndk, tar
 
 dtype = ["float32", "float32", "float32", "float32"]
 target = "llvm"
@@ -27,12 +27,9 @@ ctx = tvm.context(target, 0)
 repeat = 10
 
 
-def test_op(func,
-            input_shapes,
-            out_shape,
-            attrs={},
-            name="test_op",
-            dtype=dtype):
+def test_op(
+    func, input_shapes, out_shape, attrs={}, name="test_op", dtype=dtype
+):
     assert len(input_shapes) >= 1
     A = te.placeholder(input_shapes[0], name="A", dtype=dtype[0])
     if len(input_shapes) == 1:
@@ -54,14 +51,15 @@ def test_op(func,
         func = tvm.build(s, [A, B, B1, C], target=target, name=name)
     assert func
     print(func)
-    a = tvm.nd.array(
-        numpy.random.random(input_shapes[0]).astype(dtype[0]), ctx)
+    a = tvm.nd.array(numpy.random.random(input_shapes[0]).astype(dtype[0]), ctx)
     if len(input_shapes) > 1:
         b = tvm.nd.array(
-            numpy.random.random(input_shapes[1]).astype(dtype[1]), ctx)
+            numpy.random.random(input_shapes[1]).astype(dtype[1]), ctx
+        )
     if len(input_shapes) > 2:
         b1 = tvm.nd.array(
-            numpy.random.random(input_shapes[2]).astype(dtype[2]), ctx)
+            numpy.random.random(input_shapes[2]).astype(dtype[2]), ctx
+        )
     c = tvm.nd.array(numpy.zeros(out_shape, dtype=dtype[len(dtype) - 1]), ctx)
 
     evaluator = func.time_evaluator(func.entry_name, ctx, number=repeat)
@@ -81,8 +79,7 @@ def test_elementwise():
     input_shapes, out_shape = [(100, 32), (100, 32)], (100, 32)
     # input_shapes1, out_shape1 = [(1024, 1024, 1024),
     #                              (1024, 1024, 1024)], (1024, 1024, 1024)
-    input_shapes2, out_shape2 = [(1024, 14, 14), (1024, 14, 14)], (1024, 14,
-                                                                   14)
+    input_shapes2, out_shape2 = [(1024, 14, 14), (1024, 14, 14)], (1024, 14, 14)
 
     def compute_add(A, B):
         return topi.add(A, B)
@@ -115,28 +112,33 @@ def test_relu():
 
 
 def test_conv2d_nchw():
-    input_shapes, out_shape = [(2, 512, 7, 7), (512, 512, 3, 3)], (2, 512, 5,
-                                                                   5)
+    input_shapes, out_shape = [(2, 512, 7, 7), (512, 512, 3, 3)], (2, 512, 5, 5)
     name = "conv2d_nchw"
     strides, padding, dilation = [1, 1], [0, 0], [1, 1]
 
     def compute(A, B):
         return topi.nn.conv2d(
-            A, B, strides, padding, dilation, layout="NCHW", out_dtype=None)
+            A, B, strides, padding, dilation, layout="NCHW", out_dtype=None
+        )
 
     test_op(compute, input_shapes, out_shape, name=name)
 
 
 # depthwise_conv2d_nchw
 def test_depthwise_conv2d_nchw():
-    input_shapes, out_shape = [(2, 32, 112, 112), (32, 1, 3, 3)], (2, 32, 112,
-                                                                   112)
+    input_shapes, out_shape = [(2, 32, 112, 112), (32, 1, 3, 3)], (
+        2,
+        32,
+        112,
+        112,
+    )
     name = "depthwise_conv2d_nchw"
     strides, padding, dilation = [1, 1], [1, 1], [1, 1]
 
     def compute(A, B):
         return topi.nn.depthwise_conv2d_nchw(
-            A, B, strides, padding, dilation, out_dtype=None)
+            A, B, strides, padding, dilation, out_dtype=None
+        )
 
     test_op(compute, input_shapes, out_shape, name=name)
 
@@ -156,7 +158,8 @@ def test_pool2d():
             pool_type,
             ceil_mode=False,
             layout="NCHW",
-            count_include_pad=False)
+            count_include_pad=False,
+        )
 
     test_op(compute, input_shapes, out_shape, name=name)
 
@@ -187,29 +190,29 @@ def test_unary():
         test_op(compute, input_shapes2, out_shape2, name=name)
 
     for opfunc in [
-            topi.exp,
-            topi.erf,
-            topi.sigmoid,
-            topi.sqrt,
-            topi.log,
-            topi.log2,
-            topi.log10,
-            topi.floor,
-            topi.ceil,
-            topi.round,
-            topi.trunc,
-            topi.cos,
-            topi.cosh,
-            topi.tan,
-            topi.tanh,
-            topi.sin,
-            topi.sinh,
-            topi.acos,
-            topi.acosh,
-            topi.asin,
-            topi.asinh,
-            topi.atan,
-            topi.atanh,
+        topi.exp,
+        topi.erf,
+        topi.sigmoid,
+        topi.sqrt,
+        topi.log,
+        topi.log2,
+        topi.log10,
+        topi.floor,
+        topi.ceil,
+        topi.round,
+        topi.trunc,
+        topi.cos,
+        topi.cosh,
+        topi.tan,
+        topi.tanh,
+        topi.sin,
+        topi.sinh,
+        topi.acos,
+        topi.acosh,
+        topi.asin,
+        topi.asinh,
+        topi.atan,
+        topi.atanh,
     ]:
         test_unary_basic(str(opfunc), opfunc)
 
@@ -229,9 +232,9 @@ def test_is():
         test_op(compute, input_shapes2, out_shape2, name=name, dtype=type)
 
     for opfunc in [
-            topi.isnan,
-            topi.isfinite,
-            topi.isinf,
+        topi.isnan,
+        topi.isfinite,
+        topi.isinf,
     ]:
         test_is_basic(str(opfunc), opfunc)
 
@@ -251,7 +254,7 @@ def test_bitwise_not():
         test_op(compute, input_shapes2, out_shape2, name=name, dtype=type)
 
     for opfunc in [
-            topi.bitwise_not,
+        topi.bitwise_not,
     ]:
         test_unary_basic(str(opfunc), opfunc)
 
@@ -271,11 +274,11 @@ def test_bitwise_binary():
         test_op(compute, input_shapes2, out_shape2, name=name, dtype=type)
 
     for opfunc in [
-            topi.bitwise_or,
-            topi.bitwise_and,
-            topi.bitwise_xor,
-            topi.left_shift,
-            topi.right_shift,
+        topi.bitwise_or,
+        topi.bitwise_and,
+        topi.bitwise_xor,
+        topi.left_shift,
+        topi.right_shift,
     ]:
         test_binary_basic(str(opfunc), opfunc)
 
@@ -310,8 +313,12 @@ def test_matmul():
 
 # batch_norm
 def test_batch_norm():
-    input_shapes, out_shape = [(2, 32, 112, 112), (32, ), (32, )], (2, 32, 112,
-                                                                    112)
+    input_shapes, out_shape = [(2, 32, 112, 112), (32,), (32,)], (
+        2,
+        32,
+        112,
+        112,
+    )
     # mean,variance=32,32
     name = "batch_norm"
 
@@ -319,7 +326,8 @@ def test_batch_norm():
         return te.compute(
             A.shape,
             lambda b, c, i, j: A[b, c, i, j] * Scale[c] + Shift[c],
-            name="ScaleShift")
+            name="ScaleShift",
+        )
 
     test_op(compute, input_shapes, out_shape, name=name)
 

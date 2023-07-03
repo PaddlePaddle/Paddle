@@ -347,7 +347,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    // conv_weight fp32 --> fp16
+    // conv_weight fp16 --> fp32
     auto* conv_weight_tensor =
         scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();

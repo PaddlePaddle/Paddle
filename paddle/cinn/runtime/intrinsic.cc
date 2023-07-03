@@ -60,7 +60,13 @@ Expr IntrinsicCall(Type type,
                    const std::string& fn_name,
                    const std::vector<Expr>& args,
                    const std::vector<Expr>& write_args) {
-  return ir::Call::Make(type, fn_name, args, write_args, ir::CallType::Intrinsic, ir::FunctionRef(), 0);
+  return ir::Call::Make(type,
+                        fn_name,
+                        args,
+                        write_args,
+                        ir::CallType::Intrinsic,
+                        ir::FunctionRef(),
+                        0);
 }
 
 }  // namespace runtime

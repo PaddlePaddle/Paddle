@@ -24,7 +24,9 @@
 namespace cinn {
 namespace common {
 
-std::vector<float16> test_fp16_host_kernel(const float16* x, const float16* y, const int num) {
+std::vector<float16> test_fp16_host_kernel(const float16* x,
+                                           const float16* y,
+                                           const int num) {
   std::vector<float16> out(num);
   for (int idx = 0; idx < num; ++idx) {
     float16 x_i = x[idx], y_i = y[idx];
@@ -35,7 +37,9 @@ std::vector<float16> test_fp16_host_kernel(const float16* x, const float16* y, c
   return out;
 }
 
-std::vector<bfloat16> test_bf16_host_kernel(const bfloat16* x, const bfloat16* y, const int num) {
+std::vector<bfloat16> test_bf16_host_kernel(const bfloat16* x,
+                                            const bfloat16* y,
+                                            const int num) {
   std::vector<bfloat16> out(num);
   for (int idx = 0; idx < num; ++idx) {
     bfloat16 x_i = x[idx], y_i = y[idx];
@@ -46,7 +50,9 @@ std::vector<bfloat16> test_bf16_host_kernel(const bfloat16* x, const bfloat16* y
   return out;
 }
 
-std::vector<float> test_fp32_host_kernel(const float* x, const float* y, const int num) {
+std::vector<float> test_fp32_host_kernel(const float* x,
+                                         const float* y,
+                                         const int num) {
   std::vector<float> out(num);
   for (int idx = 0; idx < num; ++idx) {
     float x_i = x[idx], y_i = y[idx];

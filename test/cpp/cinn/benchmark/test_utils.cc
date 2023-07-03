@@ -29,7 +29,8 @@ DECLARE_bool(cinn_ir_schedule);
 namespace cinn {
 namespace tests {
 using ir::Tensor;
-std::unique_ptr<backends::ExecutionEngine> OpBenchmarkTester::CreateExecutionEngine(const cinn::ir::Module& module) {
+std::unique_ptr<backends::ExecutionEngine>
+OpBenchmarkTester::CreateExecutionEngine(const cinn::ir::Module& module) {
   auto engine = backends::ExecutionEngine::Create({});
   engine->Link<backends::CodeGenX86>(module);
   return engine;
@@ -41,11 +42,13 @@ void OpBenchmarkTester::TestOp(const std::string& test_name,
                                const std::vector<Type>& input_types,
                                const std::vector<Type>& out_types,
                                bool use_default_stragegy) {
-  auto module        = CreateCinnModule(input_tensors, attrs, out_types, use_default_stragegy);
-  auto engine        = CreateExecutionEngine(module);
-  auto test_func_ptr = reinterpret_cast<void (*)(void**, int32_t)>(engine->Lookup(op_name_));
-  input_types_       = input_types;
-  out_types_         = out_types;
+  auto module =
+      CreateCinnModule(input_tensors, attrs, out_types, use_default_stragegy);
+  auto engine = CreateExecutionEngine(module);
+  auto test_func_ptr =
+      reinterpret_cast<void (*)(void**, int32_t)>(engine->Lookup(op_name_));
+  input_types_ = input_types;
+  out_types_ = out_types;
   CreateBuffer();
   LOG(INFO) << "Testing " << test_name;
   cinn::utils::Timer timer;
@@ -59,13 +62,15 @@ void OpBenchmarkTester::TestOp(const std::string& test_name,
     test_func_ptr(reinterpret_cast<void**>(all_args_.data()), all_args_.size());
   }
   test_op_time = timer.Stop() / repeat_;
-  LOG(INFO) << "repeat times: " << repeat_ << ", kernel run time: " << test_op_time << " ms";
+  LOG(INFO) << "repeat times: " << repeat_
+            << ", kernel run time: " << test_op_time << " ms";
 }
 
-Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tensors,
-                                           const hlir::framework::NodeAttr& attrs,
-                                           const std::vector<Type>& out_types,
-                                           bool use_default_stragegy) {
+Module OpBenchmarkTester::CreateCinnModule(
+    const std::vector<Tensor>& input_tensors,
+    const hlir::framework::NodeAttr& attrs,
+    const std::vector<Type>& out_types,
+    bool use_default_stragegy) {
   std::vector<Tensor> outs;
   std::vector<Tensor> rets;
   poly::StageMap stages;
@@ -74,11 +79,13 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
   Module::Builder builder("module_" + op_name_, target_);
 
   if (use_default_stragegy) {
-    auto strategy = hlir::framework::Operator::GetAttrs<hlir::framework::StrategyFunction>("CINNStrategy");
-    auto op       = hlir::framework::Operator::Get(op_name_);
+    auto strategy =
+        hlir::framework::Operator::GetAttrs<hlir::framework::StrategyFunction>(
+            "CINNStrategy");
+    auto op = hlir::framework::Operator::Get(op_name_);
     CHECK(op) << op_name_ << " isn't supported yet\n";
-    auto impl =
-        hlir::framework::OpStrategy::SelectImpl(strategy[op](attrs, input_tensors, out_types, input_shapes_, target_));
+    auto impl = hlir::framework::OpStrategy::SelectImpl(
+        strategy[op](attrs, input_tensors, out_types, input_shapes_, target_));
 
     if (FLAGS_cinn_ir_schedule) {
       std::string output_name = "out";
@@ -94,7 +101,8 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
       common::CINNValuePack cinn_inputs = common::CINNValuePack{temp_inputs};
       input_output_names.push_back(output_name);
 
-      // 1.Call Op's Compute function, using the default stages and LowerVec to get IR tree.
+      // 1.Call Op's Compute function, using the default stages and LowerVec to
+      // get IR tree.
       common::CINNValuePack C = impl->fcompute(cinn_inputs);
 
       // 2. Collect tensors and arguments
@@ -102,13 +110,15 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
       for (int i = 0; i < C->size() - 1; i++) {
         ir::Expr temp = C[i];
         // checkout whether the tensor is with buffer.
-        if (!temp.as_tensor_ref()->buffer.defined() || target_ != common::DefaultNVGPUTarget()) {
+        if (!temp.as_tensor_ref()->buffer.defined() ||
+            target_ != common::DefaultNVGPUTarget()) {
           all_arg_tensors.push_back(temp.as_tensor_ref());
         }
       }
 
-      stages     = C.back();
-      auto funcs = lang::LowerVec(op_name_, stages, all_arg_tensors, {}, {}, nullptr, target_, true);
+      stages = C.back();
+      auto funcs = lang::LowerVec(
+          op_name_, stages, all_arg_tensors, {}, {}, nullptr, target_, true);
 
       std::vector<common::CINNValue> schedule_inputs;
       for (int i = 0; i < C.size() - 1; ++i) {
@@ -119,8 +129,10 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
         schedule_inputs.push_back(common::CINNValue(f->body));
       }
 
-      // 3. Call Op's Schedule function, optimizing the IR tree by new IR schedule
-      common::CINNValuePack expr_pack = impl->fschedule(common::CINNValuePack{schedule_inputs});
+      // 3. Call Op's Schedule function, optimizing the IR tree by new IR
+      // schedule
+      common::CINNValuePack expr_pack =
+          impl->fschedule(common::CINNValuePack{schedule_inputs});
 
       // 4. Optimize the LoweredFunc
       std::vector<ir::LoweredFunc> res;
@@ -129,16 +141,18 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
         optim::OptimizeExprGPU(&(funcs[i]->body));
 #endif
         if (funcs.size() > expr_pack.size()) {
-          auto new_args  = lang::GetArgs(funcs[i]->body, input_output_names);
+          auto new_args = lang::GetArgs(funcs[i]->body, input_output_names);
           funcs[i]->args = new_args;
         }
-        auto temp_buffers   = lang::GetTempBuffers(all_arg_tensors, stages, funcs[i]->body);
+        auto temp_buffers =
+            lang::GetTempBuffers(all_arg_tensors, stages, funcs[i]->body);
         funcs[i]->temp_bufs = temp_buffers;
         funcs[i]->PrepareBufferCastExprs();
         res.push_back(funcs[i]);
       }
       for (int i = 0; i < res.size(); i++) {
-        res[i] = optim::Optimize(Expr(funcs[i]), target_, false).as_lowered_func_ref();
+        res[i] = optim::Optimize(Expr(funcs[i]), target_, false)
+                     .as_lowered_func_ref();
       }
 
       for (auto func : res) {
@@ -150,7 +164,8 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
             for (auto& shape_dim : arg.buffer_arg()->shape) {
               LOG(INFO) << shape_dim << ",";
               CHECK(shape_dim.is_constant());
-              output_shape.push_back(static_cast<int>(shape_dim.get_constant()));
+              output_shape.push_back(
+                  static_cast<int>(shape_dim.get_constant()));
             }
             output_shapes_.push_back(output_shape);
             break;
@@ -162,13 +177,15 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
       for (auto& tensor : input_tensors) {
         temp_inputs.push_back(common::CINNValue(tensor));
       }
-      common::CINNValuePack C = impl->fcompute(common::CINNValuePack(temp_inputs));
-      stages                  = C.back();
-      C                       = impl->fschedule(C);
+      common::CINNValuePack C =
+          impl->fcompute(common::CINNValuePack(temp_inputs));
+      stages = C.back();
+      C = impl->fschedule(C);
       for (int i = 0; i < C->size() - 1; i++) {
         ir::Expr temp = C[i];
         stages->InsertLazily(temp.as_tensor_ref());
-        std::vector<Expr> output_shape_expr = temp.as_tensor_ref()->domain_without_reduce_axis();
+        std::vector<Expr> output_shape_expr =
+            temp.as_tensor_ref()->domain_without_reduce_axis();
         std::vector<int> output_shape;
         for (auto& shape : output_shape_expr) {
           LOG(INFO) << shape;
@@ -184,7 +201,7 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
     }
   } else {
     stages = CreateStages(input_tensors);
-    outs   = CreateSpecificStrategy(input_tensors, &stages);
+    outs = CreateSpecificStrategy(input_tensors, &stages);
 
     for (auto& out : outs) {
       stages->InsertLazily(out);
@@ -204,7 +221,8 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
 
   CodeGenC compiler(target_);
   Outputs outputs;
-  outputs = outputs.c_header("./test_" + op_name_ + ".h").c_source("./test_" + op_name_ + ".cc");
+  outputs = outputs.c_header("./test_" + op_name_ + ".h")
+                .c_source("./test_" + op_name_ + ".cc");
   compiler.Compile(builder.Build(), outputs);
   return builder.Build();
 }
@@ -212,7 +230,10 @@ Module OpBenchmarkTester::CreateCinnModule(const std::vector<Tensor>& input_tens
 void OpBenchmarkTester::CreateBuffer() {
   std::vector<cinn_pod_value_t> args;
   for (size_t i = 0; i < input_shapes_.size(); i++) {
-    auto* buffer = common::BufferBuilder(input_types_[i], input_shapes_[i]).set_align(32).set_random().Build();
+    auto* buffer = common::BufferBuilder(input_types_[i], input_shapes_[i])
+                       .set_align(32)
+                       .set_random()
+                       .Build();
     cinn_pod_value_t arg(buffer);
     all_args_.push_back(arg);
   }
@@ -220,7 +241,10 @@ void OpBenchmarkTester::CreateBuffer() {
   CHECK_EQ(output_shapes_.size(), out_types_.size());
   for (size_t i = 0; i < output_shapes_.size(); i++) {
     if (out_types_[i].is_void()) continue;
-    auto* buffer = common::BufferBuilder(out_types_[i], output_shapes_[i]).set_align(32).set_zero().Build();
+    auto* buffer = common::BufferBuilder(out_types_[i], output_shapes_[i])
+                       .set_align(32)
+                       .set_zero()
+                       .Build();
     CHECK(buffer);
     out_dims_ = buffer->num_elements();
     cinn_pod_value_t arg(buffer);

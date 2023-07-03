@@ -878,10 +878,9 @@ class _ExecutorCache:
 
             standalone_opt = new_program._pipeline_opt["standalone_opt"]
             pass_name = standalone_opt["schedule_mode"]
-            pass_attr = {
-                "num_micro_batches": standalone_opt["num_micro_batches"]
-            }
-            plan = apply_pass(new_program, new_program, pass_name, pass_attr)
+            plan = apply_pass(
+                new_program, new_program, pass_name, standalone_opt
+            )
         else:
             default_job = core.Job("default")
             type_to_program = {"default": new_program.desc}

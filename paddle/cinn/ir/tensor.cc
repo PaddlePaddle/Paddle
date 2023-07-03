@@ -41,10 +41,10 @@ Tensor _Tensor_::Make(const std::string &name,
                       FunctionRef fn,
                       const std::vector<Var> &reduce_axis) {
   CHECK(!name.empty()) << "Tensor name is set empty";
-  auto n         = make_shared<_Tensor_>();
-  n->name        = name;
-  n->shape       = shape;
-  n->domain      = domain;
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->shape = shape;
+  n->domain = domain;
   n->reduce_axis = reduce_axis;
   n->set_type(dtype);
   n->operation = fn;
@@ -59,8 +59,9 @@ std::set<std::string> _Tensor_::GetDependTensorNames() const {
   std::set<std::string> names;
 
   auto add_depend_tensors_from_expr = [&](Expr expr) {
-    auto tensors =
-        CollectIRNodes(expr, [&](const Expr *x) { return x->as_tensor() && x->as_tensor()->name != this->name; });
+    auto tensors = CollectIRNodes(expr, [&](const Expr *x) {
+      return x->as_tensor() && x->as_tensor()->name != this->name;
+    });
     for (auto &e : tensors) {
       names.insert(e.as_tensor()->name);
     }
@@ -82,10 +83,12 @@ std::set<std::string> _Tensor_::GetDependTensorNames() const {
 }
 
 Expr Tensor::operator()(const std::vector<Expr> &indices) const {
-  CHECK(!self()->is_tuple()) << "should extract a specific value from the tuple and operate on that instead";
+  CHECK(!self()->is_tuple()) << "should extract a specific value from the "
+                                "tuple and operate on that instead";
   auto *node = operator->();
 
-  CHECK_EQ(indices.size(), ndims()) << "number of indices not match the dimension";
+  CHECK_EQ(indices.size(), ndims())
+      << "number of indices not match the dimension";
 
   return Load::Make(*this, indices);
 }
@@ -100,14 +103,18 @@ const char *_Tensor_::operation_type() const {
   return operation->as<ir::_Operation_>()->func_type();
 }
 
-bool _Tensor_::is_compute_node() const { return std::strcmp(operation_type(), ir::ComputeOp::__func_type__) == 0; }
+bool _Tensor_::is_compute_node() const {
+  return std::strcmp(operation_type(), ir::ComputeOp::__func_type__) == 0;
+}
 bool _Tensor_::is_placeholder_node() const {
   return std::strcmp(operation_type(), ir::PlaceholderOp::__func_type__) == 0;
 }
-bool _Tensor_::is_call_node() const { return std::strcmp(operation_type(), ir::CallOp::__func_type__) == 0; }
+bool _Tensor_::is_call_node() const {
+  return std::strcmp(operation_type(), ir::CallOp::__func_type__) == 0;
+}
 bool _Tensor_::is_extern_call_node() const {
   if (std::strcmp(operation_type(), ir::CallOp::__func_type__) == 0) {
-    auto *op   = operation->as<ir::CallOp>();
+    auto *op = operation->as<ir::CallOp>();
     auto *call = op->call_expr.As<ir::Call>();
     if (call) {
       return call->is_extern_call();
@@ -139,7 +146,8 @@ void _Tensor_::InitAxis() const {
 }
 
 bool _Tensor_::has_expression() const {
-  return (!is_placeholder_node()) && (!is_tuple_get()) && (!is_buffer_shared_node());
+  return (!is_placeholder_node()) && (!is_tuple_get()) &&
+         (!is_buffer_shared_node());
 }
 
 isl::set _Tensor_::GenerateIslDomain() const {
@@ -156,7 +164,9 @@ isl::set _Tensor_::GenerateIslDomain() const {
       if (dim.is_constant()) {
         dims.emplace_back(_axis_with_reduce[i]->name, 0, dim.as_int32() - 1);
       } else {
-        dims.emplace_back(_axis_with_reduce[i]->name, Expr(0), Sub::Make(dim, common::make_const(1)));
+        dims.emplace_back(_axis_with_reduce[i]->name,
+                          Expr(0),
+                          Sub::Make(dim, common::make_const(1)));
       }
     }
   }
@@ -240,26 +250,35 @@ Expr *_Tensor_::mutable_body() {
   CINN_NOT_IMPLEMENTED
 }
 
-ir::Tensor _Tensor_::InitReduction(poly::StageMap stages, const Target &target) const {
-  CHECK(contains_reduce_axis()) << "InitReduction only works on a reduce tensor";
+ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
+                                   const Target &target) const {
+  CHECK(contains_reduce_axis())
+      << "InitReduction only works on a reduce tensor";
   // return if already rexists.
   std::string init_reduce_tensor_name = GenReduceInitTensorNameOf(name);
-  if (stages->Lookup(init_reduce_tensor_name)) return stages[this]->LookupCtrlDepend(init_reduce_tensor_name);
+  if (stages->Lookup(init_reduce_tensor_name))
+    return stages[this]->LookupCtrlDepend(init_reduce_tensor_name);
 
   // create a new init tensor.
   auto init_tensor = lang::Compute(
-      domain, [=](const std::vector<Expr> &axis) { return GetReduceInitVal(); }, init_reduce_tensor_name);
+      domain,
+      [=](const std::vector<Expr> &axis) { return GetReduceInitVal(); },
+      init_reduce_tensor_name);
   stages->InsertLazily(init_tensor);
   std::string this_transform = isl_map_to_str(stages[this]->transform().get());
-  isl::ctx this_ctx          = stages[this]->transform().ctx();
+  isl::ctx this_ctx = stages[this]->transform().ctx();
   isl::map temp_transform(this_ctx, this_transform);
-  int reduce_axis_num                        = this->reduce_axis.size();
-  auto dim_out_names                         = poly::isl_get_dim_names(stages[this]->transform(), isl_dim_out);
-  auto dim_in_size                           = isl_map_dim(stages[this]->transform().get(), isl_dim_in);
-  auto dim_in_names                          = poly::isl_get_dim_names(stages[this]->transform(), isl_dim_in);
-  std::vector<std::string> reduce_axis_input = stages[this]->origin_reduce_axis_names();
-  auto origin_domain                         = stages[this]->domain();
-  auto reduce_axis_output = poly::GetRelatedOutputAxies(temp_transform, origin_domain, reduce_axis_input);
+  int reduce_axis_num = this->reduce_axis.size();
+  auto dim_out_names =
+      poly::isl_get_dim_names(stages[this]->transform(), isl_dim_out);
+  auto dim_in_size = isl_map_dim(stages[this]->transform().get(), isl_dim_in);
+  auto dim_in_names =
+      poly::isl_get_dim_names(stages[this]->transform(), isl_dim_in);
+  std::vector<std::string> reduce_axis_input =
+      stages[this]->origin_reduce_axis_names();
+  auto origin_domain = stages[this]->domain();
+  auto reduce_axis_output = poly::GetRelatedOutputAxies(
+      temp_transform, origin_domain, reduce_axis_input);
   std::set<std::string> reduce_axis_output_set;
   for (auto &i : reduce_axis_output) {
     reduce_axis_output_set.insert(i);
@@ -273,7 +292,8 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages, const Target &target) 
     }
   }
 
-  temp_transform = poly::RemoveAxiesByOutputNames(temp_transform, origin_domain, reduce_axis_output);
+  temp_transform = poly::RemoveAxiesByOutputNames(
+      temp_transform, origin_domain, reduce_axis_output);
 
   //! When the first axis is not reduce axis, do ComputeAt.
   if (compute_at_axis >= 0) {
@@ -286,16 +306,21 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages, const Target &target) 
   }
   //! When reduce axies are reordered to front, ComputeAt is illegal.
   //! So we just copy transform and forloopInfo.
-  isl_map_set_tuple_name(temp_transform.get(), isl_dim_in, init_reduce_tensor_name.c_str());
-  isl_map_set_tuple_name(temp_transform.get(), isl_dim_out, init_reduce_tensor_name.c_str());
+  isl_map_set_tuple_name(
+      temp_transform.get(), isl_dim_in, init_reduce_tensor_name.c_str());
+  isl_map_set_tuple_name(
+      temp_transform.get(), isl_dim_out, init_reduce_tensor_name.c_str());
   stages[init_tensor]->SetTransform(temp_transform);
-  auto init_dim_out_names                                 = poly::isl_get_dim_names(temp_transform, isl_dim_out);
-  std::map<int, poly::StageForloopInfo> temp_forloop_info = stages[this]->forloop_infos();
+  auto init_dim_out_names =
+      poly::isl_get_dim_names(temp_transform, isl_dim_out);
+  std::map<int, poly::StageForloopInfo> temp_forloop_info =
+      stages[this]->forloop_infos();
   std::map<int, poly::StageForloopInfo> init_forloop_info;
   for (auto &i : temp_forloop_info) {
     for (int j = 0; j < init_dim_out_names.size(); j++) {
       if (i.first < 0) continue;
-      int new_i = poly::isl_get_original_axes_from_optimized_level(stages[this]->transformed_domain().get(), i.first);
+      int new_i = poly::isl_get_original_axes_from_optimized_level(
+          stages[this]->transformed_domain().get(), i.first);
       if (dim_out_names[new_i] == init_dim_out_names[j]) {
         stages[init_tensor]->AddForloopInfo(j, i.second);
       }
@@ -308,7 +333,8 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages, const Target &target) 
   return init_tensor;
 }
 
-ir::Tensor _Tensor_::GetInitTensor(poly::StageMap stages, const Target &target) const {
+ir::Tensor _Tensor_::GetInitTensor(poly::StageMap stages,
+                                   const Target &target) const {
   return InitReduction(stages, target);
 }
 
@@ -384,11 +410,13 @@ void _Tensor_::WithBuffer(const Type &type) {
   Bind(buf);
 }
 
-void _Tensor_::WithBuffer(const std::string &memory_type, const std::string &buffer_name, const Type &type) {
+void _Tensor_::WithBuffer(const std::string &memory_type,
+                          const std::string &buffer_name,
+                          const Type &type) {
   Type buf_type = type.is_void() ? type_ : type;
   if (this->buffer.defined()) {
     this->buffer->dtype = buf_type;
-    this->buffer->name  = buffer_name;
+    this->buffer->name = buffer_name;
     if (memory_type == "shared") {
       this->buffer->memory_type = MemoryType::GPUShared;
     } else if (memory_type == "local") {
@@ -461,11 +489,13 @@ Tensor::Tensor(const std::string &name,
                const std::vector<Expr> &domain,
                FunctionRef fn,
                const std::vector<Var> &reduce_axis)
-    : IrNodeRef(_Tensor_::Make(name, dtype, shape, domain, fn, reduce_axis).self()) {}
+    : IrNodeRef(
+          _Tensor_::Make(name, dtype, shape, domain, fn, reduce_axis).self()) {}
 
 bool _Tensor_::is_tuple_get() const {
   return is_call_node() && operation.defined() &&
-         operation->as<ir::_Operation_>()->func_type() == ir::CallOp::__func_type__ &&
+         operation->as<ir::_Operation_>()->func_type() ==
+             ir::CallOp::__func_type__ &&
          operation->as<ir::CallOp>()->is_tuple_get;
 }
 
@@ -484,7 +514,8 @@ bool _Tensor_::IsDependOnStatement(absl::string_view statement) {
 std::set<std::string> _Tensor_::DependingTensorNames() {
   std::set<std::string> res;
   if (body().defined()) {
-    auto depend_tensors = ir::CollectIRNodes(body(), [](const Expr *x) -> bool { return x->as_tensor(); });
+    auto depend_tensors = ir::CollectIRNodes(
+        body(), [](const Expr *x) -> bool { return x->as_tensor(); });
     for (const auto &x : depend_tensors) {
       if (x.get() != this) {
         res.insert(x.as_tensor()->name);
@@ -514,10 +545,11 @@ bool _Tensor_::Uses(const Tensor &other) const {
   return !loads.empty();
 }
 
-ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape, poly::StageMap stages) const {
+ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape,
+                             poly::StageMap stages) const {
   CHECK(!stages[this]->inlined());
-  auto op    = BufferShareOp::Make();
-  auto n     = make_shared<_Tensor_>();
+  auto op = BufferShareOp::Make();
+  auto n = make_shared<_Tensor_>();
   auto selft = Tensor(const_cast<ir::_Tensor_ *>(this));
 
   {
@@ -527,11 +559,12 @@ ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape, poly::StageMap stag
     Expr num_elements = Expr(1);
     for (auto &e : shape) num_elements = num_elements * e;
 
-    CHECK(MathIsZero(this_num_elements - num_elements)) << "number of elements mismatch";
+    CHECK(MathIsZero(this_num_elements - num_elements))
+        << "number of elements mismatch";
   }
 
-  n->name   = Context::Global().NewName(name + "_reshape");
-  n->shape  = shape;
+  n->name = Context::Global().NewName(name + "_reshape");
+  n->shape = shape;
   n->domain = shape;
   n->set_type(type());
   n->operation = op;
@@ -545,8 +578,9 @@ ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape, poly::StageMap stag
   return t;
 }
 
-ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape, poly::StageMap stages) const {
-  auto t      = ir::Tensor(const_cast<ir::_Tensor_ *>(this));
+ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape,
+                                   poly::StageMap stages) const {
+  auto t = ir::Tensor(const_cast<ir::_Tensor_ *>(this));
   auto copied = Compute(
       domain,
       [=](const std::vector<Expr> &axis) { return t(axis); },
@@ -562,15 +596,19 @@ Shared<poly::Stage> CreateStage(Tensor tensor) {
   return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 
-std::string GenReduceInitTensorNameOf(const std::string &tensor_name) { return tensor_name + "__reduce_init"; }
+std::string GenReduceInitTensorNameOf(const std::string &tensor_name) {
+  return tensor_name + "__reduce_init";
+}
 
 bool _Tensor_::is_reduce_sum() const {
   if (!contains_reduce_axis()) return false;
-  return body().As<ir::Reduce>() && body().As<ir::Reduce>()->reduce_type == ir::Reduce::ReduceType::kSum;
+  return body().As<ir::Reduce>() &&
+         body().As<ir::Reduce>()->reduce_type == ir::Reduce::ReduceType::kSum;
 }
 bool _Tensor_::is_reduce_mul() const {
   if (!contains_reduce_axis()) return false;
-  return body().As<ir::Reduce>() && body().As<ir::Reduce>()->reduce_type == ir::Reduce::ReduceType::kMul;
+  return body().As<ir::Reduce>() &&
+         body().As<ir::Reduce>()->reduce_type == ir::Reduce::ReduceType::kMul;
 }
 
 Expr _Tensor_::GetReduceInitVal() const {
@@ -578,7 +616,9 @@ Expr _Tensor_::GetReduceInitVal() const {
   return body().As<ir::Reduce>()->init;
 }
 
-bool _Tensor_::IsReduceInited(poly::StageMap stages) const { return stages->Lookup(GenReduceInitTensorNameOf(name)); }
+bool _Tensor_::IsReduceInited(poly::StageMap stages) const {
+  return stages->Lookup(GenReduceInitTensorNameOf(name));
+}
 
 void _Tensor_::Verify() const {
   CHECK(!shape.empty());

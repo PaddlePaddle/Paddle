@@ -36,7 +36,7 @@ using common::Type;
 using ir::Expr;
 using ir::ExprNode;
 
-using ExprOp   = absl::variant<ir::IntImm,
+using ExprOp = absl::variant<ir::IntImm,
                              ir::UIntImm,
                              ir::FloatImm,
                              ir::StringImm,
@@ -60,10 +60,11 @@ using ExprOp   = absl::variant<ir::IntImm,
                              ir::Block,
                              ir::_Module_>;
 using BinaryOp = absl::variant<>;
-using UnaryOp  = absl::variant<>;
+using UnaryOp = absl::variant<>;
 
 // hold CINNValue
-using ValueVar = absl::variant<int32_t, int64_t, float, ir::Var, ir::Expr, std::nullptr_t>;
+using ValueVar =
+    absl::variant<int32_t, int64_t, float, ir::Var, ir::Expr, std::nullptr_t>;
 
 inline ValueVar ConvertToVar(const CINNValue &value) {
   auto type_code = value.type_code();
@@ -90,7 +91,9 @@ auto DefineShared(py::module *m, absl::string_view obj_name) {
   std::string name = "Shared" + std::string(obj_name);
   py::class_<Shared<T>> shared(*m, name.c_str());
 
-  shared.def(py::init<>()).def(py::init<T *>()).def(py::init<const Shared<T> &>());
+  shared.def(py::init<>())
+      .def(py::init<T *>())
+      .def(py::init<const Shared<T> &>());
   return shared;
 }
 
@@ -100,14 +103,20 @@ void DefineExprNode(py::module *m, absl::string_view node_name) {
 
   std::string prefix{"ExprNode"};
   std::string name = prefix + std::string(node_name);
-  py::class_<ExprNodeT, ir::IrNode> expr_node(*m, name.c_str(), py::module_local());
+  py::class_<ExprNodeT, ir::IrNode> expr_node(
+      *m, name.c_str(), py::module_local());
   expr_node.def(py::init<>())
       .def(py::init<Type>())
       .def(py::init<int>())
       .def("operands_mutable", py::overload_cast<>(&ExprNodeT::operands))
-      .def("operands_const", py::overload_cast<>(&ExprNodeT::operands, py::const_))
-      .def("operand_mutable", py::overload_cast<int>(&ExprNodeT::operand), py::return_value_policy::reference)
-      .def("operand_const", py::overload_cast<int>(&ExprNodeT::operand, py::const_), py::return_value_policy::reference)
+      .def("operands_const",
+           py::overload_cast<>(&ExprNodeT::operands, py::const_))
+      .def("operand_mutable",
+           py::overload_cast<int>(&ExprNodeT::operand),
+           py::return_value_policy::reference)
+      .def("operand_const",
+           py::overload_cast<int>(&ExprNodeT::operand, py::const_),
+           py::return_value_policy::reference)
       .def("copy", &ExprNodeT::Copy)
       .def("node_type", &ExprNodeT::node_type);
 }
@@ -116,18 +125,29 @@ template <typename NodeType>
 void DefineBinaryOpNode(py::module *m, absl::string_view node_name) {
   DefineExprNode<NodeType>(m, node_name);
   std::string prefix{"BinaryOpNode"};
-  std::string name    = prefix + std::string(node_name);
+  std::string name = prefix + std::string(node_name);
   using BinaryOpNodeT = ir::BinaryOpNode<NodeType>;
-  py::class_<BinaryOpNodeT, ir::ExprNode<NodeType>> binary_op_node(*m, name.c_str());
+  py::class_<BinaryOpNodeT, ir::ExprNode<NodeType>> binary_op_node(
+      *m, name.c_str());
   binary_op_node.def(py::init<>())
       .def(py::init<Type, Expr, Expr>())
-      .def("a_mutable", py::overload_cast<>(&BinaryOpNodeT::a), py::return_value_policy::reference)
-      .def("a_const", py::overload_cast<>(&BinaryOpNodeT::a, py::const_), py::return_value_policy::reference)
-      .def("b_mutable", py::overload_cast<>(&BinaryOpNodeT::b), py::return_value_policy::reference)
-      .def("b_const", py::overload_cast<>(&BinaryOpNodeT::b, py::const_), py::return_value_policy::reference)
+      .def("a_mutable",
+           py::overload_cast<>(&BinaryOpNodeT::a),
+           py::return_value_policy::reference)
+      .def("a_const",
+           py::overload_cast<>(&BinaryOpNodeT::a, py::const_),
+           py::return_value_policy::reference)
+      .def("b_mutable",
+           py::overload_cast<>(&BinaryOpNodeT::b),
+           py::return_value_policy::reference)
+      .def("b_const",
+           py::overload_cast<>(&BinaryOpNodeT::b, py::const_),
+           py::return_value_policy::reference)
       .def("type", &BinaryOpNodeT::type)
-      .def("expr_fields_mutable", py::overload_cast<>(&BinaryOpNodeT::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&BinaryOpNodeT::expr_fields, py::const_));
+      .def("expr_fields_mutable",
+           py::overload_cast<>(&BinaryOpNodeT::expr_fields))
+      .def("expr_fields_const",
+           py::overload_cast<>(&BinaryOpNodeT::expr_fields, py::const_));
 }
 
 template <typename NodeType>
@@ -136,15 +156,24 @@ void DefineUnaryOpNode(py::module *m, absl::string_view node_name) {
   DefineExprNode<NodeType>(m, node_name);
 
   std::string name = "UnaryOpNode" + std::string(node_name);
-  py::class_<UnaryOpNodeT, ir::ExprNode<NodeType>> unary_op_node(*m, name.c_str());
+  py::class_<UnaryOpNodeT, ir::ExprNode<NodeType>> unary_op_node(*m,
+                                                                 name.c_str());
   unary_op_node.def(py::init<>())
       .def(py::init<Type, Expr>())
       .def("type", &UnaryOpNodeT::type)
-      .def("v_mutable", py::overload_cast<>(&UnaryOpNodeT::v), py::return_value_policy::reference)
-      .def("v_const", py::overload_cast<>(&UnaryOpNodeT::v, py::const_), py::return_value_policy::reference)
-      .def("expr_fields_mutable", py::overload_cast<>(&UnaryOpNodeT::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&UnaryOpNodeT::expr_fields, py::const_))
-      .def("operands_mutable", py::overload_cast<>(&UnaryOpNodeT::operands), py::return_value_policy::reference)
+      .def("v_mutable",
+           py::overload_cast<>(&UnaryOpNodeT::v),
+           py::return_value_policy::reference)
+      .def("v_const",
+           py::overload_cast<>(&UnaryOpNodeT::v, py::const_),
+           py::return_value_policy::reference)
+      .def("expr_fields_mutable",
+           py::overload_cast<>(&UnaryOpNodeT::expr_fields))
+      .def("expr_fields_const",
+           py::overload_cast<>(&UnaryOpNodeT::expr_fields, py::const_))
+      .def("operands_mutable",
+           py::overload_cast<>(&UnaryOpNodeT::operands),
+           py::return_value_policy::reference)
       .def("operands_const",
            py::overload_cast<>(&UnaryOpNodeT::operands, py::const_),
            py::return_value_policy::reference);
@@ -154,7 +183,9 @@ class ObjectWrapper : public Object {
  public:
   using Object::Object;
 
-  const char *type_info() const override { PYBIND11_OVERLOAD_PURE(const char *, Object, type_info); }
+  const char *type_info() const override {
+    PYBIND11_OVERLOAD_PURE(const char *, Object, type_info);
+  }
 };
 
 class IrNodeWrapper : ir::IrNode {
@@ -163,6 +194,8 @@ class IrNodeWrapper : ir::IrNode {
 
 class _Operation_Wrapper : ir::_Operation_ {
  public:
-  const char *func_type() const override { PYBIND11_OVERLOAD_PURE(const char *, ir::_Operation_, func_type); }
+  const char *func_type() const override {
+    PYBIND11_OVERLOAD_PURE(const char *, ir::_Operation_, func_type);
+  }
 };
 }  // namespace cinn::pybind

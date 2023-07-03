@@ -33,8 +33,8 @@ void OptimizeExprGPU(Expr* expr);
 */
 
 /**
- * Remove the forloops of block and thread axis, add the kernel launch thread dimension information to the outermost
- * LoweredFunc.
+ * Remove the forloops of block and thread axis, add the kernel launch thread
+ * dimension information to the outermost LoweredFunc.
  *
  * For example, input the code:
  * \code
@@ -51,8 +51,9 @@ void OptimizeExprGPU(Expr* expr);
  *   A(blockIdx.x, threadIdx.x)
  * \endcode
  *
- * \note For that the dimensions of each threadIdx or blockIdx should be constant, so this only takes For nodes, not
- * \note PolyFor nodes is allowed to be GPU related.
+ * \note For that the dimensions of each threadIdx or blockIdx should be
+ * constant, so this only takes For nodes, not \note PolyFor nodes is allowed to
+ * be GPU related.
  */
 void RemoveGpuForloopsAxis(Expr* expr);
 

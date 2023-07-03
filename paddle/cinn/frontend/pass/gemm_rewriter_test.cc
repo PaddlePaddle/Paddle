@@ -35,12 +35,12 @@ TEST(GemmRwriter, BatchedTransLeft) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {3, 6, 8}, "A");
-  auto b       = builder.Transpose(a, {0, 2, 1});
-  auto c       = builder.CreateInput(Float(32), {3, 6, 7}, "C");
-  auto d       = builder.Matmul(b, c);
-  auto e       = builder.CreateInput(Float(32), {3, 8, 7}, "E");
-  auto out     = builder.Add(d, e);
+  auto a = builder.CreateInput(Float(32), {3, 6, 8}, "A");
+  auto b = builder.Transpose(a, {0, 2, 1});
+  auto c = builder.CreateInput(Float(32), {3, 6, 7}, "C");
+  auto d = builder.Matmul(b, c);
+  auto e = builder.CreateInput(Float(32), {3, 8, 7}, "E");
+  auto out = builder.Add(d, e);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -48,8 +48,9 @@ TEST(GemmRwriter, BatchedTransLeft) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), e.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer", "RemoveIdentity"},
-                                                                       {"TransposeFoldingInput", "GemmRewriter"}};
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer", "RemoveIdentity"},
+      {"TransposeFoldingInput", "GemmRewriter"}};
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
@@ -58,12 +59,12 @@ TEST(GemmRwriter, BatchedTransRight) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {3, 8, 6}, "A");
-  auto b       = builder.CreateInput(Float(32), {3, 7, 6}, "B");
-  auto c       = builder.Transpose(b, {0, 2, 1});
-  auto e       = builder.Matmul(a, c);
-  auto f       = builder.CreateInput(Float(32), {3, 8, 7}, "F");
-  auto out     = builder.Add(e, f);
+  auto a = builder.CreateInput(Float(32), {3, 8, 6}, "A");
+  auto b = builder.CreateInput(Float(32), {3, 7, 6}, "B");
+  auto c = builder.Transpose(b, {0, 2, 1});
+  auto e = builder.Matmul(a, c);
+  auto f = builder.CreateInput(Float(32), {3, 8, 7}, "F");
+  auto out = builder.Add(e, f);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -71,8 +72,9 @@ TEST(GemmRwriter, BatchedTransRight) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer", "RemoveIdentity"},
-                                                                       {"TransposeFoldingInput", "GemmRewriter"}};
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer", "RemoveIdentity"},
+      {"TransposeFoldingInput", "GemmRewriter"}};
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
@@ -81,13 +83,13 @@ TEST(GemmRwriter, BatchedTransTwo) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {3, 6, 8}, "A");
-  auto b       = builder.Transpose(a, {0, 2, 1});
-  auto c       = builder.CreateInput(Float(32), {3, 7, 6}, "C");
-  auto d       = builder.Transpose(c, {0, 2, 1});
-  auto e       = builder.Matmul(b, d);
-  auto f       = builder.CreateInput(Float(32), {3, 8, 7}, "F");
-  auto out     = builder.Add(e, f);
+  auto a = builder.CreateInput(Float(32), {3, 6, 8}, "A");
+  auto b = builder.Transpose(a, {0, 2, 1});
+  auto c = builder.CreateInput(Float(32), {3, 7, 6}, "C");
+  auto d = builder.Transpose(c, {0, 2, 1});
+  auto e = builder.Matmul(b, d);
+  auto f = builder.CreateInput(Float(32), {3, 8, 7}, "F");
+  auto out = builder.Add(e, f);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -95,8 +97,9 @@ TEST(GemmRwriter, BatchedTransTwo) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
@@ -105,11 +108,11 @@ TEST(GemmRwriter, BatchedNoTrans) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {3, 8, 6}, "A");
-  auto b       = builder.CreateInput(Float(32), {3, 6, 7}, "B");
-  auto e       = builder.Matmul(a, b);
-  auto f       = builder.CreateInput(Float(32), {3, 8, 7}, "F");
-  auto out     = builder.Add(e, f);
+  auto a = builder.CreateInput(Float(32), {3, 8, 6}, "A");
+  auto b = builder.CreateInput(Float(32), {3, 6, 7}, "B");
+  auto e = builder.Matmul(a, b);
+  auto f = builder.CreateInput(Float(32), {3, 8, 7}, "F");
+  auto out = builder.Add(e, f);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -117,8 +120,9 @@ TEST(GemmRwriter, BatchedNoTrans) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
@@ -127,12 +131,12 @@ TEST(GemmRwriter, TransLeft) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {6, 8}, "A");
-  auto b       = builder.Transpose(a, {1, 0});
-  auto c       = builder.CreateInput(Float(32), {6, 7}, "C");
-  auto d       = builder.Matmul(b, c);
-  auto e       = builder.CreateInput(Float(32), {8, 7}, "E");
-  auto out     = builder.Add(d, e);
+  auto a = builder.CreateInput(Float(32), {6, 8}, "A");
+  auto b = builder.Transpose(a, {1, 0});
+  auto c = builder.CreateInput(Float(32), {6, 7}, "C");
+  auto d = builder.Matmul(b, c);
+  auto e = builder.CreateInput(Float(32), {8, 7}, "E");
+  auto out = builder.Add(d, e);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -140,8 +144,9 @@ TEST(GemmRwriter, TransLeft) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), e.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
@@ -150,12 +155,12 @@ TEST(GemmRwriter, TransRight) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {8, 6}, "A");
-  auto b       = builder.CreateInput(Float(32), {7, 6}, "B");
-  auto c       = builder.Transpose(b, {1, 0});
-  auto e       = builder.Matmul(a, c);
-  auto f       = builder.CreateInput(Float(32), {8, 7}, "F");
-  auto out     = builder.Add(e, f);
+  auto a = builder.CreateInput(Float(32), {8, 6}, "A");
+  auto b = builder.CreateInput(Float(32), {7, 6}, "B");
+  auto c = builder.Transpose(b, {1, 0});
+  auto e = builder.Matmul(a, c);
+  auto f = builder.CreateInput(Float(32), {8, 7}, "F");
+  auto out = builder.Add(e, f);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -163,8 +168,9 @@ TEST(GemmRwriter, TransRight) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
@@ -173,13 +179,13 @@ TEST(GemmRwriter, TransTwo) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {6, 8}, "A");
-  auto b       = builder.Transpose(a, {1, 0});
-  auto c       = builder.CreateInput(Float(32), {7, 6}, "C");
-  auto d       = builder.Transpose(c, {1, 0});
-  auto e       = builder.Matmul(b, d);
-  auto f       = builder.CreateInput(Float(32), {8, 7}, "F");
-  auto out     = builder.Add(e, f);
+  auto a = builder.CreateInput(Float(32), {6, 8}, "A");
+  auto b = builder.Transpose(a, {1, 0});
+  auto c = builder.CreateInput(Float(32), {7, 6}, "C");
+  auto d = builder.Transpose(c, {1, 0});
+  auto e = builder.Matmul(b, d);
+  auto f = builder.CreateInput(Float(32), {8, 7}, "F");
+  auto out = builder.Add(e, f);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -187,8 +193,9 @@ TEST(GemmRwriter, TransTwo) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), c.id(), f.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
@@ -197,11 +204,11 @@ TEST(GemmRwriter, NoTrans) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {8, 6}, "A");
-  auto b       = builder.CreateInput(Float(32), {6, 7}, "B");
-  auto e       = builder.Matmul(a, b);
-  auto f       = builder.CreateInput(Float(32), {8, 7}, "F");
-  auto out     = builder.Add(e, f);
+  auto a = builder.CreateInput(Float(32), {8, 6}, "A");
+  auto b = builder.CreateInput(Float(32), {6, 7}, "B");
+  auto e = builder.Matmul(a, b);
+  auto f = builder.CreateInput(Float(32), {8, 7}, "F");
+  auto out = builder.Add(e, f);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -209,8 +216,9 @@ TEST(GemmRwriter, NoTrans) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), f.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
@@ -219,22 +227,22 @@ TEST(GemmRwriter, BatchedComplex) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.FillConstant<float>({2, 20}, 2.0f, "A");
-  auto b       = builder.FillConstant<float>({16, 2, 20}, 2.0f, "B");
-  auto c       = builder.Transpose(b, {0, 2, 1});
-  auto d       = builder.CreateInput(Float(32), {121, 20}, "D");
-  auto e       = builder.BroadcastTo(d, {16, 121, 20}, {1, 2});
-  auto f       = builder.Matmul(e, c);
-  auto x       = builder.FillConstant<float>({16, 2, 20}, 1.0f, "X");
-  auto y       = builder.Transpose(x, {0, 2, 1});
-  auto z       = builder.CreateInput(Float(32), {16, 20, 121}, "Z");
-  auto l       = builder.Transpose(z, {0, 2, 1});
-  auto m       = builder.Matmul(l, y);
-  auto n       = builder.Matmul(d, a, false, true);
-  auto o       = builder.BroadcastTo(n, {16, n->shape[0], n->shape[1]}, {1, 2});
-  auto p       = builder.Subtract(f, o);
-  auto q       = builder.Add(f, m);
-  auto out     = builder.Add(p, q);
+  auto a = builder.FillConstant<float>({2, 20}, 2.0f, "A");
+  auto b = builder.FillConstant<float>({16, 2, 20}, 2.0f, "B");
+  auto c = builder.Transpose(b, {0, 2, 1});
+  auto d = builder.CreateInput(Float(32), {121, 20}, "D");
+  auto e = builder.BroadcastTo(d, {16, 121, 20}, {1, 2});
+  auto f = builder.Matmul(e, c);
+  auto x = builder.FillConstant<float>({16, 2, 20}, 1.0f, "X");
+  auto y = builder.Transpose(x, {0, 2, 1});
+  auto z = builder.CreateInput(Float(32), {16, 20, 121}, "Z");
+  auto l = builder.Transpose(z, {0, 2, 1});
+  auto m = builder.Matmul(l, y);
+  auto n = builder.Matmul(d, a, false, true);
+  auto o = builder.BroadcastTo(n, {16, n->shape[0], n->shape[1]}, {1, 2});
+  auto p = builder.Subtract(f, o);
+  auto q = builder.Add(f, m);
+  auto out = builder.Add(p, q);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -242,8 +250,9 @@ TEST(GemmRwriter, BatchedComplex) {
   absl::c_transform(std::vector<absl::string_view>{d.id(), z.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 4, passes, 123, false);
 }
 
@@ -252,19 +261,19 @@ TEST(GemmRwriter, Complex) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.FillConstant<float>({2, 20}, 2.0f, "A");
-  auto b       = builder.Transpose(a, {1, 0});
-  auto c       = builder.CreateInput(Float(32), {121, 20}, "C");
-  auto d       = builder.Matmul(c, b);
-  auto x       = builder.FillConstant<float>({2, 20}, 1.0f, "X");
-  auto y       = builder.Transpose(x, {1, 0});
-  auto z       = builder.CreateInput(Float(32), {20, 121}, "Z");
-  auto l       = builder.Transpose(z, {1, 0});
-  auto m       = builder.Matmul(l, y);
-  auto n       = builder.Matmul(c, a, false, true);
-  auto p       = builder.Subtract(d, n);
-  auto q       = builder.Add(d, m);
-  auto out     = builder.Add(p, q);
+  auto a = builder.FillConstant<float>({2, 20}, 2.0f, "A");
+  auto b = builder.Transpose(a, {1, 0});
+  auto c = builder.CreateInput(Float(32), {121, 20}, "C");
+  auto d = builder.Matmul(c, b);
+  auto x = builder.FillConstant<float>({2, 20}, 1.0f, "X");
+  auto y = builder.Transpose(x, {1, 0});
+  auto z = builder.CreateInput(Float(32), {20, 121}, "Z");
+  auto l = builder.Transpose(z, {1, 0});
+  auto m = builder.Matmul(l, y);
+  auto n = builder.Matmul(c, a, false, true);
+  auto p = builder.Subtract(d, n);
+  auto q = builder.Add(d, m);
+  auto out = builder.Add(p, q);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
@@ -272,8 +281,9 @@ TEST(GemmRwriter, Complex) {
   absl::c_transform(std::vector<absl::string_view>{c.id(), z.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  auto passes = std::make_pair(std::vector<std::string>{"Decomposer", "RemoveIdentity"},
-                               std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
+  auto passes = std::make_pair(
+      std::vector<std::string>{"Decomposer", "RemoveIdentity"},
+      std::vector<std::string>{"TransposeFoldingInput", "GemmRewriter"});
   CompareResult(&program, target, input_ids, {out->id}, 3, passes, 123, false);
 }
 

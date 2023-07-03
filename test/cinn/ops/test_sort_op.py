@@ -14,11 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest
 from op_test_helper import TestCaseHelper, run_test
+
+import paddle
 
 
 class TestSortOp(OpTest):
@@ -28,9 +29,7 @@ class TestSortOp(OpTest):
         self.prepare_inputs()
 
     def prepare_inputs(self):
-        self.inputs = {
-            "x": self.random(self.case["shape"], self.case["dtype"])
-        }
+        self.inputs = {"x": self.random(self.case["shape"], self.case["dtype"])}
         self.axis = self.case["axis"]
         self.descending = self.case["descending"]
 
@@ -44,11 +43,14 @@ class TestSortOp(OpTest):
         builder = NetBuilder("sort")
         x1 = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.sort(x1, self.axis, not self.descending)
         prog = builder.build()
-        forward_res = self.get_cinn_output(prog, target, [x1],
-                                           [self.inputs["x"]], [out])
+        forward_res = self.get_cinn_output(
+            prog, target, [x1], [self.inputs["x"]], [out]
+        )
 
         self.cinn_outputs = forward_res
 
@@ -152,18 +154,10 @@ class TestSortOpDtypeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [{"axis": 0, "descending": False}]
 
@@ -178,19 +172,12 @@ class TestSortOpAxisTest(TestCaseHelper):
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
-        self.attrs = [{
-            "axis": 0,
-            "descending": False
-        }, {
-            "axis": 1,
-            "descending": False
-        }, {
-            "axis": 2,
-            "descending": False
-        }, {
-            "axis": 3,
-            "descending": False
-        }]
+        self.attrs = [
+            {"axis": 0, "descending": False},
+            {"axis": 1, "descending": False},
+            {"axis": 2, "descending": False},
+            {"axis": 3, "descending": False},
+        ]
 
 
 class TestSortOpDescedingTest(TestSortOpShapeTest):
@@ -203,19 +190,12 @@ class TestSortOpDescedingTest(TestSortOpShapeTest):
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
-        self.attrs = [{
-            "axis": 0,
-            "descending": True
-        }, {
-            "axis": 1,
-            "descending": True
-        }, {
-            "axis": 2,
-            "descending": True
-        }, {
-            "axis": 3,
-            "descending": True
-        }]
+        self.attrs = [
+            {"axis": 0, "descending": True},
+            {"axis": 1, "descending": True},
+            {"axis": 2, "descending": True},
+            {"axis": 3, "descending": True},
+        ]
 
 
 if __name__ == "__main__":

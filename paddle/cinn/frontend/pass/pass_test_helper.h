@@ -50,9 +50,10 @@ inline void PrintMatrix(const std::vector<float>& mat, int bs, int m, int n) {
     return;
   }
   const auto min_max = std::minmax_element(mat.begin(), mat.end());
-  int min            = static_cast<int>(*min_max.first);
-  int max            = static_cast<int>(*min_max.second);
-  auto ele_width     = std::max(std::to_string(min).length(), std::to_string(max).length());
+  int min = static_cast<int>(*min_max.first);
+  int max = static_cast<int>(*min_max.second);
+  auto ele_width =
+      std::max(std::to_string(min).length(), std::to_string(max).length());
   std::cout << "\n" << std::string((ele_width + 2) * n - 1, '-') << "\n";
   for (int b = 0; b < bs; b++) {
     for (int i = 0; i < m; i++) {
@@ -77,23 +78,28 @@ inline void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
   VLOG(3) << "Graph Viz:\n" << graph->Visualize();
   BuildScope(target, graph, scope);
   hlir::framework::GraphCompiler::CompileOptions options;
-  options.attached_code              = "";
+  options.attached_code = "";
   options.with_instantiate_variables = true;
   hlir::framework::GraphCompiler gc(target, scope, graph);
-  auto runtime_program =
-      gc.Build(options, std::unordered_set<std::string>(output_ids.begin(), output_ids.end())).runtime_program;
+  auto runtime_program = gc.Build(options,
+                                  std::unordered_set<std::string>(
+                                      output_ids.begin(), output_ids.end()))
+                             .runtime_program;
   runtime_program->Execute();
 }
 
-inline std::vector<float> RunProgram(const Program& program,
-                                     const common::Target& target,
-                                     const std::vector<std::string>& input_ids,
-                                     const std::vector<std::string>& output_ids,
-                                     const std::vector<std::string>& graph_passes,
-                                     int seed          = -1,
-                                     bool print_tensor = false) {
-  std::unordered_set<std::string> outputs_set{output_ids.begin(), output_ids.end()};
-  auto graph = std::make_shared<hlir::framework::Graph>(program, outputs_set, target);
+inline std::vector<float> RunProgram(
+    const Program& program,
+    const common::Target& target,
+    const std::vector<std::string>& input_ids,
+    const std::vector<std::string>& output_ids,
+    const std::vector<std::string>& graph_passes,
+    int seed = -1,
+    bool print_tensor = false) {
+  std::unordered_set<std::string> outputs_set{output_ids.begin(),
+                                              output_ids.end()};
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(program, outputs_set, target);
   auto scope = hlir::framework::BuildScope(target, graph);
   for (auto& input_id : input_ids) {
     scope->Var<hlir::framework::Tensor>(input_id);
@@ -102,7 +108,10 @@ inline std::vector<float> RunProgram(const Program& program,
     if (print_tensor) {
       auto tensor_data = GetTensorData<float>(input_tensor, target);
       if (input_tensor->shape().data().size() == 2) {
-        PrintMatrix(tensor_data, 1, input_tensor->shape().data()[0], input_tensor->shape().data()[1]);
+        PrintMatrix(tensor_data,
+                    1,
+                    input_tensor->shape().data()[0],
+                    input_tensor->shape().data()[1]);
       } else if (input_tensor->shape().data().size() == 3) {
         PrintMatrix(tensor_data,
                     input_tensor->shape().data()[0],
@@ -115,10 +124,13 @@ inline std::vector<float> RunProgram(const Program& program,
   RunGraph(graph, target, scope, output_ids, graph_passes);
 
   auto output_tensor = scope->GetTensor(output_ids.front());
-  auto output_data   = GetTensorData<float>(output_tensor, target);
+  auto output_data = GetTensorData<float>(output_tensor, target);
   if (print_tensor) {
     if (output_tensor->shape().data().size() == 2) {
-      PrintMatrix(output_data, 1, output_tensor->shape().data()[0], output_tensor->shape().data()[1]);
+      PrintMatrix(output_data,
+                  1,
+                  output_tensor->shape().data()[0],
+                  output_tensor->shape().data()[1]);
     } else if (output_tensor->shape().data().size() == 3) {
       PrintMatrix(output_data,
                   output_tensor->shape().data()[0],
@@ -131,21 +143,25 @@ inline std::vector<float> RunProgram(const Program& program,
 
 struct OptimizeConfig {
   struct PassGroup;
-  OptimizeConfig(const PassGroup& program_passes) : program_passes{program_passes} {
+  OptimizeConfig(const PassGroup& program_passes)
+      : program_passes{program_passes} {
     if (FLAGS_cinn_use_op_fusion) {
-      graph_passes = {{"OpFusionPass", "FusionMergePass"}, {"OpFusionPass", "FusionMergePass"}};
+      graph_passes = {{"OpFusionPass", "FusionMergePass"},
+                      {"OpFusionPass", "FusionMergePass"}};
     }
   }
   OptimizeConfig(const PassGroup& program_passes, const PassGroup& graph_passes)
       : program_passes{program_passes}, graph_passes{graph_passes} {}
 
-  OptimizeConfig(const std::pair<std::vector<std::string>, std::vector<std::string>>& program_passes) {
+  OptimizeConfig(const std::pair<std::vector<std::string>,
+                                 std::vector<std::string>>& program_passes) {
     this->program_passes.ctrl = program_passes.first;
-    this->program_passes.exp  = program_passes.second;
+    this->program_passes.exp = program_passes.second;
 
     if (FLAGS_cinn_use_op_fusion) {
-      graph_passes = {{"TransToCustomCallPass", "OpFusionPass", "FusionMergePass"},
-                      {"TransToCustomCallPass", "OpFusionPass", "FusionMergePass"}};
+      graph_passes = {
+          {"TransToCustomCallPass", "OpFusionPass", "FusionMergePass"},
+          {"TransToCustomCallPass", "OpFusionPass", "FusionMergePass"}};
     }
   }
 
@@ -165,15 +181,22 @@ inline void CompareResult(Program* program,
                           const std::vector<std::string>& output_ids,
                           size_t size_diff,
                           const OptimizeConfig& passes,
-                          int seed          = -1,
+                          int seed = -1,
                           bool print_tensor = false) {
-  std::unordered_set<std::string> fetch_ids(output_ids.begin(), output_ids.end());
+  std::unordered_set<std::string> fetch_ids(output_ids.begin(),
+                                            output_ids.end());
   // apply common passes
   ProgramPass::Apply(program, fetch_ids, target, passes.program_passes.ctrl);
   // get original program size
   auto origin_size = program->size();
   // get original output
-  auto origin_out = RunProgram(*program, target, input_ids, output_ids, passes.graph_passes.ctrl, seed, print_tensor);
+  auto origin_out = RunProgram(*program,
+                               target,
+                               input_ids,
+                               output_ids,
+                               passes.graph_passes.ctrl,
+                               seed,
+                               print_tensor);
 
   // apply fused passes
   ProgramPass::Apply(program, fetch_ids, target, passes.program_passes.exp);
@@ -182,7 +205,13 @@ inline void CompareResult(Program* program,
   auto fused_size = program->size();
   ASSERT_EQ(size_diff, origin_size - fused_size);
   // get fused output
-  auto fused_out = RunProgram(*program, target, input_ids, output_ids, passes.graph_passes.exp, seed, print_tensor);
+  auto fused_out = RunProgram(*program,
+                              target,
+                              input_ids,
+                              output_ids,
+                              passes.graph_passes.exp,
+                              seed,
+                              print_tensor);
 
   ASSERT_EQ(origin_out.size(), fused_out.size());
   for (size_t i = 0; i < origin_out.size(); ++i) {
@@ -190,11 +219,12 @@ inline void CompareResult(Program* program,
   }
 }
 
-inline bool CompareProgramPassResult(Program* program,
-                                     const common::Target& target,
-                                     const std::unordered_set<std::string>& fetch_ids,
-                                     const size_t size_diff,
-                                     const OptimizeConfig& passes) {
+inline bool CompareProgramPassResult(
+    Program* program,
+    const common::Target& target,
+    const std::unordered_set<std::string>& fetch_ids,
+    const size_t size_diff,
+    const OptimizeConfig& passes) {
   // apply common passes
   ProgramPass::Apply(program, fetch_ids, target, passes.program_passes.ctrl);
   // get original program size

@@ -15,11 +15,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import cinn
-from cinn import ir
-from cinn import CINNValue
 from math import isclose
+
+import cinn
+import numpy as np
+from cinn import CINNValue, ir
 
 
 class TestPackedFunc(unittest.TestCase):
@@ -27,8 +27,9 @@ class TestPackedFunc(unittest.TestCase):
         pass
 
     def test_lambda(self):
-        add3 = ir.register_packed_func(
-            "test_packed_func_add3")(lambda x, y, z: x + y + z)
+        add3 = ir.register_packed_func("test_packed_func_add3")(
+            lambda x, y, z: x + y + z
+        )
         self.assertEqual(add3(1, 2, 3), 6)
         self.assertEqual(ir.get_global_func("test_packed_func_add3"), add3)
         self.assertTrue(isinstance(add3, ir.PackedFunc))
@@ -53,8 +54,9 @@ class TestPackedFunc(unittest.TestCase):
                 return r
 
         accumulate = ir.register_packed_func("accumulate_float")(
-            Accumulator(1.0))
-        self.assertTrue(isclose(accumulate(1., 2., 3., 4.), 11.))
+            Accumulator(1.0)
+        )
+        self.assertTrue(isclose(accumulate(1.0, 2.0, 3.0, 4.0), 11.0))
 
     def test_cxx_register(self):
         add_int = ir.Registry.get("test_add_int64")

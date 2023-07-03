@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
 import paddle.nn as nn
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cudnn(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cudnn(), "x86 test will be skipped due to timeout."
+)
 class TestDepthwiseConv2dOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -30,9 +32,11 @@ class TestDepthwiseConv2dOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["x_shape"], dtype=self.case["dtype"])
+            shape=self.case["x_shape"], dtype=self.case["dtype"]
+        )
         self.w_np = self.random(
-            shape=self.case["w_shape"], dtype=self.case["dtype"])
+            shape=self.case["w_shape"], dtype=self.case["dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=False)
@@ -53,18 +57,21 @@ class TestDepthwiseConv2dOp(OpTest):
             groups=self.case["groups"],
             weight_attr=weight,
             bias_attr=False,
-            data_format=self.case["data_format"])
+            data_format=self.case["data_format"],
+        )
         y = conv(x)
         self.paddle_outputs = [y]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("depthwise_conv2d")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["x_shape"],
-            "x")
+            self.nptype2cinntype(self.case["dtype"]), self.case["x_shape"], "x"
+        )
         weight = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["w_shape"],
-            "weight")
+            self.nptype2cinntype(self.case["dtype"]),
+            self.case["w_shape"],
+            "weight",
+        )
 
         if self.case["data_format"] == "NCHW":
             y = builder.depthwise_conv2d(
@@ -74,7 +81,8 @@ class TestDepthwiseConv2dOp(OpTest):
                 paddings=self.case["padding"],
                 dilations=self.case["dilation"],
                 groups=self.case["groups"],
-                data_format=self.case["data_format"])
+                data_format=self.case["data_format"],
+            )
         elif self.case["data_format"] == "NHWC":
             weight_t = builder.transpose(weight, [0, 2, 3, 1])
             y = builder.depthwise_conv2d(
@@ -84,16 +92,21 @@ class TestDepthwiseConv2dOp(OpTest):
                 paddings=self.case["padding"],
                 dilations=self.case["dilation"],
                 groups=self.case["groups"],
-                data_format=self.case["data_format"])
+                data_format=self.case["data_format"],
+            )
 
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x, weight], [self.x_np, self.w_np], [y], passes=[])
+            prog, target, [x, weight], [self.x_np, self.w_np], [y], passes=[]
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 

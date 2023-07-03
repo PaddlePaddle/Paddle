@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 from fusion_test import FusionTest
 
 
@@ -22,9 +23,11 @@ class TestGroup1(FusionTest):
 
     def build_program(self, builder, target):
         x = builder.fill_constant(
-            dtype="float32", shape=[4, 5, 20, 20], value=1.00000000)
+            dtype="float32", shape=[4, 5, 20, 20], value=1.00000000
+        )
         y = builder.cast(
-            builder.reduce_sum(x, dim=[2], keep_dim=False), "float16")
+            builder.reduce_sum(x, dim=[2], keep_dim=False), "float16"
+        )
 
         feed_list = []
         fetch_list = [y]

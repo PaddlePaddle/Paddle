@@ -49,7 +49,10 @@ void BindBuiltin(py::module *);
 
 void BindBuffer(py::module *m) {
   py::class_<lang::Buffer> buffer(*m, "Buffer");
-  buffer.def(py::init<ir::Type, const std::string &>(), py::arg("type"), py::arg("name") = "")
+  buffer
+      .def(py::init<ir::Type, const std::string &>(),
+           py::arg("type"),
+           py::arg("name") = "")
       .def(py::init<const ir::Buffer &>())
       .def("buffer", &lang::Buffer::buffer);
 }
@@ -61,10 +64,10 @@ void BindLower(py::module *m) {
          arg("name"),
          arg("stages"),
          arg("tensor_args"),
-         arg("scalar_args")        = std::vector<ir::Var>(),
-         arg("temp_tensors")       = std::vector<ir::Tensor>(),
-         arg("b")                  = nullptr,
-         arg("target")             = common::DefaultHostTarget(),
+         arg("scalar_args") = std::vector<ir::Var>(),
+         arg("temp_tensors") = std::vector<ir::Tensor>(),
+         arg("b") = nullptr,
+         arg("target") = common::DefaultHostTarget(),
          arg("supprt_ir_schedule") = false);
 }
 
@@ -75,24 +78,26 @@ void BindLowerVec(py::module *m) {
          arg("name"),
          arg("stages"),
          arg("tensor_args"),
-         arg("scalar_args")        = std::vector<ir::Var>(),
-         arg("temp_tensors")       = std::vector<ir::Tensor>(),
-         arg("b")                  = nullptr,
-         arg("target")             = common::DefaultHostTarget(),
+         arg("scalar_args") = std::vector<ir::Var>(),
+         arg("temp_tensors") = std::vector<ir::Tensor>(),
+         arg("b") = nullptr,
+         arg("target") = common::DefaultHostTarget(),
          arg("supprt_ir_schedule") = false);
 }
 
 void BindCompute(py::module *m) {
-#define MAKE_COMPUTE_FN(__fn)                                                                                 \
-  py::overload_cast<const std::vector<ir::Expr> &, __fn, const std::string &, const std::vector<ir::Expr> &>( \
-      &lang::Compute)
+#define MAKE_COMPUTE_FN(__fn)                      \
+  py::overload_cast<const std::vector<ir::Expr> &, \
+                    __fn,                          \
+                    const std::string &,           \
+                    const std::vector<ir::Expr> &>(&lang::Compute)
 
 #define DEFINE_COMPUTE(__fn)    \
   m->def("compute",             \
          MAKE_COMPUTE_FN(__fn), \
          arg("domin"),          \
          arg("fn"),             \
-         arg("name")  = "",     \
+         arg("name") = "",      \
          arg("shape") = std::vector<ir::Expr>())
 
   // DEFINE_COMPUTE(std::function<ir::Expr()>);
@@ -100,8 +105,9 @@ void BindCompute(py::module *m) {
   DEFINE_COMPUTE(std::function<ir::Expr(const std::vector<ir::Expr> &)>);
   // DEFINE_COMPUTE(std::function<ir::Expr(ir::Expr, ir::Expr)>);
   // DEFINE_COMPUTE(std::function<ir::Expr(ir::Expr, ir::Expr, ir::Expr)>);
-  // DEFINE_COMPUTE(std::function<ir::Expr(ir::Expr, ir::Expr, ir::Expr, ir::Expr)>);
-  // DEFINE_COMPUTE(std::function<ir::Expr(ir::Expr, ir::Expr, ir::Expr, ir::Expr, ir::Expr)>);
+  // DEFINE_COMPUTE(std::function<ir::Expr(ir::Expr, ir::Expr, ir::Expr,
+  // ir::Expr)>); DEFINE_COMPUTE(std::function<ir::Expr(ir::Expr, ir::Expr,
+  // ir::Expr, ir::Expr, ir::Expr)>);
   DEFINE_COMPUTE(lang::compute_handler_t);
 
 #undef DEFINE_COMPUTE
@@ -113,12 +119,16 @@ void BindCompute(py::module *m) {
       .def_readwrite("name", &lang::ReturnType::name);
 
   m->def("call_lowered",
-         py::overload_cast<const std::string &, const std::vector<ir::Expr> &, const std::vector<lang::ReturnType> &>(
-             &lang::CallLowered));
-  m->def("call_extern",
          py::overload_cast<const std::string &,
                            const std::vector<ir::Expr> &,
-                           const std::map<std::string, absl::variant<int, float, bool, std::string>> &>(
+                           const std::vector<lang::ReturnType> &>(
+             &lang::CallLowered));
+  m->def("call_extern",
+         py::overload_cast<
+             const std::string &,
+             const std::vector<ir::Expr> &,
+             const std::map<std::string,
+                            absl::variant<int, float, bool, std::string>> &>(
              &lang::CallExtern));
 }
 
@@ -146,7 +156,8 @@ void BindModule(py::module *m) {
 class PlaceholderWrapper {
  public:
 #define DEFINE_PLACEHOLDER(__dtype, __type) \
-  if (dtype == #__dtype) placeholder_ = std::make_unique<Placeholder<__type>>(name, shape)
+  if (dtype == #__dtype)                    \
+  placeholder_ = std::make_unique<Placeholder<__type>>(name, shape)
 
 #define INIT_PLACEHOLDER              \
   DEFINE_PLACEHOLDER(int32, int32_t); \
@@ -154,11 +165,15 @@ class PlaceholderWrapper {
   DEFINE_PLACEHOLDER(float32, float); \
   DEFINE_PLACEHOLDER(float64, double)
 
-  PlaceholderWrapper(absl::string_view dtype, const std::string &name, const std::vector<int> &shape) {
+  PlaceholderWrapper(absl::string_view dtype,
+                     const std::string &name,
+                     const std::vector<int> &shape) {
     INIT_PLACEHOLDER;
   }
 
-  PlaceholderWrapper(absl::string_view dtype, const std::string &name, const std::vector<ir::Expr> &shape) {
+  PlaceholderWrapper(absl::string_view dtype,
+                     const std::string &name,
+                     const std::vector<ir::Expr> &shape) {
     INIT_PLACEHOLDER;
   }
 #undef INIT_PLACEHOLDER
@@ -204,29 +219,51 @@ class PlaceholderWrapper {
 
 void BindPlaceholder(py::module *m) {
   py::class_<PlaceholderWrapper> placeholder(*m, "Placeholder");
-  placeholder.def(py::init<absl::string_view, const std::string &, const std::vector<int> &>())
-      .def(py::init<absl::string_view, const std::string &, const std::vector<ir::Expr> &>())
+  placeholder
+      .def(py::init<absl::string_view,
+                    const std::string &,
+                    const std::vector<int> &>())
+      .def(py::init<absl::string_view,
+                    const std::string &,
+                    const std::vector<ir::Expr> &>())
       .def("type", &PlaceholderWrapper::type)
       .def("tensor", &PlaceholderWrapper::tensor)
-      .def("__call__", [](PlaceholderWrapper &self, ir::Expr a) { return self(std::move(a)); })
       .def("__call__",
-           [](PlaceholderWrapper &self, ir::Expr a, ir::Expr b) { return self(std::move(a), std::move(b)); })
+           [](PlaceholderWrapper &self, ir::Expr a) {
+             return self(std::move(a));
+           })
+      .def("__call__",
+           [](PlaceholderWrapper &self, ir::Expr a, ir::Expr b) {
+             return self(std::move(a), std::move(b));
+           })
       .def("__call__",
            [](PlaceholderWrapper &self, ir::Expr a, ir::Expr b, ir::Expr c) {
              return self(std::move(a), std::move(b), std::move(c));
            })
-      .def("__call__", [](PlaceholderWrapper &self, const std::vector<ir::Expr> &indices) { return self(indices); })
+      .def("__call__",
+           [](PlaceholderWrapper &self, const std::vector<ir::Expr> &indices) {
+             return self(indices);
+           })
       .def("to_expr", [](PlaceholderWrapper &self) { return ir::Expr(self); })
-      .def("to_tensor", [](PlaceholderWrapper &self) { return ir::Tensor(self); });
+      .def("to_tensor",
+           [](PlaceholderWrapper &self) { return ir::Tensor(self); });
 
   m->def("create_placeholder",
-         static_cast<ir::Tensor (*)(const std::vector<Expr> &, Type, const std::string &)>(&lang::CreatePlaceHolder));
+         static_cast<ir::Tensor (*)(
+             const std::vector<Expr> &, Type, const std::string &)>(
+             &lang::CreatePlaceHolder));
   m->def("create_placeholder",
-         static_cast<ir::Tensor (*)(const std::vector<int> &, Type, const std::string &)>(&lang::CreatePlaceHolder));
+         static_cast<ir::Tensor (*)(
+             const std::vector<int> &, Type, const std::string &)>(
+             &lang::CreatePlaceHolder));
 }
 
 void BindBuiltin(py::module *m) {
-  m->def("reduce_sum", &lang::ReduceSum, py::arg("e"), py::arg("reduce_axis"), py::arg("init") = Expr());
+  m->def("reduce_sum",
+         &lang::ReduceSum,
+         py::arg("e"),
+         py::arg("reduce_axis"),
+         py::arg("init") = Expr());
   m->def("reduce_mul", &lang::ReduceMul);
   m->def("reduce_max", &lang::ReduceMax);
   m->def("reduce_min", &lang::ReduceMin);

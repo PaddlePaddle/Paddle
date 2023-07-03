@@ -58,12 +58,12 @@ std::string Summary::Format(const std::vector<HostEvent> &events) {
   std::unordered_map<std::string, Item *> unique_items;
   std::unordered_map<EventType, double> category_cost;
 
-  double total_cost     = 0.0;
+  double total_cost = 0.0;
   size_t max_annot_size = 20;
   for (auto &e : events) {
     if (unique_items.count(e.annotation_) == 0U) {
       items.emplace_back(e);
-      unique_items[e.annotation_]                    = &items.back();
+      unique_items[e.annotation_] = &items.back();
       unique_items.at(e.annotation_)->info.duration_ = 0.0;
     }
     // Sum cost for category
@@ -76,7 +76,8 @@ std::string Summary::Format(const std::vector<HostEvent> &events) {
   }
   // Calculate Ratio
   for (auto &item : items) {
-    item.sub_raito   = item.info.duration_ / category_cost[item.info.type_] * 100.0;
+    item.sub_raito =
+        item.info.duration_ / category_cost[item.info.type_] * 100.0;
     item.total_raito = item.info.duration_ / total_cost * 100.0;
   }
 
@@ -88,13 +89,18 @@ std::string Summary::Format(const std::vector<HostEvent> &events) {
 std::string Summary::AsStr(const std::vector<Item> &items, int data_width) {
   std::ostringstream os;
 
-  os << "\n\n------------------------->     Profiling Report     <-------------------------\n\n";
+  os << "\n\n------------------------->     Profiling Report     "
+        "<-------------------------\n\n";
 
-  std::vector<std::string> titles = {"Category", "Name", "CostTime(ms)", "Ratio in Category(%)", "Ratio in Total(%)"};
-  std::vector<int> widths         = {20, data_width, 20, 20, 20};
+  std::vector<std::string> titles = {"Category",
+                                     "Name",
+                                     "CostTime(ms)",
+                                     "Ratio in Category(%)",
+                                     "Ratio in Total(%)"};
+  std::vector<int> widths = {20, data_width, 20, 20, 20};
 
   size_t pad_size = 0;
-  int idx         = 0;
+  int idx = 0;
   for (auto &t : titles) {
     pad_size = widths[idx] >= t.size() ? widths[idx] - t.size() : 1;
     os << ' ' << t << std::string(pad_size, ' ');
@@ -109,7 +115,7 @@ std::string Summary::AsStr(const std::vector<Item> &items, int data_width) {
                                       std::to_string(item.info.duration_),
                                       item.sub_raito.ToStr(),
                                       item.total_raito.ToStr()};
-    idx                            = 0;
+    idx = 0;
     for (auto &info : infos) {
       pad_size = widths[idx] > info.size() ? widths[idx] - info.size() : 1;
       os << ' ' << info << std::string(pad_size, ' ');

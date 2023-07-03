@@ -72,9 +72,11 @@ class MultiLevelTiling : public AutoGenRule {
   // Returns true if sche_block_realize is applicable by MultiLevelTiling
   bool MeetCondition(const ir::ScheduleBlockRealize& sche_block_realize) const;
 
-  RuleApplyType AnalyseApplyType(SearchState state, const std::string& block_name) const override;
+  RuleApplyType AnalyseApplyType(SearchState state,
+                                 const std::string& block_name) const override;
 
-  std::vector<SearchState> ApplyOnBlock(SearchState state, const std::string& block_name) override;
+  std::vector<SearchState> ApplyOnBlock(SearchState state,
+                                        const std::string& block_name) override;
 
   // Sample pair of integer type (a, b) such as a * b = extent
   template <typename T>
@@ -88,10 +90,10 @@ class MultiLevelTiling : public AutoGenRule {
     if (candidates.size() == 0) {
       return {1, T(extent)};
     }
-    int index           = rand() % candidates.size();
+    int index = rand() % candidates.size();  // NOLINT
     std::vector<T> pick = candidates[index];
-    if (rand() % 2 != 0) {
-      T tmp   = pick[0];
+    if (rand() % 2 != 0) {  // NOLINT
+      T tmp = pick[0];
       pick[0] = pick[1];
       pick[1] = tmp;
     }
@@ -101,7 +103,8 @@ class MultiLevelTiling : public AutoGenRule {
   // Sample num_split integers whose product equals extent
   template <typename T>
   std::vector<T> SampleTileSplit(T extent, int num_split) const {
-    CHECK_GT(num_split, 0) << "num_split in SampleTileSplit must be greater than 0";
+    CHECK_GT(num_split, 0)
+        << "num_split in SampleTileSplit must be greater than 0";
     if (num_split == 1) {
       return {extent};
     }
@@ -109,7 +112,7 @@ class MultiLevelTiling : public AutoGenRule {
     if (num_split == 2) {
       return two_split;
     }
-    int half              = num_split >> 1;
+    int half = num_split >> 1;
     std::vector<T> result = SampleTileSplit<T>(two_split[0], half);
     std::vector<T> remind = SampleTileSplit<T>(two_split[1], num_split - half);
     result.insert(result.end(), remind.begin(), remind.end());

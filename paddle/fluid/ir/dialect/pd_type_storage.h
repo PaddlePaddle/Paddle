@@ -17,6 +17,7 @@
 #include <type_traits>
 
 #include "paddle/ir/core/type.h"
+#include "paddle/ir/core/type_base.h"
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -26,7 +27,7 @@ namespace std {
 ///
 template <typename T>
 struct hash<std::vector<T>> {
-  std::size_t operator()(const std::vector<T> &dim) const {
+  std::size_t operator()(const std::vector<T>& dim) const {
     std::size_t seed = 0;
     for (size_t i = 0; i < dim.size(); ++i) {
       seed ^= std::hash<T>()(dim[i]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -56,10 +57,10 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   using ParamKey =
       std::tuple<ir::Type, phi::DDim, phi::DataLayout, phi::LoD, size_t>;
 
-  DenseTensorTypeStorage(ir::Type dtype,
-                         phi::DDim dims,
-                         phi::DataLayout layout,
-                         phi::LoD lod,
+  DenseTensorTypeStorage(const ir::Type& dtype,
+                         const phi::DDim& dims,
+                         const phi::DataLayout& layout,
+                         const phi::LoD& lod,
                          size_t offset)
       : dtype_(dtype),
         dims_(dims),
@@ -71,7 +72,7 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   /// \brief Each derived TypeStorage must define a Construct method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
-  static DenseTensorTypeStorage *Construct(ParamKey key) {
+  static DenseTensorTypeStorage* Construct(const ParamKey& key) {
     return new DenseTensorTypeStorage(std::get<0>(key),
                                       std::get<1>(key),
                                       std::get<2>(key),
@@ -82,7 +83,7 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   ///
   /// \brief Each derived TypeStorage must provide a HashValue method.
   ///
-  static std::size_t HashValue(const ParamKey &key) {
+  static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 0;
     // hash dtype
     hash_value =
@@ -108,7 +109,7 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   ///
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
-  bool operator==(const ParamKey &key) const {
+  bool operator==(const ParamKey& key) const {
     return ParamKey(dtype_, dims_, layout_, lod_, offset_) == key;
   }
 

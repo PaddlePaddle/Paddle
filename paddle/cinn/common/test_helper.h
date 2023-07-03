@@ -33,11 +33,12 @@ namespace common {
  */
 struct BufferBuilder {
   enum class InitType {
-    kRandom   = 0,
-    kZero     = 1,
+    kRandom = 0,
+    kZero = 1,
     kSetValue = 2,
   };
-  explicit BufferBuilder(Type type, const std::vector<int>& shape) : type_(type), shape_(shape) {}
+  explicit BufferBuilder(Type type, const std::vector<int>& shape)
+      : type_(type), shape_(shape) {}
 
   BufferBuilder& set_random() {
     init_type_ = InitType::kRandom;
@@ -51,7 +52,7 @@ struct BufferBuilder {
 
   BufferBuilder& set_val(float x) {
     init_type_ = InitType::kSetValue;
-    init_val_  = x;
+    init_val_ = x;
     return *this;
   }
 
@@ -75,7 +76,8 @@ struct BufferBuilder {
   void RandomInt(void* arr, int len) {
     auto* data = static_cast<T*>(arr);
     for (int i = 0; i < len; i++) {
-      data[i] = static_cast<T>(rand() % std::numeric_limits<T>::max());  // NOLINT
+      data[i] =
+          static_cast<T>(rand() % std::numeric_limits<T>::max());  // NOLINT
     }
   }
 
