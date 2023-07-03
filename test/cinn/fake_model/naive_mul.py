@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 import numpy
-import sys, os
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
@@ -26,7 +29,8 @@ a = static.data(name="A", shape=[-1, size], dtype='float32')
 label = static.data(name="label", shape=[size], dtype='float32')
 
 a1 = static.nn.fc(
-    x=a, size=size, activation="relu", bias_attr=None, num_flatten_dims=1)
+    x=a, size=size, activation="relu", bias_attr=None, num_flatten_dims=1
+)
 
 cost = paddle.nn.functional.square_error_cost(a1, label)
 avg_cost = paddle.mean(cost)

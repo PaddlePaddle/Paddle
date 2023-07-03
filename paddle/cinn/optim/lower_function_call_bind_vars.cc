@@ -38,10 +38,12 @@ struct LowerFunctionCallBindVarsMutator : public ir::IRMutator<> {
     auto* node = expr->As<ir::Call>();
     if (op->is_cinn_call()) {
       const std::string& target = op->name;
-      auto it                   = std::find_if(m_->functions.begin(), m_->functions.end(), [&](const Expr& x) {
-        return x.as_lowered_func()->name == target;
-      });
-      CHECK(it != m_->functions.end()) << "The called function [" << target << "] is not exist";
+      auto it = std::find_if(
+          m_->functions.begin(), m_->functions.end(), [&](const Expr& x) {
+            return x.as_lowered_func()->name == target;
+          });
+      CHECK(it != m_->functions.end())
+          << "The called function [" << target << "] is not exist";
 
       std::vector<Expr> extra_var_args;
 
@@ -51,8 +53,11 @@ struct LowerFunctionCallBindVarsMutator : public ir::IRMutator<> {
         }
       }
 
-      // insert the extra var arguments to the begining of the original call's argument list.
-      node->read_args.insert(std::begin(op->read_args), extra_var_args.begin(), extra_var_args.end());
+      // insert the extra var arguments to the begining of the original call's
+      // argument list.
+      node->read_args.insert(std::begin(op->read_args),
+                             extra_var_args.begin(),
+                             extra_var_args.end());
     }
 
     ir::IRMutator<>::Visit(op, expr);

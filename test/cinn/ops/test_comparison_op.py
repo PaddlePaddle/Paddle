@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestComparisonOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -31,12 +33,12 @@ class TestComparisonOp(OpTest):
         if self.case["broadcast"]:
             self.inputs = {
                 "x": self.random(self.case["x_shape"], self.case["dtype"]),
-                "y": self.random(self.case["y_shape"], self.case["dtype"])
+                "y": self.random(self.case["y_shape"], self.case["dtype"]),
             }
         else:
             self.inputs = {
                 "x": self.random(self.case["shape"], self.case["dtype"]),
-                "y": self.random(self.case["shape"], self.case["dtype"])
+                "y": self.random(self.case["shape"], self.case["dtype"]),
             }
         self.operation = self.case["operation"]
 
@@ -63,10 +65,14 @@ class TestComparisonOp(OpTest):
         builder = NetBuilder("select")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         y = builder.create_input(
             self.nptype2cinntype(self.inputs["y"].dtype),
-            self.inputs["y"].shape, "y")
+            self.inputs["y"].shape,
+            "y",
+        )
 
         if self.operation == "equal":
             out = builder.equal(x, y)
@@ -83,8 +89,9 @@ class TestComparisonOp(OpTest):
         else:
             raise NotImplementedError
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y],
-                                   [self.inputs["x"], self.inputs["y"]], [out])
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -144,43 +151,21 @@ class TestComparisonOpShape(TestCaseHelper):
             {
                 "shape": [131072],
             },
-            {
-                "shape": [1048576]
-            },
+            {"shape": [1048576]},
             {
                 "shape": [64, 32, 16, 8, 4],
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "operation": "equal",
-                "broadcast": False
-            },
-            {
-                "operation": "not_equal",
-                "broadcast": False
-            },
-            {
-                "operation": "greater_than",
-                "broadcast": False
-            },
-            {
-                "operation": "less_than",
-                "broadcast": False
-            },
-            {
-                "operation": "greater_equal",
-                "broadcast": False
-            },
-            {
-                "operation": "less_equal",
-                "broadcast": False
-            },
+            {"operation": "equal", "broadcast": False},
+            {"operation": "not_equal", "broadcast": False},
+            {"operation": "greater_than", "broadcast": False},
+            {"operation": "less_than", "broadcast": False},
+            {"operation": "greater_equal", "broadcast": False},
+            {"operation": "less_equal", "broadcast": False},
         ]
 
 
@@ -197,50 +182,20 @@ class TestComparisonOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "bool"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [
-            {
-                "operation": "equal",
-                "broadcast": False
-            },
-            {
-                "operation": "not_equal",
-                "broadcast": False
-            },
-            {
-                "operation": "greater_than",
-                "broadcast": False
-            },
-            {
-                "operation": "less_than",
-                "broadcast": False
-            },
-            {
-                "operation": "greater_equal",
-                "broadcast": False
-            },
-            {
-                "operation": "less_equal",
-                "broadcast": False
-            },
+            {"operation": "equal", "broadcast": False},
+            {"operation": "not_equal", "broadcast": False},
+            {"operation": "greater_than", "broadcast": False},
+            {"operation": "less_than", "broadcast": False},
+            {"operation": "greater_equal", "broadcast": False},
+            {"operation": "less_equal", "broadcast": False},
         ]
 
 
@@ -319,35 +274,15 @@ class TestComparisonOpBroadcastTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "operation": "equal",
-                "broadcast": True
-            },
-            {
-                "operation": "not_equal",
-                "broadcast": True
-            },
-            {
-                "operation": "greater_than",
-                "broadcast": True
-            },
-            {
-                "operation": "less_than",
-                "broadcast": True
-            },
-            {
-                "operation": "greater_equal",
-                "broadcast": True
-            },
-            {
-                "operation": "less_equal",
-                "broadcast": True
-            },
+            {"operation": "equal", "broadcast": True},
+            {"operation": "not_equal", "broadcast": True},
+            {"operation": "greater_than", "broadcast": True},
+            {"operation": "less_than", "broadcast": True},
+            {"operation": "greater_equal", "broadcast": True},
+            {"operation": "less_equal", "broadcast": True},
         ]
 
 

@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -33,7 +35,8 @@ class TestReduceOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
@@ -124,7 +127,7 @@ class TestReduceOutType(TestReduceOp):
         return {
             "dim": self.dim,
             "keep_dim": self.keepdim,
-            "out_dtype": self.nptype2paddledtype("float64")
+            "out_dtype": self.nptype2paddledtype("float64"),
         }
 
 
@@ -133,7 +136,7 @@ class TestReduceUnkOutType(TestReduceOp):
         return {
             "dim": self.dim,
             "keep_dim": self.keepdim,
-            "out_dtype": self.nptype2paddledtype("unk")
+            "out_dtype": self.nptype2paddledtype("unk"),
         }
 
 

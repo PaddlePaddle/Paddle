@@ -18,7 +18,11 @@
 
 namespace cinn {
 
-void SetRandInt(hlir::framework::Tensor tensor, const common::Target& target, int seed, int low, int high) {
+void SetRandInt(hlir::framework::Tensor tensor,
+                const common::Target& target,
+                int seed,
+                int low,
+                int high) {
   if (seed == -1) {
     std::random_device rd;
     seed = rd();
@@ -34,7 +38,10 @@ void SetRandInt(hlir::framework::Tensor tensor, const common::Target& target, in
   auto* data = tensor->mutable_data<int>(target);
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data, random_data.data(), num_ele * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(data,
+               random_data.data(),
+               num_ele * sizeof(int),
+               cudaMemcpyHostToDevice);
     return;
   }
 #endif
@@ -43,7 +50,9 @@ void SetRandInt(hlir::framework::Tensor tensor, const common::Target& target, in
 }
 
 template <>
-void SetRandData<int>(hlir::framework::Tensor tensor, const common::Target& target, int seed) {
+void SetRandData<int>(hlir::framework::Tensor tensor,
+                      const common::Target& target,
+                      int seed) {
   if (seed == -1) {
     std::random_device rd;
     seed = rd();
@@ -59,7 +68,10 @@ void SetRandData<int>(hlir::framework::Tensor tensor, const common::Target& targ
   auto* data = tensor->mutable_data<float>(target);
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data, random_data.data(), num_ele * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(data,
+               random_data.data(),
+               num_ele * sizeof(float),
+               cudaMemcpyHostToDevice);
     return;
   }
 #endif
@@ -68,7 +80,9 @@ void SetRandData<int>(hlir::framework::Tensor tensor, const common::Target& targ
 }
 
 template <>
-void SetRandData<float>(hlir::framework::Tensor tensor, const common::Target& target, int seed) {
+void SetRandData<float>(hlir::framework::Tensor tensor,
+                        const common::Target& target,
+                        int seed) {
   if (seed == -1) {
     std::random_device rd;
     seed = rd();
@@ -84,7 +98,10 @@ void SetRandData<float>(hlir::framework::Tensor tensor, const common::Target& ta
   auto* data = tensor->mutable_data<float>(target);
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data, random_data.data(), num_ele * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(data,
+               random_data.data(),
+               num_ele * sizeof(float),
+               cudaMemcpyHostToDevice);
   } else if (target == common::DefaultHostTarget()) {
     std::copy(random_data.begin(), random_data.end(), data);
   } else {
@@ -97,12 +114,16 @@ void SetRandData<float>(hlir::framework::Tensor tensor, const common::Target& ta
 }
 
 template <typename T>
-std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor, const common::Target& target) {
+std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor,
+                             const common::Target& target) {
   auto size = tensor->shape().numel();
   std::vector<T> data(size);
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data.data(), static_cast<const void*>(tensor->data<T>()), size * sizeof(T), cudaMemcpyDeviceToHost);
+    cudaMemcpy(data.data(),
+               static_cast<const void*>(tensor->data<T>()),
+               size * sizeof(T),
+               cudaMemcpyDeviceToHost);
   } else if (target == common::DefaultHostTarget()) {
     std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
   } else {
@@ -115,7 +136,9 @@ std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor, const common
   return data;
 }
 
-template std::vector<float> GetTensorData<float>(const hlir::framework::Tensor& tensor, const common::Target& target);
-template std::vector<int> GetTensorData<int>(const hlir::framework::Tensor& tensor, const common::Target& target);
+template std::vector<float> GetTensorData<float>(
+    const hlir::framework::Tensor& tensor, const common::Target& target);
+template std::vector<int> GetTensorData<int>(
+    const hlir::framework::Tensor& tensor, const common::Target& target);
 
 }  // namespace cinn

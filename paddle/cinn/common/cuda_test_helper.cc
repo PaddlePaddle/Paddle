@@ -25,10 +25,12 @@ namespace cinn {
 namespace common {
 
 #ifdef CINN_WITH_CUDA
-void CudaModuleTester::Compile(const ir::Module& m, const std::string& rewrite_cuda_code) {
-  auto _host_module_device_module_ = backends::SplitCudaAndHostModule(m);  // NOLINT
-  auto& host_module                = std::get<0>(_host_module_device_module_);
-  auto& device_module              = std::get<1>(_host_module_device_module_);
+void CudaModuleTester::Compile(const ir::Module& m,
+                               const std::string& rewrite_cuda_code) {
+  auto _host_module_device_module_ =
+      backends::SplitCudaAndHostModule(m);  // NOLINT
+  auto& host_module = std::get<0>(_host_module_device_module_);
+  auto& device_module = std::get<1>(_host_module_device_module_);
   CHECK(!host_module.functions().empty());
   CHECK(!device_module.functions().empty());
 
@@ -44,16 +46,19 @@ void CudaModuleTester::Compile(const ir::Module& m, const std::string& rewrite_c
   else
     ptx = compiler(rewrite_cuda_code);
 
-  cuda_module_ = new runtime::cuda::CUDAModule(ptx, runtime::cuda::CUDAModule::Kind::PTX);
+  cuda_module_ =
+      new runtime::cuda::CUDAModule(ptx, runtime::cuda::CUDAModule::Kind::PTX);
 
   for (auto& fn : device_module.functions()) {
     std::string kernel_fn_name = fn->name;
-    auto fn_kernel = reinterpret_cast<runtime::cuda::CUDAModule*>(cuda_module_)->GetFunction(0, kernel_fn_name);
+    auto fn_kernel = reinterpret_cast<runtime::cuda::CUDAModule*>(cuda_module_)
+                         ->GetFunction(0, kernel_fn_name);
     CHECK(fn_kernel);
     kernel_handles_.push_back(fn_kernel);
 
-    backends::GlobalSymbolRegistry::Global().RegisterFn(kernel_fn_name + "_ptr_",
-                                                        reinterpret_cast<void*>(&kernel_handles_.back()));
+    backends::GlobalSymbolRegistry::Global().RegisterFn(
+        kernel_fn_name + "_ptr_",
+        reinterpret_cast<void*>(&kernel_handles_.back()));
   }
 
   jit_ = backends::SimpleJIT::Create();
@@ -68,20 +73,26 @@ void* CudaModuleTester::CreateDeviceBuffer(const cinn_buffer_t* host_buffer) {
   CUdeviceptr data;
   cuMemAlloc(&data, num_bytes);
 
-  CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(data), host_buffer->memory, num_bytes, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(data),
+                       host_buffer->memory,
+                       num_bytes,
+                       cudaMemcpyHostToDevice));
   return reinterpret_cast<void*>(data);
 }
 
 CudaModuleTester::CudaModuleTester() {}
 
-void CudaModuleTester::operator()(const std::string& fn_name, void* args, int arg_num) {
-  auto fn  = jit_->Lookup(fn_name);
+void CudaModuleTester::operator()(const std::string& fn_name,
+                                  void* args,
+                                  int arg_num) {
+  auto fn = jit_->Lookup(fn_name);
   auto fnp = reinterpret_cast<lower_func_ptr_g>(fn);
   (*fnp)(args, arg_num, stream_);
 }
 
 void* CudaModuleTester::LookupKernel(const std::string& name) {
-  return reinterpret_cast<runtime::cuda::CUDAModule*>(cuda_module_)->GetFunction(0, name);
+  return reinterpret_cast<runtime::cuda::CUDAModule*>(cuda_module_)
+      ->GetFunction(0, name);
 }
 
 CudaModuleTester::~CudaModuleTester() {

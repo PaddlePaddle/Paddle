@@ -15,15 +15,17 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSignOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -45,12 +47,13 @@ class TestSignOp(OpTest):
         builder = NetBuilder("sign")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.sign(x)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
@@ -61,8 +64,7 @@ class TestSignOp(OpTest):
 class TestSignOp1(TestSignOp):
     def init_case(self):
         self.inputs = {
-            "x": np.array([1, 0, -1, np.nan, np.inf,
-                           -np.inf]).astype("float32")
+            "x": np.array([1, 0, -1, np.nan, np.inf, -np.inf]).astype("float32")
         }
 
 
@@ -109,9 +111,7 @@ class TestSignOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -131,13 +131,11 @@ class TestSignOpDtype(TestCaseHelper):
                 "shape": [80, 40, 5, 7],
             },
         ]
-        self.dtypes = [{
-            "dtype": "float16"
-        }, {
-            "dtype": "float32"
-        }, {
-            "dtype": "float64"
-        }]
+        self.dtypes = [
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+        ]
         self.attrs = []
 
 

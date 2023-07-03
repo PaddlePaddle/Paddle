@@ -20,10 +20,11 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
+                     const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
-  auto x      = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
 
   auto shape = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "shape");
 
@@ -38,7 +39,8 @@ void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& 
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void ReshapeGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void ReshapeGradOpMapper(const paddle::cpp::OpDesc& op_desc,
+                         const OpMapperContext& ctx) {
   auto get_input_var = [&op_desc, &ctx](const std::string& op_name) {
     CHECK_EQ(op_desc.Input(op_name).size(), 1UL);
     auto var_name = op_desc.Input(op_name).front();
@@ -63,10 +65,11 @@ void ReshapeGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperConte
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void Reshape2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Reshape2OpMapper(const paddle::cpp::OpDesc& op_desc,
+                      const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
-  auto x      = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
 
   auto shape = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "shape");
 
@@ -96,7 +99,8 @@ void Reshape2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext&
   }
 }
 
-void Reshape2GradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Reshape2GradOpMapper(const paddle::cpp::OpDesc& op_desc,
+                          const OpMapperContext& ctx) {
   auto get_input_var = [&op_desc, &ctx](const std::string& op_name) {
     CHECK_EQ(op_desc.Input(op_name).size(), 1UL);
     auto var_name = op_desc.Input(op_name).front();
@@ -126,10 +130,14 @@ void Reshape2GradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperCont
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_reshape) {
-  CINN_REGISTER_OP_MAPPER(reshape, cinn::frontend::paddle_mappers::ReshapeOpMapper)
-  CINN_REGISTER_OP_MAPPER(reshape2, cinn::frontend::paddle_mappers::Reshape2OpMapper)
+  CINN_REGISTER_OP_MAPPER(reshape,
+                          cinn::frontend::paddle_mappers::ReshapeOpMapper)
+  CINN_REGISTER_OP_MAPPER(reshape2,
+                          cinn::frontend::paddle_mappers::Reshape2OpMapper)
 
-  CINN_REGISTER_OP_MAPPER(reshape_grad, cinn::frontend::paddle_mappers::ReshapeGradOpMapper)
-  CINN_REGISTER_OP_MAPPER(reshape2_grad, cinn::frontend::paddle_mappers::Reshape2GradOpMapper)
+  CINN_REGISTER_OP_MAPPER(reshape_grad,
+                          cinn::frontend::paddle_mappers::ReshapeGradOpMapper)
+  CINN_REGISTER_OP_MAPPER(reshape2_grad,
+                          cinn::frontend::paddle_mappers::Reshape2GradOpMapper)
   return true;
 }

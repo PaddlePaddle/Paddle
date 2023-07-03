@@ -161,6 +161,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
+#include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -1005,6 +1007,9 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::XCCLCommContext::Release();
+    platform::CustomTracer::GetMap().clear();
+    platform::CustomDeviceEventResourcePool::GetMap().clear();
+    platform::CustomDeviceStreamResourcePool::GetMap().clear();
     phi::DeviceManager::Clear();
 #endif
   });
@@ -1874,7 +1879,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("type", &framework::interpreter::Job::Type)
       .def("set_col_attr_for_fetch_op",
            &framework::interpreter::Job::SetColAttrForFetchOp)
-      .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId);
+      .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
+      .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
 
   py::class_<framework::interpreter::Plan>(m, "Plan")
       .def(

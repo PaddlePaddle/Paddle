@@ -28,7 +28,7 @@ struct Registry::Manager {
   std::map<std::string, Registry *> functions;
 
  private:
-  Manager()                = default;
+  Manager() = default;
   Manager(const Manager &) = delete;
   void operator=(Manager &) = delete;
 };
@@ -45,14 +45,16 @@ Registry &Registry::SetBody(lang::PackedFunc::body_t f) {
 
 Registry::Registry(const std::string &name) : name_(name) {}
 
-/*static*/ Registry &Registry::Register(const std::string &name, bool can_override) {
+/*static*/ Registry &Registry::Register(const std::string &name,
+                                        bool can_override) {
   auto *manager = Registry::Manager::Global();
   std::lock_guard<std::mutex> lock(manager->mu);
   if (manager->functions.count(name)) {
-    CHECK(can_override) << "Global PackedFunc[" << name << "] is already exists";
+    CHECK(can_override) << "Global PackedFunc[" << name
+                        << "] is already exists";
   }
 
-  auto *r                  = new Registry(name);
+  auto *r = new Registry(name);
   manager->functions[name] = r;
   return *r;
 }

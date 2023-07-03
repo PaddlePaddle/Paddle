@@ -44,8 +44,11 @@ std::vector<SampledTile> FindSampledTiles(const ScheduleDesc& trace) {
       break;
     }
     if (step.type == "SamplePerfectTile") {
-      std::vector<int> tile_factors = absl::get<std::vector<int>>(step.attrs.at("decision"));
-      CHECK(tile_factors.size() >= 2) << "factors size must be greater equal than 2, which is " << tile_factors.size();
+      std::vector<int> tile_factors =
+          absl::get<std::vector<int>>(step.attrs.at("decision"));
+      CHECK(tile_factors.size() >= 2)
+          << "factors size must be greater equal than 2, which is "
+          << tile_factors.size();
       tiles.push_back(std::make_tuple(step, tile_factors, step_idx));
     }
     ++step_idx;
@@ -57,9 +60,9 @@ std::vector<SampledTile> FindSampledTiles(const ScheduleDesc& trace) {
 ScheduleDesc DoMutateTileSize(const ScheduleDesc& trace,
                               const SampledTile& tile,
                               LinearRandomEngine::StateType* rand_seed) {
-  ScheduleDesc::Step step       = std::get<0>(tile);
+  ScheduleDesc::Step step = std::get<0>(tile);
   std::vector<int> tile_factors = std::get<1>(tile);
-  int split_size                = tile_factors.size();
+  int split_size = tile_factors.size();
   // Step 1. Choose 2 loops with index: 'loop_x' and 'loop_y'
   int loop_x, loop_y;
 
@@ -89,10 +92,13 @@ ScheduleDesc DoMutateTileSize(const ScheduleDesc& trace,
     // Step 2. Choose the divisor for mutate.
     int divisor;
     if (loop_y == split_size - 1) {
-      int max_innermost_factor    = absl::get<int>(step.attrs.at("max_innermost_factor"));
+      int max_innermost_factor =
+          absl::get<int>(step.attrs.at("max_innermost_factor"));
       int max_optional_factor_idx = optional_factors.size() - 1;
       for (; max_optional_factor_idx > 0; --max_optional_factor_idx) {
-        if (optional_factors.at(max_optional_factor_idx) * tile_factors.at(loop_y) <= max_innermost_factor) {
+        if (optional_factors.at(max_optional_factor_idx) *
+                tile_factors.at(loop_y) <=
+            max_innermost_factor) {
           break;
         }
       }
@@ -103,27 +109,32 @@ ScheduleDesc DoMutateTileSize(const ScheduleDesc& trace,
         }
         continue;
       }
-      divisor = optional_factors.at(utils::SampleUniformInt(1, max_optional_factor_idx + 1, rand_seed));
+      divisor = optional_factors.at(
+          utils::SampleUniformInt(1, max_optional_factor_idx + 1, rand_seed));
     } else {
-      divisor = optional_factors.at(utils::SampleUniformInt(1, optional_factors.size(), rand_seed));
+      divisor = optional_factors.at(
+          utils::SampleUniformInt(1, optional_factors.size(), rand_seed));
     }
     // Step 3. Determine the new tile value
-    VLOG(6) << "DoMutateTileSize: divisor = " << divisor << ", before mutate: \n"
-            << "factors[" << loop_x << "] = " << tile_factors[loop_x] << ", factors[" << loop_y
-            << "] = " << tile_factors[loop_y];
+    VLOG(6) << "DoMutateTileSize: divisor = " << divisor
+            << ", before mutate: \n"
+            << "factors[" << loop_x << "] = " << tile_factors[loop_x]
+            << ", factors[" << loop_y << "] = " << tile_factors[loop_y];
     tile_factors[loop_x] /= divisor;
     tile_factors[loop_y] *= divisor;
     VLOG(6) << "after mutate: \n"
-            << "factors[" << loop_x << "] = " << tile_factors[loop_x] << ", factors[" << loop_y
-            << "] = " << tile_factors[loop_y];
+            << "factors[" << loop_x << "] = " << tile_factors[loop_x]
+            << ", factors[" << loop_y << "] = " << tile_factors[loop_y];
     // Step 4. Create a new step with new tile values and return the new trace
     int step_idx = std::get<2>(tile);
     return trace.ForkAndUpdate(step_idx, tile_factors, true);
   }
 }
 
-ScheduleDesc MutateTileSize::Apply(const ScheduleDesc& trace, LinearRandomEngine::StateType* rand_seed) {
-  VLOG(6) << "Start applying MutateTileSize, old trace: \n" << trace.DebugString();
+ScheduleDesc MutateTileSize::Apply(const ScheduleDesc& trace,
+                                   LinearRandomEngine::StateType* rand_seed) {
+  VLOG(6) << "Start applying MutateTileSize, old trace: \n"
+          << trace.DebugString();
   std::vector<ScheduleDesc::Step> sample_tile_steps;
   std::vector<std::vector<int>> sample_tile_data;
 
@@ -132,9 +143,12 @@ ScheduleDesc MutateTileSize::Apply(const ScheduleDesc& trace, LinearRandomEngine
     VLOG(6) << "MutateTileSize failed, try other mutate rules.";
     return trace;
   }
-  int sample_step_idx = utils::SampleUniformInt(0, sampled_tiles.size(), rand_seed);
-  auto new_trace      = DoMutateTileSize(trace, sampled_tiles.at(sample_step_idx), rand_seed);
-  VLOG(6) << "End applying MutateTileSize, new trace: \n" << new_trace.DebugString();
+  int sample_step_idx =
+      utils::SampleUniformInt(0, sampled_tiles.size(), rand_seed);
+  auto new_trace =
+      DoMutateTileSize(trace, sampled_tiles.at(sample_step_idx), rand_seed);
+  VLOG(6) << "End applying MutateTileSize, new trace: \n"
+          << new_trace.DebugString();
   return new_trace;
 }
 

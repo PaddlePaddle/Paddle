@@ -31,7 +31,8 @@ void GetBroadcastOutShape(const std::vector<int>& input_shape1,
  *
  * @param A The first Tensor or Expr
  * @param B The second Tensor or Expr
- * @param axis Tensor B's beginning position of Tensor A. Default is -1(right align) and then axis = rank(X)-rank(Y).
+ * @param axis Tensor B's beginning position of Tensor A. Default is -1(right
+ * align) and then axis = rank(X)-rank(Y).
  * @param out_name The name of the output Tensor
  *
  * @return The result Tensor or Expr.
@@ -42,11 +43,12 @@ void GetBroadcastOutShape(const std::vector<int>& input_shape1,
  * shape(A) = (2, 3, 4, 5), shape(B) = (2), with axis=0
  * shape(A) = (2, 3, 4, 5), shape(B) = (2, 1), with axis=0
  */
-#define HLIR_DCL_BC_PE(name__)                                                           \
-  ir::Tensor name__(const ir::Tensor& A,                                                 \
-                    const ir::Tensor& B,                                                 \
-                    const std::string& out_name = common::UniqName("T_" #name__ "_out"), \
-                    const Expr& axis            = Expr());
+#define HLIR_DCL_BC_PE(name__)                                             \
+  ir::Tensor name__(                                                       \
+      const ir::Tensor& A,                                                 \
+      const ir::Tensor& B,                                                 \
+      const std::string& out_name = common::UniqName("T_" #name__ "_out"), \
+      const Expr& axis = Expr());
 
 //! Compute A + B with auto-broadcasting.
 HLIR_DCL_BC_PE(Add);
@@ -107,19 +109,22 @@ ir::Tensor Pow(const ir::Tensor& A,
                const Expr& axis,
                const common::Target& target);
 
-ir::Tensor BroadcastTo(const ir::Tensor& A,
-                       const std::vector<int>& out_shape,
-                       const std::vector<int>& broadcast_axes,
-                       const std::string& out_name = common::UniqName("T_broadcast_to_out"));
+ir::Tensor BroadcastTo(
+    const ir::Tensor& A,
+    const std::vector<int>& out_shape,
+    const std::vector<int>& broadcast_axes,
+    const std::string& out_name = common::UniqName("T_broadcast_to_out"));
 
-// This operator checks if all x and y satisfy the condition: |x - y| <= atol + rtol * |y|
-ir::Tensor IsClose(const ir::Tensor& x,
-                   const ir::Tensor& y,
-                   int axis                    = -1,
-                   float rtol                  = 1e-05f,
-                   float atol                  = 1e-08f,
-                   bool equal_nan              = false,
-                   const std::string& out_name = common::UniqName("IsClose_output"));
+// This operator checks if all x and y satisfy the condition: |x - y| <= atol +
+// rtol * |y|
+ir::Tensor IsClose(
+    const ir::Tensor& x,
+    const ir::Tensor& y,
+    int axis = -1,
+    float rtol = 1e-05f,
+    float atol = 1e-08f,
+    bool equal_nan = false,
+    const std::string& out_name = common::UniqName("IsClose_output"));
 
 }  // namespace pe
 }  // namespace hlir

@@ -32,7 +32,8 @@ TEST(Decomposer, top_k_decomposer) {
   auto target = common::DefaultTarget();
   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, output_names, target);
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(program, output_names, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
 
@@ -46,7 +47,7 @@ TEST(Decomposer, top_k_decomposer) {
   for (auto& input : inputs) {
     scope->Var<hlir::framework::Tensor>(input.first);
     auto tensor = scope->GetTensor(input.first);
-    auto* data  = tensor->mutable_data<float>(target);
+    auto* data = tensor->mutable_data<float>(target);
     CopyFromVector(input.second, tensor, target);
   }
   run_program->Execute();

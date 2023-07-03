@@ -12,25 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 import numpy
-import paddle
-import sys, os
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.static as static
 
 paddle.enable_static()
 
 resnet_input = static.data(
-    name="resnet_input", shape=[1, 160, 7, 7], dtype='float32')
+    name="resnet_input", shape=[1, 160, 7, 7], dtype='float32'
+)
 label = static.data(name="label", shape=[1, 960, 7, 7], dtype='float32')
 d = paddle.nn.functional.relu6(resnet_input)
 f = static.nn.conv2d(
-    input=d, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1)
+    input=d, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1
+)
 g = static.nn.conv2d(
-    input=f, num_filters=160, filter_size=1, stride=1, padding=0, dilation=1)
+    input=f, num_filters=160, filter_size=1, stride=1, padding=0, dilation=1
+)
 i = static.nn.conv2d(
-    input=g, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1)
+    input=g, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1
+)
 j1 = paddle.scale(i, scale=2.0, bias=0.5)
 j = paddle.scale(j1, scale=2.0, bias=0.5)
 temp7 = paddle.nn.functional.relu(j)
@@ -46,6 +53,7 @@ exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
-fluid.io.save_inference_model("./resnet_model", [resnet_input.name], [temp7],
-                              exe)
+fluid.io.save_inference_model(
+    "./resnet_model", [resnet_input.name], [temp7], exe
+)
 print('res', temp7.name)

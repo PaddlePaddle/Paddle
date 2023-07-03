@@ -81,6 +81,12 @@ class NumpyArrayInitializer(Initializer):
         elif out_dtype == core.VarDesc.VarType.INT32:
             value_name = "values"
             values = [int(v) for v in np_value.flat]
+        elif (
+            out_dtype == core.VarDesc.VarType.INT8
+            or out_dtype == core.VarDesc.VarType.UINT8
+        ):
+            value_name = "int8_values"
+            values = [int(v) for v in np_value.flat]
         else:
             raise ValueError("Unsupported dtype %s", self._value.dtype)
         if self._value.size > 1024 * 1024 * 1024:

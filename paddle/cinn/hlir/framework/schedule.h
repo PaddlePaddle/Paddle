@@ -40,7 +40,8 @@ class Schedule : public common::Object {
    */
   ir::Tensor operator[](const ir::Operation& op) {
     auto it = stage_map.find(op.name);
-    CHECK(it != stage_map.end()) << "Cannot find Stage for operator " << op.name << " in the schedule";
+    CHECK(it != stage_map.end())
+        << "Cannot find Stage for operator " << op.name << " in the schedule";
     return it->second;
   }
 

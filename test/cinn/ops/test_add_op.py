@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestElementwiseAddOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -32,14 +34,17 @@ class TestElementwiseAddOp(OpTest):
             shape=self.case["x_shape"],
             dtype=self.case["x_dtype"],
             low=-10,
-            high=10)
+            high=10,
+        )
         self.y_np = self.random(
             shape=self.case["y_shape"],
             dtype=self.case["y_dtype"],
             low=-10,
-            high=10)
+            high=10,
+        )
         self.dout_np = self.random(
-            self.case["dout_shape"], dtype=self.case["dout_dtype"])
+            self.case["dout_shape"], dtype=self.case["dout_dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=False)
@@ -48,49 +53,69 @@ class TestElementwiseAddOp(OpTest):
         def get_unsqueeze_axis(x_rank, y_rank, axis):
             self.assertTrue(
                 x_rank >= y_rank,
-                "The rank of x should be greater or equal to that of y.")
+                "The rank of x should be greater or equal to that of y.",
+            )
             axis = axis if axis >= 0 else x_rank - y_rank
-            unsqueeze_axis = np.arange(0, axis).tolist() + np.arange(
-                axis + y_rank, x_rank).tolist()
+            unsqueeze_axis = (
+                np.arange(0, axis).tolist()
+                + np.arange(axis + y_rank, x_rank).tolist()
+            )
             return unsqueeze_axis
 
         unsqueeze_axis = get_unsqueeze_axis(
-            len(x.shape), len(y.shape), self.case["axis"])
-        y_t = paddle.unsqueeze(
-            y, axis=unsqueeze_axis) if len(unsqueeze_axis) > 0 else y
+            len(x.shape), len(y.shape), self.case["axis"]
+        )
+        y_t = (
+            paddle.unsqueeze(y, axis=unsqueeze_axis)
+            if len(unsqueeze_axis) > 0
+            else y
+        )
         out = paddle.add(x, y_t)
 
         self.paddle_outputs = [out]
-        self.paddle_grads = self.get_paddle_grads([out], [x, y],
-                                                  [self.dout_np])
+        self.paddle_grads = self.get_paddle_grads([out], [x, y], [self.dout_np])
 
     def build_cinn_program(self, target):
         builder = NetBuilder("add")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["x_dtype"]), self.case["x_shape"],
-            "x")
+            self.nptype2cinntype(self.case["x_dtype"]),
+            self.case["x_shape"],
+            "x",
+        )
         y = builder.create_input(
-            self.nptype2cinntype(self.case["y_dtype"]), self.case["y_shape"],
-            "y")
+            self.nptype2cinntype(self.case["y_dtype"]),
+            self.case["y_shape"],
+            "y",
+        )
         out = builder.add(x, y, axis=self.case["axis"])
 
         dout = builder.create_input(
             self.nptype2cinntype(self.case["dout_dtype"]),
-            self.case["dout_shape"], "dout")
+            self.case["dout_shape"],
+            "dout",
+        )
         x_grad, y_grad = builder.elementwise_add_grad(
-            dout, x, y, axis=self.case["axis"])
+            dout, x, y, axis=self.case["axis"]
+        )
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y, dout],
-                                   [self.x_np, self.y_np, self.dout_np],
-                                   [out, x_grad, y_grad])
+        res = self.get_cinn_output(
+            prog,
+            target,
+            [x, y, dout],
+            [self.x_np, self.y_np, self.dout_np],
+            [out, x_grad, y_grad],
+        )
 
         self.cinn_outputs = [res[0]]
         self.cinn_grads = [res[1], res[2]]
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 

@@ -24,7 +24,7 @@
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"

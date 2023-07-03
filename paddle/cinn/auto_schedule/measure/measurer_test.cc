@@ -62,22 +62,27 @@ class TestMeasurer : public ::testing::Test {
     Target target = common::DefaultHostTarget();
 #endif
     std::unordered_set<std::string> fetch_ids;
-    auto program   = CreateAddReluProgram();
-    auto graph     = cinn::frontend::Optimize(&program, fetch_ids, target);
-    auto scope     = BuildScope(target, graph);
+    auto program = CreateAddReluProgram();
+    auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
+    auto scope = BuildScope(target, graph);
     graph_compiler = std::make_unique<GraphCompiler>(target, scope, graph);
     TaskCreator task_creator;
-    tasks                  = task_creator.CreateTuneTaskOpLevel(graph.get());
-    const auto& dtype_dict = graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>("inferdtype");
-    const auto& shape_dict = graph->GetAttrs<absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
+    tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
+    const auto& dtype_dict =
+        graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+            "inferdtype");
+    const auto& shape_dict = graph->GetAttrs<
+        absl::flat_hash_map<std::string, hlir::framework::shape_t>>(
+        "infershape");
 
-    auto op_lowerer = std::make_unique<hlir::framework::OpLowerer>(dtype_dict, shape_dict, target);
+    auto op_lowerer = std::make_unique<hlir::framework::OpLowerer>(
+        dtype_dict, shape_dict, target);
     inputs.reserve(tasks.size());
     for (int i = 0; i < tasks.size(); ++i) {
       auto* task = &tasks[i];
       task->Initialize(shape_dict, dtype_dict, op_lowerer.get());
       MeasureInput input;
-      input.task          = task;
+      input.task = task;
       input.lowered_funcs = task->lowered_funcs;
       inputs.emplace_back(input);
     }
@@ -95,30 +100,37 @@ class ThrowExceptionRunner : public ScheduleRunner {
   struct Exception : public std::exception {
     const char* what() const throw() { return "RunError"; }
   };
-  MeasureResult Run(const MeasureInput& input, const BuildResult& build_result) override { throw Exception(); }
+  MeasureResult Run(const MeasureInput& input,
+                    const BuildResult& build_result) override {
+    throw Exception();
+  }
 };
 
 TEST_F(TestMeasurer, Basic) {
-  auto builder                       = std::make_unique<SimpleBuilder>(graph_compiler.get());
-  auto runner                        = std::make_unique<SimpleRunner>(1);
-  auto measurer                      = std::make_unique<ScheduleMeasurer>(builder.get(), runner.get());
+  auto builder = std::make_unique<SimpleBuilder>(graph_compiler.get());
+  auto runner = std::make_unique<SimpleRunner>(1);
+  auto measurer =
+      std::make_unique<ScheduleMeasurer>(builder.get(), runner.get());
   std::vector<MeasureResult> results = measurer->Measure(inputs);
   ASSERT_EQ(inputs.size(), results.size());
 }
 
 TEST_F(TestMeasurer, CatchException) {
-  auto builder                       = std::make_unique<SimpleBuilder>(graph_compiler.get());
-  auto runner                        = std::make_unique<SimpleRunner>(1);
-  auto throw_builder                 = std::make_unique<ThrowExceptionBuilder>();
-  auto throw_runner                  = std::make_unique<ThrowExceptionRunner>();
-  auto measurer_with_build_error     = std::make_unique<ScheduleMeasurer>(throw_builder.get(), runner.get(), 2);
-  std::vector<MeasureResult> results = measurer_with_build_error->Measure(inputs);
+  auto builder = std::make_unique<SimpleBuilder>(graph_compiler.get());
+  auto runner = std::make_unique<SimpleRunner>(1);
+  auto throw_builder = std::make_unique<ThrowExceptionBuilder>();
+  auto throw_runner = std::make_unique<ThrowExceptionRunner>();
+  auto measurer_with_build_error =
+      std::make_unique<ScheduleMeasurer>(throw_builder.get(), runner.get(), 2);
+  std::vector<MeasureResult> results =
+      measurer_with_build_error->Measure(inputs);
   ASSERT_EQ(inputs.size(), results.size());
   EXPECT_EQ(results[0].error_msg, "Build failed, error: BuildError\n");
 
   // TODO(CtfGo): test parallel build after we support thread-safe compilation
-  auto measurer_with_run_error = std::make_unique<ScheduleMeasurer>(builder.get(), throw_runner.get(), 1);
-  results                      = measurer_with_run_error->Measure(inputs);
+  auto measurer_with_run_error =
+      std::make_unique<ScheduleMeasurer>(builder.get(), throw_runner.get(), 1);
+  results = measurer_with_run_error->Measure(inputs);
   ASSERT_EQ(inputs.size(), results.size());
   EXPECT_EQ(results[0].error_msg, "Run failed, error: RunError\n");
 }

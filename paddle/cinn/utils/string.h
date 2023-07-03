@@ -54,7 +54,8 @@ std::string Join(const std::vector<T>& fields, const std::string& splitter) {
   return ss.str();
 }
 
-std::vector<std::string> Split(const std::string& str, const std::string& splitter);
+std::vector<std::string> Split(const std::string& str,
+                               const std::string& splitter);
 
 std::string Trim(const std::string& s, const char* empty = " \n\r\t");
 

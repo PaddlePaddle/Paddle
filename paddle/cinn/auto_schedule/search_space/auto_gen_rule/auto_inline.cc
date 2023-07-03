@@ -34,31 +34,38 @@
 namespace cinn {
 namespace auto_schedule {
 
-AutoInline::AutoInline(const common::Target& target, const std::unordered_set<std::string>& no_inline_output_names)
+AutoInline::AutoInline(
+    const common::Target& target,
+    const std::unordered_set<std::string>& no_inline_output_names)
     : AutoGenRule(target), no_inline_output_names_(no_inline_output_names) {}
 
-bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr, ir::IRSchedule* ir_sch) const {
-  const ir::ScheduleBlockRealize* sche_block_realize = sche_block_realize_expr.As<ir::ScheduleBlockRealize>();
-  const ir::ScheduleBlock* sche_block                = sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  ir::Expr compute_body                              = sche_block->body;
-  ir::Expr root                                      = ir_sch->GetRootBlock(sche_block_realize_expr);
+bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
+                                       ir::IRSchedule* ir_sch) const {
+  const ir::ScheduleBlockRealize* sche_block_realize =
+      sche_block_realize_expr.As<ir::ScheduleBlockRealize>();
+  const ir::ScheduleBlock* sche_block =
+      sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  ir::Expr compute_body = sche_block->body;
+  ir::Expr root = ir_sch->GetRootBlock(sche_block_realize_expr);
 
   // Check the schedule block to be inlined is not a reduce tensor.
-  std::set<ir::Expr> find_store =
-      ir::CollectIRNodesWithoutTensor(compute_body, [&](const Expr* x) { return x->As<ir::Store>(); });
+  std::set<ir::Expr> find_store = ir::CollectIRNodesWithoutTensor(
+      compute_body, [&](const Expr* x) { return x->As<ir::Store>(); });
   if (find_store.size() != 1UL) {
     return false;
   }
 
   ir::Expr tensor_expr = (*find_store.begin()).As<ir::Store>()->tensor;
-  ir::Tensor tensor    = tensor_expr.as_tensor_ref();
+  ir::Tensor tensor = tensor_expr.as_tensor_ref();
   if (tensor->is_reduce_tensor()) {
     return false;
   }
 
   // LoweredFunc output can be tensor name or tensor buffer name
-  if (no_inline_output_names_.find(tensor->name) != no_inline_output_names_.end() ||
-      no_inline_output_names_.find(tensor->buffer->name) != no_inline_output_names_.end()) {
+  if (no_inline_output_names_.find(tensor->name) !=
+          no_inline_output_names_.end() ||
+      no_inline_output_names_.find(tensor->buffer->name) !=
+          no_inline_output_names_.end()) {
     return false;
   }
 
@@ -70,26 +77,32 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr, ir::
 
   // Check this schedule block is the only writer of the tensor.
   find_store = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
-    return x->As<ir::Store>() && (x->As<ir::Store>()->tensor).as_tensor_ref()->name == tensor->name;
+    return x->As<ir::Store>() &&
+           (x->As<ir::Store>()->tensor).as_tensor_ref()->name == tensor->name;
   });
   if (find_store.size() != 1UL) {
     return false;
   }
-  // Check there is no overlap between the buffers the schedule block reads and writes.
-  std::set<ir::Expr> find_load = ir::CollectIRNodesWithoutTensor(
-      compute_body, [&](const Expr* x) { return x->As<ir::Load>() && x->As<ir::Load>()->tensor == tensor_expr; });
+  // Check there is no overlap between the buffers the schedule block reads and
+  // writes.
+  std::set<ir::Expr> find_load =
+      ir::CollectIRNodesWithoutTensor(compute_body, [&](const Expr* x) {
+        return x->As<ir::Load>() && x->As<ir::Load>()->tensor == tensor_expr;
+      });
   if (!find_load.empty()) {
     return false;
   }
 
   ir::Expr store = *(find_store.begin());
 
-  ir::ComputeInliner inliner(store.As<ir::Store>()->tensor.as_tensor_ref(), store);
+  ir::ComputeInliner inliner(store.As<ir::Store>()->tensor.as_tensor_ref(),
+                             store);
   if (!inliner.BodyPatternAllowInline()) {
     return false;
   }
 
-  ir::LeafBlockRemovalPlan remove_plan(sche_block_realize_expr, &inliner.src_stmt, &inliner.tgt_stmt);
+  ir::LeafBlockRemovalPlan remove_plan(
+      sche_block_realize_expr, &inliner.src_stmt, &inliner.tgt_stmt);
   remove_plan(&root);
   if (!inliner.src_stmt.defined() || !inliner.tgt_stmt.defined()) {
     return false;
@@ -99,16 +112,20 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr, ir::
   return true;
 }
 
-AutoInlineType AutoInline::AnalyzeInlineType(const Expr& sche_block_realize_expr, ir::IRSchedule* ir_sch) const {
-  const ir::ScheduleBlockRealize* sche_block_realize = sche_block_realize_expr.As<ir::ScheduleBlockRealize>();
-  const ir::ScheduleBlock* sche_block                = sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
+AutoInlineType AutoInline::AnalyzeInlineType(
+    const Expr& sche_block_realize_expr, ir::IRSchedule* ir_sch) const {
+  const ir::ScheduleBlockRealize* sche_block_realize =
+      sche_block_realize_expr.As<ir::ScheduleBlockRealize>();
+  const ir::ScheduleBlock* sche_block =
+      sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
 
   // Inline if the block has only 1 write buffer
   if (sche_block->write_buffers.size() != 1) {
     return AutoInlineType::kCannotInline;
   }
 
-  std::unordered_set<ir::IrNodeTy> no_inline_node_types = {ir::IrNodeTy::IfThenElse};
+  std::unordered_set<ir::IrNodeTy> no_inline_node_types = {
+      ir::IrNodeTy::IfThenElse};
   if (ContainsNodeType(sche_block->body, no_inline_node_types)) {
     return AutoInlineType::kCannotInline;
   }
@@ -125,31 +142,38 @@ AutoInlineType AutoInline::AnalyzeInlineType(const Expr& sche_block_realize_expr
 }
 
 RuleApplyType AutoInline::Init(ir::IRSchedule* ir_schedule) {
-  ir_schedule_        = ir_schedule;
+  ir_schedule_ = ir_schedule;
   all_block_realizes_ = ir_schedule_->GetAllBlocks();
   apply_indices_and_type_.clear();
   num_applicable_ = 0;
 
   for (size_t i = 0; i < all_block_realizes_.size(); ++i) {
-    ir::ScheduleBlockRealize* sche_block_realize = all_block_realizes_[i].As<ir::ScheduleBlockRealize>();
-    AnalyzeScheduleBlockReadWriteBuffer(sche_block_realize->schedule_block.As<ir::ScheduleBlock>());
-    AutoInlineType type = AnalyzeInlineType(all_block_realizes_[i], ir_schedule_);
+    ir::ScheduleBlockRealize* sche_block_realize =
+        all_block_realizes_[i].As<ir::ScheduleBlockRealize>();
+    AnalyzeScheduleBlockReadWriteBuffer(
+        sche_block_realize->schedule_block.As<ir::ScheduleBlock>());
+    AutoInlineType type =
+        AnalyzeInlineType(all_block_realizes_[i], ir_schedule_);
     if (type != AutoInlineType::kCannotInline) {
       ++num_applicable_;
       apply_indices_and_type_.push_back({i, type});
     }
   }
 
-  return num_applicable_ > 0 ? RuleApplyType::kApplyAndPruneOtherRules : RuleApplyType::kCannotApply;
+  return num_applicable_ > 0 ? RuleApplyType::kApplyAndPruneOtherRules
+                             : RuleApplyType::kCannotApply;
 }
 
 void AutoInline::Apply(int index) {
   CHECK(ir_schedule_ != nullptr) << "Run AutoInline::Apply without Init";
-  CHECK(num_applicable_ > 0 && apply_indices_and_type_.size() == num_applicable_)
+  CHECK(num_applicable_ > 0 &&
+        apply_indices_and_type_.size() == num_applicable_)
       << "AutoInline::Apply pre-condition doesn't meet";
   CHECK(index >= 0 && num_applicable_ > index)
-      << "Invalid index for AutoInline::Apply, the index needs 0 <= index && index < NumberApplicable(), "
-      << "Currently index = " << index << ",  NumberApplicable() = " << num_applicable_;
+      << "Invalid index for AutoInline::Apply, the index needs 0 <= index && "
+         "index < NumberApplicable(), "
+      << "Currently index = " << index
+      << ",  NumberApplicable() = " << num_applicable_;
 
   int apply_index = apply_indices_and_type_[index].first;
   Apply(ir_schedule_, all_block_realizes_[apply_index]);
@@ -158,20 +182,25 @@ void AutoInline::Apply(int index) {
 
 std::string AutoInline::GetRuleName() const { return "AutoInline"; }
 
-RuleApplyType AutoInline::AnalyseApplyType(SearchState state, const std::string& block_name) const {
-  Expr block_expr     = state->ir_schedule.GetBlock(block_name);
+RuleApplyType AutoInline::AnalyseApplyType(
+    SearchState state, const std::string& block_name) const {
+  Expr block_expr = state->ir_schedule.GetBlock(block_name);
   auto* block_realize = block_expr.As<ir::ScheduleBlockRealize>();
   CHECK(block_realize) << "stmt is not a ScheduleBlockRealize:" << block_expr;
 
-  AnalyzeScheduleBlockReadWriteBuffer(block_realize->schedule_block.As<ir::ScheduleBlock>());
+  AnalyzeScheduleBlockReadWriteBuffer(
+      block_realize->schedule_block.As<ir::ScheduleBlock>());
   AutoInlineType type = AnalyzeInlineType(block_expr, &state->ir_schedule);
 
-  return type == AutoInlineType::kCannotInline ? RuleApplyType::kCannotApply : RuleApplyType::kApplyAndPruneOtherRules;
+  return type == AutoInlineType::kCannotInline
+             ? RuleApplyType::kCannotApply
+             : RuleApplyType::kApplyAndPruneOtherRules;
 }
 
-std::vector<SearchState> AutoInline::ApplyOnBlock(SearchState state, const std::string& block_name) {
+std::vector<SearchState> AutoInline::ApplyOnBlock(
+    SearchState state, const std::string& block_name) {
   SearchState new_state = state.Copy();
-  Expr block_expr       = new_state->ir_schedule.GetBlock(block_name);
+  Expr block_expr = new_state->ir_schedule.GetBlock(block_name);
   Apply(&new_state->ir_schedule, block_expr);
 
   return {new_state};
@@ -181,7 +210,8 @@ void AutoInline::Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr) {
   auto* block_realize = block_expr.As<ir::ScheduleBlockRealize>();
   CHECK(block_realize) << "stmt is not a ScheduleBlockRealize:" << block_expr;
 
-  AnalyzeScheduleBlockReadWriteBuffer(block_realize->schedule_block.As<ir::ScheduleBlock>());
+  AnalyzeScheduleBlockReadWriteBuffer(
+      block_realize->schedule_block.As<ir::ScheduleBlock>());
   AutoInlineType type = AnalyzeInlineType(block_expr, ir_schedule);
 
   if (type == AutoInlineType::kInlineIntoConsumer) {
@@ -202,10 +232,12 @@ void AutoInline::Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr) {
   // we need to re-analyze
   all_block_realizes_ = ir_schedule->GetAllBlocks();
   for (size_t i = 0; i < all_block_realizes_.size(); ++i) {
-    ir::ScheduleBlockRealize* sche_block_realize = all_block_realizes_[i].As<ir::ScheduleBlockRealize>();
-    ir::ScheduleBlock* sche_block                = sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
-    sche_block->read_buffers                     = {};
-    sche_block->write_buffers                    = {};
+    ir::ScheduleBlockRealize* sche_block_realize =
+        all_block_realizes_[i].As<ir::ScheduleBlockRealize>();
+    ir::ScheduleBlock* sche_block =
+        sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
+    sche_block->read_buffers = {};
+    sche_block->write_buffers = {};
     AnalyzeScheduleBlockReadWriteBuffer(sche_block);
   }
 }

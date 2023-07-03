@@ -24,7 +24,8 @@ namespace cinn {
 namespace utils {
 
 TEST(JobDispatcher, SequenceDispatcher) {
-  std::unique_ptr<JobDispatcher> dispatcher = std::make_unique<SequenceDispatcher>(1, 3);
+  std::unique_ptr<JobDispatcher> dispatcher =
+      std::make_unique<SequenceDispatcher>(1, 3);
   ASSERT_EQ(1, dispatcher->Next());
   ASSERT_EQ(2, dispatcher->Next());
   // check reach the end

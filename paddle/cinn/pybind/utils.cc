@@ -20,7 +20,10 @@ namespace py = pybind11;
 namespace cinn {
 namespace pybind {
 
-using namespace cinn::utils;
+using cinn::utils::EventType;
+using cinn::utils::HostEvent;
+using cinn::utils::HostEventRecorder;
+using cinn::utils::ProfilerHelper;
 
 void BindUtils(py::module *m) {
   py::enum_<EventType>(*m, "EventType")
@@ -54,7 +57,9 @@ void BindUtils(py::module *m) {
       .def(py::init<const std::string &, double, EventType>())
       .def_property(
           "annotation",
-          [](HostEvent &self) -> const std::string & { return self.annotation_; },
+          [](HostEvent &self) -> const std::string & {
+            return self.annotation_;
+          },
           [](HostEvent &self, const std::string &v) { self.annotation_ = v; })
       .def_property(
           "duration",
