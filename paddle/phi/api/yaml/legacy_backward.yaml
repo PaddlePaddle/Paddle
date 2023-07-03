@@ -416,17 +416,6 @@
   kernel :
     func : frobenius_norm_grad
 
-- backward_op : fused_rope_grad
-  forward: fused_rope (Tensor q, Tensor k, Tensor v) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
-  args : (Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad)
-  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
-  optional : out_k_grad, out_v_grad, k_grad, v_grad
-  infer_meta :
-    func : FusedRopeGradInferMeta
-  kernel :
-    func : fused_rope_grad
-    data_type : out_q_grad
-
 - backward_op : gather_grad
   forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0, bool overwrite=false)

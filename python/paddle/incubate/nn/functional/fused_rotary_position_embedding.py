@@ -22,9 +22,11 @@ def fused_rotary_position_embedding(q, k, v):
     Fused rotary position embedding.
 
     Args:
-        q (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64.
-        k (potional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64.
-        v (potional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64.
+        q (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if q must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
+        k (potional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if k must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
+
+        v (potional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if v must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
+
 
     Returns:
         out_q/out_k/out_v Tensor representing the fused rotary position embedding, has same shape and data type as `q` .
@@ -41,7 +43,7 @@ def fused_rotary_position_embedding(q, k, v):
             q = paddle.randn([1, 1, 4, 10], dtype='float16')
             k = paddle.randn([1, 1, 4, 10], dtype='float16')
             v = paddle.randn([1, 1, 4, 10], dtype='float16')
-            out = fused_rotary_position_embedding(q, k, v)
+            out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
     """
     if in_dynamic_mode():
-        return _C_ops.fused_rope(q, k, v)
+        return _C_ops.fused_rotary_position_embedding(q, k, v)
