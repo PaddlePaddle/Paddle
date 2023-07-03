@@ -1445,12 +1445,13 @@ def _insert_reduce_op(
     ), f"root id should be a positive int, but now root id is {root_id}"
     new_op = block._insert_op_without_sync(
         insert_idx,
-        type='c_reduce_sum',
-        inputs={'X': [reduce_var]},
-        outputs={'Out': [reduce_var]},
+        type='reduce',
+        inputs={'x': [reduce_var]},
+        outputs={'out': [reduce_var]},
         attrs={
             'ring_id': ring_id,
             'root_id': root_id,
+            'reduce_type': paddle.distributed.ReduceOp.SUM,
             'use_calc_stream': use_calc_stream,
             OP_ROLE_KEY: op_role,
         },
