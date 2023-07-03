@@ -47,13 +47,16 @@ endif()
 add_definitions(-w)
 
 include(cmake/cinn/version.cmake)
-include(cmake/cinn/core.cmake)
-# include the customized configures
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
   file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake
        DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
 endif()
 include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+include(cmake/generic.cmake)
+include(cmake/cinn/system.cmake)
+include(cmake/cinn/core.cmake)
+include(cmake/cinn/nvrtc.cmake)
+include(cmake/cinn/nvtx.cmake)
 
 if(WITH_MKL)
   generate_dummy_static_lib(LIB_NAME "cinn_mklml" GENERATOR "mklml.cmake")
