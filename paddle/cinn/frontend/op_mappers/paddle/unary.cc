@@ -19,17 +19,19 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-#define UNARY_OPMAPPER_FUNCTION(OP_NAME)                                                                          \
-  void OP_NAME##OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {                        \
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);                                                                     \
-    auto x_name = op_desc.Input("X").front();                                                                     \
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);                                                                  \
-    auto out_name = op_desc.Output("Out").front();                                                                \
-    auto x        = ctx.GetVar(x_name);                                                                           \
-    VLOG(4) << #OP_NAME << " X:" << x_name << "[" << cinn::utils::Join(x->shape, ",") << "] to Out:" << out_name; \
-    auto out = ctx.Builder()->OP_NAME(x);                                                                         \
-    ctx.AddVar(out_name, out);                                                                                    \
-    ctx.AddVarModelToProgram(out_name, out->id);                                                                  \
+#define UNARY_OPMAPPER_FUNCTION(OP_NAME)                                    \
+  void OP_NAME##OpMapper(const paddle::cpp::OpDesc& op_desc,                \
+                         const OpMapperContext& ctx) {                      \
+    CHECK_EQ(op_desc.Input("X").size(), 1UL);                               \
+    auto x_name = op_desc.Input("X").front();                               \
+    CHECK_EQ(op_desc.Output("Out").size(), 1UL);                            \
+    auto out_name = op_desc.Output("Out").front();                          \
+    auto x = ctx.GetVar(x_name);                                            \
+    VLOG(4) << #OP_NAME << " X:" << x_name << "["                           \
+            << cinn::utils::Join(x->shape, ",") << "] to Out:" << out_name; \
+    auto out = ctx.Builder()->OP_NAME(x);                                   \
+    ctx.AddVar(out_name, out);                                              \
+    ctx.AddVarModelToProgram(out_name, out->id);                            \
   }
 
 UNARY_OPMAPPER_FUNCTION(LogicalNot)
@@ -70,7 +72,8 @@ UNARY_OPMAPPER_FUNCTION(IsInf)
 
 CINN_REGISTER_HELPER(paddle_unary) {
 #define UNARY_OPMAPPER_REGISTER(PD_OP, CINN_OP) \
-  CINN_REGISTER_OP_MAPPER(PD_OP, cinn::frontend::paddle_mappers::CINN_OP##OpMapper)
+  CINN_REGISTER_OP_MAPPER(PD_OP,                \
+                          cinn::frontend::paddle_mappers::CINN_OP##OpMapper)
 
   UNARY_OPMAPPER_REGISTER(logical_not, LogicalNot)
   UNARY_OPMAPPER_REGISTER(bitwise_not, BitwiseNot)

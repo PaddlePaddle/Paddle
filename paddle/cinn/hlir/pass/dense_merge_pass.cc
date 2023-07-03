@@ -25,11 +25,9 @@ using framework::Graph;
 using framework::Node;
 using framework::NodeAttr;
 
-// Dense Merge Pass: merge those gemm which has same var as input into a batched cubals call op.
-// A * B, A * C, A * D,...
-// after
-// A * [B, C, D,...]
-// Using cublas batched gemm can avoid do concat and slice.
+// Dense Merge Pass: merge those gemm which has same var as input into a batched
+// cubals call op. A * B, A * C, A * D,... after A * [B, C, D,...] Using cublas
+// batched gemm can avoid do concat and slice.
 
 class DenseMergePassHelper : public FusionHelperBase {
  public:
@@ -73,9 +71,11 @@ class DenseMergePassHelper : public FusionHelperBase {
     std::vector<Node*> dense_ops;
     for (auto link : node->outlinks()) {
       auto sink = link->sink()->safe_as<Node>();
-      if (sink->op()->name == "matmul" || sink->op()->name == "mul" || sink->op()->name == "cublas_gemm" ||
+      if (sink->op()->name == "matmul" || sink->op()->name == "mul" ||
+          sink->op()->name == "cublas_gemm" ||
           sink->op()->name == "cublas_matmul") {
-        if (std::find(dense_ops.begin(), dense_ops.end(), sink) == dense_ops.end()) {
+        if (std::find(dense_ops.begin(), dense_ops.end(), sink) ==
+            dense_ops.end()) {
           dense_ops.push_back(sink);
         }
       }
@@ -83,17 +83,25 @@ class DenseMergePassHelper : public FusionHelperBase {
     return dense_ops;
   }
 
-  void LeftMerge(NodeData* node, std::vector<Node*> dense_ops) { DoMerge(node, dense_ops, 1, "left"); }
+  void LeftMerge(NodeData* node, std::vector<Node*> dense_ops) {
+    DoMerge(node, dense_ops, 1, "left");
+  }
 
-  void RightMerge(NodeData* node, std::vector<Node*> dense_ops) { DoMerge(node, dense_ops, 0, "right"); }
+  void RightMerge(NodeData* node, std::vector<Node*> dense_ops) {
+    DoMerge(node, dense_ops, 0, "right");
+  }
 
-  void DoMerge(NodeData* node, std::vector<Node*> dense_ops, int pos, std::string side) {
+  void DoMerge(NodeData* node,
+               std::vector<Node*> dense_ops,
+               int pos,
+               std::string side) {
     // split dense op by it's attr
     std::unordered_map<std::string, std::vector<Node*>> dense_op_map;
     for (auto dense_op : dense_ops) {
       const auto& in_links = dense_op->inlinks_in_order();
       CHECK_GT(in_links.size(), pos);
-      auto sign = GenOpSign(in_links[pos]->source()->safe_as<NodeData>(), dense_op->attrs);
+      auto sign = GenOpSign(in_links[pos]->source()->safe_as<NodeData>(),
+                            dense_op->attrs);
       if (dense_op_map.count(sign)) {
         dense_op_map[sign].push_back(dense_op);
       } else {
@@ -107,11 +115,14 @@ class DenseMergePassHelper : public FusionHelperBase {
       }
 
       // create custom call node
-      Node* node_tmp = new Node(Operator::Get("custom_call"), "custom_call", common::UniqName("custom_call"));
+      Node* node_tmp = new Node(Operator::Get("custom_call"),
+                                "custom_call",
+                                common::UniqName("custom_call"));
       graph_->RegisterNode(node_tmp->id(), node_tmp);
-      node_tmp->attrs.attr_store                = dense_op.second[0]->attrs.attr_store;
-      node_tmp->attrs.attr_store["side"]        = side;
-      node_tmp->attrs.attr_store["custom_call"] = std::string("cinn_call_batched_cublas");
+      node_tmp->attrs.attr_store = dense_op.second[0]->attrs.attr_store;
+      node_tmp->attrs.attr_store["side"] = side;
+      node_tmp->attrs.attr_store["custom_call"] =
+          std::string("cinn_call_batched_cublas");
 
       // update inlink.
       node->LinkTo(node_tmp);
@@ -137,14 +148,28 @@ class DenseMergePassHelper : public FusionHelperBase {
   }
 
   std::string GenOpSign(const NodeData* node, const NodeAttr& attrs) {
-    auto attr_store    = attrs.attr_store;
-    bool trans_a       = attr_store.count("trans_a") ? absl::get<bool>(attr_store.at("trans_a")) : false;
-    bool trans_b       = attr_store.count("trans_b") ? absl::get<bool>(attr_store.at("trans_b")) : false;
-    bool trans_out     = attr_store.count("trans_out") ? absl::get<bool>(attr_store.at("trans_out")) : false;
-    float alpha        = attr_store.count("alpha") ? absl::get<float>(attr_store.at("alpha")) : 1.0f;
-    float beta         = attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
-    int x_num_col_dims = attr_store.count("x_num_col_dims") ? absl::get<int>(attr_store.at("x_num_col_dims")) : 0;
-    int y_num_col_dims = attr_store.count("y_num_col_dims") ? absl::get<int>(attr_store.at("y_num_col_dims")) : 0;
+    auto attr_store = attrs.attr_store;
+    bool trans_a = attr_store.count("trans_a")
+                       ? absl::get<bool>(attr_store.at("trans_a"))
+                       : false;
+    bool trans_b = attr_store.count("trans_b")
+                       ? absl::get<bool>(attr_store.at("trans_b"))
+                       : false;
+    bool trans_out = attr_store.count("trans_out")
+                         ? absl::get<bool>(attr_store.at("trans_out"))
+                         : false;
+    float alpha = attr_store.count("alpha")
+                      ? absl::get<float>(attr_store.at("alpha"))
+                      : 1.0f;
+    float beta = attr_store.count("beta")
+                     ? absl::get<float>(attr_store.at("beta"))
+                     : 0.0f;
+    int x_num_col_dims = attr_store.count("x_num_col_dims")
+                             ? absl::get<int>(attr_store.at("x_num_col_dims"))
+                             : 0;
+    int y_num_col_dims = attr_store.count("y_num_col_dims")
+                             ? absl::get<int>(attr_store.at("y_num_col_dims"))
+                             : 0;
 
     std::string sign = "";
     sign += std::to_string(trans_a);

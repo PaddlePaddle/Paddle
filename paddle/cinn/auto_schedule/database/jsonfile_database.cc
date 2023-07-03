@@ -35,7 +35,8 @@ void AppendLineToFile(const std::string& file_path, const std::string& line) {
 }
 
 // read lines from a json file
-std::vector<std::string> ReadLinesFromFile(const std::string& file_path, bool allow_new_file) {
+std::vector<std::string> ReadLinesFromFile(const std::string& file_path,
+                                           bool allow_new_file) {
   std::ifstream is(file_path);
   if (is.good()) {
     std::vector<std::string> json_strs;
@@ -51,20 +52,26 @@ std::vector<std::string> ReadLinesFromFile(const std::string& file_path, bool al
   return {};
 }
 
-JSONFileDatabase::JSONFileDatabase(int capacity_per_task, const std::string& record_file_path, bool allow_new_file)
+JSONFileDatabase::JSONFileDatabase(int capacity_per_task,
+                                   const std::string& record_file_path,
+                                   bool allow_new_file)
     : Database(capacity_per_task), record_file_path_(record_file_path) {
-  VLOG(3) << "Auto schedule will save/load tuning records on file:" << record_file_path;
+  VLOG(3) << "Auto schedule will save/load tuning records on file:"
+          << record_file_path;
   auto json_lines = ReadLinesFromFile(record_file_path_, allow_new_file);
-  std::vector<cinn::auto_schedule::proto::TuningRecord> all_records_proto(json_lines.size());
+  std::vector<cinn::auto_schedule::proto::TuningRecord> all_records_proto(
+      json_lines.size());
 
   // convert JSON string to proto object
   auto worker_fn = [this, &json_lines, &all_records_proto](int index) {
     cinn::auto_schedule::proto::TuningRecord record_proto;
-    auto status = google::protobuf::util::JsonStringToMessage(json_lines[index], &record_proto);
+    auto status = google::protobuf::util::JsonStringToMessage(json_lines[index],
+                                                              &record_proto);
     CHECK(status.ok()) << "Failed to parse JSON: " << json_lines[index];
     all_records_proto[index].Swap(&record_proto);
   };
-  utils::parallel_run(worker_fn, utils::SequenceDispatcher(0, json_lines.size()), -1);
+  utils::parallel_run(
+      worker_fn, utils::SequenceDispatcher(0, json_lines.size()), -1);
 
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
 
@@ -81,8 +88,10 @@ JSONFileDatabase::JSONFileDatabase(int capacity_per_task, const std::string& rec
 std::string JSONFileDatabase::RecordToJSON(const TuningRecord& record) {
   proto::TuningRecord record_proto = record.ToProto();
   std::string json_string;
-  auto status = google::protobuf::util::MessageToJsonString(record_proto, &json_string);
-  CHECK(status.ok()) << "Failed to serialize record to JSON, task key = " << record.task_key;
+  auto status =
+      google::protobuf::util::MessageToJsonString(record_proto, &json_string);
+  CHECK(status.ok()) << "Failed to serialize record to JSON, task key = "
+                     << record.task_key;
   VLOG(4) << "json_string = \n" << json_string;
 
   return json_string;

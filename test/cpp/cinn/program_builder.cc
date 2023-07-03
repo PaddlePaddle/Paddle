@@ -17,9 +17,12 @@
 namespace cinn {
 namespace tests {
 
-OpBuilder::OpBuilder(const std::string& op_name) : ProgramBuilder(op_name), op_name_(op_name) {}
+OpBuilder::OpBuilder(const std::string& op_name)
+    : ProgramBuilder(op_name), op_name_(op_name) {}
 
-frontend::Program OpBuilder::Build(const std::vector<VariableInfo>& inputs_varinfo, const utils::AttributeMap& attrs) {
+frontend::Program OpBuilder::Build(
+    const std::vector<VariableInfo>& inputs_varinfo,
+    const utils::AttributeMap& attrs) {
   std::vector<frontend::Variable> inputs;
   for (auto&& item : inputs_varinfo) {
     inputs.emplace_back(builder_.CreateInput(item.type, item.shape, item.id));
@@ -28,11 +31,15 @@ frontend::Program OpBuilder::Build(const std::vector<VariableInfo>& inputs_varin
   return builder_.Build();
 }
 
-PaddleModelBuilder::PaddleModelBuilder(const std::string& model_path, const common::Target& target)
-    : ProgramBuilder("test_paddle_model"), model_path_(model_path), target_(target) {}
+PaddleModelBuilder::PaddleModelBuilder(const std::string& model_path,
+                                       const common::Target& target)
+    : ProgramBuilder("test_paddle_model"),
+      model_path_(model_path),
+      target_(target) {}
 
-frontend::Program PaddleModelBuilder::Build(const std::vector<VariableInfo>& inputs_varinfo,
-                                            const utils::AttributeMap& attrs) {
+frontend::Program PaddleModelBuilder::Build(
+    const std::vector<VariableInfo>& inputs_varinfo,
+    const utils::AttributeMap& attrs) {
   // build a name to shape map of input
   CHECK(!inputs_varinfo.empty());
   auto scope = std::make_shared<hlir::framework::Scope>();
@@ -41,9 +48,10 @@ frontend::Program PaddleModelBuilder::Build(const std::vector<VariableInfo>& inp
     input_name2shape[item.id] = item.shape;
   }
 
-  auto loadedProgram = cinn::frontend::LoadPaddleProgram(model_path_, scope.get(), input_name2shape, true, target_);
-  auto& program      = std::get<0>(loadedProgram);
-  auto& varmap       = std::get<1>(loadedProgram);
+  auto loadedProgram = cinn::frontend::LoadPaddleProgram(
+      model_path_, scope.get(), input_name2shape, true, target_);
+  auto& program = std::get<0>(loadedProgram);
+  auto& varmap = std::get<1>(loadedProgram);
   VLOG(3) << "loaded program: " << *program;
   CHECK(!varmap.empty());
 

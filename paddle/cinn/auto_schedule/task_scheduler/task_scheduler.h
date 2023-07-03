@@ -38,9 +38,10 @@ class TaskScheduler {
 
   // Create a TaskScheduler with the specific strategy name
   // and necessary construct parameters.
-  static std::unique_ptr<TaskScheduler> Make(const std::vector<TuneTask>& tasks,
-                                             const Config& config,
-                                             const std::string& strategy = "round_robin");
+  static std::unique_ptr<TaskScheduler> Make(
+      const std::vector<TuneTask>& tasks,
+      const Config& config,
+      const std::string& strategy = "round_robin");
 
   // Reset associated states to schedule at the beginning
   void Reset();

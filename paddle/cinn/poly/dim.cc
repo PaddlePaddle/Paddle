@@ -22,8 +22,10 @@ namespace cinn {
 namespace poly {
 
 std::string Dim::range_repr() const {
-  return utils::StringFormat(
-      "%s <= %s <= %s", utils::GetStreamCnt(lower_bound).c_str(), id.c_str(), utils::GetStreamCnt(upper_bound).c_str());
+  return utils::StringFormat("%s <= %s <= %s",
+                             utils::GetStreamCnt(lower_bound).c_str(),
+                             id.c_str(),
+                             utils::GetStreamCnt(upper_bound).c_str());
 }
 
 Dim::Dim(std::string id, ir::Expr lower_bound, ir::Expr upper_bound)

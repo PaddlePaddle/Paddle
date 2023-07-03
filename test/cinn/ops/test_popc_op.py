@@ -15,11 +15,12 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
+import paddle
 
 INT32_MAX = (1 << 31) - 1
 INT32_MIN = -(1 << 31)
@@ -46,8 +47,9 @@ def popcount(integer, dtype):
         return bits - ones - trailing_zeros + 1
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestPopcOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -71,11 +73,12 @@ class TestPopcOp(OpTest):
         builder = NetBuilder("popc")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.popc(x)
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -125,12 +128,8 @@ class TestPopcOpShapeDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = []
 

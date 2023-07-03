@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestReverseOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -37,7 +39,7 @@ class TestReverseOp(OpTest):
             axes[i] = max(axes[i], -dims)
         self.inputs = {
             "x": self.random(self.case["shape"], self.case["dtype"]),
-            "axes": axes
+            "axes": axes,
         }
         self.net_builder_api = self.case["net_builder_api"]
 
@@ -55,7 +57,9 @@ class TestReverseOp(OpTest):
         builder = NetBuilder("reverse")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         if self.net_builder_api == "reverse":
             out = builder.reverse(x, self.inputs["axes"])
         elif self.net_builder_api == "flip":
@@ -64,8 +68,7 @@ class TestReverseOp(OpTest):
             raise NotImplementedError
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
@@ -122,14 +125,10 @@ class TestReverseOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "axes": [0]
-            },
+            {"axes": [0]},
         ]
         net_builder_api_attrs = [
             {
@@ -158,29 +157,15 @@ class TestReverseOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "bool"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = [
-            {
-                "axes": [0]
-            },
+            {"axes": [0]},
         ]
         net_builder_api_attrs = [
             {
@@ -206,35 +191,17 @@ class TestReverseOpAxis(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "axes": [0]
-            },
-            {
-                "axes": [1]
-            },
-            {
-                "axes": [2]
-            },
-            {
-                "axes": [3]
-            },
-            {
-                "axes": [-1]
-            },
-            {
-                "axes": [-2]
-            },
-            {
-                "axes": [-3]
-            },
-            {
-                "axes": [-4]
-            },
+            {"axes": [0]},
+            {"axes": [1]},
+            {"axes": [2]},
+            {"axes": [3]},
+            {"axes": [-1]},
+            {"axes": [-2]},
+            {"axes": [-3]},
+            {"axes": [-4]},
         ]
         net_builder_api_attrs = [
             {
@@ -260,38 +227,18 @@ class TestReverseOpMultiAxis(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "axes": []
-            },
-            {
-                "axes": [0]
-            },
-            {
-                "axes": [1, 2]
-            },
-            {
-                "axes": [2, -1, 3]
-            },
-            {
-                "axes": [0, -3, 3, 1]
-            },
-            {
-                "axes": [-1]
-            },
-            {
-                "axes": [-2, -1]
-            },
-            {
-                "axes": [-3, -2, 3]
-            },
-            {
-                "axes": [0, 3, -3, -2]
-            },
+            {"axes": []},
+            {"axes": [0]},
+            {"axes": [1, 2]},
+            {"axes": [2, -1, 3]},
+            {"axes": [0, -3, 3, 1]},
+            {"axes": [-1]},
+            {"axes": [-2, -1]},
+            {"axes": [-3, -2, 3]},
+            {"axes": [0, 3, -3, -2]},
         ]
         net_builder_api_attrs = [
             {

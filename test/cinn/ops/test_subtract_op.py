@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSubOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -33,12 +35,12 @@ class TestSubOp(OpTest):
         if self.case["broadcast"]:
             self.inputs = {
                 "x": self.random(self.case["x_shape"], self.case["dtype"]),
-                "y": self.random(self.case["y_shape"], self.case["dtype"])
+                "y": self.random(self.case["y_shape"], self.case["dtype"]),
             }
         else:
             self.inputs = {
                 "x": self.random(self.case["shape"], self.case["dtype"]),
-                "y": self.random(self.case["shape"], self.case["dtype"])
+                "y": self.random(self.case["shape"], self.case["dtype"]),
             }
 
     def build_paddle_program(self, target):
@@ -53,15 +55,20 @@ class TestSubOp(OpTest):
         builder = NetBuilder("sub")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         y = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["y"].shape, "y")
+            self.inputs["y"].shape,
+            "y",
+        )
         out = builder.subtract(x, y)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y],
-                                   [self.inputs["x"], self.inputs["y"]], [out])
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
 
         self.cinn_outputs = res
 
@@ -122,9 +129,7 @@ class TestSubOpShapeTest(TestCaseHelper):
             {
                 "shape": [131072],
             },
-            {
-                "shape": [1048576]
-            },
+            {"shape": [1048576]},
             {
                 "shape": [64, 32, 16, 8, 4],
             },
@@ -146,21 +151,11 @@ class TestSubOpDtypeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [{"axes": []}]
         self.attrs = [{"broadcast": False}]

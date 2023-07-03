@@ -588,6 +588,16 @@
     func : cumprod
   backward : cumprod_grad
 
+- op : cumsum
+  args : (Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CumScalarAxisInferMeta
+  kernel :
+    func : cumsum
+    data_type : x
+  backward : cumsum_grad
+
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -761,6 +771,16 @@
     func : exp
   inplace : (x -> out)
   backward : exp_grad
+
+- op : expand
+  args : (Tensor x, IntArray shape = {})
+  output : Tensor(out)
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : expand
+    data_type : x
+  backward : expand_grad
 
 - op : expand_as
   args : (Tensor x, Tensor y, int[] target_shape = {})
@@ -1844,6 +1864,17 @@
     func : prior_box
     data_type : input
 
+- op : psroi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, int output_channels=1, float spatial_scale=1.0)
+  output : Tensor
+  infer_meta :
+    func : PsroiPoolInferMeta
+  kernel :
+    func : psroi_pool
+    data_type : x
+  optional : boxes_num
+  backward : psroi_pool_grad
+
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
   output : Tensor(out)
@@ -1935,6 +1966,29 @@
     data_type : param
   optional : mean_grad, master_param, master_param_outs
   inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out), (master_param->master_param_outs)
+
+- op : roi_align
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false)
+  output : Tensor
+  infer_meta :
+    func : RoiAlignInferMeta
+  kernel :
+    func : roi_align
+    data_type : x
+  optional : boxes_num
+  backward : roi_align_grad
+
+- op : roi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0)
+  output : Tensor(out), Tensor(arg_max)
+  infer_meta :
+    func : RoiPoolInferMeta
+  kernel :
+    func : roi_pool
+    data_type : x
+  optional : boxes_num
+  intermediate : arg_max
+  backward : roi_pool_grad
 
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})

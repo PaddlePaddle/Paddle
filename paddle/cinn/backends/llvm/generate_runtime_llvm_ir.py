@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import subprocess
+import sys
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
 
     srcs = []
     srcs.append('#include <absl/strings/string_view.h>')
-    #srcs.append('#include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"\n')
+    # srcs.append('#include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"\n')
     srcs.append('namespace cinn::backends {')
     srcs.append("static const absl::string_view kRuntimeLlvmIr(")
     srcs.append('R"ROC(')
@@ -36,12 +36,19 @@ def main():
     srcs.append(');\n')
 
     cmd = "{} --version".format(llvm_config)
-    version = subprocess.check_output(
-        cmd, shell=True).decode('utf-8').strip().split('.')
+    version = (
+        subprocess.check_output(cmd, shell=True)
+        .decode('utf-8')
+        .strip()
+        .split('.')
+    )
     srcs.append("struct llvm_version {")
     for v, n in zip(["major", "minor", "micro"], version):
-        srcs.append("  static constexpr int k{} = {};".format(
-            v.title(), ''.join(filter(str.isdigit, n))))
+        srcs.append(
+            "  static constexpr int k{} = {};".format(
+                v.title(), ''.join(filter(str.isdigit, n))
+            )
+        )
     srcs.append("};")
 
     srcs.append('}  // namespace cinn::backends')

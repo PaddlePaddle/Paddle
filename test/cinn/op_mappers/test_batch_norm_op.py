@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -38,29 +40,34 @@ class TestBatchNormOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         scale = paddle.static.data(
             name='scale',
             shape=self.feed_data['scale'].shape,
-            dtype=self.feed_data['scale'].dtype)
+            dtype=self.feed_data['scale'].dtype,
+        )
         bias = paddle.static.data(
             name='bias',
             shape=self.feed_data['bias'].shape,
-            dtype=self.feed_data['bias'].dtype)
+            dtype=self.feed_data['bias'].dtype,
+        )
         mean = paddle.static.data(
             name='mean',
             shape=self.feed_data['mean'].shape,
-            dtype=self.feed_data['mean'].dtype)
+            dtype=self.feed_data['mean'].dtype,
+        )
         variance = paddle.static.data(
             name='variance',
             shape=self.feed_data['variance'].shape,
-            dtype=self.feed_data['variance'].dtype)
+            dtype=self.feed_data['variance'].dtype,
+        )
         return {
             'X': [x],
             'Scale': [scale],
             'Bias': [bias],
             'Mean': [mean],
-            'Variance': [variance]
+            'Variance': [variance],
         }
 
     def set_op_attrs(self):
@@ -70,7 +77,7 @@ class TestBatchNormOp(OpMapperTest):
             'data_layout': 'NCHW',
             'is_test': False,
             'trainable_statistics': False,
-            'use_global_stats': False
+            'use_global_stats': False,
         }
 
     def set_op_outputs(self):
@@ -99,7 +106,7 @@ class TestBatchNormInferOp(TestBatchNormOp):
             'data_layout': 'NCHW',
             'is_test': True,
             'trainable_statistics': False,
-            'use_global_stats': False
+            'use_global_stats': False,
         }
 
     def skip_check_outputs(self):

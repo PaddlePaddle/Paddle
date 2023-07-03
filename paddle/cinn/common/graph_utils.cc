@@ -38,7 +38,8 @@ std::vector<GraphNode *> DFSSort(const std::vector<GraphNode *> &nodes) {
 
 }  // namespace
 
-std::set<GraphNode *> Graph::dependencies(const std::vector<GraphNode *> &targets) {
+std::set<GraphNode *> Graph::dependencies(
+    const std::vector<GraphNode *> &targets) {
   // A naive implementation.
   std::set<GraphNode *> _targets(targets.begin(), targets.end());
   std::set<GraphNode *> res;
@@ -69,7 +70,8 @@ std::vector<GraphNode *> Graph::nodes() {
   return res;
 }
 
-std::tuple<std::vector<GraphNode *>, std::vector<GraphEdge *>> Graph::topological_order() const {
+std::tuple<std::vector<GraphNode *>, std::vector<GraphEdge *>>
+Graph::topological_order() const {
   std::vector<GraphNode *> node_order;
   std::vector<GraphEdge *> edge_order;
   std::deque<GraphNode *> queue;
@@ -105,12 +107,16 @@ std::tuple<std::vector<GraphNode *>, std::vector<GraphEdge *>> Graph::topologica
     }
   }
 
-  CHECK_EQ(node_order.size(), nodes().size()) << "circle detected in the schedule graph:\n\n" << Visualize();
+  CHECK_EQ(node_order.size(), nodes().size())
+      << "circle detected in the schedule graph:\n\n"
+      << Visualize();
 
   return std::make_tuple(node_order, edge_order);
 }
 
-std::vector<GraphNode *> Graph::dfs_order() { return std::vector<GraphNode *>(); }
+std::vector<GraphNode *> Graph::dfs_order() {
+  return std::vector<GraphNode *>();
+}
 
 std::vector<const GraphNode *> Graph::start_points() const {
   std::vector<const GraphNode *> res;
@@ -143,7 +149,9 @@ GraphNode *Graph::RetrieveNode(size_t key) const {
   return it == registry_.end() ? nullptr : it->second;
 }
 
-GraphNode *Graph::RetrieveNode(const std::string &key) const { return RetrieveNode(std::hash<std::string>()(key)); }
+GraphNode *Graph::RetrieveNode(const std::string &key) const {
+  return RetrieveNode(std::hash<std::string>()(key));
+}
 
 std::string Graph::Visualize() const {
   utils::DotLang dot;
@@ -163,9 +171,10 @@ std::string Graph::Visualize() const {
   return dot();
 }
 
-void Graph::ClearUnlinkedNodes(absl::flat_hash_map<std::string, std::vector<int>> *shape_dict,
-                               absl::flat_hash_map<std::string, Type> *type_dict,
-                               absl::flat_hash_map<std::string, std::string> *layout_dict) {
+void Graph::ClearUnlinkedNodes(
+    absl::flat_hash_map<std::string, std::vector<int>> *shape_dict,
+    absl::flat_hash_map<std::string, Type> *type_dict,
+    absl::flat_hash_map<std::string, std::string> *layout_dict) {
   CHECK(shape_dict);
   CHECK(type_dict);
   CHECK(layout_dict);
@@ -190,7 +199,8 @@ void Graph::ClearUnlinkedNodes(absl::flat_hash_map<std::string, std::vector<int>
 
 const char *GraphNode::__type_info__ = "GraphNode";
 
-bool GraphEdgeCompare::operator()(const Shared<GraphEdge> &a, const Shared<GraphEdge> &b) const {
+bool GraphEdgeCompare::operator()(const Shared<GraphEdge> &a,
+                                  const Shared<GraphEdge> &b) const {
   if (a->source()->id() == b->source()->id()) {
     if (a->sink()->id() == b->sink()->id()) {
       return a->index() < b->index();
@@ -200,7 +210,8 @@ bool GraphEdgeCompare::operator()(const Shared<GraphEdge> &a, const Shared<Graph
   return a->source()->id() < b->source()->id();
 }
 
-std::set<GraphNode *> Graph::CollectNodes(std::function<bool(const common::GraphNode *)> &&teller) {
+std::set<GraphNode *> Graph::CollectNodes(
+    std::function<bool(const common::GraphNode *)> &&teller) {
   std::set<GraphNode *> res;
   for (auto *node : nodes()) {
     if (teller(node)) res.insert(node);

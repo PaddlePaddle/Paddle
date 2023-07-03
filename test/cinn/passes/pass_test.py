@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.frontend import NetBuilder, Variable
-from cinn.frontend import get_default_program_pass, get_default_graph_pass
 import logging
 import os
 from test.cinn.ops.op_test import OpTest
+
+from cinn.frontend import (
+    NetBuilder,
+    Variable,
+    get_default_graph_pass,
+    get_default_program_pass,
+)
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="pass_test")
@@ -28,14 +33,12 @@ class PassTest(OpTest):
         self.init_input_data()
 
     def init_input_data(self) -> dict:
-        """Set feed data
-        """
+        """Set feed data"""
         self.feed_data = dict()
         logger.warn("No Input Data")
 
     def build_program(self, builder, target):
-        """
-        """
+        """ """
         raise Exception("Not implemented.")
 
     def run_program(self):
@@ -44,13 +47,16 @@ class PassTest(OpTest):
         inputs, outputs = self.build_program(net_builder, self.target)
 
         self.assertIsNotNone(
-            outputs, msg="The program's output should not empty!")
+            outputs, msg="The program's output should not empty!"
+        )
         self.assertGreater(
-            len(outputs), 0, msg="The program's output should not empty!")
+            len(outputs), 0, msg="The program's output should not empty!"
+        )
         self.assertIsInstance(
             outputs[0],
             Variable,
-            msg="The program's output should be list(cinn.frontend.Variable)")
+            msg="The program's output should be list(cinn.frontend.Variable)",
+        )
 
         pass_prog = net_builder.build()
         return pass_prog, inputs, outputs
@@ -64,11 +70,14 @@ class PassTest(OpTest):
                 var.name(),
                 self.feed_data,
                 msg="Cannot found input data {} in self.feed_data".format(
-                    var.name()))
+                    var.name()
+                ),
+            )
             feed_list.append(self.feed_data[var.name()])
 
-        return self.get_cinn_output(pass_prog, self.target, inputs, feed_list,
-                                    outputs, passes)
+        return self.get_cinn_output(
+            pass_prog, self.target, inputs, feed_list, outputs, passes
+        )
 
     def get_pass_size(self, passes):
         pass_prog, _, outputs = self.run_program()
@@ -79,26 +88,38 @@ class PassTest(OpTest):
         return op_num
 
     def check_pass_outputs(
-            self,
-            pass_diff,
-            test_passes,
-            base_passes=["AutoCast", "Decomposer", "TransToCustomCallPass"],
-            max_relative_error=1e-5,
-            all_equal=False,
-            equal_nan=False):
+        self,
+        pass_diff,
+        test_passes,
+        base_passes=["AutoCast", "Decomposer", "TransToCustomCallPass"],
+        max_relative_error=1e-5,
+        all_equal=False,
+        equal_nan=False,
+    ):
         base_pass_size = self.get_pass_size(base_passes)
         logger.debug(
-            "Pass after base pass optimize has {} ops".format(base_pass_size))
+            "Pass after base pass optimize has {} ops".format(base_pass_size)
+        )
         test_pass_size = self.get_pass_size(base_passes + test_passes)
         logger.debug(
             "Pass after base and test pass optimize has {} ops".format(
-                test_pass_size))
-        self.assertEqual(base_pass_size - test_pass_size, pass_diff,
-                         "The pass not running as expected")
+                test_pass_size
+            )
+        )
+        self.assertEqual(
+            base_pass_size - test_pass_size,
+            pass_diff,
+            "The pass not running as expected",
+        )
 
         cinn_no_pass_outputs = self.get_pass_outputs(base_passes)
         cinn_pass_outputs = self.get_pass_outputs(base_passes + test_passes)
 
         logger.debug("============ Check Outputs ============")
-        self.check_results(cinn_no_pass_outputs, cinn_pass_outputs,
-                           max_relative_error, all_equal, equal_nan)
+        self.check_results(
+            cinn_no_pass_outputs,
+            cinn_pass_outputs,
+            max_relative_error,
+            all_equal,
+            equal_nan,
+        )

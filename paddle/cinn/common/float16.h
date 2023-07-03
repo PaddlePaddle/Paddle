@@ -19,7 +19,8 @@
 #pragma once
 #endif  // __cplusplus
 
-#if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
+#if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
+    defined(__i386__)
 #define __CINN_x86__
 #include <immintrin.h>
 #endif
@@ -74,12 +75,12 @@ struct CINN_ALIGN(2) float16 {
 #ifdef __cplusplus
   // The following defaulted special class member functions
   // are added to make float16 pass the std::is_trivial test
-  float16()                 = default;
+  float16() = default;
   float16(const float16& o) = default;
   float16& operator=(const float16& o) = default;
-  float16(float16&& o)                 = default;
+  float16(float16&& o) = default;
   float16& operator=(float16&& o) = default;
-  ~float16()                      = default;
+  ~float16() = default;
 
 // Constructors
 #ifdef CINN_CUDA_FP16
@@ -95,7 +96,7 @@ struct CINN_ALIGN(2) float16 {
   __host__ __device__ inline explicit float16(float val) {
 #if defined(CINN_CUDA_FP16) && (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300)
     half tmp = __float2half(val);
-    x        = *reinterpret_cast<uint16_t*>(&tmp);
+    x = *reinterpret_cast<uint16_t*>(&tmp);
 
 #elif defined(__F16C__) && defined(__CINN_x86__)
     x = _cvtss_sh(val, 0);
@@ -104,7 +105,7 @@ struct CINN_ALIGN(2) float16 {
     // Conversion routine adapted from
     // http://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
     Bits v, s;
-    v.f           = val;
+    v.f = val;
     uint32_t sign = v.si & sigN;
     v.si ^= sign;
     sign >>= shiftSign;  // logical shift
@@ -124,7 +125,8 @@ struct CINN_ALIGN(2) float16 {
   __host__ __device__ inline explicit float16(bool b) : x(b ? 0x3c00 : 0) {}
 
   template <class T>
-  __host__ __device__ inline explicit float16(const T& val) : x(float16(static_cast<float>(val)).x) {}
+  __host__ __device__ inline explicit float16(const T& val)
+      : x(float16(static_cast<float>(val)).x) {}
 
 // Assignment operators
 #ifdef CINN_CUDA_FP16
@@ -220,7 +222,7 @@ struct CINN_ALIGN(2) float16 {
     // Conversion routine adapted from
     // http://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
     Bits v;
-    v.ui         = this->x;
+    v.ui = this->x;
     int32_t sign = v.si & sigC;
     v.si ^= sign;
     sign <<= shiftSign;
@@ -238,9 +240,13 @@ struct CINN_ALIGN(2) float16 {
 #endif
   }
 
-  __host__ __device__ inline explicit operator bool() const { return (x & 0x7fff) != 0; }
+  __host__ __device__ inline explicit operator bool() const {
+    return (x & 0x7fff) != 0;
+  }
 
-  __host__ __device__ inline explicit operator int8_t() const { return static_cast<int8_t>(static_cast<float>(*this)); }
+  __host__ __device__ inline explicit operator int8_t() const {
+    return static_cast<int8_t>(static_cast<float>(*this));
+  }
 
   __host__ __device__ inline explicit operator uint8_t() const {
     return static_cast<uint8_t>(static_cast<float>(*this));
@@ -270,7 +276,9 @@ struct CINN_ALIGN(2) float16 {
     return static_cast<uint64_t>(static_cast<float>(*this));
   }
 
-  __host__ __device__ inline operator double() const { return static_cast<double>(static_cast<float>(*this)); }
+  __host__ __device__ inline operator double() const {
+    return static_cast<double>(static_cast<float>(*this));
+  }
 
  private:
   union Bits {
@@ -279,7 +287,7 @@ struct CINN_ALIGN(2) float16 {
     uint32_t ui;
   };
 
-  static const int shift     = 13;
+  static const int shift = 13;
   static const int shiftSign = 16;
 
   static const int32_t infN = 0x7F800000;
@@ -288,7 +296,8 @@ struct CINN_ALIGN(2) float16 {
   static const int32_t sigN = 0x80000000;  // sign bit
 
   static constexpr int32_t infC = infN >> shift;
-  static constexpr int32_t nanN = (infC + 1) << shift;  // minimum flt16 nan as float32
+  static constexpr int32_t nanN = (infC + 1)
+                                  << shift;  // minimum flt16 nan as float32
   static constexpr int32_t maxC = maxN >> shift;
   static constexpr int32_t minC = minN >> shift;
   static constexpr int32_t sigC = sigN >> shiftSign;
@@ -353,7 +362,7 @@ __device__ inline half operator*(const half& a, const half& b) {
 
 __device__ inline half operator/(const half& a, const half& b) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
-  float num   = __half2float(a);
+  float num = __half2float(a);
   float denom = __half2float(b);
   return __float2half(num / denom);
 #else
@@ -442,7 +451,8 @@ __device__ inline bool operator>=(const half& a, const half& b) {
 #endif  // CINN_CUDA_FP16
 
 // Arithmetic operators for float16 on GPU
-__host__ __device__ inline float16 operator+(const float16& a, const float16& b) {
+__host__ __device__ inline float16 operator+(const float16& a,
+                                             const float16& b) {
 #if defined(CINN_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return float16(__hadd(a.to_half(), b.to_half()));
 #else
@@ -450,7 +460,8 @@ __host__ __device__ inline float16 operator+(const float16& a, const float16& b)
 #endif
 }
 
-__host__ __device__ inline float16 operator-(const float16& a, const float16& b) {
+__host__ __device__ inline float16 operator-(const float16& a,
+                                             const float16& b) {
 #if defined(CINN_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return float16(__hsub(a.to_half(), b.to_half()));
 #else
@@ -458,7 +469,8 @@ __host__ __device__ inline float16 operator-(const float16& a, const float16& b)
 #endif
 }
 
-__host__ __device__ inline float16 operator*(const float16& a, const float16& b) {
+__host__ __device__ inline float16 operator*(const float16& a,
+                                             const float16& b) {
 #if defined(CINN_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return float16(__hmul(a.to_half(), b.to_half()));
 #else
@@ -466,10 +478,11 @@ __host__ __device__ inline float16 operator*(const float16& a, const float16& b)
 #endif
 }
 
-__host__ __device__ inline float16 operator/(const float16& a, const float16& b) {
+__host__ __device__ inline float16 operator/(const float16& a,
+                                             const float16& b) {
 #if defined(CINN_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   // TODO(kexinzhao): check which cuda version starts to support __hdiv
-  float num   = __half2float(a.to_half());
+  float num = __half2float(a.to_half());
   float denom = __half2float(b.to_half());
   return float16(num / denom);
 #else
@@ -487,22 +500,26 @@ __host__ __device__ inline float16 operator-(const float16& a) {
 #endif
 }
 
-__host__ __device__ inline float16& operator+=(float16& a, const float16& b) {  // NOLINT
+__host__ __device__ inline float16& operator+=(float16& a,
+                                               const float16& b) {  // NOLINT
   a = a + b;
   return a;
 }
 
-__host__ __device__ inline float16& operator-=(float16& a, const float16& b) {  // NOLINT
+__host__ __device__ inline float16& operator-=(float16& a,
+                                               const float16& b) {  // NOLINT
   a = a - b;
   return a;
 }
 
-__host__ __device__ inline float16& operator*=(float16& a, const float16& b) {  // NOLINT
+__host__ __device__ inline float16& operator*=(float16& a,
+                                               const float16& b) {  // NOLINT
   a = a * b;
   return a;
 }
 
-__host__ __device__ inline float16& operator/=(float16& a, const float16& b) {  // NOLINT
+__host__ __device__ inline float16& operator/=(float16& a,
+                                               const float16& b) {  // NOLINT
   a = a / b;
   return a;
 }
@@ -570,9 +587,13 @@ __host__ __device__ inline bool(isnan)(const float16& a) {
 #endif
 }
 
-__host__ __device__ inline bool(isinf)(const float16& a) { return (a.x & 0x7fff) == 0x7c00; }
+__host__ __device__ inline bool(isinf)(const float16& a) {
+  return (a.x & 0x7fff) == 0x7c00;
+}
 
-__host__ __device__ inline bool(isfinite)(const float16& a) { return !((isnan)(a)) && !((isinf)(a)); }
+__host__ __device__ inline bool(isfinite)(const float16& a) {
+  return !((isnan)(a)) && !((isinf)(a));
+}
 
 __host__ __device__ inline float16(abs)(const float16& a) {
 #if defined(CINN_CUDA_FP16) && (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
@@ -582,7 +603,9 @@ __host__ __device__ inline float16(abs)(const float16& a) {
 #endif
 }
 
-__host__ __device__ inline float16(log)(const float16& a) { return float16(std::log(static_cast<float>(a))); }
+__host__ __device__ inline float16(log)(const float16& a) {
+  return float16(std::log(static_cast<float>(a)));
+}
 
 #ifdef __cplusplus
 }  // namespace common
@@ -594,34 +617,43 @@ __device__ inline cinn::common::float16 __shfl_sync(unsigned mask,
                                                     cinn::common::float16 var,
                                                     int srcLane,
                                                     int width = warpSize) {
-  return cinn::common::float16(__shfl_sync(mask, var.to_half(), srcLane, width));
+  return cinn::common::float16(
+      __shfl_sync(mask, var.to_half(), srcLane, width));
 }
 
-__device__ inline cinn::common::float16 __shfl_up_sync(unsigned mask,
-                                                       cinn::common::float16 var,
-                                                       unsigned int delta,
-                                                       int width = warpSize) {
-  return cinn::common::float16(__shfl_up_sync(mask, var.to_half(), delta, width));
+__device__ inline cinn::common::float16 __shfl_up_sync(
+    unsigned mask,
+    cinn::common::float16 var,
+    unsigned int delta,
+    int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_up_sync(mask, var.to_half(), delta, width));
 }
 
-__device__ inline cinn::common::float16 __shfl_down_sync(unsigned mask,
-                                                         cinn::common::float16 var,
-                                                         unsigned int delta,
-                                                         int width = warpSize) {
-  return cinn::common::float16(__shfl_down_sync(mask, var.to_half(), delta, width));
+__device__ inline cinn::common::float16 __shfl_down_sync(
+    unsigned mask,
+    cinn::common::float16 var,
+    unsigned int delta,
+    int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_down_sync(mask, var.to_half(), delta, width));
 }
 
-__device__ inline cinn::common::float16 __shfl_xor_sync(unsigned mask,
-                                                        cinn::common::float16 var,
-                                                        int laneMask,
-                                                        int width = warpSize) {
-  return cinn::common::float16(__shfl_xor_sync(mask, var.to_half(), laneMask, width));
+__device__ inline cinn::common::float16 __shfl_xor_sync(
+    unsigned mask,
+    cinn::common::float16 var,
+    int laneMask,
+    int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_xor_sync(mask, var.to_half(), laneMask, width));
 }
 
-__host__ __device__ inline cinn::common::float16 max(const cinn::common::float16& a, const cinn::common::float16& b) {
+__host__ __device__ inline cinn::common::float16 max(
+    const cinn::common::float16& a, const cinn::common::float16& b) {
   return a > b ? a : b;
 }
-__host__ __device__ inline cinn::common::float16 min(const cinn::common::float16& a, const cinn::common::float16& b) {
+__host__ __device__ inline cinn::common::float16 min(
+    const cinn::common::float16& a, const cinn::common::float16& b) {
   return a < b ? a : b;
 }
 #endif  // __cplusplus && CINN_CUDA_FP16

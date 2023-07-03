@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest
+
 import paddle
 
 
@@ -43,25 +45,31 @@ class TestTakeAlongAxisOp(OpMapperTest):
 
     def set_op_inputs(self):
         broadcast_shape = infer_broadcast_shape(
-            self.feed_data['x'], self.feed_data['index'], self.axis)
+            self.feed_data['x'], self.feed_data['index'], self.axis
+        )
         if not broadcast_shape:
             broadcast_shape = self.feed_data['index'].shape
-        self.feed_data['index'] = np.broadcast_to(self.feed_data['index'],
-                                                  broadcast_shape).copy()
+        self.feed_data['index'] = np.broadcast_to(
+            self.feed_data['index'], broadcast_shape
+        ).copy()
         broadcast_shape_list = list(broadcast_shape)
-        broadcast_shape_list[self.axis] = list(
-            self.feed_data['x'].shape)[self.axis]
+        broadcast_shape_list[self.axis] = list(self.feed_data['x'].shape)[
+            self.axis
+        ]
         broadcast_shape = tuple(broadcast_shape_list)
-        self.feed_data['x'] = np.broadcast_to(self.feed_data['x'],
-                                              broadcast_shape).copy()
+        self.feed_data['x'] = np.broadcast_to(
+            self.feed_data['x'], broadcast_shape
+        ).copy()
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         index = paddle.static.data(
             name='index',
             shape=self.feed_data['index'].shape,
-            dtype=self.feed_data['index'].dtype)
+            dtype=self.feed_data['index'].dtype,
+        )
         return {'Input': [x], 'Index': [index]}
 
     def set_op_attrs(self):

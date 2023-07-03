@@ -39,7 +39,9 @@ struct TuningRecord {
         predicted_cost(record.predicted_cost()),
         trace(record.trace()),
         execution_cost(record.execution_cost()) {}
-  TuningRecord(const std::string& task_key, const SearchState& state, double execution_cost)
+  TuningRecord(const std::string& task_key,
+               const SearchState& state,
+               double execution_cost)
       : task_key(task_key),
         predicted_cost(state->predicted_cost),
         trace(state->ir_schedule.GetTraceDesc().ToProto()),
@@ -58,15 +60,15 @@ struct TuningRecord {
 enum class DatabaseType : int { kMemory, kJSONFile };
 
 struct DatabaseConfig {
-  DatabaseType type            = DatabaseType::kMemory;
-  int capacity_per_task        = 2;
+  DatabaseType type = DatabaseType::kMemory;
+  int capacity_per_task = 2;
   std::string record_file_path = "/tmp/tuning_record.json";
 };
 
-// A database supports insert or lookup historial tuning result with specified traits.
-// It can be implemented with a concrete storage to save/load underlying data,
-// such as memory, file, database server and so on, this base class can be regarded as
-// one using memory as its underlying storage medium.
+// A database supports insert or lookup historial tuning result with specified
+// traits. It can be implemented with a concrete storage to save/load underlying
+// data, such as memory, file, database server and so on, this base class can be
+// regarded as one using memory as its underlying storage medium.
 class Database {
  public:
   explicit Database(int capacity_per_task);
@@ -93,7 +95,9 @@ class Database {
   void Insert(const TuningRecord& record);
 
   // map task_key to its records
-  std::unordered_map<std::string, std::multiset<TuningRecord, TuningRecord::Compare>> key2record_;
+  std::unordered_map<std::string,
+                     std::multiset<TuningRecord, TuningRecord::Compare>>
+      key2record_;
   // the max number of candidates stored
   const int capacity_per_task_;
 };

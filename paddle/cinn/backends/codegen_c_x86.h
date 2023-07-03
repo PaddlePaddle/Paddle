@@ -27,14 +27,14 @@ namespace backends {
  */
 class CodeGenCX86 : public CodeGenC {
  public:
-  //! The X86 CPU supports some following features. We use SSE or AVX to accelerate the basic operations if forloop is
-  //! vectorized.
+  //! The X86 CPU supports some following features. We use SSE or AVX to
+  //! accelerate the basic operations if forloop is vectorized.
   enum class Feature : int {
-    None   = 0,
-    SSE    = 1,       //! support SSE instruction set.
+    None = 0,
+    SSE = 1,          //! support SSE instruction set.
     AVX256 = 1 << 1,  // ! support AVX256 instruction set.
     AVX512 = 1 << 2,  // ! support AVX512 instruction set.
-    BLAS   = 1 << 3,  // ! support BLAS library.
+    BLAS = 1 << 3,    // ! support BLAS library.
   };
 
   Feature feature{Feature::None};
@@ -44,7 +44,8 @@ class CodeGenCX86 : public CodeGenC {
    * @param target The device.
    * @param features Features it supported.
    */
-  CodeGenCX86(Target target, Feature feature) : CodeGenC(target), feature(feature) {}
+  CodeGenCX86(Target target, Feature feature)
+      : CodeGenC(target), feature(feature) {}
 
  protected:
   void Visit(const ir::Add *op) override;
@@ -67,10 +68,18 @@ class CodeGenCX86 : public CodeGenC {
 
   //! Check the features.
   // @{
-  bool SupportsSSE() { return static_cast<int>(feature) & static_cast<int>(Feature::SSE); }
-  bool SupportsAVX256() { return static_cast<int>(feature) & static_cast<int>(Feature::AVX256); }
-  bool SupportsAVX512() { return static_cast<int>(feature) & static_cast<int>(Feature::AVX512); }
-  bool SupportsBLAS() { return static_cast<int>(feature) & static_cast<int>(Feature::BLAS); }
+  bool SupportsSSE() {
+    return static_cast<int>(feature) & static_cast<int>(Feature::SSE);
+  }
+  bool SupportsAVX256() {
+    return static_cast<int>(feature) & static_cast<int>(Feature::AVX256);
+  }
+  bool SupportsAVX512() {
+    return static_cast<int>(feature) & static_cast<int>(Feature::AVX512);
+  }
+  bool SupportsBLAS() {
+    return static_cast<int>(feature) & static_cast<int>(Feature::BLAS);
+  }
   // @}
 
   //! Print (and prepare) a argument in vectorize type, for example:
@@ -84,10 +93,11 @@ class CodeGenCX86 : public CodeGenC {
   void PrintAbsAddr(const Op *op) {
     os() << op->tensor.template As<ir::_Tensor_>()->name << " + ";
 
-    auto index   = op->index();
+    auto index = op->index();
     auto *ramp_n = index.template As<ir::Ramp>();
     if (ramp_n) {
-      CHECK(!ramp_n->base.template As<ir::Ramp>()) << "base of a Ramp node should not be Ramp type";
+      CHECK(!ramp_n->base.template As<ir::Ramp>())
+          << "base of a Ramp node should not be Ramp type";
       Print(ramp_n->base);
     } else {
       Print(op->index());
@@ -99,8 +109,12 @@ class CodeGenCX86 : public CodeGenC {
 };
 
 template <typename Op>
-void CodeGenCX86::VisitBinaryOp(const Op *op, Expr a, Expr b, const std::string &op_repr) {
-  CHECK_EQ(a.type(), b.type()) << " a is : " << a << ", and b is : " << b << ". op_repr is : " << op_repr;
+void CodeGenCX86::VisitBinaryOp(const Op *op,
+                                Expr a,
+                                Expr b,
+                                const std::string &op_repr) {
+  CHECK_EQ(a.type(), b.type()) << " a is : " << a << ", and b is : " << b
+                               << ". op_repr is : " << op_repr;
 
   // scalar.
   if (a.type().lanes() == 1) {
