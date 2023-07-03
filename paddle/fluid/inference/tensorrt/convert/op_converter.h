@@ -745,7 +745,7 @@ class OpConverter {
         VLOG(3) << layer->getOutput(i)->getDimensions().d[ii];
       }
 
-      PADDLE_ENFORCE_GT(
+      PADDLE_ENFORCE_GE(
           layer->getOutput(i)->getDimensions().nbDims,
           0,
           platform::errors::InvalidArgument(
