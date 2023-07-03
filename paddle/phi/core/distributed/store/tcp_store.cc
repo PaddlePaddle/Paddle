@@ -26,8 +26,6 @@
 namespace phi {
 namespace distributed {
 
-std::once_flag TCPStore::init_flag_;
-
 namespace detail {
 
 constexpr int INFTIME = 10000;  // 10 seconds
@@ -354,9 +352,7 @@ TCPStore::TCPStore(std::string host,
 
   VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-    std::call_once(init_flag_, [&]() {
       _server = detail::TCPServer::create(port, num_workers, timeout);
-    });
   }
 
   _client = detail::TCPClient::connect(host, port);
