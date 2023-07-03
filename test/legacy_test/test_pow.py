@@ -214,7 +214,7 @@ class TestPowerError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.pow, x, str(y))
 
 
-class TestInplacePowerScalar(TestDygraphInplace):
+class TestDygraphInplacePowerScalar(TestDygraphInplace):
     def set_np_compare_func(self):
         self.np_compare = np.allclose
 
@@ -225,7 +225,7 @@ class TestInplacePowerScalar(TestDygraphInplace):
         return paddle.pow(var, 2)
 
 
-class TestInplacePowerTensor(TestDygraphInplace):
+class TestDygraphInplacePowerTensor(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
         self.dtype = "float32"
