@@ -27,12 +27,12 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
   // (1) Malloc memory for interfaces, traits, opinfo_impl.
   size_t interfaces_num = interface_map.size();
   size_t traits_num = trait_set.size();
-  VLOG(4) << "Create OpInfoImpl with: " << interfaces_num << " interfaces, "
+  VLOG(6) << "Create OpInfoImpl with: " << interfaces_num << " interfaces, "
           << traits_num << " traits, " << attributes_num << " attributes.";
   size_t base_size = sizeof(InterfaceValue) * interfaces_num +
                      sizeof(TypeId) * traits_num + sizeof(OpInfoImpl);
   char *base_ptr = static_cast<char *>(::operator new(base_size));
-  VLOG(4) << "Malloc " << base_size << " Bytes at "
+  VLOG(6) << "Malloc " << base_size << " Bytes at "
           << static_cast<void *>(base_ptr);
   if (interfaces_num > 0) {
     std::sort(interface_map.begin(), interface_map.end());
@@ -49,7 +49,7 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
     base_ptr += traits_num * sizeof(TypeId);
   }
   // Construct OpInfoImpl.
-  VLOG(4) << "Construct OpInfoImpl at " << base_ptr << " ......";
+  VLOG(6) << "Construct OpInfoImpl at " << base_ptr << " ......";
   OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(dialect,
                                                     op_id,
                                                     op_name,
@@ -120,7 +120,7 @@ void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
 }
 
 void OpInfoImpl::Destroy() {
-  VLOG(4) << "Destroy op_info impl at " << this;
+  VLOG(6) << "Destroy op_info impl at " << this;
   // (1) free interfaces
   char *base_ptr = reinterpret_cast<char *>(this) -
                    sizeof(ir::TypeId) * num_traits_ -
@@ -133,7 +133,7 @@ void OpInfoImpl::Destroy() {
     }
   }
   // (2) free memeory
-  VLOG(4) << "Free base_ptr " << base_ptr;
+  VLOG(6) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
   free(base_ptr);
 }
 

@@ -15,27 +15,32 @@
 # limitations under the License.
 
 import unittest
+
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
+
 import paddle
 import paddle.nn.functional as F
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestArgSortOp(OpTest):
     def setUp(self):
         self.init_case()
 
     def init_case(self):
         self.inputs = {
-            "x1": np.random.random([
-                2,
-                4,
-            ]).astype("float32")
+            "x1": np.random.random(
+                [
+                    2,
+                    4,
+                ]
+            ).astype("float32")
         }
         self.axis = 1
         self.descending = False
@@ -51,8 +56,9 @@ class TestArgSortOp(OpTest):
         x1 = builder.create_input(Float(32), self.inputs["x1"].shape, "x1")
         out = builder.argsort(x1, self.axis, not self.descending)
         prog = builder.build()
-        forward_res = self.get_cinn_output(prog, target, [x1],
-                                           [self.inputs["x1"]], out)
+        forward_res = self.get_cinn_output(
+            prog, target, [x1], [self.inputs["x1"]], out
+        )
 
         self.cinn_outputs = np.array([forward_res[0]]).astype("int64")
 
@@ -63,10 +69,12 @@ class TestArgSortOp(OpTest):
 class TestArgSortCase1(TestArgSortOp):
     def init_case(self):
         self.inputs = {
-            "x1": np.random.random([
-                2,
-                4,
-            ]).astype("float32")
+            "x1": np.random.random(
+                [
+                    2,
+                    4,
+                ]
+            ).astype("float32")
         }
         self.axis = 0
         self.descending = False
@@ -75,10 +83,12 @@ class TestArgSortCase1(TestArgSortOp):
 class TestArgSortCase2(TestArgSortOp):
     def init_case(self):
         self.inputs = {
-            "x1": np.random.random([
-                2,
-                4,
-            ]).astype("float32")
+            "x1": np.random.random(
+                [
+                    2,
+                    4,
+                ]
+            ).astype("float32")
         }
         self.axis = 0
         self.descending = True
@@ -87,10 +97,12 @@ class TestArgSortCase2(TestArgSortOp):
 class TestArgSortCase3(TestArgSortOp):
     def init_case(self):
         self.inputs = {
-            "x1": np.random.random([
-                2,
-                4,
-            ]).astype("float32")
+            "x1": np.random.random(
+                [
+                    2,
+                    4,
+                ]
+            ).astype("float32")
         }
         self.axis = 1
         self.descending = True
@@ -99,10 +111,12 @@ class TestArgSortCase3(TestArgSortOp):
 class TestArgSortCase4(TestArgSortOp):
     def init_case(self):
         self.inputs = {
-            "x1": np.random.random([
-                2,
-                4,
-            ]).astype("float32")
+            "x1": np.random.random(
+                [
+                    2,
+                    4,
+                ]
+            ).astype("float32")
         }
         self.axis = -1
         self.descending = True

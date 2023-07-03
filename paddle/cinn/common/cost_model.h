@@ -25,11 +25,14 @@ namespace auto_schedule {
  */
 class CostModel {
  public:
-  virtual void Train(const std::vector<std::vector<float>>& samples, const std::vector<float>& labels) = 0;
+  virtual void Train(const std::vector<std::vector<float>>& samples,
+                     const std::vector<float>& labels) = 0;
 
-  virtual std::vector<float> Predict(const std::vector<std::vector<float>>& samples) const = 0;
+  virtual std::vector<float> Predict(
+      const std::vector<std::vector<float>>& samples) const = 0;
 
-  virtual void Update(const std::vector<std::vector<float>>& samples, const std::vector<float>& labels) = 0;
+  virtual void Update(const std::vector<std::vector<float>>& samples,
+                      const std::vector<float>& labels) = 0;
 
   virtual void Save(const std::string& path) = 0;
 

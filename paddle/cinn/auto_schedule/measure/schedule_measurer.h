@@ -25,7 +25,9 @@ namespace auto_schedule {
 // which are building the input schedules and running the generated codes.
 class ScheduleMeasurer {
  public:
-  ScheduleMeasurer(ScheduleBuilder* builder, ScheduleRunner* runner, int num_threads = 1);
+  ScheduleMeasurer(ScheduleBuilder* builder,
+                   ScheduleRunner* runner,
+                   int num_threads = 1);
 
   // Measure a batch of inputs and return all results once.
   std::vector<MeasureResult> Measure(const std::vector<MeasureInput>& inputs);

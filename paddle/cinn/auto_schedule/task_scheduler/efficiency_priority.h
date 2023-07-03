@@ -25,7 +25,8 @@ namespace auto_schedule {
 // is picking a task with the maximum earnings ratio.
 class EfficiencyPriority : public TaskScheduler {
  public:
-  EfficiencyPriority(const std::vector<TuneTask>& tasks, const Config& config) : TaskScheduler(tasks, config) {}
+  EfficiencyPriority(const std::vector<TuneTask>& tasks, const Config& config)
+      : TaskScheduler(tasks, config) {}
 
   const char* Name() const override { return "efficiency_priority"; };
 

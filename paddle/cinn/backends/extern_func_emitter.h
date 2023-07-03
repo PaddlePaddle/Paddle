@@ -13,8 +13,8 @@
 // limitations under the License.
 
 /**
- * \file Implements the ExternFuncEmitter class, which is the base of all the emitter of extern function in the
- * backends.
+ * \file Implements the ExternFuncEmitter class, which is the base of all the
+ * emitter of extern function in the backends.
  */
 
 #pragma once
@@ -44,14 +44,14 @@ namespace cinn {
 namespace backends {
 
 //! IDs of backends.
-static const char* backend_C         = "C";
+static const char* backend_C = "C";
 static const char* backend_llvm_host = "llvm_host";
-static const char* backend_llvm_x86  = "llvm_x86";
-static const char* backend_nvgpu     = "nvgpu";
+static const char* backend_llvm_x86 = "llvm_x86";
+static const char* backend_nvgpu = "nvgpu";
 
 /**
- * \brief Base class of the emitter of all the extern functions able to trigger inside CINN CodeGen system.
- * There are some common attributes and interfaces.
+ * \brief Base class of the emitter of all the extern functions able to trigger
+ * inside CINN CodeGen system. There are some common attributes and interfaces.
  */
 class ExternFunctionEmitter {
  public:
@@ -63,7 +63,8 @@ class ExternFunctionEmitter {
    */
   virtual const char* func_name() const = 0;
   /**
-   * Emit a store node, if the call node's RetValuePacked is true, otherwise Emit a Call node.
+   * Emit a store node, if the call node's RetValuePacked is true, otherwise
+   * Emit a Call node.
    */
 
   void Emit(const ir::Call* op, bool insert_global_if_missing = false) {
@@ -82,13 +83,12 @@ class ExternFunctionEmitter {
    * s = Call(some_func, arg0)
    * \endcode
    *
-   * If this function returns true, some pass will applied and transform the IR to
-   * \code
-   * Call(some_func, get_addr(s)
-   * \endcode
+   * If this function returns true, some pass will applied and transform the IR
+   * to \code Call(some_func, get_addr(s) \endcode
    *
-   * The `RetValuePacked` should be true when the external function modify an existing buffer (or some view of it) due
-   * to that the C language can't return a container.
+   * The `RetValuePacked` should be true when the external function modify an
+   * existing buffer (or some view of it) due to that the C language can't
+   * return a container.
    */
   virtual bool RetValuePacked() const = 0;
 
@@ -107,7 +107,8 @@ struct ExternFuncID {
   std::string name;
   std::string backend_id;
 
-  ExternFuncID(const char* name, const char* backend_id) : name(name), backend_id(backend_id) {}
+  ExternFuncID(const char* name, const char* backend_id)
+      : name(name), backend_id(backend_id) {}
 
   friend std::ostream& operator<<(std::ostream& os, const ExternFuncID& x);
   friend bool operator==(const ExternFuncID& a, const ExternFuncID& b) {

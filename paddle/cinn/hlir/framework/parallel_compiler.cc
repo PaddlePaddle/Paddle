@@ -51,12 +51,15 @@ std::vector<std::unique_ptr<Instruction>> ParallelCompiler::operator()() {
 }
 
 OpPatternKind GetOpKind(const framework::Node* node) {
-  auto& op_pattern_dict = framework::Operator::GetAttrs<OpPatternKind>("OpPattern");
-  CHECK(op_pattern_dict.Find(node->op())) << "Don't find the pattern of op : " << node->id();
+  auto& op_pattern_dict =
+      framework::Operator::GetAttrs<OpPatternKind>("OpPattern");
+  CHECK(op_pattern_dict.Find(node->op()))
+      << "Don't find the pattern of op : " << node->id();
   auto kind = op_pattern_dict[node->op()];
 
   if (kind == framework::kBroadcast) {
-    // As binary op was defined as broadcast, actually it should be element-wise.
+    // As binary op was defined as broadcast, actually it should be
+    // element-wise.
     if (node->op()->name != "broadcast_to") {
       return framework::kElementWise;
     }
@@ -67,16 +70,19 @@ OpPatternKind GetOpKind(const framework::Node* node) {
 
 void ParallelCompiler::SplitTask() {
   CHECK(graph_->fusion_groups.size());
-  CHECK(graph_->fusion_groups.size() == option_.lowered_funcs.size() || option_.lowered_funcs.size() == 0);
+  CHECK(graph_->fusion_groups.size() == option_.lowered_funcs.size() ||
+        option_.lowered_funcs.size() == 0);
   // split task
-  int max_task_num =
-      FLAGS_cinn_parallel_compile_thread > 0 ? FLAGS_cinn_parallel_compile_thread : graph_->fusion_groups.size();
+  int max_task_num = FLAGS_cinn_parallel_compile_thread > 0
+                         ? FLAGS_cinn_parallel_compile_thread
+                         : graph_->fusion_groups.size();
 
   int group_per_task = graph_->fusion_groups.size();
   if (max_task_num > 1) {
     group_per_task = FLAGS_cinn_parallel_compile_size > 0
                          ? FLAGS_cinn_parallel_compile_size
-                         : ((graph_->fusion_groups.size() + max_task_num - 1) / max_task_num);
+                         : ((graph_->fusion_groups.size() + max_task_num - 1) /
+                            max_task_num);
   }
 
   for (int idx = 0; idx < graph_->fusion_groups.size(); idx += group_per_task) {
@@ -124,8 +130,12 @@ void ParallelCompiler::Task::Lowering() {
   if (options.lowered_funcs.size()) {
     CHECK_EQ(options.lowered_funcs.size(), graph->fusion_groups.size());
   }
-  auto& dtype_dict = graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>("inferdtype");
-  auto& shape_dict = graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape");
+  auto& dtype_dict =
+      graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
+          "inferdtype");
+  auto& shape_dict =
+      graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
+          "infershape");
 
   OpLowerer op_lowerer(dtype_dict, shape_dict, target);
   while (true) {
@@ -140,16 +150,19 @@ void ParallelCompiler::Task::Lowering() {
       continue;
     }
     auto& group = graph->fusion_groups[idx];
-    VLOG(1) << "Start Lowering Group " << idx << " at " << std::this_thread::get_id() << " :\n"
+    VLOG(1) << "Start Lowering Group " << idx << " at "
+            << std::this_thread::get_id() << " :\n"
             << "Group " << idx << " {\n"
             << graph->DebugGroupedGraph(group->CollectNodes()) << "}\n";
     lowered_funcs.emplace_back(std::move(op_lowerer.Lower(group)));
-    CHECK_EQ(lowered_funcs.back().size(), 1) << "Lowerd Function Is Not Equal 1!";
+    CHECK_EQ(lowered_funcs.back().size(), 1)
+        << "Lowerd Function Is Not Equal 1!";
   }
 }
 
 void ParallelCompiler::Task::CodegenAndJit() {
-  VLOG(2) << "Start Codegen and JIT with Group [" << cinn::utils::Join(this->gidx, ", ") << "] at "
+  VLOG(2) << "Start Codegen and JIT with Group ["
+          << cinn::utils::Join(this->gidx, ", ") << "] at "
           << std::this_thread::get_id();
   // build module
   ir::Module::Builder builder(common::UniqName("module"), target);
@@ -163,14 +176,15 @@ void ParallelCompiler::Task::CodegenAndJit() {
   if (target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     auto splited_module = backends::SplitCudaAndHostModule(ir_module);
-    auto hmodule        = std::get<0>(splited_module);
-    auto dmodule        = std::get<1>(splited_module);
+    auto hmodule = std::get<0>(splited_module);
+    auto dmodule = std::get<1>(splited_module);
 
     VLOG(3) << "Host Code:\n" << hmodule;
     VLOG(3) << "Device Code:\n" << dmodule;
     backends::CodeGenCUDA_Dev codegen(target);
     auto cuda_c = codegen.Compile(dmodule);
-    CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n" << dmodule;
+    CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
+                           << dmodule;
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
     graph->SaveSourceCode(cuda_c);
@@ -180,7 +194,10 @@ void ParallelCompiler::Task::CodegenAndJit() {
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
     // load cumodule
-    cumodule.reset(new CUDAModule(ptx, compiler.compile_to_cubin() ? CUDAModule::Kind::CUBIN : CUDAModule::Kind::PTX));
+    cumodule.reset(new CUDAModule(ptx,
+                                  compiler.compile_to_cubin()
+                                      ? CUDAModule::Kind::CUBIN
+                                      : CUDAModule::Kind::PTX));
 
     // register kernel
     backends::RuntimeSymbols symbols;
@@ -189,7 +206,8 @@ void ParallelCompiler::Task::CodegenAndJit() {
       CHECK(cufunc);
       symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
     }
-    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(), std::move(symbols));
+    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
+                                               std::move(symbols));
     engine->Link<backends::CodeGenCUDA_Host>(hmodule);
 #endif
   } else {
@@ -201,15 +219,21 @@ void ParallelCompiler::Task::CodegenAndJit() {
 void ParallelCompiler::Task::BuildInstruction() {
   // create instruction.
   for (int idx : gidx) {
-    VLOG(2) << "Start BuildInstruction of Group " << idx << " at " << std::this_thread::get_id();
+    VLOG(2) << "Start BuildInstruction of Group " << idx << " at "
+            << std::this_thread::get_id();
     auto& group = graph->fusion_groups[idx];
     CHECK(group->input_names.size() > 0 || group->output_names.size() > 0);
-    auto instr = std::unique_ptr<Instruction>(
-        new Instruction(target, scope.get(), group->input_names, group->output_names, group->GetFuncName()));
+    auto instr =
+        std::unique_ptr<Instruction>(new Instruction(target,
+                                                     scope.get(),
+                                                     group->input_names,
+                                                     group->output_names,
+                                                     group->GetFuncName()));
 
     auto fn_ptr = engine->Lookup(group->GetFuncName());
     CHECK(fn_ptr) << "Can't find jit function : " << group->GetFuncName();
-    instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), group->GetFuncName());
+    instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr),
+                          group->GetFuncName());
 
     instr->Finalize();
     instructions.push_back(std::move(instr));

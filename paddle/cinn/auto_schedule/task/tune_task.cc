@@ -30,15 +30,17 @@
 namespace cinn {
 namespace auto_schedule {
 
-void TuneTask::Initialize(const absl::flat_hash_map<std::string, hlir::framework::shape_t>& shape_dict,
-                          const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict,
-                          hlir::framework::OpLowerer* lower_handler) {
+void TuneTask::Initialize(
+    const absl::flat_hash_map<std::string, hlir::framework::shape_t>&
+        shape_dict,
+    const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict,
+    hlir::framework::OpLowerer* lower_handler) {
   CHECK(lower_handler != nullptr) << "op_lowerer can't be nullptr";
   op_lowerer = lower_handler;
 
   // Set lowered_funcs and analyze output names.
-  this->lowered_funcs  = op_lowerer->LowerWithoutSchedule(subgraph);
-  this->output_names   = GetOutputNamesFromLoweredFunc(this->lowered_funcs);
+  this->lowered_funcs = op_lowerer->LowerWithoutSchedule(subgraph);
+  this->output_names = GetOutputNamesFromLoweredFunc(this->lowered_funcs);
   this->serialized_key = SerializeToString(shape_dict, dtype_dict);
 }
 
@@ -50,34 +52,46 @@ std::vector<ir::Expr> TuneTask::GetLoweredFuncBodyExprs() const {
   return result;
 }
 
-std::string TuneTask::SerializeToString(const absl::flat_hash_map<std::string, hlir::framework::shape_t>& shape_dict,
-                                        const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict) {
+std::string TuneTask::SerializeToString(
+    const absl::flat_hash_map<std::string, hlir::framework::shape_t>&
+        shape_dict,
+    const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict) {
   std::stringstream ss;
   ss << target << "\n\n";  // print target
 
-  // local function to print dtype,shape of out/in variables of the specified node
-  auto print_node_links_fn = [&](const std::vector<common::Shared<common::GraphEdge>>& links, bool is_input) {
-    int printed_num = 0;
-    for (auto&& edge : links) {
-      const auto* var_node = is_input ? edge->source()->safe_as<hlir::framework::NodeData>()
-                                      : edge->sink()->safe_as<hlir::framework::NodeData>();
-      CHECK(var_node) << "var node invalid";
-      auto sit = shape_dict.find(var_node->id());
-      CHECK(sit != shape_dict.end()) << "can't find shape of variable:" << var_node->id();
-      auto dit = dtype_dict.find(var_node->id());
-      CHECK(dit != dtype_dict.end()) << "can't find dtype of variable:" << var_node->id();
-      if (printed_num > 0) {
-        ss << ", ";
-      }
-      ++printed_num;
-      // TODO(CtfGo): CINN uses the names of input/output NodeData ids as arguments of the LoweredFunc in the Lower
-      // process, so it will result in different LoweredFuncs for two Nodes even though they represents the same
-      // operator. Here we add `var_node->id()` into the serialized_key to distinguish them, otherwise AutoTuner will
-      // get wrong TuningRecords when querying cached results from database.  In the future, we should remove
-      // name-related limit in Lower process, to avoid duplicate tuning tasks with same operators.
-      ss << var_node->id() << "->" << cinn::common::Type2Str(dit->second) << "[" + utils::Join(sit->second, ",") << "]";
-    }
-  };
+  // local function to print dtype,shape of out/in variables of the specified
+  // node
+  auto print_node_links_fn =
+      [&](const std::vector<common::Shared<common::GraphEdge>>& links,
+          bool is_input) {
+        int printed_num = 0;
+        for (auto&& edge : links) {
+          const auto* var_node =
+              is_input ? edge->source()->safe_as<hlir::framework::NodeData>()
+                       : edge->sink()->safe_as<hlir::framework::NodeData>();
+          CHECK(var_node) << "var node invalid";
+          auto sit = shape_dict.find(var_node->id());
+          CHECK(sit != shape_dict.end())
+              << "can't find shape of variable:" << var_node->id();
+          auto dit = dtype_dict.find(var_node->id());
+          CHECK(dit != dtype_dict.end())
+              << "can't find dtype of variable:" << var_node->id();
+          if (printed_num > 0) {
+            ss << ", ";
+          }
+          ++printed_num;
+          // TODO(CtfGo): CINN uses the names of input/output NodeData ids as
+          // arguments of the LoweredFunc in the Lower process, so it will
+          // result in different LoweredFuncs for two Nodes even though they
+          // represents the same operator. Here we add `var_node->id()` into the
+          // serialized_key to distinguish them, otherwise AutoTuner will get
+          // wrong TuningRecords when querying cached results from database.  In
+          // the future, we should remove name-related limit in Lower process,
+          // to avoid duplicate tuning tasks with same operators.
+          ss << var_node->id() << "->" << cinn::common::Type2Str(dit->second)
+             << "[" + utils::Join(sit->second, ",") << "]";
+        }
+      };
 
   // print each node of the subgraph
   ss << "Group {\n";

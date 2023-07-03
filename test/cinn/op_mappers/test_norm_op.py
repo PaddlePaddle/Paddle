@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -31,7 +33,8 @@ class TestNormOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
@@ -40,7 +43,7 @@ class TestNormOp(OpMapperTest):
     def set_op_outputs(self):
         return {
             'Out': [str(self.feed_data['x'].dtype)],
-            "Norm": [str(self.feed_data['x'].dtype)]
+            "Norm": [str(self.feed_data['x'].dtype)],
         }
 
     def test_check_results(self):

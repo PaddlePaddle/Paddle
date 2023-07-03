@@ -40,7 +40,7 @@ namespace paddle {
 // same as Paddle's!!! The definition ref to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/operator.h#L97
 inline std::string GradVarName(const std::string& var_name) {
-  constexpr char kGradVarSuffix[]     = "@GRAD";
+  constexpr char kGradVarSuffix[] = "@GRAD";
   constexpr size_t kGradVarSuffixSize = 5U;
 
   std::string result;
@@ -57,12 +57,13 @@ constexpr char InplaceOutSuffix[] = "@InplaceOut";
 
 class OpMapperContext {
  public:
-  OpMapperContext(const hlir::framework::Scope& scope,
-                  const common::Target& target,
-                  NetBuilder* builder,
-                  std::unordered_map<std::string, Variable>* var_map,
-                  std::unordered_map<std::string, std::string>* var_model_to_program_map,
-                  std::unordered_set<std::string>* fetch_var_names)
+  OpMapperContext(
+      const hlir::framework::Scope& scope,
+      const common::Target& target,
+      NetBuilder* builder,
+      std::unordered_map<std::string, Variable>* var_map,
+      std::unordered_map<std::string, std::string>* var_model_to_program_map,
+      std::unordered_set<std::string>* fetch_var_names)
       : scope_(scope),
         target_(target),
         builder_(builder),
@@ -82,13 +83,17 @@ class OpMapperContext {
   NetBuilder* Builder() const { return builder_; }
 
   // add Variable into local var_map
-  void AddVar(const std::string& name, const Variable& var, bool can_inplace = true) const;
+  void AddVar(const std::string& name,
+              const Variable& var,
+              bool can_inplace = true) const;
 
   // get Variable from local var_map or scope
   Variable GetVar(const std::string& name) const;
 
   // add map from paddle name to cinn name into var_model_to_program_map
-  void AddVarModelToProgram(const std::string& name, const std::string& id, bool can_inplace = true) const;
+  void AddVarModelToProgram(const std::string& name,
+                            const std::string& id,
+                            bool can_inplace = true) const;
 
   void AddFetchVarName(const std::string& name) const;
 
@@ -108,7 +113,8 @@ class OpMapperContext {
 
   std::unordered_map<std::string, Variable>* var_map_{nullptr};
   // map from var in Paddle model to var name in program.
-  std::unordered_map<std::string, std::string>* var_model_to_program_map_{nullptr};
+  std::unordered_map<std::string, std::string>* var_model_to_program_map_{
+      nullptr};
   // fetch var names used in Paddle
   std::unordered_set<std::string>* fetch_var_names_{nullptr};
 
@@ -117,7 +123,8 @@ class OpMapperContext {
 
 class OpMapper {
  public:
-  using OpMapperFunc = std::function<void(const paddle::cpp::OpDesc&, const OpMapperContext&)>;
+  using OpMapperFunc =
+      std::function<void(const paddle::cpp::OpDesc&, const OpMapperContext&)>;
 
   OpMapper() = default;
 
@@ -125,7 +132,10 @@ class OpMapper {
     kernel_ = kernel;
     return *this;
   }
-  void Run(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) const { kernel_(op_desc, ctx); }
+  void Run(const paddle::cpp::OpDesc& op_desc,
+           const OpMapperContext& ctx) const {
+    kernel_(op_desc, ctx);
+  }
 
   std::string name;
 
@@ -141,11 +151,14 @@ class OpMapperRegistry : public Registry<OpMapper> {
   CINN_DISALLOW_COPY_AND_ASSIGN(OpMapperRegistry);
 };
 
-#define UNIQUE_OPMAPPER_NAME(OpName) static ::cinn::frontend::OpMapper& __op_mapper_registrar_##OpName
+#define UNIQUE_OPMAPPER_NAME(OpName) \
+  static ::cinn::frontend::OpMapper& __op_mapper_registrar_##OpName
 
 #define CINN_REGISTER_OP_MAPPER(OpName, Kernel)                \
   CINN_STR_CONCAT(UNIQUE_OPMAPPER_NAME(OpName), __COUNTER__) = \
-      ::cinn::frontend::OpMapperRegistry::Global()->__REGISTER_OR_GET__(#OpName).Set(Kernel);
+      ::cinn::frontend::OpMapperRegistry::Global()             \
+          ->__REGISTER_OR_GET__(#OpName)                       \
+          .Set(Kernel);
 
 }  // namespace frontend
 }  // namespace cinn

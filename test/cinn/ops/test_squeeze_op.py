@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest
 from op_test_helper import TestCaseHelper
+
+import paddle
 
 
 class TestSqueezeOp(OpTest):
@@ -26,9 +27,7 @@ class TestSqueezeOp(OpTest):
         self.prepare_inputs()
 
     def prepare_inputs(self):
-        self.inputs = {
-            "x": self.random(self.case["shape"], self.case["dtype"])
-        }
+        self.inputs = {"x": self.random(self.case["shape"], self.case["dtype"])}
         self.axes = self.case["axes"]
 
     def build_paddle_program(self, target):
@@ -40,12 +39,13 @@ class TestSqueezeOp(OpTest):
         builder = NetBuilder("squeeze")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.squeeze(x, self.axes)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -117,27 +117,13 @@ class TestSqueezeOpDtypeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "int8"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "bool"},
+            {"dtype": "int8"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [{"axes": []}]
 
@@ -147,34 +133,13 @@ class TestSqueezeOpAttributeAxes(TestCaseHelper):
         self.class_name = "TestSqueezeOpShapeTest"
         self.cls = TestSqueezeOp
         self.inputs = [
-            {
-                "shape": [1],
-                "axes": [0]
-            },
-            {
-                "shape": [64],
-                "axes": []
-            },
-            {
-                "shape": [64, 1],
-                "axes": [-1]
-            },
-            {
-                "shape": [64, 1],
-                "axes": [1]
-            },
-            {
-                "shape": [64, 1, 1, 32],
-                "axes": [1, 2]
-            },
-            {
-                "shape": [1, 32, 1, 32],
-                "axes": [0, -2]
-            },
-            {
-                "shape": [64, 1, 16, 1],
-                "axes": [1, -1]
-            },
+            {"shape": [1], "axes": [0]},
+            {"shape": [64], "axes": []},
+            {"shape": [64, 1], "axes": [-1]},
+            {"shape": [64, 1], "axes": [1]},
+            {"shape": [64, 1, 1, 32], "axes": [1, 2]},
+            {"shape": [1, 32, 1, 32], "axes": [0, -2]},
+            {"shape": [64, 1, 16, 1], "axes": [1, -1]},
         ]
         self.dtypes = [{"dtype": "float32"}]
         self.attrs = []
@@ -185,22 +150,10 @@ class TestSqueezeOpLargeTest(TestCaseHelper):
         self.class_name = "TestSqueezeOpLargeTest"
         self.cls = TestSqueezeOp
         self.inputs = [
-            {
-                "shape": [65536, 1],
-                "axes": [-1]
-            },
-            {
-                "shape": [1, 131072],
-                "axes": [-2]
-            },
-            {
-                "shape": [131072],
-                "axes": []
-            },
-            {
-                "shape": [64, 32, 16, 8, 4],
-                "axes": []
-            },
+            {"shape": [65536, 1], "axes": [-1]},
+            {"shape": [1, 131072], "axes": [-2]},
+            {"shape": [131072], "axes": []},
+            {"shape": [64, 32, 16, 8, 4], "axes": []},
         ]
         self.dtypes = [{"dtype": "float32"}]
         self.attrs = []

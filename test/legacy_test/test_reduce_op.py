@@ -279,14 +279,17 @@ class TestMaxOp_ZeroDim(OpTest):
         self.python_api = paddle.max
         self.public_python_api = paddle.max
         self.if_enable_cinn()
+        self.init_inputs_and_outputs()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def init_inputs_and_outputs(self):
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.attrs = {'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
         }
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
@@ -299,6 +302,20 @@ class TestMaxOp_ZeroDim(OpTest):
             check_prim=True,
             only_check_prim=True,
         )
+
+
+class TestMaxOp_ZeroDim1(TestMaxOp_ZeroDim):
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([5]).astype("float64")}
+        self.attrs = {'dim': [0]}
+        self.outputs = {'Out': self.inputs['X'].max(axis=(0,))}
+
+
+class TestMaxOp_ZeroDim2(TestMaxOp_ZeroDim1):
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([5, 20]).astype("float64")}
+        self.attrs = {'dim': [0, 1]}
+        self.outputs = {'Out': self.inputs['X'].max(axis=(0, 1))}
 
 
 class TestMaxFP32Op(OpTest):

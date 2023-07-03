@@ -35,7 +35,8 @@ struct Domain {
   //! The ISL context.
   isl::ctx ctx;
 
-  Domain(isl::ctx ctx, std::string id, std::vector<Dim> dims) : ctx(ctx), id(std::move(id)), dims(std::move(dims)) {
+  Domain(isl::ctx ctx, std::string id, std::vector<Dim> dims)
+      : ctx(ctx), id(std::move(id)), dims(std::move(dims)) {
     ExtractParams();
   }
 

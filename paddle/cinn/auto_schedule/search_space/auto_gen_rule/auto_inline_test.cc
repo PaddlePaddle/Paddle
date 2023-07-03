@@ -63,7 +63,14 @@ TEST(AutoInline, SingleLoopInline) {
 
   poly::StageMap stages = CreateStages({A, B, C});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestAutoInline_SingleLoopInline", stages, {A, C}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestAutoInline_SingleLoopInline",
+                     stages,
+                     {A, C},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
 
   VLOG(6) << "Expr after lowering:";
   VLOG(6) << funcs[0]->body;
@@ -74,7 +81,7 @@ TEST(AutoInline, SingleLoopInline) {
    */
   ir::IRSchedule ir_sch(ir::ModuleExpr(std::vector<ir::Expr>{funcs[0]->body}));
   SearchState state(ir_sch, 0, {});
-  ir::Expr block_b            = ir_sch.GetBlock("B");
+  ir::Expr block_b = ir_sch.GetBlock("B");
   std::vector<ir::Expr> loops = ir_sch.GetLoops("C");
   ir_sch.ComputeAt(block_b, loops[0]);
 
@@ -90,12 +97,13 @@ TEST(AutoInline, SingleLoopInline) {
   EXPECT_EQ(exprs.size(), 1UL);
 
   // ApplyOnBlock
-  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "B"), RuleApplyType::kApplyAndPruneOtherRules);
+  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "B"),
+            RuleApplyType::kApplyAndPruneOtherRules);
   auto new_states = auto_inline.ApplyOnBlock(state, "B");
 
   auto test_func = [](ir::IRSchedule* ir_sch) {
     ir::ModuleExpr mod_expr_after_inline = ir_sch->GetModule();
-    std::vector<ir::Expr> exprs          = mod_expr_after_inline.GetExprs();
+    std::vector<ir::Expr> exprs = mod_expr_after_inline.GetExprs();
     EXPECT_EQ(exprs.size(), 1UL);
 
     std::stringstream ss;
@@ -130,7 +138,8 @@ TEST(AutoInline, SingleLoopInline) {
 
   // Cannot inline above expr again
   EXPECT_EQ(auto_inline.Init(&ir_sch), RuleApplyType::kCannotApply);
-  EXPECT_EQ(auto_inline.AnalyseApplyType(new_states[0], "C"), RuleApplyType::kCannotApply);
+  EXPECT_EQ(auto_inline.AnalyseApplyType(new_states[0], "C"),
+            RuleApplyType::kCannotApply);
 }
 
 TEST(AutoInline, AddReluInline) {
@@ -148,15 +157,20 @@ TEST(AutoInline, AddReluInline) {
   frontend::Program program = builder.Build();
 
   FLAGS_cinn_ir_schedule = true;
-  auto graph             = std::make_shared<Graph>(program, target);
+  auto graph = std::make_shared<Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 
-  const auto& dtype_dict = graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>("inferdtype");
-  const auto& shape_dict = graph->GetAttrs<absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  auto op_lowerer        = std::make_unique<hlir::framework::OpLowerer>(dtype_dict, shape_dict, target);
+  const auto& dtype_dict =
+      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+          "inferdtype");
+  const auto& shape_dict = graph->GetAttrs<
+      absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
+  auto op_lowerer = std::make_unique<hlir::framework::OpLowerer>(
+      dtype_dict, shape_dict, target);
 
   EXPECT_EQ(graph->fusion_groups.size(), 1UL);
-  std::vector<ir::LoweredFunc> funcs = op_lowerer->LowerWithoutSchedule(graph->fusion_groups[0]);
+  std::vector<ir::LoweredFunc> funcs =
+      op_lowerer->LowerWithoutSchedule(graph->fusion_groups[0]);
 
   VLOG(6) << "Expr before auto inline: " << funcs[0]->body;
 
@@ -170,7 +184,7 @@ TEST(AutoInline, AddReluInline) {
 
   auto_inline.Apply(1);
   ir::ModuleExpr mod_expr_after_inline = ir_sch.GetModule();
-  std::vector<ir::Expr> exprs          = mod_expr_after_inline.GetExprs();
+  std::vector<ir::Expr> exprs = mod_expr_after_inline.GetExprs();
   EXPECT_EQ(exprs.size(), 1UL);
 
   std::stringstream ss;
@@ -186,15 +200,17 @@ TEST(AutoInline, AddReluInline) {
   auto_inline.Apply(0);
 
   // ApplyOnBlock
-  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "var_1"), RuleApplyType::kApplyAndPruneOtherRules);
+  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "var_1"),
+            RuleApplyType::kApplyAndPruneOtherRules);
   auto new_states = auto_inline.ApplyOnBlock(state, "var_1");
   // Auto Inline again
-  EXPECT_EQ(auto_inline.AnalyseApplyType(new_states[0], "var_3"), RuleApplyType::kApplyAndPruneOtherRules);
+  EXPECT_EQ(auto_inline.AnalyseApplyType(new_states[0], "var_3"),
+            RuleApplyType::kApplyAndPruneOtherRules);
   new_states = auto_inline.ApplyOnBlock(new_states[0], "var_3");
 
   auto test_func = [](ir::IRSchedule* ir_sch) {
     ir::ModuleExpr final_mod_expr = ir_sch->GetModule();
-    auto exprs                    = final_mod_expr.GetExprs();
+    auto exprs = final_mod_expr.GetExprs();
     EXPECT_EQ(exprs.size(), 1UL);
 
     std::stringstream ss;
@@ -238,7 +254,8 @@ TEST(AutoInline, AddReluInline) {
 
   // Cannot inline above expr again
   EXPECT_EQ(auto_inline.Init(&ir_sch), RuleApplyType::kCannotApply);
-  EXPECT_EQ(auto_inline.AnalyseApplyType(new_states[0], "var_2"), RuleApplyType::kCannotApply);
+  EXPECT_EQ(auto_inline.AnalyseApplyType(new_states[0], "var_2"),
+            RuleApplyType::kCannotApply);
 }
 
 #ifdef CINN_WITH_CUDA
@@ -246,14 +263,8 @@ class TestAutoInline : public TestAutoGenRuleBase {};
 
 /* The single chain graph composed of multiple blocks can be inlined into one.
  *
- * Before AutoInline: The output of the previous block is the input of another block.
- *   Loop1:
- *     x1 = Add()
- *   Loop2:
- *     x2 = Multiply(x1)
- *   Loop3:
- *     x3 = Add(x2)
- *   Loop4:
+ * Before AutoInline: The output of the previous block is the input of another
+ * block. Loop1: x1 = Add() Loop2: x2 = Multiply(x1) Loop3: x3 = Add(x2) Loop4:
  *     x4 = Relu(x3)
  *
  * After AutoInline: All loops are inlined into a loop.
@@ -263,18 +274,22 @@ class TestAutoInline : public TestAutoGenRuleBase {};
 TEST_F(TestAutoInline, SingleChain) {
   Target target = common::DefaultNVGPUTarget();
   Initialize(target);
-  std::vector<std::string> input_names   = {"bias", "conv_output", "bn_scale", "bn_offset"};
-  std::vector<std::string> output_names  = {"var_6", "var_5", "var_1", "var", "var_0", "var_4", "var_3"};
+  std::vector<std::string> input_names = {
+      "bias", "conv_output", "bn_scale", "bn_offset"};
+  std::vector<std::string> output_names = {
+      "var_6", "var_5", "var_1", "var", "var_0", "var_4", "var_3"};
   std::vector<int32_t> conv_output_shape = {1, 512, 56, 56};
-  int32_t channel                        = conv_output_shape[1];
-  std::vector<tests::VariableInfo> inputs_varinfo({{"conv_output", conv_output_shape},
-                                                   {"bias", {channel, 1, 1}},
-                                                   {"bn_scale", {channel, 1, 1}},
-                                                   {"bn_offset", {channel, 1, 1}}});
+  int32_t channel = conv_output_shape[1];
+  std::vector<tests::VariableInfo> inputs_varinfo(
+      {{"conv_output", conv_output_shape},
+       {"bias", {channel, 1, 1}},
+       {"bn_scale", {channel, 1, 1}},
+       {"bn_offset", {channel, 1, 1}}});
 
   // Construct the computation graph and convert it to ir::Expr
   Context::Global().ResetNameId();
-  ir::IRSchedule ir_schedule = MakeIRSchedule(tests::BiasBnReLUBuilder().Build(inputs_varinfo));
+  ir::IRSchedule ir_schedule =
+      MakeIRSchedule(tests::BiasBnReLUBuilder().Build(inputs_varinfo));
   SearchState state(ir_schedule, 0, {});
   std::vector<ir::Expr> func_bodys = ir_schedule.GetModule().GetExprs();
   ASSERT_EQ(func_bodys.size(), 1UL);
@@ -282,20 +297,23 @@ TEST_F(TestAutoInline, SingleChain) {
 
   // Apply AutoInline for every block that can be inline
   AutoInline auto_inline(target_, {output_names.front()});
-  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "var_3"), RuleApplyType::kApplyAndPruneOtherRules);
+  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "var_3"),
+            RuleApplyType::kApplyAndPruneOtherRules);
   auto new_states = auto_inline.ApplyOnBlock(state, "var_3");
-  std::vector<std::string> inline_block_names({"var_4", "var_5", "var_6", "var", "var_0", "var_1"});
+  std::vector<std::string> inline_block_names(
+      {"var_4", "var_5", "var_6", "var", "var_0", "var_1"});
   for (const auto& inline_block_name : inline_block_names) {
     new_states = auto_inline.ApplyOnBlock(new_states[0], inline_block_name);
   }
-  std::vector<ir::Expr> exprs = new_states[0]->ir_schedule.GetModule().GetExprs();
+  std::vector<ir::Expr> exprs =
+      new_states[0]->ir_schedule.GetModule().GetExprs();
   EXPECT_EQ(exprs.size(), 1UL);
   VLOG(6) << "Expr after AutoInline applied on block: " << exprs[0];
 
   // build ir::Module and debug source code
   auto build_module_auto = BuildIRModule(new_states[0]->ir_schedule);
-  auto build_module_manually =
-      BuildIRModule(MakeIRSchedule(tests::BiasBnReLUBuilder().Build(inputs_varinfo), -1, true));
+  auto build_module_manually = BuildIRModule(MakeIRSchedule(
+      tests::BiasBnReLUBuilder().Build(inputs_varinfo), -1, true));
   auto source_code_auto = GenSourceCode(build_module_auto);
   VLOG(6) << " auto-schedule source code:\n" << source_code_auto;
   auto source_code_manually = GenSourceCode(build_module_manually);
@@ -305,7 +323,10 @@ TEST_F(TestAutoInline, SingleChain) {
               GenExecutableKernel(build_module_manually),
               input_names,
               output_names,
-              {{conv_output_shape[1], 1, 1}, conv_output_shape, conv_output_shape, conv_output_shape},
+              {{conv_output_shape[1], 1, 1},
+               conv_output_shape,
+               conv_output_shape,
+               conv_output_shape},
               {conv_output_shape, {1}, {1}, {1}, {1}, {1}, {1}},
               target);
 }
@@ -328,14 +349,15 @@ TEST_F(TestAutoInline, SingleChain) {
 TEST_F(TestAutoInline, InlineToMultiConsumers) {
   Target target = common::DefaultNVGPUTarget();
   Initialize(target);
-  std::vector<std::string> input_names  = {"x"};
+  std::vector<std::string> input_names = {"x"};
   std::vector<std::string> output_names = {"var_2", "var_1", "var_0"};
   std::vector<int32_t> input_shape{256, 256};
   std::vector<tests::VariableInfo> inputs_varinfo({{"x", input_shape}});
 
   // Construct the computation graph and convert it to ir::Expr
   Context::Global().ResetNameId();
-  ir::IRSchedule ir_schedule = MakeIRSchedule(tests::ExpTwoConsumersOpBuilder().Build(inputs_varinfo));
+  ir::IRSchedule ir_schedule =
+      MakeIRSchedule(tests::ExpTwoConsumersOpBuilder().Build(inputs_varinfo));
   SearchState state(ir_schedule, 0, {});
   std::vector<ir::Expr> func_bodys = ir_schedule.GetModule().GetExprs();
   ASSERT_EQ(func_bodys.size(), 1UL);
@@ -343,17 +365,19 @@ TEST_F(TestAutoInline, InlineToMultiConsumers) {
 
   // Apply AutoInline for every block that can be inline
   AutoInline auto_inline(target_, {output_names.front()});
-  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "var_0"), RuleApplyType::kApplyAndPruneOtherRules);
-  auto new_states             = auto_inline.ApplyOnBlock(state, "var_1");
-  new_states                  = auto_inline.ApplyOnBlock(state, "var_0");
-  std::vector<ir::Expr> exprs = new_states[0]->ir_schedule.GetModule().GetExprs();
+  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "var_0"),
+            RuleApplyType::kApplyAndPruneOtherRules);
+  auto new_states = auto_inline.ApplyOnBlock(state, "var_1");
+  new_states = auto_inline.ApplyOnBlock(state, "var_0");
+  std::vector<ir::Expr> exprs =
+      new_states[0]->ir_schedule.GetModule().GetExprs();
   EXPECT_EQ(exprs.size(), 1UL);
   VLOG(6) << "Expr after AutoInline applied on block: " << exprs[0];
 
   // build ir::Module and debug source code
   auto build_module_auto = BuildIRModule(new_states[0]->ir_schedule);
-  auto build_module_manually =
-      BuildIRModule(MakeIRSchedule(tests::ExpTwoConsumersOpBuilder().Build(inputs_varinfo), -1, true));
+  auto build_module_manually = BuildIRModule(MakeIRSchedule(
+      tests::ExpTwoConsumersOpBuilder().Build(inputs_varinfo), -1, true));
   auto source_code_auto = GenSourceCode(build_module_auto);
   VLOG(6) << " auto-schedule source code:\n" << source_code_auto;
   auto source_code_manually = GenSourceCode(build_module_manually);
@@ -386,15 +410,21 @@ TEST_F(TestAutoInline, InlineToMultiConsumers) {
 TEST_F(TestAutoInline, OnlySpatialOp) {
   Target target = common::DefaultNVGPUTarget();
   Initialize(target);
-  std::vector<std::string> input_names  = {"x", "y"};
-  std::vector<std::string> output_names = {
-      "var_6", "var_4", "constant_idx_last", "constant_idx_first", "var_2", "var_5"};
+  std::vector<std::string> input_names = {"x", "y"};
+  std::vector<std::string> output_names = {"var_6",
+                                           "var_4",
+                                           "constant_idx_last",
+                                           "constant_idx_first",
+                                           "var_2",
+                                           "var_5"};
   std::vector<int32_t> input_shape{256, 256};
-  std::vector<tests::VariableInfo> inputs_varinfo({{"x", input_shape}, {"y", input_shape}});
+  std::vector<tests::VariableInfo> inputs_varinfo(
+      {{"x", input_shape}, {"y", input_shape}});
 
   // Construct the computation graph and convert it to ir::Expr
   Context::Global().ResetNameId();
-  ir::IRSchedule ir_schedule = MakeIRSchedule(tests::GatherAddSubBuilder().Build(inputs_varinfo));
+  ir::IRSchedule ir_schedule =
+      MakeIRSchedule(tests::GatherAddSubBuilder().Build(inputs_varinfo));
   SearchState state(ir_schedule, 0, {});
   std::vector<ir::Expr> func_bodys = ir_schedule.GetModule().GetExprs();
   ASSERT_EQ(func_bodys.size(), 1UL);
@@ -402,20 +432,23 @@ TEST_F(TestAutoInline, OnlySpatialOp) {
 
   // Apply AutoInline for every block that can be inline
   AutoInline auto_inline(target_, {output_names.front()});
-  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "constant_idx_first"), RuleApplyType::kApplyAndPruneOtherRules);
+  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "constant_idx_first"),
+            RuleApplyType::kApplyAndPruneOtherRules);
   auto new_states = auto_inline.ApplyOnBlock(state, "constant_idx_first");
-  std::vector<std::string> inline_block_names({"constant_idx_last", "var_2", "var_5", "var_4"});
+  std::vector<std::string> inline_block_names(
+      {"constant_idx_last", "var_2", "var_5", "var_4"});
   for (const auto& inline_block_name : inline_block_names) {
     new_states = auto_inline.ApplyOnBlock(new_states[0], inline_block_name);
   }
-  std::vector<ir::Expr> exprs = new_states[0]->ir_schedule.GetModule().GetExprs();
+  std::vector<ir::Expr> exprs =
+      new_states[0]->ir_schedule.GetModule().GetExprs();
   EXPECT_EQ(exprs.size(), 1UL);
   VLOG(6) << "Expr after AutoInline applied on block: " << exprs[0];
 
   // build ir::Module and debug source code
   auto build_module_auto = BuildIRModule(new_states[0]->ir_schedule);
-  auto build_module_manually =
-      BuildIRModule(MakeIRSchedule(tests::GatherAddSubBuilder().Build(inputs_varinfo), -1, true));
+  auto build_module_manually = BuildIRModule(MakeIRSchedule(
+      tests::GatherAddSubBuilder().Build(inputs_varinfo), -1, true));
   auto source_code_auto = GenSourceCode(build_module_auto);
   VLOG(6) << " auto-schedule source code:\n" << source_code_auto;
   auto source_code_manually = GenSourceCode(build_module_manually);
@@ -445,13 +478,14 @@ TEST_F(TestAutoInline, OnlySpatialOp) {
 TEST_F(TestAutoInline, NoReadBufferOp) {
   Target target = common::DefaultNVGPUTarget();
   Initialize(target);
-  std::vector<std::string> input_names  = {"x"};
+  std::vector<std::string> input_names = {"x"};
   std::vector<std::string> output_names = {"var_0", "fill_constant"};
   std::vector<int32_t> input_shape{256, 256};
   std::vector<tests::VariableInfo> inputs_varinfo({{"x", input_shape}});
 
   // Construct the computation graph and convert it to ir::Expr
-  ir::IRSchedule ir_schedule = MakeIRSchedule(tests::FillConstantAddBuilder().Build(inputs_varinfo));
+  ir::IRSchedule ir_schedule =
+      MakeIRSchedule(tests::FillConstantAddBuilder().Build(inputs_varinfo));
   SearchState state(ir_schedule, 0, {});
   std::vector<ir::Expr> func_bodys = ir_schedule.GetModule().GetExprs();
   ASSERT_EQ(func_bodys.size(), 1UL);
@@ -459,16 +493,18 @@ TEST_F(TestAutoInline, NoReadBufferOp) {
 
   // Apply AutoInline for every block that can be inline
   AutoInline auto_inline(target_, {output_names.front()});
-  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "fill_constant"), RuleApplyType::kApplyAndPruneOtherRules);
-  auto new_states             = auto_inline.ApplyOnBlock(state, "fill_constant");
-  std::vector<ir::Expr> exprs = new_states[0]->ir_schedule.GetModule().GetExprs();
+  EXPECT_EQ(auto_inline.AnalyseApplyType(state, "fill_constant"),
+            RuleApplyType::kApplyAndPruneOtherRules);
+  auto new_states = auto_inline.ApplyOnBlock(state, "fill_constant");
+  std::vector<ir::Expr> exprs =
+      new_states[0]->ir_schedule.GetModule().GetExprs();
   EXPECT_EQ(exprs.size(), 1UL);
   VLOG(6) << "Expr after AutoInline applied on block: " << exprs[0];
 
   // build ir::Module and debug source code
   auto build_module_auto = BuildIRModule(new_states[0]->ir_schedule);
-  auto build_module_manually =
-      BuildIRModule(MakeIRSchedule(tests::FillConstantAddBuilder().Build(inputs_varinfo), -1, true));
+  auto build_module_manually = BuildIRModule(MakeIRSchedule(
+      tests::FillConstantAddBuilder().Build(inputs_varinfo), -1, true));
   auto source_code_auto = GenSourceCode(build_module_auto);
   VLOG(6) << " auto-schedule source code:\n" << source_code_auto;
   auto source_code_manually = GenSourceCode(build_module_manually);

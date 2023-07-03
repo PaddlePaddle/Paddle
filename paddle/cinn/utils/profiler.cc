@@ -51,7 +51,8 @@ void ProfilerHelper::UpdateState() {
       g_state = ProfilerState::kAll;
       break;
     default:
-      LOG(WARNING) << "Unsupport FLAGS_cinn_profiler_state = " << FLAGS_cinn_profiler_state << ", and will do nothing.";
+      LOG(WARNING) << "Unsupport FLAGS_cinn_profiler_state = "
+                   << FLAGS_cinn_profiler_state << ", and will do nothing.";
   }
 }
 
@@ -59,10 +60,14 @@ RecordEvent::RecordEvent(const std::string& name, EventType type) {
   if (!ProfilerHelper::IsEnable()) return;
 
   if (ProfilerHelper::IsEnableCPU()) {
-    call_back_ = [this, tik = std::chrono::steady_clock::now(), annotation = std::move(name), type]() {
-      auto tok                               = std::chrono::steady_clock::now();
+    call_back_ = [this,
+                  tik = std::chrono::steady_clock::now(),
+                  annotation = std::move(name),
+                  type]() {
+      auto tok = std::chrono::steady_clock::now();
       std::chrono::duration<double> duration = (tok - tik) * 1e3;  // ms
-      HostEventRecorder::GetInstance().RecordEvent(annotation, duration.count(), type);
+      HostEventRecorder::GetInstance().RecordEvent(
+          annotation, duration.count(), type);
     };
   }
 

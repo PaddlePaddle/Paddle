@@ -61,10 +61,16 @@ void BindLoweredFunc(py::module *m) {
   py::class_<Argument> argument(*m, "Argument");
 
   py::enum_<Argument::IO> io(argument, "IO");
-  io.value("kInput", Argument::IO::kInput).value("kOutput", Argument::IO::kOutput);
+  io.value("kInput", Argument::IO::kInput)
+      .value("kOutput", Argument::IO::kOutput);
 
-  argument.def(py::init<const ir::Buffer &, Argument::IO>(), py::arg("buffer"), py::arg("io") = Argument::IO::kInput)
-      .def(py::init<const ir::Var &, Argument::IO>(), py::arg("var"), py::arg("io") = Argument::IO::kInput)
+  argument
+      .def(py::init<const ir::Buffer &, Argument::IO>(),
+           py::arg("buffer"),
+           py::arg("io") = Argument::IO::kInput)
+      .def(py::init<const ir::Var &, Argument::IO>(),
+           py::arg("var"),
+           py::arg("io") = Argument::IO::kInput)
       .def("set_buffer", &Argument::set_buffer)
       .def("set_var", &Argument::set_var)
       .def("is_input", &Argument::is_input)
@@ -80,10 +86,16 @@ void BindLoweredFunc(py::module *m) {
   py::class_<LoweredFunc> lowered_func(*m, "LoweredFunc");
   lowered_func.def(py::init<>())
       .def(py::init<IrNode *>())
-      .def("name", [](const ir::LoweredFunc &self) -> std::string { return self->name; })
-      .def("__str__", [](const ir::LoweredFunc &self) -> std::string { return utils::GetStreamCnt(Expr(self)); })
+      .def(
+          "name",
+          [](const ir::LoweredFunc &self) -> std::string { return self->name; })
+      .def("__str__",
+           [](const ir::LoweredFunc &self) -> std::string {
+             return utils::GetStreamCnt(Expr(self));
+           })
       .def("__repr__", [](const ir::LoweredFunc &self) -> std::string {
-        return llvm::formatv("<LoweredFunc {0}>", self.get(), self->name.c_str());
+        return llvm::formatv(
+            "<LoweredFunc {0}>", self.get(), self->name.c_str());
       });
 }
 
@@ -96,7 +108,8 @@ void BindNode(py::module *m) {
 #undef DECLARE_IR_NODE_TY
 
   // class IrNode
-  py::class_<ir::IrNode, IrNodeWrapper /*, ObjectWrapper*/> ir_node(*m, "IrNode", py::module_local());
+  py::class_<ir::IrNode, IrNodeWrapper /*, ObjectWrapper*/> ir_node(
+      *m, "IrNode", py::module_local());
   ir_node.def(py::init<>())
       .def(py::init<ir::Type>())
       .def_readwrite("operands", &ir::IrNode::operands)
@@ -104,14 +117,16 @@ void BindNode(py::module *m) {
       .def("type", &ir::IrNode::type)
       .def("set_type", &ir::IrNode::set_type)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::IrNode::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::IrNode::expr_fields, py::const_))
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::IrNode::expr_fields, py::const_))
       .def("type_info", &ir::IrNode::type_info);
 
   // class Shared<IrNode>
   DefineShared<IrNode>(m, "IrNode");
 
   // class IrNodeRef : public Shared<IrNode>
-  py::class_<ir::IrNodeRef, common::Shared<IrNode>> ir_node_ref(*m, "IrNodeRef");
+  py::class_<ir::IrNodeRef, common::Shared<IrNode>> ir_node_ref(*m,
+                                                                "IrNodeRef");
   ir_node_ref.def(py::init<>())
       .def(py::init<const ir::IrNodeRef &>())
       .def(py::init<ir::IrNode *>())
@@ -122,24 +137,31 @@ void BindNode(py::module *m) {
   py::class_<ir::IntImm, ir::ExprNode<ir::IntImm>> int_imm(*m, "IntImm");
   int_imm.def_readwrite("value", &ir::IntImm::value)
       .def(py::init<Type, int64_t>())
-      .def("__str__", [](const ir::IntImm &self) { return std::to_string(self.value); })
-      .def("__repr__",
-           [](ir::IntImm &self) -> std::string { return llvm::formatv("<IntImm {0}>", self.self(), self.value); });
+      .def("__str__",
+           [](const ir::IntImm &self) { return std::to_string(self.value); })
+      .def("__repr__", [](ir::IntImm &self) -> std::string {
+        return llvm::formatv("<IntImm {0}>", self.self(), self.value);
+      });
 
   // struct UIntImm : ExprNode<UIntImm>
   DefineExprNode<ir::UIntImm>(m, "UIntImm");
   py::class_<ir::UIntImm, ir::ExprNode<ir::UIntImm>> uint_imm(*m, "UIntImm");
-  uint_imm.def_readwrite("value", &ir::UIntImm::value).def(py::init<Type, uint64_t>());
+  uint_imm.def_readwrite("value", &ir::UIntImm::value)
+      .def(py::init<Type, uint64_t>());
 
   // struct FloatImm : ExprNode<FloatImm>
   DefineExprNode<ir::FloatImm>(m, "FloatImm");
-  py::class_<ir::FloatImm, ir::ExprNode<ir::FloatImm>> float_imm(*m, "FloatImm");
-  float_imm.def_readwrite("value", &ir::FloatImm::value).def(py::init<Type, double>());
+  py::class_<ir::FloatImm, ir::ExprNode<ir::FloatImm>> float_imm(*m,
+                                                                 "FloatImm");
+  float_imm.def_readwrite("value", &ir::FloatImm::value)
+      .def(py::init<Type, double>());
 
   // struct StringImm : ExprNode<StringImm>
   DefineExprNode<ir::StringImm>(m, "StringImm");
-  py::class_<ir::StringImm, ir::ExprNode<ir::StringImm>> string_imm(*m, "StringImm");
-  string_imm.def_readwrite("value", &ir::StringImm::value).def(py::init<const std::string &>());
+  py::class_<ir::StringImm, ir::ExprNode<ir::StringImm>> string_imm(
+      *m, "StringImm");
+  string_imm.def_readwrite("value", &ir::StringImm::value)
+      .def(py::init<const std::string &>());
 
   auto expr = py::class_<ir::Expr, ir::IrNodeRef>(*m, "Expr");
 
@@ -159,20 +181,30 @@ void BindNode(py::module *m) {
       .def("as_float", &ir::Expr::as_float)
       .def("as_double", &ir::Expr::as_double)
       .def("int", [](ir::Expr &self) { return self.As<ir::IntImm>()->value; })
-      .def("float", [](ir::Expr &self) { return self.As<ir::FloatImm>()->value; })
+      .def("float",
+           [](ir::Expr &self) { return self.As<ir::FloatImm>()->value; })
 
-      .def("__str__", [](const Expr &self) { return utils::GetStreamCnt(self); })
+      .def("__str__",
+           [](const Expr &self) { return utils::GetStreamCnt(self); })
       .def("__repr__", [](const Expr &self) -> std::string {
         std::string content = self.get() ? utils::GetStreamCnt(self) : "";
         return llvm::formatv("<cinn.ir.Expr {0}>", content);
       });
 
-  expr.def("as_var_mutable", py::overload_cast<>(&ir::Expr::as_var), py::return_value_policy::reference)
-      .def("as_var_const", py::overload_cast<>(&ir::Expr::as_var, py::const_), py::return_value_policy::reference)
+  expr.def("as_var_mutable",
+           py::overload_cast<>(&ir::Expr::as_var),
+           py::return_value_policy::reference)
+      .def("as_var_const",
+           py::overload_cast<>(&ir::Expr::as_var, py::const_),
+           py::return_value_policy::reference)
       .def("as_var_ref", &ir::Expr::as_var_ref);
 
-  expr.def("as_buffer_mutable", py::overload_cast<>(&ir::Expr::as_buffer), py::return_value_policy::reference)
-      .def("as_buffer_const", py::overload_cast<>(&ir::Expr::as_buffer, py::const_), py::return_value_policy::reference)
+  expr.def("as_buffer_mutable",
+           py::overload_cast<>(&ir::Expr::as_buffer),
+           py::return_value_policy::reference)
+      .def("as_buffer_const",
+           py::overload_cast<>(&ir::Expr::as_buffer, py::const_),
+           py::return_value_policy::reference)
       .def("as_buffer_ref", &ir::Expr::as_buffer_ref);
 
   expr.def("is_constant", &ir::Expr::is_constant)
@@ -207,16 +239,30 @@ void BindNode(py::module *m) {
       BIND_POD_BINARY_OP(int())     //
       BIND_POD_BINARY_OP(float());
 
-  expr.def("__add__", [](const Expr &self, const Var &other) -> Expr { return self + other; })
-      .def("__sub__", [](const Expr &self, const Var &other) -> Expr { return self - other; })
-      .def("__mul__", [](const Expr &self, const Var &other) -> Expr { return self * other; })
-      .def("__div__", [](const Expr &self, const Var &other) -> Expr { return self / other; });
+  expr.def("__add__",
+           [](const Expr &self, const Var &other) -> Expr {
+             return self + other;
+           })
+      .def("__sub__",
+           [](const Expr &self, const Var &other) -> Expr {
+             return self - other;
+           })
+      .def("__mul__",
+           [](const Expr &self, const Var &other) -> Expr {
+             return self * other;
+           })
+      .def("__div__", [](const Expr &self, const Var &other) -> Expr {
+        return self / other;
+      });
 }
 
 void BindIrVisitor(py::module *m) {
   py::class_<ir::IRVisitor> ir_visitor(*m, "IRVisitor");
-  ir_visitor.def(py::init<>()).def("visit", py::overload_cast<const ir::Expr *>(&ir::IRVisitor::Visit));
-#define DEFINE_VISIT_FN(__ty) ir_visitor.def("visit", py::overload_cast<const ir::__ty *>(&ir::IRVisitor::Visit));
+  ir_visitor.def(py::init<>())
+      .def("visit", py::overload_cast<const ir::Expr *>(&ir::IRVisitor::Visit));
+#define DEFINE_VISIT_FN(__ty) \
+  ir_visitor.def("visit",     \
+                 py::overload_cast<const ir::__ty *>(&ir::IRVisitor::Visit));
   NODETY_FORALL(DEFINE_VISIT_FN)
 #undef DEFINE_VISIT_FN
 }
@@ -232,8 +278,12 @@ void BindIrIr(py::module *m) {
   DefineExprNode<ir::Cast>(m, "Cast");
   py::class_<ir::Cast, ExprNode<ir::Cast>> cast(*m, "Cast");
   cast.def(py::init<>())
-      .def("v_mutable", py::overload_cast<>(&ir::Cast::v), py::return_value_policy::reference)
-      .def("v_const", py::overload_cast<>(&ir::Cast::v, py::const_), py::return_value_policy::reference);
+      .def("v_mutable",
+           py::overload_cast<>(&ir::Cast::v),
+           py::return_value_policy::reference)
+      .def("v_const",
+           py::overload_cast<>(&ir::Cast::v, py::const_),
+           py::return_value_policy::reference);
 
   // struct Let : ExprNode<Let>
   DefineExprNode<ir::Let>(m, "Let");
@@ -244,7 +294,8 @@ void BindIrIr(py::module *m) {
       .def_static("make", &ir::Let::Make)
       .def("type", &ir::Let::type)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::Let::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::Let::expr_fields, py::const_));
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::Let::expr_fields, py::const_));
 
   // struct Reduce : ExprNode<Reduce>
   DefineExprNode<ir::Reduce>(m, "Reduce");
@@ -266,7 +317,8 @@ void BindIrIr(py::module *m) {
       .def_static("make", &ir::Reduce::Make)
       .def("type", &ir::Reduce::type)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::Reduce::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::Reduce::expr_fields, py::const_));
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::Reduce::expr_fields, py::const_));
 
   // enum class CallType
   py::enum_<ir::CallType> call_type(*m, "CallType");
@@ -292,7 +344,8 @@ void BindIrIr(py::module *m) {
       .def("is_intrinsic_call", &ir::Call::is_intrinsic_call)
       .def("is_isl_call", &ir::Call::is_isl_call)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::Call::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::Call::expr_fields, py::const_));
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::Call::expr_fields, py::const_));
 
   // struct _Var_ : ExprNode<_Var_>
   DefineExprNode<ir::_Var_>(m, "_Var_");
@@ -304,8 +357,13 @@ void BindIrIr(py::module *m) {
       .def_readwrite("tag", &ir::_Var_::tag)
       .def(py::init<>())
       .def(py::init<const std::string &, Type>())
-      .def_static("make", py::overload_cast<const std::string &, const Type &>(&ir::_Var_::Make))
-      .def_static("make", py::overload_cast<ir::Expr, ir::Expr, const std::string &, bool>(&ir::_Var_::Make))
+      .def_static("make",
+                  py::overload_cast<const std::string &, const Type &>(
+                      &ir::_Var_::Make))
+      .def_static(
+          "make",
+          py::overload_cast<ir::Expr, ir::Expr, const std::string &, bool>(
+              &ir::_Var_::Make))
       .def("copy", &ir::_Var_::Copy);
 
   // struct Select
@@ -318,40 +376,50 @@ void BindIrIr(py::module *m) {
       .def_static("make", &ir::Select::Make)
       .def("type", &ir::Select::type)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::Select::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::Select::expr_fields, py::const_));
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::Select::expr_fields, py::const_));
 
   // struct LoadStoreAddrMnger
-  py::class_<ir::LoadStoreAddrMnger> load_store_addr_manager(*m, "LoadStoreAddrMnger");
-  load_store_addr_manager.def_readwrite("tensor", &ir::LoadStoreAddrMnger::tensor)
+  py::class_<ir::LoadStoreAddrMnger> load_store_addr_manager(
+      *m, "LoadStoreAddrMnger");
+  load_store_addr_manager
+      .def_readwrite("tensor", &ir::LoadStoreAddrMnger::tensor)
       .def("is_addr_tensor", &ir::LoadStoreAddrMnger::is_addr_tensor)
       .def("is_addr_scalar", &ir::LoadStoreAddrMnger::is_addr_scalar);
 
   // struct Load : ExprNode<Load>, LoadStoreAddrMnger
   DefineExprNode<ir::Load>(m, "Load");
-  py::class_<ir::Load, ExprNode<ir::Load>, ir::LoadStoreAddrMnger> load(*m, "Load");
+  py::class_<ir::Load, ExprNode<ir::Load>, ir::LoadStoreAddrMnger> load(*m,
+                                                                        "Load");
   load.def_readwrite("indices", &ir::Load::indices)
       .def("index", &ir::Load::index)
       .def_static("make", &ir::Load::Make)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::Load::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::Load::expr_fields, py::const_))
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::Load::expr_fields, py::const_))
       .def("name", &ir::Load::name)
       .def("type", &ir::Load::type);
 
   // struct Store : ExprNode<Store>, LoadStoreAddrMnger
   DefineExprNode<ir::Store>(m, "Store");
-  py::class_<ir::Store, ExprNode<ir::Store>, ir::LoadStoreAddrMnger> store(*m, "Store");
+  py::class_<ir::Store, ExprNode<ir::Store>, ir::LoadStoreAddrMnger> store(
+      *m, "Store");
   store.def_readwrite("value", &ir::Store::value)
       .def_readwrite("indices", &ir::Store::indices)
       .def_static("make", &ir::Store::Make)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::Store::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::Store::expr_fields, py::const_))
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::Store::expr_fields, py::const_))
       .def("type", &ir::Store::type)
       .def("index", &ir::Store::index);
 
-#define DEFINE_BINARY_NODE(__node)                                               \
-  DefineBinaryOpNode<ir::__node>(m, #__node);                                    \
-  py::class_<ir::__node, ir::BinaryOpNode<ir::__node>> py_##__node(*m, #__node); \
-  py_##__node.def(py::init<ir::Expr, ir::Expr>()).def_static("make", &ir::__node::Make).def("type", &ir::__node::type)
+#define DEFINE_BINARY_NODE(__node)                                           \
+  DefineBinaryOpNode<ir::__node>(m, #__node);                                \
+  py::class_<ir::__node, ir::BinaryOpNode<ir::__node>> py_##__node(*m,       \
+                                                                   #__node); \
+  py_##__node.def(py::init<ir::Expr, ir::Expr>())                            \
+      .def_static("make", &ir::__node::Make)                                 \
+      .def("type", &ir::__node::type)
 
   DEFINE_BINARY_NODE(Add);
   DEFINE_BINARY_NODE(Sub);
@@ -374,11 +442,14 @@ void BindIrIr(py::module *m) {
   // FracOp
   DefineBinaryOpNode<ir::FracOp>(m, "FracOp");
   py::class_<ir::FracOp, ir::BinaryOpNode<ir::FracOp>> frac_op(*m, "FracOp");
-  frac_op.def(py::init<>()).def_static("make", &ir::FracOp::Make).def("type", &ir::FracOp::type);
+  frac_op.def(py::init<>())
+      .def_static("make", &ir::FracOp::Make)
+      .def("type", &ir::FracOp::type);
 
-#define DEFINE_UNARY_NODE(__node)                                               \
-  DefineUnaryOpNode<ir::__node>(m, #__node);                                    \
-  py::class_<ir::__node, ir::UnaryOpNode<ir::__node>> py_##__node(*m, #__node); \
+#define DEFINE_UNARY_NODE(__node)                                           \
+  DefineUnaryOpNode<ir::__node>(m, #__node);                                \
+  py::class_<ir::__node, ir::UnaryOpNode<ir::__node>> py_##__node(*m,       \
+                                                                  #__node); \
   py_##__node.def(py::init<ir::Expr>()).def_static("make", &ir::__node::Make)
 
   DEFINE_UNARY_NODE(Minus);
@@ -388,26 +459,37 @@ void BindIrIr(py::module *m) {
   py::class_<Var, IrNodeRef> var(*m, "Var");
   var.def(py::init<>())
       .def(py::init<IrNode *>())
-      .def(py::init<const std::string &, common::Type>(), arg("name_hint"), arg("t") = common::type_of<int>())
+      .def(py::init<const std::string &, common::Type>(),
+           arg("name_hint"),
+           arg("t") = common::type_of<int>())
       .def(py::init<Expr, Expr, const std::string &>())
       .def(py::init<int, const std::string &>())
       .def(py::init<Expr, const std::string &>())
-      .def("get_mutable", py::overload_cast<>(&Var::get), py::return_value_policy::reference)
-      .def("get_const", py::overload_cast<>(&Var::get, py::const_), py::return_value_policy::reference)
+      .def("get_mutable",
+           py::overload_cast<>(&Var::get),
+           py::return_value_policy::reference)
+      .def("get_const",
+           py::overload_cast<>(&Var::get, py::const_),
+           py::return_value_policy::reference)
       .def("to_expr_mutable", py::overload_cast<>(&Var::operator ir::Expr))
-      .def("to_expr_const", py::overload_cast<>(&Var::operator ir::Expr, py::const_))
-      .def("__repr__", [](Var &self) -> std::string { return llvm::formatv("<cinn.ir.Var {0}>", self->name); })
+      .def("to_expr_const",
+           py::overload_cast<>(&Var::operator ir::Expr, py::const_))
+      .def("__repr__",
+           [](Var &self) -> std::string {
+             return llvm::formatv("<cinn.ir.Var {0}>", self->name);
+           })
       .def("expr", [](Var &self) -> Expr { return Expr(self->self()); })
 
           BIND_POD_BINARY_OP(int())  //
       BIND_POD_BINARY_OP(int32_t())  //
       BIND_POD_BINARY_OP(float())
 
-#define BINARY_OP(type__)                                                       \
-  .def("__add__", [](Var &self, type__ v) -> Expr { return self + v; })         \
-      .def("__sub__", [](Var &self, type__ v) -> Expr { return self - v; })     \
-      .def("__truediv__", [](Var &self, type__ v) -> Expr { return self / v; }) \
-      .def("__mul__", [](Var &self, type__ v) -> Expr { return self * v; })     \
+#define BINARY_OP(type__)                                                   \
+  .def("__add__", [](Var &self, type__ v) -> Expr { return self + v; })     \
+      .def("__sub__", [](Var &self, type__ v) -> Expr { return self - v; }) \
+      .def("__truediv__",                                                   \
+           [](Var &self, type__ v) -> Expr { return self / v; })            \
+      .def("__mul__", [](Var &self, type__ v) -> Expr { return self * v; }) \
       .def("__mod__", [](Var &self, type__ v) -> Expr { return self % v; })
 
           BINARY_OP(int32_t)  //
@@ -420,7 +502,9 @@ void BindIrIr(py::module *m) {
   py::class_<ir::Product, ir::ExprNode<ir::Product>> product(*m, "Product");
   product.def_static("make", &ir::Product::Make)
       .def("type", &ir::Product::type)
-      .def("operand_mutable", py::overload_cast<int>(&ir::Product::operand), py::return_value_policy::reference)
+      .def("operand_mutable",
+           py::overload_cast<int>(&ir::Product::operand),
+           py::return_value_policy::reference)
       .def("operand_const",
            py::overload_cast<int>(&ir::Product::operand, py::const_),
            py::return_value_policy::reference);
@@ -428,8 +512,12 @@ void BindIrIr(py::module *m) {
   DefineExprNode<ir::Sum>(m, "Sum");
   py::class_<ir::Sum, ir::ExprNode<ir::Sum>> sum(*m, "Sum");
   sum.def_static("make", &ir::Sum::Make)
-      .def("operand_mutable", py::overload_cast<int>(&ir::Sum::operand), py::return_value_policy::reference)
-      .def("operand_const", py::overload_cast<int>(&ir::Sum::operand, py::const_), py::return_value_policy::reference)
+      .def("operand_mutable",
+           py::overload_cast<int>(&ir::Sum::operand),
+           py::return_value_policy::reference)
+      .def("operand_const",
+           py::overload_cast<int>(&ir::Sum::operand, py::const_),
+           py::return_value_policy::reference)
       .def("type", &ir::Sum::type);
 
   DefineExprNode<ir::Block>(m, "Block");
@@ -438,7 +526,8 @@ void BindIrIr(py::module *m) {
       .def(py::init<>())
       .def_static("make", &ir::Block::Make)
       .def("expr_fields_mutable", py::overload_cast<>(&ir::Block::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::Block::expr_fields, py::const_));
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::Block::expr_fields, py::const_));
 
   DefineExprNode<ir::_Module_>(m, "_Module_");
   py::class_<ir::_Module_, ir::ExprNode<ir::_Module_>> _module_(*m, "_Module_");
@@ -450,7 +539,8 @@ void BindIrIr(py::module *m) {
 }
 
 void BindOperation(py::module *m) {
-  py::class_<ir::PlaceholderOp /*, _Operation_Wrapper*/> placeholder_op(*m, "PlaceholderOp");
+  py::class_<ir::PlaceholderOp /*, _Operation_Wrapper*/> placeholder_op(
+      *m, "PlaceholderOp");
   placeholder_op.def_readwrite("shape", &ir::PlaceholderOp::shape)
       .def_readwrite("dtype", &ir::PlaceholderOp::dtype)
       .def_static("make", &ir::PlaceholderOp::Make)
@@ -460,9 +550,11 @@ void BindOperation(py::module *m) {
   call_op.def("target", &ir::CallOp::target)
       .def_readwrite("call_expr", &ir::CallOp::call_expr)
       .def("read_args_mutable", py::overload_cast<>(&ir::CallOp::read_args))
-      .def("read_args_const", py::overload_cast<>(&ir::CallOp::read_args, py::const_))
+      .def("read_args_const",
+           py::overload_cast<>(&ir::CallOp::read_args, py::const_))
       .def("write_args_mutable", py::overload_cast<>(&ir::CallOp::write_args))
-      .def("write_args_const", py::overload_cast<>(&ir::CallOp::write_args, py::const_))
+      .def("write_args_const",
+           py::overload_cast<>(&ir::CallOp::write_args, py::const_))
       .def("args", &ir::CallOp::args)
       .def_readwrite("func", &ir::CallOp::func)
       .def_readwrite("value_slot", &ir::CallOp::value_slot)
@@ -472,7 +564,8 @@ void BindOperation(py::module *m) {
       .def_static("make", &ir::CallOp::Make)
       .def("func_type", &ir::CallOp::func_type);
 
-  py::class_<ir::ComputeOp /*, _Operation_Wrapper*/> compute_op(*m, "ComputeOp");
+  py::class_<ir::ComputeOp /*, _Operation_Wrapper*/> compute_op(*m,
+                                                                "ComputeOp");
   compute_op.def_readwrite("reduce_axis", &ir::ComputeOp::reduce_axis)
       .def_readwrite("shape", &ir::ComputeOp::shape)
       .def_readwrite("body", &ir::ComputeOp::body)
@@ -488,9 +581,15 @@ void BindIrTensor(py::module *m) {
       .def(py::init<ir::IrNode *>())
       .def("ndims", &ir::Tensor::ndims)
       .def("__call__", [](ir::Tensor &self, Expr a) { return self(a); })
-      .def("__call__", [](ir::Tensor &self, Expr a, Expr b) { return self(a, b); })
-      .def("__call__", [](ir::Tensor &self, Expr a, Expr b, Expr c) { return self(a, b, c); })
-      .def("__call__", [](ir::Tensor &self, Expr a, Expr b, Expr c, Expr d) { return self(a, b, c, d); });
+      .def("__call__",
+           [](ir::Tensor &self, Expr a, Expr b) { return self(a, b); })
+      .def("__call__",
+           [](ir::Tensor &self, Expr a, Expr b, Expr c) {
+             return self(a, b, c);
+           })
+      .def("__call__", [](ir::Tensor &self, Expr a, Expr b, Expr c, Expr d) {
+        return self(a, b, c, d);
+      });
 
   DefineExprNode<ir::_Tensor_>(m, "_Tensor_");
   py::class_<ir::_Tensor_, ir::ExprNode<ir::_Tensor_>> _tensor_(*m, "_Tensor_");
@@ -500,7 +599,8 @@ void BindIrTensor(py::module *m) {
       .def_readwrite("name", &ir::_Tensor_::name)
       .def_readwrite("buffer", &ir::_Tensor_::buffer)
       .def("domain_with_reduce_axis", &ir::_Tensor_::domain_without_reduce_axis)
-      .def("domain_without_reduce_axis", &ir::_Tensor_::domain_without_reduce_axis)
+      .def("domain_without_reduce_axis",
+           &ir::_Tensor_::domain_without_reduce_axis)
       .def_static("make", &ir::_Tensor_::Make)
       .def("is_tuple", &ir::_Tensor_::is_tuple)
       .def("is_tuple_get", &ir::_Tensor_::is_tuple_get)
@@ -519,14 +619,18 @@ void BindIrTensor(py::module *m) {
       .def("get_compute_op", &ir::_Tensor_::get_compute_op)
       .def("get_placeholder_op", &ir::_Tensor_::get_placeholder_op)
       .def("body", &ir::_Tensor_::body)
-      .def("tensor_store_expanded_body", &ir::_Tensor_::tensor_store_expanded_body)
+      .def("tensor_store_expanded_body",
+           &ir::_Tensor_::tensor_store_expanded_body)
       .def("inline_expanded", &ir::_Tensor_::inline_expanded)
       .def("contains_reduce_axis", &ir::_Tensor_::contains_reduce_axis)
-      .def("expr_fields_mutable", py::overload_cast<>(&ir::_Tensor_::expr_fields))
-      .def("expr_fields_const", py::overload_cast<>(&ir::_Tensor_::expr_fields, py::const_))
+      .def("expr_fields_mutable",
+           py::overload_cast<>(&ir::_Tensor_::expr_fields))
+      .def("expr_fields_const",
+           py::overload_cast<>(&ir::_Tensor_::expr_fields, py::const_))
       .def("axis", &ir::_Tensor_::axis)
       .def("axis_with_reduce", &ir::_Tensor_::axis_with_reduce)
-      .def("buffer_depended_tensor_names", &ir::_Tensor_::buffer_depended_tensor_names)
+      .def("buffer_depended_tensor_names",
+           &ir::_Tensor_::buffer_depended_tensor_names)
       .def(py::init<>())
       .def("has_expression", &ir::_Tensor_::has_expression)
       .def("reshape", &ir::_Tensor_::Reshape)
@@ -535,16 +639,22 @@ void BindIrTensor(py::module *m) {
            py::overload_cast<const ir::Type &>(&ir::_Tensor_::WithBuffer),
            py::arg("type") = Type::type_t::Void)
       .def("with_buffer",
-           py::overload_cast<const std::string &, const std::string &, const ir::Type &>(&ir::_Tensor_::WithBuffer),
+           py::overload_cast<const std::string &,
+                             const std::string &,
+                             const ir::Type &>(&ir::_Tensor_::WithBuffer),
            py::arg("memory_type"),
            py::arg("buffer_name") = "",
-           py::arg("type")        = Type::type_t::Void)
+           py::arg("type") = Type::type_t::Void)
       .def("bind", py::overload_cast<lang::Buffer &>(&ir::_Tensor_::Bind))
       .def("bind", py::overload_cast<const ir::Buffer &>(&ir::_Tensor_::Bind))
-      .def("__str__", [](const ir::Tensor &self) { return "<Tensor " + self->name + ">"; });
+      .def("__str__", [](const ir::Tensor &self) {
+        return "<Tensor " + self->name + ">";
+      });
 
   py::class_<ir::Operation /*, ir::FunctionDef*/> operation(*m, "Operation");
-  operation.def(py::init<>()).def(py::init<ir::IrNode *>()).def_readwrite("name", &ir::Operation::name);
+  operation.def(py::init<>())
+      .def(py::init<ir::IrNode *>())
+      .def_readwrite("name", &ir::Operation::name);
 }
 
 auto PackedFuncCall(lang::PackedFunc &self, py::args args) {  // NOLINT
@@ -560,7 +670,8 @@ auto PackedFuncCall(lang::PackedFunc &self, py::args args) {  // NOLINT
     } else if (py::isinstance<ir::Expr>(handle)) {
       cinn_args.Append(CINNValue(py::cast<ir::Expr>(handle)));
     } else {
-      LOG(FATAL) << "unsupported type: " << std::string(py::str(handle.get_type()));
+      LOG(FATAL) << "unsupported type: "
+                 << std::string(py::str(handle.get_type()));
     }
   }
   lang::RetValue ret_value;
@@ -576,8 +687,11 @@ void BindPackedFunc(py::module *m) {
       .def("size", &lang::Args::size)
       .def("__len__", &lang::Args::size)
       .def(
-          "__getitem__", [](lang::Args &self, int i) { return self[i]; }, py::return_value_policy::reference)
-      .def("__setitem__", [](lang::Args &self, int i, common::CINNValue &v) { self[i] = v; });
+          "__getitem__",
+          [](lang::Args &self, int i) { return self[i]; },
+          py::return_value_policy::reference)
+      .def("__setitem__",
+           [](lang::Args &self, int i, common::CINNValue &v) { self[i] = v; });
 
   py::class_<lang::PackedFunc> packed_func(*m, "PackedFunc");
   packed_func.def(py::init<>())
@@ -595,30 +709,37 @@ void BindRegistry(py::module *m) {
                   py::arg("name"),
                   py::arg("override") = false,
                   py::return_value_policy::reference)
-      .def_static("register", &ir::Registry::Register, py::return_value_policy::reference)
+      .def_static("register",
+                  &ir::Registry::Register,
+                  py::return_value_policy::reference)
       .def_static("remove", &ir::Registry::Remove)
       .def_static("get", &ir::Registry::Get, py::return_value_policy::reference)
       .def_static("list_names", &ir::Registry::ListNames)
-      .def("set_body", py::overload_cast<lang::PackedFunc>(&ir::Registry::SetBody), py::return_value_policy::reference);
+      .def("set_body",
+           py::overload_cast<lang::PackedFunc>(&ir::Registry::SetBody),
+           py::return_value_policy::reference);
 
 #ifdef CINN_WITH_TEST
-  ir::Registry::Register("test_add_int64").SetBody([](lang::Args args, lang::RetValue *rv) {
-    int64_t x = args[0];
-    int64_t y = args[1];
-    *rv       = x + y;
-  });
+  ir::Registry::Register("test_add_int64")
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        int64_t x = args[0];
+        int64_t y = args[1];
+        *rv = x + y;
+      });
 
-  ir::Registry::Register("test_add_expr").SetBody([](lang::Args args, lang::RetValue *rv) {
-    ir::Expr x = args[0];
-    ir::Expr y = args[1];
-    *rv        = x + y;
-  });
+  ir::Registry::Register("test_add_expr")
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        ir::Expr x = args[0];
+        ir::Expr y = args[1];
+        *rv = x + y;
+      });
 
-  ir::Registry::Register("test_mul_float").SetBody([](lang::Args args, lang::RetValue *rv) {
-    float x = args[0];
-    float y = args[1];
-    *rv     = x * y;
-  });
+  ir::Registry::Register("test_mul_float")
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        float x = args[0];
+        float y = args[1];
+        *rv = x * y;
+      });
 #endif
 }
 }  // namespace

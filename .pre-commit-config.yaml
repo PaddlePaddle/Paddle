@@ -47,7 +47,8 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
         exclude: |
             (?x)^(
-                paddle/utils/.*
+                paddle/utils/.*|
+                paddle/cinn/utils/registry.h
             )$
 # For Python files
 -   repo: https://github.com/psf/black.git
@@ -98,6 +99,11 @@ repos:
             - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
+        exclude:  |
+            (?x)^(
+                paddle/cinn/.+|
+                test/cpp/cinn/.+
+            )$
 # For CMake files
 -   repo: local
     hooks:

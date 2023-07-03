@@ -35,7 +35,8 @@ cinn_buffer_t* BufferBuilder::Build() {
     CINN_NOT_IMPLEMENTED
   }
 
-  auto* buffer = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_type, shape_, align_);
+  auto* buffer = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_type, shape_, align_);
 
   cinn_buffer_malloc(nullptr, buffer);
 

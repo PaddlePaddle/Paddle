@@ -28,8 +28,10 @@ struct Mutator : public ir::IRMutator<> {
   std::set<std::string> used_vars;
 
   void CollectVarDef(const std::string& var) {
-    CHECK(!defined_vars.count(var)) << "var " << var << " has been defined, please check";
-    CHECK(!used_vars.count(var)) << "var " << var << " is wrongly used before definition";
+    CHECK(!defined_vars.count(var))
+        << "var " << var << " has been defined, please check";
+    CHECK(!used_vars.count(var))
+        << "var " << var << " is wrongly used before definition";
     defined_vars.insert(var);
   }
 
@@ -47,7 +49,7 @@ struct Mutator : public ir::IRMutator<> {
 
   void Visit(const ir::Let* op, Expr* expr) final {
     Expr symbol = op->symbol;
-    auto var    = symbol.as_var_ref();
+    auto var = symbol.as_var_ref();
     CHECK(var.defined());
     CollectVarDef(var->name);
     auto* node = expr->As<ir::Let>();

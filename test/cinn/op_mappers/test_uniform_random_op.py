@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -47,7 +49,7 @@ class TestUniformRandomOp(OpMapperTest):
             "dtype": self.nptype2paddledtype(self.dtype),
             "diag_num": self.diag_num,
             "diag_step": self.diag_step,
-            "diag_val": self.diag_val
+            "diag_val": self.diag_val,
         }
 
     def set_op_outputs(self):

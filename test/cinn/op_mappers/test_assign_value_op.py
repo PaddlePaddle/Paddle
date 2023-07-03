@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -44,8 +46,7 @@ class TestAssignValueOp(OpMapperTest):
         else:
             self.assertTrue(
                 False,
-                msg=
-                "The data type of 'input' must be bool, float32, int32 or int64"
+                msg="The data type of 'input' must be bool, float32, int32 or int64",
             )
 
     def set_op_attrs(self):
@@ -54,7 +55,8 @@ class TestAssignValueOp(OpMapperTest):
         value_name, values = self.convert_values(dtype, self.feed_data['x'])
         return {
             'dtype': self.nptype2paddledtype(
-                str(dtype)),  # should keep the same as input
+                str(dtype)
+            ),  # should keep the same as input
             'shape': shape,
             value_name: values,
         }

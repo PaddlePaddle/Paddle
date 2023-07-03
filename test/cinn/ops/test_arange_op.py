@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestArangeOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -34,18 +36,26 @@ class TestArangeOp(OpTest):
             "start": self.case["start"],
             "end": self.case["end"],
             "step": self.case["step"],
-            "dtype": self.case["dtype"]
+            "dtype": self.case["dtype"],
         }
 
     def build_paddle_program(self, target):
-        out = paddle.arange(self.inputs["start"], self.inputs["end"],
-                            self.inputs["step"], self.inputs["dtype"])
+        out = paddle.arange(
+            self.inputs["start"],
+            self.inputs["end"],
+            self.inputs["step"],
+            self.inputs["dtype"],
+        )
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("arange")
-        out = builder.arange(self.inputs["start"], self.inputs["end"],
-                             self.inputs["step"], self.inputs["dtype"])
+        out = builder.arange(
+            self.inputs["start"],
+            self.inputs["end"],
+            self.inputs["step"],
+            self.inputs["dtype"],
+        )
 
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [], [], [out])
@@ -141,9 +151,7 @@ class TestArangeOpShapeAndAttr(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -170,18 +178,10 @@ class TestArangeOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "int32"},
+            {"dtype": "int64"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = []
 

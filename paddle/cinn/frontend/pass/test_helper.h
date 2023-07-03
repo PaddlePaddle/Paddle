@@ -80,7 +80,7 @@ class PassTest {
                   const std::vector<std::string>& program_passes,
                   const std::vector<std::string>& input_names,
                   const std::vector<std::string>& output_names) {
-    auto program = builder.Build();
+    auto program = builder->Build();
     CHECK(IsValid(program)) << "The origin program is not valid.";
     int origin_program_size = program.size();
     LOG(INFO) << "Run origin program";
