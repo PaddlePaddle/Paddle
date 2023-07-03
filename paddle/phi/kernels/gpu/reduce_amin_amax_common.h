@@ -81,7 +81,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   funcs::BroadcastKernel<T>(
       dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
   // 2. equal_count = reduceSum(equal_out)
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::funcs::
       ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T, MPType>>(
           dev_ctx,

@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/infershape.h"
+#include "paddle/fluid/ir/interface/infermeta.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -51,64 +53,6 @@ class PhiKernelAdaptor {
  public:
   explicit PhiKernelAdaptor(paddle::framework::Scope* scope) : scope_(scope) {}
 
-  void run(ir::Program* program) {
-    auto block = program->block();
-    std::unordered_map<ir::Value, std::string> name_map;
-    std::cerr << "run here" << std::endl;
-    ir::BuildScope(block, scope_, &name_map);
-    std::cerr << "after buid scope" << std::endl;
-    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
-    phi::Place cpu_place(phi::AllocationType::CPU);
-    for (auto it = block->begin(); it != block->end(); ++it) {
-      VLOG(6) << "begin to run op " << (*it)->name();
-
-      std::cerr << (*it)->name() << std::endl;
-      auto attr_map = (*it)->attributes();
-
-      paddle::dialect::OpYamlInfoInterface op_info_interface =
-          (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-      auto op_info_res = op_info_interface.GetOpInfo();
-
-      paddle::dialect::InferShapeInterface interface =
-          (*it)->dyn_cast<paddle::dialect::InferShapeInterface>();
-      phi::InferMetaContext ctx;
-
-      ir::BuildInferMetaContext((*it), name_map, scope_, op_info_res, &ctx);
-
-      interface.InferShape(&ctx);
-
-      auto runtime_info = std::get<3>(op_info_res);
-
-      auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
-          runtime_info.kernel_func[0]);
-
-      phi::KernelKey kernel_key(phi::TransToPhiBackend(cpu_place),
-                                phi::DataLayout::ANY,
-                                phi::DataType::FLOAT32);
-      if (runtime_info.kernel_func[0] == "full_int_array") {
-        kernel_key.set_dtype(phi::DataType::INT64);
-      }
-      auto found_it = phi_kernels.find(kernel_key);
-      if (found_it == phi_kernels.end()) {
-        std::cerr << "kernel name " << runtime_info.kernel_func[0] << std::endl;
-        std::cerr << "kernel key " << kernel_key.backend() << "\t"
-                  << kernel_key.dtype() << "\t" << kernel_key.layout()
-                  << std::endl;
-        PADDLE_THROW(paddle::platform::errors::NotFound(
-            "can not found kerenl for [%s]", (*it)->name()));
-      } else {
-        phi::KernelContext kernel_ctx(dev_ctx);
-
-        ir::BuildPhiKernelContext(
-            (*it), name_map, scope_, op_info_res, &kernel_ctx);
-        found_it->second(&kernel_ctx);
-
-        auto out_value = (*it)->result(0);
-        out_name = name_map[out_value];
-      }
-    }
-  }
-
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
@@ -132,14 +76,20 @@ class PhiKernelAdaptor {
 
       auto attr_info = std::get<1>(yaml_info);
 
-      auto infer_shape_impl =
-          op1_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
+      auto infer_meta_impl =
+          op1_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
 
       phi::InferMetaContext ctx;
 
-      ir::BuildInferMetaContext((*it), name_map, scope_, yaml_info, &ctx);
+      paddle::dialect::OpYamlInfoParser op_yaml_info_parser(yaml_info);
+      ir::BuildPhiContext<
+          phi::InferMetaContext,
+          phi::MetaTensor,
+          phi::MetaTensor,
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+          false>((*it), name_map, scope_, op_yaml_info_parser, &ctx);
 
-      infer_shape_impl->infer_shape_(&ctx);
+      infer_meta_impl->infer_meta_(&ctx);
 
       auto kernel_name =
           attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
@@ -152,8 +102,12 @@ class PhiKernelAdaptor {
 
       phi::KernelContext kernel_ctx(dev_ctx);
 
-      ir::BuildPhiKernelContext(
-          (*it), name_map, scope_, yaml_info, &kernel_ctx);
+      ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          true>(
+          (*it), name_map, scope_, op_yaml_info_parser, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);

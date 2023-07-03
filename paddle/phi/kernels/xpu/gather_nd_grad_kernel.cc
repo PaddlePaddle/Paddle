@@ -34,14 +34,42 @@ void GatherNdGradKernel(const Context &ctx,
       ctx.x_context(), dx_data, x_grad->numel(), static_cast<T>(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-  if (out_grad.numel() == 0) return;
+  if (out_grad.numel() == 0) {
+    return;
+  }
 
   if (index.numel() == 0) {
-    r = xpu::copy(ctx.x_context(),
-                  out_grad.data<T>(),
-                  x_grad->data<T>(),
-                  x_grad->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    auto index_dims = index.dims();
+    auto index_dims_size = index_dims.size();
+    // final dim
+    int64_t end_size = index_dims[index_dims_size - 1];
+    PADDLE_ENFORCE_EQ(
+        end_size,
+        0,
+        phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
+    // remain dim
+    auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
+    int64_t remain_numel = phi::product(remain_ddim);
+
+    int64_t x_numel = x.numel();
+    int64_t out_grad_numel = out_grad.numel();
+    PADDLE_ENFORCE_EQ(
+        x_numel * remain_numel,
+        out_grad_numel,
+        phi::errors::InvalidArgument(
+            "x_numel[%d] * remain_numel[%d] should match out_grad_numel[%d]",
+            x_numel,
+            remain_numel,
+            out_grad_numel));
+
+    // int reduce_sum(Context* ctx, const T* x, T* y, const std::vector<int>&
+    // xshape, const std::vector<int>& rdims)
+    int r = xpu::reduce_sum(ctx.x_context(),
+                            out_grad.data<T>(),
+                            x_grad->data<T>(),
+                            {remain_numel, x_numel},
+                            {0});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     return;
   }
 
