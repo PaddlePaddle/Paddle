@@ -34,7 +34,7 @@ struct TuningRecord {
   double execution_cost;  // unit: us
 
   TuningRecord() = default;
-  TuningRecord(const proto::TuningRecord& record)
+  explicit TuningRecord(const proto::TuningRecord& record)
       : task_key(record.task_key()),
         predicted_cost(record.predicted_cost()),
         trace(record.trace()),

@@ -923,8 +923,8 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
       "%s = floor(%s / %d)",
       levels.front().id.c_str(),
       new_iter_name.c_str(),
-      (int)std::accumulate(
-          iterator_max_val.begin() + 1, iterator_max_val.end(), 1, my_prod)));
+      static_cast<int>(std::accumulate(
+          iterator_max_val.begin() + 1, iterator_max_val.end(), 1, my_prod))));
   conds.emplace_back(utils::StringFormat("%s = %s mod %d",
                                          levels.back().id.c_str(),
                                          new_iter_name.c_str(),
@@ -935,10 +935,10 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
         "%s = floor(%s / %d) mod %d",
         levels[i].id.c_str(),
         new_iter_name.c_str(),
-        (int)std::accumulate(iterator_max_val.begin() + i + 1,
-                             iterator_max_val.end(),
-                             1,
-                             my_prod),
+        static_cast<int>(std::accumulate(iterator_max_val.begin() + i + 1,
+                                         iterator_max_val.end(),
+                                         1,
+                                         my_prod)),
         iterator_max_val[i]));
   }
 
