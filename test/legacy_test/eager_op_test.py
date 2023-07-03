@@ -1772,7 +1772,6 @@ class OpTest(unittest.TestCase):
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
-
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1942,7 +1941,7 @@ class OpTest(unittest.TestCase):
                     imperative_actual = find_imperative_actual(
                         name, self.outputs, place
                     )
-                    imperative_actual_t = imperative_actual.numpy()
+                    imperative_actual_t = imperative_actual.numpy(False)
                     return imperative_actual, imperative_actual_t
 
             def find_expect_value(self, name):
