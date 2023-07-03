@@ -1078,6 +1078,7 @@
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : MatmulAMPGradInferMeta
+    param: [x, y, dx_type, dy_type]
   kernel :
     func : matmul_amp_grad
     data_type : x

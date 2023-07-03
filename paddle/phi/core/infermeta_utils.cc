@@ -31,8 +31,6 @@ void InferMetaContext::EmplaceBackOutput(MetaTensor output) {
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 void InferMetaContext::EmplaceBackAttr(Attribute attr) {
-  std::cout << "========== " << std::type_index(typeid(Attribute)).name()
-            << std::endl;
   attrs_.emplace_back(std::move(attr));
 }
 
@@ -131,9 +129,8 @@ const AttrType& InferMetaContext::AttrAt(size_t idx) const {
     return paddle::get<AttrType>(attrs_.at(idx));
   } catch (paddle::bad_variant_access const& e) {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Attribute %d cast error in InferMeta Context, the expected attribute "
+        "Attribute cast error in InferMeta Context, the expected attribute "
         "type is `%s`.",
-        idx,
         std::type_index(typeid(AttrType)).name()));
   }
 }
