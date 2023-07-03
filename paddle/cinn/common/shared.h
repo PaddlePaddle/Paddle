@@ -23,7 +23,7 @@ namespace common {
 class RefCount {
  public:
   using value_type = int32_t;
-  RefCount()       = default;
+  RefCount() = default;
 
   value_type Inc() { return ++count_; }
   value_type Dec() { return --count_; }
@@ -37,7 +37,8 @@ class RefCount {
 
 class Object;
 /**
- * The templated methods are used to unify the way to get the RefCount instance in client classes.
+ * The templated methods are used to unify the way to get the RefCount instance
+ * in client classes.
  */
 template <typename T>
 RefCount& ref_count(const T* t) {
@@ -109,8 +110,8 @@ void Shared<T>::DecRef(T* p) {
 template <typename T>
 Shared<T>& Shared<T>::operator=(const Shared<T>& other) {
   if (other.p_ == p_) return *this;
-  // Other can be inside of something owned by this, so we should be careful to incref other before we decref
-  // ourselves.
+  // Other can be inside of something owned by this, so we should be careful to
+  // incref other before we decref ourselves.
   T* tmp = other.p_;
   IncRef(tmp);
   DecRef(p_);

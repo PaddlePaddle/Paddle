@@ -46,10 +46,14 @@ namespace op {
 
 using common::CINNValuePack;
 
-std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor, int repeats, int axis, const std::string &output_name) {
+std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
+                               int repeats,
+                               int axis,
+                               const std::string &output_name) {
   int ndim = static_cast<int>(tensor->shape.size());
-  CHECK(-ndim - 1 <= axis && axis <= ndim) << "repeat only accepts `axis` in [-data.ndim - 1, data.ndim]"
-                                           << ", but got axis = " << axis << ", and data.ndim = " << ndim;
+  CHECK(-ndim - 1 <= axis && axis <= ndim)
+      << "repeat only accepts `axis` in [-data.ndim - 1, data.ndim]"
+      << ", but got axis = " << axis << ", and data.ndim = " << ndim;
   CHECK(repeats >= 1) << "repeat only accepts `repeats >= 1`"
                       << ", but got repeats = " << repeats;
 
@@ -83,15 +87,17 @@ std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor, int repeats, int axis, 
   return {res};
 }
 
-std::vector<std::vector<int>> InferShapeForRepeat(const std::vector<std::vector<int>> &inputs_shape,
-                                                  const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1U) << "The input's shape size should be 1! Please check again.";
+std::vector<std::vector<int>> InferShapeForRepeat(
+    const std::vector<std::vector<int>> &inputs_shape,
+    const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_shape.size(), 1U)
+      << "The input's shape size should be 1! Please check again.";
 
   int repeats = 0;
-  int axis    = 0;
+  int axis = 0;
   std::vector<int> new_shape;
   const std::vector<int> &tensor_shape = inputs_shape[0];
-  int ndim                             = static_cast<int>(tensor_shape.size());
+  int ndim = static_cast<int>(tensor_shape.size());
 
   if (attrs.find("repeats") != attrs.end()) {
     repeats = absl::get<int>(attrs.at("repeats"));
@@ -117,19 +123,22 @@ std::vector<std::vector<int>> InferShapeForRepeat(const std::vector<std::vector<
   return res;
 }
 
-std::vector<Type> InferDtypeForRepeat(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty()) << "The input's type size is 0! Please check again.";
+std::vector<Type> InferDtypeForRepeat(const std::vector<Type> &inputs_type,
+                                      const framework::AttrMapType &attrs) {
+  CHECK(!inputs_type.empty())
+      << "The input's type size is 0! Please check again.";
   std::vector<Type> res{inputs_type[0]};
   return res;
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForRepeat(const framework::NodeAttr &attrs,
-                                                         const std::vector<ir::Tensor> &inputs,
-                                                         const std::vector<Type> &out_type,
-                                                         const std::vector<std::vector<int>> &output_shapes,
-                                                         const Target &target) {
+std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<int>> &output_shapes,
+    const Target &target) {
   int repeats = 0;
-  int axis    = 0;
+  int axis = 0;
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "repeats") {
       repeats = absl::get<int>(iter.second);
@@ -141,10 +150,13 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(const framework::NodeAt
   CHECK(repeats >= 1) << "repeat only accepts `repeats >= 1`"
                       << ", but got repeats = " << repeats;
 
-  framework::CINNCompute repeat_compute([=](lang::Args args, lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input arguments of Repeat compute is empty! Please check.\n";
+  framework::CINNCompute repeat_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    CHECK(!args.empty())
+        << "The input arguments of Repeat compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U) << "at least 1 input tensors for Repeat compute\n";
+    CHECK_GE(pack_args.size(), 1U)
+        << "at least 1 input tensors for Repeat compute\n";
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -172,9 +184,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(const framework::NodeAt
     *ret = common::CINNValuePack{res};
   });
 
-  framework::CINNSchedule repeat_schedule([=](lang::Args args, lang::RetValue *ret) {
+  framework::CINNSchedule repeat_schedule([=](lang::Args args,
+                                              lang::RetValue *ret) {
     if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of repeat schedule is empty! Please check.\n";
+      CHECK(!args.empty())
+          << "The input argument of repeat schedule is empty! Please check.\n";
       common::CINNValuePack arg_pack = args[0];
       std::vector<Expr> vec_ast;
       for (int i = 0; i < arg_pack.size(); i++) {
@@ -187,20 +201,26 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(const framework::NodeAt
       ir::ModuleExpr mod_expr(vec_ast);
       ir::IRSchedule ir_sch(mod_expr);
       ir_sch.MergeExprs();
-      long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
+      int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                          output_shapes[0].end(),
+                                          1,
+                                          std::multiplies<int>());
       if (prod_size > 1) {
         if (target.arch == Target::Arch::NVGPU) {
           pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
         } else if (target.arch == Target::Arch::X86) {
-          pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
+          pe::IRScheduleInjectiveCPU(
+              ir_sch, output_shapes.front(), target, true);
         }
       }
-      std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      std::vector<common::CINNValue> res{
+          common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = common::CINNValuePack{res};
     } else {
-      CHECK(!args.empty()) << "The input argument of repeat schedule is empty! Please check.\n";
+      CHECK(!args.empty())
+          << "The input argument of repeat schedule is empty! Please check.\n";
       CINNValuePack arg_pack = args[0];
-      Expr out               = arg_pack[0];
+      Expr out = arg_pack[0];
       CHECK(out.as_tensor());
       *ret = arg_pack;
     }
@@ -221,9 +241,12 @@ CINN_REGISTER_HELPER(repeat_ops) {
       .describe("Repeat elements of an array `repeats` times along axis `axis`")
       .set_num_inputs(1)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForRepeat)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRepeat))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRepeat))
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForRepeat)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForRepeat))
+      .set_attr("inferdtype",
+                MakeOpFunction(cinn::hlir::op::InferDtypeForRepeat))
       .set_support_level(4);
 
   return true;

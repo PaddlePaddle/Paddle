@@ -24,7 +24,8 @@ namespace common {
 
 /**
  * Container for debug info.
- * DebugManager is integrated into the global Context, and used to log something(but not print to stdout directly).
+ * DebugManager is integrated into the global Context, and used to log
+ * something(but not print to stdout directly).
  */
 class DebugManager {
  public:

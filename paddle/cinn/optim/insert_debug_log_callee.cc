@@ -129,24 +129,26 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
   void operator()(Expr *e) { ir::IRMutator<>::Visit(e, e); }
 
   void Visit(const ir::_LoweredFunc_ *op, Expr *expr) {
-    auto *node       = expr->As<ir::_LoweredFunc_>();
+    auto *node = expr->As<ir::_LoweredFunc_>();
     auto *body_block = node->body.As<ir::Block>();
     CHECK(body_block);
 
-    auto msg        = StringFormat("running : %s", GetDebugString(*expr).c_str());
+    auto msg = StringFormat("running : %s", GetDebugString(*expr).c_str());
     auto debug_node = CreateDebugStatement(msg);
 
     ir::IRMutator<>::Visit(&node->body, &node->body);
 
-    auto deal_with_exprs = [&](std::vector<Expr> *exprs) {  // deal with op->argument_preapre_exprs
-      std::vector<Expr> new_stmts;
-      for (auto &expr : *exprs) {
-        auto msg = StringFormat("running : %s", GetDebugString(expr).c_str());
-        new_stmts.push_back(CreateDebugStatement(msg));
-        new_stmts.push_back(expr);
-      }
-      *exprs = new_stmts;
-    };
+    auto deal_with_exprs =
+        [&](std::vector<Expr> *exprs) {  // deal with op->argument_preapre_exprs
+          std::vector<Expr> new_stmts;
+          for (auto &expr : *exprs) {
+            auto msg =
+                StringFormat("running : %s", GetDebugString(expr).c_str());
+            new_stmts.push_back(CreateDebugStatement(msg));
+            new_stmts.push_back(expr);
+          }
+          *exprs = new_stmts;
+        };
 
     deal_with_exprs(&node->alloc_output_buffer_exprs);
     deal_with_exprs(&node->dealloc_output_buffer_exprs);
@@ -163,14 +165,15 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
       if (!IsDebugInfoNode(e)) {
         std::string msg;
         if (!e.As<ir::Store>()) {
-          msg                  = StringFormat("running: %s", GetDebugString(e).c_str());
+          msg = StringFormat("running: %s", GetDebugString(e).c_str());
           auto debug_info_node = CreateDebugStatement(msg);
           new_stmts.push_back(debug_info_node);
         } else {
-          auto _msg_args_      = StoreDebugInfo(e);
-          auto &msg            = std::get<0>(_msg_args_);
-          auto &args           = std::get<1>(_msg_args_);
-          auto debug_info_node = CreateDebugStatement("running: " + msg, std::move(args));
+          auto _msg_args_ = StoreDebugInfo(e);
+          auto &msg = std::get<0>(_msg_args_);
+          auto &args = std::get<1>(_msg_args_);
+          auto debug_info_node =
+              CreateDebugStatement("running: " + msg, std::move(args));
           new_stmts.push_back(debug_info_node);
         }
       }
@@ -180,16 +183,16 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
       new_stmts.push_back(e);
 
       if (!IsDebugInfoNode(e) && e.As<ir::Store>()) {
-        auto _msg_args_      = StoreDebugInfo(e);
-        auto &msg            = std::get<0>(_msg_args_);
-        auto &args           = std::get<1>(_msg_args_);
+        auto _msg_args_ = StoreDebugInfo(e);
+        auto &msg = std::get<0>(_msg_args_);
+        auto &args = std::get<1>(_msg_args_);
         auto debug_info_node = CreateDebugStatement(msg, std::move(args));
         new_stmts.push_back(debug_info_node);
 
         {  // detailed debug
           auto _format_args_ = StoreDebugInfoBuilder()(&e);
-          auto &format       = std::get<0>(_format_args_);
-          auto &args         = std::get<1>(_format_args_);
+          auto &format = std::get<0>(_format_args_);
+          auto &args = std::get<1>(_format_args_);
           new_stmts.push_back(CreateDebugStatement(format, std::move(args)));
         }
       }
@@ -206,12 +209,14 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
         break;
       case ir::IrNodeTy::For: {
         auto *node = e.As<ir::For>();
-        ss << "<For " << node->loop_var << " in [" << node->min << ", " << node->extent << ")>";
+        ss << "<For " << node->loop_var << " in [" << node->min << ", "
+           << node->extent << ")>";
         break;
       }
       case ir::IrNodeTy::PolyFor: {
         auto *node = e.As<ir::PolyFor>();
-        ss << "<PolyFor " << node->iterator << " in [" << node->init << ", " << node->ExtractExtent() << ")"
+        ss << "<PolyFor " << node->iterator << " in [" << node->init << ", "
+           << node->ExtractExtent() << ")"
            << " with condition: " << node->condition << ">";
         break;
       }
@@ -257,13 +262,20 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
   }
 
   inline bool IsDebugInfoNode(const Expr &e) {
-    return e.As<ir::Call>() && e.As<ir::Call>()->name == runtime::intrinsic::debug_log_repr;
+    return e.As<ir::Call>() &&
+           e.As<ir::Call>()->name == runtime::intrinsic::debug_log_repr;
   }
 
-  Expr CreateDebugStatement(const std::string &msg, std::vector<Expr> &&args = {}) {
+  Expr CreateDebugStatement(const std::string &msg,
+                            std::vector<Expr> &&args = {}) {
     args.insert(args.begin(), Expr(msg));
-    return ir::Call::Make(
-        Void(), runtime::intrinsic::debug_log_repr, args, {}, ir::CallType ::Intrinsic, ir::FunctionRef(), 0);
+    return ir::Call::Make(Void(),
+                          runtime::intrinsic::debug_log_repr,
+                          args,
+                          {},
+                          ir::CallType ::Intrinsic,
+                          ir::FunctionRef(),
+                          0);
   }
 };
 

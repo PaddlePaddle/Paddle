@@ -26,12 +26,15 @@ namespace runtime {
  * Type representation for cinn_buffer_t.
  */
 struct BufferType {
-  static BufferType Create(const Type& primitive) { return BufferType(primitive); }
+  static BufferType Create(const Type& primitive) {
+    return BufferType(primitive);
+  }
 
   static Type cinn_type();
 
  private:
-  explicit BufferType(const Type& primitive_type) : primitive_type(primitive_type) {
+  explicit BufferType(const Type& primitive_type)
+      : primitive_type(primitive_type) {
     CHECK(primitive_type.valid());
     CHECK(primitive_type.is_primitive());
   }

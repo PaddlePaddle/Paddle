@@ -28,7 +28,10 @@ class Layout {
   std::string axis_names_;
   std::vector<ir::Var> axes_;
 
-  Layout(const std::string& name, const std::vector<ir::Var>& axes) : name_(name), axes_(axes) { Verify(); }
+  Layout(const std::string& name, const std::vector<ir::Var>& axes)
+      : name_(name), axes_(axes) {
+    Verify();
+  }
 
   explicit Layout(const std::string& name);
 

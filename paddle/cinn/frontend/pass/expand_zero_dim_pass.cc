@@ -17,9 +17,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "glog/logging.h"
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/program_pass.h"
-#include "glog/logging.h"
 
 namespace cinn {
 namespace frontend {
@@ -50,7 +50,8 @@ class ExpandZeroDimPass : public ProgramPass {
       }
       for (auto& output : instr->outputs) {
         if (output->shape.empty()) {
-          VLOG(4) << "Change output 0D-Tensor " << output->id << " to 1D-Tensor";
+          VLOG(4) << "Change output 0D-Tensor " << output->id
+                  << " to 1D-Tensor";
           output->shape.push_back(1);
         }
       }
@@ -67,7 +68,8 @@ class ExpandZeroDimPass : public ProgramPass {
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(ExpandZeroDim) {
-  CINN_REGISTER_PROGRAM_PASS(ExpandZeroDim, cinn::frontend::pass::ExpandZeroDimPass);
+  CINN_REGISTER_PROGRAM_PASS(ExpandZeroDim,
+                             cinn::frontend::pass::ExpandZeroDimPass);
 
   return true;
 }

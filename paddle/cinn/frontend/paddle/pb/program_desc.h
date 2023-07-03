@@ -28,7 +28,9 @@ class ProgramDesc : public cpp::ProgramDescAPI {
  public:
   ProgramDesc() = delete;
 
-  explicit ProgramDesc(framework_proto::ProgramDesc *desc) : desc_(desc) { CHECK(desc_); }
+  explicit ProgramDesc(framework_proto::ProgramDesc *desc) : desc_(desc) {
+    CHECK(desc_);
+  }
 
   framework_proto::ProgramDesc *Proto() { return desc_; }
 
@@ -48,7 +50,9 @@ class ProgramDesc : public cpp::ProgramDescAPI {
 
   int64_t Version() const override { return desc_->version().version(); }
 
-  void SetVersion(int64_t version) override { desc_->mutable_version()->set_version(version); }
+  void SetVersion(int64_t version) override {
+    desc_->mutable_version()->set_version(version);
+  }
 
  private:
   framework_proto::ProgramDesc *desc_;  // not_own

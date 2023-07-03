@@ -105,7 +105,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NoamDecay(
+            decay = paddle.optimizer.lr.NoamDecay(
                 d_model, warmup_steps, learning_rate=learning_rate
             )
             return decay
@@ -343,7 +343,7 @@ def polynomial_decay(
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.PolynomialDecay(
+            decay = paddle.optimizer.lr.PolynomialDecay(
                 learning_rate, decay_steps, end_learning_rate, power, cycle
             )
             return decay
@@ -575,7 +575,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            lr = imperate_lr.LinearLrWarmup(
+            lr = paddle.optimizer.lr.LinearWarmup(
                 learning_rate, warmup_steps, start_lr, end_lr
             )
             return lr

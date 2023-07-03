@@ -23,7 +23,7 @@
 namespace cinn {
 namespace common {
 
-const static std::vector<std::string> kAxises({
+static const std::vector<std::string> kAxises({
     "i",  // level 0
     "j",  // level 1
     "k",  // level 2
@@ -53,7 +53,7 @@ std::string axis_name(int level) {
     return kAxises[level];
   }
   // upper level
-  int repeat_num        = 1 + (level / kAxises.size());
+  int repeat_num = 1 + (level / kAxises.size());
   const auto& base_axis = kAxises[level % kAxises.size()];
 
   // if the level greater than kAxis, repeat the axis, like:

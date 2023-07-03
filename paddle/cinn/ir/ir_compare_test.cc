@@ -37,13 +37,34 @@ TEST(TestIrCompare, SingleFunction) {
       {M, N}, [&](Var i, Var j) { return A(i, j) + ir::Expr(2.f); }, "C");
 
   cinn::common::Context::Global().ResetNameId();
-  auto funcs_1 = lang::LowerVec("add_const", poly::CreateStages({A, B}), {A, B}, {}, {}, nullptr, target, true);
+  auto funcs_1 = lang::LowerVec("add_const",
+                                poly::CreateStages({A, B}),
+                                {A, B},
+                                {},
+                                {},
+                                nullptr,
+                                target,
+                                true);
 
   cinn::common::Context::Global().ResetNameId();
-  auto funcs_2 = lang::LowerVec("add_const", poly::CreateStages({A, B}), {A, B}, {}, {}, nullptr, target, true);
+  auto funcs_2 = lang::LowerVec("add_const",
+                                poly::CreateStages({A, B}),
+                                {A, B},
+                                {},
+                                {},
+                                nullptr,
+                                target,
+                                true);
 
   cinn::common::Context::Global().ResetNameId();
-  auto funcs_3 = lang::LowerVec("add_const", poly::CreateStages({A, C}), {A, C}, {}, {}, nullptr, target, true);
+  auto funcs_3 = lang::LowerVec("add_const",
+                                poly::CreateStages({A, C}),
+                                {A, C},
+                                {},
+                                {},
+                                nullptr,
+                                target,
+                                true);
 
   ASSERT_EQ(funcs_1.size(), 1);
   ASSERT_EQ(funcs_2.size(), 1);
@@ -114,10 +135,12 @@ TEST(TestIrCompare, SingleFunction) {
   ASSERT_TRUE(compartor.Compare(funcs_1.front(), funcs_1.front()));
   IrEqualVisitor compartor_allow_suffix_diff(true);
   // they are euqal if allowing suffix of name different
-  ASSERT_TRUE(compartor_allow_suffix_diff.Compare(funcs_1.front(), funcs_2.front()));
+  ASSERT_TRUE(
+      compartor_allow_suffix_diff.Compare(funcs_1.front(), funcs_2.front()));
 
   ASSERT_FALSE(compartor.Compare(funcs_1.front(), funcs_3.front()));
-  ASSERT_FALSE(compartor_allow_suffix_diff.Compare(funcs_1.front(), funcs_3.front()));
+  ASSERT_FALSE(
+      compartor_allow_suffix_diff.Compare(funcs_1.front(), funcs_3.front()));
 }
 
 }  // namespace ir

@@ -32,13 +32,15 @@ void ProgramPass::Apply(Program* prog,
   }
   for (const auto* pass : fpass) {
     int before = prog->size();
-    cinn::hlir::framework::PassPrinter::GetInstance()->PassBegin(pass->name(), *prog);
+    cinn::hlir::framework::PassPrinter::GetInstance()->PassBegin(pass->name(),
+                                                                 *prog);
     pass->ApplyImpl(prog, fetch_ids, target);
     const_cast<ProgramPass*>(pass)->Clear();
     int after = prog->size();
-    cinn::hlir::framework::PassPrinter::GetInstance()->PassEnd(pass->name(), *prog);
-    VLOG(1) << "Apply " << pass->name() << " pass, program size: " << before << " -> " << after
-            << ", diff: " << after - before;
+    cinn::hlir::framework::PassPrinter::GetInstance()->PassEnd(pass->name(),
+                                                               *prog);
+    VLOG(1) << "Apply " << pass->name() << " pass, program size: " << before
+            << " -> " << after << ", diff: " << after - before;
   }
 }
 

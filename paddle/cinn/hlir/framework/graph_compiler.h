@@ -50,18 +50,22 @@ class Program {
    * @param scope The scope containing all the runtime variables.
    * @param instrs The instructions belonging to this program.
    */
-  Program(const std::shared_ptr<Scope>& scope, std::vector<std::unique_ptr<Instruction>>&& instrs);
+  Program(const std::shared_ptr<Scope>& scope,
+          std::vector<std::unique_ptr<Instruction>>&& instrs);
 
-  void PreRun(const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr);
+  void PreRun(
+      const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr);
 
-  void Export(const std::vector<std::string>& persistent_vars, const std::string& filename);
+  void Export(const std::vector<std::string>& persistent_vars,
+              const std::string& filename);
 
   /**
    * Execute the program -- that is running all the instructions inside it.
    */
-  void Execute(const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr,
-               void* stream                                                = nullptr,
-               bool use_cache                                              = true);
+  void Execute(
+      const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr,
+      void* stream = nullptr,
+      bool use_cache = true);
 
   void ExecuteTest(int repeat_);
 
@@ -70,8 +74,12 @@ class Program {
    */
   size_t size() const { return instrs_.size(); }
 
-  const std::vector<std::unique_ptr<Instruction>>& GetPreRunInstructions() { return prerun_instrs_; }
-  const std::vector<std::unique_ptr<Instruction>>& GetRunInstructions() { return instrs_; }
+  const std::vector<std::unique_ptr<Instruction>>& GetPreRunInstructions() {
+    return prerun_instrs_;
+  }
+  const std::vector<std::unique_ptr<Instruction>>& GetRunInstructions() {
+    return instrs_;
+  }
 
  private:
   // We need to hold scope to assure tensors alive used in instructions.
@@ -87,18 +95,23 @@ class Program {
  */
 class GraphCompiler final {
  public:
-  GraphCompiler(Target target, const std::shared_ptr<Scope>& scope, const std::shared_ptr<Graph>& graph)
-      : target_(std::move(target)), scope_(scope), graph_(graph), m_builder_(UniqName("module"), target) {}
+  GraphCompiler(Target target,
+                const std::shared_ptr<Scope>& scope,
+                const std::shared_ptr<Graph>& graph)
+      : target_(std::move(target)),
+        scope_(scope),
+        graph_(graph),
+        m_builder_(UniqName("module"), target) {}
 
   struct CompilationResult {
     std::unique_ptr<Program> runtime_program;
   };
 
   struct CompileOptions {
-    std::string attached_code                    = "";
-    bool with_instantiate_variables              = false;
+    std::string attached_code = "";
+    bool with_instantiate_variables = false;
     bool with_buffer_handle_instruction_inserted = false;
-    bool remove_unused_variables                 = true;
+    bool remove_unused_variables = true;
     // nodes group, it may come from the result of op fusion or graph tuning.
     // nodes in a group will be built into an Instruction
     std::vector<std::shared_ptr<Graph::Group>> groups;
@@ -113,7 +126,7 @@ class GraphCompiler final {
   // Compile with a packing option and result, to be extended easily.
   CompilationResult Build(const CompileOptions& options,
                           std::unordered_set<std::string>&& fetch_var_ids = {},
-                          void* stream                                    = nullptr);
+                          void* stream = nullptr);
   void ExportObject(const std::string& path) { compiler_->ExportObject(path); }
 
   std::unique_ptr<Program> Build(const std::string& code = "");
@@ -129,11 +142,14 @@ class GraphCompiler final {
 
   std::vector<ir::LoweredFunc> GetOpFunc(const Node* node);
   // Given a node, lower it to LoweredFunc using new ir schedule
-  std::vector<ir::LoweredFunc> GetOpFuncWithIRSchedule(const Node* node,
-                                                       const absl::flat_hash_map<std::string, Type>& type_dict_,
-                                                       const absl::flat_hash_map<std::string, shape_t>& shape_dict_);
+  std::vector<ir::LoweredFunc> GetOpFuncWithIRSchedule(
+      const Node* node,
+      const absl::flat_hash_map<std::string, Type>& type_dict_,
+      const absl::flat_hash_map<std::string, shape_t>& shape_dict_);
 
-  std::string GenOpFuncName(const Node* node) const { return "fn_" + node->id(); }
+  std::string GenOpFuncName(const Node* node) const {
+    return "fn_" + node->id();
+  }
 
   // append a unique number at the end of the function name to distinguish
   // different functions from graphs whose structures are same
@@ -145,25 +161,29 @@ class GraphCompiler final {
   std::vector<std::string> OpGetOutputNames(const Node* node) const;
 
   std::vector<std::unique_ptr<Instruction>> BuildInstructions(
-      const std::vector<std::vector<Node*>>& groups, const std::vector<std::shared_ptr<Graph::Group>>& fusion_groups);
+      const std::vector<std::vector<Node*>>& groups,
+      const std::vector<std::shared_ptr<Graph::Group>>& fusion_groups);
 
   void BuildCublasInstr(const Node& node, Instruction* instr) const;
   // some variables are eliminated by optimized passes(such as OpFusion),
   // we can filter out them according to arguments of the built instructions,
   // and erase them from the scope to avoid unnecessary buffer allocation
-  void RemoveInvalidVariables(const std::vector<std::unique_ptr<Instruction>>& instructions);
+  void RemoveInvalidVariables(
+      const std::vector<std::unique_ptr<Instruction>>& instructions);
 
   // find the first and last instruction where a variable used, and mark the
   // variable should allocate buffer before the first instruction runing and
   // can release the buffer after the last instruction finished.
-  void AnalyzeVariableLifeTime(const std::vector<std::unique_ptr<Instruction>>& instructions,
-                               std::unordered_map<int, std::vector<std::string>>* step2malloc,
-                               std::unordered_map<int, std::vector<std::string>>* step2free);
+  void AnalyzeVariableLifeTime(
+      const std::vector<std::unique_ptr<Instruction>>& instructions,
+      std::unordered_map<int, std::vector<std::string>>* step2malloc,
+      std::unordered_map<int, std::vector<std::string>>* step2free);
 
   // insert a buffer malloc instruction applying on variables before they are
   // firstly used in the next instruction, and insert a buffer free instruction
   // applying on variables after no instruction will use them anymore
-  void InsertBufferHandlers(std::vector<std::unique_ptr<Instruction>>* instructions);
+  void InsertBufferHandlers(
+      std::vector<std::unique_ptr<Instruction>>* instructions);
 
  private:
   // parallel compiler
@@ -178,7 +198,8 @@ class GraphCompiler final {
   std::map<std::string, std::vector<std::string>> function2input_args_;
   // mapping a function's name to its output artuments' names
   std::map<std::string, std::vector<std::string>> function2output_args_;
-  // fetch var ids in cinn and the corresponding var nodes will not be fused so as to get the result
+  // fetch var ids in cinn and the corresponding var nodes will not be fused so
+  // as to get the result
   std::unordered_set<std::string> fetch_var_ids_;
 
   absl::flat_hash_map<std::string, std::string> prefix2full_namemap_;
@@ -198,12 +219,13 @@ std::shared_ptr<Scope> BuildScope(Target target,
                                   std::shared_ptr<Scope> scope = nullptr);
 
 // Given params, lower the op to LoweredFunc using new IR Schedule
-std::vector<ir::LoweredFunc> GetFuncFromImpl(const std::shared_ptr<OpImpl>& impl,
-                                             const common::CINNValuePack& cinn_inputs,
-                                             std::vector<ir::Tensor>& tensor_inputs,
-                                             const std::vector<std::string>& input_output_nodes,
-                                             const std::string& node_id,
-                                             const Target& target);
+std::vector<ir::LoweredFunc> GetFuncFromImpl(
+    const std::shared_ptr<OpImpl>& impl,
+    const common::CINNValuePack& cinn_inputs,
+    std::vector<ir::Tensor>& tensor_inputs,
+    const std::vector<std::string>& input_output_nodes,
+    const std::string& node_id,
+    const Target& target);
 
 }  // namespace framework
 }  // namespace hlir

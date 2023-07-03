@@ -22,7 +22,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void Atan2OpMapper(const paddle::cpp::OpDesc& op_desc, const cinn::frontend::OpMapperContext& ctx) {
+void Atan2OpMapper(const paddle::cpp::OpDesc& op_desc,
+                   const cinn::frontend::OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X1").size(), 1UL);
   auto x1_name = op_desc.Input("X1").front();
   CHECK_EQ(op_desc.Input("X2").size(), 1UL);

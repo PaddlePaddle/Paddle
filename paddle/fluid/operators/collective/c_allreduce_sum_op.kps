@@ -36,7 +36,9 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_KERNEL(c_allreduce_sum, KP, plat::XPUPlace,
+REGISTER_OP_KERNEL(c_allreduce_sum,
+                   KP,
+                   plat::XPUPlace,
                    ops::CAllReduceOpXPUKernel<ops::kRedSum, float>);
 
 #endif

@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 

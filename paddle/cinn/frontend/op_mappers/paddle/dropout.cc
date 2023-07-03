@@ -19,17 +19,20 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void DropoutInferOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void DropoutInferOpMapper(const paddle::cpp::OpDesc& op_desc,
+                          const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  auto dropout_prob = utils::GetAttrOrDefault<float>(op_desc, "dropout_prob", 0.5f);
-  auto dropout_implementation =
-      utils::GetAttrOrDefault<std::string>(op_desc, "dropout_implementation", "downgrade_in_infer");
-  auto x   = ctx.GetVar(x_name);
-  auto out = ctx.Builder()->DropoutInfer(x, dropout_prob, dropout_implementation);
+  auto dropout_prob =
+      utils::GetAttrOrDefault<float>(op_desc, "dropout_prob", 0.5f);
+  auto dropout_implementation = utils::GetAttrOrDefault<std::string>(
+      op_desc, "dropout_implementation", "downgrade_in_infer");
+  auto x = ctx.GetVar(x_name);
+  auto out =
+      ctx.Builder()->DropoutInfer(x, dropout_prob, dropout_implementation);
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
@@ -40,6 +43,7 @@ void DropoutInferOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperCont
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_dropout) {
-  CINN_REGISTER_OP_MAPPER(dropout, cinn::frontend::paddle_mappers::DropoutInferOpMapper)
+  CINN_REGISTER_OP_MAPPER(dropout,
+                          cinn::frontend::paddle_mappers::DropoutInferOpMapper)
   return true;
 }

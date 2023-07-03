@@ -53,9 +53,16 @@ TEST(Vectorize, basic) {
 
   auto* fn_ptr = reinterpret_cast<lower_func_ptr_t>(fn_);
 
-  auto* A_buf = common::BufferBuilder(Float(32), {1024}).set_random().set_align(64).Build();
-  auto* B_buf = common::BufferBuilder(Float(32), {1024}).set_random().set_align(64).Build();
-  auto* C_buf = common::BufferBuilder(Float(32), {1024}).set_zero().set_align(64).Build();
+  auto* A_buf = common::BufferBuilder(Float(32), {1024})
+                    .set_random()
+                    .set_align(64)
+                    .Build();
+  auto* B_buf = common::BufferBuilder(Float(32), {1024})
+                    .set_random()
+                    .set_align(64)
+                    .Build();
+  auto* C_buf =
+      common::BufferBuilder(Float(32), {1024}).set_zero().set_align(64).Build();
 
   auto args = common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 

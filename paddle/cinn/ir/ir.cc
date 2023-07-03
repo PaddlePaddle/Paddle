@@ -44,7 +44,8 @@ Expr Cast::Make(Type t, Expr v) {
 
 void Cast::Verify() const {
   if (v().type() == type())
-    LOG(WARNING) << "Found a Cast Node casting a value to the same type, this is not reasonable";
+    LOG(WARNING) << "Found a Cast Node casting a value to the same type, this "
+                    "is not reasonable";
 }
 
 Expr Add::Make(Expr a, Expr b) {
@@ -57,7 +58,8 @@ Add::Add(Expr a, Expr b) : BinaryOpNode<Add>(a.type(), a, b) {}
 void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
   CHECK(a.defined());
   CHECK(b.defined());
-  CHECK_EQ(a.type(), b.type()) << "The operands' types of the node [" << ir_name << "] don't match";
+  CHECK_EQ(a.type(), b.type())
+      << "The operands' types of the node [" << ir_name << "] don't match";
 }
 
 void Add::Verify() const { BinaryNodeVerify(a(), b(), "Add"); }
@@ -192,7 +194,7 @@ Expr Let::Make(Expr symbol, Expr body) {
     CHECK(body.type().valid());
   }
   n->symbol = symbol;
-  n->body   = body;
+  n->body = body;
   n->set_type(n->symbol->type());
   return Expr(n);
 }
@@ -212,22 +214,25 @@ Expr _Var_::Make(const std::string &name, const Type &type) {
   return Expr(node);
 }
 
-Expr _Var_::Make(Expr lower_bound, Expr upper_bound, const std::string &name, bool is_reduce_axis) {
-  auto *n           = make_shared<_Var_>();
-  n->lower_bound    = lower_bound;
-  n->upper_bound    = upper_bound;
+Expr _Var_::Make(Expr lower_bound,
+                 Expr upper_bound,
+                 const std::string &name,
+                 bool is_reduce_axis) {
+  auto *n = make_shared<_Var_>();
+  n->lower_bound = lower_bound;
+  n->upper_bound = upper_bound;
   n->is_reduce_axis = is_reduce_axis;
-  n->name           = name;
+  n->name = name;
   n->set_type(lower_bound.type());
   return Expr(n);
 }
 
 Expr _Var_::Copy() const {
-  auto *n           = make_shared<_Var_>();
-  n->name           = name;
+  auto *n = make_shared<_Var_>();
+  n->name = name;
   n->is_reduce_axis = is_reduce_axis;
-  n->lower_bound    = lower_bound;
-  n->upper_bound    = upper_bound;
+  n->lower_bound = lower_bound;
+  n->upper_bound = upper_bound;
   n->set_type(type());
   return Expr(n);
 }
@@ -248,26 +253,29 @@ Expr For::Make(Var loop_var,
   CHECK(loop_var.defined());
   CHECK(min.defined());
   CHECK(extent.defined());
-  node->loop_var   = loop_var;
-  node->min        = min;
-  node->extent     = extent;
+  node->loop_var = loop_var;
+  node->min = min;
+  node->extent = extent;
   node->device_api = device_api;
-  node->body       = body;
+  node->body = body;
   node->set_for_type(for_type);
   node->set_vectorize_info(vector_info);
   node->set_bind_info(bind_info);
 
   if (node->is_vectorized()) CHECK(node->vectorize_info().valid());
-  if (node->is_binded() && bind_info.offset >= 0) CHECK(node->bind_info().valid());
+  if (node->is_binded() && bind_info.offset >= 0)
+    CHECK(node->bind_info().valid());
 
   return Expr(node);
 }
 
 std::vector<Expr *> For::expr_fields() { return {&min, &extent, &body}; }
-std::vector<const Expr *> For::expr_fields() const { return {&min, &extent, &body}; }
+std::vector<const Expr *> For::expr_fields() const {
+  return {&min, &extent, &body};
+}
 
 Expr Block::Make(const std::vector<Expr> &stmts) {
-  auto node   = make_shared<Block>();
+  auto node = make_shared<Block>();
   node->stmts = stmts;
   return Expr(node);
 }
@@ -287,12 +295,12 @@ Expr ScheduleBlock::Make(const std::vector<Var> &iter_vars,
                          const std::vector<Expr> &write_buffers,
                          const std::string &name,
                          Expr body) {
-  auto node           = make_shared<ScheduleBlock>();
-  node->iter_vars     = iter_vars;
-  node->read_buffers  = read_buffers;
+  auto node = make_shared<ScheduleBlock>();
+  node->iter_vars = iter_vars;
+  node->read_buffers = read_buffers;
   node->write_buffers = write_buffers;
-  node->name          = name;
-  node->body          = body;
+  node->name = name;
+  node->body = body;
   return Expr(node);
 }
 void ScheduleBlock::Verify() const {
@@ -310,9 +318,10 @@ std::vector<const Expr *> ScheduleBlock::expr_fields() const {
   return res;
 }
 
-Expr ScheduleBlockRealize::Make(const std::vector<Expr> &iter_values, const Expr &schedule_block) {
-  auto node            = make_shared<ScheduleBlockRealize>();
-  node->iter_values    = iter_values;
+Expr ScheduleBlockRealize::Make(const std::vector<Expr> &iter_values,
+                                const Expr &schedule_block) {
+  auto node = make_shared<ScheduleBlockRealize>();
+  node->iter_values = iter_values;
   node->schedule_block = schedule_block;
   return Expr(node);
 }
@@ -342,22 +351,30 @@ Expr IfThenElse::Make(Expr condition, Expr true_case, Expr false_case) {
 }
 
 IfThenElse::IfThenElse(Expr condition, Expr true_case, Expr false_case)
-    : ExprNode(Type()), condition(condition), true_case(true_case), false_case(false_case) {
+    : ExprNode(Type()),
+      condition(condition),
+      true_case(true_case),
+      false_case(false_case) {
   CHECK(condition.defined());
   CHECK(true_case.defined());
 }
-std::vector<Expr *> IfThenElse::expr_fields() { return {&condition, &true_case, &false_case}; }
-std::vector<const Expr *> IfThenElse::expr_fields() const { return {&condition, &true_case, &false_case}; }
+std::vector<Expr *> IfThenElse::expr_fields() {
+  return {&condition, &true_case, &false_case};
+}
+std::vector<const Expr *> IfThenElse::expr_fields() const {
+  return {&condition, &true_case, &false_case};
+}
 
 Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
   CHECK(tensor.As<_Tensor_>()) << "tensor should be _Tensor_ type";
-  auto node     = make_shared<Store>();
-  node->tensor  = tensor;
-  node->value   = value;
+  auto node = make_shared<Store>();
+  node->tensor = tensor;
+  node->value = value;
   node->indices = indices;
 
   if (tensor->type() != Void()) {
-    node->set_type(tensor->type().ElementOf().with_lanes(node->index().type().lanes()));
+    node->set_type(
+        tensor->type().ElementOf().with_lanes(node->index().type().lanes()));
   }
   return Expr(node);
 }
@@ -394,18 +411,24 @@ std::vector<const Expr *> Store::expr_fields() const {
 
 void Store::Verify() const { CHECK(tensor.defined()); }
 
-Expr Alloc::Make(Expr dest, Type type, const std::vector<Expr> &extents, Expr condition, Expr body) {
+Expr Alloc::Make(Expr dest,
+                 Type type,
+                 const std::vector<Expr> &extents,
+                 Expr condition,
+                 Expr body) {
   auto node = make_shared<Alloc>();
   CHECK(dest.As<_Buffer_>()) << "Alloc destination only supports Buffer";
   node->destination = dest;
-  node->extents     = extents;
-  node->condition   = condition;
-  node->body        = body;
+  node->extents = extents;
+  node->condition = condition;
+  node->body = body;
   node->set_type(type);
   return Expr(node);
 }
 
-int32_t Alloc::ConstantAllocationSize() const { return ConstantAllocationSize(extents); }
+int32_t Alloc::ConstantAllocationSize() const {
+  return ConstantAllocationSize(extents);
+}
 
 int32_t Alloc::ConstantAllocationSize(const std::vector<Expr> &extents) {
   int32_t res{1};
@@ -450,12 +473,12 @@ Expr Call::Make(Type type,
     CHECK(read_args[i].defined());
   }
 
-  auto node         = common::make_shared<Call>(type);
-  node->name        = name;
-  node->read_args   = read_args;
-  node->write_args  = write_args;
-  node->call_type   = call_type;
-  node->func        = func;
+  auto node = common::make_shared<Call>(type);
+  node->name = name;
+  node->read_args = read_args;
+  node->write_args = write_args;
+  node->call_type = call_type;
+  node->func = func;
   node->value_index = value_index;
   node->set_type(type);
   node->attrs = attrs;
@@ -484,13 +507,13 @@ Expr PolyFor::Make(Var iterator,
                    Expr body,
                    VectorizeInfo vectorize_info,
                    BindInfo bind_info) {
-  auto n        = make_shared<PolyFor>();
-  n->iterator   = iterator;
-  n->init       = init_val;
-  n->condition  = condition;
-  n->inc        = inc;
+  auto n = make_shared<PolyFor>();
+  n->iterator = iterator;
+  n->init = init_val;
+  n->condition = condition;
+  n->inc = inc;
   n->device_api = device_api;
-  n->body       = body;
+  n->body = body;
   n->set_for_type(for_type);
   n->set_vectorize_info(vectorize_info);
   n->set_bind_info(bind_info);
@@ -500,8 +523,12 @@ Expr PolyFor::Make(Var iterator,
 
   return Expr(n);
 }
-std::vector<Expr *> PolyFor::expr_fields() { return {&init, &condition, &inc, &body}; }
-std::vector<const Expr *> PolyFor::expr_fields() const { return {&init, &condition, &inc, &body}; }
+std::vector<Expr *> PolyFor::expr_fields() {
+  return {&init, &condition, &inc, &body};
+}
+std::vector<const Expr *> PolyFor::expr_fields() const {
+  return {&init, &condition, &inc, &body};
+}
 
 Expr PolyFor::ExtractExtent() const {
   auto nodes = CollectIRNodes(condition, [&](const Expr *e) {
@@ -522,7 +549,8 @@ Expr PolyFor::ExtractExtent() const {
   if (le_n) {
     if (le_n->a() != Expr(iterator)) return Expr();
     auto *le_b_int = le_n->b().As<IntImm>();
-    if (le_b_int) return Expr(make_shared<IntImm>(Int(32), le_b_int->value + 1));
+    if (le_b_int)
+      return Expr(make_shared<IntImm>(Int(32), le_b_int->value + 1));
     return Add::Make(le_n->b(), Expr(1));
   }
 
@@ -533,7 +561,9 @@ Expr PolyFor::ExtractExtent() const {
   return Expr();
 }
 
-bool Var::operator==(const Var &o) const { return o->name == operator->()->name; }
+bool Var::operator==(const Var &o) const {
+  return o->name == operator->()->name;
+}
 bool Var::operator!=(const Var &o) const { return !(*this == o); }
 
 Var &Var::operator=(_Var_ *x) {
@@ -550,8 +580,8 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &indices) {
   CHECK(tensor->type().valid());
   CHECK(!indices.empty());
   for (auto &idx : indices) CHECK_EQ(idx.type().ElementOf(), Int(32));
-  auto node     = make_shared<Load>();
-  node->tensor  = tensor;
+  auto node = make_shared<Load>();
+  node->tensor = tensor;
   node->indices = indices;
   node->set_type(node->type());
   return Expr(node);
@@ -584,7 +614,8 @@ Expr Load::index() const {
   if (is_addr_tensor()) {
     auto *tensor_n = tensor.As<_Tensor_>();
     CHECK(tensor_n);
-    VLOG(3) << "Begin Load::index IndiceToAbsOffset of tensor: " << this->name();
+    VLOG(3) << "Begin Load::index IndiceToAbsOffset of tensor: "
+            << this->name();
     if (indices.size() == 1) {
       return indices[0];
     }
@@ -609,12 +640,15 @@ void Load::Verify() const {
   CHECK(!indices.empty()) << "At least one indice is needed";
   for (auto &indice : indices) {
     CHECK(indice.defined());
-    CHECK(indice.type().ElementOf() == type_of<int32_t>() || indice.type().ElementOf() == type_of<int64_t>())
+    CHECK(indice.type().ElementOf() == type_of<int32_t>() ||
+          indice.type().ElementOf() == type_of<int64_t>())
         << "get type " << indice.type() << " vs (int64 or int32)";
   }
 }
 
-bool LoadStoreAddrMnger::is_addr_tensor() const { return tensor.As<_Tensor_>(); }
+bool LoadStoreAddrMnger::is_addr_tensor() const {
+  return tensor.As<_Tensor_>();
+}
 bool LoadStoreAddrMnger::is_addr_scalar() const { return !is_addr_tensor(); }
 
 Expr Ramp::Make(Expr base, Expr stride, int lanes) {
@@ -625,10 +659,10 @@ Expr Ramp::Make(Expr base, Expr stride, int lanes) {
   CHECK_EQ(stride.type(), Int(32));
   CHECK_GT(lanes, 0);
 
-  auto *n   = make_shared<Ramp>();
-  n->base   = base;
+  auto *n = make_shared<Ramp>();
+  n->base = base;
   n->stride = stride;
-  n->lanes  = lanes;
+  n->lanes = lanes;
   Type type(base.type().type(), base.type().bits(), lanes);
   n->set_type(type);
   return Expr(n);
@@ -638,7 +672,7 @@ Expr Broadcast::Make(Expr value, int lanes) {
   CHECK(value.defined());
   CHECK(value.type().valid());
 
-  auto *n  = make_shared<Broadcast>();
+  auto *n = make_shared<Broadcast>();
   n->value = value;
   n->lanes = lanes;
 
@@ -648,13 +682,15 @@ Expr Broadcast::Make(Expr value, int lanes) {
   return Expr(n);
 }
 
-Type Broadcast::type() const { return value.type().ElementOf().with_lanes(lanes); }
+Type Broadcast::type() const {
+  return value.type().ElementOf().with_lanes(lanes);
+}
 
 Expr Sum::Make(const std::vector<Expr> &vs) {
   CHECK(!vs.empty());
   if (vs.size() == 1) return vs.front();
 
-  auto *n   = make_shared<Sum>();
+  auto *n = make_shared<Sum>();
   auto type = vs.front().type();
   for (auto &v : vs) CHECK_EQ(v.type(), type) << vs.front() << " " << v;
 
@@ -668,7 +704,7 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
 Expr Product::Make(const std::vector<Expr> &vs) {
   CHECK_GE(vs.size(), 1);
 
-  auto *n   = make_shared<Product>();
+  auto *n = make_shared<Product>();
   auto type = vs.front().type();
   for (auto &v : vs) CHECK_EQ(v.type(), type);
 
@@ -681,31 +717,35 @@ Expr Product::Make(const std::vector<Expr> &vs) {
 
 Expr FracOp::Make(Expr n, Expr d) {
   auto *node = make_shared<FracOp>();
-  node->a()  = n;
-  node->b()  = d;
+  node->a() = n;
+  node->b() = d;
   return Expr(node);
 }
 
 ir::Module _Module_::Make(const std::string &name, Target target) {
-  auto n    = make_shared<_Module_>();
-  n->name   = name;
+  auto n = make_shared<_Module_>();
+  n->name = name;
   n->target = target;
   return ir::Module(n);
 }
 
-Expr PrimitiveNode::Make(const std::string &name, const std::map<std::string, attr_t> &attrs) {
-  auto *n  = make_shared<PrimitiveNode>();
-  n->name  = name;
+Expr PrimitiveNode::Make(const std::string &name,
+                         const std::map<std::string, attr_t> &attrs) {
+  auto *n = make_shared<PrimitiveNode>();
+  n->name = name;
   n->attrs = attrs;
   return Expr(n);
 }
 
-Expr Reduce::Make(Reduce::ReduceType reduce_type, Expr init, Expr body, const std::vector<Var> &reduce_aixs) {
+Expr Reduce::Make(Reduce::ReduceType reduce_type,
+                  Expr init,
+                  Expr body,
+                  const std::vector<Var> &reduce_aixs) {
   CHECK(body.defined());
   CHECK(init.defined());
-  auto n         = common::make_shared<Reduce>();
-  n->init        = init;
-  n->body        = body;
+  auto n = common::make_shared<Reduce>();
+  n->init = init;
+  n->body = body;
   n->reduce_type = reduce_type;
   n->reduce_axis.append(reduce_aixs.begin(), reduce_aixs.end());
   CHECK(body.type().valid());
@@ -746,7 +786,8 @@ void Select::Verify() const {
   CHECK(condition.defined());
   CHECK(true_value.defined());
   CHECK(false_value.defined());
-  CHECK(condition.type().is_bool()) << "Select Node's condition should be a boolean";
+  CHECK(condition.type().is_bool())
+      << "Select Node's condition should be a boolean";
   CHECK_EQ(true_value.type(), false_value.type())
       << "Select Node's true_value and false_value should have the same type";
 }
@@ -802,12 +843,14 @@ void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
 }
 
 void Product::Verify() const {
-  CHECK_GT(operands().size(), 1UL) << "Product node should have more than 1 operands";
+  CHECK_GT(operands().size(), 1UL)
+      << "Product node should have more than 1 operands";
   MultiOperandVerify(operands());
 }
 
 void Sum::Verify() const {
-  CHECK_GT(operands().size(), 1UL) << "Sum node should have more than 1 operands";
+  CHECK_GT(operands().size(), 1UL)
+      << "Sum node should have more than 1 operands";
   MultiOperandVerify(operands());
 }
 

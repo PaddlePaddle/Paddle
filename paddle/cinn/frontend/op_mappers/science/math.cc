@@ -19,20 +19,22 @@ namespace cinn {
 namespace frontend {
 namespace science_mappers {
 
-#define BINARY_OPMAPPER(op_name)                                                           \
-  void op_name##OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) { \
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);                                              \
-    auto x_name = op_desc.Input("X").front();                                              \
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);                                              \
-    auto y_name = op_desc.Input("Y").front();                                              \
-    CHECK_EQ(op_desc.Output("Z").size(), 1UL);                                             \
-    auto out_name = op_desc.Output("Z").front();                                           \
-    VLOG(3) << out_name << " = " << #op_name << "(" << x_name << ", " << y_name << ")";    \
-    auto x   = ctx.GetVar(x_name);                                                         \
-    auto y   = ctx.GetVar(y_name);                                                         \
-    auto out = ctx.Builder()->op_name(x, y);                                               \
-    ctx.AddVar(out_name, out);                                                             \
-    ctx.AddVarModelToProgram(out_name, out->id);                                           \
+#define BINARY_OPMAPPER(op_name)                                      \
+  void op_name##OpMapper(const paddle::cpp::OpDesc& op_desc,          \
+                         const OpMapperContext& ctx) {                \
+    CHECK_EQ(op_desc.Input("X").size(), 1UL);                         \
+    auto x_name = op_desc.Input("X").front();                         \
+    CHECK_EQ(op_desc.Input("Y").size(), 1UL);                         \
+    auto y_name = op_desc.Input("Y").front();                         \
+    CHECK_EQ(op_desc.Output("Z").size(), 1UL);                        \
+    auto out_name = op_desc.Output("Z").front();                      \
+    VLOG(3) << out_name << " = " << #op_name << "(" << x_name << ", " \
+            << y_name << ")";                                         \
+    auto x = ctx.GetVar(x_name);                                      \
+    auto y = ctx.GetVar(y_name);                                      \
+    auto out = ctx.Builder()->op_name(x, y);                          \
+    ctx.AddVar(out_name, out);                                        \
+    ctx.AddVarModelToProgram(out_name, out->id);                      \
   }
 
 BINARY_OPMAPPER(Add)
@@ -46,17 +48,18 @@ BINARY_OPMAPPER(Min)
 
 #undef BINARY_OPMAPPER
 
-#define UNARY_OPMAPPER(op_name)                                                            \
-  void op_name##OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) { \
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);                                              \
-    auto x_name = op_desc.Input("X").front();                                              \
-    CHECK_EQ(op_desc.Output("Y").size(), 1UL);                                             \
-    auto out_name = op_desc.Output("Y").front();                                           \
-    VLOG(3) << out_name << " = " << #op_name << "(" << x_name << ")";                      \
-    auto x   = ctx.GetVar(x_name);                                                         \
-    auto out = ctx.Builder()->op_name(x);                                                  \
-    ctx.AddVar(out_name, out);                                                             \
-    ctx.AddVarModelToProgram(out_name, out->id);                                           \
+#define UNARY_OPMAPPER(op_name)                                       \
+  void op_name##OpMapper(const paddle::cpp::OpDesc& op_desc,          \
+                         const OpMapperContext& ctx) {                \
+    CHECK_EQ(op_desc.Input("X").size(), 1UL);                         \
+    auto x_name = op_desc.Input("X").front();                         \
+    CHECK_EQ(op_desc.Output("Y").size(), 1UL);                        \
+    auto out_name = op_desc.Output("Y").front();                      \
+    VLOG(3) << out_name << " = " << #op_name << "(" << x_name << ")"; \
+    auto x = ctx.GetVar(x_name);                                      \
+    auto out = ctx.Builder()->op_name(x);                             \
+    ctx.AddVar(out_name, out);                                        \
+    ctx.AddVarModelToProgram(out_name, out->id);                      \
   }
 
 UNARY_OPMAPPER(Sqrt)
@@ -78,7 +81,8 @@ UNARY_OPMAPPER(Abs)
 
 CINN_REGISTER_HELPER(science_math) {
 #define EXPAND_OP_MAPPER_REGISTER(psci_op, cinn_op) \
-  CINN_REGISTER_OP_MAPPER(psci_op, cinn::frontend::science_mappers::cinn_op##OpMapper)
+  CINN_REGISTER_OP_MAPPER(psci_op,                  \
+                          cinn::frontend::science_mappers::cinn_op##OpMapper)
 
   EXPAND_OP_MAPPER_REGISTER(add_p, Add)
   EXPAND_OP_MAPPER_REGISTER(sub_p, Subtract)

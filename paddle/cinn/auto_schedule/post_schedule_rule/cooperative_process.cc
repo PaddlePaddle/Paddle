@@ -22,10 +22,12 @@
 namespace cinn {
 namespace auto_schedule {
 
-int ExtractNumThreads(const ir::IRSchedule& ir_schedule, const std::string& bind_axis) {
+int ExtractNumThreads(const ir::IRSchedule& ir_schedule,
+                      const std::string& bind_axis) {
   const ir::ScheduleDesc& trace = ir_schedule.GetTraceDesc();
   for (auto&& step : trace.Steps()) {
-    if (step.type == "Bind" && step.attrs.find("thread_axis") != step.attrs.end() &&
+    if (step.type == "Bind" &&
+        step.attrs.find("thread_axis") != step.attrs.end() &&
         absl::get<std::string>(step.attrs.at("thread_axis")) == bind_axis) {
       CHECK_EQ(step.inputs.at("loop").size(), 1);
       return step.inputs.at("loop")[0].As<ir::For>()->extent.as_int32();
@@ -38,17 +40,21 @@ std::vector<std::string> FindCandidates(const ir::ScheduleDesc& trace) {
   std::vector<std::string> candidate_block_names;
   for (auto&& step : trace.Steps()) {
     if (step.type == "AnnotateIntAttr" &&
-        absl::get<std::string>(step.attrs.at("key")) == ir::attr::cooperative_process) {
+        absl::get<std::string>(step.attrs.at("key")) ==
+            ir::attr::cooperative_process) {
       candidate_block_names.push_back(
-          step.inputs.at("block")[0].As<ir::ScheduleBlockRealize>()->schedule_block.As<ir::ScheduleBlock>()->name);
+          step.inputs.at("block")[0]
+              .As<ir::ScheduleBlockRealize>()
+              ->schedule_block.As<ir::ScheduleBlock>()
+              ->name);
     }
   }
   return candidate_block_names;
 }
 
 bool CooperativeProcess::Apply(ir::IRSchedule* schedule) {
-  int num_threads                                = ExtractNumThreads(*schedule, "threadIdx.x");
-  const ir::ScheduleDesc& trace                  = schedule->GetTraceDesc();
+  int num_threads = ExtractNumThreads(*schedule, "threadIdx.x");
+  const ir::ScheduleDesc& trace = schedule->GetTraceDesc();
   std::vector<std::string> candidate_block_names = FindCandidates(trace);
   for (auto&& candidate : candidate_block_names) {
     auto loop = schedule->GetLoops(candidate).back();

@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
@@ -35,7 +36,6 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-#include "gflags/gflags.h"
 
 DECLARE_bool(cinn_ir_schedule);
 
@@ -81,36 +81,40 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
       output_name);
 }
 
-std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(const framework::NodeAttr &attrs,
-                                                         const std::vector<ir::Tensor> &inputs,
-                                                         const std::vector<Type> &out_type,
-                                                         const std::vector<std::vector<int>> &output_shapes,
-                                                         const Target &target) {
+std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<int>> &output_shapes,
+    const Target &target) {
   std::string op_name("logical_right_shift");
 
-  framework::CINNCompute logical_right_shift_compute([=](lang::Args args, lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of " << op_name << " compute is empty! Please check.\n";
-    CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U) << "2 input tensors for " << op_name << " compute\n";
+  framework::CINNCompute logical_right_shift_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty()) << "The input argument of " << op_name
+                             << " compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK_GE(pack_args.size(), 2U)
+            << "2 input tensors for " << op_name << " compute\n";
 
-    Expr A_expr = pack_args[0];
-    Expr B_expr = pack_args[1];
-    CHECK(A_expr.as_tensor());
-    CHECK(B_expr.as_tensor());
-    ir::Tensor A = A_expr.as_tensor_ref();
-    ir::Tensor B = B_expr.as_tensor_ref();
+        Expr A_expr = pack_args[0];
+        Expr B_expr = pack_args[1];
+        CHECK(A_expr.as_tensor());
+        CHECK(B_expr.as_tensor());
+        ir::Tensor A = A_expr.as_tensor_ref();
+        ir::Tensor B = B_expr.as_tensor_ref();
 
-    std::string tensor_name = UniqName("T_LogicalRightShift_out");
+        std::string tensor_name = UniqName("T_LogicalRightShift_out");
 
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 3U);
-      tensor_name = pack_args[2].operator std::string();
-    }
+        if (FLAGS_cinn_ir_schedule) {
+          CHECK_EQ(pack_args.size(), 3U);
+          tensor_name = pack_args[2].operator std::string();
+        }
 
-    auto out    = LogicalRightShift(A, B, target, tensor_name);
-    auto stages = CreateStages({out});
-    *ret        = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
-  });
+        auto out = LogicalRightShift(A, B, target, tensor_name);
+        auto stages = CreateStages({out});
+        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(logical_right_shift_compute,
@@ -120,20 +124,25 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(const framework::NodeAt
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForLogicalRightShift(const std::vector<framework::shape_t> &inputs_shape,
-                                                               const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 2U) << "The input's shape size should be 2! Please check again.";
-  CHECK_EQ(inputs_shape[0].size(), inputs_shape[1].size()) << "The inputs' dims should be equal.";
+std::vector<framework::shape_t> InferShapeForLogicalRightShift(
+    const std::vector<framework::shape_t> &inputs_shape,
+    const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_shape.size(), 2U)
+      << "The input's shape size should be 2! Please check again.";
+  CHECK_EQ(inputs_shape[0].size(), inputs_shape[1].size())
+      << "The inputs' dims should be equal.";
   std::vector<framework::shape_t> res{inputs_shape[0]};
   return res;
 }
 
-std::vector<Type> InferDtypeForLogicalRightShift(const std::vector<Type> &inputs_type,
-                                                 const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 2UL) << "The logical_right_shift op should has two inputs! Please check.";
+std::vector<Type> InferDtypeForLogicalRightShift(
+    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_type.size(), 2UL)
+      << "The logical_right_shift op should has two inputs! Please check.";
   CHECK_EQ(inputs_type[0], inputs_type[1])
-      << "The data type of input tensors of logical_right_shift op should be equal, but here x:" << inputs_type[0]
-      << " != y:" << inputs_type[1] << "! Please check.";
+      << "The data type of input tensors of logical_right_shift op should be "
+         "equal, but here x:"
+      << inputs_type[0] << " != y:" << inputs_type[1] << "! Please check.";
   std::vector<Type> res{inputs_type[0]};
   return res;
 }
@@ -147,10 +156,14 @@ CINN_REGISTER_HELPER(logical_right_shift_ops) {
       .describe("Logical Right Shift.")
       .set_num_inputs(2)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForLogicalRightShift)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForLogicalRightShift))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForLogicalRightShift))
-      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForLogicalRightShift)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForLogicalRightShift))
+      .set_attr("inferdtype",
+                MakeOpFunction(cinn::hlir::op::InferDtypeForLogicalRightShift))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
 
   return true;

@@ -40,9 +40,9 @@ TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target  = common::DefaultHostTarget();
+  auto target = common::DefaultHostTarget();
   auto program = builder.Build();
-  auto graph   = Optimize(&program, {}, target);
+  auto graph = Optimize(&program, {}, target);
 
   auto scope = BuildScope(target, graph);
   ASSERT_EQ(scope->var_names().size(), 6);
@@ -64,47 +64,56 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target  = common::DefaultHostTarget();
+  auto target = common::DefaultHostTarget();
   auto program = builder.Build();
-  auto graph   = Optimize(&program, {}, target);
-  auto scope   = BuildScope(target, graph);
+  auto graph = Optimize(&program, {}, target);
+  auto scope = BuildScope(target, graph);
 
   GraphCompiler gc_disable(target, scope, graph);
   GraphCompiler::CompileOptions options;
   // disable with_buffer_handle_instruction_inserted: only 1 instruction
   auto runtime_program_disable = gc_disable.Build(options).runtime_program;
   ASSERT_EQ(runtime_program_disable->size(), 1);
-  const auto& computation_instr_disable = runtime_program_disable->GetRunInstructions().front();
+  const auto& computation_instr_disable =
+      runtime_program_disable->GetRunInstructions().front();
 
   // enable with_buffer_handle_instruction_inserted: 3 instructions, 1st ->
   // malloc instruction(a, b, d), 2nd -> the real computation
   // instruction(add + relu)  and 3rd -> free instruction
   GraphCompiler gc_enable(target, scope, graph);
   options.with_buffer_handle_instruction_inserted = true;
-  auto runtime_program_enable                     = gc_enable.Build(options).runtime_program;
-  const auto& instructions                        = runtime_program_enable->GetRunInstructions();
+  auto runtime_program_enable = gc_enable.Build(options).runtime_program;
+  const auto& instructions = runtime_program_enable->GetRunInstructions();
   ASSERT_EQ(instructions.size(), 3);
 
   const auto& malloc_instr = instructions.front();
   ASSERT_EQ(malloc_instr->size(), 1);
   auto malloc_variable_names = malloc_instr->GetInArgs().front();
-  auto used_variable_names   = std::unordered_set<std::string>(
-      {static_cast<frontend::Variable>(a)->id, static_cast<frontend::Variable>(b)->id, d->id});
+  auto used_variable_names =
+      std::unordered_set<std::string>({static_cast<frontend::Variable>(a)->id,
+                                       static_cast<frontend::Variable>(b)->id,
+                                       d->id});
   EXPECT_EQ(malloc_instr->GetFnNames().size(), 1);
   EXPECT_EQ(malloc_instr->GetFnNames().front(), "malloc_buffer_instruction_0");
   EXPECT_EQ(malloc_instr->GetOutArgs().size(), 1);
   EXPECT_TRUE(malloc_instr->GetOutArgs().front().empty());
   EXPECT_EQ(malloc_variable_names.size(), 3);
-  EXPECT_EQ(std::unordered_set<std::string>(malloc_variable_names.begin(), malloc_variable_names.end()),
+  EXPECT_EQ(std::unordered_set<std::string>(malloc_variable_names.begin(),
+                                            malloc_variable_names.end()),
             used_variable_names);
 
   const auto& computation_instr_enable = instructions.at(1);
-  ASSERT_EQ(computation_instr_disable->size(), computation_instr_enable->size());
-  auto computation_instr_function_names = computation_instr_enable->GetFnNames();
-  ASSERT_EQ(computation_instr_disable->GetFnNames().size(), computation_instr_enable->GetFnNames().size());
+  ASSERT_EQ(computation_instr_disable->size(),
+            computation_instr_enable->size());
+  auto computation_instr_function_names =
+      computation_instr_enable->GetFnNames();
+  ASSERT_EQ(computation_instr_disable->GetFnNames().size(),
+            computation_instr_enable->GetFnNames().size());
 
-  EXPECT_EQ(computation_instr_disable->GetInArgs(), computation_instr_enable->GetInArgs());
-  EXPECT_EQ(computation_instr_disable->GetOutArgs(), computation_instr_enable->GetOutArgs());
+  EXPECT_EQ(computation_instr_disable->GetInArgs(),
+            computation_instr_enable->GetInArgs());
+  EXPECT_EQ(computation_instr_disable->GetOutArgs(),
+            computation_instr_enable->GetOutArgs());
 
   const auto& free_instr = instructions.back();
   ASSERT_EQ(free_instr->size(), 1);
@@ -113,13 +122,19 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   EXPECT_EQ(free_instr->GetInArgs().size(), 1);
   EXPECT_TRUE(free_instr->GetInArgs().front().empty());
   auto free_variable_names = free_instr->GetOutArgs().front();
-  EXPECT_EQ(std::unordered_set<std::string>(free_variable_names.begin(), free_variable_names.end()),
+  EXPECT_EQ(std::unordered_set<std::string>(free_variable_names.begin(),
+                                            free_variable_names.end()),
             used_variable_names);
 }
 
 #ifdef CINN_WITH_CUDA
-std::vector<float> test_mul(
-    const std::vector<float>& A, const std::vector<float>& B, int M, int K, int N, bool trans_a, bool trans_b) {
+std::vector<float> test_mul(const std::vector<float>& A,
+                            const std::vector<float>& B,
+                            int M,
+                            int K,
+                            int N,
+                            bool trans_a,
+                            bool trans_b) {
   std::vector<float> C(M * N, 0);
   if (!trans_a && !trans_b) {
     for (int idx = 0; idx < M; ++idx) {
@@ -157,15 +172,22 @@ std::vector<float> test_mul(
   return C;
 }
 
-void RunCublas(int M, int N, int K, bool trans_a = false, bool trans_b = false) {
+void RunCublas(
+    int M, int N, int K, bool trans_a = false, bool trans_b = false) {
   frontend::NetBuilder net_builder("builder");
-  auto A = net_builder.CreateInput(Float(32), trans_a ? std::vector<int>({K, M}) : std::vector<int>({M, K}), "A");
-  auto B = net_builder.CreateInput(Float(32), trans_b ? std::vector<int>({N, K}) : std::vector<int>({K, N}), "B");
+  auto A = net_builder.CreateInput(
+      Float(32),
+      trans_a ? std::vector<int>({K, M}) : std::vector<int>({M, K}),
+      "A");
+  auto B = net_builder.CreateInput(
+      Float(32),
+      trans_b ? std::vector<int>({N, K}) : std::vector<int>({K, N}),
+      "B");
   auto C = net_builder.Matmul(A, B, trans_a, trans_b);
 
   auto program = net_builder.Build();
-  auto target  = common::DefaultTarget();
-  auto graph   = std::make_shared<hlir::framework::Graph>(program, target);
+  auto target = common::DefaultTarget();
+  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
 
   hlir::framework::ApplyPass(graph.get(), "TransToCustomCallPass");
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
