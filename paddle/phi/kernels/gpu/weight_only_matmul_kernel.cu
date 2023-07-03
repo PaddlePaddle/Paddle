@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/weight_only_mat_mul_kernel.h"
+#include "paddle/phi/kernels/weight_only_matmul_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void WeightOnlyMatMulKernel(const Context& dev_ctx,
+void WeightOnlyMatmulKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& weight,
                             const DenseTensor& weight_scale,
@@ -66,8 +66,8 @@ void WeightOnlyMatMulKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(weight_only_mat_mul,
+PD_REGISTER_KERNEL(weight_only_matmul,
                    GPU,
                    ALL_LAYOUT,
-                   phi::WeightOnlyMatMulKernel,
+                   phi::WeightOnlyMatmulKernel,
                    phi::dtype::float16) {}

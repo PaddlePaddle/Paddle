@@ -3572,7 +3572,7 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dtype(DataType::INT32);
 }
 
-void LLMInt8MatMulInferMeta(const MetaTensor& x,
+void LLMInt8MatmulInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             MetaTensor* out) {
   auto x_dims = x.dims();
@@ -3595,7 +3595,7 @@ void LLMInt8MatMulInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void WeightOnlyMatMulInferMeta(const MetaTensor& x,
+void WeightOnlyMatmulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
                                MetaTensor* out) {
   auto x_dims = x.dims();

@@ -690,11 +690,11 @@ void FusedMultiHeadAttentionVariableInferMeta(const MetaTensor& query,
                                               bool causal,
                                               MetaTensor* out);
 
-void LLMInt8MatMulInferMeta(const MetaTensor& x,
+void LLMInt8MatmulInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             MetaTensor* out);
 
-void WeightOnlyMatMulInferMeta(const MetaTensor& x,
+void WeightOnlyMatmulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
                                MetaTensor* out);
 
