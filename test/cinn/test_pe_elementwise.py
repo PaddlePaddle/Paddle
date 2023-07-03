@@ -22,6 +22,7 @@ import scipy
 from cinn import Target, ir, lang, pe, runtime
 from cinn.common import *
 from cinn.poly import create_stages
+from scipy import special
 
 
 class TestPEElementwise(unittest.TestCase):

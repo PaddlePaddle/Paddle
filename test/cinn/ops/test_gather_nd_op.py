@@ -19,6 +19,7 @@ import os
 import unittest
 from itertools import product
 
+import cinn
 import numpy as np
 from cinn.common import *
 from cinn.frontend import *

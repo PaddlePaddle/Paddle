@@ -16,12 +16,14 @@
 
 import unittest
 
+import cinn
 import numpy as np
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 
 import paddle
+import paddle.nn.functional as F
 
 
 @OpTestTool.skip_if(

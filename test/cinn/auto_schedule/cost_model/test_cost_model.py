@@ -16,6 +16,7 @@ import os
 import shutil
 import unittest
 
+import cinn
 import numpy as np
 from cinn.auto_schedule.cost_model import CostModel
 

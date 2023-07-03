@@ -19,6 +19,8 @@ from test.cinn.ops.op_test import OpTest
 from cinn.frontend import (
     NetBuilder,
     Variable,
+    get_default_graph_pass,
+    get_default_program_pass,
 )
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())

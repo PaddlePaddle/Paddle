@@ -16,7 +16,8 @@
 
 import unittest
 
-from op_mapper_test import OpMapperTest
+import numpy as np
+from op_mapper_test import OpMapperTest, logger
 
 import paddle
 

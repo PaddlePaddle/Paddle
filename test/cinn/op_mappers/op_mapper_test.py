@@ -17,17 +17,18 @@
 import logging
 import os
 import sys
+from ast import arg
 
 from cinn.common import is_compiled_with_cuda
 from cinn.framework import Scope
-from cinn.frontend import PaddleModelConvertor
+from cinn.frontend import NetBuilder, PaddleModelConvertor
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.static import Variable as PaddleVariable
 
 sys.path.append("/work/dev_CINN/build/python/tests")
-from test.cinn.ops.op_test import OpTest
+from test.cinn.ops.op_test import OpTest, OpTestTool
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="op_test")

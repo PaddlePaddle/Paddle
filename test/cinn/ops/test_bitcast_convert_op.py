@@ -15,6 +15,7 @@
 import unittest
 from struct import pack, unpack
 
+import cinn
 import numpy as np
 from cinn.common import *
 from cinn.frontend import *

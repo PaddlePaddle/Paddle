@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
