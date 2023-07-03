@@ -356,7 +356,12 @@ class Conv2dFusionOp
  public:
   using Op::Op;
   static const char *name() { return "pd.conv2d_fusion"; }
-  static const char *attributes_name[6];
+  static const char *attributes_name[6] = {"strides",
+                                           "paddings",
+                                           "padding_algorithm",
+                                           "dilations",
+                                           "groups",
+                                           "data_format"};
   static constexpr uint32_t attributes_num = 6;
   static OpInfoTuple GetOpInfo();
   static void Build(ir::Builder &builder,
@@ -572,13 +577,15 @@ class Conv2dAddFusePattern
     IR_ENFORCE(add_input == conv2d_out);
 
     auto bias = op->result(1);
+    auto attributes = conv2d_op.attributes();
 
     rewriter.SetInsertionPoint(conv2d_op);
 
     auto conv2d_fuse_op = rewriter.Build<paddle::dialect::Conv2dFusionOp>(
         ir::GetDefiningOpForInput<0>(conv2d_op)->result(0),
         conv2d_filter_result,
-        bias);
+        bias,
+        attributes);
     rewriter.ReplaceOp(op, {conv2d_fuse_op.out()});
     return true;
   }
