@@ -86,26 +86,28 @@ function(kernel_declare TARGET_LIST)
         "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
-    if(NOT first_registry STREQUAL "")
+    set(kernel_declare_id "")
+    while(NOT first_registry STREQUAL "")
+      string(REPLACE "${first_registry}" "" kernel_impl "${kernel_impl}")
       # some gpu kernel can run on cuda, but not support jetson, so we add this branch
       if(WITH_NV_JETSON)
         string(FIND "${first_registry}" "decode_jpeg" pos)
         if(pos GREATER 1)
-          continue()
+          set(first_registry "")
         endif()
       endif()
       # fusion group kernel is not supported in windows and mac
       if(WIN32 OR APPLE)
         string(FIND "${first_registry}" "fusion_group" pos)
         if(pos GREATER 1)
-          continue()
+          set(first_registry "")
         endif()
       endif()
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
       if(WITH_ROCM)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
-          continue()
+          set(first_registry "")
         endif()
       endif()
       string(
@@ -143,11 +145,10 @@ function(kernel_declare TARGET_LIST)
         list(GET kernel_msg 1 kernel_backend)
         list(GET kernel_msg 2 kernel_layout)
       endif()
-      # append kernel declare into declarations.h
-      file(
-        APPEND ${kernel_declare_file}
-        "PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});\n"
-      )
+    endwhile()
+    # append kernel declare into declarations.h
+    if(NOT kernel_declare_id STREQUAL "")
+      file(APPEND ${kernel_declare_file} "${kernel_declare_id}\n")
     endif()
   endforeach()
 endfunction()
@@ -212,16 +213,28 @@ function(prune_declaration_h)
   file(APPEND ${kernel_declare_file_prune}
        "#include \"paddle/phi/core/kernel_registry.h\"\n")
 
+  set(kernel_declare_list_prune)
   foreach(kernel_registry IN LISTS kernel_registry_list)
-    if(NOT ${kernel_registry} EQUAL "")
+    if(NOT "${kernel_registry}" EQUAL "")
       foreach(kernel_name IN LISTS kernel_list)
-        string(FIND ${kernel_registry} "(${kernel_name})" index1)
-        string(FIND ${kernel_registry} "(${kernel_name}," index2)
+        string(FIND "${kernel_registry}" "(${kernel_name})" index1)
+        string(FIND "${kernel_registry}" "(${kernel_name}," index2)
         if((NOT ${index1} EQUAL "-1") OR (NOT ${index2} EQUAL "-1"))
-          file(APPEND ${kernel_declare_file_prune} "${kernel_registry}\n")
+          string(
+            REGEX
+              MATCH
+              "PD_DECLARE_KERNEL\\([a-z0-9_]*, [[a-z0-9_]*]?[a-zA-Z_]*, [A-Z_]*\\)"
+              first_registry
+              "${kernel_registry}")
+          list(APPEND kernel_declare_list_prune "${first_registry}")
         endif()
       endforeach()
     endif()
+  endforeach()
+
+  list(REMOVE_DUPLICATES kernel_declare_list_prune)
+  foreach(kernel_declare_prune IN LISTS kernel_declare_list_prune)
+    file(APPEND ${kernel_declare_file_prune} "${kernel_declare_prune};\n")
   endforeach()
 
   file(WRITE ${kernel_declare_file} "")

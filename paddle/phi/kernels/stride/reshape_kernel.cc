@@ -35,6 +35,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
   }
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
+
   DDim stride;
   if (ReshapeStride(x_dims, x_stride, out->dims(), stride)) {
     out->set_offset(x_offset);
@@ -48,6 +49,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                              dev_ctx, x, &tmp);
                        }));
     out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
+    out->set_offset(0);
     out->ResetHolder(tmp.Holder());
   }
 }

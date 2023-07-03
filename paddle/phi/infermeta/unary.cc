@@ -5067,6 +5067,51 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
   values->set_dims(phi::make_ddim({3}));
 }
 
+void QuantForCompressInferMeta(const MetaTensor& x,
+                               int bits,
+                               const std::string& layout,
+                               MetaTensor* out,
+                               MetaTensor* scale) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
+  PADDLE_ENFORCE_GE(
+      x_dims[0],
+      64,
+      phi::errors::OutOfRange("The first dimension of input is out of range "
+                              "(expected at least 64, but got %ld).",
+                              x_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0] % 64,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 64, but got[%d]",
+          x_dims[0]));
+  std::vector<int64_t> dim_scale({x_dims[1]});
+  std::vector<int64_t> dim_out;
+  if (layout == "weight_only") {
+    dim_out = std::vector<int64_t>({x_dims[0], x_dims[1]});
+  } else if (layout == "llm.int8") {
+    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
+  } else {
+    phi::errors::InvalidArgument(
+        "The layout must be weight_only or llm.int8, but got %s", layout);
+  }
+  out->set_dims(phi::make_ddim(dim_out));
+
+  // TODO(lizhenyun) support weight_only int4
+  if (bits == 8) {
+    out->set_dtype(DataType::INT8);
+  } else {
+    phi::errors::Fatal("The bits only support 8, but got[%d]", bits);
+  }
+  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dtype(DataType::FLOAT32);
+}
+
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
   out->set_strides(x.strides());

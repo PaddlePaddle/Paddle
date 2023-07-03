@@ -144,7 +144,7 @@ class SingleOpTester(unittest.TestCase):
         out_result = out[len(out) - 1].numpy()
         if out_index != None:
             out_result = out[out_index].numpy()
-        self.assertTrue(np.allclose(out_result, correct_result, atol=1e-4))
+        np.testing.assert_allclose(out_result, correct_result, atol=1e-4)
 
     def __lower(self, op_name, inputs, output_shapes, attrs):
         types = [common.Float(32)]

@@ -28,7 +28,12 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using namespace framework;
+using framework::Graph;
+using framework::Node;
+using framework::NodeData;
+using framework::Operator;
+using framework::OpPatternKind;
+using framework::shape_t;
 
 class FusionHelperBase {
  public:
