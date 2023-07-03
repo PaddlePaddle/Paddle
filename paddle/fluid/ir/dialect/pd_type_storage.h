@@ -138,10 +138,10 @@ struct SelectedRowsTypeStorage : public ir::TypeStorage {
   using ParamKey =
       std::tuple<ir::Type, phi::DDim, phi::DataLayout, phi::LoD, size_t>;
 
-  SelectedRowsTypeStorage(ir::Type dtype,
-                          phi::DDim dims,
-                          phi::DataLayout layout,
-                          phi::LoD lod,
+  SelectedRowsTypeStorage(const ir::Type& dtype,
+                          const phi::DDim& dims,
+                          const phi::DataLayout& layout,
+                          const phi::LoD& lod,
                           size_t offset)
       : dtype_(dtype),
         dims_(dims),
@@ -153,7 +153,7 @@ struct SelectedRowsTypeStorage : public ir::TypeStorage {
   /// \brief Each derived TypeStorage must define a Construct method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
-  static SelectedRowsTypeStorage* Construct(ParamKey key) {
+  static SelectedRowsTypeStorage* Construct(const ParamKey& key) {
     return new SelectedRowsTypeStorage(std::get<0>(key),
                                        std::get<1>(key),
                                        std::get<2>(key),
