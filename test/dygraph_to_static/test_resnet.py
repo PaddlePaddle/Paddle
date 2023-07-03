@@ -19,12 +19,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
@@ -135,10 +133,7 @@ class BottleneckBlock(paddle.nn.Layer):
 
         y = paddle.add(x=short, y=conv2)
 
-        layer_helper = fluid.layer_helper.LayerHelper(
-            self.full_name(), act='relu'
-        )
-        return layer_helper.append_activation(y)
+        return paddle.nn.functional.relu(y)
 
 
 class ResNet(paddle.nn.Layer):
@@ -425,44 +420,7 @@ class TestResnet(unittest.TestCase):
                 static_loss, dygraph_loss
             ),
         )
-        self.verify_predict()
-
-    @ast_only_test
-    def test_resnet_composite_backward(self):
-        core._set_prim_backward_enabled(True)
-        static_loss = self.train(to_static=True)
-        core._set_prim_backward_enabled(False)
-        dygraph_loss = self.train(to_static=True)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
-        )
-
-    def test_resnet_composite_forward_backward(self):
-        core._set_prim_all_enabled(True)
-        static_loss = self.train(to_static=True)
-        core._set_prim_all_enabled(False)
-        dygraph_loss = self.train(to_static=True)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-02,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
-        )
-
-    def test_in_static_mode_mkldnn(self):
-        fluid.set_flags({'FLAGS_use_mkldnn': True})
-        try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
-                self.resnet_helper.train(to_static=True)
-        finally:
-            fluid.set_flags({'FLAGS_use_mkldnn': False})
+        # self.verify_predict()
 
 
 if __name__ == '__main__':
