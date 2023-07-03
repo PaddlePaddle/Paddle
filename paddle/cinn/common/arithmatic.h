@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include "paddle/cinn/ir/ir.h"
+
 #include <ginac/ginac.h>
 
 #include <limits>
@@ -25,8 +27,6 @@
 #include <set>
 #include <string>
 #include <tuple>
-
-#include "paddle/cinn/ir/ir.h"
 
 #ifdef As
 #undef As
