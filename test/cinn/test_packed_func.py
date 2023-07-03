@@ -18,8 +18,7 @@ import unittest
 from math import isclose
 
 import cinn
-import numpy as np
-from cinn import CINNValue, ir
+from cinn import ir
 
 
 class TestPackedFunc(unittest.TestCase):
