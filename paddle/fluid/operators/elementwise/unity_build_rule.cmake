@@ -8,7 +8,6 @@ register_unity_group(
   cc
   elementwise_add_op.cc
   elementwise_div_op.cc
-  elementwise_floordiv_op.cc
   elementwise_min_op.cc
   elementwise_mod_op.cc
   elementwise_mul_op.cc

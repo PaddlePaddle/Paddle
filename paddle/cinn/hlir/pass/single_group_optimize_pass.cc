@@ -46,7 +46,7 @@ bool IsValueZero(cinn::utils::Attribute value) {
 
 class SingleGroupOptimizePass {
  public:
-  SingleGroupOptimizePass(Graph* graph);
+  explicit SingleGroupOptimizePass(Graph* graph);
 
   std::vector<std::shared_ptr<Group>> Apply();
 

@@ -2871,11 +2871,11 @@ TEST(IrSchedule, Annotate) {
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
   auto fused = ir_sch.Fuse("B", {0, 1});
   auto block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k1", int(64));
+  ir_sch.Annotate(block_b, "k1", 64);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k2", bool(true));
+  ir_sch.Annotate(block_b, "k2", true);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k3", float(2.0));
+  ir_sch.Annotate(block_b, "k3", 2.0f);
   block_b = ir_sch.GetBlock("B");
   ir_sch.Annotate(block_b, "k4", std::string("v4"));
   std::string expected_expr = R"ROC({
@@ -2915,11 +2915,11 @@ TEST(IrSchedule, Unannotate) {
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
   auto fused = ir_sch.Fuse("B", {0, 1});
   auto block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k1", int(64));
+  ir_sch.Annotate(block_b, "k1", 64);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k2", bool(true));
+  ir_sch.Annotate(block_b, "k2", true);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k3", float(2.0));
+  ir_sch.Annotate(block_b, "k3", 2.0f);
   block_b = ir_sch.GetBlock("B");
   ir_sch.Annotate(block_b, "k4", std::string("v4"));
   block_b = ir_sch.GetBlock("B");

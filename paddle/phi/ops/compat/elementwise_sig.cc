@@ -96,6 +96,9 @@ KernelSignature ElementwiseModOpArgumentMapping(
 
 KernelSignature ElementwiseFloorDivOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+  if (ctx.IsForInferShape()) {
+    return KernelSignature("floor_divide_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  }
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("floor_divide", {"X", "Y"}, {}, {"Out"});

@@ -74,7 +74,7 @@ int GetLoopExtent(const Expr& loop) {
   CHECK(loop.As<ir::For>());
   CHECK(common::is_zero(loop.As<ir::For>()->min));
   CHECK(loop.As<ir::For>()->extent.is_constant());
-  return (int)loop.As<ir::For>()->extent.get_constant();
+  return static_cast<int>(loop.As<ir::For>()->extent.get_constant());
 }
 
 void SetCudaAxisInfo(Expr* lowered_func) {
@@ -249,7 +249,8 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
         << "In Split, when there is -1 in factors, the other factors' product "
            "should be <= "
            "original loop's extent! Please check.";
-    int minus_one_candidate = (int)ceil((double)total_extent / (double)product);
+    int minus_one_candidate = static_cast<int>(
+        ceil(static_cast<double>(total_extent) / static_cast<double>(product)));
     for (int i = 0; i < validated_factors.size(); ++i) {
       if (validated_factors[i] == -1) {
         validated_factors[i] = minus_one_candidate;
@@ -490,7 +491,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
       ir::ScheduleBlock::Make(
           block_vars, {}, {}, new_tensor->name, Block::Make({body})));
   Expr new_body = block;
-  for (int i = (int)loop_vars.size() - 1; i >= 0; i--) {
+  for (int i = static_cast<int>(loop_vars.size()) - 1; i >= 0; i--) {
     new_body = For::Make(loop_vars[i],
                          Expr(0),
                          common::AutoSimplify(buffer_ranges[i].extent),
@@ -531,7 +532,9 @@ void FindInsertionPoint(Expr& root, CacheBlockInfo* info, bool is_write) {
             ->body.As<Block>());
   info->loc_block =
       root.As<ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>()->body;
-  for (int i = 0; i < (int)info->loc_block.As<Block>()->stmts.size(); ++i) {
+  for (int i = 0;
+       i < static_cast<int>(info->loc_block.As<Block>()->stmts.size());
+       ++i) {
     if (Contains(info->loc_block.As<Block>()->stmts[i], producer)) {
       info->loc_pos = i + 1;
       break;
@@ -1075,9 +1078,8 @@ std::vector<IterRange> CalculateRequiredRegions(
             (*find_for_loops.begin()).As<ir::For>()->min,
             (*find_for_loops.begin()).As<ir::For>()->extent);
       } else {
-        int cons = (int)block.As<ir::ScheduleBlockRealize>()
-                       ->iter_values[i]
-                       .is_constant();
+        int cons = static_cast<int>(
+            block.As<ir::ScheduleBlockRealize>()->iter_values[i].is_constant());
         required_buffer_range.emplace_back(Expr(cons), Expr(1));
       }
     }
