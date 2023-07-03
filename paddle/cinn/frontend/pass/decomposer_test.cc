@@ -37,18 +37,20 @@ Program CreateAddProgram() {
   constexpr int N = 24;
 
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {M, N});
-  auto b       = builder.CreateInput(Float(32), {M, N});
-  auto c       = builder.Relu(a);
-  auto d       = builder.Add(b, c);
+  auto a = builder.CreateInput(Float(32), {M, N});
+  auto b = builder.CreateInput(Float(32), {M, N});
+  auto c = builder.Relu(a);
+  auto d = builder.Add(b, c);
   auto program = builder.Build();
 
   return program;
 }
 
 TEST(DecomposePassRegistry, basic) {
-  ASSERT_NE(cinn::frontend::ProgramPassRegistry::Global()->Find("Decomposer"), nullptr);
-  ASSERT_EQ(cinn::frontend::ProgramPassRegistry::Global()->Find("Test"), nullptr);
+  ASSERT_NE(cinn::frontend::ProgramPassRegistry::Global()->Find("Decomposer"),
+            nullptr);
+  ASSERT_EQ(cinn::frontend::ProgramPassRegistry::Global()->Find("Test"),
+            nullptr);
 }
 
 TEST(DecomposePass, basic) {

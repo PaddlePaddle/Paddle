@@ -86,8 +86,10 @@ TEST(Tensor, Reshape) {
   auto stages = CreateStages({A});
 
   auto A1 = A->Reshape({Expr(10), Expr(10), Expr(100)}, stages);
-  auto B  = Compute(
-      A1->shape, [=](Expr i, Expr j, Expr k) { return A1(i, j, k) * 2.f; }, "B");
+  auto B = Compute(
+      A1->shape,
+      [=](Expr i, Expr j, Expr k) { return A1(i, j, k) * 2.f; },
+      "B");
 
   stages->InsertLazily(B);
 
@@ -135,8 +137,10 @@ TEST(Tensor, ReshapeCopied) {
   auto stages = CreateStages({A});
 
   auto A1 = A->ReshapeCopied({Expr(10), Expr(10), Expr(100)}, stages);
-  auto B  = Compute(
-      A1->shape, [=](Expr i, Expr j, Expr k) { return A1(i, j, k) * 2.f; }, "B");
+  auto B = Compute(
+      A1->shape,
+      [=](Expr i, Expr j, Expr k) { return A1(i, j, k) * 2.f; },
+      "B");
 
   stages->InsertLazily(B);
 
@@ -189,7 +193,9 @@ TEST(Tensor, reduce) {
   {
     auto C = Compute(
         A->shape,
-        [=](const std::vector<Expr>& axis) { return lang::ReduceSum(A(reduce_axis) + 1.f, {reduce_axis}); },
+        [=](const std::vector<Expr>& axis) {
+          return lang::ReduceSum(A(reduce_axis) + 1.f, {reduce_axis});
+        },
         "C");
     ASSERT_TRUE(C->has_expression());
     ASSERT_TRUE(C->is_reduce_sum());
@@ -199,7 +205,9 @@ TEST(Tensor, reduce) {
   {
     auto C = Compute(
         A->shape,
-        [=](const std::vector<Expr>& axis) { return lang::ReduceMul(A(reduce_axis) + 1.f, {reduce_axis}); },
+        [=](const std::vector<Expr>& axis) {
+          return lang::ReduceMul(A(reduce_axis) + 1.f, {reduce_axis});
+        },
         "C");
     ASSERT_TRUE(C->has_expression());
     ASSERT_TRUE(C->is_reduce_mul());

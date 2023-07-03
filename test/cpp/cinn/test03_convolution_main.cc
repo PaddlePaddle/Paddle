@@ -35,7 +35,8 @@ TEST(test03_conv, basic) {
   auto Apad = Compute(
       {in_size + 2 * pad, in_size + 2 * pad, in_channel, batch},
       [&](Expr yy, Expr xx, Expr cc, Expr nn) {
-        auto cond = logic_and({yy >= pad, yy - pad < in_size, xx >= pad, xx - pad < in_size});
+        auto cond = logic_and(
+            {yy >= pad, yy - pad < in_size, xx >= pad, xx - pad < in_size});
         return ir::Select::Make(cond, A(yy - pad, xx - pad, cc, nn), Expr(0.f));
       },
       "Apad");
@@ -47,7 +48,9 @@ TEST(test03_conv, basic) {
   auto B = Compute(
       {out_size, out_size, out_channel, batch},
       [&](Expr yy, Expr xx, Expr ff, Expr nn) {
-        return ReduceSum(Apad(yy * stride + ry, xx * stride + rx, rc, nn) * W(ry, rx, rc, ff), {rx, ry, rc});
+        return ReduceSum(Apad(yy * stride + ry, xx * stride + rx, rc, nn) *
+                             W(ry, rx, rc, ff),
+                         {rx, ry, rc});
       },
       "B");
 
@@ -63,7 +66,8 @@ TEST(test03_conv, basic) {
 
   CodeGenCX86 compiler(target, CodeGenCX86::Feature::AVX256);
   Outputs outputs;
-  outputs = outputs.c_header("./test03_convolution.h").c_source("./test03_convolution.cc");
+  outputs = outputs.c_header("./test03_convolution.h")
+                .c_source("./test03_convolution.cc");
   compiler.Compile(builder.Build(), outputs);
 }
 

@@ -45,6 +45,8 @@ class MetaTensor {
   MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
   MetaTensor(const TensorBase& tensor)                 // NOLINT
       : tensor_(const_cast<TensorBase*>(&tensor)) {}
+  MetaTensor(const TensorBase* tensor)  // NOLINT
+      : tensor_(const_cast<TensorBase*>(tensor)) {}
   MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
 
   MetaTensor(MetaTensor&&) = default;

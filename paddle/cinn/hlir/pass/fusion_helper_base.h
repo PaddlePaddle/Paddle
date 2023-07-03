@@ -28,14 +28,22 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using namespace framework;
+using framework::Graph;
+using framework::Node;
+using framework::NodeData;
+using framework::Operator;
+using framework::OpPatternKind;
+using framework::shape_t;
 
 class FusionHelperBase {
  public:
-  FusionHelperBase(const framework::Graph* graph)
-      : shape_dict_(graph->GetAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape")), target_(graph->target_) {
+  explicit FusionHelperBase(const framework::Graph* graph)
+      : shape_dict_(graph->GetAttrs<absl::flat_hash_map<std::string, shape_t>>(
+            "infershape")),
+        target_(graph->target_) {
     // get op pattern dict
-    op_pattern_dict_ = &framework::Operator::GetAttrs<OpPatternKind>("OpPattern");
+    op_pattern_dict_ =
+        &framework::Operator::GetAttrs<OpPatternKind>("OpPattern");
     // output node set
     for (auto node_data : graph->outputs) {
       CHECK(node_data->source_node.get());
@@ -45,11 +53,13 @@ class FusionHelperBase {
 
  public:
   OpPatternKind GetOpKind(const framework::Node* node) const {
-    CHECK(op_pattern_dict_->Find(node->op())) << "Don't find the pattern of op : " << node->id();
+    CHECK(op_pattern_dict_->Find(node->op()))
+        << "Don't find the pattern of op : " << node->id();
     auto kind = op_pattern_dict_[0][node->op()];
 
     if (kind == framework::kBroadcast) {
-      // As binary op was defined as broadcast, actually it should be element-wise.
+      // As binary op was defined as broadcast, actually it should be
+      // element-wise.
       if (node->op()->name != "broadcast_to") {
         return framework::kElementWise;
       }
@@ -59,7 +69,8 @@ class FusionHelperBase {
   }
 
   static bool IsConstOp(const framework::Node* node) {
-    static std::unordered_set<std::string> const_op_type = {"const_scalar", "fill_constant", "arange"};
+    static std::unordered_set<std::string> const_op_type = {
+        "const_scalar", "fill_constant", "arange"};
     if (const_op_type.count(node->op()->name)) {
       return true;
     } else {
@@ -71,7 +82,8 @@ class FusionHelperBase {
     std::vector<NodeData*> consumer_node_data;
     for (auto& edge : node->outlinks_in_order()) {
       auto output = edge->sink()->safe_as<NodeData>();
-      CHECK(output) << "The op \"" << node->id() << "\" output should not be empty!";
+      CHECK(output) << "The op \"" << node->id()
+                    << "\" output should not be empty!";
       consumer_node_data.push_back(output);
     }
     return consumer_node_data;
@@ -85,21 +97,23 @@ class FusionHelperBase {
 
   shape_t GetNodeDataShape(const Node* node) const {
     auto* node_data = GetNodeData(node);
-    CHECK(shape_dict_.count(node_data->id())) << "Can't find " << node_data->id() << " 's shape!";
+    CHECK(shape_dict_.count(node_data->id()))
+        << "Can't find " << node_data->id() << " 's shape!";
     return shape_dict_.at(node_data->id());
   }
 
   shape_t GetNodeInputShape(const Node* node) const {
     auto node_datas = GetProducerNodeData(node);
     CHECK_GT(node_datas.size(), 0);
-    CHECK(shape_dict_.count(node_datas[0]->id())) << "Can't find " << node_datas[0]->id() << " 's shape!";
+    CHECK(shape_dict_.count(node_datas[0]->id()))
+        << "Can't find " << node_datas[0]->id() << " 's shape!";
     return shape_dict_.at(node_datas[0]->id());
   }
 
   static std::vector<NodeData*> GetProducerNodeData(const Node* node) {
     std::vector<NodeData*> producer_node_data;
     for (auto& edge : node->inlinks_in_order()) {
-      auto graph_node    = edge->source();
+      auto graph_node = edge->source();
       auto producer_data = graph_node->safe_as<NodeData>();
       CHECK(producer_data);
       producer_node_data.push_back(producer_data);
@@ -110,7 +124,7 @@ class FusionHelperBase {
   std::vector<Node*> GetProducerNode(const Node* node) const {
     std::vector<Node*> producer_node;
     for (auto& edge : node->inlinks_in_order()) {
-      auto graph_node    = edge->source();
+      auto graph_node = edge->source();
       auto producer_data = graph_node->safe_as<NodeData>();
       CHECK(producer_data);
       auto producer = producer_data->source_node.get();
@@ -132,7 +146,8 @@ class FusionHelperBase {
     return consumer_nodes;
   }
 
-  bool WithoutLastDimInReduce(const std::vector<int>& inshape, const std::vector<int>& axes) const {
+  bool WithoutLastDimInReduce(const std::vector<int>& inshape,
+                              const std::vector<int>& axes) const {
     // if last axis is in reduce.
     if (std::find(axes.begin(), axes.end(), inshape.size() - 1) != axes.end() ||
         std::find(axes.begin(), axes.end(), -1) != axes.end()) {
@@ -155,7 +170,7 @@ class FusionHelperBase {
     auto producers = GetProducerNodeData(node);
     CHECK_GT(producers.size(), 0);
     auto inshape = shape_dict_.at(producers[0]->id());
-    auto axes    = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+    auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
     if (WithoutLastDimInReduce(inshape, axes)) {
       int lane = 1;
       for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
@@ -175,14 +190,17 @@ class FusionHelperBase {
           break;
         }
       }
-      // if lane > (max_num_threads / 2),the loop break from lane > max_num_threads / 2.
+      // if lane > (max_num_threads / 2),the loop break from lane >
+      // max_num_threads / 2.
       int axis = lane > (max_num_threads / 2) ? axes[index] : axes[index + 1];
       if (lane <= max_num_threads) {
         return lane * sizeof(float);
       } else {
         int prefix = inshape[axis];
-        int tail   = lane / prefix;
-        for (int idx = max_num_threads / tail; idx > ((max_num_threads / 2) / tail); --idx) {
+        int tail = lane / prefix;
+        for (int idx = max_num_threads / tail;
+             idx > ((max_num_threads / 2) / tail);
+             --idx) {
           if (prefix % idx == 0) {
             return idx * tail * sizeof(float);
           }

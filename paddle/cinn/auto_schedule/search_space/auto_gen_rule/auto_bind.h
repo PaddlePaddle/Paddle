@@ -27,7 +27,7 @@ namespace auto_schedule {
 // Auto bind GPU index(BlockIdx, ThreadIdx) to the loops around the block
 class AutoBind : public AutoGenRule {
  public:
-  AutoBind(const common::Target& target) : AutoGenRule(target) {}
+  explicit AutoBind(const common::Target& target) : AutoGenRule(target) {}
   ~AutoBind() = default;
 
   RuleApplyType Init(ir::IRSchedule* init_schedule) override;
@@ -36,9 +36,11 @@ class AutoBind : public AutoGenRule {
 
   std::string GetRuleName() const override { return "AutoBind"; }
 
-  RuleApplyType AnalyseApplyType(SearchState state, const std::string& block_name) const override;
+  RuleApplyType AnalyseApplyType(SearchState state,
+                                 const std::string& block_name) const override;
 
-  std::vector<SearchState> ApplyOnBlock(SearchState state, const std::string& block_name) override;
+  std::vector<SearchState> ApplyOnBlock(SearchState state,
+                                        const std::string& block_name) override;
 
  private:
   std::vector<Expr> applicable_schedule_blocks_;

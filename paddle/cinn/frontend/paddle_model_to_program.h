@@ -40,9 +40,10 @@ namespace frontend {
 
 class PaddleModelToProgram {
  public:
-  explicit PaddleModelToProgram(hlir::framework::Scope* scope,
-                                std::unordered_map<std::string, std::vector<int>> input_shape_map,
-                                const common::Target& target)
+  explicit PaddleModelToProgram(
+      hlir::framework::Scope* scope,
+      std::unordered_map<std::string, std::vector<int>> input_shape_map,
+      const common::Target& target)
       : scope_(scope),
         input_shape_map_(input_shape_map),
         target_(target),
@@ -76,7 +77,8 @@ class PaddleModelToProgram {
     AddOpMapper_exp();
   }
 
-  std::unique_ptr<Program> operator()(const std::string& model_dir, bool is_combined);
+  std::unique_ptr<Program> operator()(const std::string& model_dir,
+                                      bool is_combined);
 
   // Add an Instruction to a program given a Paddle-format \p op_desc.
   void AddOp(const paddle::cpp::OpDesc& op_desc);
@@ -109,12 +111,19 @@ class PaddleModelToProgram {
   void AddOpMapper_exp();
   // @}
 
-  const absl::flat_hash_map<std::string, Variable>& var_map() const { return var_map_; }
-  const absl::flat_hash_map<std::string, std::string>& var_model_to_program_map() { return var_model_to_program_map_; }
+  const absl::flat_hash_map<std::string, Variable>& var_map() const {
+    return var_map_;
+  }
+  const absl::flat_hash_map<std::string, std::string>&
+  var_model_to_program_map() {
+    return var_model_to_program_map_;
+  }
   const absl::flat_hash_set<std::string>& fetch_names() { return fetch_names_; }
 
  protected:
-  void AddVar(const std::string& name, const Variable& var, bool replace = false);
+  void AddVar(const std::string& name,
+              const Variable& var,
+              bool replace = false);
 
   Variable GetVar(const std::string& name);
 
@@ -124,7 +133,9 @@ class PaddleModelToProgram {
 
  private:
   // op mapper
-  absl::flat_hash_map<std::string, std::function<void(const paddle::cpp::OpDesc&)>> op_mappers_;
+  absl::flat_hash_map<std::string,
+                      std::function<void(const paddle::cpp::OpDesc&)>>
+      op_mappers_;
   std::unordered_map<std::string, std::vector<int>> input_shape_map_;
   // net builder
   std::unique_ptr<NetBuilder> net_builder_;

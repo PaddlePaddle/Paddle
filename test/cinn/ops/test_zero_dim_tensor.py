@@ -15,12 +15,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
+
 import cinn
-from cinn.frontend import *
+import numpy as np
 from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 
 def cinn_dtype_convert(dtype_str):
@@ -193,7 +195,7 @@ def create_unit_test(
         def cinn_func(self, builder, *args):
             return eval(fn_cinn)(*args)
 
-    cls_name = "{}_{}".format(parent.__name__, test_name)
+    cls_name = f"{parent.__name__}_{test_name}"
     TestClass.__name__ = cls_name
     globals()[cls_name] = TestClass
 

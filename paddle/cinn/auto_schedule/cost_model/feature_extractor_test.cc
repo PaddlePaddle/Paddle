@@ -48,9 +48,10 @@ TEST(FeatureExtractor, SimpleAssign) {
   ir::Tensor B = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  poly::StageMap stages              = poly::CreateStages({A, B});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
-  ir::Expr ast_expr                  = funcs[0]->body;
+  poly::StageMap stages = poly::CreateStages({A, B});
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
+  ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr to test: " << ast_expr;
 
   std::vector<Expr> vec_ast{ast_expr};
@@ -62,7 +63,8 @@ TEST(FeatureExtractor, SimpleAssign) {
 
   std::vector<float> to_check = feature.ToFixedSizeVector();
 
-  ASSERT_EQ(to_check.size(), static_cast<size_t>(LoopBlockFeature::kTotalSize + 1));
+  ASSERT_EQ(to_check.size(),
+            static_cast<size_t>(LoopBlockFeature::kTotalSize + 1));
   VLOG(6) << "Feature data before slog:";
   for (size_t i = 0; i < to_check.size(); ++i) {
     VLOG(6) << i << " " << (std::pow(2, to_check[i]) - 1);
@@ -77,9 +79,11 @@ TEST(FeatureExtractor, SimpleAssign) {
   ASSERT_EQ(to_check[0], 0);
 #endif
   // mem_read
-  ASSERT_EQ(to_check[17], slog(M.get_constant() * N.get_constant()));  // mem_read
+  ASSERT_EQ(to_check[17],
+            slog(M.get_constant() * N.get_constant()));  // mem_read
   // mem_write
-  ASSERT_EQ(to_check[18], slog(M.get_constant() * N.get_constant()));  // mem_write
+  ASSERT_EQ(to_check[18],
+            slog(M.get_constant() * N.get_constant()));  // mem_write
   // non-opt loops, including root block
   ASSERT_EQ(to_check[29], slog(3));
 }
@@ -101,16 +105,19 @@ TEST(FeatureExtractor, MatrixMultiply) {
 
   ir::Var k(K.as_int32(), "reduce_axis_k");
   ir::Tensor C = lang::Compute(
-      {M, N}, [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
-  poly::StageMap stages              = poly::CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("MatrixMultiply", stages, {C}, {}, {}, nullptr, target, true);
+  poly::StageMap stages = poly::CreateStages({C});
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "MatrixMultiply", stages, {C}, {}, {}, nullptr, target, true);
 
   std::vector<Expr> vec_ast{funcs[0]->body};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   std::vector<ir::Expr> blocks = ir_sch.GetAllBlocks();
-  std::vector<ir::Expr> loops  = ir_sch.GetLoops(blocks[0]);
+  std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
   ir_sch.Bind(loops.back(), "threadIdx.x");
 
   ir::Expr ast_expr = mod_expr.GetExprs()[0];
@@ -121,7 +128,8 @@ TEST(FeatureExtractor, MatrixMultiply) {
 
   std::vector<float> to_check = feature.ToFixedSizeVector();
 
-  ASSERT_EQ(to_check.size(), static_cast<size_t>(LoopBlockFeature::kTotalSize + 1));
+  ASSERT_EQ(to_check.size(),
+            static_cast<size_t>(LoopBlockFeature::kTotalSize + 1));
   std::unordered_set<size_t> non_zero_indice = {0, 1, 2, 17, 18, 29, 30, 37};
   for (size_t i = 0; i < to_check.size(); ++i) {
     VLOG(6) << i << " " << (std::pow(2, to_check[i]) - 1);
@@ -135,7 +143,7 @@ TEST(FeatureExtractor, MatrixMultiply) {
 #else
   ASSERT_EQ(to_check[0], 0);
 #endif
-  float out_loop   = M.get_constant() * N.get_constant();
+  float out_loop = M.get_constant() * N.get_constant();
   float total_loop = out_loop * K.get_constant();
   // float_mul
   ASSERT_EQ(to_check[1], slog(total_loop));

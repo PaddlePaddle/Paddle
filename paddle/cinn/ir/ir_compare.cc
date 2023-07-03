@@ -32,18 +32,23 @@ bool IrEqualVisitor::Compare(const Expr& lhs, const Expr& rhs) {
     VLOG(5) << "Not equal on Expr, someone not defined";
   }
   bool equal = lhs->node_type() == rhs->node_type();
-  equal      = equal && IRVisitorBase<bool, const Expr*>::Visit(&lhs, &rhs);
+  equal = equal && IRVisitorBase<bool, const Expr*>::Visit(&lhs, &rhs);
 
   if (!equal) {
-    VLOG(5) << "Not equal on Expr, lhs:[type:" << kIrNodeTyReprs[static_cast<int>(lhs->node_type())] << "]\n"
-            << lhs << ", \nrhs[type:" << kIrNodeTyReprs[static_cast<int>(rhs->node_type())] << "]\n"
+    VLOG(5) << "Not equal on Expr, lhs:[type:"
+            << kIrNodeTyReprs[static_cast<int>(lhs->node_type())] << "]\n"
+            << lhs << ", \nrhs[type:"
+            << kIrNodeTyReprs[static_cast<int>(rhs->node_type())] << "]\n"
             << rhs;
   }
   return equal;
 }
 
-bool IrEqualVisitor::Compare(const std::string& lhs, const std::string& rhs, bool allow_name_suffix_diff) {
-  // if allow_name_suffix_diff=true then just compare the name prefix before the "_[0-9]+"
+bool IrEqualVisitor::Compare(const std::string& lhs,
+                             const std::string& rhs,
+                             bool allow_name_suffix_diff) {
+  // if allow_name_suffix_diff=true then just compare the name prefix before the
+  // "_[0-9]+"
   auto common_len = 0;
   for (; common_len < lhs.size() && common_len < rhs.size(); ++common_len) {
     if (lhs[common_len] != rhs[common_len]) break;
@@ -51,7 +56,8 @@ bool IrEqualVisitor::Compare(const std::string& lhs, const std::string& rhs, boo
 
   auto is_endswith_index = [&common_len](const std::string& name) {
     const std::regex txt_regex("_\\d+");
-    return common_len == name.size() || std::regex_match(name.substr(common_len), txt_regex);
+    return common_len == name.size() ||
+           std::regex_match(name.substr(common_len), txt_regex);
   };
 
   bool equal = false;
@@ -71,9 +77,11 @@ bool IrEqualVisitor::Compare(const std::string& lhs, const std::string& rhs, boo
   return equal;
 }
 
-bool IrEqualVisitor::Compare(const std::map<std::string, attr_t>& lhs, const std::map<std::string, attr_t>& rhs) {
+bool IrEqualVisitor::Compare(const std::map<std::string, attr_t>& lhs,
+                             const std::map<std::string, attr_t>& rhs) {
   if (lhs.size() != rhs.size()) {
-    VLOG(6) << "Not equal on attrs, lhs size=" << lhs.size() << ", rhs size=" << rhs.size();
+    VLOG(6) << "Not equal on attrs, lhs size=" << lhs.size()
+            << ", rhs size=" << rhs.size();
     return false;
   }
   for (auto&& kv : lhs) {
@@ -87,9 +95,11 @@ bool IrEqualVisitor::Compare(const std::map<std::string, attr_t>& lhs, const std
 }
 
 template <typename T>
-bool IrEqualVisitor::Compare(const std::vector<T>& lhs, const std::vector<T>& rhs) {
+bool IrEqualVisitor::Compare(const std::vector<T>& lhs,
+                             const std::vector<T>& rhs) {
   if (lhs.size() != rhs.size()) {
-    VLOG(6) << "Not equal on repeated fields, lhs size=" << lhs.size() << ", rhs size=" << rhs.size();
+    VLOG(6) << "Not equal on repeated fields, lhs size=" << lhs.size()
+            << ", rhs size=" << rhs.size();
     return false;
   }
   for (auto i = 0; i < lhs.size(); ++i) {
@@ -134,25 +144,31 @@ bool IrEqualVisitor::Visit(const Cast* lhs, const Expr* other) {
 
 bool IrEqualVisitor::Visit(const For* lhs, const Expr* other) {
   auto* rhs = other->As<For>();
-  return lhs->for_type() == rhs->for_type() && Compare(lhs->loop_var, rhs->loop_var) && Compare(lhs->min, rhs->min) &&
+  return lhs->for_type() == rhs->for_type() &&
+         Compare(lhs->loop_var, rhs->loop_var) && Compare(lhs->min, rhs->min) &&
          Compare(lhs->extent, rhs->extent) && Compare(lhs->body, rhs->body);
 }
 
 bool IrEqualVisitor::Visit(const PolyFor* lhs, const Expr* other) {
   auto* rhs = other->As<PolyFor>();
-  return lhs->for_type() == rhs->for_type() && Compare(lhs->iterator, rhs->iterator) && Compare(lhs->init, rhs->init) &&
-         Compare(lhs->condition, rhs->condition) && Compare(lhs->inc, rhs->inc) && Compare(lhs->body, rhs->body);
+  return lhs->for_type() == rhs->for_type() &&
+         Compare(lhs->iterator, rhs->iterator) &&
+         Compare(lhs->init, rhs->init) &&
+         Compare(lhs->condition, rhs->condition) &&
+         Compare(lhs->inc, rhs->inc) && Compare(lhs->body, rhs->body);
 }
 
 bool IrEqualVisitor::Visit(const Select* lhs, const Expr* other) {
   auto* rhs = other->As<Select>();
-  return Compare(lhs->condition, rhs->condition) && Compare(lhs->true_value, rhs->true_value) &&
+  return Compare(lhs->condition, rhs->condition) &&
+         Compare(lhs->true_value, rhs->true_value) &&
          Compare(lhs->false_value, rhs->false_value);
 }
 
 bool IrEqualVisitor::Visit(const IfThenElse* lhs, const Expr* other) {
   auto* rhs = other->As<IfThenElse>();
-  return Compare(lhs->condition, rhs->condition) && Compare(lhs->true_case, rhs->true_case) &&
+  return Compare(lhs->condition, rhs->condition) &&
+         Compare(lhs->true_case, rhs->true_case) &&
          Compare(lhs->false_case, rhs->false_case);
 }
 
@@ -164,31 +180,36 @@ bool IrEqualVisitor::Visit(const Block* lhs, const Expr* other) {
 bool IrEqualVisitor::Visit(const Call* lhs, const Expr* other) {
   auto* rhs = other->As<Call>();
   return lhs->name == rhs->name && Compare(lhs->read_args, rhs->read_args) &&
-         Compare(lhs->write_args, rhs->write_args) && Compare(lhs->attrs, rhs->attrs) &&
-         lhs->call_type == rhs->call_type;
+         Compare(lhs->write_args, rhs->write_args) &&
+         Compare(lhs->attrs, rhs->attrs) && lhs->call_type == rhs->call_type;
   // TODO(CtfGo): Compare `func` field
 }
 
 bool IrEqualVisitor::Visit(const _Var_* lhs, const Expr* other) {
   auto* rhs = other->As<_Var_>();
-  return lhs->name == rhs->name && Compare(lhs->lower_bound, rhs->lower_bound) &&
+  return lhs->name == rhs->name &&
+         Compare(lhs->lower_bound, rhs->lower_bound) &&
          Compare(lhs->upper_bound, rhs->upper_bound) && lhs->tag == rhs->tag;
 }
 
 bool IrEqualVisitor::Visit(const Load* lhs, const Expr* other) {
   auto* rhs = other->As<Load>();
-  return Compare(lhs->tensor, rhs->tensor) && Compare(lhs->indices, rhs->indices);
+  return Compare(lhs->tensor, rhs->tensor) &&
+         Compare(lhs->indices, rhs->indices);
 }
 
 bool IrEqualVisitor::Visit(const Store* lhs, const Expr* other) {
   auto* rhs = other->As<Store>();
-  return Compare(lhs->tensor, rhs->tensor) && Compare(lhs->indices, rhs->indices);
+  return Compare(lhs->tensor, rhs->tensor) &&
+         Compare(lhs->indices, rhs->indices);
 }
 
 bool IrEqualVisitor::Visit(const Alloc* lhs, const Expr* other) {
   auto* rhs = other->As<Alloc>();
-  return Compare(lhs->destination, rhs->destination) && Compare(lhs->extents, rhs->extents) &&
-         Compare(lhs->condition, rhs->condition) && Compare(lhs->body, rhs->body);
+  return Compare(lhs->destination, rhs->destination) &&
+         Compare(lhs->extents, rhs->extents) &&
+         Compare(lhs->condition, rhs->condition) &&
+         Compare(lhs->body, rhs->body);
 }
 
 bool IrEqualVisitor::Visit(const Free* lhs, const Expr* other) {
@@ -198,10 +219,14 @@ bool IrEqualVisitor::Visit(const Free* lhs, const Expr* other) {
 
 bool IrEqualVisitor::Visit(const _Buffer_* lhs, const Expr* other) {
   auto* rhs = other->As<_Buffer_>();
-  return Compare(lhs->shape, rhs->shape) && Compare(lhs->strides, rhs->strides) && lhs->name == rhs->name &&
-         lhs->scope == rhs->scope && Compare(lhs->elem_offset, rhs->elem_offset) &&
-         lhs->offset_factor == rhs->offset_factor && lhs->target == rhs->target &&
-         lhs->data_alignment == rhs->data_alignment && lhs->memory_type == rhs->memory_type && lhs->dtype == rhs->dtype;
+  return Compare(lhs->shape, rhs->shape) &&
+         Compare(lhs->strides, rhs->strides) && lhs->name == rhs->name &&
+         lhs->scope == rhs->scope &&
+         Compare(lhs->elem_offset, rhs->elem_offset) &&
+         lhs->offset_factor == rhs->offset_factor &&
+         lhs->target == rhs->target &&
+         lhs->data_alignment == rhs->data_alignment &&
+         lhs->memory_type == rhs->memory_type && lhs->dtype == rhs->dtype;
 }
 
 bool IrEqualVisitor::Visit(const _Tensor_* lhs, const Expr* other) {
@@ -212,22 +237,28 @@ bool IrEqualVisitor::Visit(const _Tensor_* lhs, const Expr* other) {
 bool IrEqualVisitor::Visit(const _LoweredFunc_* lhs, const Expr* other) {
   auto* rhs = other->As<_LoweredFunc_>();
   if (lhs->name != rhs->name) {
-    VLOG(6) << "Not equal, lhs name=" << lhs->name << ", rhs name=" << rhs->name;
+    VLOG(6) << "Not equal, lhs name=" << lhs->name
+            << ", rhs name=" << rhs->name;
     return false;
   }
 
-  auto compare_args_fn = [this](const std::vector<Argument>& largs, const std::vector<Argument>& rargs) -> bool {
+  auto compare_args_fn = [this](const std::vector<Argument>& largs,
+                                const std::vector<Argument>& rargs) -> bool {
     if (largs.size() != rargs.size()) {
-      VLOG(6) << "Not equal, lhs args size=" << largs.size() << ", rhs args size=" << rargs.size();
+      VLOG(6) << "Not equal, lhs args size=" << largs.size()
+              << ", rhs args size=" << rargs.size();
       return false;
     }
     for (auto i = 0; i < largs.size(); ++i) {
       const Argument& a = largs.at(i);
       const Argument& b = rargs.at(i);
-      bool equal        = a.io == b.io;
-      equal = equal && (!a.is_var() && !b.is_var() || a.is_var() && b.is_var() && Compare(a.var_arg(), b.var_arg()));
+      bool equal = a.io == b.io;
+      equal = equal &&
+              (!a.is_var() && !b.is_var() ||
+               a.is_var() && b.is_var() && Compare(a.var_arg(), b.var_arg()));
       equal = equal && (!a.is_buffer() && !b.is_buffer() ||
-                        a.is_buffer() && b.is_buffer() && Compare(a.buffer_arg(), b.buffer_arg()));
+                        a.is_buffer() && b.is_buffer() &&
+                            Compare(a.buffer_arg(), b.buffer_arg()));
       if (!equal) {
         VLOG(6) << "Not equal at Argument index=" << i;
         return false;
@@ -236,18 +267,23 @@ bool IrEqualVisitor::Visit(const _LoweredFunc_* lhs, const Expr* other) {
     return true;
   };
 
-  return compare_args_fn(lhs->args, rhs->args) && Compare(lhs->temp_bufs, rhs->temp_bufs) &&
+  return compare_args_fn(lhs->args, rhs->args) &&
+         Compare(lhs->temp_bufs, rhs->temp_bufs) &&
          Compare(lhs->body, rhs->body) && lhs->device_api == rhs->device_api &&
-         Compare(lhs->alloc_output_buffer_exprs, rhs->alloc_output_buffer_exprs) &&
-         Compare(lhs->dealloc_output_buffer_exprs, rhs->dealloc_output_buffer_exprs) &&
+         Compare(lhs->alloc_output_buffer_exprs,
+                 rhs->alloc_output_buffer_exprs) &&
+         Compare(lhs->dealloc_output_buffer_exprs,
+                 rhs->dealloc_output_buffer_exprs) &&
          Compare(lhs->buffer_data_cast_exprs, rhs->buffer_data_cast_exprs) &&
          Compare(lhs->argument_prepare_exprs, rhs->argument_prepare_exprs);
 }
 
 bool IrEqualVisitor::Visit(const _Module_* lhs, const Expr* other) {
   auto* rhs = other->As<_Module_>();
-  return lhs->name == rhs->name && lhs->target == rhs->target && Compare(lhs->buffers, rhs->buffers) &&
-         Compare(lhs->functions, rhs->functions) && Compare(lhs->submodules, rhs->submodules);
+  return lhs->name == rhs->name && lhs->target == rhs->target &&
+         Compare(lhs->buffers, rhs->buffers) &&
+         Compare(lhs->functions, rhs->functions) &&
+         Compare(lhs->submodules, rhs->submodules);
 }
 
 bool IrEqualVisitor::Visit(const Let* lhs, const Expr* other) {
@@ -257,13 +293,15 @@ bool IrEqualVisitor::Visit(const Let* lhs, const Expr* other) {
 
 bool IrEqualVisitor::Visit(const Reduce* lhs, const Expr* other) {
   auto* rhs = other->As<Reduce>();
-  return Compare(lhs->init, rhs->init) && Compare(lhs->body, rhs->body) && lhs->reduce_type == rhs->reduce_type;
+  return Compare(lhs->init, rhs->init) && Compare(lhs->body, rhs->body) &&
+         lhs->reduce_type == rhs->reduce_type;
   // TODO(CtfGo): compare `reduce_axis` field
 }
 
 bool IrEqualVisitor::Visit(const Ramp* lhs, const Expr* other) {
   auto* rhs = other->As<Ramp>();
-  return Compare(lhs->base, rhs->base) && Compare(lhs->stride, rhs->stride) && lhs->lanes == rhs->lanes;
+  return Compare(lhs->base, rhs->base) && Compare(lhs->stride, rhs->stride) &&
+         lhs->lanes == rhs->lanes;
 }
 
 bool IrEqualVisitor::Visit(const Broadcast* lhs, const Expr* other) {
@@ -288,12 +326,14 @@ bool IrEqualVisitor::Visit(const Sum* lhs, const Expr* other) {
 
 bool IrEqualVisitor::Visit(const PrimitiveNode* lhs, const Expr* other) {
   auto* rhs = other->As<PrimitiveNode>();
-  return lhs->name == rhs->name && Compare(lhs->arguments, rhs->arguments) && Compare(lhs->attrs, rhs->attrs);
+  return lhs->name == rhs->name && Compare(lhs->arguments, rhs->arguments) &&
+         Compare(lhs->attrs, rhs->attrs);
 }
 
 bool IrEqualVisitor::Visit(const IntrinsicOp* lhs, const Expr* other) {
   auto* rhs = other->As<IntrinsicOp>();
-  return lhs->getKind() == rhs->getKind() && lhs->input_types() == rhs->input_types() &&
+  return lhs->getKind() == rhs->getKind() &&
+         lhs->input_types() == rhs->input_types() &&
          lhs->output_types() == rhs->output_types();
   // TODO(CtfGo): Compare every derived class of IntrinsicOp separately
 }
@@ -305,14 +345,17 @@ bool IrEqualVisitor::Visit(const _BufferRange_* lhs, const Expr* other) {
 
 bool IrEqualVisitor::Visit(const ScheduleBlock* lhs, const Expr* other) {
   auto* rhs = other->As<ScheduleBlock>();
-  return Compare(lhs->name, rhs->name, allow_name_suffix_diff_) && Compare(lhs->iter_vars, rhs->iter_vars) &&
-         Compare(lhs->read_buffers, rhs->read_buffers) && Compare(lhs->write_buffers, rhs->write_buffers) &&
+  return Compare(lhs->name, rhs->name, allow_name_suffix_diff_) &&
+         Compare(lhs->iter_vars, rhs->iter_vars) &&
+         Compare(lhs->read_buffers, rhs->read_buffers) &&
+         Compare(lhs->write_buffers, rhs->write_buffers) &&
          Compare(lhs->attrs, rhs->attrs) && Compare(lhs->body, rhs->body);
 }
 
 bool IrEqualVisitor::Visit(const ScheduleBlockRealize* lhs, const Expr* other) {
   auto* rhs = other->As<ScheduleBlockRealize>();
-  return Compare(lhs->iter_values, rhs->iter_values) && Compare(lhs->schedule_block, rhs->schedule_block);
+  return Compare(lhs->iter_values, rhs->iter_values) &&
+         Compare(lhs->schedule_block, rhs->schedule_block);
 }
 
 }  // namespace ir

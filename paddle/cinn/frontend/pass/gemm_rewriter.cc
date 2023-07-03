@@ -17,9 +17,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "glog/logging.h"
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/program_pass.h"
-#include "glog/logging.h"
 
 namespace cinn {
 namespace frontend {
@@ -94,38 +94,43 @@ class GemmRewriterPass : public ProgramPass {
   }
 
   // Fuse the pattern of `matmul + add`
-  bool DoGemmFusion(NetBuilder* builder, const Instruction& instr, const std::unordered_set<std::string>& fetch_ids) {
-    CHECK_EQ(instr->inputs.size(), 2) << "elementwise should have only two inputs";
+  bool DoGemmFusion(NetBuilder* builder,
+                    const Instruction& instr,
+                    const std::unordered_set<std::string>& fetch_ids) {
+    CHECK_EQ(instr->inputs.size(), 2)
+        << "elementwise should have only two inputs";
     std::vector<Variable> inputs;
-    bool trans_a   = false;
-    bool trans_b   = false;
+    bool trans_a = false;
+    bool trans_b = false;
     bool trans_out = false;
-    float alpha    = 1.f;
+    float alpha = 1.f;
     std::unordered_set<std::string> dot_instrs{"matmul", "cublas_matmul"};
     for (auto& var : instr->inputs) {
       auto it = output2instr_.find(var.get());
       if (it != output2instr_.end() && dot_instrs.count(it->second->op_type)) {
-        // If the output var of matmul is consumed by more than one instruction or
-        // a fetch var, just skip to fuse it.
+        // If the output var of matmul is consumed by more than one instruction
+        // or a fetch var, just skip to fuse it.
         CHECK_GT(var_used_count_.count(var.get()), 0)
             << "The input(" << var->id << ")"
-            << "should be included in var_used_count_. Please check the CollectInfo method.";
+            << "should be included in var_used_count_. Please check the "
+               "CollectInfo method.";
         if ((var_used_count_.at(var.get()) > 1) || fetch_ids.count(var->id)) {
           continue;
         }
 
         auto& matmul_instr = it->second;
         // check inputs of cublas_gemm
-        auto& bias          = instr->inputs[0].get() == var.get() ? instr->inputs[1] : instr->inputs[0];
+        auto& bias = instr->inputs[0].get() == var.get() ? instr->inputs[1]
+                                                         : instr->inputs[0];
         auto& matmul_inputs = matmul_instr->inputs;
-        int lhs_dim_size    = matmul_inputs[0]->shape.size();
-        int rhs_dim_size    = matmul_inputs[1]->shape.size();
-        int bias_dim_size   = bias->shape.size();
+        int lhs_dim_size = matmul_inputs[0]->shape.size();
+        int rhs_dim_size = matmul_inputs[1]->shape.size();
+        int bias_dim_size = bias->shape.size();
         // only support the condition below:
         // 1) tow-dim matrix multiply, such as m * k, k * n
         // 2) three-dim tensor multiply, such as b * m * k, b * k * n
-        if (!((lhs_dim_size == 2 || lhs_dim_size == 3) && lhs_dim_size == rhs_dim_size &&
-              rhs_dim_size == bias_dim_size)) {
+        if (!((lhs_dim_size == 2 || lhs_dim_size == 3) &&
+              lhs_dim_size == rhs_dim_size && rhs_dim_size == bias_dim_size)) {
           continue;
         }
         // set inputs of cublas_gemm
@@ -157,10 +162,12 @@ class GemmRewriterPass : public ProgramPass {
       VLOG(4) << "-- The trans_a of GEMM: " << std::boolalpha << trans_a;
       VLOG(4) << "-- The trans_b of GEMM: " << std::boolalpha << trans_b;
       VLOG(4) << "-- The trans_out of GEMM: " << std::boolalpha << trans_out;
-      const auto& new_outs = builder->CustomInstr(
-          "cublas_gemm",
-          inputs,
-          {{"trans_a", trans_a}, {"trans_b", trans_b}, {"trans_out", trans_out}, {"alpha", alpha}});
+      const auto& new_outs = builder->CustomInstr("cublas_gemm",
+                                                  inputs,
+                                                  {{"trans_a", trans_a},
+                                                   {"trans_b", trans_b},
+                                                   {"trans_out", trans_out},
+                                                   {"alpha", alpha}});
       auto new_out = new_outs[0];
       auto old_out = instr.GetOutput(0);
       new_out.set_id(old_out->id);
@@ -178,8 +185,8 @@ class GemmRewriterPass : public ProgramPass {
       auto& instr = (*prog)[i];
       if (instr->op_type == "matmul") {
         auto& matmul_inputs = instr->inputs;
-        int lhs_dim_size    = matmul_inputs[0]->shape.size();
-        int rhs_dim_size    = matmul_inputs[1]->shape.size();
+        int lhs_dim_size = matmul_inputs[0]->shape.size();
+        int rhs_dim_size = matmul_inputs[1]->shape.size();
         // only support the condition below:
         // 1) tow-dim matrix multiply, such as m * k, k * n
         // 2) three-dim tensor multiply, such as b * m * k, b * k * n

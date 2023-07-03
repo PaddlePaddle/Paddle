@@ -29,7 +29,8 @@ namespace hlir {
 namespace framework {
 
 /**
- * Buffer helps to hold the memory, and offers a set of methods to help manage the memory.
+ * Buffer helps to hold the memory, and offers a set of methods to help manage
+ * the memory.
  */
 struct Buffer final {
   Buffer() = default;
@@ -49,7 +50,9 @@ struct Buffer final {
 
   //! Lazily resize the memory to \p size in target \p target.
   void ResizeLazy(uint32_t size, const common::Target& target);
-  void ResizeLazy(uint32_t alignment, uint32_t size, const common::Target& target);
+  void ResizeLazy(uint32_t alignment,
+                  uint32_t size,
+                  const common::Target& target);
 
   void SetTarget(const common::Target& target);
 
@@ -68,7 +71,8 @@ struct Buffer final {
     return memory_mng_cache_->malloc(size);
   }
 
-  inline void* AlignedAlloc(uint32_t alignment, uint32_t size) CINN_RESULT_SHOULD_USE {
+  inline void* AlignedAlloc(uint32_t alignment,
+                            uint32_t size) CINN_RESULT_SHOULD_USE {
     CHECK(memory_mng_cache_) << "Should set target first";
     return memory_mng_cache_->aligned_alloc(alignment, size);
   }

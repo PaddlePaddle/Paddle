@@ -23,12 +23,19 @@
 
 namespace pybind11 {
 namespace detail {
-template <typename Key, typename Value, typename Hash, typename Equal, typename Alloc>
+template <typename Key,
+          typename Value,
+          typename Hash,
+          typename Equal,
+          typename Alloc>
 struct type_caster<absl::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
-    : map_caster<absl::flat_hash_map<Key, Value, Hash, Equal, Alloc>, Key, Value> {};
+    : map_caster<absl::flat_hash_map<Key, Value, Hash, Equal, Alloc>,
+                 Key,
+                 Value> {};
 
 template <>
-struct type_caster<absl::string_view> : string_caster<absl::string_view, true> {};
+struct type_caster<absl::string_view> : string_caster<absl::string_view, true> {
+};
 }  // namespace detail
 }  // namespace pybind11
 

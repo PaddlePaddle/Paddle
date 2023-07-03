@@ -26,7 +26,8 @@
 namespace cinn {
 namespace auto_schedule {
 
-bool TuningRecord::Compare::operator()(const TuningRecord& lhs, const TuningRecord& rhs) const {
+bool TuningRecord::Compare::operator()(const TuningRecord& lhs,
+                                       const TuningRecord& rhs) const {
   return lhs.execution_cost < rhs.execution_cost;
 }
 
@@ -39,15 +40,18 @@ proto::TuningRecord TuningRecord::ToProto() const {
   return record_proto;
 }
 
-Database::Database(int capacity_per_task) : capacity_per_task_(capacity_per_task) {
-  CHECK_GT(capacity_per_task_, 0) << "capacity_per_task_ should be greater than 0";
+Database::Database(int capacity_per_task)
+    : capacity_per_task_(capacity_per_task) {
+  CHECK_GT(capacity_per_task_, 0)
+      << "capacity_per_task_ should be greater than 0";
 }
 
 std::unique_ptr<Database> Database::Make(const DatabaseConfig& config) {
   if (config.type == DatabaseType::kMemory) {
     return std::make_unique<Database>(config.capacity_per_task);
   } else if (config.type == DatabaseType::kJSONFile) {
-    return std::make_unique<JSONFileDatabase>(config.capacity_per_task, config.record_file_path, true);
+    return std::make_unique<JSONFileDatabase>(
+        config.capacity_per_task, config.record_file_path, true);
   }
 
   LOG(FATAL) << "Unimplemented database type.";
@@ -81,13 +85,16 @@ std::vector<TuningRecord> Database::LookUp(const std::string& task_key) {
   return results;
 }
 
-std::vector<TuningRecord> Database::GetTopK(const std::string& task_key, int k) {
+std::vector<TuningRecord> Database::GetTopK(const std::string& task_key,
+                                            int k) {
   auto fit = key2record_.find(task_key);
   if (fit == key2record_.end() || k <= 0) {
     return {};
   }
   if (k > capacity_per_task_) {
-    LOG(WARNING) << "Top k=" << k << " is greater than the capacity, will adjust k=" << capacity_per_task_;
+    LOG(WARNING) << "Top k=" << k
+                 << " is greater than the capacity, will adjust k="
+                 << capacity_per_task_;
     k = capacity_per_task_;
   }
 
@@ -103,10 +110,12 @@ std::vector<TuningRecord> Database::GetTopK(const std::string& task_key, int k) 
 }
 
 size_t Database::Size() {
-  auto res =
-      std::accumulate(key2record_.begin(), key2record_.end(), size_t(0), [](size_t res, const auto& kv) -> size_t {
-        return std::move(res) + kv.second.size();
-      });
+  auto res = std::accumulate(key2record_.begin(),
+                             key2record_.end(),
+                             size_t(0),
+                             [](size_t res, const auto& kv) -> size_t {
+                               return std::move(res) + kv.second.size();
+                             });
   return res;
 }
 

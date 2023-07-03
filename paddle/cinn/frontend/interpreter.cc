@@ -29,8 +29,11 @@ DECLARE_bool(enable_auto_tuner);
 namespace cinn::frontend {
 
 struct Interpreter::Impl {
-  Impl(const std::vector<std::string>& input_names, const std::vector<hlir::framework::shape_t>& input_shapes)
-      : scope_(std::make_shared<hlir::framework::Scope>()), input_names_(input_names), input_shapes_(input_shapes) {}
+  Impl(const std::vector<std::string>& input_names,
+       const std::vector<hlir::framework::shape_t>& input_shapes)
+      : scope_(std::make_shared<hlir::framework::Scope>()),
+        input_names_(input_names),
+        input_shapes_(input_shapes) {}
 
   /**
    * Build the model.
@@ -67,15 +70,16 @@ void Interpreter::LoadPaddleModel(const std::string& model_dir,
   for (int idx = 0; idx < impl_->input_names_.size(); ++idx) {
     input_shape_map[impl_->input_names_[idx]] = impl_->input_shapes_[idx];
   }
-  auto programTuple = LoadPaddleProgram(model_dir, impl_->scope_.get(), input_shape_map, params_combined, target);
-  auto& program     = std::get<0>(programTuple);
-  auto& var_map     = std::get<1>(programTuple);
+  auto programTuple = LoadPaddleProgram(
+      model_dir, impl_->scope_.get(), input_shape_map, params_combined, target);
+  auto& program = std::get<0>(programTuple);
+  auto& var_map = std::get<1>(programTuple);
   auto& var_map_paddle_to_program = std::get<2>(programTuple);
-  auto& fetch_names               = std::get<3>(programTuple);
+  auto& fetch_names = std::get<3>(programTuple);
   impl_->program_.reset(program.release());
-  impl_->var_map_                = var_map;
+  impl_->var_map_ = var_map;
   impl_->var_map_paddle_to_cinn_ = var_map_paddle_to_program;
-  impl_->fetch_names_            = fetch_names;
+  impl_->fetch_names_ = fetch_names;
 
   impl_->Build(target, model_name);
 }
@@ -93,12 +97,14 @@ hlir::framework::Tensor Interpreter::GetTensor(const std::string& name) {
   auto it = impl_->var_map_paddle_to_cinn_.find(name);
   if (it == impl_->var_map_paddle_to_cinn_.end()) {
     LOG(FATAL) << "No variable called [" << name
-               << "] found in executor\nThe existing vars: " << utils::Join(impl_->scope_->var_names(), ", ");
+               << "] found in executor\nThe existing vars: "
+               << utils::Join(impl_->scope_->var_names(), ", ");
   }
   return impl_->scope_->GetTensor(it->second);
 }
 
-void Interpreter::Impl::Build(const Target& target, const std::string& model_name) {
+void Interpreter::Impl::Build(const Target& target,
+                              const std::string& model_name) {
   CHECK(!var_map_.empty());
   VLOG(3) << "Program:\n" << *program_;
   // applay frontend pass
@@ -109,22 +115,26 @@ void Interpreter::Impl::Build(const Target& target, const std::string& model_nam
   }
 
   auto graph = Optimize(program_.get(), fetch_var_ids, target);
-  // auto graph                 = std::make_shared<hlir::framework::Graph>(*program_, target);
+  // auto graph                 =
+  // std::make_shared<hlir::framework::Graph>(*program_, target);
   graph->attrs["model_name"] = std::make_shared<absl::any>(model_name);
-  scope_                     = hlir::framework::BuildScope(target, graph, scope_);
+  scope_ = hlir::framework::BuildScope(target, graph, scope_);
 
-  graph_compiler_.reset(new hlir::framework::GraphCompiler(target, scope_, graph));
+  graph_compiler_.reset(
+      new hlir::framework::GraphCompiler(target, scope_, graph));
   hlir::framework::GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = true;
   if (FLAGS_enable_auto_tuner) {
     VLOG(4) << "Compile with auto-tune";
     auto_schedule::AutoTuner auto_tuner(target, graph.get());
-    auto_tuner.Initialize(auto_schedule::AutoTuner::Config(), graph_compiler_.get());
+    auto_tuner.Initialize(auto_schedule::AutoTuner::Config(),
+                          graph_compiler_.get());
     auto_schedule::TuningOptions tuning_options;
     auto_schedule::TuningResult tuning_result = auto_tuner.Tune(tuning_options);
     options.Apply(tuning_result);
   }
-  runtime_program_ = graph_compiler_->Build(options, std::move(fetch_var_ids)).runtime_program;
+  runtime_program_ =
+      graph_compiler_->Build(options, std::move(fetch_var_ids)).runtime_program;
   runtime_program_->PreRun();
 }
 
@@ -133,8 +143,9 @@ std::shared_ptr<hlir::framework::Scope> Interpreter::GetScope() {
   return impl_->scope_;
 }
 
-Interpreter::Interpreter(const std::vector<std::string>& input_names,
-                         const std::vector<hlir::framework::shape_t>& input_shapes)
+Interpreter::Interpreter(
+    const std::vector<std::string>& input_names,
+    const std::vector<hlir::framework::shape_t>& input_shapes)
     : impl_(new Impl(input_names, input_shapes)) {}
 
 }  // namespace cinn::frontend

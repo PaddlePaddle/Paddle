@@ -46,7 +46,8 @@ class GraphNode;
  */
 class GraphEdge : public Object {
  public:
-  GraphEdge(GraphNode* source, GraphNode* sink, int index = -1) : source_(source), sink_(sink), index_(index) {}
+  GraphEdge(GraphNode* source, GraphNode* sink, int index = -1)
+      : source_(source), sink_(sink), index_(index) {}
 
   GraphNode* source() const { return source_; }
   GraphNode* sink() const { return sink_; }
@@ -65,7 +66,8 @@ class GraphEdge : public Object {
 };
 
 struct GraphEdgeCompare {
-  bool operator()(const common::Shared<GraphEdge>& a, const common::Shared<GraphEdge>& b) const;
+  bool operator()(const common::Shared<GraphEdge>& a,
+                  const common::Shared<GraphEdge>& b) const;
 };
 
 /**
@@ -86,7 +88,8 @@ class GraphNode : public Object {
     CHECK(other);
     CHECK_NE(other, this) << "Cannot link to itself";
     auto outlink_edge = make_shared<GraphEdge>(this, other, index_outlinks);
-    auto inlink_edge  = make_shared<GraphEdge>(this, other, other->index_inlinks);
+    auto inlink_edge =
+        make_shared<GraphEdge>(this, other, other->index_inlinks);
     index_outlinks++;
     other->index_inlinks++;
     outlinks_.insert(outlink_edge);
@@ -111,7 +114,7 @@ class GraphNode : public Object {
 
   void Controls(GraphNode* other) {
     bool outlink_linked = false;
-    bool inlink_linked  = false;
+    bool inlink_linked = false;
     for (auto& item : outlinks_) {
       if (item->sink()->id() == other->id()) {
         outlink_linked = true;
@@ -135,26 +138,33 @@ class GraphNode : public Object {
     if (other == this) return;
     // remove all this node's outlink
     {
-      auto it = std::find_if(outlinks_.begin(), outlinks_.end(), [&](const Shared<GraphEdge>& x) {
-        return x->source() == this && x->sink() == other;
-      });
+      auto it = std::find_if(
+          outlinks_.begin(), outlinks_.end(), [&](const Shared<GraphEdge>& x) {
+            return x->source() == this && x->sink() == other;
+          });
       while (it != outlinks_.end()) {
         outlinks_.erase(it);
-        it = std::find_if(outlinks_.begin(), outlinks_.end(), [&](const Shared<GraphEdge>& x) {
-          return x->source() == this && x->sink() == other;
-        });
+        it = std::find_if(outlinks_.begin(),
+                          outlinks_.end(),
+                          [&](const Shared<GraphEdge>& x) {
+                            return x->source() == this && x->sink() == other;
+                          });
       }
     }
     // remove all other node's inlink
     {
-      auto it = std::find_if(other->inlinks_.begin(), other->inlinks_.end(), [&](const Shared<GraphEdge>& x) {
-        return x->source() == this && x->sink() == other;
-      });
+      auto it = std::find_if(other->inlinks_.begin(),
+                             other->inlinks_.end(),
+                             [&](const Shared<GraphEdge>& x) {
+                               return x->source() == this && x->sink() == other;
+                             });
       while (it != other->inlinks_.end()) {
         other->inlinks_.erase(it);
-        it = std::find_if(other->inlinks_.begin(), other->inlinks_.end(), [&](const Shared<GraphEdge>& x) {
-          return x->source() == this && x->sink() == other;
-        });
+        it = std::find_if(other->inlinks_.begin(),
+                          other->inlinks_.end(),
+                          [&](const Shared<GraphEdge>& x) {
+                            return x->source() == this && x->sink() == other;
+                          });
       }
     }
   }
@@ -163,16 +173,19 @@ class GraphNode : public Object {
     if (other == this) return;
     // remove single outlink
     {
-      auto it = std::find_if(outlinks_.begin(), outlinks_.end(), [&](const Shared<GraphEdge>& x) {
-        return x->source() == this && x->sink() == other;
-      });
+      auto it = std::find_if(
+          outlinks_.begin(), outlinks_.end(), [&](const Shared<GraphEdge>& x) {
+            return x->source() == this && x->sink() == other;
+          });
       if (it != outlinks_.end()) outlinks_.erase(it);
     }
     // remove single inlink
     {
-      auto it = std::find_if(other->inlinks_.begin(), other->inlinks_.end(), [&](const Shared<GraphEdge>& x) {
-        return x->source() == this && x->sink() == other;
-      });
+      auto it = std::find_if(other->inlinks_.begin(),
+                             other->inlinks_.end(),
+                             [&](const Shared<GraphEdge>& x) {
+                               return x->source() == this && x->sink() == other;
+                             });
       if (it != other->inlinks_.end()) other->inlinks_.erase(it);
     }
   }
@@ -185,14 +198,21 @@ class GraphNode : public Object {
   }
 
   //! Get the input links of the node.
-  virtual const std::set<Shared<GraphEdge>, GraphEdgeCompare>& inlinks() const { return inlinks_; }
+  virtual const std::set<Shared<GraphEdge>, GraphEdgeCompare>& inlinks() const {
+    return inlinks_;
+  }
   //! Get the output links of the node.
-  virtual const std::set<Shared<GraphEdge>, GraphEdgeCompare>& outlinks() const { return outlinks_; }
+  virtual const std::set<Shared<GraphEdge>, GraphEdgeCompare>& outlinks()
+      const {
+    return outlinks_;
+  }
 
   //! Reset graph traversal meta info.
   void ResetVisitMeta() { visited_time_ = 0; }
   void VisitOnce() const { visited_time_++; }
-  bool visited() const { return inlinks_.empty() || visited_time_ == inlinks_.size(); }
+  bool visited() const {
+    return inlinks_.empty() || visited_time_ == inlinks_.size();
+  }
 
   const char* type_info() const override { return __type_info__; }
 
@@ -202,10 +222,12 @@ class GraphNode : public Object {
 
  protected:
   //! The input links of the node.
-  //! \note We record the raw pointer rather than the shared pointer to avoid cycle reference.
+  //! \note We record the raw pointer rather than the shared pointer to avoid
+  //! cycle reference.
   std::set<common::Shared<GraphEdge>, GraphEdgeCompare> inlinks_;
   //! The output links of the node.
-  //! \note We record the raw pointer rather than the shared pointer to avoid cycle reference.
+  //! \note We record the raw pointer rather than the shared pointer to avoid
+  //! cycle reference.
   std::set<common::Shared<GraphEdge>, GraphEdgeCompare> outlinks_;
 
   mutable int visited_time_{};
@@ -240,7 +262,8 @@ class Graph {
   std::vector<GraphNode*> start_points();
 
   //! Return the graph's nodes and edges(visited) in topological order.
-  std::tuple<std::vector<GraphNode*>, std::vector<GraphEdge*>> topological_order() const;
+  std::tuple<std::vector<GraphNode*>, std::vector<GraphEdge*>>
+  topological_order() const;
 
   //! Return the graph's DFS order.
   std::vector<GraphNode*> dfs_order();
@@ -252,10 +275,12 @@ class Graph {
   std::vector<GraphNode*> nodes();
 
   //! Collect the nodes match the condition defined by \p teller in the graph.
-  std::set<GraphNode*> CollectNodes(std::function<bool(const common::GraphNode*)>&& teller);
+  std::set<GraphNode*> CollectNodes(
+      std::function<bool(const common::GraphNode*)>&& teller);
 
   void DropNode(GraphNode* n) {
-    auto it = std::find_if(nodes_.begin(), nodes_.end(), [&](auto& x) { return x.get() == n; });
+    auto it = std::find_if(
+        nodes_.begin(), nodes_.end(), [&](auto& x) { return x.get() == n; });
     if (it != nodes_.end()) {
       nodes_.erase(it);
     }
@@ -264,14 +289,16 @@ class Graph {
   //! Get a string representation to visualize a graph.
   std::string Visualize() const;
 
-  void ClearUnlinkedNodes(absl::flat_hash_map<std::string, std::vector<int>>* shape_dict,
-                          absl::flat_hash_map<std::string, common::Type>* type_dict,
-                          absl::flat_hash_map<std::string, std::string>* layout_dict);
+  void ClearUnlinkedNodes(
+      absl::flat_hash_map<std::string, std::vector<int>>* shape_dict,
+      absl::flat_hash_map<std::string, common::Type>* type_dict,
+      absl::flat_hash_map<std::string, std::string>* layout_dict);
 
   size_t num_nodes() const { return nodes_.size(); }
 
  protected:
-  //! A lookup table that map from hash key to graph node, note that it doesn't own the graph node.
+  //! A lookup table that map from hash key to graph node, note that it doesn't
+  //! own the graph node.
   std::map<size_t, GraphNode*> registry_;
   //! A list owns the graph nodes.
   std::vector<Shared<GraphNode>> nodes_;
@@ -283,7 +310,9 @@ class Graph {
 namespace std {
 template <>
 struct hash<cinn::common::GraphNode> {
-  size_t operator()(const cinn::common::GraphNode& x) { return reinterpret_cast<size_t>(hash<std::string>()(x.id())); }
+  size_t operator()(const cinn::common::GraphNode& x) {
+    return reinterpret_cast<size_t>(hash<std::string>()(x.id()));
+  }
 };
 
 }  // namespace std

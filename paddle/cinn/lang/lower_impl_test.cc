@@ -42,7 +42,7 @@ TEST(CreateCompGraph, single_layer) {
   }
 
   auto stages = CreateStages({C});
-  auto graph  = CreateCompGraph({A, B, C}, stages);
+  auto graph = CreateCompGraph({A, B, C}, stages);
 
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
@@ -86,10 +86,12 @@ TEST(CreateCompGraph, multi_layers) {
   // C->E
   // D->E
   auto E = Compute(
-      {M, N}, [&](Expr i, Expr j) { return A(i, j) + B(i, j) + C(i, j) + D(i, j); }, "E");
+      {M, N},
+      [&](Expr i, Expr j) { return A(i, j) + B(i, j) + C(i, j) + D(i, j); },
+      "E");
 
   auto stages = CreateStages({C, D, E});
-  auto graph  = CreateCompGraph({A, B, E}, stages);
+  auto graph = CreateCompGraph({A, B, E}, stages);
 
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
@@ -220,7 +222,9 @@ TEST(CreateCompGraph, inline_compatible) {
   // C->E
   // D->E
   auto E = Compute(
-      {M, N}, [&](Expr i, Expr j) { return A(i, j) + B(i, j) + C(i, j) + D(i, j); }, "E");
+      {M, N},
+      [&](Expr i, Expr j) { return A(i, j) + B(i, j) + C(i, j) + D(i, j); },
+      "E");
 
   auto stages = CreateStages({C, D, E});
   stages[D]->ComputeInline();
@@ -279,7 +283,9 @@ TEST(CreateCompGraph, inline_compatible1) {
   // C->E
   // D->E
   auto E = Compute(
-      {M, N}, [&](Expr i, Expr j) { return A(i, j) + B(i, j) + C(i, j) + D(i, j); }, "E");
+      {M, N},
+      [&](Expr i, Expr j) { return A(i, j) + B(i, j) + C(i, j) + D(i, j); },
+      "E");
 
   auto stages = CreateStages({C, D, E});
   stages[C]->ComputeInline();

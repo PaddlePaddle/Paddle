@@ -28,16 +28,22 @@ namespace cinn {
 namespace hlir {
 
 template <typename T>
-T GetAttr(const cinn::utils::AttributeMap &attr_map, const std::string &attr_name) {
-  CHECK(attr_map.count(attr_name)) << "Cannot found attribute \"" << attr_name << "\"";
+T GetAttr(const cinn::utils::AttributeMap &attr_map,
+          const std::string &attr_name) {
+  CHECK(attr_map.count(attr_name))
+      << "Cannot found attribute \"" << attr_name << "\"";
   const auto &attr = attr_map.at(attr_name);
 
-  CHECK(absl::holds_alternative<T>(attr)) << "The type of attribute \"" << attr_name << "\" isn't " << typeid(T).name();
+  CHECK(absl::holds_alternative<T>(attr))
+      << "The type of attribute \"" << attr_name << "\" isn't "
+      << typeid(T).name();
   return absl::get<T>(attr_map.at(attr_name));
 }
 
 template <class T>
-T SafeGetAttr(const cinn::utils::AttributeMap &attrs, const std::string &key, const T &&value) {
+T SafeGetAttr(const cinn::utils::AttributeMap &attrs,
+              const std::string &key,
+              const T &&value) {
   if (attrs.find(key) != attrs.end()) {
     return GetAttr<T>(attrs, key);
   }
@@ -47,7 +53,10 @@ T SafeGetAttr(const cinn::utils::AttributeMap &attrs, const std::string &key, co
 template <typename T = int>
 std::vector<Expr> ToCinnExprs(const std::vector<T> &args) {
   std::vector<Expr> exprs;
-  std::transform(args.begin(), args.end(), std::back_inserter(exprs), [](const T &arg) { return Expr(arg); });
+  std::transform(
+      args.begin(), args.end(), std::back_inserter(exprs), [](const T &arg) {
+        return Expr(arg);
+      });
   return exprs;
 }
 
@@ -58,7 +67,8 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   }
 
   const auto &type = args.front().type();
-  CHECK_EQ(type, common::type_of<T>()) << "Cannot get " << common::type_of<T>() << " value from " << type << " vector!";
+  CHECK_EQ(type, common::type_of<T>()) << "Cannot get " << common::type_of<T>()
+                                       << " value from " << type << " vector!";
 
   std::vector<T> shape_v;
   if (type.is_bool()) {
@@ -121,20 +131,22 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
 
 using CINNSchedule = lang::PackedFunc;
 
-CINNSchedule GetElementwiseScheduleFunc(const std::vector<std::vector<int>> &output_shapes,
-                                        const Target &target,
-                                        bool vectorizable = true);
+CINNSchedule GetElementwiseScheduleFunc(
+    const std::vector<std::vector<int>> &output_shapes,
+    const Target &target,
+    bool vectorizable = true);
 
-CINNSchedule GetInjectiveScheduleFunc(const std::vector<std::vector<int>> &output_shapes,
-                                      const Target &target,
-                                      bool vectorizable = true);
+CINNSchedule GetInjectiveScheduleFunc(
+    const std::vector<std::vector<int>> &output_shapes,
+    const Target &target,
+    bool vectorizable = true);
 
 std::string GetExternFuncName(const common::Target &target,
                               const common::Type &type,
                               const std::string &func_name,
-                              const bool need_cinn   = true,
+                              const bool need_cinn = true,
                               const bool need_target = true,
-                              const bool need_type   = true);
+                              const bool need_type = true);
 
 }  // namespace hlir
 }  // namespace cinn

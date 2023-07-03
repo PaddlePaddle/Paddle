@@ -24,14 +24,16 @@ namespace auto_schedule {
 // kernels and count the elapsed time as the measurement of performance
 class SimpleRunner : public ScheduleRunner {
  public:
-  SimpleRunner(int repeat_times);
+  explicit SimpleRunner(int repeat_times);
 
-  MeasureResult Run(const MeasureInput& input, const BuildResult& build_result) override;
+  MeasureResult Run(const MeasureInput& input,
+                    const BuildResult& build_result) override;
 
  private:
-  std::map<std::string, cinn_pod_value_t> PrepareArgs(const MeasureInput& input,
-                                                      const BuildResult& build_result,
-                                                      hlir::framework::Scope* temp_scope);
+  std::map<std::string, cinn_pod_value_t> PrepareArgs(
+      const MeasureInput& input,
+      const BuildResult& build_result,
+      hlir::framework::Scope* temp_scope);
 
  private:
   // The repeat times of running instructions,

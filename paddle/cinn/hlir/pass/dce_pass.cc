@@ -30,14 +30,15 @@ using framework::shape_t;
 using common::GraphEdge;
 using common::GraphNode;
 
-using GroupPtr  = std::shared_ptr<Graph::Group>;
+using GroupPtr = std::shared_ptr<Graph::Group>;
 using GroupList = std::vector<GroupPtr>;
 
-using ConditionFunction = std::function<bool(const FusionHelperBase*, const Node*, const GroupPtr&)>;
+using ConditionFunction =
+    std::function<bool(const FusionHelperBase*, const Node*, const GroupPtr&)>;
 
 class DceHelper : public FusionHelperBase {
  public:
-  DceHelper(Graph* graph) : FusionHelperBase(graph), graph_(graph) {}
+  explicit DceHelper(Graph* graph) : FusionHelperBase(graph), graph_(graph) {}
 
   void operator()() {
     if (output_nodes_set_.empty()) {
@@ -85,7 +86,7 @@ class DceHelper : public FusionHelperBase {
       if (nodes_set_.count(node)) {
         continue;
       }
-      auto& inlinks  = node->inlinks();
+      auto& inlinks = node->inlinks();
       auto& outlinks = node->outlinks();
 
       // remove others link to node.
@@ -97,7 +98,7 @@ class DceHelper : public FusionHelperBase {
       // remove node data link to others.
       for (auto link : outlinks) {
         // node data
-        auto ndata  = link->sink();
+        auto ndata = link->sink();
         auto& links = ndata->outlinks();
         for (auto link_ : links) {
           auto dest = link_->sink();

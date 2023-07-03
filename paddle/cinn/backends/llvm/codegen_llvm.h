@@ -50,7 +50,8 @@ class LLVMIRVisitor : public ir::IRVisitorBase<llvm::Value *> {
 };
 
 /**
- * Tell whether a variable called \p \var_name will lowered to a pointer type in LLVM.
+ * Tell whether a variable called \p \var_name will lowered to a pointer type in
+ * LLVM.
  * @param var_name name of the variable.
  * @return a boolean.
  */
@@ -97,7 +98,10 @@ class SymbolTable {
 };
 
 struct SymbolTableGuard {
-  explicit SymbolTableGuard(SymbolTable &symbol_table) : symbol_table_(symbol_table) { symbol_table.PushScope(); }
+  explicit SymbolTableGuard(SymbolTable &symbol_table)
+      : symbol_table_(symbol_table) {
+    symbol_table.PushScope();
+  }
 
   ~SymbolTableGuard() { symbol_table_.PopScope(); }
 
@@ -110,10 +114,11 @@ struct SymbolTableGuard {
  */
 class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
  public:
-  explicit CodeGenLLVM(llvm::Module *m,
-                       llvm::IRBuilder<> *b,
-                       const std::shared_ptr<SymbolTable> &symbol_table = nullptr,
-                       const Target &target                             = common::DefaultHostTarget());
+  explicit CodeGenLLVM(
+      llvm::Module *m,
+      llvm::IRBuilder<> *b,
+      const std::shared_ptr<SymbolTable> &symbol_table = nullptr,
+      const Target &target = common::DefaultHostTarget());
 
   // Common llvm types
   // @{
@@ -130,23 +135,39 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
   inline llvm::Type *ll_uint32_ty() const { return llvm_type_of<uint32_t>(m_); }
   inline llvm::Type *ll_uint64_ty() const { return llvm_type_of<uint64_t>(m_); }
 
-  inline llvm::Type *ll_bf16_ty() const { return llvm_type_of<cinn::common::bfloat16>(m_); }
-  inline llvm::Type *ll_fp16_ty() const { return llvm_type_of<cinn::common::float16>(m_); }
+  inline llvm::Type *ll_bf16_ty() const {
+    return llvm_type_of<cinn::common::bfloat16>(m_);
+  }
+  inline llvm::Type *ll_fp16_ty() const {
+    return llvm_type_of<cinn::common::float16>(m_);
+  }
   inline llvm::Type *ll_fp32_ty() const { return llvm_type_of<float>(m_); }
   inline llvm::Type *ll_fp64_ty() const { return llvm_type_of<double>(m_); }
 
-  inline llvm::Type *ll_cinn_buffer_p_ty() const { return llvm_type_of<cinn_buffer_t *>(m_); }
-  inline llvm::Type *ll_cinn_pod_ty() const { return llvm_type_of<cinn_pod_value_t>(m_); }
-  inline llvm::Type *ll_cinn_pod_p_ty() const { return llvm_type_of<cinn_pod_value_t *>(m_); }
+  inline llvm::Type *ll_cinn_buffer_p_ty() const {
+    return llvm_type_of<cinn_buffer_t *>(m_);
+  }
+  inline llvm::Type *ll_cinn_pod_ty() const {
+    return llvm_type_of<cinn_pod_value_t>(m_);
+  }
+  inline llvm::Type *ll_cinn_pod_p_ty() const {
+    return llvm_type_of<cinn_pod_value_t *>(m_);
+  }
   // @}
 
   //! get a llvm type equivalent to a CINN type.
-  inline llvm::Type *ll_type_of(Type type) { return CinnTypeToLLVMType(type, m_); }
+  inline llvm::Type *ll_type_of(Type type) {
+    return CinnTypeToLLVMType(type, m_);
+  }
 
   // Common methods to get a constant
   // @{
-  inline llvm::Constant *ll_const_int32(int v) const { return llvm::ConstantInt::get(b_->getInt32Ty(), v); }
-  inline llvm::Constant *ll_const_int64(int v) const { return llvm::ConstantInt::get(b_->getInt64Ty(), v); }
+  inline llvm::Constant *ll_const_int32(int v) const {
+    return llvm::ConstantInt::get(b_->getInt32Ty(), v);
+  }
+  inline llvm::Constant *ll_const_int64(int v) const {
+    return llvm::ConstantInt::get(b_->getInt64Ty(), v);
+  }
   // @}
 
   //! Get the bound LLVM module.
@@ -171,7 +192,8 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
 
   std::shared_ptr<SymbolTable> named_vars() { return symbol_table_; }
 
-  llvm::FunctionType *GenFunctionTypeFromCinnFunction(const ir::_LoweredFunc_ *func, bool with_buffer_type);
+  llvm::FunctionType *GenFunctionTypeFromCinnFunction(
+      const ir::_LoweredFunc_ *func, bool with_buffer_type);
 
   virtual llvm::Value *GetVar(const std::string &name, bool lazy = true);
 
@@ -181,13 +203,16 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
 
   // Constants
   // @{
-  inline llvm::Value *llvm_int32_constant(int v) { return llvm::ConstantInt::get(ll_int32_ty(), v); }
+  inline llvm::Value *llvm_int32_constant(int v) {
+    return llvm::ConstantInt::get(ll_int32_ty(), v);
+  }
   // @}
 
   virtual ~CodeGenLLVM();
 
  protected:
-  // TODO(Superjomn) When to clear the existing local variables when switch to another function?
+  // TODO(Superjomn) When to clear the existing local variables when switch to
+  // another function?
   llvm::Value *SetVar(const std::string &name, llvm::Value *val);
   llvm::Value *EmitVectorSlice(llvm::Value *vec, int begin, int extent);
   llvm::Value *EmitVectorPad(llvm::Value *vec, int lanes);
@@ -202,26 +227,35 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
   llvm::Value *EmitCall_debug_info(const ir::Call *op);
   // @}
 
-  llvm::Value *EmitBinaryOp(llvm::Value *lhs, llvm::Value *rhs, char opcode, bool is_integral, bool is_signed = true);
+  llvm::Value *EmitBinaryOp(llvm::Value *lhs,
+                            llvm::Value *rhs,
+                            char opcode,
+                            bool is_integral,
+                            bool is_signed = true);
 
   llvm::Value *LLVMGenGlobalStringVar(const std::string &data);
 
   llvm::Value *CreateBufferPtr(Type t, llvm::Value *buffer, llvm::Value *index);
-  llvm::Value *CreateBufferVecPtr(Type t, llvm::Value *buffer, llvm::Value *index);
+  llvm::Value *CreateBufferVecPtr(Type t,
+                                  llvm::Value *buffer,
+                                  llvm::Value *index);
   llvm::Value *CreateVecSlice(llvm::Value *vec, int begin, int lanes);
 
   llvm::Value *DenseVectorLoad(const ir::Load *load);
   llvm::Value *CreateSerialFor(const ir::For *op, int stride = 1);
 
   /**
-   * Mark a load or store with type-based-alias-analysis metadata so that LLVM can optimize by reordering loads and
-   * stores across different buffers.
+   * Mark a load or store with type-based-alias-analysis metadata so that LLVM
+   * can optimize by reordering loads and stores across different buffers.
    */
-  void AddTbaaMetadata(llvm::Instruction *inst, absl::string_view buffer, Expr index);
+  void AddTbaaMetadata(llvm::Instruction *inst,
+                       absl::string_view buffer,
+                       Expr index);
 
   void InitTarget(const Target &target);
 
-  void Scalarize(const Expr &e, std::function<void(int i, llvm::Value *v)> flambda);
+  void Scalarize(const Expr &e,
+                 std::function<void(int i, llvm::Value *v)> flambda);
 
   llvm::Module *m_;
   llvm::IRBuilder<> *b_;
@@ -230,7 +264,8 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
 
   std::unique_ptr<llvm::MDBuilder> md_builder_;
 
-  // std::shared_ptr<absl::flat_hash_map<std::string, llvm::Value *>> named_vars_;
+  // std::shared_ptr<absl::flat_hash_map<std::string, llvm::Value *>>
+  // named_vars_;
   std::shared_ptr<SymbolTable> symbol_table_;
   std::unordered_set<ir::_Var_ *> alias_vars_;
 

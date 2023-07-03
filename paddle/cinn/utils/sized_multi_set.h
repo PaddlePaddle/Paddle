@@ -32,10 +32,12 @@ namespace utils {
  *
  * The underneath implementation uses std::multiset
  */
-template <class T, class Compare = std::less<T>, class Alloc = std::allocator<T>>
+template <class T,
+          class Compare = std::less<T>,
+          class Alloc = std::allocator<T>>
 class SizedMultiSet {
  public:
-  SizedMultiSet(size_t capacity, bool pop_max_when_full = true)
+  explicit SizedMultiSet(size_t capacity, bool pop_max_when_full = true)
       : capacity_(capacity), pop_max_when_full_(pop_max_when_full) {}
 
   void Push(const T& data) {
