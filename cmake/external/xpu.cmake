@@ -83,7 +83,7 @@ set(XPU_XRE_URL
     "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XDNN_URL
-    "${XPU_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+    "https://klx-soc.bj.bcebos.com/mxm/20230629/xdnn-ubuntu_x86_64.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XCCL_URL
     "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"

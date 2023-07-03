@@ -31,37 +31,37 @@ void GatherNdKernel(const Context &ctx,
   }
 
   if (index.numel() == 0) {
-    auto index_dims = index.dims();
-    auto index_dims_size = index_dims.size();
-    // final dim
-    int64_t end_size = index_dims[index_dims_size - 1];
-    PADDLE_ENFORCE_EQ(
-        end_size,
-        0,
-        phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
-    // remain dim
-    auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
-    int64_t remain_numel = phi::product(remain_ddim);
+    // auto index_dims = index.dims();
+    // auto index_dims_size = index_dims.size();
+    // // final dim
+    // int64_t end_size = index_dims[index_dims_size - 1];
+    // PADDLE_ENFORCE_EQ(
+    //     end_size,
+    //     0,
+    //     phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
+    // // remain dim
+    // auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
+    // int64_t remain_numel = phi::product(remain_ddim);
 
-    int64_t x_numel = x.numel();
-    int64_t y_numel = out->numel();
-    PADDLE_ENFORCE_EQ(
-        x_numel * remain_numel,
-        y_numel,
-        phi::errors::InvalidArgument(
-            "x_numel[%d] * remain_numel[%d] should match y_numel[%d]",
-            x_numel,
-            remain_numel,
-            y_numel));
+    // int64_t x_numel = x.numel();
+    // int64_t y_numel = out->numel();
+    // PADDLE_ENFORCE_EQ(
+    //     x_numel * remain_numel,
+    //     y_numel,
+    //     phi::errors::InvalidArgument(
+    //         "x_numel[%d] * remain_numel[%d] should match y_numel[%d]",
+    //         x_numel,
+    //         remain_numel,
+    //         y_numel));
 
-    // int broadcast(Context* ctx, const T* x, T* y, const std::vector<int>&
-    // xshape, const std::vector<int>& yshape)
-    int r = xpu::broadcast(ctx.x_context(),
-                           x.data<T>(),
-                           out->data<T>(),
-                           {1, x_numel},
-                           {remain_numel, x_numel});
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+    // // int broadcast(Context* ctx, const T* x, T* y, const std::vector<int>&
+    // // xshape, const std::vector<int>& yshape)
+    // int r = xpu::broadcast(ctx.x_context(),
+    //                        x.data<T>(),
+    //                        out->data<T>(),
+    //                        {1, x_numel},
+    //                        {remain_numel, x_numel});
+    // PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
     return;
   }
 
@@ -87,12 +87,12 @@ void GatherNdKernel(const Context &ctx,
 
   int ret = XPU_SUCCESS;
   if (index_type == DataType::INT32) {
-    ret = xpu::gather_nd<T, int>(ctx.x_context(),
-                                 x.data<T>(),
-                                 index.data<int>(),
-                                 out->data<T>(),
-                                 x_vec,
-                                 index_shape);
+    // ret = xpu::gather_nd<T, int>(ctx.x_context(),
+    //                              x.data<T>(),
+    //                              index.data<int>(),
+    //                              out->data<T>(),
+    //                              x_vec,
+    //                              index_shape);
   } else {
     ret = xpu::gather_nd<T, int64_t>(ctx.x_context(),
                                      x.data<T>(),
@@ -106,5 +106,11 @@ void GatherNdKernel(const Context &ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    gather_nd, XPU, ALL_LAYOUT, phi::GatherNdKernel, float, int64_t, int) {}
+PD_REGISTER_KERNEL(gather_nd,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GatherNdKernel,
+                   float,
+                   phi::dtype::float16,
+                   int64_t,
+                   int) {}
