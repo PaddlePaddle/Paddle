@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+from paddle.distributed.utils.log_utils import get_logger
+logger = get_logger(logging.INFO)
+
 from paddle.distributed.auto_parallel.static.operators.common import (
     is_amp_flag_sync_op,
     is_data_parallel_reduce_op,
@@ -99,8 +103,8 @@ class AutoParalSupplementDepPass(PassBase):
 
                 elif is_global_norm_sync_op(op):
                     op_namescope = "global_norm_sync_dep"
-                deps_map[idx] = (prior_varname, op.input("X")[0], op_namescope)
-                prior_varname = op.output("Out")[0]
+                deps_map[idx] = (prior_varname, op.input("x")[0], op_namescope)
+                prior_varname = op.output("out")[0]
 
         # analyze deps for check_finite_and_unscale
         # ensure it is performed after last backward computation, therefore reduce the
