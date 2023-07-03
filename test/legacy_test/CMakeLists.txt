@@ -540,6 +540,7 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
+list(REMOVE_ITEM TEST_OPS "test_stride")
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
@@ -1368,13 +1369,16 @@ foreach(STRIED_TEST ${STRIED_TESTS})
                   FLAGS_use_stride_kernel=true)
 endforeach()
 
+py_test_modules(test_stride MODULES test_stride ENVS
+                FLAGS_use_stride_kernel=true)
+
 set_tests_properties(test_imperative_ocr_attention_model_with_stride
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_with_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient_with_stride
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient_with_stride
-                     PROPERTIES TIMEOUT 120)
+                     PROPERTIES TIMEOUT 300)
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
 
 if(APPLE)

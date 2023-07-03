@@ -69,7 +69,6 @@ void StridedCopyKernel(const Context& dev_ctx,
                                    phi::vectorize<int64_t>(input.strides()),
                                    phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, ::phi::dtype::float16>::value) {
-    bfloat16 a = 0;
     auto input_data = reinterpret_cast<const std::uint16_t*>(input.data<T>());
     auto output_data =
         reinterpret_cast<std::uint16_t*>(dev_ctx.template Alloc<T>(out));
