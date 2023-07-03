@@ -143,16 +143,6 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
-- op : concat
-  args : (Tensor[] x, Scalar(int64_t) axis)
-  output : Tensor
-  infer_meta :
-    func : ConcatInferMeta
-    param : [x, axis]
-  kernel :
-    func : concat
-  backward : concat_grad
-
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
