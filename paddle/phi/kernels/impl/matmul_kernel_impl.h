@@ -1030,7 +1030,7 @@ void MatmulAmpFunction(const Context& ctx,
 
   if (x_ndim == 1) {
     const int N = x.numel();
-    if (trans_y) {
+    if (transpose_y) {
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 1],
           N,
@@ -1054,15 +1054,15 @@ void MatmulAmpFunction(const Context& ctx,
                                        y_dims[y_ndim - 2]));
     }
     std::vector<std::int64_t> out_dims(y_ndim - 1);
-    if (trans_y) {
+    if (transpose_y) {
       std::copy_n(y_dims.cbegin(), y_ndim - 1, out_dims.begin());
     } else {
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
-    dev_ctx.template Alloc<Tout>(out);
-    if (trans_y) {
+    out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    ctx.template Alloc<Tout>(out);
+    if (transpose_y) {
       const int M = Y.numel() / N;
       VLOG(3) << "MatMul's case 2";
       blas.GEMVWrapper(false,
@@ -1072,7 +1072,7 @@ void MatmulAmpFunction(const Context& ctx,
                        y_data,
                        x_data,
                        static_cast<Tout>(flag),
-                       dev_ctx.template Alloc<Tout>(Out));
+                       ctx.template Alloc<Tout>(out));
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
@@ -1085,7 +1085,7 @@ void MatmulAmpFunction(const Context& ctx,
                          y_data,
                          x_data,
                          static_cast<Tout>(flag),
-                         dev_ctx.template Alloc<Tout>(out));
+                         ctx.template Alloc<Tout>(out));
       } else {
         VLOG(3) << "MatMul's case 4";
         blas.BatchedGEMMWrapper(CblasTrans,
@@ -1097,7 +1097,7 @@ void MatmulAmpFunction(const Context& ctx,
                                 y_data,
                                 x_data,
                                 static_cast<Tout>(flag),
-                                dev_ctx.template Alloc<Tout>(Out),
+                                ctx.template Alloc<Tout>(out),
                                 batch_size,
                                 M * N,
                                 0);
@@ -1138,8 +1138,8 @@ void MatmulAmpFunction(const Context& ctx,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
-    dev_ctx.template Alloc<T>(Out);
+    out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    ctx.template Alloc<T>(out);
 
     if (trans_x) {
       const int M = x_dims[x_ndim - 1];
@@ -1153,7 +1153,7 @@ void MatmulAmpFunction(const Context& ctx,
                          x_data,
                          y_data,
                          static_cast<Tout>(flag),
-                         dev_ctx.template Alloc<Tout>(out));
+                         ctx.template Alloc<Tout>(out));
       } else {
         VLOG(3) << "MatMul's case 6";
         blas.BatchedGEMMWrapper(CblasTrans,
@@ -1165,7 +1165,7 @@ void MatmulAmpFunction(const Context& ctx,
                                 x_data,
                                 y_data,
                                 static_cast<Tout>(flag),
-                                dev_ctx.template Alloc<Tout>(Out),
+                                ctx.template Alloc<Tout>(out),
                                 batch_size,
                                 M * N,
                                 0);
@@ -1180,7 +1180,7 @@ void MatmulAmpFunction(const Context& ctx,
                        x_data,
                        y_data,
                        static_cast<Tout>(flag),
-                       dev_ctx.template Alloc<Tout>(out));
+                       ctx.template Alloc<Tout>(out));
     }
     return;
   }
