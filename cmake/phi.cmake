@@ -110,40 +110,59 @@ function(kernel_declare TARGET_LIST)
           set(first_registry "")
         endif()
       endif()
-      string(
-        REGEX
-          MATCH
-          "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
-          is_all_backend
-          "${first_registry}")
-      if(NOT is_all_backend STREQUAL "")
-        string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM("
-                       "" kernel_msg "${first_registry}")
-      else()
+
+      if(NOT first_registry STREQUAL "")
         string(
           REGEX
             MATCH
-            "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+            "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
             is_all_backend
             "${first_registry}")
-        # parse the registerd kernel message
-        string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" ""
-                       kernel_msg "${first_registry}")
-      endif()
-      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
-      string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_DTYPE(" "" kernel_msg
-                     "${kernel_msg}")
-      string(REPLACE "," ";" kernel_msg "${kernel_msg}")
-      string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
-      string(REGEX REPLACE "//cuda_only" "" kernel_msg "${kernel_msg}")
+        if(NOT is_all_backend STREQUAL "")
+          # parse the registerd kernel message
+          string(
+            REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM("
+                    "" kernel_msg "${first_registry}")
+        else()
+          string(
+            REGEX
+              MATCH
+              "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+              is_all_backend
+              "${first_registry}")
 
-      list(GET kernel_msg 0 kernel_name)
-      if(NOT is_all_backend STREQUAL "")
-        list(GET kernel_msg 1 kernel_layout)
-        set(kernel_backend "CPU")
-      else()
-        list(GET kernel_msg 1 kernel_backend)
-        list(GET kernel_msg 2 kernel_layout)
+          # parse the registerd kernel message
+          string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" ""
+                         kernel_msg "${first_registry}")
+        endif()
+        string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
+        string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_DTYPE(" "" kernel_msg
+                       "${kernel_msg}")
+        string(REPLACE "," ";" kernel_msg "${kernel_msg}")
+        string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
+        string(REGEX REPLACE "//cuda_only" "" kernel_msg "${kernel_msg}")
+
+        list(GET kernel_msg 0 kernel_name)
+        if(NOT is_all_backend STREQUAL "")
+          list(GET kernel_msg 1 kernel_layout)
+          set(kernel_backend "CPU")
+        else()
+          list(GET kernel_msg 1 kernel_backend)
+          list(GET kernel_msg 2 kernel_layout)
+        endif()
+        set(kernel_declare_id
+            "${kernel_declare_id}PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});"
+        )
+        if("${KERNEL_LIST}" STREQUAL "")
+          set(first_registry "")
+        else()
+          string(
+            REGEX
+              MATCH
+              "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+              first_registry
+              "${kernel_impl}")
+        endif()
       endif()
     endwhile()
     # append kernel declare into declarations.h
