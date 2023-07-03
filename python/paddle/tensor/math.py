@@ -43,16 +43,25 @@ from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast
 from .ops import abs  # noqa: F401
+from .ops import abs_  # noqa: F401
 from .ops import acos  # noqa: F401
+from .ops import acos_  # noqa: F401
 from .ops import acosh  # noqa: F401
+from .ops import acosh_  # noqa: F401
 from .ops import asin  # noqa: F401
+from .ops import asin_  # noqa: F401
 from .ops import asinh  # noqa: F401
+from .ops import asinh_  # noqa: F401
 from .ops import atan  # noqa: F401
+from .ops import atan_  # noqa: F401
 from .ops import atanh  # noqa: F401
+from .ops import atanh_  # noqa: F401
 from .ops import ceil  # noqa: F401
 from .ops import ceil_  # noqa: F401
 from .ops import cos  # noqa: F401
+from .ops import cos_  # noqa: F401
 from .ops import cosh  # noqa: F401
+from .ops import cosh_  # noqa: F401
 from .ops import erf  # noqa: F401
 from .ops import exp  # noqa: F401
 from .ops import exp_  # noqa: F401
@@ -68,11 +77,14 @@ from .ops import rsqrt_  # noqa: F401
 from .ops import sigmoid  # noqa: F401
 from .ops import sigmoid_  # noqa: F401
 from .ops import sin  # noqa: F401
+from .ops import sin_  # noqa: F401
 from .ops import sinh  # noqa: F401
+from .ops import sinh_  # noqa: F401
 from .ops import sqrt  # noqa: F401
 from .ops import sqrt_  # noqa: F401
 from .ops import square  # noqa: F401
 from .ops import tan  # noqa: F401
+from .ops import tan_  # noqa: F401
 
 __all__ = []
 
@@ -2041,6 +2053,66 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out}
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
+    """
+    Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_label_addmm`.
+    """
+    input_shape = input.shape
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(x_shape) == len(y_shape) == 2:
+        raise ValueError(
+            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+                x_shape, y_shape
+            )
+        )
+    if x_shape[1] != y_shape[0]:
+        raise ValueError(
+            "The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(
+                x_shape, y_shape
+            )
+        )
+    if len(input_shape) == 2:
+        if input_shape[0] != x_shape[0]:
+            if input_shape[0] != 1:
+                raise ValueError(
+                    "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(
+                        input_shape[0]
+                    )
+                )
+            if input_shape[1] != y_shape[1] and input_shape[1] != 1:
+                raise ValueError(
+                    "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(
+                        input_shape[1]
+                    )
+                )
+        if input_shape[1] != y_shape[1]:
+            if input_shape[1] != 1:
+                raise ValueError(
+                    "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(
+                        input_shape[1]
+                    )
+                )
+    elif len(input_shape) == 1:
+        if input_shape[0] not in (y_shape[1], 1):
+            raise ValueError(
+                "The input's shape: {} is not broadcastable with [x.shape[0], y.shape[1]]: [{},{}]".format(
+                    input_shape, x_shape[0], y_shape[1]
+                )
+            )
+    else:
+        raise ValueError(
+            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+                input_shape
+            )
+        )
+
+    if in_dynamic_mode():
+        return _C_ops.addmm(input, x, y, beta, alpha)
 
 
 def renorm(x, p, axis, max_norm):
@@ -4441,6 +4513,16 @@ def atan2(x, y, name=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
         return out
+
+
+@inplace_apis_in_dygraph_only
+def atan2_(x, y, name=None):
+    r"""
+    Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_atan2`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.atan2(x, y)
 
 
 def logit(x, eps=None, name=None):

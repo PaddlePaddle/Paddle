@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from test_inplace import TestDygraphInplace
+from test_inplace import TestDygraphInplaceWithContinuous
 
 import paddle
 from paddle.fluid import core
@@ -214,7 +214,7 @@ class TestPowerError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.pow, x, str(y))
 
 
-class TestDygraphInplacePowerScalar(TestDygraphInplace):
+class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
     def set_np_compare_func(self):
         self.np_compare = np.allclose
 
@@ -225,7 +225,7 @@ class TestDygraphInplacePowerScalar(TestDygraphInplace):
         return paddle.pow(var, 2)
 
 
-class TestDygraphInplacePowerTensor(TestDygraphInplace):
+class TestDygraphInplacePowerTensor(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
         self.dtype = "float32"
