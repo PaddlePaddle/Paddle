@@ -88,7 +88,8 @@ ReduceMaxFusePattern::ReduceMaxFusePattern(PDPattern* pattern,
             auto* op_desc = node->Op();
             auto input_var = node->inputs[0]->Var();
             auto pool2d_x_shape = input_var->GetShape();
-            std::vector<int> HW = {pool2d_x_shape[2], pool2d_x_shape[3]};
+            std::vector<int> HW = {static_cast<int>(pool2d_x_shape[2]),
+                                   static_cast<int>(pool2d_x_shape[3])};
             auto pool_type =
                 op_desc->GetAttrIfExists<std::string>("pooling_type");
             auto ksize_array =
