@@ -40,9 +40,9 @@ class TestDropoutInferOp(OpTest):
         self.x_np = self.random(
             shape=self.case["x_shape"], dtype=self.case["x_dtype"]
         )
-        if self.case["mode"] is 'upscale_in_train':
+        if self.case["mode"] == 'upscale_in_train':
             self.case["cinn_mode"] = 'upscale_in_train'
-        elif self.case["mode"] is 'downscale_in_infer':
+        elif self.case["mode"] == 'downscale_in_infer':
             self.case["cinn_mode"] = 'downgrade_in_infer'
         else:
             raise f"Unknown mode for dropout_infer: {self.case['mode']}"
