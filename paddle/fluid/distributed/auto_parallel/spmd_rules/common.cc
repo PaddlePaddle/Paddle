@@ -186,9 +186,9 @@ void VerifySpecs(const std::vector<DistTensorSpec>& specs,
   }
 }
 
-std::vector<std::pair<std::string, std::vector<int64_t>>> GetAxesShardingInfo(
-    const std::vector<std::string>& tensor_axes,
-    const std::vector<DistTensorSpec>& specs) {
+std::vector<std::pair<std::string, std::vector<int64_t>>>
+GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
+                       const std::vector<DistTensorSpec>& specs) {
   std::vector<std::pair<std::string, std::vector<int64_t>>> res;
   size_t ntensor = specs.size();
   for (size_t i = 0; i < ntensor; ++i) {

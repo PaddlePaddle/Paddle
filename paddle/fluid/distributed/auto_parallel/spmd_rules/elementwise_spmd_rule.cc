@@ -81,7 +81,7 @@ ElementwiseSPMDRule::InferForward(
   // step2: Sharding Propogation
   // step2.1: merge input shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info = GetAxesShardingInfo(input_axes_vec, input_specs);
+  axes_sharding_info = GetAxesDimsMappingPair(input_axes_vec, input_specs);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -109,14 +109,14 @@ ElementwiseSPMDRule::InferForward(
   }
 
   // step2.4: handle partial
-  // Step2.3.1 Output Partial
-  std::vector<int64_t> partial_on_dims =
-      ResoluteOutputPartialDimension(axis_to_dim_map, output_axes);
-
   // Step2.3.2  handle input tensor partial (TODO)
-  VLOG(4) << "ElementwiseSPMDRule InferForward: "
-          << " Output dims_mapping: [" << str_join(output_dims_mapping)
-          << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
+  std::string log_str =
+      "ElementwiseSPMDRule InferForward: Input dims_mapping: ";
+  for (int64_t i = 0; i < ninputs; i++) {
+    log_str += "[" + str_join(new_input_dist_attrs[i].dims_mapping()) + "], ";
+  }
+  log_str += " Output dims_mapping: [" + str_join(output_dims_mapping) + "]";
+  VLOG(4) << log_str;
 
   output_dist_attrs.emplace_back(output_dist_attr);
   return {new_input_dist_attrs, output_dist_attrs};
@@ -127,7 +127,7 @@ ElementwiseSPMDRule::InferBackward(
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of MatmulSPMDRule is NOT implemented yet."));
+      "InferBackward of ElementwiseSPMDRule is NOT implemented yet."));
 
   return {};
 }

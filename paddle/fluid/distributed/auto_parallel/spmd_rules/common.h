@@ -132,9 +132,9 @@ void VerifySpecs(const std::vector<DistTensorSpec>& specs,
 
 // Get dimsmapping for the given tensors. Return the pair of each
 // tensor's einsum notation and the corresponding dimsmapping.
-std::vector<std::pair<std::string, std::vector<int64_t>>> GetAxesShardingInfo(
-    const std::vector<std::string>& tensor_axes,
-    const std::vector<DistTensorSpec>& specs);
+std::vector<std::pair<std::string, std::vector<int64_t>>>
+GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
+                       const std::vector<DistTensorSpec>& specs);
 
 // Get dims mapping for the given axes according to sharding information of
 // the annotated axes after inferring forward or backward. The parameter axis
