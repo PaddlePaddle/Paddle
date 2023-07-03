@@ -147,7 +147,7 @@ class TestLoadPaddleModel_FC(unittest.TestCase):
         out_np = out.numpy(self.target)
         print("cinn data's shape is: ", out_np.shape)
 
-        self.assertTrue(np.allclose(out_np, target_data, atol=1e-4))
+        np.testing.assert_allclose(out_np, target_data, atol=1e-4)
 
 
 class TestLoadPaddleModel_MultiFC(unittest.TestCase):
@@ -184,7 +184,7 @@ class TestLoadPaddleModel_MultiFC(unittest.TestCase):
         out = self.executor.get_tensor("fc_5.tmp_2")
         target = self.get_paddle_inference_result(self.model_dir, x_data)
 
-        self.assertTrue(np.allclose(out.numpy(self.target), target, atol=1e-4))
+        np.testing.assert_allclose(out.numpy(self.target), target, atol=1e-4)
 
 
 if __name__ == "__main__":

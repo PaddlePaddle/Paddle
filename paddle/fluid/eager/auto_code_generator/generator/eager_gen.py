@@ -1013,12 +1013,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                         name in forward_outputs_position_map.keys()
                     ), AssertMessage(name, forward_outputs_position_map.keys())
 
-                if is_optional:
-                    set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
-                else:
-                    set_tensor_wrappers = (
-                        f"{indent}grad_node->SetTensorWrapper{name}({name});"
-                    )
+                set_tensor_wrappers = (
+                    f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                )
                 set_output_tensor_wrappers_list.append(set_tensor_wrappers)
         set_input_tensor_wrappers_str = "\n".join(
             set_input_tensor_wrappers_list
