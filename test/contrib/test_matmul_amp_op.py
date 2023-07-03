@@ -145,10 +145,6 @@ class TestMatMulAmpOp(OpTest):
             user_defined_grads=[numeric_grads],
         )
 
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['x', 'y'], 'out')
-
 
 class TestMatMulAmpOp2(TestMatMulAmpOp):
     """

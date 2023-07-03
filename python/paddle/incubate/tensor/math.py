@@ -15,7 +15,7 @@
 from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layer_helper import LayerHelper, convert_np_dtype_to_dtype_
 from paddle.utils import deprecated
 
 __all__ = []
@@ -282,13 +282,27 @@ def segment_max(data, segment_ids, name=None):
     return out
 
 
-def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+def matmul(
+    x,
+    y,
+    transpose_x=False,
+    transpose_y=False,
+    dx_type='bfloat16',
+    dy_type='bfloat16',
+    name=None,
+):
+    dx_type = convert_np_dtype_to_dtype_(dx_type)
+    dy_type = convert_np_dtype_to_dtype_(dy_type)
     if in_dygraph_mode():
-        return _C_ops.matmul_amp(x, y, transpose_x, transpose_y)
+        return _C_ops.matmul_amp(
+            x, y, transpose_x, transpose_y, dx_type, dy_type
+        )
     else:
         attrs = {
-            'trans_x': transpose_x,
-            'trans_y': transpose_y,
+            'transpose_x': transpose_x,
+            'transpose_y': transpose_y,
+            'dx_type': dx_type,
+            'dy_type': dy_type,
         }
 
         def __check_input(x, y):
@@ -299,9 +313,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
                     name,
                     [
                         'uint16',
-                        'float16',
                         'float32',
-                        'float64',
                     ],
                     'matmul_amp',
                 )

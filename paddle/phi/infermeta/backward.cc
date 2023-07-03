@@ -647,6 +647,30 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+void MatmulAMPGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            int dx_type,
+                            int dy_type,
+                            MetaTensor* dx,
+                            MetaTensor* dy) {
+  if (dx) {
+    dx->set_dims(x.dims());
+    if (dx_type == 22) {
+      dx->set_dtype(DataType::BFLOAT16);
+    } else if (dx_type == 5) {
+      dx->set_dtype(DataType::FLOAT32);
+    }
+  }
+  if (dy) {
+    dy->set_dims(y.dims());
+    if (dy_type == 22) {
+      dy->set_dtype(DataType::BFLOAT16);
+    } else if (dy_type == 5) {
+      dy->set_dtype(DataType::FLOAT32);
+    }
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
