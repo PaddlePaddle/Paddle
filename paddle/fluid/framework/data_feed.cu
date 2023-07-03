@@ -3857,8 +3857,12 @@ void GraphDataGenerator::DoSageForInfer() {
     total_instance *= 2;
     while (!global_pass_end) {
       int local_pass_end = total_instance == 0;
-      global_pass_end = get_multi_node_global_flag(local_pass_end, ncclProd,
-                                                   place_, sample_stream_);
+      if (conf_.is_multi_node) {
+        global_pass_end = get_multi_node_global_flag(local_pass_end, ncclProd,
+                                                     place_, sample_stream_);
+      } else {
+        global_pass_end = local_pass_end;
+      }
       if (global_pass_end) {
         break;
       }
