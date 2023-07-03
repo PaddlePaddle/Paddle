@@ -100,13 +100,13 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [1], False)
 
     def reduction_tester(self, fn_name, cinn_fn, np_fn, axes, keep_dims):
-        m, n = [
+        m, n = (
             ir.Expr(_)
             for _ in (
                 self.m,
                 self.n,
             )
-        ]
+        )
         x = lang.Placeholder("float32", "x", [m, n])
         func_name = "test_" + fn_name
         y = cinn_fn(x.to_tensor(), axes, keep_dims)

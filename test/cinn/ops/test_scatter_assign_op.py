@@ -74,7 +74,7 @@ class TestScatterAssignOpBase(OpTest):
                                 l
                             ]
         else:
-            self.assertTrue(False, "Axis {} No Implement".format(self.axis))
+            self.assertTrue(False, f"Axis {self.axis} No Implement")
 
         pd_out = paddle.to_tensor(out, stop_gradient=True)
         self.paddle_outputs = [pd_out]

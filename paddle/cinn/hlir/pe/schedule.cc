@@ -2662,7 +2662,7 @@ int gcd(int a, int b) {
 int MaxFactorLessThan(int a, int b) {
   CHECK_GT(a, b);
   int res = 1;
-  for (int i = 2; i <= (int)sqrt((double)a); i++) {
+  for (int i = 2; i <= static_cast<int>(sqrt(static_cast<double>(a))); i++) {
     if (a % i == 0) {
       if (i <= b) res = std::max(res, i);
       if (a / i <= b) res = std::max(res, a / i);

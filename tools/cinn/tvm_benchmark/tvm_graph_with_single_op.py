@@ -240,14 +240,16 @@ def tune_and_evaluate(func):
         np.array(evaluator_preheat().results) * 1000
     )  # convert to millisecond
     print(
-        "[PreHeat]Mean inference time (std dev): %.4f ms (%.4f ms)"
-        % (np.mean(prof_res1), np.std(prof_res1))
+        "[PreHeat]Mean inference time (std dev): {:.4f} ms ({:.4f} ms)".format(
+            np.mean(prof_res1), np.std(prof_res1)
+        )
     )
 
     prof_res2 = np.array(evaluator().results) * 1000  # convert to millisecond
     print(
-        "[Benchmark]Mean inference time (std dev): %.4f ms (%.4f ms)"
-        % (np.mean(prof_res2), np.std(prof_res2))
+        "[Benchmark]Mean inference time (std dev): {:.4f} ms ({:.4f} ms)".format(
+            np.mean(prof_res2), np.std(prof_res2)
+        )
     )
 
 
