@@ -125,7 +125,7 @@ void MatMul(const Context& dev_ctx,
               static_cast<T>(flag));
 }
 
-template <typename Ta, typename Tb, typename Tout>
+template <typename InT, typename OutT>
 void MatMulGPU(const phi::GPUContext& dev_ctx,
                const DenseTensor& a,
                bool trans_a,
@@ -133,7 +133,7 @@ void MatMulGPU(const phi::GPUContext& dev_ctx,
                bool trans_b,
                DenseTensor* out,
                bool flag = false) {
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, Tout>(dev_ctx);
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, InT>(dev_ctx);
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
   if (a.dims().size() == 3 && b.dims().size() <= 2) {
@@ -143,13 +143,13 @@ void MatMulGPU(const phi::GPUContext& dev_ctx,
       mat_dim_a.batch_size_ = 0;
     }
   }
-  blas.MatMulWrapper(a.data<Ta>(),
+  blas.MatMulWrapper(a.data<InT>(),
                      mat_dim_a,
-                     b.data<Tb>(),
+                     b.data<InT>(),
                      mat_dim_b,
-                     static_cast<Tout>(1),
-                     dev_ctx.template Alloc<Tout>(out),
-                     static_cast<Tout>(flag));
+                     static_cast<OutT>(1),
+                     dev_ctx.template Alloc<OutT>(out),
+                     static_cast<OutT>(flag));
 }
 
 /**
@@ -245,7 +245,7 @@ void CalcInputGrad(const Context& dev_ctx,
   }
 }
 
-template <typename Ta, typename Tb = Ta, typename Tout = Ta>
+template <typename InT, typename OutT>
 void CalcInputGradGPU(const phi::GPUContext& dev_ctx,
                       const DenseTensor& a,
                       bool trans_a,
@@ -259,17 +259,17 @@ void CalcInputGradGPU(const phi::GPUContext& dev_ctx,
   bool need_combine =
       (a.dims().size() == 3 || b.dims().size() == 3) && out->dims().size() == 2;
   if (!need_combine) {
-    MatMulGPU<Ta, Tb, Tout>(dev_ctx, a, trans_a, b, trans_b, out, flag);
+    MatMulGPU<InT, OutT>(dev_ctx, a, trans_a, b, trans_b, out, flag);
   } else {
-    MatMulGPU<Ta, Tb, Tout>(
+    MatMulGPU<InT, OutT>(
         dev_ctx,
         is_fold_init_dims_a
             ? FoldInitDims(a)
-            : FoldHeadAndLastDims<phi::GPUContext, Ta>(dev_ctx, a),
+            : FoldHeadAndLastDims<phi::GPUContext, InT>(dev_ctx, a),
         trans_a,
         is_fold_init_dims_b
             ? FoldInitDims(b)
-            : FoldHeadAndLastDims<phi::GPUContext, Tb>(dev_ctx, b),
+            : FoldHeadAndLastDims<phi::GPUContext, InT>(dev_ctx, b),
         trans_b,
         out,
         flag);
@@ -2064,10 +2064,14 @@ void MatmulWithFlattenDoubleGradKernel(
 /*
 T : the dtype of x/y in forward propagation.
 Tout: the dtype of out/out_grad.
-Tx: the dtype of dx.
-Ty: the dtype of dy.
+Tdx: the dtype of dx.
+Tdy: the dtype of dy.
 */
-template <typename Context, typename T, typename Tx, typename Ty, typename Tout>
+template <typename Context,
+          typename T,
+          typename Tdx,
+          typename Tdy,
+          typename Tout>
 void MatmulAmpGradFuntion(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
@@ -2089,16 +2093,6 @@ void MatmulAmpGradFuntion(const Context& dev_ctx,
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
   int ndim = dout_dims.size();
-
-  // Case1 : x's or y's dim = 1
-  if (x_ndim == 1 && y_ndim == 1) {
-    if (dx) dev_ctx.template Alloc<Tx>(dx);
-    if (dy) dev_ctx.template Alloc<Ty>(dy);
-    if (out_grad.numel() == 1) {
-      DotGradFunction<Context, T>()(dev_ctx, &x, &y, &out_grad, dx, dy);
-      return;
-    }
-  }
 
   bool is_broadcast = true;
   if (x_ndim <= 2 || y_ndim <= 2) {
@@ -2137,24 +2131,24 @@ void MatmulAmpGradFuntion(const Context& dev_ctx,
     }
 
     if (transpose_x && transpose_y) {
-      CalcInputGradGPU<T, Tout, Tx>(
+      CalcInputGradGPU<T, Tdx>(
           dev_ctx, y_help, true, true, out_grad_help, true, false, dx);
-      CalcInputGradGPU<Tout, T, Ty>(
+      CalcInputGradGPU<T, Tdy>(
           dev_ctx, out_grad_help, true, true, x_help, true, false, dy);
     } else if (transpose_x) {
-      CalcInputGradGPU<T, Tout, Tx>(
+      CalcInputGradGPU<T, Tdx>(
           dev_ctx, y_help, false, false, out_grad_help, true, false, dx);
-      CalcInputGradGPU<T, Tout, Ty>(
+      CalcInputGradGPU<T, Tdy>(
           dev_ctx, x_help, false, false, out_grad_help, false, true, dy);
     } else if (transpose_y) {
-      CalcInputGradGPU<Tout, T, Tx>(
+      CalcInputGradGPU<T, Tdx>(
           dev_ctx, out_grad_help, false, false, y_help, false, true, dx);
-      CalcInputGradGPU<Tout, T, Ty>(
+      CalcInputGradGPU<T, Tdy>(
           dev_ctx, out_grad_help, true, true, x_help, false, true, dy);
     } else {
-      CalcInputGradGPU<T, T, Tx>(
+      CalcInputGradGPU<T, Tdx>(
           dev_ctx, out_grad_help, false, false, y_help, true, false, dx);
-      CalcInputGradGPU<T, T, Ty>(
+      CalcInputGradGPU<T, Tdy>(
           dev_ctx, x_help, true, true, out_grad_help, false, true, dy);
     }
 
@@ -2182,36 +2176,36 @@ void MatmulAmpGradFuntion(const Context& dev_ctx,
       if (transpose_y) {
         // X'Y': dA = Y'G', dB = G'X'
         if (dx)
-          MatmulAmpFunction<Context, T, T, Tout, Tx>(
+          MatmulAmpFunction<Context, T, Tdx>(
               dev_ctx, y, out_grad_casted, &dx_help, true, true);
         if (dy)
-          MatmulAmpFunction<Context, T, Tout, T, Ty>(
+          MatmulAmpFunction<Context, T, Tdy>(
               dev_ctx, out_grad_casted, x, &dy_help, true, true);
       } else {
         // X'Y: dX = YG', dY = XG
         if (dx)
-          MatmulAmpFunction<Context, T, T, Tout, Tx>(
+          MatmulAmpFunction<Context, T, Tdx>(
               dev_ctx, y, out_grad_casted, &dx_help, false, true);
         if (dy)
-          MatmulAmpFunction<Context, T, T, Tout, Ty>(
+          MatmulAmpFunction<Context, T, Tdy>(
               dev_ctx, x, out_grad_casted, &dy_help, false, false);
       }
     } else {
       if (transpose_y) {
         // XY': dX = GY, dY = G'X
         if (dx)
-          MatmulAmpFunction<Context, T, Tout, T, Tx>(
+          MatmulAmpFunction<Context, T, Tdx>(
               dev_ctx, out_grad_casted, y, &dx_help, false, false);
         if (dy)
-          MatmulAmpFunction<Context, T, Tout, T, Ty>(
+          MatmulAmpFunction<Context, T, Tdy>(
               dev_ctx, out_grad_casted, x, &dy_help, true, false);
       } else {
         // XY: dX = GY', dY = X'G
         if (dx)
-          MatmulAmpFunction<Context, T, Tout, T, Tx>(
+          MatmulAmpFunction<Context, T, Tdx>(
               dev_ctx, out_grad_casted, y, &dx_help, false, true);
         if (dy)
-          MatmulAmpFunction<Context, T, T, Tout, Ty>(
+          MatmulAmpFunction<Context, T, Tdy>(
               dev_ctx, x, out_grad_casted, &dy_help, true, false);
       }
     }
@@ -2249,7 +2243,7 @@ void MatmulAmpGradFuntion(const Context& dev_ctx,
       if (dx_reduce_dims.empty()) {
         *dx = std::move(dx_help);
       } else {
-        ReduceSumForMatmulGrad<Context, Tx>()(
+        ReduceSumForMatmulGrad<Context, Tdx>()(
             dev_ctx, dx_help, dx, dx_reduce_dims);
       }
       dx->Resize(x.dims());
@@ -2258,7 +2252,7 @@ void MatmulAmpGradFuntion(const Context& dev_ctx,
       if (dy_reduce_dims.empty()) {
         *dy = std::move(dy_help);
       } else {
-        ReduceSumForMatmulGrad<Context, Ty>()(
+        ReduceSumForMatmulGrad<Context, Tdy>()(
             dev_ctx, dy_help, dy, dy_reduce_dims);
       }
       dy->Resize(y.dims());
