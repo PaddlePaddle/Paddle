@@ -345,3 +345,37 @@ def _init_parallel_env(backend):
             core.CommContextManager.create_nccl_comm_context(
                 store, dev_id, 0, rank, world_size
             )
+
+#@paddle.fluid.framework.static_only
+class StaticTCPStore:
+    _instance = None
+
+    def __new__(cls, *args, **kw):
+        if cls._instance is None:
+            master_endpoint = os.getenv("PADDLE_MASTER", None)
+            if master_endpoint is None:
+                master_endpoint = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+            assert (
+                    master_endpoint is not None
+                   ), "Please set PADDLE_MASTER enviroment variable."
+            master_addr = master_endpoint.split(":")[0]
+            master_port = int(master_endpoint.split(":")[1])
+            global_env = paddle.distributed.ParallelEnv()
+            rank = global_env.rank
+            world_size = global_env.world_size
+            is_master = rank == 0
+            print(
+                "master_addr: {}, master_port: {}, is_master: {}, world_size: {}.".format(
+                    master_addr, master_port, is_master, world_size
+                    )
+                 )
+            cls._instance = core.TCPStore(
+                master_addr,
+                master_port,
+                is_master,
+                world_size,
+                )
+            return cls._instance
+
+    def __init__(self):
+        pass

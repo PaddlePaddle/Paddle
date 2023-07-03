@@ -110,6 +110,8 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
+  VLOG(0) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
+          << " to " << peer;
   phi::distributed::CommStaticCheck::CheckShape(in_tensor, rank_, size_);
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -131,6 +133,8 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
+  VLOG(0) << "rank " << GetRank() << " recv "
+          << phi::product(out_tensor->dims()) << " from " << peer;
   phi::distributed::CommStaticCheck::CheckShape(*out_tensor, rank_, size_);
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);

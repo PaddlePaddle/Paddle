@@ -24,7 +24,6 @@ from .utils import dygraph_guard
 
 logger = get_logger("INFO", __name__)
 
-
 def get_all_process_groups():
     global _g_process_group_map
     return _g_process_group_map.values()
@@ -78,7 +77,6 @@ def new_process_group(
     _g_process_group_map[group_id] = new_pg
 
     return new_pg
-
 
 # This implementation refers to lots of Paddle/python/paddle/distributed/collective.py,
 # Fleet also has a collective helper which uses ops to initialize communication in
@@ -146,42 +144,6 @@ class ProcessGroup:
         genv = _get_global_env()
         global_rank = genv.rank
 
-        def get_default_store():
-            master_addr = os.getenv("MASTER_ADDR", None)
-            master_port = os.getenv("MASTER_PORT", None)
-            endpoints = (
-                ":".join([master_addr, master_port])
-                if master_addr and master_port
-                else None
-            )
-            if endpoints is None:
-                endpoints = os.getenv("PADDLE_MASTER", None)
-            if endpoints is None:
-                endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
-            assert endpoints, (
-                "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
-                "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
-                "and 'export MASTER_ADDR=54612'. Or you can start your training"
-                "with paddle.distributed.run module."
-            )
-            logger.info(
-                f"get_default_store master_endpoints: {endpoints}, all endpoints: {os.getenv('PADDLE_TRAINER_ENDPOINTS')}"
-            )
-            master_addr, master_port = endpoints.split(":")
-            master_port = int(master_port)
-            is_master = genv.rank == 0
-            stop_check_timeout = int(
-                os.getenv("FLAGS_stop_check_timeout", "900")
-            )
-            store = core.TCPStore(
-                master_addr,
-                master_port,
-                is_master,
-                genv.world_size,
-                timeout=stop_check_timeout,
-            )
-            return store
-
         if self.nranks >= 2 and global_rank in self.ranks:
             logger.info(
                 f"group_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {genv.current_endpoint}"
@@ -196,10 +158,12 @@ class ProcessGroup:
             strategy.nrings = 1
 
             if core.is_compiled_with_cuda():
-                store = get_default_store()
+                global _g_process_group_store
+                if _g_process_group_store is None:
+                    _g_process_group_store = paddle.distributed.collective.StaticTCPStore()
                 place = core.CUDAPlace(genv.device_id)
                 core.CommContextManager.create_nccl_comm_context(
-                    store, genv.device_id, ring_id, genv.rank, genv.world_size
+                    _g_process_group_store, genv.device_id, ring_id, strategy.local_rank, genv.world_size
                 )
                 core.set_device_comm_context(place, ring_id)
             elif core.is_compiled_with_xpu():
@@ -292,3 +256,4 @@ class ProcessGroup:
 # At the beginning, group 0 is empty and new ranks will be added automatically.
 _g_process_group_map = OrderedDict()
 _g_process_group_map[0] = ProcessGroup(0, [])
+_g_process_group_store = None
