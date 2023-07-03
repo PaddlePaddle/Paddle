@@ -122,6 +122,12 @@ class TestDygraphInplace(unittest.TestCase):
 
         inplace_var[0] = 2.0
         np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        inplace_var = self.inplace_api_processing(var)
+        self.assertTrue(id(var) == id(inplace_var))
+
+        inplace_var[0] = 2.0
+        np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
 
     def test_forward_version(self):
         with paddle.fluid.dygraph.guard():
@@ -239,6 +245,42 @@ class TestDygraphInplace(unittest.TestCase):
             loss.backward()
             grad_var_a = var_a.grad.numpy()
         np.testing.assert_array_equal(grad_var_a_inplace, grad_var_a)
+
+
+class TestDygraphInplaceWithContinuous(unittest.TestCase):
+    def non_inplace_api_processing(self, var):
+        return paddle.sin(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.sin_(var)
+
+    def test_continuous_inplace_backward(self):
+        # The api that only relies on input to calculate the gradient will copy input before
+        # the inpalce calculation, so here supports continuous inpalce backward calculation.
+        grad_var_a, grad_var_a_inplace = 0, 1
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+            var_c = self.inplace_api_processing(var_b)
+            var_d = self.inplace_api_processing(var_c)
+            loss = var_d.sum()
+            loss.backward()
+            grad_var_a_inplace = var_a.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+            var_c = self.non_inplace_api_processing(var_b)
+            var_d = self.non_inplace_api_processing(var_c)
+            loss = var_d.sum()
+            loss.backward()
+            grad_var_a = var_a.grad.numpy()
+
+        self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
 
 
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
@@ -504,6 +546,16 @@ class TestGetitemBeforeInplace(unittest.TestCase):
         loss = c.sum()
         b[1] = 2
         loss.backward()
+
+
+class TestDygraphInplaceSin(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder(input_var_2)
+
+    def inplace_api_processing(self, var):
+        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+        return var.remainder_(input_var_2)
 
 
 if __name__ == '__main__':

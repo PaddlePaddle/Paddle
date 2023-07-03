@@ -2221,20 +2221,22 @@
 
 - op : sin
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : sin
+  inplace: (x -> out)
   backward : sin_grad
 
 - op : sinh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : sinh
+  inplace: (x -> out)
   backward : sinh_grad
 
 - op : slogdet
@@ -2380,11 +2382,12 @@
 
 - op : tan
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : tan
+  inplace: (x -> out)
   backward : tan_grad
 
 - op : tanh

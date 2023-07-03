@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_mode
@@ -47,6 +48,18 @@ __inplace_unary_func__ = [
     'round_',
     'reciprocal_',
     'sigmoid_',
+    'abs_'
+    'sin_'
+    'sinh_'
+    'asin_'
+    'asinh_'
+    'cos_'
+    'cosh_'
+    'acos_'
+    'acosh_'
+    'tan_'
+    'atan_'
+    'atanh_',
 ]
 
 __all__ = []
