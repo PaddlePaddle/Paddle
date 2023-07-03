@@ -26,16 +26,26 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& mask,
                         DenseTensor* out) {
   DenseTensor mask_expand;
-  if (x.dims() != mask.dims()) {
-    auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-        vectorize(x.dims()), vectorize(mask.dims()));
+  DenseTensor x_expand;
+
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x.dims()), vectorize(mask.dims()));
+
+  DDim epxand_dims = make_ddim(expanded_size);
+  if (mask.dims() != epxand_dims) {
     ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
-  auto input_dim = x.dims();
+  if (x.dims() != epxand_dims) {
+    ExpandKernel<T, Context>(dev_ctx, x, IntArray(expanded_size), &x_expand);
+  } else {
+    x_expand = x;
+  }
+
+  auto input_dim = x_expand.dims();
   auto mask_dim = mask_expand.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
@@ -47,7 +57,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         input_dim,
                         mask_dim));
 
-  auto input_data = x.data<T>();
+  auto input_data = x_expand.data<T>();
   auto mask_data = mask_expand.data<bool>();
 
   auto mask_size = mask_expand.numel();

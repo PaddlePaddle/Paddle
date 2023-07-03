@@ -18,6 +18,8 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -28,47 +30,40 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
+  // x_grad.size() == x.size()
+  // x.size() == mask.size(), no broadcast, expand_mask = false, expand_x =
+  // false x.size() < mask.size(), x broadcast to mask, expand_mask = false,
+  // expand_x = true x.size() > mask.size(), mask broadcast to x, epxand_mask =
+  // true, expand_x = false
   DenseTensor mask_expand;
-  if (mask.dims() != x.dims()) {
-    auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-        vectorize(x.dims()), vectorize(mask.dims()));
+  DenseTensor x_grad_expand;
+  bool expand_x = false;
+
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x_grad->dims()), vectorize(mask.dims()));
+  auto expaned_dims = make_ddim(expanded_size);
+
+  if (mask.dims() != expaned_dims) {
     ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
-  auto mask_dim = mask_expand.dims();
+  if (x_grad->dims() != expaned_dims) {
+    x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
+    expand_x = true;
+  } else {
+    expand_x = false;
+  }
 
-  auto input_dim = x.dims();
-  auto x_grad_dim = x_grad->dims();
-
-  PADDLE_ENFORCE_EQ(
-      input_dim,
-      mask_dim,
-      phi::errors::InvalidArgument(
-          "The dim size of input and mask in OP(masked_selected_grad) "
-          "must be equal, but got input dim:(%ld), mask dim: "
-          "(%ld). Please check input "
-          "value.",
-          input_dim,
-          mask_dim));
-
-  PADDLE_ENFORCE_EQ(
-      input_dim,
-      x_grad_dim,
-      phi::errors::InvalidArgument(
-          "The dim size of input and x_grad in OP(masked_selected_grad) "
-          "must be equal, but got input dim:(%ld), x_grad dim: "
-          "(%ld). Please check input "
-          "value.",
-          input_dim,
-          x_grad_dim));
+  auto* out_data = dev_ctx.template Alloc<T>(x_grad);
+  if (expand_x) {
+    out_data = x_grad_expand.data<T>();
+  }
 
   auto* mask_data = mask_expand.data<bool>();
   auto* input_data = out_grad.data<T>();
-
-  auto* out_data = dev_ctx.template Alloc<T>(x_grad);
   int mask_size = mask_expand.numel();
 
   int index = 0;
@@ -82,7 +77,6 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   }
 
   auto out_grad_numel = out_grad.numel();
-
   PADDLE_ENFORCE_EQ(
       index,
       out_grad_numel,
@@ -93,6 +87,11 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
           "value.",
           index,
           out_grad_numel));
+
+  if (expand_x) {
+    ExpandGradKernel<T, Context>(
+        dev_ctx, x, x_grad_expand, IntArray(expanded_size), x_grad);
+  }
 }
 
 }  // namespace phi

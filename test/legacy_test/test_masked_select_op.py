@@ -23,8 +23,7 @@ from paddle.fluid import core
 
 def np_masked_select(x, mask):
     result = np.empty(shape=(0), dtype=x.dtype)
-    broadcast_shape = np.broadcast_shapes(x.shape, mask.shape)
-    mask = np.broadcast_to(mask, shape=broadcast_shape)
+    x, mask = np.broadcast_arrays(x, mask)
     for ele, ma in zip(np.nditer(x), np.nditer(mask)):
         if ma:
             result = np.append(result, ele)
@@ -251,6 +250,12 @@ class TestMaskedSelectOpBroadcast(TestMaskedSelectOp):
     def init(self):
         self.shape = (3, 40)
         self.mask_shape = (3, 1)
+
+
+class TestMaskedSelectOpBroadcast2(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (300, 1)
+        self.mask_shape = (300, 40)
 
 
 if __name__ == '__main__':

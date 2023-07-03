@@ -51,16 +51,27 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& mask,
                         DenseTensor* out) {
   DenseTensor mask_expand;
-  if (mask.dims() != x.dims()) {
-    auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-        vectorize(x.dims()), vectorize(mask.dims()));
-    ExpandKernel<bool, Context>(
+  DenseTensor x_expand;
+
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x.dims()), vectorize(mask.dims()));
+
+  DDim epxand_dims = make_ddim(expanded_size);
+  if (mask.dims() != epxand_dims) {
+    phi::ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
-  auto input_dim = x.dims();
+  if (x.dims() != epxand_dims) {
+    phi::ExpandKernel<T, Context>(
+        dev_ctx, x, IntArray(expanded_size), &x_expand);
+  } else {
+    x_expand = x;
+  }
+
+  auto input_dim = x_expand.dims();
   auto mask_dim = mask_expand.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
@@ -72,12 +83,9 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         input_dim,
                         mask_dim));
 
-  auto* mask_data = mask_expand.data<bool>();
-  auto input_data = x.data<T>();
-
   using Functor = MaskedSelectFunctor<bool, T, T>;
   phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
-      dev_ctx, mask_expand, x, out, Functor());
+      dev_ctx, mask_expand, x_expand, out, Functor());
 }
 
 }  // namespace phi
