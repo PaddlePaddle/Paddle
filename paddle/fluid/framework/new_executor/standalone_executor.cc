@@ -64,10 +64,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_new_ir_in_executor && platform::is_cpu_place(place)) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
-      base_program->Print(std::cout);
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get());
-      kernel_program->Print(std::cout);
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
           place_, std::move(kernel_program), scope_, execution_config));
     } else {
