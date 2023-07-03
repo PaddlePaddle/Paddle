@@ -870,14 +870,7 @@ __forceinline__ __device__ OutType QuantHelperFunc(const InType input,
                                                    const float min_bound) {
   float quant_value = max_bound * scale * input;
 
-  if (round_type == 0) {
-    // quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
-  } else {
-    quant_value = static_cast<float>(round(quant_value));
-  }
-  //   quant_value = quant_value > max_bound ? max_bound : quant_value;
-  //   quant_value = quant_value < min_bound ? min_bound : quant_value;
-  //   return static_cast<OutType>(quant_value);
+  quant_value = static_cast<float>(round(quant_value));
   return static_cast<OutType>(
       ClipFunc<float>(quant_value, min_bound, max_bound));
 }
