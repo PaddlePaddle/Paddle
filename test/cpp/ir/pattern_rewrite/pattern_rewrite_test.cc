@@ -363,7 +363,7 @@ class Conv2dFusionOp
                     ir::OperationArgument &argument,
                     ir::OpResult input_,
                     ir::OpResult filter_,
-                    ir::Value bias_,
+                    ir::OpResult bias_,
                     ir::AttributeMap attributes) {
     std::vector<int> strides;
     for (size_t i = 0;
@@ -571,7 +571,7 @@ class Conv2dAddFusePattern
     ir::Value add_input = op.x();
     IR_ENFORCE(add_input == conv2d_out);
 
-    ir::Value bias = op.y();
+    auto bias = op->result(1);
 
     rewriter.SetInsertionPoint(conv2d_op);
 
