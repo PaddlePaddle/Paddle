@@ -31,6 +31,11 @@ using CustomDeviceEventObject = phi::event::Event;
 
 class CustomDeviceStreamResourcePool {
  public:
+  static std::unordered_map<
+      std::string,
+      std::vector<std::shared_ptr<CustomDeviceStreamResourcePool>>>&
+  GetMap();
+
   std::shared_ptr<CustomDeviceStreamObject> New(int dev_idx);
 
   static CustomDeviceStreamResourcePool& Instance(const paddle::Place& place);
@@ -47,6 +52,11 @@ class CustomDeviceStreamResourcePool {
 class CustomDeviceEventResourcePool {
  public:
   std::shared_ptr<CustomDeviceEventObject> New(int dev_idx);
+
+  static std::unordered_map<
+      std::string,
+      std::vector<std::shared_ptr<CustomDeviceEventResourcePool>>>&
+  GetMap();
 
   static CustomDeviceEventResourcePool& Instance(const paddle::Place& place);
 

@@ -35,11 +35,7 @@ const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
 TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
 
-void OpInfo::Verify(const std::vector<OpResult> &inputs,
-                    const std::vector<Type> &outputs,
-                    const AttributeMap &attributes) {
-  impl_->verify()(inputs, outputs, attributes);
-}
+void OpInfo::Verify(Operation *operation) const { impl_->verify()(operation); }
 
 void *OpInfo::GetInterfaceImpl(TypeId interface_id) const {
   return impl_ ? impl_->GetInterfaceImpl(interface_id) : nullptr;

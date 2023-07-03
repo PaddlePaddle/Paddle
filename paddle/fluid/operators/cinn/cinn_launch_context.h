@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
@@ -41,6 +40,7 @@ namespace framework {
 class ProgramDesc;
 class Scope;
 class VarDesc;
+class InterpreterCore;
 
 namespace ir {
 class Graph;
@@ -97,12 +97,14 @@ class CinnLaunchContext {
   }
 
   // Redirect the name of a Paddle variable to the orignal if it was inplaced
-  std::string RedirectVarName(const std::string& var_name);
+  std::string RedirectVarName(const std::string& var_name) const;
 
   // Return internal variable names list
   const std::unordered_set<std::string>& GetInternalVarNames() const {
     return internal_var_names_;
   }
+
+  std::unordered_set<std::string> GetVisibleVarNames() const;
 
   // Finalize all execution arguments and return the name->argument map
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const {

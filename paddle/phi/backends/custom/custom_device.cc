@@ -97,8 +97,6 @@ class CustomDevice : public DeviceInterface {
   void Finalize() override {
     auto devices = GetDeviceList();
     for (auto dev_id : devices) {
-      // SetDevice(dev_id);
-      // SynchronizeDevice(dev_id);
       DeInitDevice(dev_id);
     }
 
@@ -589,6 +587,7 @@ class CustomDevice : public DeviceInterface {
       return_result(CCL_DATA_TYPE_INT32, INT32);
       return_result(CCL_DATA_TYPE_INT16, INT16);
       return_result(CCL_DATA_TYPE_INT8, INT8);
+      return_result(CCL_DATA_TYPE_UINT8, UINT8);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));

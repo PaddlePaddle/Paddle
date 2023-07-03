@@ -161,6 +161,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
+#include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -1005,6 +1007,9 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::XCCLCommContext::Release();
+    platform::CustomTracer::GetMap().clear();
+    platform::CustomDeviceEventResourcePool::GetMap().clear();
+    platform::CustomDeviceStreamResourcePool::GetMap().clear();
     phi::DeviceManager::Clear();
 #endif
   });
@@ -1157,6 +1162,8 @@ All parameter, weight, gradient are variables in Paddle.
   _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
+      .def("raw_address",
+           [](Scope &self) { return reinterpret_cast<uint64_t>(&self); })
       .def(
           "var",
           [](Scope &self, const std::string &name) -> Variable * {
@@ -1852,35 +1859,40 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(
-          py::init<const platform::Place &, const std::vector<ProgramDesc> &>())
+      .def(py::init<const platform::Place &,
+                    const interpreter::Plan &,
+                    Scope *>())
       .def("run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              std::vector<std::string> feed_names,
-              std::vector<std::string> fetch_names) {
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(scope, feed_names, fetch_names);
+               ret = self.Run(feed_names);
              }
              return py::cast(std::move(ret));
            });
 
-  py::class_<framework::Job, std::shared_ptr<framework::Job>>(m, "job")
+  py::class_<framework::interpreter::Job,
+             std::shared_ptr<framework::interpreter::Job>>(m, "Job")
       .def(py::init<const std::string &>(), py::arg("type"))
-      .def("type", &framework::Job::GetJobType)
-      .def("micro_batch_id", &framework::Job::GetMicroBatchId)
-      .def("set_micro_batch_id", &framework::Job::SetMicroBatchId);
+      .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
+      .def("type", &framework::interpreter::Job::Type)
+      .def("set_col_attr_for_fetch_op",
+           &framework::interpreter::Job::SetColAttrForFetchOp)
+      .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
+      .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
 
-  py::class_<framework::Plan>(m, "plan")
-      .def(py::init<const std::vector<std::shared_ptr<framework::Job>> &,
-                    const std::unordered_map<std::string,
-                                             framework::ProgramDesc *> &>(),
-           py::arg("job_list"),
-           py::arg("type_to_program"))
-      .def("job_list", &framework::Plan::GetJobList)
-      .def("type_to_program", &framework::Plan::GetTypeToProgram);
+  py::class_<framework::interpreter::Plan>(m, "Plan")
+      .def(
+          py::init<
+              const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
+              const std::unordered_map<std::string, framework::ProgramDesc *>
+                  &>(),
+          py::arg("job_list"),
+          py::arg("type_to_program"))
+      .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -2402,6 +2414,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("is_cnpapi_supported",
            &paddle::platform::Profiler::IsCnpapiSupported)
+      .def("is_xpti_supported", &paddle::platform::Profiler::IsXPTISupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
