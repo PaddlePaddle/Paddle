@@ -181,8 +181,8 @@ void BuildScope(ir::Block* block,
       op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "pd.feed" || op_name == "builtin.set_parameter" ||
+    if (op_name == "pd.feed" || op_name == "pd.fetch" ||
+        op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter") {
       VLOG(6) << "HandleForSpecialOp: " << op_name;
       HandleForSpecialOp(op, scope, inner_local_scope, name_map, count);
