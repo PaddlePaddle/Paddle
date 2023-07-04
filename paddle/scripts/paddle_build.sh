@@ -3337,7 +3337,8 @@ function run_setup(){
     rm -rf ${PADDLE_ROOT}/dist 2>/dev/null || true
     # Delete previous built paddle cache
     rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
-    export CCACHE_LOGFILE=${PADDLE_ROOT}/build/ccache_logfile/
+    export CCACHE_LOGFILE="/paddle/build/ccache_logfile/"
+    export CCACHE_DEBUGDIR="/paddle/build/ccache-debug-1"
     export CCACHE_DEBUG=true
 
     SYSTEM=`uname -s`
