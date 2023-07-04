@@ -201,6 +201,8 @@ TEST(MatmulSPMDRule, Ctor) {
   VLOG(4) << "test10 done." << std::endl << std::endl << std::endl;
 }
 
+TEST(MatmulSPMDRule, Ctor) {}
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle
