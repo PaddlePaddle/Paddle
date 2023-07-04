@@ -49,6 +49,7 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope),
+      scope_(scope),
       ir_program_(std::move(ir_prog)) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
@@ -67,12 +68,10 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   execution_config_.Log(/*log_level=*/8);
 
   if (execution_config_.create_local_scope) {
-    auto local_scope = &var_scope_.GetMutableScope()->NewScope();
+    auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
   }
 
-  // force use outer scope for now
-  local_scope_ = scope;
   static_build_ = true;
 
   var_scope_.SetLocalScope(local_scope_);
@@ -184,14 +183,17 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    ::ir::BuildScope(
-        ir_program_->block(), local_scope_, &value_2_var_name_map_);
+    ::ir::BuildScope(ir_program_->block(),
+                     execution_config_,
+                     scope_,
+                     local_scope_,
+                     &value_2_var_name_map_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
                                  ir_program_->block(),
                                  &op_func_nodes,
-                                 local_scope_,
+                                 scope_,
                                  value_2_var_name_map_,
                                  execution_config_);
     // SetFeedVarsInplaceSkip(feed_names);
@@ -212,8 +214,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 
   // return Fetch Tensors
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+  Scope* inner_scope = HasLocalScope() ? local_scope_ : scope_;
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -321,8 +322,7 @@ std::shared_ptr<interpreter::AsyncWorkQueue> NewIRInterpreter::GetWorkQueue() {
 }
 
 void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+  Scope* inner_scope = HasLocalScope() ? local_scope_ : scope_;
   VariableValueMap ins_map;
   for (auto& var_name_item : instr_node->Inputs()) {
     std::vector<Variable*> input_vars;
@@ -349,8 +349,7 @@ void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   if (instr_node->OpBase()->Type() == "cinn_launch" ||
       instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
                                                                  // in kernel
-    Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                         : var_scope_.GetMutableScope();
+    Scope* local_scope = HasLocalScope() ? local_scope_ : scope_;
     instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
   } else {
     instr_node->ResetContext(ins_map, outs_map);
@@ -380,8 +379,7 @@ void NewIRInterpreter::BuildInplace() {
     }
   }
 
-  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                       : var_scope_.GetMutableScope();
+  Scope* local_scope = HasLocalScope() ? local_scope_ : scope_;
   std::vector<std::vector<size_t>> input_var2op(var_scope_.VarSize());
   for (Instruction& instr : vec_instruction_) {
     for (auto& item : instr.Inputs()) {
@@ -799,8 +797,7 @@ void NewIRInterpreter::BuildSkipShareLoDInfo() {
 void NewIRInterpreter::RunOperator(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                       : var_scope_.GetMutableScope();
+  Scope* local_scope = HasLocalScope() ? local_scope_ : scope_;
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);

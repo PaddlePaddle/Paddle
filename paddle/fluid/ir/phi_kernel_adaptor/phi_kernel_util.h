@@ -25,6 +25,7 @@
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -40,9 +41,12 @@
 
 namespace ir {
 
-void BuildScope(ir::Block* block,
-                paddle::framework::Scope* scope,
-                std::unordered_map<ir::Value, std::string>* name_map);
+void BuildScope(
+    ir::Block* block,
+    const paddle::framework::interpreter::ExecutionConfig& execution_config,
+    paddle::framework::Scope* scope,
+    paddle::framework::Scope* local_scope,
+    std::unordered_map<ir::Value, std::string>* name_map);
 
 template <typename Context,
           typename InType,
