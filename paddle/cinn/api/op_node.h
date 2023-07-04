@@ -32,9 +32,7 @@ class OpNode {
       : node_(node),
         graph_(graph),
         input_tensors_(node->inlinks_in_order(), graph_),
-        output_tensors_(node->outlinks_in_order(), graph_) {
-    VLOG(1) << "[OpNode] node: " << node->id();
-  }
+        output_tensors_(node->outlinks_in_order(), graph_) {}
 
   OpNode(const OpNode& other)
       : node_(other.node_),

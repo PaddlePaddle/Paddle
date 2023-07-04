@@ -28,10 +28,16 @@ using OpGroupList = std::vector<OpGroupPtr>;
 static api::OpNode GetMasterNode(const OpGroupPtr& op_group) {
   std::vector<api::OpNode> master_nodes;
   op_group.WalkOpNodes([&](const api::OpNode& op) {
-    if (master_nodes.empty() || op.kind() == OpPatternKind::kReduction) {
+    if (op.kind() == OpPatternKind::kReduction) {
       master_nodes.push_back(op);
     }
   });
+  if (!master_nodes.empty()) {
+    return master_nodes.front();
+  }
+
+  op_group.WalkOpNodes(
+      [&](const api::OpNode& op) { master_nodes.push_back(op); });
   return master_nodes.back();
 }
 
