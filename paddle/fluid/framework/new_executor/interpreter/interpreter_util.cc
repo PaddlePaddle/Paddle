@@ -955,7 +955,8 @@ void BuildOpFuncList(
     op_func_node.phi_op_name_ = op_name;
 
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter") {
+        op_name == "builtin.set_parameter" ||
+        op_name == "builtin.get_parameter") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }

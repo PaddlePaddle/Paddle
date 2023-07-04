@@ -48,9 +48,7 @@ void BuildScope(ir::Block* block,
                 std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
-  std::cerr << "build scope " << std::endl;
-  // int count = name_map->size();
-  int count = 0;
+  int count = name_map->size();
   for (auto it = block->begin(); it != block->end(); ++it) {
     VLOG(6) << "begin to process op " << (*it)->name() << std::endl;
     size_t input_num = (*it)->num_operands();
@@ -69,6 +67,35 @@ void BuildScope(ir::Block* block,
         fetch_list->resize(index + 1);
         (*fetch_list)[index] = phi::DenseTensor();
       }
+      continue;
+    }
+
+    if (op_name == "builtin.set_parameter") {
+      auto param_name = (*it)
+                            ->attributes()
+                            .at("parameter_name")
+                            .dyn_cast<ir::StrAttribute>()
+                            .data();
+
+      auto in_ptr = (*it)->operand(0);
+      // change opreand name to param_name
+
+      auto orig_name = name_map->at(in_ptr);
+      (*name_map)[in_ptr] = param_name;
+      scope->Rename(orig_name, param_name);
+      continue;
+    }
+
+    if (op_name == "builtin.get_parameter") {
+      auto param_name = (*it)
+                            ->attributes()
+                            .at("parameter_name")
+                            .dyn_cast<ir::StrAttribute>()
+                            .data();
+
+      auto out_ptr = (*it)->result(0);
+
+      name_map->emplace(out_ptr, param_name);
       continue;
     }
 
@@ -127,15 +154,13 @@ void BuildScope(ir::Block* block,
       for (size_t i = 0; i < input_num; ++i) {
         auto ptr = (*it)->operand(i);
         if (ptr) {
-          std::string name;
-          if (name_map->find(ptr) != name_map->end()) {
-            name = name_map->at(ptr);
-          } else {
-            PADDLE_THROW(phi::errors::PreconditionNotMet(
-                "input should in name map, [%d] 'th input of [%s] op",
-                i,
-                op_name));
-          }
+          PADDLE_ENFORCE_NE(
+              name_map->find(ptr),
+              name_map->end(),
+              phi::errors::PreconditionNotMet(
+                  "input should in name map, [%d] 'th input of [%s] op",
+                  i,
+                  op_name));
         }
       }
     }

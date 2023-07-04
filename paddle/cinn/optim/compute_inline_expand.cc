@@ -79,7 +79,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
 
   void Visit(const ir::For *op, Expr *expr) override {
     CHECK(op->extent.is_constant());
-    int cons_extent = (int)op->extent.get_constant();
+    int cons_extent = static_cast<int>(op->extent.get_constant());
     var_to_extent[op->loop_var->name] = op->extent;
     ir::IRMutator<>::Visit(op, expr);
   }

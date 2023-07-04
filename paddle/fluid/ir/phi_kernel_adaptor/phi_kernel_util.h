@@ -74,7 +74,6 @@ void BuildPhiContext(
     if (!ptr) {
       phi::DenseTensor* ptr = nullptr;
       OutType in_ptr(ptr);
-      std::cerr << "emplace null ptr " << index << std::endl;
       ctx->EmplaceBackInput(in_ptr);
       continue;
     }
@@ -149,6 +148,8 @@ void BuildPhiContext(
           attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else if (attr_type_name == "ir::Int32Attribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+    } else if (attr_type_name == "ir::Int64Attribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
     } else if (attr_type_name == "ir::BoolAttribute") {
@@ -201,7 +202,6 @@ void BuildPhiContext(
             phi::errors::PreconditionNotMet(
                 "Element in array list MUST be ir::Int64Attribute "));
         std::cerr << "int 64" << std::endl;
-
         for (size_t i = 0; i < array_list.size(); ++i) {
           std::cerr << "i  " << i << "\t"
                     << array_list[i].dyn_cast<ir::Int64Attribute>().data()

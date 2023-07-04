@@ -329,7 +329,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     yaml_input_set.insert(legacy_input_name);
   }
-
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
