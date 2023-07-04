@@ -940,6 +940,7 @@ void BuildOpFuncList(
     ::ir::Block* block,
     std::vector<OpFuncNode>* vec_func_list,
     framework::Scope* scope,
+    framework::Scope* local_scope,
     const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config) {
   vec_func_list->reserve(block->size());
@@ -977,6 +978,7 @@ void BuildOpFuncList(
         false>((*it),
                value_2_name_map,
                scope,
+               local_scope,
                op_yaml_info_parser,
                &(op_func_node.infer_meta_context_));
 
@@ -1002,6 +1004,7 @@ void BuildOpFuncList(
                           true>((*it),
                                 value_2_name_map,
                                 scope,
+                                local_scope,
                                 op_yaml_info_parser,
                                 &(op_func_node.kernel_context_),
                                 &(op_func_node.input_index),

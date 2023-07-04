@@ -87,7 +87,7 @@ class PhiKernelAdaptor {
           phi::MetaTensor,
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>((*it), name_map, scope_, op_yaml_info_parser, &ctx);
+          false>((*it), name_map, scope_, nullptr, op_yaml_info_parser, &ctx);
 
       infer_meta_impl->infer_meta_(&ctx);
 
@@ -107,7 +107,7 @@ class PhiKernelAdaptor {
                           phi::TensorBase*,
                           paddle::small_vector<const phi::TensorBase*>,
                           true>(
-          (*it), name_map, scope_, op_yaml_info_parser, &kernel_ctx);
+          (*it), name_map, scope_, nullptr, op_yaml_info_parser, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);

@@ -190,6 +190,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                  ir_program_->block(),
                                  &op_func_nodes,
                                  scope_,
+                                 local_scope_,
                                  value_2_var_name_map_,
                                  execution_config_);
     // SetFeedVarsInplaceSkip(feed_names);

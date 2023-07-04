@@ -40,6 +40,16 @@
 #include "glog/logging.h"
 
 namespace ir {
+paddle::framework::Variable* CreateVar(ir::Value value,
+                                       std::string name,
+                                       paddle::framework::Scope* scope,
+                                       paddle::framework::Scope* local_scope);
+
+void HandleForSpecialOp(ir::Operation* op,
+                        paddle::framework::Scope* scope,
+                        paddle::framework::Scope* local_scope,
+                        std::unordered_map<ir::Value, std::string>* name_map,
+                        int& count);  // NOLINT
 
 void BuildScope(ir::Block* block,
                 paddle::framework::Scope* scope,
@@ -55,10 +65,13 @@ void BuildPhiContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
+    paddle::framework::Scope* local_scope,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
     Context* ctx,
     std::map<std::string, std::vector<int>>* input_map = nullptr,
     std::map<std::string, std::vector<int>>* output_map = nullptr) {
+  paddle::framework::Scope* inner_scope =
+      local_scope != nullptr ? local_scope : scope;
   // inputs include input and mutable attributes
 
   auto attr_map = op->attributes();
@@ -76,11 +89,11 @@ void BuildPhiContext(
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
-    PADDLE_ENFORCE_NOT_NULL(scope->FindLocalVar(in_var_name),
+    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindLocalVar(in_var_name),
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
 
-    auto var = scope->Var(in_var_name);
+    auto var = inner_scope->FindVar(in_var_name);
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
@@ -119,12 +132,12 @@ void BuildPhiContext(
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
       if (tensor_attr_type == "paddle::dialect::IntArrayAttribute") {
-        phi::Attribute r1 =
-            phi::TensorRef(&(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+        phi::Attribute r1 = phi::TensorRef(
+            &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
         ctx->EmplaceBackAttr(r1);
       } else if (tensor_attr_type == "paddle::dialect::ScalarAttribute") {
-        phi::Attribute r1 =
-            phi::TensorRef(&(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+        phi::Attribute r1 = phi::TensorRef(
+            &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
 
         ctx->EmplaceBackAttr(r1);
       } else {
@@ -181,7 +194,7 @@ void BuildPhiContext(
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
        "pd.fetch")) {
     // process fetch op
-    auto fetch_var = scope->Var("fetch");
+    auto fetch_var = inner_scope->FindVar("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
@@ -193,7 +206,7 @@ void BuildPhiContext(
       auto name = name_map.at(out_ptr);
       if (out_ptr.type()) {
         ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
-            &(scope->Var(name)->Get<phi::DenseTensor>()))));
+            &(inner_scope->FindVar(name)->Get<phi::DenseTensor>()))));
       } else {
         phi::DenseTensor* ptr = nullptr;
         OutType out_ptr(ptr);
