@@ -64,7 +64,7 @@ class AutoInline : public AutoGenRule {
                                         const std::string& block_name) override;
 
  private:
-  void Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
+  void Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);  // NOLINT
 
  private:
   std::vector<ir::Expr> all_block_realizes_;
