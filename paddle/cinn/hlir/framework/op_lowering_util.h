@@ -31,8 +31,8 @@ ir::Tensor GetTensor(
 
 std::vector<ir::Tensor> CollectInputTensor(
     const Node* node,
-    std::vector<ir::Tensor>& func_args,
-    std::unordered_map<std::string, ir::Tensor>& tensor_map,
+    std::vector<ir::Tensor>& func_args,                       // NOLINT
+    std::unordered_map<std::string, ir::Tensor>& tensor_map,  // NOLINT
     const absl::flat_hash_map<std::string, Type>& type_dict,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
@@ -87,7 +87,7 @@ std::unordered_set<Node*> GetMasters(
     const std::unordered_set<Node*>& nodes_set);
 
 void LoopAssignReduce(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const Node* node,
     const Node* reducer,
     const Target& target,
@@ -95,7 +95,7 @@ void LoopAssignReduce(
     const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
 void LoopComputeAt(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     Node* node,
     const Node* master,
     const GroupPtr& group,
@@ -103,7 +103,7 @@ void LoopComputeAt(
     const std::unordered_map<std::string, ir::Tensor>& tensor_map);
 
 void SyncThreadWithShared(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const GroupPtr& group,
     const std::unordered_set<Node*>& nodes_inline,
     const std::unordered_set<Node*>& nodes_set,

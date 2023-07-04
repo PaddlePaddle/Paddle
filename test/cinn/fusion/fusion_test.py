@@ -26,7 +26,7 @@ class FusionTest(PassTest):
 
     def init_input_data(self):
         """Set feed data"""
-        self.feed_data = dict()
+        self.feed_data = {}
         logger.warn("No Input Data")
 
     def build_program(self, builder, target):
