@@ -39,17 +39,16 @@ TEST(ReductionSMPDRuleTest, SingleMeshDim) {
   x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
 
   DistTensorSpec x_dist_tensor_spec = DistTensorSpec(x_shape, x_dist_attr);
-
   paddle::framework::AttributeMap attrs;
-
   ReductionSPMDRule reduction_rule = ReductionSPMDRule();
-
   size_t input_size = 1, output_size = 1;
+
+  attrs["linearity"] = false;
 
   // reduce on dim 0, keep_dim = false
   // [0, -1] --> [-1, -1], [-1]
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({0});
+  attrs["axis"] = std::vector<int64_t>({0});
   x_dist_tensor_spec.set_dims_mapping({0, -1});
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
       infered_dist_attrs =
@@ -79,7 +78,7 @@ TEST(ReductionSMPDRuleTest, SingleMeshDim) {
   // [0, -1] --> [0, -1], [0]
   x_dist_tensor_spec.set_dims_mapping({0, -1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({1});
+  attrs["axis"] = std::vector<int64_t>({1});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -93,7 +92,7 @@ TEST(ReductionSMPDRuleTest, SingleMeshDim) {
   // [0, -1] --> [0, -1], [0]
   x_dist_tensor_spec.set_dims_mapping({0, -1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({-1});
+  attrs["axis"] = std::vector<int64_t>({-1});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -107,7 +106,7 @@ TEST(ReductionSMPDRuleTest, SingleMeshDim) {
   // [0, -1] --> [0, -1], [0, -1]
   x_dist_tensor_spec.set_dims_mapping({0, -1});
   attrs["keep_dim"] = true;
-  attrs["dim"] = std::vector<int64_t>({1});
+  attrs["axis"] = std::vector<int64_t>({1});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -121,7 +120,7 @@ TEST(ReductionSMPDRuleTest, SingleMeshDim) {
   // [0, -1] --> [-1, -1], []
   x_dist_tensor_spec.set_dims_mapping({0, -1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({0, 1});
+  attrs["axis"] = std::vector<int64_t>({0, 1});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   input_size = 1;
   output_size = 1;
@@ -136,7 +135,7 @@ TEST(ReductionSMPDRuleTest, SingleMeshDim) {
   // [0, -1] --> [-1, -1], [-1, -1]
   x_dist_tensor_spec.set_dims_mapping({0, -1});
   attrs["keep_dim"] = true;
-  attrs["dim"] = std::vector<int64_t>({0, 1});
+  attrs["axis"] = std::vector<int64_t>({0, 1});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   input_size = 1;
   output_size = 1;
@@ -147,6 +146,36 @@ TEST(ReductionSMPDRuleTest, SingleMeshDim) {
   EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({-1, -1}));
   VLOG(4) << "SingleMeshDim test7 done." << std::endl << std::endl << std::endl;
+
+  // test linear ops that support partial state
+  attrs["linearity"] = true;
+
+  // reduce on dim 0, keep_dim = false
+  // [0, -1] --> [0, -1], [-1], partial_on_dim = [0]
+  attrs["keep_dim"] = false;
+  attrs["axis"] = std::vector<int64_t>({0});
+  x_dist_tensor_spec.set_dims_mapping({0, -1});
+  infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({0, -1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  VLOG(4) << "SingleMeshDim test8 done." << std::endl << std::endl << std::endl;
+
+  // reduce on dim 1, keep_dim = false
+  // [0, -1] --> [0, -1], [0], partial_on_dim = []
+  attrs["axis"] = std::vector<int64_t>({1});
+  x_dist_tensor_spec.set_dims_mapping({0, -1});
+  infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({0, -1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({0}));
+  VLOG(4) << "SingleMeshDim test9 done." << std::endl << std::endl << std::endl;
 }
 
 TEST(ReductionSMPDRuleTest, MultiMeshDim) {
@@ -167,12 +196,13 @@ TEST(ReductionSMPDRuleTest, MultiMeshDim) {
   ReductionSPMDRule reduction_rule = ReductionSPMDRule();
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
       infered_dist_attrs;
+  attrs["linearity"] = false;
 
   // reduce on dim 1, 2, keep_dim = false
   // [0, -1, -1] --> [0, -1, -1], [0]
   x_dist_tensor_spec.set_dims_mapping({0, -1, -1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({1, 2});
+  attrs["axis"] = std::vector<int64_t>({1, 2});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   size_t input_size = 1, output_size = 1;
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
@@ -187,7 +217,7 @@ TEST(ReductionSMPDRuleTest, MultiMeshDim) {
   // [-1, 0, 1] --> [-1, -1, -1], [-1]
   x_dist_tensor_spec.set_dims_mapping({-1, 0, 1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({1, 2});
+  attrs["axis"] = std::vector<int64_t>({1, 2});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -201,7 +231,7 @@ TEST(ReductionSMPDRuleTest, MultiMeshDim) {
   // [1, -1, -1] --> [1, -1, -1], [1]
   x_dist_tensor_spec.set_dims_mapping({1, -1, -1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({1, 2});
+  attrs["axis"] = std::vector<int64_t>({1, 2});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -215,7 +245,7 @@ TEST(ReductionSMPDRuleTest, MultiMeshDim) {
   // [0, 1, -1] --> [0, -1, -1], [0]
   x_dist_tensor_spec.set_dims_mapping({0, 1, -1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({1, 2});
+  attrs["axis"] = std::vector<int64_t>({1, 2});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -229,7 +259,7 @@ TEST(ReductionSMPDRuleTest, MultiMeshDim) {
   // [0, 1, -1] --> [0, -1, -1], [0]
   x_dist_tensor_spec.set_dims_mapping({0, 1, -1});
   attrs["keep_dim"] = false;
-  attrs["dim"] = std::vector<int64_t>({-2, -1});
+  attrs["axis"] = std::vector<int64_t>({-2, -1});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -243,7 +273,7 @@ TEST(ReductionSMPDRuleTest, MultiMeshDim) {
   // [0, 1, -1] --> [0, -1, -1], [0, -1, -1]
   x_dist_tensor_spec.set_dims_mapping({0, 1, -1});
   attrs["keep_dim"] = true;
-  attrs["dim"] = std::vector<int64_t>({-2, -1});
+  attrs["axis"] = std::vector<int64_t>({-2, -1});
   infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
@@ -252,6 +282,37 @@ TEST(ReductionSMPDRuleTest, MultiMeshDim) {
   EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({0, -1, -1}));
   VLOG(4) << "MultiMeshDim test6 done." << std::endl << std::endl << std::endl;
+
+  // test partial states
+  attrs["linearity"] = true;
+
+  // reduce on dim 1, 2, keep_dim = false
+  // [0, -1, -1] --> [0, -1, -1], [0], parital_on_dim = []
+  x_dist_tensor_spec.set_dims_mapping({0, -1, -1});
+  attrs["keep_dim"] = false;
+  attrs["axis"] = std::vector<int64_t>({1, 2});
+  infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({0}));
+  VLOG(4) << "MultiMeshDim test7 done." << std::endl << std::endl << std::endl;
+
+  // reduce on dim 1, 2, keep_dim = false
+  // [-1, 0, 1] --> [-1, 0, 1], [-1], parital_on_dim = [0, 1]
+  x_dist_tensor_spec.set_dims_mapping({-1, 0, 1});
+  attrs["keep_dim"] = false;
+  attrs["axis"] = std::vector<int64_t>({1, 2});
+  infered_dist_attrs = reduction_rule.InferForward({x_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({-1, 0, 1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  VLOG(4) << "MultiMeshDim test8 done." << std::endl << std::endl << std::endl;
 }
 
 }  // namespace auto_parallel

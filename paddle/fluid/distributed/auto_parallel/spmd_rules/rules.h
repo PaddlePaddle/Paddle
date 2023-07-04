@@ -28,7 +28,18 @@ namespace auto_parallel {
 
 // matmul rule
 REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
-REGISTER_SPMD_RULE(reduction, ReductionSPMDRule);
+
+// reduction rules
+REGISTER_SPMD_RULE(all, ReductionSPMDRule);
+REGISTER_SPMD_RULE(amax, ReductionSPMDRule);
+REGISTER_SPMD_RULE(amin, ReductionSPMDRule);
+REGISTER_SPMD_RULE(any, ReductionSPMDRule);
+REGISTER_SPMD_RULE(frobenius_norm, ReductionSPMDRule);
+REGISTER_SPMD_RULE(max, ReductionSPMDRule);
+REGISTER_SPMD_RULE(mean, ReductionSPMDRule);
+REGISTER_SPMD_RULE(min, ReductionSPMDRule);
+REGISTER_SPMD_RULE(prod, ReductionSPMDRule);
+REGISTER_SPMD_RULE(sum, ReductionSPMDRule);
 
 // elementwise rule
 REGISTER_SPMD_RULE(add, ElementwiseSPMDRule);
