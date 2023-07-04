@@ -964,8 +964,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
   bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
-  auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
-  size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
+  size_t sizeof_dtype = phi::SizeOf(tensor.type());
 
   std::vector<size_t> py_dims(tensor_dims.size());
   std::vector<size_t> py_strides(tensor_dims.size());
@@ -1052,14 +1051,18 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #endif
   } else if (is_gpu_tensor) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+#if defined(PADDLE_WITH_CUDA)
+    gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
+#elif defined(PADDLE_WITH_HIP)
+    gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+#endif
+
     void *array_buffer = malloc(tensor.Holder()->size());
     size_t array_offset = tensor.offset();
-    auto p = tensor.place();
-    paddle::memory::Copy(platform::CPUPlace(),
-                         array_buffer,
-                         p,
-                         tensor.Holder()->ptr(),
-                         tensor.Holder()->size());
+
+    paddle::platform::GpuMemcpySync(
+        array_buffer, tensor.Holder()->ptr(), tensor.Holder()->size(), kind);
 
     auto py_arr = py::array(
         py::dtype(py_dtype_str.c_str()),
