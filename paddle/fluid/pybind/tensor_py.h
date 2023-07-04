@@ -1030,13 +1030,12 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                          tensor.Holder()->ptr(),
                          tensor.Holder()->size());
 
-    auto py_arr =
-        py::array(py::dtype(py_dtype_str.c_str()),
-                  py_dims,
-                  py_strides,
-                  reinterpret_cast<void *>(
-                      reinterpret_cast<uintptr_t>(array_buffer) + array_offset),
-                  py::array());
+    auto py_arr = py::array(
+        py::dtype(py_dtype_str.c_str()),
+        py_dims,
+        py_strides,
+        reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(array_buffer) +
+                                 array_offset));
 
     PADDLE_ENFORCE_EQ(
         py_arr.owndata(),
@@ -1062,13 +1061,12 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                          tensor.Holder()->ptr(),
                          tensor.Holder()->size());
 
-    auto py_arr =
-        py::array(py::dtype(py_dtype_str.c_str()),
-                  py_dims,
-                  py_strides,
-                  reinterpret_cast<void *>(
-                      reinterpret_cast<uintptr_t>(array_buffer) + array_offset),
-                  py::array());
+    auto py_arr = py::array(
+        py::dtype(py_dtype_str.c_str()),
+        py_dims,
+        py_strides,
+        reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(array_buffer) +
+                                 array_offset));
 
     PADDLE_ENFORCE_EQ(
         py_arr.owndata(),
@@ -1137,13 +1135,12 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
         tensor.Holder()->size(),
         reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
     ctx.Wait();
-    auto py_arr =
-        py::array(py::dtype(py_dtype_str.c_str()),
-                  py_dims,
-                  py_strides,
-                  reinterpret_cast<void *>(
-                      reinterpret_cast<uintptr_t>(array_buffer) + array_offset),
-                  py::array());
+    auto py_arr = py::array(
+        py::dtype(py_dtype_str.c_str()),
+        py_dims,
+        py_strides,
+        reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(array_buffer) +
+                                 array_offset));
 
     PADDLE_ENFORCE_EQ(
         py_arr.owndata(),
