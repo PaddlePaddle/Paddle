@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -511,6 +512,82 @@ class TestArgsortOpFp16(unittest.TestCase):
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
+
+
+class TestArgsortFP16Op(OpTest):
+    def setUp(self):
+        self.init()
+        self.init_direction()
+        self.op_type = "argsort"
+        self.python_api = paddle.argsort
+        self.public_python_api = paddle.argsort
+        self.dtype = np.float16
+        X = np.random.rand(*self.input_shape).astype("float16")
+        self.inputs = {'X': X}
+        Out = np.argsort(X, axis=self.axis).astype("float16")
+        self.outputs = {'Out': Out}
+
+    def init(self):
+        self.input_shape = [2, 3, 4]
+        self.axis = -1
+
+    def init_direction(self):
+        self.descending = False
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
+    def init_direction(self):
+        self.descending = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestArgsortBF16Op(OpTest):
+    def setUp(self):
+        self.init()
+        self.init_direction()
+        self.op_type = "argsort"
+        self.python_api = paddle.argsort
+        self.public_python_api = paddle.argsort
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+        X = np.random.rand(*self.input_shape).astype(self.np_dtype)
+        Out = np.argsort(X, axis=self.axis).astype(self.np_dtype)
+        self.inputs = {'X': convert_float_to_uint16(X)}
+        self.outputs = {'Out': convert_float_to_uint16(Out)}
+
+    def init(self):
+        self.input_shape = [2, 3, 4]
+        self.axis = -1
+
+    def init_direction(self):
+        self.descending = False
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+        )
+
+
+class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
+    def init_direction(self):
+        self.descending = True
 
 
 if __name__ == "__main__":
