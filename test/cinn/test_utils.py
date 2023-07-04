@@ -97,7 +97,7 @@ class SingleOpTester(unittest.TestCase):
             )
         for in_data in temp_inputs:
             args.append(runtime.cinn_pod_value_t(in_data))
-        if output_shapes == None:
+        if output_shapes is None:
             correct_result, output_shapes = self.create_target_data(
                 inputs_data, attrs
             )
@@ -142,7 +142,7 @@ class SingleOpTester(unittest.TestCase):
         fn(args)
 
         out_result = out[len(out) - 1].numpy()
-        if out_index != None:
+        if out_index is not None:
             out_result = out[out_index].numpy()
         np.testing.assert_allclose(out_result, correct_result, atol=1e-4)
 
