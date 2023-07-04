@@ -45,7 +45,8 @@ struct CompVar {
 };
 
 struct MappingVarToExprMutator : public ir::IRMutator<> {
-  MappingVarToExprMutator(const std::map<Var, Expr, CompVar>& replacing_map)
+  explicit MappingVarToExprMutator(
+      const std::map<Var, Expr, CompVar>& replacing_map)
       : replacing_map_(replacing_map) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
@@ -62,7 +63,7 @@ struct MappingVarToExprMutator : public ir::IRMutator<> {
 };
 
 struct FindLoopsVisitor {
-  FindLoopsVisitor(const Expr& block) : block_(block) {}
+  explicit FindLoopsVisitor(const Expr& block) : block_(block) {}
 
   std::vector<Expr> operator()(const Expr* expr) {
     CHECK(block_.As<ir::ScheduleBlockRealize>());
@@ -112,7 +113,7 @@ struct FindLoopsVisitor {
 Tensor GetTensor(const Expr& block);
 
 struct FindBlocksVisitor {
-  FindBlocksVisitor(const std::string& block_name = "")
+  explicit FindBlocksVisitor(const std::string& block_name = "")
       : block_name_(block_name) {}
 
   std::vector<Expr> operator()(const Expr* expr) {
