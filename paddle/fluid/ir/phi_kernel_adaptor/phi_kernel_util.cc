@@ -127,6 +127,29 @@ void HandleForSpecialOp(ir::Operation* op,
                 ->Get<phi::DenseTensor>()));
     }
   }
+
+  if (op_name == "builtin.set_parameter") {
+    auto param_name = op->attributes()
+                          .at("parameter_name")
+                          .dyn_cast<ir::StrAttribute>()
+                          .data();
+
+    auto in_ptr = op->operand(0);
+    // change opreand name to param_name
+
+    auto orig_name = name_map->at(in_ptr);
+    (*name_map)[in_ptr] = param_name;
+    scope->Rename(orig_name, param_name);
+  }
+
+  if (op_name == "builtin.get_parameter") {
+    auto param_name = op->attributes()
+                          .at("parameter_name")
+                          .dyn_cast<ir::StrAttribute>()
+                          .data();
+    auto out_ptr = op->result(0);
+    name_map->emplace(out_ptr, param_name);
+  }
 }
 
 void BuildScope(ir::Block* block,
@@ -139,7 +162,7 @@ void BuildScope(ir::Block* block,
   auto inner_local_scope = local_scope != nullptr ? local_scope : scope;
 
   // int count = name_map->size();
-  int count = 0;
+  int count = name_map->size();
   for (auto it = block->begin(); it != block->end(); ++it) {
     ir::Operation* op = *it;
 
@@ -155,14 +178,14 @@ void BuildScope(ir::Block* block,
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
         auto ptr = (*it)->operand(i);
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              op_name));
+        if (ptr) {
+          PADDLE_ENFORCE_NE(
+              name_map->find(ptr),
+              name_map->end(),
+              phi::errors::PreconditionNotMet(
+                  "input should in name map, [%d] 'th input of [%s] op",
+                  i,
+                  op_name));
         }
       }
     }
@@ -180,7 +203,6 @@ void BuildScope(ir::Block* block,
         }
         auto var = CreateVar(ptr, name, scope, inner_local_scope);
         // Only support DenseTensor or Vector<DenseTensor>
-
         if (!ptr.type()) {
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type()
