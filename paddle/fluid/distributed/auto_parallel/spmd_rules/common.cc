@@ -160,6 +160,14 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
   return alphabet.substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
 }
 
+TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr) {
+  TensorDistAttr replicated_dist_attr = src_dist_attr;
+  replicated_dist_attr.clear_annotated();
+  size_t tensor_ndim = replicated_dist_attr.dims_mapping().size();
+  replicated_dist_attr.set_dims_mapping(std::vector<int64_t>(tensor_ndim, -1));
+  return replicated_dist_attr;
+}
+
 // SPMDRuleMap
 SPMDRuleMap& SPMDRuleMap::Instance() {
   static SPMDRuleMap g_spmd_rule_map;
