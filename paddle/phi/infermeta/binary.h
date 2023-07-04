@@ -479,4 +479,11 @@ void Unpool3dInferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void GemvWeightonlyInt8InferMeta(const MetaTensor& x,
+                                 const MetaTensor& weight,
+                                 const MetaTensor& bias,
+                                 const MetaTensor& weight_scale,
+                                 const std::string& act_method,
+                                 MetaTensor* out);
+
 }  // namespace phi
