@@ -24,7 +24,7 @@ from paddle.distributed.fleet import auto
 
 class TestElementwiseSPMDRule(unittest.TestCase):
     def setUp(self):
-        self.rule = get_spmd_rule("elementwise")
+        self.rule = get_spmd_rule("add")
 
         x_shape = [64, 36]
         y_shape = [64, 36]
