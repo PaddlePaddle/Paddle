@@ -68,6 +68,35 @@ void BuildScope(ir::Block* block,
       continue;
     }
 
+    if (op_name == "builtin.set_parameter") {
+      auto param_name = (*it)
+                            ->attributes()
+                            .at("parameter_name")
+                            .dyn_cast<ir::StrAttribute>()
+                            .data();
+
+      auto in_ptr = (*it)->operand(0);
+      // change opreand name to param_name
+
+      auto orig_name = name_map->at(in_ptr);
+      (*name_map)[in_ptr] = param_name;
+      scope->Rename(orig_name, param_name);
+      continue;
+    }
+
+    if (op_name == "builtin.get_parameter") {
+      auto param_name = (*it)
+                            ->attributes()
+                            .at("parameter_name")
+                            .dyn_cast<ir::StrAttribute>()
+                            .data();
+
+      auto out_ptr = (*it)->result(0);
+
+      name_map->emplace(out_ptr, param_name);
+      continue;
+    }
+
     if (op_name == "pd.feed") {
       auto ptr = (*it)->result(0);
       std::string name = "inner_var_" + std::to_string(count++);

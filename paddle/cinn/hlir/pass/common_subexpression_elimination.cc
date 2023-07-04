@@ -67,7 +67,9 @@ std::unordered_map<std::string, int> special_attrs = {
     {"axes", 2},
     {"perm", 2}};
 
-bool IsSameSubexpression(Node* op1, Node* op2, shape_dict_t& shape_dict) {
+bool IsSameSubexpression(Node* op1,
+                         Node* op2,
+                         shape_dict_t& shape_dict) {  // NOLINT
   // Get the input edges for op1 and op2 in order.
   auto op1_in_edges = op1->inlinks_in_order();
   auto op2_in_edges = op2->inlinks_in_order();
@@ -201,13 +203,14 @@ void RemoveNodes(framework::Graph* graph, GraphNode* node) {
   graph->DropNode(node);
 }
 
-void RemoveNodes(framework::Graph* graph, std::vector<Node*>& nodes) {
+void RemoveNodes(framework::Graph* graph, const std::vector<Node*>& nodes) {
   for (auto* node : nodes) {
     RemoveNodes(graph, node);
   }
 }
 
-void RemoveNodes(framework::Graph* graph, std::vector<NodeData*>& nodes_data) {
+void RemoveNodes(framework::Graph* graph,
+                 const std::vector<NodeData*>& nodes_data) {
   for (auto* data : nodes_data) {
     if (std::find(graph->outputs.begin(), graph->outputs.end(), data) !=
         graph->outputs.end()) {

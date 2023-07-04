@@ -483,6 +483,7 @@ class OpInfoParser:
         output_type_map = {
             'Tensor': 'paddle::dialect::DenseTensorType',
             'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+            'SelectedRows': 'paddle::dialect::SelectedRowsType',
         }
         type_list = []
         for output_info in self.op_yaml_item['outputs']:

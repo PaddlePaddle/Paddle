@@ -500,25 +500,25 @@ __host__ __device__ inline float16 operator-(const float16& a) {
 #endif
 }
 
-__host__ __device__ inline float16& operator+=(float16& a,
+__host__ __device__ inline float16& operator+=(float16& a,          // NOLINT
                                                const float16& b) {  // NOLINT
   a = a + b;
   return a;
 }
 
-__host__ __device__ inline float16& operator-=(float16& a,
+__host__ __device__ inline float16& operator-=(float16& a,          // NOLINT
                                                const float16& b) {  // NOLINT
   a = a - b;
   return a;
 }
 
-__host__ __device__ inline float16& operator*=(float16& a,
+__host__ __device__ inline float16& operator*=(float16& a,          // NOLINT
                                                const float16& b) {  // NOLINT
   a = a * b;
   return a;
 }
 
-__host__ __device__ inline float16& operator/=(float16& a,
+__host__ __device__ inline float16& operator/=(float16& a,          // NOLINT
                                                const float16& b) {  // NOLINT
   a = a / b;
   return a;
