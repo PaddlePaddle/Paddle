@@ -318,6 +318,14 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   const auto* mutable_attributes =
       op_normalizer.GetMutableAttributes(op_desc.Type());
 
+  std::cerr << "mutable attibute" << std::endl;
+
+  if (mutable_attributes != nullptr) {
+    for (auto& t : (*mutable_attributes)) {
+      std::cerr << "!! " << t << std::endl;
+    }
+  }
+
   std::set<std::string> yaml_input_set;
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
@@ -374,6 +382,9 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     // TODO(lyk): HasInput doesnot consider variadic attribute
     if (op_desc.HasInput(legacy_input_name)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
+    } else if (op_desc.HasAttr(legacy_input_name) == false &&
+               op_desc.HasAttr(legacy_input_name, true) == true) {
+      legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
     if (legacy_input_vars.size() == 0) {
@@ -382,6 +393,18 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         continue;
       }
     }
+
+    // auto attr_map = op_desc.AttrNames();
+    // for( auto &t : attr_map )
+    // {
+    //   std::cerr << "attr name " << t.fis << std::endl;
+    // }
+
+    std::cerr << "legacy name " << legacy_input_name << std::endl;
+    std::cerr << "check input " << op_desc.HasInput(legacy_input_name)
+              << std::endl;
+    std::cerr << "check attr " << op_desc.HasAttr(legacy_input_name, true)
+              << std::endl;
 
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << legacy_input_name << " " << legacy_input_vars.size();
