@@ -49,7 +49,7 @@ void CheckNoIslCallRemains(Expr* expr) {
   }
 }
 
-void BindBuffer(StageMap& stages) {
+void BindBuffer(StageMap& stages) {  // NOLINT
   absl::flat_hash_map<std::string, ir::_Tensor_*> tensor_map;
   for (auto& stage : stages) {
     tensor_map[stage.second->tensor()->name] = stage.second->tensor();
@@ -71,13 +71,13 @@ void BindBuffer(StageMap& stages) {
   }
 }
 
-Expr LowerGroup(
-    const poly::ScheduleGroup& group,
-    const std::map<std::string, Expr>& tuple_to_expr,
-    std::map<std::string, ir::Tensor>* global_tensor_map,
-    std::unordered_map<std::string, std::vector<Expr>>& resized_buffer_cache,
-    StageMap stage_map,
-    ir::CudaAxisInfo* cuda_axis_info) {
+Expr LowerGroup(const poly::ScheduleGroup& group,
+                const std::map<std::string, Expr>& tuple_to_expr,
+                std::map<std::string, ir::Tensor>* global_tensor_map,
+                std::unordered_map<std::string, std::vector<Expr>>&
+                    resized_buffer_cache,  // NOLINT
+                StageMap stage_map,
+                ir::CudaAxisInfo* cuda_axis_info) {
   BindBuffer(stage_map);
   std::vector<poly::Stage*> stages;
   for (auto& node : group.nodes) {
@@ -741,14 +741,15 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
                 << "'s shape is : " << utils::Join(tensor->shape, ",");
         for (auto& expr : tensor->shape) {
           CHECK(expr.is_constant());
-          int_shape.push_back((int)expr.get_constant());
+          int_shape.push_back(static_cast<int>(expr.get_constant()));
         }
         for (auto& var : tensor->reduce_axis) {
           CHECK(var->lower_bound.defined());
           CHECK(var->upper_bound.defined());
           CHECK(common::is_zero(var->lower_bound));
           CHECK(var->upper_bound.is_constant());
-          int_shape.push_back((int)var->upper_bound.get_constant());
+          int_shape.push_back(
+              static_cast<int>(var->upper_bound.get_constant()));
         }
         // create block itervars, i0,i1...
         std::vector<Var> block_vars;
