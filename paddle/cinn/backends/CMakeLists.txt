@@ -59,8 +59,24 @@ if(WITH_CUDA)
   cinn_nv_test(test_codegen_debug SRCS codegen_debug_test.cc DEPS cinncore)
 
   if(WITH_TESTING)
+    # Define the custom target (TargetA)
+    add_custom_target(target_build_on_test)
+
+    # Add a custom command to build TargetA during test runtime
+    add_custom_command(
+      TARGET target_build_on_test
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target
+              target_build_on_test
+      COMMENT "Building target during test runtime")
+
     cinn_nv_test(generated1_cuda SRCS generated1.cu DEPS cinncore)
     add_run_test_dependency(generated1_cuda test_codegen_cuda_generate)
+    # Add the test that depends on TargetA
+    add_dependencies(generated1_cuda target_build_on_test)
+    set_tests_properties(
+      generated1_cuda PROPERTIES DEPENDS test_codegen_cuda_generate DEPENDS
+                                 target_build_on_test)
   endif()
 
   cinn_nv_test(test_compiler SRCS compiler_test.cc DEPS cinncore)
