@@ -258,7 +258,7 @@ TEST(Operator, Operator_BroadcastTo) {
 
 common::CINNValuePack GetComputeResult(
     const std::shared_ptr<OpImpl> &impl,
-    std::vector<common::CINNValue> &cinn_inputs,
+    std::vector<common::CINNValue> &cinn_inputs,  // NOLINT
     const std::string &output_name = "") {
   if (FLAGS_cinn_ir_schedule) {
     cinn_inputs.emplace_back(output_name);
