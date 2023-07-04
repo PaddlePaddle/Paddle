@@ -705,9 +705,7 @@ else()
 endif()
 
 if(NOT WITH_SHARED_IR)
-  if(WIN32)
-    add_definitions(-DIR_API=)
-  endif()
+  add_definitions(-DSTATIC_IR)
 endif()
 
 if(WITH_STRIP)
