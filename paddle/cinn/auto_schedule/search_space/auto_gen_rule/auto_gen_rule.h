@@ -45,7 +45,7 @@ enum class RuleApplyType : int {
  */
 class AutoGenRule {
  public:
-  AutoGenRule(const common::Target& target);
+  explicit AutoGenRule(const common::Target& target);
   ~AutoGenRule() = default;
 
   // Initialize the AutoGenRule, it must be called before further actions.

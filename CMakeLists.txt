@@ -56,6 +56,7 @@ option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
+option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -701,6 +702,12 @@ else()
     WARNING
       "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only."
   )
+endif()
+
+if(NOT WITH_SHARED_IR)
+  if(WIN32)
+    add_definitions(-DIR_API=)
+  endif()
 endif()
 
 if(WITH_STRIP)

@@ -66,9 +66,9 @@ class ScheduleDesc {
 
   ScheduleDesc() = default;
 
-  ScheduleDesc(const std::vector<Step>& steps) : steps_(steps) {}
+  explicit ScheduleDesc(const std::vector<Step>& steps) : steps_(steps) {}
 
-  ScheduleDesc(std::vector<Step>&& steps) : steps_(steps) {}
+  explicit ScheduleDesc(std::vector<Step>&& steps) : steps_(steps) {}
 
   // Append a new step
   void Append(Step&& step);
