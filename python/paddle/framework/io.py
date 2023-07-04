@@ -107,13 +107,13 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
             if isinstance(v, dict):
                 move_state_dict_to_cpu(v)
             elif isinstance(v, core.eager.Tensor):
-                sd[k] = v.pin_memory()
+                sd[k] = v.pin_memory() if core.is_compiled_with_cuda() else v
         return
 
     if isinstance(obj, dict):
         move_state_dict_to_cpu(obj)
     elif isinstance(obj, core.eager.Tensor):
-        obj = obj.pin_memory()
+        obj = obj.pin_memory() if core.is_compiled_with_cuda() else obj
     else:
         # other types are currently not supported
         raise TypeError(
