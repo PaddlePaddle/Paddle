@@ -241,7 +241,7 @@ class TestDygraphInplace(unittest.TestCase):
         np.testing.assert_array_equal(grad_var_a_inplace, grad_var_a)
 
 
-class TestDygraphInplaceWithContinuous(unittest.TestCase):
+class TestDygraphInplaceWithContinuous(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.sin(var)
 
