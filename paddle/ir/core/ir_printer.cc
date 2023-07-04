@@ -78,7 +78,7 @@ void BasicIrPrinter::PrintType(Type type) {
   }
 }
 
-void BasicIrPrinter::PrintAttribute(const Attribute& attr) {
+void BasicIrPrinter::PrintAttribute(Attribute attr) {
   if (!attr) {
     os << "<#AttrNull>";
     return;
@@ -119,15 +119,7 @@ void IrPrinter::PrintProgram(Program* program) {
   auto top_level_op = program->module_op();
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
     auto& region = top_level_op->region(i);
-    for (auto it = region.begin(); it != region.end(); ++it) {
-      auto* block = *it;
-      os << "{\n";
-      for (auto it = block->begin(); it != block->end(); ++it) {
-        PrintOperation(*it);
-        os << newline;
-      }
-      os << "}\n";
-    }
+    PrintRegion(region);
   }
 }
 

@@ -37,7 +37,7 @@ template <class T,
           class Alloc = std::allocator<T>>
 class SizedMultiSet {
  public:
-  SizedMultiSet(size_t capacity, bool pop_max_when_full = true)
+  explicit SizedMultiSet(size_t capacity, bool pop_max_when_full = true)
       : capacity_(capacity), pop_max_when_full_(pop_max_when_full) {}
 
   void Push(const T& data) {

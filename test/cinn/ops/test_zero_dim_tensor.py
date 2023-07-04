@@ -37,7 +37,7 @@ def cinn_dtype_convert(dtype_str):
 
 
 ##################################
-####  TestElementwiseAddGrad  ####
+#     TestElementwiseAddGrad     #
 ##################################
 # 1) x is 0D, y is 0D
 @OpTestTool.skip_if(
@@ -109,7 +109,7 @@ class TestElementwiseAddGrad1(TestElementwiseAddGrad):
 
 
 ##################################
-#### TestElementwiseBinaryOp  ####
+#    TestElementwiseBinaryOp     #
 ##################################
 @OpTestTool.skip_if(
     not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
@@ -195,7 +195,7 @@ def create_unit_test(
         def cinn_func(self, builder, *args):
             return eval(fn_cinn)(*args)
 
-    cls_name = "{}_{}".format(parent.__name__, test_name)
+    cls_name = f"{parent.__name__}_{test_name}"
     TestClass.__name__ = cls_name
     globals()[cls_name] = TestClass
 
@@ -469,7 +469,7 @@ create_unit_test(
 
 
 ######################
-#### TestUnaryOp  ####
+#    TestUnaryOp     #
 ######################
 @OpTestTool.skip_if(
     not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
@@ -585,7 +585,7 @@ class TestUnaryOp_acosh(TestUnaryOp):
 
 
 #######################
-#### TestSundryOp  ####
+#    TestSundryOp     #
 #######################
 @OpTestTool.skip_if(
     not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."

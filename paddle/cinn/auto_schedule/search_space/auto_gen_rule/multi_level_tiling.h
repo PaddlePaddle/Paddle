@@ -120,9 +120,12 @@ class MultiLevelTiling : public AutoGenRule {
   }
 
  private:
-  void ApplyTiling(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
-  void ApplyCacheRead(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
-  void ApplyCacheWrite(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
+  void ApplyTiling(ir::IRSchedule* ir_schedule,
+                   ir::Expr& block_expr);  // NOLINT
+  void ApplyCacheRead(ir::IRSchedule* ir_schedule,
+                      ir::Expr& block_expr);  // NOLINT
+  void ApplyCacheWrite(ir::IRSchedule* ir_schedule,
+                       ir::Expr& block_expr);  // NOLINT
 
  private:
   std::vector<ir::Expr> all_block_realizes_;

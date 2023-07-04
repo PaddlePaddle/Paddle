@@ -51,7 +51,7 @@ using cinn::hlir::op::ExternalApiRegistry;
 // *** update a scheduled function with several post-processors
 ir::LoweredFunc FuncWithUpdatedBody(const common::Target& target,
                                     const ir::LoweredFunc& old_func,
-                                    ir::Expr& body);
+                                    ir::Expr& body);  // NOLINT
 // check whether a scheduled lowered function is valid
 bool PruneInvalid(const ir::LoweredFunc& lowered_func,
                   const common::Target& target);
