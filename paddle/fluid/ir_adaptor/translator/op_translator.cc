@@ -898,7 +898,15 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
     std::string target_op_name =
         kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
 
-    target_op_name = "pd.embedding_grad_sparse";
+    bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
+
+    std::cerr << "is sparse " << is_sparse << std::endl;
+
+    if (is_sparse) {
+      target_op_name = "pd.embedding_grad_sparse";
+    } else {
+      target_op_name = "pd.embedding_grad_dense";
+    }
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
     auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
