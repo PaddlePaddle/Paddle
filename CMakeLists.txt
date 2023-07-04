@@ -696,6 +696,9 @@ if(ON_INFER)
     STATUS "On inference mode, will take place some specific optimization.")
   include(inference_lib)
   add_definitions(-DPADDLE_ON_INFERENCE)
+  set(WITH_SHARED_IR
+      OFF
+      CACHE STRING "Only paddle_inference.so is allowed in inference." FORCE)
 else()
   #TODO(luotao), combine this warning with `make inference_lib_dist` command.
   message(
