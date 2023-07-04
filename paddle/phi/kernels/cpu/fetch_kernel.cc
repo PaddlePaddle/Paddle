@@ -23,12 +23,12 @@ template <typename T, typename Context>
 void FetchKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
-  // dev_ctx.template Alloc<bool>(out);
-  // std::cerr << "shape  " << x.dims()  << "\t" << x.dtype() << std::endl;
-  // std::cerr << out->dtype() << std::endl;
-  // std::cerr << "copy data" << x.data<T>()[0] << std::endl;
-  // phi::Copy(dev_ctx, x, phi::CPUPlace(), true, out);
-  // std::cerr << "copy fin" << out->data<T>()[0] << std::endl;
+  dev_ctx.template Alloc<bool>(out);
+  std::cerr << "shape  " << x.dims() << "\t" << x.dtype() << std::endl;
+  std::cerr << out->dtype() << std::endl;
+  std::cerr << "copy data" << x.data<T>()[0] << std::endl;
+  phi::Copy(dev_ctx, x, phi::CPUPlace(), true, out);
+  std::cerr << "copy fin" << out->data<T>()[0] << std::endl;
 }
 }  // namespace phi
 PD_REGISTER_KERNEL(fetch,
