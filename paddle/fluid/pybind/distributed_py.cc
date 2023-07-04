@@ -267,8 +267,8 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
                 auto task = self.AllGather(out_dense, in_dense, sync_op);
+                auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 task->UpdateWaitChain(*dev_ctx);
                 return task;
@@ -322,8 +322,6 @@ void BindDistributed(py::module *m) {
                 auto in_dense = *p_in_tensor;
 
                 // in_tensor_list should not be empty
-                auto *dev_ctx =
-                    self.GetDeviceContext(in_tensor_list.back().place());
                 int world_size = self.GetSize();
                 auto task =
                     self.AllToAll(out_dense,
@@ -331,6 +329,8 @@ void BindDistributed(py::module *m) {
                                   GetDefaultSplitSizes(*out_dense, world_size),
                                   GetDefaultSplitSizes(in_dense, world_size),
                                   sync_op);
+                auto *dev_ctx =
+                    self.GetDeviceContext(in_tensor_list.back().place());
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 task->UpdateWaitChain(*dev_ctx);
                 return task;
@@ -544,11 +544,11 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                auto *dev_ctx =
-                    self.GetDeviceContext(in_tensor.place(), use_calc_stream);
                 distributed::GatherOptions gather_opts{dst};
                 auto task = self.Gather(
                     out_dense, in_dense, gather_opts, sync_op, use_calc_stream);
+                auto *dev_ctx =
+                    self.GetDeviceContext(in_tensor.place(), use_calc_stream);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 if (!use_calc_stream &&
                     dev_ctx->GetPlace() != platform::CPUPlace()) {
@@ -584,8 +584,7 @@ void BindDistributed(py::module *m) {
                 opts.reduce_op = op;
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.AllReduce(tensors, tensors, opts);
+                return self.AllReduce(dense.get(), *dense, opts, false);
               },
               py::arg("tensor"),
               py::arg("op") = distributed::ReduceOp::SUM,
@@ -601,8 +600,7 @@ void BindDistributed(py::module *m) {
                 opts.source_rank = source_rank;
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Broadcast(tensors, tensors, opts);
+                return self.Broadcast(dense.get(), *dense, opts, false);
               },
               py::arg("tensor"),
               py::arg("source_rank"),
@@ -616,8 +614,7 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Send(tensors, dst);
+                return self.Send(*dense, dst, false);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -631,8 +628,7 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Recv(tensors, src);
+                return self.Recv(dense.get(), src, false);
               },
               py::arg("tensor"),
               py::arg("src"),
@@ -649,9 +645,7 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     out_tensor.impl());
-                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
-                std::vector<phi::DenseTensor> out_tensors = {*out_dense};
-                return self.AllGather(in_tensors, out_tensors);
+                return self.AllGather(out_dense.get(), *in_dense, false);
               },
               py::arg("in"),
               py::arg("out"),
@@ -697,9 +691,14 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     out_tensor.impl());
-                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
-                std::vector<phi::DenseTensor> out_tensors = {*out_dense};
-                return self.AllToAll(in_tensors, out_tensors);
+
+                int world_size = self.GetSize();
+                return self.AllToAll(
+                    out_dense.get(),
+                    *in_dense,
+                    GetDefaultSplitSizes(*out_dense, world_size),
+                    GetDefaultSplitSizes(*in_dense, world_size),
+                    false);
               },
               py::arg("in"),
               py::arg("out"),
@@ -743,8 +742,7 @@ void BindDistributed(py::module *m) {
                 opts.root_rank = dst;
                 auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     in_tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Reduce(tensors, tensors, opts);
+                return self.Reduce(dense.get(), *dense, opts, false);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -765,9 +763,7 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
                     out_tensor.impl());
-                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
-                std::vector<phi::DenseTensor> out_tensors = {*out_dense};
-                return self.Scatter(in_tensors, out_tensors, opts);
+                return self.Scatter(out_dense.get(), *in_dense, opts, false);
               },
               py::arg("in"),
               py::arg("out"),
@@ -790,12 +786,11 @@ void BindDistributed(py::module *m) {
                 auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
-
-                auto *dev_ctx = self.GetDeviceContext(in_tensor.place(), true);
                 auto task = self.AllGather(out_dense,
                                            in_dense,
                                            /*sync_op*/ true,
                                            /*use_calc_stream*/ true);
+                auto *dev_ctx = self.GetDeviceContext(in_tensor.place(), true);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
@@ -902,8 +897,6 @@ void BindDistributed(py::module *m) {
                 auto in_dense = *p_in_tensor;
 
                 // in_tensor_list should not be empty
-                auto *dev_ctx = self.GetDeviceContext(
-                    in_tensor_list.back().place(), /*use_calc_stream*/ true);
                 int world_size = self.GetSize();
                 auto task =
                     self.AllToAll(out_dense,
@@ -912,6 +905,8 @@ void BindDistributed(py::module *m) {
                                   GetDefaultSplitSizes(in_dense, world_size),
                                   /*sync_op*/ true,
                                   /*use_calc_stream*/ true);
+                auto *dev_ctx = self.GetDeviceContext(
+                    in_tensor_list.back().place(), /*use_calc_stream*/ true);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
