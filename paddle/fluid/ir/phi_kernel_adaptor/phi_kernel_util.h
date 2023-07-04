@@ -170,6 +170,7 @@ void BuildPhiContext(
               array_list[i].dyn_cast<ir::Int32Attribute>().data());
         }
       }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::FloatAttribute>") {
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
       std::vector<float> vec_res;
