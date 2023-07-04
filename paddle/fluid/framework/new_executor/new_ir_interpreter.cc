@@ -56,6 +56,7 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
   //    &&interpreter::BlockCanBeStaticBuilt(block);
+  static_build_ = true;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -63,18 +64,16 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
-  execution_config_.AnalyzeThreadPoolConfig(place,
-                                            ir_program_->block()->size());
-  execution_config_.Log(/*log_level=*/8);
-
   if (execution_config_.create_local_scope) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
   }
-
-  static_build_ = true;
-
+  // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
+
+  execution_config_.AnalyzeThreadPoolConfig(place,
+                                            ir_program_->block()->size());
+  execution_config_.Log(/*log_level=*/8);
 
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
