@@ -258,6 +258,18 @@ class TestMaskedSelectOpBroadcast2(TestMaskedSelectOp):
         self.mask_shape = (300, 40)
 
 
+class TestMaskedSelectOpBroadcast3(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (120,)
+        self.mask_shape = (300, 120)
+
+
+class TestMaskedSelectOpBroadcast4(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (300, 40)
+        self.mask_shape = 40
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
