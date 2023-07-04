@@ -1087,7 +1087,7 @@ Expr ScheduleImpl::Reorder(const std::vector<Expr>& loops) {
   Expr bottom = boundary.second;
   std::vector<Expr> chain = GetLoopsInRange(top, bottom);
   std::vector<Expr> if_nodes = GetIfThenElseInRange(top, bottom);
-  Expr new_loop = ConstructNewLoopChain(chain, loops, loop_set, &if_nodes);
+  Expr new_loop = ConstructNewLoopChain(chain, loops, loop_set, if_nodes);
   this->Replace(top, new_loop);
 
   VLOG(4) << "After Reorder, ir is:\n" << new_loop;
@@ -1277,7 +1277,7 @@ struct FixLocalBufferSize : public ir::IRMutator<> {
   std::string tensor_name_;
 };
 
-void ScheduleImpl::SetBuffer(const Expr& block,
+void ScheduleImpl::SetBuffer(Expr& block,
                              const std::string& memory_type,
                              bool fixed) {
   CHECK(block.As<ir::ScheduleBlockRealize>());
@@ -1946,13 +1946,12 @@ void ScheduleImpl::Annotate(const Expr& block,
   this->Replace(block, copied_block);
 }
 
-void ScheduleImpl::Unannotate(const Expr& block, const std::string& ann_key) {
+void ScheduleImpl::Unannotate(Expr& block, const std::string& ann_key) {
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(block.As<ir::ScheduleBlockRealize>()
             ->schedule_block.As<ir::ScheduleBlock>());
-  auto* schedule_block = const_cast<ir::ScheduleBlock*>(
-      block.As<ir::ScheduleBlockRealize>()
-          ->schedule_block.As<ir::ScheduleBlock>());
+  auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
+                             ->schedule_block.As<ir::ScheduleBlock>();
   if (schedule_block->attrs.count(ann_key)) {
     schedule_block->attrs.erase(ann_key);
   } else {
@@ -2557,7 +2556,7 @@ void IRSchedule::SyncThreads(const Expr& ir_node, bool after_node) {
                                    {}));
 }
 
-void IRSchedule::SetBuffer(const Expr& block,
+void IRSchedule::SetBuffer(Expr& block,
                            const std::string& memory_type,
                            bool fixed) {
   impl_->SetBuffer(block, memory_type, fixed);
@@ -2673,7 +2672,7 @@ void IRSchedule::Annotate(const Expr& block,
   LOG(FATAL) << "Value of attribute:" << key << " input unsupported data type";
 }
 
-void IRSchedule::Unannotate(const Expr& block, const std::string& key) {
+void IRSchedule::Unannotate(Expr& block, const std::string& key) {
   impl_->Unannotate(block, key);
   trace_.Append(ScheduleDesc::Step("Unannotate",
                                    {{"block", std::vector<Expr>({block})}},

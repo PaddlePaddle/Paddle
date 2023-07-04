@@ -982,8 +982,7 @@ void CheckComputeAtValidation(const Expr& block,
 void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
   CHECK(for_loop.As<ir::For>());
   CHECK(for_loop.As<ir::For>()->body.As<Block>());
-  ir::Block* dst_block =
-      const_cast<ir::Block*>(for_loop.As<ir::For>()->body.As<Block>());
+  ir::Block* dst_block = for_loop.As<ir::For>()->body.As<Block>();
   CHECK(index == -1 || index >= 0 && index < dst_block->stmts.size())
       << "index = " << index
       << ", it should be -1 or between [0, block stmts size)";

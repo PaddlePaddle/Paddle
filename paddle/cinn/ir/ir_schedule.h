@@ -642,8 +642,8 @@ class ComputeInlineChecker : public ir::IRMutator<> {
   }
 
  private:
-  IRSchedule ir_schedule_;
-  Expr block_;
+  IRSchedule& ir_schedule_;
+  Expr& block_;
 
   Expr store_;
   bool should_skip_{true};
