@@ -359,7 +359,7 @@ std::vector<Expr> GetLoopsInRange(const Expr& top, const Expr& bottom);
 Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
                            const std::vector<Expr>& ordered_loops,
                            const std::set<Expr, CompExpr>& loop_set,
-                           std::vector<Expr>* if_nodes_ptr);
+                           std::vector<Expr>& if_nodes);  // NOLINT
 
 /*!
  * \brief Find producers of block in root.
@@ -395,7 +395,9 @@ void CheckComputeAtValidation(const Expr& block,
  *        - `index = -1` means inserted into the tail
  *        - otherwise, it should be a index between [0, stmts size)
  */
-void InsertBlock(const Expr& for_loop, const Expr& insertion, int index = 0);
+void InsertBlock(Expr& for_loop,  // NOLINT
+                 const Expr& insertion,
+                 int index = 0);  // NOLINT
 
 /*!
  * \brief Make a union of two range. The detailed function is :

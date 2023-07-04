@@ -73,7 +73,8 @@ inline void CheckIsDimsMatch(const DDim& first, const DDim& second) {
 template <typename T, typename Context, size_t RANK>
 void SetValueImpl(const Context& dev_ctx,
                   const DenseTensor& in,
-                  const DenseTensor& value,
+                  const T* value_data,
+                  const DDim& value_dims,
                   const IntArray& starts,
                   const IntArray& ends,
                   const IntArray& steps,
@@ -139,8 +140,9 @@ void SetValueImpl(const Context& dev_ctx,
                 in.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
-  DenseTensor slice_tensor =
-      Empty<T>(dev_ctx, IntArray{slice_dims.Get(), slice_dims.size()});
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  int64_t slice_numels = phi::product(slice_dims);
+  XPUType* slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
 
   int in_size = in_dims.size();
   std::vector<int> starts_indices(in_size, 0);
@@ -186,17 +188,14 @@ void SetValueImpl(const Context& dev_ctx,
   auto slice_shape = phi::vectorize<int>(slice_dims);
   r = xpu::strided_slice(dev_ctx.x_context(),
                          reinterpret_cast<const XPUType*>(out->data<T>()),
-                         reinterpret_cast<XPUType*>(slice_tensor.data<T>()),
+                         slice_data,
                          out_shape,
                          starts_indices,
                          ends_indices,
                          strides_indices);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
 
-  r = xpu::constant(dev_ctx.x_context(),
-                    reinterpret_cast<XPUType*>(slice_tensor.data<T>()),
-                    slice_tensor.numel(),
-                    XPUType(0));
+  r = xpu::constant(dev_ctx.x_context(), slice_data, slice_numels, XPUType(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   // Step 2: Set a tensor with the same shape as out tensor. And its data at
@@ -216,8 +215,7 @@ void SetValueImpl(const Context& dev_ctx,
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
 
-  slice_tensor.Resize(slice_dims_for_assign);
-  CheckIsDimsMatch(slice_dims_for_assign, value.dims());
+  CheckIsDimsMatch(slice_dims_for_assign, value_dims);
   // XPUElementwise can do broadcasting
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -227,16 +225,20 @@ void SetValueImpl(const Context& dev_ctx,
               const std::vector<int>& yshape) {
     return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
   };
-  XPUElementwise<T, XPUType>(
-      dev_ctx, slice_tensor, value, -1, &slice_tensor, f);
-
-  slice_tensor.Resize(slice_dims);
+  XPUElementwise<T, XPUType>(dev_ctx,
+                             reinterpret_cast<const T*>(slice_data),
+                             slice_dims_for_assign,
+                             value_data,
+                             value_dims,
+                             -1,
+                             reinterpret_cast<T*>(slice_data),
+                             f);
 
   // - Step 2.2 If stride < 0, flip the slice_tensor.
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
-                  reinterpret_cast<const XPUType*>(slice_tensor.data<T>()),
-                  reinterpret_cast<XPUType*>(slice_tensor.data<T>()),
+                  reinterpret_cast<const XPUType*>(slice_data),
+                  slice_data,
                   slice_shape,
                   flip_axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
@@ -244,7 +246,7 @@ void SetValueImpl(const Context& dev_ctx,
   // Step 3: Set out tensor with value
   r = xpu::strided_slice_view_update(
       dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(slice_tensor.data<T>()),
+      reinterpret_cast<const XPUType*>(slice_data),
       reinterpret_cast<XPUType*>(out->data<T>()),
       slice_shape,
       out_shape,
@@ -255,16 +257,17 @@ void SetValueImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SetTensorValueKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& value,
-                          const IntArray& starts,
-                          const IntArray& ends,
-                          const IntArray& steps,
-                          const std::vector<int64_t>& axes,
-                          const std::vector<int64_t>& decrease_axes,
-                          const std::vector<int64_t>& none_axes,
-                          DenseTensor* out) {
+void SetValueKernelImpl(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const T* value_data,
+                        const DDim& value_dims,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const IntArray& steps,
+                        const std::vector<int64_t>& axes,
+                        const std::vector<int64_t>& decrease_axes,
+                        const std::vector<int64_t>& none_axes,
+                        DenseTensor* out) {
   // rank是xtensor的维度信息
   const int rank = x.dims().size();
 
@@ -272,7 +275,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
     case 1:
       SetValueImpl<T, Context, 1>(dev_ctx,
                                   x,
-                                  value,
+                                  value_data,
+                                  value_dims,
                                   starts,
                                   ends,
                                   steps,
@@ -284,7 +288,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
     case 2:
       SetValueImpl<T, Context, 2>(dev_ctx,
                                   x,
-                                  value,
+                                  value_data,
+                                  value_dims,
                                   starts,
                                   ends,
                                   steps,
@@ -296,7 +301,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
     case 3:
       SetValueImpl<T, Context, 3>(dev_ctx,
                                   x,
-                                  value,
+                                  value_data,
+                                  value_dims,
                                   starts,
                                   ends,
                                   steps,
@@ -308,7 +314,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
     case 4:
       SetValueImpl<T, Context, 4>(dev_ctx,
                                   x,
-                                  value,
+                                  value_data,
+                                  value_dims,
                                   starts,
                                   ends,
                                   steps,
@@ -320,7 +327,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
     case 5:
       SetValueImpl<T, Context, 5>(dev_ctx,
                                   x,
-                                  value,
+                                  value_data,
+                                  value_dims,
                                   starts,
                                   ends,
                                   steps,
@@ -332,7 +340,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
     case 6:
       SetValueImpl<T, Context, 6>(dev_ctx,
                                   x,
-                                  value,
+                                  value_data,
+                                  value_dims,
                                   starts,
                                   ends,
                                   steps,
@@ -348,6 +357,30 @@ void SetTensorValueKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SetTensorValueKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& value,
+                          const IntArray& starts,
+                          const IntArray& ends,
+                          const IntArray& steps,
+                          const std::vector<int64_t>& axes,
+                          const std::vector<int64_t>& decrease_axes,
+                          const std::vector<int64_t>& none_axes,
+                          DenseTensor* out) {
+  SetValueKernelImpl<T, Context>(dev_ctx,
+                                 x,
+                                 value.data<T>(),
+                                 value.dims(),
+                                 starts,
+                                 ends,
+                                 steps,
+                                 axes,
+                                 decrease_axes,
+                                 none_axes,
+                                 out);
+}
+
+template <typename T, typename Context>
 void SetValueKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const IntArray& starts,
@@ -359,25 +392,37 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  std::vector<T> assgin_values;
-  assgin_values.reserve(values.size());
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  std::vector<T> assign_values;
+  assign_values.reserve(values.size());
   for (const auto& val : values) {
-    assgin_values.push_back(val.to<T>());
+    assign_values.push_back(val.to<T>());
   }
-  DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
-  value_tensor.Resize(phi::make_ddim(shape));
 
-  SetTensorValueKernel<T, Context>(dev_ctx,
-                                   x,
-                                   value_tensor,
-                                   starts,
-                                   ends,
-                                   steps,
-                                   axes,
-                                   decrease_axes,
-                                   none_axes,
-                                   out);
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  auto value_dims = phi::make_ddim(shape);
+  XPUType* value_data =
+      RAII_GUARD.alloc_l3_or_gm<XPUType>(phi::product(value_dims));
+
+  phi::CPUPlace src_place;
+  auto dst_place = dev_ctx.GetPlace();
+  memory_utils::Copy(dst_place,
+                     value_data,
+                     src_place,
+                     assign_values.data(),
+                     assign_values.size() * sizeof(T));
+
+  SetValueKernelImpl<T, Context>(dev_ctx,
+                                 x,
+                                 reinterpret_cast<const T*>(value_data),
+                                 value_dims,
+                                 starts,
+                                 ends,
+                                 steps,
+                                 axes,
+                                 decrease_axes,
+                                 none_axes,
+                                 out);
 }
 
 }  // namespace phi

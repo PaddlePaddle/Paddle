@@ -45,7 +45,7 @@ OpLowerer::OpLowerer(
     const Target& target)
     : type_dict_(type_dict), shape_dict_(shape_dict), target_(target) {}
 
-std::vector<ir::LoweredFunc> OpLowerer::Lower(GroupPtr& group) {
+std::vector<ir::LoweredFunc> OpLowerer::Lower(GroupPtr& group) {  // NOLINT
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
   group->input_names.clear();

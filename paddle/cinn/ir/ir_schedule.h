@@ -250,9 +250,9 @@ class IRSchedule {
    * \param memory_type The memory type we want to set. Should be "local",
    * "shared" or "global".
    */
-  void SetBuffer(const Expr& block,
+  void SetBuffer(Expr& block,  // NOLINT
                  const std::string& memory_type,
-                 bool fixed = false);
+                 bool fixed = false);  // NOLINT
 
   /**
    * \brief Reorder the loops in the order of vector.
@@ -394,7 +394,7 @@ class IRSchedule {
    * \param block The block to be unannotated
    * \param key The attribute key
    */
-  void Unannotate(const Expr& block, const std::string& key);
+  void Unannotate(Expr& block, const std::string& key);  // NOLINT
 
   /*!
    * \brief flatten the loops in one dim.
@@ -623,7 +623,7 @@ class LeafBlockRemovalPlan : public ir::IRMutator<> {
 
 class ComputeInlineChecker : public ir::IRMutator<> {
  public:
-  ComputeInlineChecker(const IRSchedule& schedule, const Expr& block)
+  ComputeInlineChecker(IRSchedule& schedule, Expr& block)  // NOLINT
       : ir_schedule_(schedule), block_(block) {}
 
   bool Check();

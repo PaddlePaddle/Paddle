@@ -707,8 +707,7 @@ Expr ConstructOtherStmtChain(const std::vector<Expr>& stmts,
 Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
                            const std::vector<Expr>& ordered_loops,
                            const std::set<Expr, CompExpr>& loop_set,
-                           std::vector<Expr>* if_nodes_ptr) {
-  auto if_nodes = *if_nodes_ptr;
+                           std::vector<Expr>& if_nodes) {  // NOLINT
   std::vector<std::set<std::string>> condition_vars;
   // In each IfThenElse node, find the vars its condition depends on.
   for (auto& if_expr : if_nodes) {
@@ -980,7 +979,7 @@ void CheckComputeAtValidation(const Expr& block,
   CHECK(find_block_in_loop.empty()) << "loop should not be block's ancestor!";
 }
 
-void InsertBlock(const Expr& for_loop, const Expr& insertion, int index) {
+void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
   CHECK(for_loop.As<ir::For>());
   CHECK(for_loop.As<ir::For>()->body.As<Block>());
   ir::Block* dst_block =
