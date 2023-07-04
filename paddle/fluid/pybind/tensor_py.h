@@ -969,11 +969,13 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
   std::vector<size_t> py_dims(tensor_dims.size());
   std::vector<size_t> py_strides(tensor_dims.size());
-
   size_t numel = 1;
+
+  auto tensor_stride = tensor.strides();
+
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
     py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-    py_strides[i] = sizeof_dtype * numel;
+    py_strides[i] = sizeof_dtype * tensor_stride[i];
     numel *= py_dims[i];
   }
 
@@ -991,33 +993,51 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                        const_cast<void *>(tensor_buf_ptr),
                        base);
     } else {
-      py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-      PADDLE_ENFORCE_EQ(
-          py_arr.writeable(),
-          true,
-          platform::errors::InvalidArgument(
-              "PyArray is not writable, in which case memory leak "
-              "or double free would occur"));
+      platform::CPUPlace place;
+      void *array_buffer = malloc(tensor.Holder()->size());
+      size_t array_offset = tensor.offset();
+      paddle::memory::Copy(place,
+                           array_buffer,
+                           place,
+                           tensor.Holder()->ptr(),
+                           tensor.Holder()->size());
+
+      auto py_arr = py::array(
+          py::dtype(py_dtype_str.c_str()),
+          py_dims,
+          py_strides,
+          reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(array_buffer) +
+                                   array_offset),
+          py::array());
+
       PADDLE_ENFORCE_EQ(
           py_arr.owndata(),
           true,
           platform::errors::InvalidArgument(
               "PyArray does not own data, in which case  memory leak "
               "or double free would occur"));
-      platform::CPUPlace place;
-      size_t copy_bytes = sizeof_dtype * numel;
-      paddle::memory::Copy(
-          place, py_arr.mutable_data(), place, tensor_buf_ptr, copy_bytes);
+
       return py_arr;
     }
   } else if (is_xpu_tensor) {
 #ifdef PADDLE_WITH_XPU
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "PyArray is not writable, in which case memory leak "
-                          "or double free would occur"));
+    void *array_buffer = malloc(tensor.Holder()->size());
+    size_t array_offset = tensor.offset();
+    auto p = tensor.place();
+    paddle::memory::Copy(platform::CPUPlace(),
+                         array_buffer,
+                         p,
+                         tensor.Holder()->ptr(),
+                         tensor.Holder()->size());
+
+    auto py_arr =
+        py::array(py::dtype(py_dtype_str.c_str()),
+                  py_dims,
+                  py_strides,
+                  reinterpret_cast<void *>(
+                      reinterpret_cast<uintptr_t>(array_buffer) + array_offset),
+                  py::array());
+
     PADDLE_ENFORCE_EQ(
         py_arr.owndata(),
         true,
@@ -1025,13 +1045,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
 
-    size_t copy_bytes = sizeof_dtype * numel;
-    auto p = tensor.place();
-    paddle::memory::Copy(platform::CPUPlace(),
-                         py_arr.mutable_data(),
-                         p,
-                         tensor_buf_ptr,
-                         copy_bytes);
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -1040,12 +1053,23 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #endif
   } else if (is_gpu_tensor) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "PyArray is not writable, in which case memory leak "
-                          "or double free would occur"));
+    void *array_buffer = malloc(tensor.Holder()->size());
+    size_t array_offset = tensor.offset();
+    auto p = tensor.place();
+    paddle::memory::Copy(platform::CPUPlace(),
+                         array_buffer,
+                         p,
+                         tensor.Holder()->ptr(),
+                         tensor.Holder()->size());
+
+    auto py_arr =
+        py::array(py::dtype(py_dtype_str.c_str()),
+                  py_dims,
+                  py_strides,
+                  reinterpret_cast<void *>(
+                      reinterpret_cast<uintptr_t>(array_buffer) + array_offset),
+                  py::array());
+
     PADDLE_ENFORCE_EQ(
         py_arr.owndata(),
         true,
@@ -1053,14 +1077,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
 
-    size_t copy_bytes = sizeof_dtype * numel;
-    auto p = tensor.place();
-    paddle::memory::Copy(platform::CPUPlace(),
-                         py_arr.mutable_data(),
-                         p,
-                         tensor_buf_ptr,
-                         copy_bytes,
-                         nullptr);
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -1069,19 +1085,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #endif
   } else if (is_custom_device_tensor) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "PyArray is not writable, in which case memory leak "
-                          "or double free would occur"));
-    PADDLE_ENFORCE_EQ(
-        py_arr.owndata(),
-        true,
-        platform::errors::InvalidArgument(
-            "PyArray does not own data, in which case  memory leak "
-            "or double free would occur"));
-
     // TODO(qili93): temporary for ascned npu performance to be removed along
     // with npu_identity op
     paddle::Tensor tensor_out(std::make_shared<phi::DenseTensor>());
@@ -1090,20 +1093,65 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
-      tensor_buf_ptr = dense_tensor->data();
+      void *array_buffer = malloc(dense_tensor->Holder()->size());
+      size_t array_offset = dense_tensor->offset();
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &ctx = *pool.Get(tensor.place());
+      paddle::memory::Copy(
+          platform::CPUPlace(),
+          array_buffer,
+          dense_tensor->place(),
+          dense_tensor->Holder()->ptr(),
+          tensor.Holder()->size(),
+          reinterpret_cast<const platform::CustomDeviceContext &>(ctx)
+              .stream());
+      ctx.Wait();
+      auto py_arr = py::array(
+          py::dtype(py_dtype_str.c_str()),
+          py_dims,
+          py_strides,
+          reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(array_buffer) +
+                                   array_offset),
+          py::array());
+
+      PADDLE_ENFORCE_EQ(
+          py_arr.owndata(),
+          true,
+          platform::errors::InvalidArgument(
+              "PyArray does not own data, in which case  memory leak "
+              "or double free would occur"));
+
+      return py_arr;
     }
 
-    size_t copy_bytes = sizeof_dtype * numel;
+    void *array_buffer = malloc(tensor.Holder()->size());
+    size_t array_offset = tensor.offset();
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
         platform::CPUPlace(),
-        py_arr.mutable_data(),
+        array_buffer,
         tensor.place(),
-        tensor_buf_ptr,
-        copy_bytes,
+        tensor.Holder()->ptr(),
+        tensor.Holder()->size(),
         reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
     ctx.Wait();
+    auto py_arr =
+        py::array(py::dtype(py_dtype_str.c_str()),
+                  py_dims,
+                  py_strides,
+                  reinterpret_cast<void *>(
+                      reinterpret_cast<uintptr_t>(array_buffer) + array_offset),
+                  py::array());
+
+    PADDLE_ENFORCE_EQ(
+        py_arr.owndata(),
+        true,
+        platform::errors::InvalidArgument(
+            "PyArray does not own data, in which case  memory leak "
+            "or double free would occur"));
+
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
