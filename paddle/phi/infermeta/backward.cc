@@ -649,6 +649,8 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
 
 void MatmulAMPGradInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
+                            bool transpose_x,
+                            bool transpose_y,
                             int dx_type,
                             int dy_type,
                             MetaTensor* dx,
