@@ -19,36 +19,115 @@ import numpy as np
 import paddle
 from paddle.fluid.variable_index import _getitem_static
 
-# class TestGetitemInDygraph(unittest.TestCase):
-#     def setUp(self):
-#         paddle.disable_static()
 
-#     def test_combined_index_1(self):
-#         np_data = np.zeros((3, 4, 5, 6), dtype='float32')
-#         x = paddle.to_tensor(np_data)
+class TestGetitemInDygraph(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
 
-#         np_res = np_data[[0, 1], :, [1, 2]]
-#         y = x[[0, 1], :, [1, 2]]
+    def test_combined_index_1(self):
+        # int tensor + slice (without decreasing axes)
+        np_data = np.random.randn(3, 4, 5, 6)
+        np_res = np_data[[0, 1], :, [1, 2]]
+        x = paddle.to_tensor(np_data)
+        y = x[[0, 1], :, [1, 2]]
 
-#         np.testing.assert_allclose(y.numpy(), np_res)
+        np.testing.assert_allclose(y.numpy(), np_res)
 
-#     def test_combined_index_2(self):
-#         np_data = np.ones((3, 4, 5, 6), dtype='float32')
-#         x = paddle.to_tensor(np_data)
+    def test_combined_index_2(self):
+        # int tensor + slice (with decreasing axes)
+        np_data = np.random.randn(3, 4, 5, 6)
+        x = paddle.to_tensor(np_data)
 
-#         np_res = np_data[:, 1, [1, 2], 0]
-#         y = x[:, 1, [1, 2], 0]
+        np_res = np_data[:, 1, [1, 2], 0]
+        y = x[:, 1, [1, 2], 0]
 
-#         np.testing.assert_allclose(y.numpy(), np_res)
+        np.testing.assert_allclose(y.numpy(), np_res)
 
-#     def test_combined_index_3(self):
-#         np_data = np.ones((3, 4, 5, 6), dtype='int32')
-#         x = paddle.to_tensor(np_data)
+    def test_combined_index_3(self):
+        # multiple int tensors, with one int tensor at first axis
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[[1, 0], :, [1, 4], 1:5:2, 4]
 
-#         np_res = np_data[:, [True, False, True, False], [1, 4]]
-#         y = x[:, [True, False, True, False], [1, 4]]
+        x = paddle.to_tensor(np_data)
+        y = x[[1, 0], :, [1, 4], 1:5:2, 4]
 
-#         np.testing.assert_allclose(y.numpy(), np_res)
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_4(self):
+        # multiple not adjacent int tensors, with no int tensor at first axis
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[:, [1, 0], 0:4:2, [2, 3], 4]
+        x = paddle.to_tensor(np_data)
+        y = x[:, [1, 0], 0:4:2, [2, 3], 4]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_5(self):
+        # multiple adjacent int tensors, with no int tensor at first axis
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[::2, [1, 0], [2, 3], 0:4:2]
+        x = paddle.to_tensor(np_data)
+        y = x[::2, [1, 0], [2, 3], 0:4:2]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_6(self):
+        # multiple adjacent and not adjacent int tensors, with no int tensor at first axis
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[::2, [1, 0], [2, 3], 0:4:2, [4, 6]]
+        x = paddle.to_tensor(np_data)
+        y = x[::2, [1, 0], [2, 3], 0:4:2, [4, 6]]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_7(self):
+        # multiple adjacent and not adjacent int tensors (rank > 1d), with no int tensor at first axis
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[::2, [[1, 0]], [[2, 3]], 0:4:2, [[4, 6]]]
+        x = paddle.to_tensor(np_data)
+        y = x[::2, [[1, 0]], [[2, 3]], 0:4:2, [[4, 6]]]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_8(self):
+        # multiple adjacent and not adjacent int tensors (rank > 1d), with int tensor at first axis
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[
+            [[1, 0], [0, 1]], [[2, 3], [1, 0]], 0:4:2, [[3, 5], [4, 2]]
+        ]
+        x = paddle.to_tensor(np_data)
+        y = x[[[1, 0], [0, 1]], [[2, 3], [1, 0]], 0:4:2, [[3, 5], [4, 2]]]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_9(self):
+        # multiple int tensors, with broadcast.
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[[[1, 0]], [1, 0], 0:4:2, [[3, 5], [4, 2]]]
+        x = paddle.to_tensor(np_data)
+        y = x[[[1, 0]], [1, 0], 0:4:2, [[3, 5], [4, 2]]]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_10(self):
+        # only one bool tensor with basic-index
+        np_data = np.random.randn(3, 4, 5, 6)
+        np_res = np_data[:, [True, False, True, False], 4]
+
+        x = paddle.to_tensor(np_data)
+        y = x[:, [True, False, True, False], 4]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_combined_index_11(self):
+        # only one bool tensor with all False
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[:, [False, False, False, False], 4]
+
+        x = paddle.to_tensor(np_data)
+        y = x[:, [False, False, False, False], 4]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
 
 
 class TestGetitemInStatic(unittest.TestCase):
