@@ -67,8 +67,8 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   if (execution_config_.create_local_scope) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
-    VLOG(0) << "new ir interpretercore scope: " << scope_;
-    VLOG(0) << "new ir interpretercore local scope: " << local_scope_;
+    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+            << "; local scope: " << local_scope_;
   }
   // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
@@ -1043,7 +1043,7 @@ void NewIRInterpreter::ExecuteInstructionList(
             if (cancel) {
               break;
             }
-            VLOG(0) << "deps:\n" << GetDepsString();
+            VLOG(6) << "deps:\n" << GetDepsString();
             times++;
           }
           return times;
