@@ -87,6 +87,9 @@ KernelSignature ElementwiseMinOpArgumentMapping(
 
 KernelSignature ElementwiseModOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+  if (ctx.IsForInferShape()) {
+    return KernelSignature("remainder_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  }
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("remainder", {"X", "Y"}, {}, {"Out"});
