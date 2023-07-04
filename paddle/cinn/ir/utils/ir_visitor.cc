@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 #include <unordered_set>
 
-#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {

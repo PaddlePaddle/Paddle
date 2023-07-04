@@ -21,7 +21,7 @@
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/test_helper.h"
 #include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/lower.h"

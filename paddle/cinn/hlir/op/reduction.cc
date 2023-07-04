@@ -26,7 +26,7 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
 DECLARE_bool(cinn_ir_schedule);

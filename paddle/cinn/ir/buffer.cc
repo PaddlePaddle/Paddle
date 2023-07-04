@@ -17,7 +17,7 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
