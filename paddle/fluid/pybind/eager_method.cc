@@ -130,6 +130,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
+  std::cout << "numpy....." << std::endl;
+  std::cout << "rank = " << py_rank << std::endl;
+  std::cout << "dims = " << self->tensor.ddims() << std::endl;
+  std::cout << "strides = " << self->tensor.strides() << std::endl;
+  std::cout << "FLAGS_set_to_1d = " << FLAGS_set_to_1d << std::endl;
   if (py_rank == 0) {
     Py_ssize_t args_num = PyTuple_Size(args);
     // true by default
