@@ -26,7 +26,7 @@ class TestFcFusePass(PassAutoScanTest):
         yield config, ["reduce_max"], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
-        axes = draw(st.sampled_from([2]))
+        s_axes = [2]
         batch_size = draw(st.integers(min_value=1, max_value=4))
         H = draw(st.integers(min_value=1, max_value=64))
         W = draw(st.integers(min_value=1, max_value=64))
@@ -45,7 +45,7 @@ class TestFcFusePass(PassAutoScanTest):
             inputs={"X": ["transpose_out1"]},
             outputs={"Out": ["unsqueeze_out"]},
             attrs={
-                "axes": axes,
+                "axes": s_axes,
             },
         )
         pool_op = OpConfig(
@@ -68,7 +68,7 @@ class TestFcFusePass(PassAutoScanTest):
             inputs={
                 "X": ["pool_out"],
             },
-            axes=axes,
+            axes=s_axes,
             outputs={"Out": ["squeeze2_out"], "XShape": ["xshape"]},
         )
         transpose_op2 = OpConfig(
