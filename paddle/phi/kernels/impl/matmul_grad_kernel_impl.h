@@ -294,6 +294,16 @@ void MatmulGradKernel(const Context& dev_ctx,
   int y_ndim = y_dims.size();
   int ndim = dout_dims.size();
 
+  // Case1 : x's or y's dim = 1
+  if (x_ndim == 1 && y_ndim == 1) {
+    if (dx) dev_ctx.template Alloc<T>(dx);
+    if (dy) dev_ctx.template Alloc<T>(dy);
+    if (out_grad.numel() == 1) {
+      DotGradFunction<Context, T>()(dev_ctx, &x, &y, &out_grad, dx, dy);
+      return;
+    }
+  }
+
   bool is_broadcast = true;
   if (x_ndim <= 2 || y_ndim <= 2) {
     is_broadcast = false;
