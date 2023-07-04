@@ -54,6 +54,7 @@ void BuildScope(
   if (!execution_config.create_local_scope) {
     local_scope = scope;
   }
+  VLOG(4) << "local scope is: " << local_scope;
 
   std::unordered_map<ir::Value, int> map_test;
 
