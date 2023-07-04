@@ -966,8 +966,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   const auto &tensor_dims = tensor.dims();
   size_t sizeof_dtype = phi::SizeOf(tensor.type());
 
-  std::vector<size_t> py_dims(tensor_dims.size());
-  std::vector<size_t> py_strides(tensor_dims.size());
+  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
+  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t numel = 1;
 
   auto tensor_stride = tensor.strides();
@@ -1006,8 +1006,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
           py_dims,
           py_strides,
           reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(array_buffer) +
-                                   array_offset),
-          py::array());
+                                   array_offset));
 
       PADDLE_ENFORCE_EQ(
           py_arr.owndata(),
