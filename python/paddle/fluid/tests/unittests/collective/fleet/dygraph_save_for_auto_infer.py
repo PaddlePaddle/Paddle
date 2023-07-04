@@ -402,6 +402,10 @@ def test_save_load(args):
 
     if args.cmd == "save":
         save_for_auto_inference(os.path.join(args.output_dir, "saved"), model)
+        save_for_auto_inference(
+            os.path.join(args.output_dir, "saved"), model, use_async_save=True
+        )
+        paddle.clear_async_save_task_queue()
 
 
 def run_case(args):

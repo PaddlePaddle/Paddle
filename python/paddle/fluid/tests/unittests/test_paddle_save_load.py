@@ -119,37 +119,6 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
             np.testing.assert_array_equal(dict_load[key], value.numpy())
 
 
-class TestAsyncSaveLoadLargeParameters(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
-    def test_large_parameters_paddle_async_save(self):
-        # enable dygraph mode
-        paddle.disable_static()
-        paddle.set_device("cpu")
-        # create network
-        layer = LayerWithLargeParameters()
-        save_dict = layer.state_dict()
-
-        path = os.path.join(
-            self.temp_dir.name,
-            "test_paddle_save_load_large_param_save",
-            "layer.pdparams",
-        )
-        protocol = 4
-        paddle.async_save(
-            save_dict, path, sync_other_task=True, protocol=protocol
-        )
-        paddle.clear_async_save_task_queue()
-        dict_load = paddle.load(path, return_numpy=True)
-        # compare results before and after saving
-        for key, value in save_dict.items():
-            np.testing.assert_array_equal(dict_load[key], value.numpy())
-
-
 class TestSaveLoadPickle(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1123,10 +1092,10 @@ class TestAsyncSaveLoad(unittest.TestCase):
 
         # save
         layer_save_path = os.path.join(
-            self.temp_dir.name, "test_paddle_save_load.linear.pdparams"
+            self.temp_dir.name, "test_paddle_async_save_load.linear.pdparams"
         )
         opt_save_path = os.path.join(
-            self.temp_dir.name, "test_paddle_save_load.linear.pdopt"
+            self.temp_dir.name, "test_paddle_async_save_load.linear.pdopt"
         )
         layer_state_dict = layer.state_dict()
         opt_state_dict = opt.state_dict()
@@ -1143,6 +1112,23 @@ class TestAsyncSaveLoad(unittest.TestCase):
 
         self.check_load_state_dict(layer_state_dict, load_layer_state_dict)
         self.check_load_state_dict(opt_state_dict, load_opt_state_dict)
+
+        # test assertion on illegal object
+        some_tuple_obj = (1, 2, 3)
+        tuple_save_path = os.path.join(
+            self.temp_dir.name, "test_paddle_async_save_load.tuple.pdparams"
+        )
+        with self.assertRaises(TypeError):
+            paddle.async_save(some_tuple_obj, tuple_save_path)
+
+        # test assertion on static graph
+        paddle.enable_static()
+        static_save_path = os.path.join(
+            self.temp_dir.name,
+            "static_mode_test/test_paddle_async_save_load.linear.pdparams",
+        )
+        with self.assertRaises(ValueError):
+            paddle.async_save(layer_state_dict, static_save_path)
 
 
 class TestSaveLoadProgram(unittest.TestCase):
