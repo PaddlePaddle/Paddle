@@ -48,8 +48,7 @@ void BuildScope(ir::Block* block,
                 std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
-  // int count = name_map->size();
-  int count = 0;
+  int count = name_map->size();
   for (auto it = block->begin(); it != block->end(); ++it) {
     size_t input_num = (*it)->num_operands();
     auto attr_map = (*it)->attributes();
@@ -66,6 +65,35 @@ void BuildScope(ir::Block* block,
             (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
         fetch_list->resize(index + 1);
       }
+      continue;
+    }
+
+    if (op_name == "builtin.set_parameter") {
+      auto param_name = (*it)
+                            ->attributes()
+                            .at("parameter_name")
+                            .dyn_cast<ir::StrAttribute>()
+                            .data();
+
+      auto in_ptr = (*it)->operand(0);
+      // change opreand name to param_name
+
+      auto orig_name = name_map->at(in_ptr);
+      (*name_map)[in_ptr] = param_name;
+      scope->Rename(orig_name, param_name);
+      continue;
+    }
+
+    if (op_name == "builtin.get_parameter") {
+      auto param_name = (*it)
+                            ->attributes()
+                            .at("parameter_name")
+                            .dyn_cast<ir::StrAttribute>()
+                            .data();
+
+      auto out_ptr = (*it)->result(0);
+
+      name_map->emplace(out_ptr, param_name);
       continue;
     }
 
@@ -123,14 +151,14 @@ void BuildScope(ir::Block* block,
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
         auto ptr = (*it)->operand(i);
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              op_name));
+        if (ptr) {
+          PADDLE_ENFORCE_NE(
+              name_map->find(ptr),
+              name_map->end(),
+              phi::errors::PreconditionNotMet(
+                  "input should in name map, [%d] 'th input of [%s] op",
+                  i,
+                  op_name));
         }
       }
     }
@@ -149,7 +177,6 @@ void BuildScope(ir::Block* block,
         }
         auto var = scope->Var(name);
         // Only support DenseTensor or Vector<DenseTensor>
-
         if (!ptr.type()) {
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type()

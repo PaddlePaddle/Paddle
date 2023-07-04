@@ -52,8 +52,8 @@ class OpLowerer {
   OpLowerer(const absl::flat_hash_map<std::string, Type>&,
             const absl::flat_hash_map<std::string, shape_t>&,
             const Target&);
-  std::vector<ir::LoweredFunc> Lower(GroupPtr& group);
-  std::vector<ir::LoweredFunc> LowerWithoutSchedule(GroupPtr& group);
+  std::vector<ir::LoweredFunc> Lower(GroupPtr& group);                 // NOLINT
+  std::vector<ir::LoweredFunc> LowerWithoutSchedule(GroupPtr& group);  // NOLINT
 
  private:
   std::vector<ir::LoweredFunc> IRLowerOp(IRComputeFunction, GroupPtr&);
@@ -75,7 +75,7 @@ class OpLowerer {
   DEFINE_IR_COMPUTE(OutEWiseFusable);
 
   void IRSchedule(
-      ir::IRSchedule& ir_sch,
+      ir::IRSchedule& ir_sch,  // NOLINT
       const GroupPtr& group,
       const std::unordered_map<std::string, ir::Tensor>& tensor_map);
 
