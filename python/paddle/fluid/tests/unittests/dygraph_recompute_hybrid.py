@@ -90,7 +90,7 @@ class Naive_fc_net(paddle.nn.Layer):
                     },
                     self.layers[i],
                     inputs,
-                    **self.recompute_kwargs
+                    **self.recompute_kwargs,
                 )
             else:
                 inputs = self.layers[i](inputs)
@@ -168,8 +168,22 @@ class TestPyLayer(unittest.TestCase):
             "dp_degree": self.data_parallel_size,
             "mp_degree": self.model_parallel_size,
             "pp_degree": self.pipeline_parallel_size,
+            "skip_group": ["dp", "pp", "sharding", "check"],
         }
         fleet.init(is_collective=True, strategy=strategy)
+        hcg = fleet.get_hybrid_communicate_group()
+        assert (
+            hcg.get_data_parallel_group() is None
+        ), f"dp group should skip, but created {hcg.get_data_parallel_group()}"
+        assert (
+            hcg.get_pipe_parallel_group() is None
+        ), f"pp group should skip, but created {hcg.get_pipe_parallel_group()}"
+        assert (
+            hcg.get_sharding_parallel_group() is None
+        ), f"sharding group should skip, but created {hcg.get_sharding_parallel_group()}"
+        assert (
+            hcg.get_check_parallel_group() is None
+        ), f"check group should skip, but created {hcg.get_check_parallel_group()}"
 
     def test_base_case(self, enable_autocast=False, pure_fp16=False):
         def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):

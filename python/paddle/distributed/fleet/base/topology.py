@@ -138,7 +138,7 @@ class CommunicateTopology:
 
 
 class HybridCommunicateGroup:
-    def __init__(self, topology):
+    def __init__(self, topology, skip_group=[]):
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
@@ -165,28 +165,49 @@ class HybridCommunicateGroup:
         )
 
         # create comm group for data parallel
-        self._dp_group, self._dp_comm_group = self._set_comm_group("data")
+        if "dp" not in skip_group:
+            self._dp_group, self._dp_comm_group = self._set_comm_group("data")
+        else:
+            self._dp_group, self._dp_comm_group = [], None
+            logger.info("skip create dp group!")
 
         # create comm group for model parallel
-        self._mp_group, self._mp_comm_group = self._set_comm_group("model")
+        if "mp" not in skip_group:
+            self._mp_group, self._mp_comm_group = self._set_comm_group("model")
+        else:
+            self._mp_group, self._mp_comm_group = [], None
+            logger.info("skip create mp group!")
 
         # create comm group for pipe parallel
-        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+        if "pp" not in skip_group:
+            self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+        else:
+            self._pp_group, self._pp_comm_group = [], None
+            logger.info("skip create pp group!")
 
         # create comm group for sharding parallel
-        self._sharding_group, self._sharding_comm_group = self._set_comm_group(
-            "sharding"
-        )
+        if "sharding" not in skip_group:
+            (
+                self._sharding_group,
+                self._sharding_comm_group,
+            ) = self._set_comm_group("sharding")
+        else:
+            self._sharding_group, self._sharding_comm_group = [], None
+            logger.info("skip create sharding group!")
 
         # create global group for check inf_nan / clip global norm
-        self._check_group, self._check_comm_group = self._set_check_group(
-            "data"
-        )
-
-        (
-            self.sharding_check_group,
-            self.sharding_check_comm_group,
-        ) = self._set_check_group("sharding")
+        if "check" not in skip_group:
+            self._check_group, self._check_comm_group = self._set_check_group(
+                "data"
+            )
+            (
+                self.sharding_check_group,
+                self.sharding_check_comm_group,
+            ) = self._set_check_group("sharding")
+        else:
+            self._check_group, self._check_comm_group = [], None
+            self.sharding_check_group, self.sharding_check_comm_group = [], None
+            logger.info("skip create check group!")
 
         # create p2p group
         self.is_first_stage = self.stage_id == 0
