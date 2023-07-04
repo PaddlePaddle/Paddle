@@ -23,11 +23,6 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
-#ifdef CINN_WITH_CUDA
-#include <cuda_runtime_api.h>
-#include <driver_types.h>
-#endif
-
 namespace cinn {
 namespace common {
 
