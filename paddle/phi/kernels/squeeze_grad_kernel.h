@@ -26,4 +26,11 @@ void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        const IntArray& axes,
                        DenseTensor* dx);
+
+template <typename Context>
+void SqueezeGradStridedKernel(const Context& dev_ctx,
+                              const DenseTensor& xshape,
+                              const DenseTensor& dout,
+                              const IntArray& axes,
+                              DenseTensor* dx);
 }  // namespace phi

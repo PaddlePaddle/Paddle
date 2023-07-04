@@ -95,6 +95,7 @@ set(cc_search_pattern
     "strings/*.cc"
     "strings/cpu/*.cc"
     "fusion/*.cc"
+    "stride/*.cc"
     "fusion/cpu/*.cc")
 
 if(WITH_MKLDNN)

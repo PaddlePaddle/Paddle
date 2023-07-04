@@ -42,12 +42,19 @@ class MetaTensor {
   MetaTensor() : tensor_(nullptr) {}
 
   // supporting implicit construction is easier to use
-  MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
-  MetaTensor(const TensorBase& tensor)                 // NOLINT
-      : tensor_(const_cast<TensorBase*>(&tensor)) {}
-  MetaTensor(const TensorBase* tensor)  // NOLINT
-      : tensor_(const_cast<TensorBase*>(tensor)) {}
-  MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
+  MetaTensor(TensorBase* tensor, bool strided_kernel_used = false)  // NOLINT
+      : tensor_(tensor), strided_kernel_used_(strided_kernel_used) {}
+  MetaTensor(const TensorBase& tensor,
+             bool strided_kernel_used = false)
+      : tensor_(const_cast<TensorBase*>(&tensor)),  // NOLINT
+        strided_kernel_used_(strided_kernel_used) {}
+  MetaTensor(const TensorBase* tensor,
+             bool strided_kernel_used = false)     // NOLINT
+      : tensor_(const_cast<TensorBase*>(tensor)),  // NOLINT
+        strided_kernel_used_(strided_kernel_used) {}
+  MetaTensor(TensorBase& tensor, bool strided_kernel_used = false)  // NOLINT
+      : tensor_(&tensor),                                           // NOLINT
+        strided_kernel_used_(strided_kernel_used) {}
 
   MetaTensor(MetaTensor&&) = default;
   MetaTensor& operator=(MetaTensor&&) = default;
@@ -60,13 +67,16 @@ class MetaTensor {
   virtual DDim dims() const;
   virtual DataType dtype() const;
   virtual DataLayout layout() const;
+  virtual DDim strides() const;
   virtual void set_dims(const DDim& dims);
   virtual void set_dtype(DataType dtype);
   virtual void set_layout(DataLayout layout);
+  virtual void set_strides(const DDim& strides);
 
   virtual void share_lod(const MetaTensor& meta_tensor);
   virtual void share_meta(const MetaTensor& meta_tensor);
   virtual void share_dims(const MetaTensor& meta_tensor);
+  virtual void share_strides(const MetaTensor& meta_tensor);
 
   virtual bool initialized() const;
 
@@ -92,6 +102,7 @@ class MetaTensor {
   TensorBase* tensor() const;
 
   TensorBase* tensor_ = nullptr;
+  bool strided_kernel_used_ = false;
 };
 
 }  // namespace phi

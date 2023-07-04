@@ -1401,6 +1401,14 @@ struct KernelRegistrar {
                                             meta_kernel_fn,        \
                                             BACKEND_LIST)
 
+#define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(    \
+    kernel_name, layout, meta_kernel_fn)                           \
+  _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(::phi::RegType::INNER, \
+                                            kernel_name,           \
+                                            layout,                \
+                                            meta_kernel_fn,        \
+                                            BACKEND_LIST_EXCEPT_CUSTOM)
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define _DEVICE GPU,
 #elif defined(PADDLE_WITH_XPU)
@@ -1415,6 +1423,7 @@ struct KernelRegistrar {
 #endif
 
 #define BACKEND_LIST _DEVICE _CUSTOM CPU
+#define BACKEND_LIST_EXCEPT_CUSTOM _DEVICE CPU
 
 #define _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                            \
     reg_type, kernel_name, layout, meta_kernel_fn, ...)                       \
