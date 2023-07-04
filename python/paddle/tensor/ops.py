@@ -48,17 +48,17 @@ __inplace_unary_func__ = [
     'round_',
     'reciprocal_',
     'sigmoid_',
-    'abs_'
-    'sin_'
-    'sinh_'
-    'asin_'
-    'asinh_'
-    'cos_'
-    'cosh_'
-    'acos_'
-    'acosh_'
-    'tan_'
-    'atan_'
+    'abs_',
+    'sin_',
+    'sinh_',
+    'asin_',
+    'asinh_',
+    'cos_',
+    'cosh_',
+    'acos_',
+    'acosh_',
+    'tan_',
+    'atan_',
     'atanh_',
 ]
 
