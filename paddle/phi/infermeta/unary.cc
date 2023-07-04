@@ -150,7 +150,6 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                         int dtype,
                         MetaTensor* out,
                         MetaConfig config) {
-  std::cerr << "infer meta" << std::endl;
   PADDLE_ENFORCE_EQ(
       (dtype < 0 || dtype == 2 || dtype == 3),
       true,
@@ -184,9 +183,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
     }
     return;
   }
-  std::cerr << "infer meta 1" << std::endl;
   auto int_axis = axis.to<int64_t>();
-  std::cerr << "infer meta 2" << std::endl;
   const auto& x_dims = x.dims();
 
   auto x_rank = x.dims().size();
