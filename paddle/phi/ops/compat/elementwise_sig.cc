@@ -109,11 +109,6 @@ KernelSignature ElementwiseFloorDivOpArgumentMapping(
   return KernelSignature("floor_divide_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
-KernelSignature ElementwiseHeavisideOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("heaviside", {"X", "Y"}, {}, {"Out"});
-}
-
 KernelSignature ElementwisePowOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
@@ -216,12 +211,6 @@ KernelSignature ElementwiseMinGradOpArgumentMapping(
       "minimum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
-KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "heaviside_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
-}
-
 KernelSignature ElementwisePowGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
@@ -237,7 +226,6 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_max, maximum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min, minimum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_mod, remainder);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_floordiv, floor_divide);
-PD_REGISTER_BASE_KERNEL_NAME(elementwise_heaviside, heaviside);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
@@ -252,7 +240,6 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmax, fmax);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmin, fmin);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmin_grad, fmin_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min_grad, minimum_grad);
-PD_REGISTER_BASE_KERNEL_NAME(elementwise_heaviside_grad, heaviside_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            phi::ElementwiseAddOpArgumentMapping);
@@ -270,8 +257,6 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_mod,
                            phi::ElementwiseModOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_floordiv,
                            phi::ElementwiseFloorDivOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside,
-                           phi::ElementwiseHeavisideOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_pow,
                            phi::ElementwisePowOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
@@ -302,8 +287,6 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_fmin_grad,
                            phi::ElementwiseFMinGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_min_grad,
                            phi::ElementwiseMinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside_grad,
-                           phi::ElementwiseHeavisideGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_pow_grad,
                            phi::ElementwisePowGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(grad_add, phi::ElementwiseGradAddOpArgumentMapping);
