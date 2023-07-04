@@ -295,7 +295,7 @@ TEST(ElementwiseSMPDRuleTest, MultiMeshDimBroadcast) {
             std::vector<int64_t>({0, -1, 1}));
   EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({-1, 0, -1, 1}));
-  VLOG(4) << "MultiMeshDimBroadcast test4 done." << std::endl
+  VLOG(4) << "MultiMeshDimBroadcast test2 done." << std::endl
           << std::endl
           << std::endl;
 }
