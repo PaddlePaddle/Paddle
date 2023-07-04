@@ -73,8 +73,8 @@ class TestMatMulAmpOp(OpTest):
 
     def setUp(self):
         self.init_kernel_type()
-        self.dx_dtype = 'bfloat16'
-        self.dy_dtype = 'bfloat16'
+        self.dx_type = 'bfloat16'
+        self.dy_type = 'bfloat16'
         self.config()
         self.op_type = "matmul_amp"
         self.python_api = paddle.incubate.matmul
@@ -393,13 +393,13 @@ class TestMatmulAPI(unittest.TestCase):
         place = core.CUDAPlace(0)
         input_x = np.random.random(x_shape).astype("float32")
         input_y = np.random.random(y_shape).astype("float32")
-        x = paddle.to_tensor(input_x, dtype=dx_type)
-        y = paddle.to_tensor(input_y, dtype=dy_type)
+        x = paddle.to_tensor(input_x, dtype='bfloat16')
+        y = paddle.to_tensor(input_y, dtype='bfloat16')
         x.stop_gradient = False
         y.stop_gradient = False
-        result = paddle.matmul(x, y)
-        paddle.grad([result], [x, y])
-        return result, x.grad, y.grad
+        result = paddle.paddle.incubate.matmul(x, y)
+        dx, dy = paddle.grad([result], [x, y])
+        return result, dx, dy
 
     def test_bf16(self):
         out, dx, dy = self.run_test(x_shape=[1, 100, 4], y_shape=[4, 20])
@@ -442,5 +442,4 @@ class TestMatmulAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
