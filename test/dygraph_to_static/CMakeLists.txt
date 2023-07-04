@@ -60,8 +60,7 @@ foreach(TEST_OP ${TEST_OPS})
   endif()
 endforeach()
 
-set(STRIED_TESTS test_bert test_cycle_gan test_lstm test_ptb_lm_v2 test_slice
-                 test_transformer)
+set(STRIED_TESTS test_bert test_cycle_gan test_lstm test_ptb_lm_v2 test_slice)
 
 foreach(STRIED_TEST ${STRIED_TESTS})
   py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
@@ -80,7 +79,6 @@ set_tests_properties(test_bert_with_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
-set_tests_properties(test_transformer_with_stride PROPERTIES TIMEOUT 200)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 120)
 #set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)

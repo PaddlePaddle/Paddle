@@ -287,6 +287,7 @@ class EagerVariable final {
     auto* framework_tensor = var_.GetMutable<VarType>();
     // Contruct phi::DenseTensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
+
     PADDLE_ENFORCE_EQ(
         (tensor_dense.get() && tensor_dense),
         true,
@@ -296,6 +297,12 @@ class EagerVariable final {
             "treat all kinds of tensor as what they are.",
             tensor.name()));
     *framework_tensor = *tensor_dense;
+    if (tensor.is_dense_tensor()) {
+      dynamic_cast<phi::DenseTensor*>(framework_tensor)
+          ->set_strides(
+              std::dynamic_pointer_cast<phi::DenseTensor>(tensor_dense)
+                  ->strides());
+    }
   }
 
   template <typename VarType>

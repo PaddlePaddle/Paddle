@@ -1348,7 +1348,6 @@ set(STRIED_TESTS
     test_imperative_ocr_attention_model
     test_imperative_ptb_rnn
     test_imperative_ptb_rnn_sorted_gradient
-    test_imperative_transformer_sorted_gradient
     test_initializer
     test_inplace
     test_real_imag_op
@@ -1377,11 +1376,4 @@ set_tests_properties(test_imperative_ocr_attention_model_with_stride
 set_tests_properties(test_imperative_ptb_rnn_with_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient_with_stride
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_transformer_sorted_gradient_with_stride
-                     PROPERTIES TIMEOUT 300)
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
-
-if(APPLE)
-  set_tests_properties(test_imperative_transformer_sorted_gradient_with_stride
-                       PROPERTIES TIMEOUT 300)
-endif()

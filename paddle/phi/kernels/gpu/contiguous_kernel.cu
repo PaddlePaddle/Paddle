@@ -117,8 +117,10 @@ void ContiguousKernel(const Context& dev_ctx,
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
   auto numel = input.numel();
-  int64_t block = 512;
-  int64_t grid = (numel + block - 1) / block;
+
+  if (numel <= 0) {
+    return;
+  }
 
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
@@ -126,6 +128,15 @@ void ContiguousKernel(const Context& dev_ctx,
     input_dims[i] = input.dims()[i];
     input_stride[i] = input.strides()[i];
   }
+
+  if (rank == 0) {
+    rank = 1;
+    input_dims[0] = numel;
+    input_stride[0] = 1;
+  }
+
+  int64_t block = 512;
+  int64_t grid = (numel + block - 1) / block;
 
   switch (rank) {
     case 1:
