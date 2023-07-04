@@ -46,7 +46,7 @@ struct Dim {
   value_t upper_bound;
 
   //! Construct a parameter.
-  Dim(std::string id) : id(std::move(id)) {}
+  explicit Dim(std::string id) : id(std::move(id)) {}
 
   //! Construct a dimension with integer range.
   Dim(std::string id, uint32_t lower_bound, uint32_t upper_bound)

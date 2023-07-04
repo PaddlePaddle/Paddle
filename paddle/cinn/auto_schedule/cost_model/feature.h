@@ -134,7 +134,7 @@ class Feature {
  public:
   Feature();
 
-  Feature(const common::Target& target);
+  explicit Feature(const common::Target& target);
 
   // Convert the various-length loop block features to fixed-size vector
   std::vector<float> ToFixedSizeVector();

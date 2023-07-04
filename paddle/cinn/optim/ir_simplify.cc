@@ -55,7 +55,8 @@ void PartialSimplify(
 //! Simplify the expression but Load.
 struct SimplifyButStoreLoadMutator : public ir::IRMutator<ir::Expr*> {
   common::cas_intervals_t& var_intervals;
-  explicit SimplifyButStoreLoadMutator(common::cas_intervals_t& var_intervals)
+  explicit SimplifyButStoreLoadMutator(
+      common::cas_intervals_t& var_intervals)  // NOLINT
       : var_intervals(var_intervals) {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
@@ -261,7 +262,7 @@ struct ReplaceFracWithDivMutator : public ir::IRMutator<> {
 };
 
 struct SimplifyBlocksMutator : public ir::IRMutator<> {
-  explicit SimplifyBlocksMutator() {}
+  SimplifyBlocksMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 
@@ -320,7 +321,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
 
 struct SimplifyForLoopsMutator : public ir::IRMutator<> {
   absl::flat_hash_map<std::string, common::CasInterval> var_intervals;
-  explicit SimplifyForLoopsMutator() {}
+  SimplifyForLoopsMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 

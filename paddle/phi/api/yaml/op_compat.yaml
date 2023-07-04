@@ -132,10 +132,6 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   manual_signature : [all]
   extra :
     attrs : [bool use_mkldnn = false]
@@ -163,10 +159,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amax_grad : GetReduceGradExpectedKernelType
   manual_signature : [amax]
@@ -181,10 +173,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amin_grad : GetReduceGradExpectedKernelType
   manual_signature : [amin]
@@ -207,10 +195,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     any : GetReduceOpUseInputPlaceExpectedKernelType
   manual_signature : [any]
@@ -509,7 +493,7 @@
     out : Out
 
 - op : concat
-  backward : concat_grad
+  backward : concat_grad, concat_double_grad
   inputs:
     x: X
   outputs:
@@ -520,8 +504,11 @@
     axis :
       data_type : int
       tensor_name : AxisTensor
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+  get_expected_kernel_type :
+    concat : GetConcatExpectedKernelType
 
 - op : conditional_block
   backward : conditional_block_grad
@@ -1066,9 +1053,15 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : floor_divide (elementwise_floordiv)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [floor_divide]
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
@@ -1275,9 +1268,14 @@
 
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : histogram
   inputs :
@@ -2144,9 +2142,15 @@
     attrs : [bool use_mkldnn = false]
 
 - op : remainder (elementwise_mod)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [remainder]
 
 - op : renorm
   backward : renorm_grad
