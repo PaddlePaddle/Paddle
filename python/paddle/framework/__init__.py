@@ -33,6 +33,7 @@ from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..fluid.dygraph.base import grad  # noqa: F401
 from .io import save  # noqa: F401
 from .io import load  # noqa: F401
+from .io import async_save, clear_async_save_task_queue  # noqa: F401
 
 from .io_utils import _open_file_buffer  # noqa: F401
 from .io_utils import is_parameter  # noqa: F401

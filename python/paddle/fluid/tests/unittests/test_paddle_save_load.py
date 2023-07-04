@@ -119,6 +119,37 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
             np.testing.assert_array_equal(dict_load[key], value.numpy())
 
 
+class TestAsyncSaveLoadLargeParameters(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_large_parameters_paddle_async_save(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        paddle.set_device("cpu")
+        # create network
+        layer = LayerWithLargeParameters()
+        save_dict = layer.state_dict()
+
+        path = os.path.join(
+            self.temp_dir.name,
+            "test_paddle_save_load_large_param_save",
+            "layer.pdparams",
+        )
+        protocol = 4
+        paddle.async_save(
+            save_dict, path, sync_other_task=True, protocol=protocol
+        )
+        paddle.clear_async_save_task_queue()
+        dict_load = paddle.load(path, return_numpy=True)
+        # compare results before and after saving
+        for key, value in save_dict.items():
+            np.testing.assert_array_equal(dict_load[key], value.numpy())
+
+
 class TestSaveLoadPickle(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1047,6 +1078,71 @@ class TestSaveLoad(unittest.TestCase):
             paddle.load(
                 os.path.join(self.temp_dir.name, "test_paddle_save_load.linear")
             )
+
+
+class TestAsyncSaveLoad(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+
+        # config seed
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def build_and_train_model(self):
+        # create network
+        layer = LinearNet()
+        loss_fn = nn.CrossEntropyLoss()
+
+        adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+
+        # create data loader
+        # TODO: using new DataLoader cause unknown Timeout on windows, replace it
+        loader = random_batch_reader()
+
+        # train
+        train(layer, loader, loss_fn, adam)
+
+        return layer, adam
+
+    def check_load_state_dict(self, orig_dict, load_dict):
+        for var_name, value in orig_dict.items():
+            load_value = (
+                load_dict[var_name].numpy()
+                if hasattr(load_dict[var_name], 'numpy')
+                else np.array(load_dict[var_name])
+            )
+            np.testing.assert_array_equal(value.numpy(), load_value)
+
+    def test_async_save_load(self):
+        layer, opt = self.build_and_train_model()
+
+        # save
+        layer_save_path = os.path.join(
+            self.temp_dir.name, "test_paddle_save_load.linear.pdparams"
+        )
+        opt_save_path = os.path.join(
+            self.temp_dir.name, "test_paddle_save_load.linear.pdopt"
+        )
+        layer_state_dict = layer.state_dict()
+        opt_state_dict = opt.state_dict()
+
+        paddle.async_save(
+            layer_state_dict, layer_save_path, sync_other_task=True
+        )
+        paddle.async_save(opt_state_dict, opt_save_path)
+        paddle.clear_async_save_task_queue()
+
+        # load
+        load_layer_state_dict = paddle.load(layer_save_path)
+        load_opt_state_dict = paddle.load(opt_save_path)
+
+        self.check_load_state_dict(layer_state_dict, load_layer_state_dict)
+        self.check_load_state_dict(opt_state_dict, load_opt_state_dict)
 
 
 class TestSaveLoadProgram(unittest.TestCase):
