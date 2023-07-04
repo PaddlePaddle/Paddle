@@ -524,7 +524,6 @@ class TensorRTEngine {
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
-
       if (input_shape.size() == 0) {
         input_shape.push_back(1);
       }

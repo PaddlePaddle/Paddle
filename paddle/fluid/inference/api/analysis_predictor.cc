@@ -2238,7 +2238,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     // assumption that all shape tensors in the model have numbers <= 7.
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
-    auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
+    auto is_shape_tensor = tensor.numel() <= 8 && tensor.numel() >= 1;
     if ((tensor.dtype() == phi::DataType::INT32 ||
          tensor.dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
