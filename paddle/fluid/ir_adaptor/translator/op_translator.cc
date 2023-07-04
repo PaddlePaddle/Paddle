@@ -802,18 +802,21 @@ struct AssignValueOpTranscriber : public OpTranscriber {
         dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
     attribute_map["place"] = attr_place;
 
-    if (op_desc.HasAttr("bool_values")) {
+    int dtype = paddle::get<int>(op_desc.GetAttr("dtype"));
+
+    if (dtype == /*BOOL*/ 0) {
       legacy_attr = op_desc.GetAttr("bool_values");
-    } else if (op_desc.HasAttr("fp32_values")) {
-      legacy_attr = op_desc.GetAttr("fp32_values");
-    } else if (op_desc.HasAttr("int32_values")) {
+    } else if (dtype == /*INT32*/ 2) {
       legacy_attr = op_desc.GetAttr("int32_values");
-    } else if (op_desc.HasAttr("int64_values")) {
+    } else if (dtype == /*FP32*/ 5) {
+      legacy_attr = op_desc.GetAttr("fp32_values");
+    } else if (dtype == /*INT64*/ 3) {
       legacy_attr = op_desc.GetAttr("int64_values");
     } else {
       IR_THROW(
           "Op assign_value should have attribute `**_values` but not find");
     }
+
     ir::Attribute attr_values = attribute_translator(
         attr_info_maps.at("values").type_name, legacy_attr);
     attribute_map["values"] = attr_values;
