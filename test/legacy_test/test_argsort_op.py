@@ -522,14 +522,22 @@ class TestArgsortFP16Op(OpTest):
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
         self.dtype = np.float16
-        X = np.random.random((2, 8)).astype('float16')
+        self.descending = False
+        self.attrs = {"axis": self.axis, "descending": self.descending}
+        X = np.random.rand(*self.input_shape).astype('float16')
         self.inputs = {'X': X}
-        Out = np.argsort(X, axis=self.axis)
-        self.outputs = {'Out': Out}
+        Out = np.sort(X, axis=self.axis)
+        indices = np.argsort(X, axis=self.axis)
+        self.outputs = {
+            'Out': Out,
+            'Indices': indices,
+        }
 
     def init(self):
-        self.input_shape = [2, 8]
-        self.axis = -1
+        self.input_shape = [
+            10000,
+        ]
+        self.axis = 0
 
     def init_direction(self):
         self.descending = False
@@ -560,14 +568,22 @@ class TestArgsortBF16Op(OpTest):
         self.public_python_api = paddle.argsort
         self.dtype = np.uint16
         self.np_dtype = np.float32
-        X = np.random.random((2, 8)).astype(self.np_dtype)
-        Out = np.argsort(X, axis=self.axis)
+        self.descending = False
+        self.attrs = {"axis": self.axis, "descending": self.descending}
+        X = np.random.rand(*self.input_shape).astype(self.np_dtype)
+        Out = np.sort(X, axis=self.axis)
+        indices = np.argsort(X, axis=self.axis)
         self.inputs = {'X': convert_float_to_uint16(X)}
-        self.outputs = {'Out': convert_float_to_uint16(Out)}
+        self.outputs = {
+            'Out': convert_float_to_uint16(Out),
+            'Indices': convert_float_to_uint16(indices),
+        }
 
     def init(self):
-        self.input_shape = [2, 8]
-        self.axis = -1
+        self.input_shape = [
+            10000,
+        ]
+        self.axis = 0
 
     def init_direction(self):
         self.descending = False
