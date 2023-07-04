@@ -740,19 +740,19 @@ class OpConverter {
     }
 
     for (size_t i = 0; i < num_out; i++) {
-      VLOG(3) << output_tensor_names[i] << "'s dimension :";
-      // std::cout << output_tensor_names[i] << "'s dimension :" << std::endl;
-      for (int ii = 0; ii < layer->getOutput(i)->getDimensions().nbDims; ii++) {
-        VLOG(3) << layer->getOutput(i)->getDimensions().d[ii];
-        // std::cout << layer->getOutput(i)->getDimensions().d[ii] << std::endl;
-      }
-
-      PADDLE_ENFORCE_GT(
+      nvinfer1::Dims tmp_dims = layer->getOutput(i)->getDimensions();
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+      PADDLE_ENFORCE_GE(
           layer->getOutput(i)->getDimensions().nbDims,
           0,
           platform::errors::InvalidArgument(
               "Error occures in Paddle-TRT layer with output name: %s",
               output_tensor_names[i].c_str()));
+
+      std::cout << output_tensor_names[i] << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]" << std::endl;
     }
 
     layer->setName((layer_name + ")").c_str());
