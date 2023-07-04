@@ -32,6 +32,7 @@
 #include "paddle/phi/core/kernel_context.h"
 
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -62,9 +63,9 @@ void BuildPhiContext(
   auto attr_map = op->attributes();
 
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
-
   auto& name2id = op_yaml_info.Name2Id();
   for (auto& t : vec_kernel_fn_tensor_params) {
+    std::cerr << "tensor param" << t << std::endl;
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
@@ -95,6 +96,7 @@ void BuildPhiContext(
     }
   }
 
+  std::cerr << "fin inut" << std::endl;
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
     if (name2id.count(t)) {
@@ -142,6 +144,8 @@ void BuildPhiContext(
           attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else if (attr_type_name == "ir::Int32Attribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+    } else if (attr_type_name == "ir::Int64Attribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
     } else if (attr_type_name == "ir::BoolAttribute") {
@@ -159,6 +163,29 @@ void BuildPhiContext(
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 attr_type_name));
       }
+    } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
+      std::cerr << "int64 array" << std::endl;
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      std::cerr << "len " << array_list.size() << std::endl;
+
+      std::vector<int64_t> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<ir::Int64Attribute>(),
+            true,
+            phi::errors::PreconditionNotMet(
+                "Element in array list MUST be ir::Int64Attribute "));
+        std::cerr << "int 64" << std::endl;
+
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          std::cerr << "i  " << i << "\t"
+                    << array_list[i].dyn_cast<ir::Int64Attribute>().data()
+                    << std::endl;
+          vec_res.push_back(
+              array_list[i].dyn_cast<ir::Int64Attribute>().data());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
       ctx->EmplaceBackAttr(
           attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
@@ -187,13 +214,19 @@ void BuildPhiContext(
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
       auto name = name_map.at(out_ptr);
-      if (out_ptr.type()) {
-        ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
-            &(scope->Var(name)->Get<phi::DenseTensor>()))));
-      } else {
+      auto out_type = out_ptr.type();
+      if (!out_type) {
         phi::DenseTensor* ptr = nullptr;
         OutType out_ptr(ptr);
         ctx->EmplaceBackOutput(out_ptr);
+      } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+        ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
+            &(scope->Var(name)->Get<phi::DenseTensor>()))));
+      } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+        ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
+            &(scope->Var(name)->Get<phi::SelectedRows>()))));
+      } else {
+        PADDLE_THROW("not support type");
       }
 
       if (output_map != nullptr) {
