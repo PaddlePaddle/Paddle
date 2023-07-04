@@ -72,6 +72,8 @@ void BuildPhiContext(
     std::map<std::string, std::vector<int>>* output_map = nullptr) {
   paddle::framework::Scope* inner_scope =
       local_scope != nullptr ? local_scope : scope;
+  VLOG(0) << "BuildPhiContext in scope[" << scope << "] inner_scope["
+          << inner_scope << "]";
   // inputs include input and mutable attributes
 
   auto attr_map = op->attributes();
@@ -93,12 +95,12 @@ void BuildPhiContext(
       continue;
     }
     auto in_var_name = name_map.at(ptr);
-    VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
+    VLOG(0) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindLocalVar(in_var_name),
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
-
+    VLOG(0) << "FindVar: " << in_var_name << " from " << inner_scope;
     auto var = inner_scope->FindVar(in_var_name);
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
@@ -138,10 +140,12 @@ void BuildPhiContext(
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
       if (tensor_attr_type == "paddle::dialect::IntArrayAttribute") {
+        VLOG(0) << "FindVar: " << in_var_name << " from " << inner_scope;
         phi::Attribute r1 = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
         ctx->EmplaceBackAttr(r1);
       } else if (tensor_attr_type == "paddle::dialect::ScalarAttribute") {
+        VLOG(0) << "FindVar: " << in_var_name << " from " << inner_scope;
         phi::Attribute r1 = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
 
@@ -242,6 +246,8 @@ void BuildPhiContext(
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
        "pd.fetch")) {
     // process fetch op
+    VLOG(0) << "FindVar: fetch"
+            << " from " << inner_scope;
     auto fetch_var = inner_scope->FindVar("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
     int index =
@@ -253,6 +259,7 @@ void BuildPhiContext(
       ir::Value out_ptr = op->result(i);
       auto name = name_map.at(out_ptr);
       if (out_ptr.type()) {
+        VLOG(0) << "FindVar: " << name << " from " << inner_scope;
         ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
             &(inner_scope->FindVar(name)->Get<phi::DenseTensor>()))));
       } else {

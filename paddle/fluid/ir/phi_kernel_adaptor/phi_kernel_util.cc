@@ -56,8 +56,10 @@ paddle::framework::Variable* CreateVar(ir::Value value,
                         .data();
   }
   if (is_persisable) {
+    VLOG(0) << "Create var: " << name << " in scope " << scope;
     return scope->Var(name);
   } else {
+    VLOG(0) << "Create var: " << name << " in scope " << local_scope;
     return local_scope->Var(name);
   }
 }
@@ -76,8 +78,10 @@ void HandleForSpecialOp(ir::Operation* op,
 
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
+    VLOG(0) << "Handle for pd.fetch:";
     for (size_t i = 0; i < input_num; ++i) {
       auto var = scope->Var("fetch");
+      VLOG(0) << "Create var: fetch in scope " << scope;
       auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
       int index =
           op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
@@ -86,6 +90,7 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 
   if (op_name == "pd.feed") {
+    VLOG(0) << "Handle for pd.feed:";
     auto ptr = op->result(0);
     std::string name = "inner_var_" + std::to_string(count++);
     name_map->emplace(ptr, name);
@@ -94,6 +99,7 @@ void HandleForSpecialOp(ir::Operation* op,
     auto out_tensor = var->GetMutable<phi::DenseTensor>();
 
     auto feed_var = scope->Var("feed");
+    VLOG(0) << "Create var: feed in scope " << scope;
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
     auto feed_list = feed_var->Get<paddle::framework::FeedList>();
@@ -102,7 +108,7 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 
   if (op_name == "builtin.combine") {
-    VLOG(5) << "process builtin combine";
+    VLOG(0) << "Handle for builtin.combine:";
     auto out_value = op->result(0);
     std::string name;
     if (name_map->find(out_value) != name_map->end()) {
@@ -129,6 +135,7 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 
   if (op_name == "builtin.set_parameter") {
+    VLOG(0) << "Handle for builtin.set_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
                           .dyn_cast<ir::StrAttribute>()
@@ -143,6 +150,7 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 
   if (op_name == "builtin.get_parameter") {
+    VLOG(0) << "Handle for builtin.get_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
                           .dyn_cast<ir::StrAttribute>()
@@ -158,8 +166,9 @@ void BuildScope(ir::Block* block,
                 std::unordered_map<ir::Value, std::string>* name_map) {
   // NOTE(zhiqiu): if use local_scope (local_scope != nullptr), the persistable
   // is created in scope , and other is created in local_scope.
-  VLOG(4) << "local scope is: " << local_scope;
   auto inner_local_scope = local_scope != nullptr ? local_scope : scope;
+  VLOG(0) << "Build: scope [" << scope << "] inner_local_scope ["
+          << inner_local_scope << "]";
 
   // int count = name_map->size();
   int count = name_map->size();
@@ -173,7 +182,7 @@ void BuildScope(ir::Block* block,
     }
 
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter" ||
+        op_name == "pd.feed" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter") {
       VLOG(6) << "HandleForSpecialOp: " << op_name;
       HandleForSpecialOp(op, scope, inner_local_scope, name_map, count);
