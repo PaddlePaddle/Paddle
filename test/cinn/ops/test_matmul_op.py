@@ -68,7 +68,7 @@ class TestMatmulOp(OpTest):
         out = self.cinn_func(builder, x, y)
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x, y], [self.x_np, self.y_np], [out], passes=list()
+            prog, target, [x, y], [self.x_np, self.y_np], [out], passes=[]
         )
         self.cinn_outputs = res
 

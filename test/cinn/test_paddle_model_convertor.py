@@ -21,7 +21,10 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import DefaultNVGPUTarget
+from cinn.common import (
+    DefaultHostTarget,
+    DefaultNVGPUTarget,
+)
 from cinn.frontend import PaddleModelConvertor
 from cinn.runtime import seed as cinn_seed
 from op_mappers.op_mapper_test import OpMapperTest
@@ -123,7 +126,7 @@ class TestPaddleModel(OpMapperTest):
         return attr_map
 
     def init_case(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         for i in range(len(self.feed_names)):
             # check no repeat variable
             self.assertNotIn(
@@ -203,7 +206,7 @@ class TestPaddleModel(OpMapperTest):
             msg="CINN only support single block now",
         )
 
-        feed_with_param = list()
+        feed_with_param = []
 
         convertor = PaddleModelConvertor(target)
         for i in range(len(self.feed_names)):
