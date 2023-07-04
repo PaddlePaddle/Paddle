@@ -512,7 +512,7 @@ struct HorizontalFuseUtil {
   static bool ReduceFuseReduce(FusePassCtxT* ctx,
                                const OpGroupPtr& src,
                                const OpGroupPtr& dst) {
-    return utils::ReduceFuseReduce(src, dst);
+    return ctx->fuse_helper().ReduceFuseReduce(src, dst);
   }
 };
 
@@ -880,7 +880,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
   static bool ReduceFuseReduce(LightwareFusePassCtx* ctx,
                                const OpGroupPtr& src,
                                const OpGroupPtr& dst) {
-    return utils::ReduceFuseReduce(src, dst);
+    return ctx->fuse_helper().ReduceFuseReduce(src, dst);
   }
 };
 
