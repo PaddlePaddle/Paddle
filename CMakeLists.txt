@@ -24,9 +24,6 @@ endif()
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
-  cmake_policy(SET CMP0104 OLD)
-endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -696,12 +693,21 @@ if(ON_INFER)
     STATUS "On inference mode, will take place some specific optimization.")
   include(inference_lib)
   add_definitions(-DPADDLE_ON_INFERENCE)
+  set(WITH_SHARED_IR
+      OFF
+      CACHE STRING "Only paddle_inference.so is allowed in inference." FORCE)
 else()
   #TODO(luotao), combine this warning with `make inference_lib_dist` command.
   message(
     WARNING
       "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only."
   )
+endif()
+
+if(NOT WITH_SHARED_IR)
+  if(WIN32)
+    add_definitions(-DIR_API=)
+  endif()
 endif()
 
 if(WITH_STRIP)

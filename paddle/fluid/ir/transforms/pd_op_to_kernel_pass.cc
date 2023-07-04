@@ -132,6 +132,7 @@ phi::KernelKey GetKernelKey(
       }
 
       auto input_tmp = op->operand(i);
+      // NOTE: if not input_tmp, it's an optional input
       if (!input_tmp) {
         continue;
       }

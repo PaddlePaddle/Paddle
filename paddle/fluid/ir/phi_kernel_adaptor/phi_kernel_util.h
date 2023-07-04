@@ -202,6 +202,7 @@ void BuildPhiContext(
               array_list[i].dyn_cast<ir::Int64Attribute>().data());
         }
       }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
 
