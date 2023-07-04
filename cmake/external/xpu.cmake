@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ set(XPU_XFT_GET_DEPENCE_URL
     CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
-set(XPU_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/xpu")
+set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
 set(XPU_INSTALL_DIR "${THIRD_PARTY_PATH}/install/xpu")
 set(XPU_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
 set(XPU_LIB_DIR "${THIRD_PARTY_PATH}/install/xpu/lib")
@@ -147,9 +147,8 @@ ExternalProject_Add(
     ${XPU_XCCL_BASE_URL} && bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_depence.sh ${XPU_XRE_URL}
     ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
-    ${XPU_XCCL_DIR_NAME} && wget -q ${XPU_XFT_GET_DEPENCE_URL} -O
-    get_xft_dependence.sh && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME} && bash
+    ${XPU_XCCL_DIR_NAME} && wget ${XPU_XFT_GET_DEPENCE_URL} && bash
+    get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
     ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
