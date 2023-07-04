@@ -14,6 +14,7 @@
 
 import copy
 import os
+import time
 
 import paddle
 from paddle.base import compiler
@@ -369,6 +370,80 @@ class Fleet:
                     'model', mp_rank, mp_degree, mp_ring_id, mp_group_ranks
                 )
         return self
+
+    def perf_test(self, round=50):
+        # test allreduce perf
+        def allreduce_test(iteration, x, group):
+            paddle.distributed.barrier()
+            paddle.device.cuda.synchronize()
+            start_t = time.time()
+            for _ in range(iteration):
+                paddle.distributed.all_reduce(x, group=group)
+            paddle.device.cuda.synchronize()
+            end_t = time.time()
+            return (end_t - start_t) / iteration
+
+        # test reduce perf
+        def reduce_test(iteration, x, group):
+            paddle.distributed.barrier()
+            paddle.device.cuda.synchronize()
+            start_t = time.time()
+            for _ in range(iteration):
+                # TODO: shuffle dst
+                paddle.distributed.reduce(x, dst=min(group.ranks), group=group)
+            paddle.device.cuda.synchronize()
+            end_t = time.time()
+            return (end_t - start_t) / iteration
+
+        # test broadcast perf
+        def broadcast_test(iteration, x, group):
+            paddle.distributed.barrier()
+            paddle.device.cuda.synchronize()
+            start_t = time.time()
+            for _ in range(iteration):
+                # TODO: shuffle src
+                paddle.distributed.broadcast(
+                    x, src=min(group.ranks), group=group
+                )
+            paddle.device.cuda.synchronize()
+            end_t = time.time()
+            return (end_t - start_t) / iteration
+
+        hcg = self.get_hybrid_communicate_group()
+        dp_group = hcg.get_data_parallel_group()
+        sharding_group = hcg.get_sharding_parallel_group()
+        test_group = None
+        if dp_group.nranks > 1:
+            test_group = dp_group
+        elif sharding_group.nranks > 1:
+            test_group = sharding_group
+        else:
+            logger.warning(
+                f"hcg created with dp_degree: {dp_group.nranks} and sharding_degree: {sharding_group.nranks}, skipping perf test..."
+            )
+            return
+        # test 1M ~ 1G
+        nbytes = 1 << 20  # 1048576(1MB)
+        final_nbytes = 1 << 30  # 1073741824(1GB)
+        dtype = paddle.float32
+        while nbytes <= final_nbytes:
+            x = paddle.zeros([nbytes // 4], dtype=dtype)
+            # warmup
+            allreduce_test(iteration=10, x=x, group=test_group)
+            # test-allreduce
+            ret = allreduce_test(iteration=round, x=x, group=test_group)
+            logger.info(
+                f"[AllReduceTest] nbytes {nbytes}B test result: {ret} s/iter"
+            )
+            ret = reduce_test(iteration=round, x=x, group=test_group)
+            logger.info(
+                f"[ReduceTest] nbytes {nbytes}B test result: {ret} s/iter"
+            )
+            ret = broadcast_test(iteration=round, x=x, group=test_group)
+            logger.info(
+                f"[BroadcastTest] nbytes {nbytes}B test result: {ret} s/iter"
+            )
+            nbytes = nbytes << 1
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
