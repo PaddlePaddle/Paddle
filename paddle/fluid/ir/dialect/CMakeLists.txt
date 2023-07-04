@@ -19,8 +19,13 @@ set(op_backward_yaml_file2
 )
 set(op_yaml_file3 ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/pd_op.yaml)
 
+# TODO(wilber): Maybe we should generate in backend dialect. Now just generated in pd_op for test.
+set(op_fusion_yaml_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
+)
+
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3}
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_fusion_yaml_file}
 )
 set(op_namespace paddle,dialect)
 set(dialect_name pd)

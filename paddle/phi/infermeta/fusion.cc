@@ -105,6 +105,155 @@ inline int ConvOutSize(int input_size,
   return output_size;
 }
 
+static std::vector<int64_t> ComputeOutputShape(
+    const MetaTensor& input,
+    const MetaTensor& filter,
+    const MetaTensor& bias,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& padding_algorithm,
+    const std::vector<int>& dilations,
+    int groups,
+    const std::string& data_format,
+    bool channel_last) {
+  auto in_dims = input.dims();
+  auto filter_dims = filter.dims();
+
+  int dilation_size = dilations.size();
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4 || in_dims.size() == 5,
+      true,
+      phi::errors::InvalidArgument(
+          "The input of Op(Conv) should be a 4-D or 5-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      filter_dims.size(),
+      phi::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(Conv) should be equal. But received: the input's shape is "
+          "[%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims,
+          in_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      strides.size() + 2U,
+      phi::errors::InvalidArgument(
+          "The difference of input's dimension and Attr(strides)'s "
+          "length must be euqal to 2 for Op(Conv). "
+          "But received: input's dimension is %d, input's shape is [%s]; "
+          "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
+          "difference of input's dimention and Attr(strides)'s length = %u.",
+          in_dims.size(),
+          in_dims,
+          strides.size(),
+          phi::make_ddim(strides),
+          in_dims.size() - stride_size));
+
+  const auto input_channels =
+      channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
+
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      (channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1]) *
+          groups,
+      phi::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's "
+          "channels "
+          "* groups for Op(Conv). But received: the input's channels is %d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d, the data_format is %s. "
+          "The error may come from wrong data_format setting.",
+          input_channels,
+          in_dims,
+          channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1],
+          filter_dims,
+          groups,
+          data_format));
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output's channels (filter's first dimension) of "
+          "Op(Conv) should be divided by groups. But received: "
+          "the output channels is %d, the filter's shape is [%s], "
+          "the groups is %d.",
+          filter_dims[0],
+          filter_dims,
+          groups));
+
+  phi::DDim in_data_dims;
+  if (channel_last) {
+    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+  } else {
+    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+  }
+
+  phi::DDim filter_data_dims;
+  if (channel_last) {
+    filter_data_dims = phi::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+  } else {
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  }
+
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  std::vector<int> paddings_vec = paddings;
+  std::vector<int> dilations_vec = dilations;
+  phi::UpdatePaddingAndDilation(&paddings_vec,
+                                &dilations_vec,
+                                padding_algorithm,
+                                in_data_dims,
+                                strides,
+                                ksize);
+
+  std::vector<int64_t> output_shape({in_dims[0]});
+  if (!channel_last) {
+    output_shape.push_back(filter_dims[0]);
+  }
+  for (int i = 0; i < in_data_dims.size(); ++i) {
+    output_shape.push_back(ConvOutSize(in_data_dims[i],
+                                       filter_data_dims[i],
+                                       dilations[i],
+                                       paddings_vec[2 * i],
+                                       paddings_vec[2 * i + 1],
+                                       strides[i]));
+  }
+  if (channel_last) {
+    output_shape.push_back(filter_dims[0]);
+  }
+
+  return output_shape;
+}
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -123,110 +272,17 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         float act_param,
                         MetaTensor* out,
                         MetaTensor* out_max) {
-  auto in_dims = x.dims();
-  auto filter_dims = filter.dims();
-  // do some checks
-  PADDLE_ENFORCE_EQ(
-      in_dims.size(),
-      4,
-      phi::errors::InvalidArgument(
-          "The input of Op(Conv_xpu) should be a 4-D Tensor. But "
-          "received: input's dimension is %u, input's shape is [%s].",
-          in_dims.size(),
-          in_dims));
+  auto out_shape = ComputeOutputShape(x,
+                                      filter,
+                                      bias,
+                                      strides,
+                                      paddings,
+                                      padding_algorithm,
+                                      dilations,
+                                      groups,
+                                      "NCHW", /*xpu now only support NCHW*/
+                                      false);
 
-  PADDLE_ENFORCE_EQ(
-      in_dims.size(),
-      filter_dims.size(),
-      phi::errors::InvalidArgument(
-          "The input's dimension and filter's dimension of "
-          "Op(Conv_xpu) should be equal. But received: the input's shape is "
-          "[%s], "
-          "the input's dimension is %d; the filter's shape is [%s],  "
-          "the filter's dimension is %d.",
-          in_dims,
-          in_dims.size(),
-          filter_dims,
-          filter_dims.size()));
-
-  const auto input_channels = in_dims[1];
-  int stride_size = strides.size();
-  int in_sub_stride_size = in_dims.size() - stride_size;
-  int dilation_size = dilations.size();
-  PADDLE_ENFORCE_EQ(
-      in_dims.size(),
-      strides.size() + 2U,
-      phi::errors::InvalidArgument(
-          "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv_xpu). "
-          "But received: input's dimension is %d, input's shape is [%s]; "
-          "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
-          "difference of input's dimention and Attr(strides)'s length = %u.",
-          in_dims.size(),
-          in_dims,
-          strides.size(),
-          phi::make_ddim(strides),
-          in_sub_stride_size));
-
-  for (int i = 0; i < dilation_size; ++i) {
-    PADDLE_ENFORCE_GT(
-        dilations[i],
-        0,
-        phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
-            "dilation is %d.",
-            dilations[i]));
-  }
-
-  PADDLE_ENFORCE_EQ(
-      input_channels,
-      filter_dims[1] * groups,
-      phi::errors::InvalidArgument(
-          "The number of input's channels should be equal to filter's channels "
-          "* groups for Op(Conv_xpu). But received: the input's channels is "
-          "%d, "
-          "the input's shape is [%s]; the filter's channels is %d, the "
-          "filter's shape is [%s]; the groups is %d. ",
-          input_channels,
-          in_dims,
-          filter_dims[1],
-          filter_dims,
-          groups));
-
-  PADDLE_ENFORCE_EQ(
-      filter_dims[0] % groups,
-      0,
-      phi::errors::InvalidArgument(
-          "The number of output's channels (filter's first dimension) of "
-          "Op(Conv) should be divided by groups. But received: "
-          "the output channels is %d, the filter's shape is [%s], "
-          "the groups is %d.",
-          filter_dims[0],
-          filter_dims,
-          groups));
-
-  // update paddings and dilations accoring to padding_algorithm
-  std::vector<int> paddings_vec = paddings;
-  std::vector<int> dilations_vec = dilations;
-  DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
-  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-  phi::UpdatePaddingAndDilation(&paddings_vec,
-                                &dilations_vec,
-                                padding_algorithm,
-                                in_data_dims,
-                                strides,
-                                ksize);
-
-  std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
-  for (size_t i = 0; i < strides.size(); ++i) {
-    out_shape.push_back(ConvOutSize(in_dims[i + 2],
-                                    filter_dims[i + 2],
-                                    dilations[i],
-                                    paddings_vec[i * 2],
-                                    paddings_vec[i * 2 + 1],
-                                    strides[i]));
-  }
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out_max->set_dims(phi::make_ddim({6}));
@@ -236,6 +292,7 @@ void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
     const MetaTensor& mask,
+    int64_t padding_idx,
     MetaTensor* out,
     MetaTensor* seq_lod,
     MetaTensor* max_seq_len) {
@@ -350,11 +407,11 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& ffn2_bias,
     const std::vector<const MetaTensor*>& cache_kv,
     const std::vector<const MetaTensor*>& pre_caches,
-    const std::vector<const MetaTensor*>& rotary_pos_emb,
-    const std::vector<const MetaTensor*>& time_step,
-    const std::vector<const MetaTensor*>& seq_lengths,
-    const std::vector<const MetaTensor*>& src_mask,
-    const std::vector<const MetaTensor*>& gather_index,
+    const MetaTensor& rotary_pos_emb,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const MetaTensor& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -684,6 +741,84 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                             data_format,
                             out,
                             out_max);
+}
+
+void Conv2dFusionInferMeta(const MetaTensor& input,
+                           const MetaTensor& filter,
+                           const MetaTensor& bias,
+                           const MetaTensor& residual,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::string& padding_algorithm,
+                           const std::vector<int>& dilations,
+                           int groups,
+                           const std::string& data_format,
+                           const std::string& activation,
+                           bool exhaustive_search,
+                           const std::vector<int>& channels,
+                           int user_workspace_size,
+                           MetaTensor* output,
+                           std::vector<MetaTensor*> outputs) {
+  // TODO(wilber): mkldnn seems only support nchw.
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+  std::vector<int64_t> out_shape = ComputeOutputShape(input,
+                                                      filter,
+                                                      bias,
+                                                      strides,
+                                                      paddings,
+                                                      padding_algorithm,
+                                                      dilations,
+                                                      groups,
+                                                      data_format,
+                                                      channel_last);
+  output->set_dims(DDim(out_shape.data(), out_shape.size()));
+  output->share_lod(input);
+
+  if (channels.size()) {
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        channels.size(),
+        phi::errors::InvalidArgument(
+            "The number of Output(Outputs) of operator 'Conv2DFusion' is "
+            "expected to be equal to the length of Attr(split_channels). But "
+            "reiceved: the number of Output(Outputs) = %u; the length of "
+            "Attr(split_channels) = %u, the content = [%s].",
+            outputs.size(),
+            channels.size(),
+            phi::make_ddim(channels)));
+
+    int split_channels_sum = 0;
+    std::vector<phi::DDim> output_shapes(channels.size());
+    for (size_t i = 0; i < channels.size(); ++i) {
+      split_channels_sum += channels[i];
+      if (channel_last) {
+        output_shapes[i] = phi::make_ddim(
+            {out_shape[0], out_shape[1], out_shape[2], channels[i]});
+      } else {
+        output_shapes[i] = phi::make_ddim(
+            {out_shape[0], channels[i], out_shape[2], out_shape[3]});
+      }
+    }
+    int output_channels = out_shape[1];
+    // for NHWC
+    if (channel_last) output_channels = out_shape[3];
+    PADDLE_ENFORCE_EQ(
+        split_channels_sum,
+        output_channels,
+        phi::errors::InvalidArgument(
+            "The sum of Attr(split_channels) is expected to be equal to "
+            "the "
+            "total output channels. But received: the sum of "
+            "Attr(split_channels) = %d, the total output channels = %d.",
+            split_channels_sum,
+            output_channels));
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      if (outputs[i] != nullptr) {
+        outputs[i]->set_dims(output_shapes[i]);
+        outputs[i]->set_dtype(input.dtype());
+      }
+    }
+  }
 }
 
 }  // namespace phi

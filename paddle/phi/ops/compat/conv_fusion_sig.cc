@@ -35,5 +35,3 @@ KernelSignature ConvFusionOpArgumentMapping(
                          {"Output", "Outputs"});
 }
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion, phi::ConvFusionOpArgumentMapping);

@@ -16,6 +16,7 @@ set(static_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/static_backward.yaml)
 set(fused_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_backward.yaml)
+set(fused_ops_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_ops.yaml)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -159,6 +160,8 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_bw_op_yaml_file}
     --output_path ./parsed_ops/sparse_backward.parsed.yaml --backward
+  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_ops_yaml_file}
+          --output_path ./parsed_ops/fused_ops.parsed.yaml
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_bw_op_yaml_file}
     --output_path ./parsed_ops/static_backward.parsed.yaml --backward

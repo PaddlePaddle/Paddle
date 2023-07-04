@@ -374,7 +374,7 @@ void ConvFusionKernel(const Context& ctx,
                       const std::vector<int>& channels,
                       int user_workspace_size,
                       DenseTensor* output,
-                      std::vector<DenseTensor*> outs) {
+                      std::vector<DenseTensor*> outputs) {
   auto handle = ctx.cudnn_handle();
   ctx.template Alloc<T>(output);
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -629,8 +629,8 @@ void ConvFusionKernel(const Context& ctx,
       int s = 0;
       for (size_t i = 0; i < channels.size(); ++i) {
         int e = s + channels[i];
-        outs[i]->ShareDataWith(t.Slice(s, e));
-        outs[i]->Resize(
+        outputs[i]->ShareDataWith(t.Slice(s, e));
+        outputs[i]->Resize(
             {transformed_input.dims()[0], channels[i], y_dims[2], y_dims[3]});
         s = e;
       }

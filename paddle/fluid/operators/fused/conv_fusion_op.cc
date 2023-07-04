@@ -370,12 +370,6 @@ class Conv2DFusionOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    conv2d_fusion,
-    ops::Conv2DFusionOp,
-    ops::Conv2DFusionOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 // This op is used by cutlass, conv2d_fusion_cutlass is a intermediate op
 // produced by conv2d_fusion_layout_transfer_pass.

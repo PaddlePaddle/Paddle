@@ -53,6 +53,7 @@ void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
     const MetaTensor& mask,
+    int64_t padding_idx,
     MetaTensor* out,
     MetaTensor* seq_lod,
     MetaTensor* max_seq_len);
@@ -118,11 +119,11 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& ffn2_bias,
     const std::vector<const MetaTensor*>& cache_kv,
     const std::vector<const MetaTensor*>& pre_caches,
-    const std::vector<const MetaTensor*>& rotary_pos_emb,
-    const std::vector<const MetaTensor*>& time_step,
-    const std::vector<const MetaTensor*>& seq_lengths,
-    const std::vector<const MetaTensor*>& src_mask,
-    const std::vector<const MetaTensor*>& gather_index,
+    const MetaTensor& rotary_pos_emb,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const MetaTensor& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -163,4 +164,23 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                                  const std::string& act_type,
                                  MetaTensor* out,
                                  MetaTensor* out_max);
+
+// TODO(wilber): conv_fusion should have a common ir in both xpu and gpu.
+void Conv2dFusionInferMeta(const MetaTensor& input,
+                           const MetaTensor& filter,
+                           const MetaTensor& bias,
+                           const MetaTensor& residual,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::string& padding_algorithm,
+                           const std::vector<int>& dilations,
+                           int groups,
+                           const std::string& data_format,
+                           const std::string& activation,
+                           bool exhaustive_search,
+                           const std::vector<int>& channels,
+                           int user_workspace_size,
+                           MetaTensor* output,
+                           std::vector<MetaTensor*> outputs);
+
 }  // namespace phi
