@@ -374,8 +374,8 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     // TODO(lyk): HasInput doesnot consider variadic attribute
     bool get_from_input = op_desc.HasInput(legacy_input_name) ||
                           (op_desc.HasAttr(legacy_input_name) == false &&
-                               op_desc.HasAttr(legacy_input_name, true) ==
-                                   true;) if (get_from_input) {
+                           op_desc.HasAttr(legacy_input_name, true) == true);
+    if (get_from_input) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
