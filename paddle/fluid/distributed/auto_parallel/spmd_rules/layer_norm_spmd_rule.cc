@@ -35,7 +35,7 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   auto scale_shape = input_specs[1].shape();
   auto bias_shape = input_specs[2].shape();
   int x_ndim = x_shape.size();
-  int scale_ndim = y_shape.size();
+  int scale_ndim = scale_shape.size();
   int bias_ndim = bias_shape.size();
 
   PADDLE_ENFORCE_EQ(
@@ -52,13 +52,11 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           "The ndim of bias in layer_norm should be 1, but got [%d].",
           bias_ndim));
 
-  PADDLE_ENFORCE_EQ(
-      x_ndim,
-      x_dims_mapping.size(),
-      phi::errors::InvalidArgument(
-          "Mismatch of X's tensor size: [%d] and X's dims_mapping size [%d].",
-          x_ndim,
-          x_dims_mapping.size()));
+  auto x_dims_mapping = input_specs[0].dist_attr().dims_mapping();
+  auto scale_dims_mapping = input_specs[1].dist_attr().dims_mapping();
+  auto bias_dims_mapping = input_specs[2].dist_attr().dims_mapping();
+
+  auto x_dist_attr_src = input_specs[0].dist_attr();
 
   std::vector<TensorDistAttr> input_dist_attrs;
   input_dist_attrs.reserve(input_specs.size());
@@ -82,13 +80,15 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   for (auto i = 0; i < x_ndim; ++i) {
     x_axes += static_cast<char>(static_cast<int>('k') - begin_norm_axis + i);
   }
-  // scale_ndim = 1
+
+  std::string scale_axes;
+  std::string bias_axes;
   if (x_ndim - begin_norm_axis == 1) {
     scale_axes = "k";
     bias_axes = "k";
   } else {
-    scale_axes =
-        "z";  // z = x_axes.substr(begin_norm_axis, x_ndim - begin_norm_axis)
+    // z = x_axes.substr(begin_norm_axis, x_ndim - begin_norm_axis)
+    scale_axes = "z";
     bias_axes = "z";
   }
   std::string out_axes = x_axes;
@@ -100,8 +100,6 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           << ").";
 
   // step2: Sharding Propogation
-  auto x_dist_attr_src = input_specs[0].dist_attr();
-  auto x_dims_mapping = x_dist_attr_src.dims_mapping();
 
   TensorDistAttr output_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -109,7 +107,7 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   std::vector<int64_t> out_dims_mapping;
   out_dims_mapping.reserve(out_axes.size());
   for (size_t i = 0; i < out_axes.size(); ++i) {
-    if (i < begin_norm_axis) {
+    if (i < static_cast<size_t>(begin_norm_axis)) {
       out_dims_mapping.push_back(x_dims_mapping[i]);
     } else {
       out_dims_mapping.push_back(-1);
@@ -128,7 +126,7 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 
   // Step2.4.  handle input and out tensor partial
   std::vector<int64_t> partial_on_dims;
-  for (auto i = 0; i < out_dims_mapping.size(); ++i) {
+  for (size_t i = 0; i < out_dims_mapping.size(); ++i) {
     if (out_dims_mapping[i] > -1) {
       partial_on_dims.push_back(out_dims_mapping[i]);
     }
@@ -136,17 +134,14 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 
   VLOG(4) << "LayerNormSPMDRule InferForward: "
           << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
-          << str_join(x_dist_attr_src.dims_mapping())
-          << "], dst_dims_mapping: ["
+          << str_join(x_dims_mapping) << "], dst_dims_mapping: ["
           << str_join(x_dist_attr_dst.dims_mapping()) << "]; scale shape: ["
           << str_join(scale_shape) << "], src_dims_mapping: ["
-          << str_join(scale_dist_attr_src.dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(scale_dist_attr_dst.dims_mapping()) << "]; bias shape: ["
+          << str_join(scale_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(input_dist_attrs[1].dims_mapping()) << "]; bias shape: ["
           << str_join(bias_shape) << "], src_dims_mapping: ["
-          << str_join(bias_dist_attr_src.dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(bias_dist_attr_dst.dims_mapping())
+          << str_join(bias_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(input_dist_attrs[2].dims_mapping())
           << "]; out dims_mapping: [" << str_join(out_dims_mapping)
           << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
 
