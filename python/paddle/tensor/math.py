@@ -2112,7 +2112,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
         )
 
     if in_dynamic_mode():
-        return _C_ops.addmm(input, x, y, beta, alpha)
+        return _C_ops.addmm_(input, x, y, beta, alpha)
 
 
 def renorm(x, p, axis, max_norm):

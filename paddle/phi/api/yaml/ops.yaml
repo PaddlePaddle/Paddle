@@ -93,13 +93,13 @@
 
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : AddmmInferMeta
   kernel :
     func : addmm
     data_type : x
-  inplace: (x -> out)
+  inplace: (input -> out)
   backward : addmm_grad
 
 - op : affine_grid

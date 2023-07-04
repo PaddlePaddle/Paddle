@@ -435,6 +435,7 @@ tensor_method_func = [  # noqa
     'log1p',
     'erf',
     'addmm',
+    'addmm_',
     'clip',
     'clip_',
     'trace',

@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
-from test_inplace import TestDygraphInplaceWithContinuous
 
 import paddle
 from paddle import fluid
@@ -460,14 +459,6 @@ class TestAddMMAPI(unittest.TestCase):
         )
 
         paddle.enable_static()
-
-
-class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.addmm(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.addmm_(var)
 
 
 if __name__ == "__main__":

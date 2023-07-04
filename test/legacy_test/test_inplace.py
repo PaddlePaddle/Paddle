@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
 
 import numpy as np
@@ -543,6 +544,13 @@ class TestGetitemBeforeInplace(unittest.TestCase):
 
 
 class TestDygraphInplaceAsin(TestDygraphInplaceWithContinuous):
+    # asin calculation will appear some nan
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.array_equal, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.asin(var)
 
@@ -559,6 +567,13 @@ class TestDygraphInplaceSinh(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceAsinh(TestDygraphInplaceWithContinuous):
+    # asinh calculation will appear some nan
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.array_equal, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.asinh(var)
 
@@ -591,6 +606,13 @@ class TestDygraphInplaceCosh(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceAcos(TestDygraphInplaceWithContinuous):
+    # acos calculation will appear some nan
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.array_equal, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.acos(var)
 
@@ -599,6 +621,13 @@ class TestDygraphInplaceAcos(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceAcosh(TestDygraphInplaceWithContinuous):
+    # acosh calculation will appear some nan
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.array_equal, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.acosh(var)
 
@@ -615,6 +644,13 @@ class TestDygraphInplaceTan(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceATan(TestDygraphInplaceWithContinuous):
+    # atan calculation will appear some nan
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.array_equal, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.atan(var)
 
@@ -623,11 +659,32 @@ class TestDygraphInplaceATan(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceATanh(TestDygraphInplaceWithContinuous):
+    # atanh calculation will appear some nan
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.array_equal, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.atanh(var)
 
     def inplace_api_processing(self, var):
         return paddle.atanh_(var)
+
+
+class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 10])
+        self.dtype = "float32"
+        self.x = paddle.randn([10, 10])
+        self.y = paddle.randn([10, 10])
+
+    def non_inplace_api_processing(self, var):
+        return paddle.addmm(var, x=self.x, y=self.y)
+
+    def inplace_api_processing(self, var):
+        return paddle.addmm_(var, x=self.x, y=self.y)
 
 
 if __name__ == '__main__':
