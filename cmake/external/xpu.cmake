@@ -170,6 +170,12 @@ if(WITH_XPTI)
   set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
 endif()
 
+if(WITH_XPU_PLUGIN)
+  message(STATUS "Compile with XPU PLUGIN!")
+  add_definitions(-DPADDLE_WITH_XPU_PLUGIN)
+  include_directories(${CMAKE_SOURCE_DIR}/paddle/phi/kernels/xpu/plugin/include)
+endif()
+
 if(WITH_XPU_BKCL AND WITH_XPU_XFT)
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB}
                         ${XPU_XFT_LIB})

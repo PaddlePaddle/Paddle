@@ -16,8 +16,12 @@
 
 #include <pybind11/pybind11.h>
 
+#include "paddle/fluid/framework/ir/graph.h"
+
 namespace paddle {
 namespace pybind {
-void BindNewIR(pybind11::module *m);
+void BindGraph(pybind11::module *m);
+void BindNode(pybind11::module *m);
+void BindPass(pybind11::module *m);
 }  // namespace pybind
 }  // namespace paddle

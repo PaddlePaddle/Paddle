@@ -11,24 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
 
 #pragma once
+#include "xpu/xdnn.h"
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
+namespace baidu {
+namespace xpu {
+namespace api {
+namespace plugin {
 
-// TODO(ljz) Automatic this process in cmake file.
-namespace paddle {
-namespace distributed {
-namespace auto_parallel {
+DLL_EXPORT int add2(Context* ctx, const float* x, float* y, int len);
 
-// matmul rule
-REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
-
-// replicated rule
-REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
-
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace plugin
+}  // namespace api
+}  // namespace xpu
+}  // namespace baidu
