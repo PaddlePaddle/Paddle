@@ -24,9 +24,6 @@ endif()
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
-  cmake_policy(SET CMP0104 OLD)
-endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -56,6 +53,7 @@ option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
+option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -695,12 +693,21 @@ if(ON_INFER)
     STATUS "On inference mode, will take place some specific optimization.")
   include(inference_lib)
   add_definitions(-DPADDLE_ON_INFERENCE)
+  set(WITH_SHARED_IR
+      OFF
+      CACHE STRING "Only paddle_inference.so is allowed in inference." FORCE)
 else()
   #TODO(luotao), combine this warning with `make inference_lib_dist` command.
   message(
     WARNING
       "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only."
   )
+endif()
+
+if(NOT WITH_SHARED_IR)
+  if(WIN32)
+    add_definitions(-DIR_API=)
+  endif()
 endif()
 
 if(WITH_STRIP)

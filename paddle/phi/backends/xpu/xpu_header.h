@@ -24,6 +24,9 @@ limitations under the License. */
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
+#ifdef PADDLE_WITH_XPU_PLUGIN
+#include "xpu/plugin.h"
+#endif
 
 namespace xpu = baidu::xpu::api;
 

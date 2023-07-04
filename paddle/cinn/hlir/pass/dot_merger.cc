@@ -130,7 +130,7 @@ class DotBuilder {
   const shape_dict_t& shape_dict() const { return shape_dict_; }
 
   // Currently the constructor of `NodeData` needs to pass in `Shared<Node>`.
-  NodeData* Var(common::Shared<Node>& producer) {
+  NodeData* Var(common::Shared<Node>& producer) {  // NOLINT
     auto* res = new NodeData(producer, 0, 0, node_name("var"), false);
     graph_->RegisterNode(producer->id(), res);
     graph_->RegisterNode(res->id(), producer.get());
