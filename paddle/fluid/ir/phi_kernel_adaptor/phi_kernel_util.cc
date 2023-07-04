@@ -43,17 +43,12 @@
 
 namespace ir {
 
-void BuildScope(
-    ir::Block* block,
-    const paddle::framework::interpreter::ExecutionConfig& execution_config,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
-    std::unordered_map<ir::Value, std::string>* name_map) {
+void BuildScope(ir::Block* block,
+                paddle::framework::Scope* scope,
+                paddle::framework::Scope* local_scope,
+                std::unordered_map<ir::Value, std::string>* name_map) {
   // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
   // created in scope , and other is created in local_scope.
-  if (!execution_config.create_local_scope) {
-    local_scope = scope;
-  }
   VLOG(4) << "local scope is: " << local_scope;
 
   std::unordered_map<ir::Value, int> map_test;

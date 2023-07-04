@@ -41,12 +41,10 @@
 
 namespace ir {
 
-void BuildScope(
-    ir::Block* block,
-    const paddle::framework::interpreter::ExecutionConfig& execution_config,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
-    std::unordered_map<ir::Value, std::string>* name_map);
+void BuildScope(ir::Block* block,
+                paddle::framework::Scope* scope,
+                paddle::framework::Scope* local_scope,
+                std::unordered_map<ir::Value, std::string>* name_map);
 
 template <typename Context,
           typename InType,
