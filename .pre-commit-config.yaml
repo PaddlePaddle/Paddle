@@ -99,6 +99,11 @@ repos:
             - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
+        # Exclude third-party libraries
+        exclude:  |
+            (?x)^(
+                paddle/utils/flat_hash_map\.h
+            )$
 # For CMake files
 -   repo: local
     hooks:
