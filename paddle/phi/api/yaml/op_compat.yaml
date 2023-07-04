@@ -132,10 +132,6 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   manual_signature : [all]
   extra :
     attrs : [bool use_mkldnn = false]
@@ -163,10 +159,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amax_grad : GetReduceGradExpectedKernelType
   manual_signature : [amax]
@@ -181,10 +173,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amin_grad : GetReduceGradExpectedKernelType
   manual_signature : [amin]
@@ -207,10 +195,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     any : GetReduceOpUseInputPlaceExpectedKernelType
   manual_signature : [any]
