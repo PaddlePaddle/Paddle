@@ -43,7 +43,7 @@ class SingleOpTester(unittest.TestCase):
         '''
         create the target of the operator's execution output.
         '''
-        raise NotImplemented
+        raise NotImplementedError
 
     def test_op(self):
         '''
