@@ -626,8 +626,6 @@ EOF
 
 
 function run_mac_test() {
-    export FLAGS_NEW_IR_OPTEST=True
-    export FLAGS_CI_PIPELINE=mac
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
@@ -773,8 +771,6 @@ EOF
 }
 
 function run_linux_cpu_test() {
-    export FLAGS_NEW_IR_OPTEST=True
-    export FLAGS_CI_PIPELINE=py3
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
