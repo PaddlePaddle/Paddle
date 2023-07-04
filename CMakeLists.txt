@@ -704,6 +704,12 @@ else()
   )
 endif()
 
+if(NOT WITH_SHARED_IR)
+  if(WIN32)
+    add_definitions(-DIR_API=)
+  endif()
+endif()
+
 if(WITH_STRIP)
   find_program(STRIP_PATH strip)
   if(NOT STRIP_PATH OR NOT LINUX)
