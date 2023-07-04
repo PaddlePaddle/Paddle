@@ -372,10 +372,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     std::vector<std::string> legacy_input_vars;
     // return empty OpResult if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasInput doesnot consider variadic attribute
-    bool get_from_input = op_desc.HasInput(legacy_input_name) ||
-                          (op_desc.HasAttr(legacy_input_name) == false &&
-                           op_desc.HasAttr(legacy_input_name, true) == true);
-    if (get_from_input) {
+    if (op_desc.HasInput(legacy_input_name, true)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
