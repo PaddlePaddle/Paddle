@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/rms_norm_kernel.h"
 
 namespace phi {
 
@@ -249,11 +248,11 @@ __global__ void int8_weight_only_gemv(const T* input,
 
 #pragma unroll
   for (int i = lane_id * kVecSize; i < k * 2; i += kVecSize * kWarpSize) {
-    *reinterpret_cast<int4*>(vec_weight) = *reinterpret_cast<int4*>(weight + i);
-    *reinterpret_cast<float4*>(vec_input) =
-        *reinterpret_cast<float4*>(input + i / 128 * 64 + (i % 64));
-    *reinterpret_cast<float4*>(vec_input + 8) =
-        *reinterpret_cast<float4*>(input + i / 128 * 64 + (i % 64) + 8);
+    *(int4*)vec_weight = *(int4*)(weight + i);            // NOLINT
+    *(float4*)vec_input =                                 // NOLINT
+        *(float4*)(input + i / 128 * 64 + (i % 64));      // NOLINT
+    *(float4*)(vec_input + 8) =                           // NOLINT
+        *(float4*)(input + i / 128 * 64 + (i % 64) + 8);  // NOLINT
 #pragma unroll
     for (int p = 0; p < kVecSize; p += 4) {
       fast_cvt_4_packed_signed_i8s_to_2_half2s<T>(vec_weight_f16 + p,
