@@ -522,13 +522,13 @@ class TestArgsortFP16Op(OpTest):
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
         self.dtype = np.float16
-        X = np.random.rand(*self.input_shape).astype("float16")
+        X = np.random.random((2, 8)).astype('float16')
         self.inputs = {'X': X}
-        Out = np.argsort(X, axis=self.axis).astype("float16")
+        Out = np.argsort(X, axis=self.axis)
         self.outputs = {'Out': Out}
 
     def init(self):
-        self.input_shape = [2, 3, 4]
+        self.input_shape = [2, 8]
         self.axis = -1
 
     def init_direction(self):
@@ -560,13 +560,13 @@ class TestArgsortBF16Op(OpTest):
         self.public_python_api = paddle.argsort
         self.dtype = np.uint16
         self.np_dtype = np.float32
-        X = np.random.rand(*self.input_shape).astype(self.np_dtype)
-        Out = np.argsort(X, axis=self.axis).astype(self.np_dtype)
+        X = np.random.random((2, 8)).astype(self.np_dtype)
+        Out = np.argsort(X, axis=self.axis)
         self.inputs = {'X': convert_float_to_uint16(X)}
         self.outputs = {'Out': convert_float_to_uint16(Out)}
 
     def init(self):
-        self.input_shape = [2, 3, 4]
+        self.input_shape = [2, 8]
         self.axis = -1
 
     def init_direction(self):
