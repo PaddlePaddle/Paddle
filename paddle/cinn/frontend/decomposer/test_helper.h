@@ -193,7 +193,7 @@ void RunDecomposer(Program* prog,
                    const std::vector<std::string>& fetch_ids = {});
 
 template <typename T>
-void RunAndCheckShape(NetBuilder& builder,
+void RunAndCheckShape(NetBuilder* builder,
                       const std::vector<std::string>& input_names,
                       const std::vector<std::string>& output_names,
                       const std::vector<std::vector<int>>& output_shapes,
@@ -202,7 +202,7 @@ void RunAndCheckShape(NetBuilder& builder,
                       T low = 0,
                       T high = 1,
                       const std::vector<std::string>& passes = {"Decomposer"}) {
-  auto prog = builder.Build();
+  auto prog = builder->Build();
   Target target = common::DefaultTarget();
   RunDecomposer(&prog, target, passes, output_names);
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
@@ -238,7 +238,7 @@ void RunAndCheckShape(NetBuilder& builder,
 }
 
 template <typename T>
-void RunAndCheck(NetBuilder& builder,
+void RunAndCheck(NetBuilder* builder,
                  const std::vector<std::string>& input_names,
                  const std::vector<std::string>& output_names,
                  const std::vector<std::vector<int>>& output_shapes,

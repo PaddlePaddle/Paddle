@@ -624,7 +624,7 @@ void PoolScheduleCPU(poly::StageMap stages,
 }
 
 void PoolScheduleGPU(poly::StageMap stages,
-                     ir::Tensor &output,
+                     const ir::Tensor &output,
                      const common::Target &target) {
   CHECK_GE(stages[output]->axis_names().size(), 4);
   stages[output]->Fuse({0, 1, 2, 3});
@@ -866,7 +866,7 @@ void CreateX86SerialData(const std::string &file_name) {
 
 void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
                                    const ir::Tensor &res,
-                                   ir::Tensor &packed_out,
+                                   ir::Tensor &packed_out,  // NOLINT
                                    const ir::Tensor &input_pad,
                                    const ir::Tensor &weights_dilation,
                                    const ir::Tensor &data,
@@ -1017,7 +1017,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
 
 void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
                                           const ir::Tensor &res,
-                                          ir::Tensor &packed_out,
+                                          ir::Tensor &packed_out,  // NOLINT
                                           const ir::Tensor &input_pad,
                                           const ir::Tensor &weights_dilation,
                                           const ir::Tensor &data,
@@ -1139,7 +1139,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
 
 void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
                                       const ir::Tensor &res,
-                                      ir::Tensor &packed_out,
+                                      ir::Tensor &packed_out,  // NOLINT
                                       const ir::Tensor &input_pad,
                                       const ir::Tensor &weights_dilation,
                                       const ir::Tensor &data,
@@ -1244,7 +1244,7 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
 
 void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
                                const ir::Tensor &res,
-                               ir::Tensor &packed_out,
+                               ir::Tensor &packed_out,  // NOLINT
                                const ir::Tensor &input_pad,
                                const ir::Tensor &weights_dilation,
                                const ir::Tensor &data,
@@ -1377,7 +1377,7 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
 void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
     poly::StageMap stages,
     const ir::Tensor &res,
-    ir::Tensor &packed_out,
+    ir::Tensor &packed_out,  // NOLINT
     const ir::Tensor &input_pad,
     const ir::Tensor &weights_dilation,
     const ir::Tensor &data,
@@ -2300,7 +2300,7 @@ void SaveSerialData(
 }
 
 void CudaScheduleDepthwiseConv(poly::StageMap stages,
-                               ir::Tensor &output,
+                               ir::Tensor &output,  // NOLINT
                                const common::Target &target) {
   auto OL = stages[output]->CacheWrite("local", stages, output);
   stages[output]->Bind(0, "blockIdx.x");
@@ -2313,9 +2313,9 @@ void CudaScheduleDepthwiseConv(poly::StageMap stages,
 }
 
 void CudaScheduleConv(poly::StageMap stages,
-                      ir::Tensor &input_pad,
-                      ir::Tensor &weights,
-                      ir::Tensor &output,
+                      ir::Tensor &input_pad,  // NOLINT
+                      ir::Tensor &weights,    // NOLINT
+                      ir::Tensor &output,     // NOLINT
                       const common::Target &target) {
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
   int n = output->shape[0].as_int32();
@@ -2382,9 +2382,9 @@ void CudaScheduleConv(poly::StageMap stages,
 }
 
 void CudaScheduleConv2(poly::StageMap stages,
-                       ir::Tensor &input_pad,
-                       ir::Tensor &weights,
-                       ir::Tensor &output,
+                       ir::Tensor &input_pad,  // NOLINT
+                       ir::Tensor &weights,    // NOLINT
+                       ir::Tensor &output,     // NOLINT
                        const common::Target &target,
                        const std::string &key) {
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
@@ -2516,7 +2516,7 @@ void CudaScheduleConv2(poly::StageMap stages,
 }
 
 void CudaScheduleWinogradConv(poly::StageMap wino_stages,
-                              std::vector<ir::Tensor> &all_tensors,
+                              std::vector<ir::Tensor> &all_tensors,  // NOLINT
                               const common::Target &target) {
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
   auto &wino_weights_dilation = all_tensors[0];
@@ -2662,7 +2662,7 @@ int gcd(int a, int b) {
 int MaxFactorLessThan(int a, int b) {
   CHECK_GT(a, b);
   int res = 1;
-  for (int i = 2; i <= (int)sqrt((double)a); i++) {
+  for (int i = 2; i <= static_cast<int>(sqrt(static_cast<double>(a))); i++) {
     if (a % i == 0) {
       if (i <= b) res = std::max(res, i);
       if (a / i <= b) res = std::max(res, a / i);

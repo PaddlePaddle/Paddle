@@ -86,6 +86,7 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
+list(REMOVE_ITEM TEST_OPS test_linear_compress)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -153,6 +154,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
+  list(REMOVE_ITEM TEST_OPS test_linear_compress)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -1311,6 +1313,16 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
     FLAGS_new_executor_static_build=true)
 endforeach()
+
+set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2)
+
+foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
+  py_test_modules(
+    ${NEW_IR_COVERAGE_TEST}_new_ir MODULES ${NEW_IR_COVERAGE_TEST} ENVS
+    FLAGS_enable_new_ir_in_executor=true)
+endforeach()
+
+set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)

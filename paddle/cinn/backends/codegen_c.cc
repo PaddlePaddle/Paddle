@@ -162,7 +162,7 @@ void CodeGenC::Visit(const ir::Mod *op) {
   auto copied = op->b();
   optim::Simplify(&copied);
   if (copied.is_constant()) {
-    int temp = (int)(copied.get_constant());
+    int temp = static_cast<int>(copied.get_constant());
     if ((temp & (temp - 1)) == 0) {
       os() << "(";
       Print(op->a());

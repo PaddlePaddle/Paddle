@@ -44,7 +44,7 @@ Module LowerToModule(const std::string test_name,
                      const std::shared_ptr<OpImpl> &impl,
                      std::vector<std::string> input_names,
                      const std::string &output_name,
-                     std::vector<ir::Tensor> &inputs,
+                     std::vector<ir::Tensor> &inputs,  // NOLINT
                      std::vector<common::CINNValue> cinn_inputs,
                      const Target &target) {
   Module::Builder builder("module", target);
