@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
@@ -72,6 +73,8 @@ class TestMatMulAmpOp(OpTest):
 
     def setUp(self):
         self.init_kernel_type()
+        self.dx_dtype = 'bfloat16'
+        self.dy_dtype = 'bfloat16'
         self.config()
         self.op_type = "matmul_amp"
         self.python_api = paddle.incubate.matmul
@@ -101,7 +104,12 @@ class TestMatMulAmpOp(OpTest):
                 'x': x,
                 'y': y,
             }
-        self.attrs = {'transpose_x': self.trans_x, 'transpose_y': self.trans_y}
+        self.attrs = {
+            'transpose_x': self.trans_x,
+            'transpose_y': self.trans_y,
+            'dx_type': convert_np_dtype_to_dtype_(self.dx_type),
+            'dy_type': convert_np_dtype_to_dtype_(self.dy_type),
+        }
         self.outputs = {'out': result}
 
     def checker(self, outs):
@@ -114,10 +122,16 @@ class TestMatMulAmpOp(OpTest):
         self.check_output_with_place_customized(self.checker, place)
 
     def get_numeric_grad(self, place, check_name):
+        op_attrs = {
+            'transpose_x': self.attrs['transpose_x'],
+            'transpose_y': self.attrs['transpose_y'],
+            'dx_type': convert_np_dtype_to_dtype_('float32'),
+            'dy_type': convert_np_dtype_to_dtype_('float32'),
+        }
         scope = core.Scope()
         self._check_grad_helper()
         op = create_op(
-            scope, self.op_type, self.inputs, self.outputs, self.attrs
+            scope, self.op_type, self.inputs_fp32, self.outputs, op_attrs
         )
         return get_numeric_gradient(
             place, scope, op, self.inputs_fp32, check_name, ['out']
@@ -156,6 +170,8 @@ class TestMatMulAmpOp2(TestMatMulAmpOp):
         self.y_shape = (1, 3, 2, 100)
         self.trans_x = False
         self.trans_y = True
+        self.dx_dtype = 'bfloat16'
+        self.dy_dtype = 'float32'
 
 
 class TestMatMulAmpOp3(TestMatMulAmpOp):
@@ -180,6 +196,8 @@ class TestMatMulAmpOp4(TestMatMulAmpOp):
         self.y_shape = (1, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
+        self.dx_dtype = 'float32'
+        self.dy_dtype = 'float32'
 
 
 class TestMatMulAmpOp5(TestMatMulAmpOp):
@@ -204,6 +222,8 @@ class TestMatMulAmpOp6(TestMatMulAmpOp):
         self.y_shape = (102,)
         self.trans_x = True
         self.trans_y = False
+        self.dx_dtype = 'float32'
+        self.dy_dtype = 'bfloa16'
 
 
 class TestMatMulAmpOp7(TestMatMulAmpOp):
@@ -216,6 +236,8 @@ class TestMatMulAmpOp7(TestMatMulAmpOp):
         self.y_shape = (100,)
         self.trans_x = False
         self.trans_y = False
+        self.dx_dtype = 'bfloa16'
+        self.dy_dtype = 'float32'
 
 
 class TestMatMulAmpOp8(TestMatMulAmpOp):
@@ -228,6 +250,8 @@ class TestMatMulAmpOp8(TestMatMulAmpOp):
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
+        self.dx_dtype = 'float32'
+        self.dy_dtype = 'float32'
 
 
 class TestMatMulAmpOp9(TestMatMulAmpOp):
@@ -360,6 +384,61 @@ class TestMatMulAmpOpBroadcast2(TestMatMulAmpOp):
         self.y_shape = (1, 2, 10, 10)
         self.trans_x = False
         self.trans_y = True
+
+
+class TestMatmulAPI(unittest.TestCase):
+    def run_test(
+        self, x_shape, y_shape, dx_type='bfloat16', dy_type='bfloat16'
+    ):
+        place = core.CUDAPlace(0)
+        input_x = np.random.random(x_shape).astype("float32")
+        input_y = np.random.random(y_shape).astype("float32")
+        x = paddle.to_tensor(input_x, dtype=dx_type)
+        y = paddle.to_tensor(input_y, dtype=dy_type)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        result = paddle.matmul(x, y)
+        paddle.grad([result], [x, y])
+        return result, x.grad, y.grad
+
+    def test_bf16(self):
+        out, dx, dy = self.run_test(x_shape=[1, 100, 4], y_shape=[4, 20])
+        self.assertEqual(out.dtype, paddle.float32)
+        self.assertEqual(dx.dtype, paddle.bfloat16)
+        self.assertEqual(dy.dtype, paddle.bfloat16)
+
+    def test_dx_dy_fp32(self):
+        out, dx, dy = self.run_test(
+            x_shape=[1, 100, 4],
+            y_shape=[4, 20],
+            dx_type='float32',
+            dy_type='float32',
+        )
+        self.assertEqual(out.dtype, paddle.float32)
+        self.assertEqual(dx.dtype, paddle.float32)
+        self.assertEqual(dy.dtype, paddle.float32)
+
+    def test_dx_fp32(self):
+        out, dx, dy = self.run_test(
+            x_shape=[1, 100, 4],
+            y_shape=[4, 20],
+            dx_type='float32',
+            dy_type='bfloat16',
+        )
+        self.assertEqual(out.dtype, paddle.float32)
+        self.assertEqual(dx.dtype, paddle.float32)
+        self.assertEqual(dy.dtype, paddle.bfloat16)
+
+    def test_dy_fp32(self):
+        out, dx, dy = self.run_test(
+            x_shape=[1, 100, 4],
+            y_shape=[4, 20],
+            dx_type='bfloat16',
+            dy_type='float32',
+        )
+        self.assertEqual(out.dtype, paddle.float32)
+        self.assertEqual(dx.dtype, paddle.bfloat16)
+        self.assertEqual(dy.dtype, paddle.float32)
 
 
 if __name__ == "__main__":
