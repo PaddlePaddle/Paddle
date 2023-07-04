@@ -166,18 +166,24 @@ void BuildScope(ir::Block* block,
   for (auto it = block->begin(); it != block->end(); ++it) {
     ir::Operation* op = *it;
 
-    HandleForSpecialOp(op, scope, inner_local_scope, name_map, count);
-
-    size_t input_num = (*it)->num_operands();
-    auto attr_map = (*it)->attributes();
-    std::string op_name = (*it)->name();
+    auto attr_map = op->attributes();
+    std::string op_name = op->name();
     if (attr_map.count("op_name")) {
       op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
 
+    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
+        op_name == "builtin.set_parameter" ||
+        op_name == "builtin.get_parameter") {
+      VLOG(6) << "HandleForSpecialOp: " << op_name;
+      HandleForSpecialOp(op, scope, inner_local_scope, name_map, count);
+      continue;
+    }
+
+    size_t input_num = op->num_operands();
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i);
+        auto ptr = op->operand(i);
         if (ptr) {
           PADDLE_ENFORCE_NE(
               name_map->find(ptr),
@@ -190,10 +196,10 @@ void BuildScope(ir::Block* block,
       }
     }
 
-    int out_num = (*it)->num_results();
+    int out_num = op->num_results();
     if (out_num > 0) {
       for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = (*it)->result(i);
+        ir::Value ptr = op->result(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
