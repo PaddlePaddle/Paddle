@@ -921,6 +921,9 @@ def parse_index(x, indices):
     use_strided_slice = False
     has_advanced_index = False
 
+    if isinstance(indices, list) and not is_one_dim_list(indices, int):
+        indices = tuple(indices)
+
     if not isinstance(indices, tuple):
         indices = (indices,)
 
@@ -955,6 +958,7 @@ def parse_index(x, indices):
             if start is None and end is None and step is None:
                 continue
 
+            step = 1 if step is None else step
             if not isinstance(step, paddle.fluid.Variable) and step == 0:
                 raise ValueError(
                     "When assign a value to a paddle.Tensor, step can not be 0, "
@@ -996,16 +1000,17 @@ def parse_index(x, indices):
 
         elif isinstance(slice_item, paddle.fluid.Variable):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
-            if (
-                slice_item.dtype == paddle.bool
-                and len(slice_item) != x.shape[dim]
-            ):
-                raise IndexError(
-                    "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                        len(slice_item), x.shape[dim], dim
-                    )
-                )
+            if slice_item.dtype == paddle.bool:
+                if slice_item.ndim == 0:
+                    # 0-D bool Tensor, same as single PY-bool.
+                    none_axes.append(dim)
 
+                elif slice_item.shape[0] != x.shape[dim]:
+                    raise IndexError(
+                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
+                            slice_item.shape[0], x.shape[dim], dim
+                        )
+                    )
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
             estimated_dim += 1
@@ -1228,6 +1233,8 @@ def get_tensor_with_basic_indexing(
                 end = attrs['ends']
             if "StridesTensorList" in inputs.keys():
                 stride = inputs['StridesTensorList']
+            else:
+                stride = attrs['strides']
             if use_strided_slice:
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
             else:
