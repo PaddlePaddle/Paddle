@@ -696,6 +696,7 @@ void LLMInt8MatmulInferMeta(const MetaTensor& x,
 
 void WeightOnlyMatmulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
+                               const MetaTensor& weight_scale,
                                MetaTensor* out);
 
 void FusedRopeInferMeta(const MetaTensor& q,

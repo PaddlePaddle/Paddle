@@ -302,9 +302,9 @@ class LinearCompress(Layer):
                     initializer=paddle.nn.initializer.Assign(weight_tensor)
                 )
                 self.weight = self.create_parameter(
-                    shape=self.weight.shape
-                    if self.layout == 0
-                    else [self.weight.shape[1], self.weight.shape[0]],
+                    shape=[self.weight.shape[1], self.weight.shape[0]]
+                    if self.bits == 8
+                    else [self.weight.shape[1] / 2, self.weight.shape[0]],
                     attr=weight_attr,
                     dtype="int8",
                     is_bias=False,

@@ -32,34 +32,78 @@ void WeightOnlyMatmulKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   const auto x_dims = x.dims();
   const auto w_dims = weight.dims();
+  int n = weight_scale.dims()[0];
+  int quant_bit = 0;
+  if (n % w_dims[0] == 0) {
+    quant_bit = w_dims[0] * 8 / n;
+  } else {
+    errors::InvalidArgument(
+        "w_dims[0] must be divisible by weight_scale.dims()[0]");
+  }
 
-  int k = w_dims[0];
-  int n = w_dims[1];
+  int k = w_dims[1];
   int m = x.numel() / k;
-  auto mixed_gemm_runner =
-      CutlassFpAIntBGemmRunner<typename PDDataTypeTraits<T>::DataType,
-                               uint8_t>();
-  int mixgemm_max_size = std::max(n, k);
-  DenseTensor mixgemm_workspace;
-  int64_t mixgemm_workspace_size_bytes =
-      mixed_gemm_runner.getWorkspaceSize(m, mixgemm_max_size, mixgemm_max_size);
+  switch (quant_bit) {
+    case 8: {
+      auto mixed_gemm_runner =
+          CutlassFpAIntBGemmRunner<typename PDDataTypeTraits<T>::DataType,
+                                   uint8_t>();
+      int mixgemm_max_size = std::max(n, k);
+      DenseTensor mixgemm_workspace;
+      int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
+          m, mixgemm_max_size, mixgemm_max_size);
 
-  mixgemm_workspace.Resize({mixgemm_workspace_size_bytes});
-  dev_ctx.template Alloc<uint8_t>(&mixgemm_workspace);
-  char* mixgemm_workspace_data =
-      reinterpret_cast<char*>(mixgemm_workspace.data<uint8_t>());
-  mixed_gemm_runner.gemm(
-      reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
-          x.data<T>()),
-      reinterpret_cast<const uint8_t*>(weight.data<int8_t>()),
-      reinterpret_cast<const float*>(weight_scale.data<float>()),
-      reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out->data<T>()),
-      m,
-      n,
-      k,
-      mixgemm_workspace_data,
-      mixgemm_workspace_size_bytes,
-      dev_ctx.stream());
+      mixgemm_workspace.Resize({mixgemm_workspace_size_bytes});
+      dev_ctx.template Alloc<uint8_t>(&mixgemm_workspace);
+      char* mixgemm_workspace_data =
+          reinterpret_cast<char*>(mixgemm_workspace.data<uint8_t>());
+      mixed_gemm_runner.gemm(
+          reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
+              x.data<T>()),
+          reinterpret_cast<const uint8_t*>(weight.data<int8_t>()),
+          reinterpret_cast<const float*>(weight_scale.data<float>()),
+          reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(
+              out->data<T>()),
+          m,
+          n,
+          k,
+          mixgemm_workspace_data,
+          mixgemm_workspace_size_bytes,
+          dev_ctx.stream());
+    } break;
+    case 4: {
+      auto mixed_gemm_runner =
+          CutlassFpAIntBGemmRunner<typename PDDataTypeTraits<T>::DataType,
+                                   cutlass::uint4b_t>();
+      int mixgemm_max_size = std::max(n, k);
+      DenseTensor mixgemm_workspace;
+      int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
+          m, mixgemm_max_size, mixgemm_max_size);
+
+      mixgemm_workspace.Resize({mixgemm_workspace_size_bytes});
+      dev_ctx.template Alloc<uint8_t>(&mixgemm_workspace);
+      char* mixgemm_workspace_data =
+          reinterpret_cast<char*>(mixgemm_workspace.data<uint8_t>());
+      mixed_gemm_runner.gemm(
+          reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
+              x.data<T>()),
+          reinterpret_cast<const cutlass::uint4b_t*>(weight.data<int8_t>()),
+          reinterpret_cast<const float*>(weight_scale.data<float>()),
+          reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(
+              out->data<T>()),
+          m,
+          n,
+          k,
+          mixgemm_workspace_data,
+          mixgemm_workspace_size_bytes,
+          dev_ctx.stream());
+    } break;
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "Quant_bits (%d) is not supported when gemm ", quant_bit));
+      break;
+  }
+
 #else
   LOG(ERROR) << "Please compile with cutlass to EnableUseCutlass()";
 #endif

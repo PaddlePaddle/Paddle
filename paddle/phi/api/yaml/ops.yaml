@@ -2587,7 +2587,6 @@
   output : Tensor(out)
   infer_meta :
     func : WeightOnlyMatmulInferMeta
-    param : [x, weight]
   kernel :
     func : weight_only_matmul
     data_type : x
