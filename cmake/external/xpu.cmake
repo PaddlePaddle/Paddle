@@ -111,7 +111,7 @@ set(XPU_XFT_GET_DEPENCE_URL
     CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
-set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
+set(XPU_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/xpu")
 set(XPU_INSTALL_DIR "${THIRD_PARTY_PATH}/install/xpu")
 set(XPU_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
 set(XPU_LIB_DIR "${THIRD_PARTY_PATH}/install/xpu/lib")
@@ -148,8 +148,7 @@ ExternalProject_Add(
     ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_depence.sh ${XPU_XRE_URL}
     ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
     ${XPU_XCCL_DIR_NAME} && wget -q ${XPU_XFT_GET_DEPENCE_URL} -O
-    ${PADDLE_DOWLOAD_DIR}/third_party/xpu/get_xft_dependence.sh && bash
-    ${PADDLE_DOWLOAD_DIR}/third_party/xpu/get_xft_dependence.sh ${XPU_XFT_URL}
+    get_xft_dependence.sh && bash get_xft_dependence.sh ${XPU_XFT_URL}
     ${XPU_XFT_DIR_NAME} && bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
     ${XPU_XPTI_DIR_NAME}
