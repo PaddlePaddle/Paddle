@@ -533,6 +533,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_ps3',
     'test_dist_mnist_pg',
     'test_pipeline_parallel',
+    'test_fleet_perf_test',
     'test_dist_fleet_ps5',
     'test_dist_fleet_sparse_embedding_ctr',
     'test_collective_broadcast_api',
