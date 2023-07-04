@@ -741,10 +741,10 @@ class OpConverter {
 
     for (size_t i = 0; i < num_out; i++) {
       VLOG(3) << output_tensor_names[i] << "'s dimension :";
-      std::cout << output_tensor_names[i] << "'s dimension :" << std::endl;
+      // std::cout << output_tensor_names[i] << "'s dimension :" << std::endl;
       for (int ii = 0; ii < layer->getOutput(i)->getDimensions().nbDims; ii++) {
         VLOG(3) << layer->getOutput(i)->getDimensions().d[ii];
-        std::cout << layer->getOutput(i)->getDimensions().d[ii] << std::endl;
+        // std::cout << layer->getOutput(i)->getDimensions().d[ii] << std::endl;
       }
 
       PADDLE_ENFORCE_GT(
