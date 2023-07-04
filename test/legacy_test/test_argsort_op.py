@@ -521,6 +521,7 @@ class TestArgsortFP16Op(OpTest):
         self.op_type = "argsort"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
+        self.python_out_sig = ["Out"]
         self.dtype = np.float16
         self.descending = False
         self.attrs = {"axis": self.axis, "descending": self.descending}
@@ -543,10 +544,10 @@ class TestArgsortFP16Op(OpTest):
         self.descending = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=['Indices'], check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
@@ -566,6 +567,7 @@ class TestArgsortBF16Op(OpTest):
         self.op_type = "argsort"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
+        self.python_out_sig = ["Out"]
         self.dtype = np.uint16
         self.np_dtype = np.float32
         self.descending = False
@@ -590,15 +592,13 @@ class TestArgsortBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(
+            place, no_check_set=['Indices'], check_prim=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
