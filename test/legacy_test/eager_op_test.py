@@ -1941,7 +1941,7 @@ class OpTest(unittest.TestCase):
                     imperative_actual = find_imperative_actual(
                         name, self.outputs, place
                     )
-                    imperative_actual_t = imperative_actual.numpy(False)
+                    imperative_actual_t = imperative_actual.numpy()
                     return imperative_actual, imperative_actual_t
 
             def find_expect_value(self, name):
