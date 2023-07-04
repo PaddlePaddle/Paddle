@@ -1339,8 +1339,9 @@ file(STRINGS "${CMAKE_SOURCE_DIR}/test/new_ir_op_test_white_list"
      NEW_IR_OP_TESTS)
 foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
   if(TEST ${IR_OP_TEST})
-    set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
-                                                  "FLAGS_NEW_IR_OPTEST=True")
+    set_tests_properties(
+      ${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                               "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
   else()
     message(WARNING "not found ${IR_OP_TEST}")
   endif()
