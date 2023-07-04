@@ -34,9 +34,7 @@ std::unique_ptr<Program> TranslateLegacyProgramToProgram(
   auto program = std::make_unique<Program>(ctx);
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());
-  std::cout << "TranslateLegacyProgramToProgram 5" << std::endl;
   program_translator.Translate();
-  std::cout << "TranslateLegacyProgramToProgram 6" << std::endl;
 
   return program;
 }

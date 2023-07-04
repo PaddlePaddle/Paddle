@@ -121,11 +121,11 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) const {
     os << ">";
   } else if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
     os << "selectedrows<";
-    // for (auto d : phi::vectorize(tensor_type.dims())) {
-    //   os << d;
-    //   os << "x";
-    // }
-    // tensor_type.dtype().Print(os);
+    for (auto d : phi::vectorize(selected_rows_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    selected_rows_type.dtype().Print(os);
     os << ">";
   }
 }

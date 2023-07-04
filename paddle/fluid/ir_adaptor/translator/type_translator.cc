@@ -111,24 +111,13 @@ TypeTranslator::TypeTranslator() {
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
 
          SelectedRowsTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
-         std::cerr << "convert 33 " << std::endl;
          SelectedRowsTypeStorage::DataLayout layout =
              SelectedRowsTypeStorage::DataLayout::UNDEFINED;
          SelectedRowsTypeStorage::LoD lod = {};
          size_t offset = 0;
          ir::Type SelectedRows =
              SelectedRowsType::get(ctx, dtype, dim, layout, lod, offset);
-         std::cerr << "convert 77 " << std::endl;
          return SelectedRows;
-         //  ir::Type dtype =
-         //      this->operator[](var_desc.GetDataType())(ctx, var_desc);
-         //  DenseTensorTypeStorage::Dim dim =
-         //  phi::make_ddim(var_desc.GetShape());
-         //  DenseTensorTypeStorage::DataLayout layout =
-         //      DenseTensorTypeStorage::DataLayout::UNDEFINED;
-         //  DenseTensorTypeStorage::LoD lod = {};
-         //  size_t offset = 0;
-         //  return DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
        }},
   };
 }

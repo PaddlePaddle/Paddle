@@ -887,7 +887,6 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(ir::IrContext* ctx,
                                   ir::AttributeMap* attribute_map,
                                   const OpAttributeInfo& info) override {
-    std::cerr << "111111111111111111 !!!!" << std::endl;
     if (info.name == "padding_idx") {
       (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
     } else if (info.name == "sparse") {
@@ -896,7 +895,6 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
   }
 
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    std::cerr << "222222222222222222" << std::endl;
     std::string target_op_name =
         kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
 

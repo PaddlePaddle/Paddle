@@ -56,25 +56,20 @@ void ProgramTranslator::Translate() {
       platform::errors::PreconditionNotMet(
           "Not support multi block ProgramDesc translated, now has %d blocks",
           legacy_program_->Size()));
-  std::cout << "ProgramTranslator::Translate 1" << std::endl;
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     GetParameterForSingleBlock(block);
   }
-  std::cout << "ProgramTranslator::Translate 2" << std::endl;
+
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
-    std::cout << "ProgramTranslator::Translate 2.1" << block_idx << std::endl;
     const BlockDesc& block = legacy_program_->Block(block_idx);
-    std::cout << "ProgramTranslator::Translate 2.2" << block_idx << std::endl;
     InsertOperationToSingleBlock(block);
-    std::cout << "ProgramTranslator::Translate 2.3" << block_idx << std::endl;
   }
-  std::cout << "ProgramTranslator::Translate 3" << std::endl;
+
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     SetParameterFromSingleBlock(block);
   }
-  std::cout << "ProgramTranslator::Translate 4" << std::endl;
 }
 
 inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
@@ -161,11 +156,9 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
-    std::cerr << "start op name " << op->Type() << std::endl;
     OpTranslateFn& fn = op_translator[op->Type()];
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
-    std::cerr << "end op name " << op->Type() << std::endl;
   }
 }
 

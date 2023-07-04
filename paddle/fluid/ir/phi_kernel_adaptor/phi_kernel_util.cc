@@ -184,7 +184,6 @@ void BuildScope(ir::Block* block,
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type()
                        .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-          std::cerr << "set  selected rwos " << name << std::endl;
           var->GetMutable<phi::SelectedRows>();
         } else if (ptr.type().isa<ir::VectorType>()) {
           auto tensor_array =
