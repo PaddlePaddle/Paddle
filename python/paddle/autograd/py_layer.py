@@ -310,7 +310,7 @@ class PyLayer(with_mateclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
 
             data = paddle.randn([2, 3], dtype="float64")
             data.stop_gradient = False
-            z = cus_tanh.apply(data, func1=paddle.tanh)
+            z = cus_tanh.apply(data)
             z.mean().backward()
 
             print(data.grad)
