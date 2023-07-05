@@ -53,6 +53,7 @@ template struct SetConstant<phi::CPUContext, int>;
 template struct SetConstant<phi::CPUContext, int64_t>;
 template struct SetConstant<phi::CPUContext, bool>;
 template struct SetConstant<phi::CPUContext, uint8_t>;
+template struct SetConstant<phi::CPUContext, int8_t>;
 template struct SetConstant<phi::CPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::CPUContext, phi::dtype::complex<double>>;
 
@@ -62,6 +63,7 @@ template struct SetConstant<phi::XPUContext, phi::dtype::bfloat16>;
 template struct SetConstant<phi::XPUContext, float>;
 template struct SetConstant<phi::XPUContext, double>;
 template struct SetConstant<phi::XPUContext, uint8_t>;
+template struct SetConstant<phi::XPUContext, int8_t>;
 template struct SetConstant<phi::XPUContext, int16_t>;
 template struct SetConstant<phi::XPUContext, int>;
 template struct SetConstant<phi::XPUContext, int64_t>;

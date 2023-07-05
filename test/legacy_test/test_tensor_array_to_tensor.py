@@ -128,22 +128,14 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
         # test forward
         tensor_res = np.array(out[0])
-        tensor_res_out_idx = np.array(out[1])
         tensor_gt = np.array(
             [0] + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float32'
         )
 
         self.assertEqual(len(tensor_res), len(tensor_gt))
-        self.assertEqual(len(tensor_res_out_idx), 10)
 
         for i in range(len(tensor_res)):
             self.assertEqual(tensor_res[i], tensor_gt[i])
-
-        for i in range(len(tensor_res_out_idx)):
-            if i == 0:
-                self.assertEqual(tensor_res_out_idx[i], 2)
-            else:
-                self.assertEqual(tensor_res_out_idx[i], 1)
 
         # test backward
         grad_tensor = scope.var('tmp_lod_tensor_array@GRAD')
@@ -179,10 +171,6 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         ]
         self.outputs = [
             np.stack(self.inputs, axis=self.attrs["axis"]),
-            np.array(
-                [x.shape[self.attrs["axis"]] for x in self.inputs],
-                dtype="int32",
-            ),
         ]
         self.input_grads = [np.ones_like(x) for x in self.inputs]
         self.set_program()
@@ -203,7 +191,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             )
             loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
-        self.output_vars = [output, output_index]
+        self.output_vars = [output]
 
     def run_check(self, executor, scope):
         executor.run(self.program, scope=scope)
@@ -250,9 +238,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         ) = tensor_array_to_tensor(input=array, axis=1, use_stack=False)
         return (
             output_stack,
-            output_index_stack,
             output_concat,
-            output_index_concat,
         )
 
     def test_case(self):

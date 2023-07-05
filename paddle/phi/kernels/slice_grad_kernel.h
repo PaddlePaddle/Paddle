@@ -31,6 +31,17 @@ void SliceGradKernel(const Context& ctx,
                      const std::vector<int64_t>& decrease_axis,
                      DenseTensor* input_grad);
 
+template <typename Context>
+void SliceGradStridedKernel(const Context& ctx,
+                            const DenseTensor& input,
+                            const DenseTensor& out_grad,
+                            const std::vector<int64_t>& axes,
+                            const IntArray& starts,
+                            const IntArray& ends,
+                            const std::vector<int64_t>& infer_flags,
+                            const std::vector<int64_t>& decrease_axis,
+                            DenseTensor* input_grad);
+
 template <typename T, typename Context>
 void SliceArrayGradKernel(const Context& dev_ctx,
                           const TensorArray& input,

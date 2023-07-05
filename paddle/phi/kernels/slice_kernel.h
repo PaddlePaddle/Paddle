@@ -44,6 +44,16 @@ void SliceArrayDenseKernel(const Context& dev_ctx,
                            const IntArray& starts,
                            DenseTensor* out);
 
+template <typename Context>
+void SliceStridedKernel(const Context& ctx,
+                        const DenseTensor& input,
+                        const std::vector<int64_t>& axes,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const std::vector<int64_t>& infer_flags,
+                        const std::vector<int64_t>& decrease_axis,
+                        DenseTensor* out);
+
 template <typename T, typename Context>
 DenseTensor Slice(const Context& ctx,
                   const DenseTensor& input,

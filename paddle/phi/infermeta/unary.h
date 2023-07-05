@@ -730,4 +730,6 @@ void QuantForCompressInferMeta(const MetaTensor& x,
                                MetaTensor* out,
                                MetaTensor* scale);
 
+void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
+
 }  // namespace phi

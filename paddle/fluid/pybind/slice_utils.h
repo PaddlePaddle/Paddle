@@ -150,7 +150,7 @@ static void ParseIndexingSlice(phi::DenseTensor* tensor,
                                std::vector<int>* decrease_axis,
                                std::vector<int>* none_axes,
                                std::vector<int>* infer_flags,
-                               std::vector<int>* list_select_idxs,
+                               std::vector<int64_t>* list_select_idxs,
                                bool* list_select_flag) {
   // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
   // types, and list of Bool and Integers.

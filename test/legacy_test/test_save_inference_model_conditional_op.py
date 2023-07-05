@@ -42,7 +42,7 @@ class WhileNet(paddle.nn.Layer):
         y = paddle.rand(shape=[1, 3, 4, 4])
 
         w1 = paddle.shape(y)[0]
-        w2 = paddle.shape(x)[0]
+        w2 = paddle.assign(paddle.shape(x)[0])
 
         while w2 != w1:
             x = F.avg_pool2d(x, kernel_size=3, padding=1, stride=2)

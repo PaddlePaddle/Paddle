@@ -66,7 +66,7 @@ class ForwardAPI(BaseAPI):
                     input_tensor_code = (
                         input_tensor_code
                         + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag}, kernel_result.is_stride_kernel);"""
                     )
                 else:
                     # do nothing

@@ -140,6 +140,10 @@ from .manipulation import index_add_  # noqa: F401
 from .manipulation import index_put  # noqa: F401
 from .manipulation import index_put_  # noqa: F401
 from .manipulation import unflatten  # noqa: F401
+from .manipulation import as_strided  # noqa: F401
+from .manipulation import view  # noqa: F401
+from .manipulation import view_as  # noqa: F401
+from .manipulation import unfold  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -568,6 +572,10 @@ tensor_method_func = [  # noqa
     'vander',
     'nextafter',
     'unflatten',
+    'as_strided',
+    'view',
+    'view_as',
+    'unfold',
     'i0',
     'i0e',
     'i1',

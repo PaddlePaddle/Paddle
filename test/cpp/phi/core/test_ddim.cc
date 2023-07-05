@@ -23,7 +23,7 @@ namespace tests {
 TEST(DDim, Equality) {
   // default construct ddim
   phi::DDim default_ddim;
-  EXPECT_EQ(arity(default_ddim), 1);
+  EXPECT_EQ(arity(default_ddim), -1);
   EXPECT_EQ(default_ddim[0], 0);
 
   // construct a zero-DDim

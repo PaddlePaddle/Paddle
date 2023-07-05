@@ -1815,7 +1815,6 @@ class OpTest(unittest.TestCase):
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
-
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)

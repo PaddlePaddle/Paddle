@@ -33,6 +33,15 @@ def _inplace_apis_in_dygraph_only_(func):
                     func.__name__, origin_api_name
                 )
             )
+            from ..fluid.dygraph.base import in_declarative_mode
+
+            if in_declarative_mode():
+                for arg in args:
+                    if hasattr(arg, "is_view_var") and arg.is_view_var:
+                        raise ValueError(
+                            f'Sorry about what\'s happend. In to_static mode, {func.__name__}\'s output variable {arg.name} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You mast find the location of the strided API be called, and call {arg.name} = {arg.name}.assign().'
+                        )
+
             origin_func = f"{func.__module__}.{origin_api_name}"
             return eval(origin_func)(*args, **kwargs)
         return func(*args, **kwargs)
