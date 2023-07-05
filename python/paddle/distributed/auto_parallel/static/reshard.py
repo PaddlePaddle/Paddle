@@ -568,7 +568,7 @@ class Inserter:
         return outs
 
     @staticmethod
-    def insert_fill_constant_op(block, idx, op_role):
+    def insert_fill_constant_op(block, idx, op_role, shape):
         """Insert fill constant op into block at the given index."""
         # to avoid name conflict with framework
         helper = LayerHelper('fill_constant@RESHARD', **locals())
@@ -591,7 +591,7 @@ class Inserter:
         attrs['dtype'] = out.dtype
         attrs['op_role'] = op_role
         paddle.utils.get_shape_tensor_inputs(
-            inputs=inputs, attrs=attrs, shape=[1], op_type='fill_constant'
+            inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
         )
         fillconstant_op = block._insert_op(
             idx,
