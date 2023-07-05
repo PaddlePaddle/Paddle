@@ -241,7 +241,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
-  if (product(meta_.dims) >= 0 && meta_.dims != dims) {
+  if (meta_.dims.size() != -1 && meta_.dims != dims) {
     PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
                       true,
                       phi::errors::InvalidArgument(
