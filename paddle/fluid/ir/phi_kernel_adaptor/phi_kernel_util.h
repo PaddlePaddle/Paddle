@@ -41,7 +41,7 @@
 
 namespace ir {
 paddle::framework::Variable* CreateVar(ir::Value value,
-                                       std::string name,
+                                       const std::string& name,
                                        paddle::framework::Scope* scope,
                                        paddle::framework::Scope* local_scope);
 

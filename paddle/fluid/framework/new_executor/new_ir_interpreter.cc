@@ -1335,7 +1335,7 @@ void NewIRInterpreter::SetFeedVarsInplaceSkip(
 bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
 Scope* NewIRInterpreter::InnerScope() {
-  return HasLocalScope() ? local_scope_ : scope_
+  return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
 // Note(zhangbo):
