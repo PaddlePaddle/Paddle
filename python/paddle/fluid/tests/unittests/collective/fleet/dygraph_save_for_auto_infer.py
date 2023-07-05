@@ -295,25 +295,6 @@ def step_save(strategy, output_dir, seed):
     assert p.poll() == 0
 
 
-def step_async_save(strategy, output_dir, seed):
-    python_exe = sys.executable
-    # save data
-    os.makedirs(output_dir + "/logs", exist_ok=True)
-    filename = os.path.basename(__file__)
-    if strategy != "single":
-        cmd = (
-            f"{python_exe} -m paddle.distributed.launch  --log_dir {output_dir}/logs"
-            f" --gpus 0,1 {filename} --cmd async_save --strategy {strategy} --output_dir {output_dir} --seed {seed}"
-        )
-    else:
-        cmd = f"{python_exe} {filename} --cmd async_save --strategy {strategy} --output_dir {output_dir} --seed {seed}"
-
-    logger.info(f"exe: {cmd}")
-    p = subprocess.Popen(cmd.split())
-    p.communicate()
-    assert p.poll() == 0
-
-
 def step_load(curent_strateggy, saved_dir, seed):
     python_exe = sys.executable
     os.makedirs(f"{saved_dir}/load/logs", exist_ok=True)
@@ -422,14 +403,6 @@ def test_save_load(args):
     if args.cmd == "save":
         save_for_auto_inference(os.path.join(args.output_dir, "saved"), model)
 
-    if args.cmd == "async_save":
-        save_for_auto_inference(
-            os.path.join(args.output_dir, "async_saved"),
-            model,
-            use_async_save=True,
-        )
-        paddle.clear_async_save_task_queue()
-
 
 def run_case(args):
 
@@ -441,7 +414,6 @@ def run_case(args):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
     try:
-        step_async_save(saving_strategy, output_dir, args.seed)
         step_save(saving_strategy, output_dir, args.seed)
         step_load(loading_strategy, output_dir, args.seed + 1)
         step_check(output_dir)

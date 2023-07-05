@@ -32,9 +32,7 @@ __all__ = ["save_for_auto_inference"]
 
 
 @dygraph_only
-def save_for_auto_inference(
-    path_prefix, dist_model, cvt2cpu=False, use_async_save=False
-):
+def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
     """
     Description：
         Save model parameters for auto parallel inference.
@@ -52,8 +50,6 @@ def save_for_auto_inference(
                 model in distributed modeß
         cvt2cpu: wheather to move parameters to CPU when using sharding stage 3.
                 The var is invalid if not using sharding stage 3.
-        use_async_save:
-            use asynchronous save to increase performance.
     Returns:
         None
     Examples:
@@ -78,26 +74,15 @@ def save_for_auto_inference(
     global_rank = paddle.distributed.get_rank()
 
     # save parameters
-    if use_async_save:
-        paddle.async_save(
-            wrapped_dict,
-            os.path.join(
-                save_dir, f"{basename_prefix}_dist{global_rank}.pdparams"
-            ),
-        )
-    else:
-        paddle.save(
-            wrapped_dict,
-            os.path.join(
-                save_dir, f"{basename_prefix}_dist{global_rank}.pdparams"
-            ),
-        )
+    paddle.save(
+        wrapped_dict,
+        os.path.join(save_dir, f"{basename_prefix}_dist{global_rank}.pdparams"),
+    )
 
     # save attributes
     _save_param_attr(
         wrapped_dict,
         os.path.join(save_dir, f"{basename_prefix}_dist{global_rank}.pdattr"),
-        use_async_save=use_async_save,
     )
 
     # unset dims mapping after saving attrs
@@ -129,9 +114,7 @@ def _get_all_ranks_of_pp(pp_rank, dp_degree, mp_degree, pp_degree):
     return process_group
 
 
-def _save_param_attr(
-    state_dict_, path, dims_mapping_dict=None, use_async_save=False
-):
+def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
     """
     Description:
         save params' attr dict
@@ -144,8 +127,6 @@ def _save_param_attr(
             Dims mapping dict, mapping from parameter name in state_dict_ to dims_mapping.
             If parameter in state_dict_ has attribute 'dims_mapping', the dims_mapping is ignored.
             If parameter has no attribute 'dims_mapping', the dims mapping must contains the parameter's name.
-        use_async_save:
-            use asynchronous save to increase performance.
     """
     state_dict = copy.copy(state_dict_)
 
@@ -207,11 +188,8 @@ def _save_param_attr(
         }
         attr_dict[k] = attr_d
 
-    if use_async_save:
-        paddle.async_save(attr_dict, path)
-    else:
-        with open(path, "wb") as f:
-            pickle.dump(attr_dict, f)
+    with open(path, "wb") as f:
+        pickle.dump(attr_dict, f)
 
 
 def _unset_dims_mapping(param):
