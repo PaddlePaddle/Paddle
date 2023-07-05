@@ -968,7 +968,8 @@ class PartialProgramLayer:
             eager_tensor.stop_gradient = var.stop_gradient
             return None
 
-        list(map(set_stop_gradient, self._outputs.var_ids, out_vars))
+        for idx, var in zip(self._outputs.var_ids, out_vars):
+            set_stop_gradient(idx, var)
 
     def _restore_out(self, out_vars):
         """
