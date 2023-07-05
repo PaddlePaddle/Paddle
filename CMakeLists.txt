@@ -695,7 +695,7 @@ if(ON_INFER)
   add_definitions(-DPADDLE_ON_INFERENCE)
   set(WITH_SHARED_IR
       OFF
-      CACHE STRING "Only paddle_inference.so is allowed in inference." FORCE)
+      CACHE BOOL "Only paddle_inference.so is allowed in inference." FORCE)
 else()
   #TODO(luotao), combine this warning with `make inference_lib_dist` command.
   message(
@@ -705,9 +705,7 @@ else()
 endif()
 
 if(NOT WITH_SHARED_IR)
-  if(WIN32)
-    add_definitions(-DIR_API=)
-  endif()
+  add_definitions(-DSTATIC_IR)
 endif()
 
 if(WITH_STRIP)

@@ -101,6 +101,10 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
   impl_->reset_scope(new_scope);
 }
 
+const Scope* InterpreterCore::local_scope() const {
+  return impl_->local_scope();
+}
+
 const platform::Place& InterpreterCore::GetPlace() const {
   return impl_->GetPlace();
 }

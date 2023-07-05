@@ -105,6 +105,3 @@ ignore = [
 "test/cinn/**" = [
     "F403",
 ]
-"tools/cinn/**" = [
-    "F401",
-]
