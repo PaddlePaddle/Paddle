@@ -528,7 +528,7 @@ class TestArgsortFP16Op(OpTest):
         X = np.random.rand(*self.input_shape).astype('float16')
         self.inputs = {'X': X}
         Out = np.sort(X, axis=self.axis)
-        indices = np.argsort(X, axis=self.axis)
+        indices = np.argsort(X, axis=self.axis).astype('int64')
         self.outputs = {
             'Out': Out,
             'Indices': indices,
