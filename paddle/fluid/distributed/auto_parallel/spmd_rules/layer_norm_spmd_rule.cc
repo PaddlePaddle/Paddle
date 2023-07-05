@@ -23,7 +23,7 @@ using phi::distributed::auto_parallel::str_join;
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                                 const paddle::framework::AttributeMap& attrs) {
-  // step0: verify input args based on matmul logic
+  // step0: verify input args based on layer_norm logic
   auto input_specs_size = input_specs.size();
   PADDLE_ENFORCE_EQ(
       input_specs_size,
@@ -74,8 +74,9 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           << begin_norm_axis << "]; ";
 
   // step1: build Einsum Notation
-  // ijk,k,k->ijk (x,scale,bias->out, begin_norm_axis=2)
-  // ijkl,z(kl),z(kl)->ijkl (x,scale,bias->out, begin_norm_axis=2, z=kl)
+  // ijk,k,k->ijk,x,x (x,scale,bias->out,mean,variance, begin_norm_axis=2, x=ij)
+  // ijkl,y(kl),y(kl)->ijkl,x(ij),x(ij) (x,scale,bias->out,mean,variance,
+  // begin_norm_axis=2, x=ij, y=kl)
   std::string x_axes = "";
   for (auto i = 0; i < x_ndim; ++i) {
     x_axes += static_cast<char>(static_cast<int>('k') - begin_norm_axis + i);
@@ -88,49 +89,69 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
     bias_axes = "k";
   } else {
     // z = x_axes.substr(begin_norm_axis, x_ndim - begin_norm_axis)
-    scale_axes = "z";
-    bias_axes = "z";
+    scale_axes = "y";
+    bias_axes = "y";
   }
+
+  std::string mean_axes;
+  std::string variance_axes;
+  if (begin_norm_axis > 1) {
+    mean_axes = "x";
+    variance_axes = "x";
+  } else {
+    mean_axes = "j";
+    variance_axes = "j";
+  }
+
   std::string out_axes = x_axes;
 
   VLOG(4) << "LayerNormSPMDRule build Einsum notation (x,scale,bias->out): ["
           << x_axes << "," << scale_axes << "," << bias_axes << " --> "
-          << out_axes << "](begin_norm_axis:" << begin_norm_axis
-          << ",z=" << x_axes.substr(begin_norm_axis, x_ndim - begin_norm_axis)
+          << out_axes << "," << mean_axes << "," << variance_axes
+          << "](begin_norm_axis:" << begin_norm_axis
+          << ",x=" << x_axes.substr(0, begin_norm_axis)
+          << ",y=" << x_axes.substr(begin_norm_axis, x_ndim - begin_norm_axis)
           << ").";
 
   // step2: Sharding Propogation
-
   TensorDistAttr output_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr mean_dist_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr varience_dist_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
   std::vector<int64_t> out_dims_mapping;
   out_dims_mapping.reserve(out_axes.size());
+
+  int64_t mean_shard_dim = -1;
   for (size_t i = 0; i < out_axes.size(); ++i) {
     if (i < static_cast<size_t>(begin_norm_axis)) {
       out_dims_mapping.push_back(x_dims_mapping[i]);
+      // if ijk,k,k->ijk,x,x (x,scale,bias->out,mean,variance,
+      // begin_norm_axis=2, x=ij), and the dims_mapping of input is (0,1,-1),
+      // the mean and varience is sharded by dim 0 and 1,
+      // which is not supported currently.
+      mean_shard_dim =
+          ShardingMergeForAxis(mean_axes, mean_shard_dim, x_dims_mapping[i]);
     } else {
       out_dims_mapping.push_back(-1);
     }
   }
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
-  x_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+  mean_dist_attr_dst.set_dims_mapping({mean_shard_dim});
+  varience_dist_attr_dst.set_dims_mapping({mean_shard_dim});
 
   // step2.3: Merge and get Inputs' New Dims Mapping.
+  x_dist_attr_dst.set_dims_mapping(out_dims_mapping);
   input_dist_attrs.emplace_back(x_dist_attr_dst);
-
   // TODO(zhiqiu): support shardding on scale and bias
   // Now, apply replicating.
   input_dist_attrs.emplace_back(ReplicatedOnMesh(input_specs[1].dist_attr()));
   input_dist_attrs.emplace_back(ReplicatedOnMesh(input_specs[2].dist_attr()));
 
   // Step2.4.  handle input and out tensor partial
-  std::vector<int64_t> partial_on_dims;
-  for (size_t i = 0; i < out_dims_mapping.size(); ++i) {
-    if (out_dims_mapping[i] > -1) {
-      partial_on_dims.push_back(out_dims_mapping[i]);
-    }
-  }
+  // LayerNorm not support
 
   VLOG(4) << "LayerNormSPMDRule InferForward: "
           << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
@@ -143,9 +164,12 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           << str_join(bias_dims_mapping) << "], dst_dims_mapping: ["
           << str_join(input_dist_attrs[2].dims_mapping())
           << "]; out dims_mapping: [" << str_join(out_dims_mapping)
-          << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
+          << "]; mean dims_mapping: [" << mean_shard_dim
+          << "]; varience dims_mapping: [" << mean_shard_dim
+          << "], partial_on_dims: []";
 
-  return {input_dist_attrs, {output_dist_attr_dst}};
+  return {input_dist_attrs,
+          {output_dist_attr_dst, mean_dist_attr_dst, varience_dist_attr_dst}};
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
