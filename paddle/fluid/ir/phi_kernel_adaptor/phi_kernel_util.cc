@@ -56,12 +56,8 @@ paddle::framework::Variable* CreateVar(ir::Value value,
                         .data();
   }
   if (is_persisable) {
-    const paddle::framework::Scope* ancestor_scope = scope;
-    while (ancestor_scope->parent()) {
-      ancestor_scope = ancestor_scope->parent();
-    }
-    VLOG(6) << "Create var: " << name << " in scope " << ancestor_scope;
-    return const_cast<paddle::framework::Scope*>(ancestor_scope)->Var(name);
+    VLOG(6) << "Create var: " << name << " in scope " << scope->root();
+    return const_cast<paddle::framework::Scope*>(scope->root())->Var(name);
   } else {
     VLOG(6) << "Create var: " << name << " in scope " << local_scope;
     return local_scope->Var(name);
@@ -168,6 +164,9 @@ void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
                 std::unordered_map<ir::Value, std::string>* name_map) {
+  VLOG(4) << "***** [before build] scope: ******\n"
+          << paddle::framework::GenScopeTreeDebugInfo(
+                 const_cast<paddle::framework::Scope*>(scope->root()));
   // NOTE(zhiqiu): if use local_scope (local_scope != nullptr), the persistable
   // is created in scope , and other is created in local_scope.
   auto inner_local_scope = local_scope != nullptr ? local_scope : scope;
@@ -250,6 +249,9 @@ void BuildScope(const ir::Block& block,
       }
     }
   }
+  VLOG(4) << "***** [after build] scope: ******\n"
+          << paddle::framework::GenScopeTreeDebugInfo(
+                 const_cast<paddle::framework::Scope*>(scope->root()));
 }
 
 }  // namespace ir
