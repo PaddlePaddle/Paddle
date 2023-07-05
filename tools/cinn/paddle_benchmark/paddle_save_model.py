@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 
 # For paddlepaddle version >=2.0rc, we need to set paddle.enable_static()
 paddle.enable_static()
