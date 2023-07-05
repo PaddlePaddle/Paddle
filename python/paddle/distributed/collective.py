@@ -375,7 +375,7 @@ class StaticTCPStore:
                 is_master,
                 world_size,
                 )
-            return cls._instance
+        return cls._instance
 
     def __init__(self):
         pass
