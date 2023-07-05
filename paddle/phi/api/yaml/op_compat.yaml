@@ -2833,6 +2833,12 @@
   outputs :
     {warpctcgrad : WarpCTCGrad, loss : Loss}
 
+- op : warprnnt
+  inputs :
+    {input : input, label : label,  input_lengths : input_lengths, label_lengths : label_lengths}
+  outputs :
+    {loss : loss, warprnntgrad : warprnntgrad}
+
 - op : where
   backward : where_grad
   inputs :

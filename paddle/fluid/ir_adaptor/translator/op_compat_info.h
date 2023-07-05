@@ -76,8 +76,8 @@ class OpNameNormalizer {
 
   std::string GetLegacyArgName(const std::string& op_type,
                                const std::string& arg_name) {
-    bool is_grad_op = (op_type.find("grad") != std::string::npos);
-    bool is_grad_arg = (arg_name.find("grad") != std::string::npos);
+    bool is_grad_op = (op_type.find("_grad") != std::string::npos);
+    bool is_grad_arg = (arg_name.find("_grad") != std::string::npos);
     if (is_grad_op && is_grad_arg) {
       std::string target = "_grad";
       std::string data = "@GRAD";
