@@ -538,6 +538,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "map_matmulv2_to_matmul_xpu_pass",
       "reshape2_matmul_xpu_fuse_pass",
       "squeeze2_matmul_xpu_fuse_pass",
+      "redundant_onnx_ops_elimination_pass",
       "redundant_squeeze_unsqueeze_elimination_pass",
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
