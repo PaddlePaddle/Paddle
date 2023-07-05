@@ -73,11 +73,20 @@ static const std::unordered_set<std::string> special_inplace_ops = {
     "batch_norm",
 };
 
+static const std::unordered_set<std::string> special_non_inplace_ops = {
+    "adagrad",
+    "adam",
+    "adamax",
+    "adamw",
+};
 inline bool IsInplace(const OpDesc& op_desc) {
-  bool inplace = false;
   if (special_inplace_ops.count(op_desc.Type())) {
-    return inplace;
+    return false;
   }
+  if (special_non_inplace_ops.count(op_desc.Type())) {
+    return true;
+  } 
+  bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
   if (input_names.size() == 0 || output_names.size() == 0) {
@@ -317,16 +326,13 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   auto& op_normalizer = OpNameNormalizer::instance();
   const auto* mutable_attributes =
       op_normalizer.GetMutableAttributes(op_desc.Type());
-
   std::set<std::string> yaml_input_set;
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
       continue;
     }
-
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
-
     yaml_input_set.insert(legacy_input_name);
   }
   // scan all inputs to see if any of them is generated as a vector<Tensor>
@@ -334,7 +340,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   for (const auto& n : op_desc.Inputs()) {
     auto& name = n.first;
     auto& args = n.second;
-
     for (const auto& arg_name : args) {
       bool check =
           param_map->count(arg_name) != 0 || !yaml_input_set.count(arg_name);
@@ -350,7 +355,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       }
     }
   }
-
   VLOG(10) << "[op:" << op_desc.Type() << "][input] start";
 
   std::vector<ir::OpResult> op_inputs;
@@ -362,7 +366,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       op_inputs.push_back(ret);
       continue;
     }
-
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
@@ -375,14 +378,12 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     if (op_desc.HasInput(legacy_input_name)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
-
     if (legacy_input_vars.size() == 0) {
       if (info.optional) {
         op_inputs.push_back(ir::OpResult(nullptr));
         continue;
       }
     }
-
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << legacy_input_name << " " << legacy_input_vars.size();
 
@@ -408,13 +409,11 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         continue;
       }
     }
-
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
     is_vector |=
         (info.type_name.find("IntArrayAttribute") != std::string::npos);
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
-
     // Specially process TensorArray, this because we cannot distinguish it with
     // Vector<DenseTensor> by other conditions but we cannot support it like
     // Vector<DenseTensor>
@@ -425,7 +424,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         is_vector = false;
       }
     }
-
     // if src type is Tensor
     if (!is_vector) {
       auto defining_info = (*param_map)[legacy_input_vars[0]];
@@ -439,7 +437,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       op_inputs.push_back(combine_op->result(0));
     }
   }
-
   return op_inputs;
 }
 
@@ -627,18 +624,22 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
                                          const OpDesc& op_desc,
                                          ir::Program* program) {
   auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+  std::cout << "0000000000" << std::endl;
   auto* op_info_concept =
       op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
-
+  std::cout << "1111111111" << std::endl;
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
   std::tie(input_infos, attr_infos, output_infos, std::ignore) =
       op_info_concept->get_op_info_();
-
+      for (auto input : input_infos) {
+        std::cout << "input_info[] = " << input.name << std::endl;
+      }
+  std::cout << "2222222222" << std::endl;
   auto op_inputs = this->GenerateOperationInput(
       ctx, param_map, op_desc, op_info.name(), input_infos, program);
-
+  std::cout << "3333333333" << std::endl;
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) =
