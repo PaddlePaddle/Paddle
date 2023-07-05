@@ -16,4 +16,5 @@
 
 namespace cinn {
 namespace ir {}  // namespace ir
+
 }  // namespace cinn
