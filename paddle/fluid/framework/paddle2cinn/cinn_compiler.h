@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "cinn/common/target.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"

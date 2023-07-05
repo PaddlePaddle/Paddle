@@ -24,10 +24,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/op_mappers/use_op_mappers.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"

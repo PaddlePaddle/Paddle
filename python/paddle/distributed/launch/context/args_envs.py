@@ -90,6 +90,13 @@ def parse_args():
     )
 
     base_group.add_argument(
+        "--enable_gpu_log",
+        type=strtobool,
+        default=True,
+        help="enable capture gpu log while running. Default True",
+    )
+
+    base_group.add_argument(
         "--nnodes",
         type=str,
         default="1",
@@ -215,4 +222,9 @@ def parse_args():
         help="seconds to wait before elastic job begin to train",
     )
 
-    return parser.parse_known_args()
+    args = parser.parse_known_args()
+    env_rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
+    if env_rank >= 0:
+        assert hasattr(args[0], "rank")
+        args[0].rank = env_rank
+    return args

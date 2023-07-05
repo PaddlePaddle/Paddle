@@ -150,6 +150,16 @@ class TestSumOp1(OpTest):
         self.out = self.x.cumsum(axis=2)
 
 
+class TestSumOp1_ZeroDim(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 0}
+        self.x = np.random.random(()).astype(self.dtype_)
+        self.out = self.x
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
 class TestSumOp2(TestSumOp1):
     def set_attrs_input_output(self):
         self.attrs = {'axis': -1, 'reverse': True}
