@@ -591,7 +591,7 @@ class Inserter:
         attrs['dtype'] = out.dtype
         attrs['op_role'] = op_role
         paddle.utils.get_shape_tensor_inputs(
-            inputs=inputs, attrs=attrs, shape=[0], op_type='fill_constant'
+            inputs=inputs, attrs=attrs, shape=[1], op_type='fill_constant'
         )
         fillconstant_op = block._insert_op(
             idx,
