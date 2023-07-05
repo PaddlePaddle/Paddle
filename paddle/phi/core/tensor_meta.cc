@@ -23,7 +23,9 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
 
   DDim strides(dims);
 
-  // if (dims.size() == 4 && layout == DataLayout::NHWC) {
+  // NOTE: The NHWC and NDHWC in Paddle are implemented by actually modifying
+  // the video memory data format, and stride is not required. But it may be
+  // used in the future. if (dims.size() == 4 && layout == DataLayout::NHWC) {
   //   strides[1] = 1;
   //   strides[3] = dims[1];
   //   strides[2] = strides[3] * dims[3];
