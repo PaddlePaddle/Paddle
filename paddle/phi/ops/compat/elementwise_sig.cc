@@ -111,6 +111,10 @@ KernelSignature ElementwiseFloorDivOpArgumentMapping(
 
 KernelSignature ElementwisePowOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
+  if (ctx.IsForInferShape()) {
+    return KernelSignature(
+        "elementwise_pow_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  }
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("elementwise_pow", {"X", "Y"}, {}, {"Out"});
@@ -211,11 +215,6 @@ KernelSignature ElementwiseMinGradOpArgumentMapping(
       "minimum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
-KernelSignature ElementwisePowGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "elementwise_pow_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
-}
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
@@ -287,6 +286,4 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_fmin_grad,
                            phi::ElementwiseFMinGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_min_grad,
                            phi::ElementwiseMinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(elementwise_pow_grad,
-                           phi::ElementwisePowGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(grad_add, phi::ElementwiseGradAddOpArgumentMapping);

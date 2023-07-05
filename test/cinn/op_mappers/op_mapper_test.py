@@ -308,7 +308,7 @@ class OpMapperTest(OpTest):
             if results[i] is not None and len(results[i].shape) == 0:
                 results[i] = results[i].reshape(1)
 
-        logger.debug(msg="Paddle result:")
+        logger.debug("Paddle result:")
         self.paddle_outputs = self.__remove_skip_outputs(results)
 
     def build_cinn_program(self, target):
@@ -398,7 +398,7 @@ class OpMapperTest(OpTest):
             scope=scope,
         )
 
-        logger.debug(msg="CINN result:")
+        logger.debug("CINN result:")
         self.cinn_outputs = self.__remove_skip_outputs(results)
 
     @staticmethod

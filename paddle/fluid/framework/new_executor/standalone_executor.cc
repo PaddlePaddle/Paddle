@@ -61,6 +61,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.create_local_scope = false;
     execution_config.skip_gc_vars = job->SkipGcVars();
 
+    // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor && platform::is_cpu_place(place)) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
