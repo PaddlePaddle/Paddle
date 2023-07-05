@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
 import cinn
@@ -34,6 +35,61 @@ class TestType(unittest.TestCase):
         self.assertEqual(str(make_const(Float(32), 1.23)), "1.23000002f")
         self.assertEqual(str(make_const(Int(32), 1.23)), "1")
         # self.assertEqual(str(make_const(UInt(32), 1.23)), "1")
+
+
+class TestAllMembers(unittest.TestCase):
+    def get_members(self, module):
+        return [name for name, member in inspect.getmembers(module)]
+
+    def test_core_api_common(self):
+        print("cinn.core_api.common:")
+        print(self.get_members(cinn.core_api.common))
+        raise AssertionError()
+
+    def test_core_api_backends(self):
+        print("cinn.core_api.backends:")
+        print(self.get_members(cinn.core_api.backends))
+        raise AssertionError()
+
+    def test_core_api_poly(self):
+        print("cinn.core_api.poly:")
+        print(self.get_members(cinn.core_api.poly))
+        raise AssertionError()
+
+    def test_core_api_ir(self):
+        print("cinn.core_api.ir:")
+        print(self.get_members(cinn.core_api.ir))
+        raise AssertionError()
+
+    def test_core_api_lang(self):
+        print("cinn.core_api.lang:")
+        print(self.get_members(cinn.core_api.lang))
+        raise AssertionError()
+
+    def test_core_api_framework(self):
+        print("cinn.core_api.framework:")
+        print(self.get_members(cinn.core_api.framework))
+        raise AssertionError()
+
+    def test_core_api_frontend(self):
+        print("cinn.core_api.frontend:")
+        print(self.get_members(cinn.core_api.frontend))
+        raise AssertionError()
+
+    def test_core_api_pe(self):
+        print("cinn.core_api.pe:")
+        print(self.get_members(cinn.core_api.pe))
+        raise AssertionError()
+
+    def test_core_api_runtime(self):
+        print("cinn.core_api.runtime:")
+        print(self.get_members(cinn.core_api.runtime))
+        raise AssertionError()
+
+    def test_core_api_utils(self):
+        print("cinn.core_api.utils:")
+        print(self.get_members(cinn.core_api.utils))
+        raise AssertionError()
 
 
 if __name__ == "__main__":
