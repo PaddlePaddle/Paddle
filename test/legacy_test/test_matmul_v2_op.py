@@ -342,8 +342,10 @@ class TestMatMulOpBroadcast2(TestMatMulV2Op):
 
 
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
+    # These cases will cause fp16 overflow on ROCM
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
     )
     class TestMatMulOpFp16Case(parent):
         def init_kernel_type(self):
@@ -540,7 +542,8 @@ class TestMatMulV2API(unittest.TestCase):
                     result = paddle.matmul(x, y)
 
     def test_compute_type_fp32(self):
-        if core.is_compiled_with_cuda():
+        # This case will cause fp16 overflow on ROCM
+        if core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 with fluid.dygraph.guard(place):
