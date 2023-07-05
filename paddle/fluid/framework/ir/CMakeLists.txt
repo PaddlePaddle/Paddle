@@ -271,6 +271,7 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fold_two_squeeze2_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(reduce_max_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
