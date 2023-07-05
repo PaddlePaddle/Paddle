@@ -145,6 +145,7 @@ if '${WITH_GPU}' == 'ON':
 
 for lib in cinnlibs:
     shutil.copy(lib, libs_path)
+    print("copy cinn lib : ", lib, " -->> " , libs_path)
     libname = os.path.basename(lib)
     if lib.endswith('so'):
         set_rpath(os.path.join(libs_path, libname) , '$ORIGIN/')
