@@ -6,7 +6,6 @@ gather_srcs(
   ir.cc
   ir_base.cc
   function_definition.cc
-  ir_operators.cc
   buffer.cc
   function_base.cc
   operation.cc
@@ -17,6 +16,7 @@ gather_srcs(
   intrinsic_ops.cc
   layout.cc)
 
+add_subdirectory(op)
 add_subdirectory(test)
 add_subdirectory(utils)
 add_subdirectory(schedule)

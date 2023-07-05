@@ -18,7 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/cas.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/cast_simplify.h"
