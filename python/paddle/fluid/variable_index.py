@@ -959,25 +959,10 @@ def parse_index(x, indices):
                 continue
 
             step = 1 if step is None else step
-            if not isinstance(step, paddle.fluid.Variable) and step == 0:
-                raise ValueError(
-                    "When assign a value to a paddle.Tensor, step can not be 0, "
-                    "but received step is {}.".format(step)
-                )
-
-            if isinstance(step, paddle.fluid.Variable) and (
-                start is None or end is None
-            ):
-                raise ValueError(
-                    "When assign a value to a paddle.Tensor, it's not supported that "
-                    "the start or end is None when the type of step is paddle.Tensor."
-                )
-
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
                 end = MAX_INTEGER if step > 0 else -1
-            step = 1 if step is None else step
 
         elif isinstance(slice_item, (list, tuple)):
             advanced_index[estimated_dim] = (
@@ -1026,7 +1011,11 @@ def parse_index(x, indices):
             ends.append(end)
             steps.append(step)
             axes.append(dim)
-            use_strided_slice = True if step != 1 else use_strided_slice
+            use_strided_slice = (
+                True
+                if (isinstance(step, paddle.fluid.Variable) or step != 1)
+                else use_strided_slice
+            )
     return (
         starts,
         ends,
