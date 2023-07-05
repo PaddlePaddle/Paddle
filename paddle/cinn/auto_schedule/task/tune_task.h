@@ -36,7 +36,7 @@ namespace auto_schedule {
 class TuneTask {
  public:
   TuneTask() = default;
-  TuneTask(std::shared_ptr<hlir::framework::Graph::Group> group)
+  explicit TuneTask(std::shared_ptr<hlir::framework::Graph::Group> group)
       : subgraph(group) {}
   // Initialize a task
   void Initialize(

@@ -98,7 +98,7 @@ class SymbolTable {
 };
 
 struct SymbolTableGuard {
-  explicit SymbolTableGuard(SymbolTable &symbol_table)
+  explicit SymbolTableGuard(SymbolTable &symbol_table)  // NOLINT
       : symbol_table_(symbol_table) {
     symbol_table.PushScope();
   }

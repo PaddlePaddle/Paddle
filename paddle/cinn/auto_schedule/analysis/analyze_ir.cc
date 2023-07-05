@@ -145,7 +145,7 @@ bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize) {
 
 ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
                                       const ir::LoweredFunc& old_func,
-                                      ir::Expr& body) {
+                                      ir::Expr& body) {  // NOLINT
   ir::ModuleExpr mod_expr(std::vector<ir::Expr>({body}));
   ir::IRSchedule ir_sch(mod_expr);
 

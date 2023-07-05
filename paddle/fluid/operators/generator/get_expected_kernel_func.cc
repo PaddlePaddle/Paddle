@@ -85,6 +85,27 @@ phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
   return phi::KernelKey(dtype, ctx.GetPlace());
 }
 
+phi::KernelKey GetConcatExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)op_ptr;
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
+  auto input_data_type = framework::proto::VarType::Type(0);
+  bool flag = 0;
+  for (auto* input : inputs) {
+    if (input->IsInitialized()) {
+      input_data_type = framework::TransToProtoVarType(input->dtype());
+      flag = 1;
+      break;
+    }
+  }
+  if (flag == 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "All Inputs of Concat OP are Empty!"));
+  }
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
 phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {

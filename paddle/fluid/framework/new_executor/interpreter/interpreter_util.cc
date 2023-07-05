@@ -954,7 +954,9 @@ void BuildOpFuncList(
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed") {
+    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
+        op_name == "builtin.set_parameter" ||
+        op_name == "builtin.get_parameter") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -969,11 +971,16 @@ void BuildOpFuncList(
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    ::ir::BuildInferMetaContext((*it),
-                                value_2_name_map,
-                                scope,
-                                op_yaml_info_parser,
-                                &(op_func_node.infer_meta_context_));
+    ::ir::BuildPhiContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>((*it),
+               value_2_name_map,
+               scope,
+               op_yaml_info_parser,
+               &(op_func_node.infer_meta_context_));
 
     auto kernel_name =
         attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
@@ -990,7 +997,11 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
-    ::ir::BuildPhiKernelContext((*it),
+    ::ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          true>((*it),
                                 value_2_name_map,
                                 scope,
                                 op_yaml_info_parser,

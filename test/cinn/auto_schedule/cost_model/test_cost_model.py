@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cinn
-
 import os
 import shutil
-import numpy as np
 import unittest
 
+import cinn
+import numpy as np
 from cinn.auto_schedule.cost_model import CostModel
 
 

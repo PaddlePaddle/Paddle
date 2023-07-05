@@ -31,10 +31,8 @@ class OpYamlInfoParser {
   const std::string& AttrTypeName(const std::string& name) const;
   const std::string& TensorAttrTypeName(const std::string& name) const;
 
-  const std::vector<std::string>& InferMetaTensorParams() const;
-  const std::vector<std::string>& InferMetaAttrParams() const;
-  const std::vector<std::string>& KernelFnTensorParams() const;
-  const std::vector<std::string>& KernelFnAttrParams() const;
+  const std::vector<std::string>& TensorParams(bool is_kernel = false) const;
+  const std::vector<std::string>& AttrParams(bool is_kernel = false) const;
   const OpRunTimeInfo& OpRuntimeInfo() const;
   const std::map<std::string, int>& Name2Id() const;
 
@@ -46,16 +44,16 @@ class OpYamlInfoParser {
 
   OpInfoTuple op_info_tuple_;
 
-  std::map<std::string, int> map_name2id_;
+  std::map<std::string, int> name2id_;
 
-  std::map<std::string, OpInputInfo> map_input_info_;
-  std::map<std::string, OpAttributeInfo> map_attr_info_;
-  std::map<std::string, OpOutputInfo> map_output_info_;
+  std::map<std::string, OpInputInfo> input_info_;
+  std::map<std::string, OpAttributeInfo> attr_info_;
+  std::map<std::string, OpOutputInfo> output_info_;
 
-  std::vector<std::string> vec_infer_meta_tensor_params_;
-  std::vector<std::string> vec_infer_meta_attr_params_;
-  std::vector<std::string> vec_kernel_fn_tensor_params_;
-  std::vector<std::string> vec_kernel_fn_attr_params_;
+  std::vector<std::string> infer_meta_tensor_params_;
+  std::vector<std::string> infer_meta_attr_params_;
+  std::vector<std::string> kernel_fn_tensor_params_;
+  std::vector<std::string> kernel_fn_attr_params_;
 
   int input_tensor_number_{0};
 };
