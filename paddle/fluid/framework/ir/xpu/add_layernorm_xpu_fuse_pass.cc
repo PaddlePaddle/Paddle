@@ -85,7 +85,6 @@ AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
   auto ele_x = pattern->NewNode(ele_x_repr())
                    ->assert_is_op_input("elementwise_add", "X")
-                   ->assert_var_not_persistable()
                    ->AsInput();
   auto ele_y = pattern->NewNode(ele_y_repr())
                    ->assert_is_op_input("elementwise_add", "Y")
@@ -197,11 +196,6 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
 
     std::string fused_op_out_name;
     fused_op_out_name = norm_out->Name();
-    // std::string fused_op_z_add_name = fused_op_out_name + "_z_add";
-    // VarDesc fused_op_z_add_desc(fused_op_z_add_name);
-    // fused_op_z_add_desc.SetPersistable(false);
-    // fused_op_z_add_desc.SetDataType(proto::VarType::FP32);
-    // Node* fused_op_z_add = graph->CreateVarNode(&fused_op_z_add_desc);
     // Generate add_layernorm fused op
     framework::OpDesc fused_op_desc(block);
     fused_op_desc.SetType("add_layernorm_xpu");
@@ -213,21 +207,7 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     fused_op_desc.SetAttr("m", m);
     fused_op_desc.SetAttr("n", n);
     fused_op_desc.SetAttr("epsilon", eps);
-    // bool lnm_has_output = norm_mean->outputs.size() > 0U;
-    // if (lnm_has_output) {
-    //   fused_op_desc.SetOutput("mean", {norm_mean->Name()});
-    // } else {
-    //   delete_nodes.insert(norm_mean);
-    // }
-    // bool lnv_has_output = norm_variance->outputs.size() > 0U;
-    // if (lnv_has_output) {
-    //   fused_op_desc.SetOutput("variance", {norm_variance->Name()});
-    // } else {
-    //   delete_nodes.insert(norm_variance);
-    // }
-
     fused_op_desc.SetOutput("out", {fused_op_out_name});
-    // fused_op_desc.SetOutput("z_add", {fused_op_z_add_name});
     setIntermediateOut(&fused_op_desc, "mean", name_scope_);
     setIntermediateOut(&fused_op_desc, "variance", name_scope_);
     setIntermediateOut(&fused_op_desc, "z_add", name_scope_);
@@ -241,7 +221,6 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     addIntermediateOut(fused_op, "mean", name_scope_, graph);
     addIntermediateOut(fused_op, "variance", name_scope_, graph);
     addIntermediateOut(fused_op, "z_add", name_scope_, graph);
-    // IR_NODE_LINK_TO(fused_op, fused_op_z_add);
 
     delete_nodes.insert({ele_add, l_norm, ele_out, norm_mean, norm_variance});
     GraphSafeRemoveNodes(graph, delete_nodes);
