@@ -787,9 +787,12 @@ struct AssignValueOpTranscriber : public OpTranscriber {
       legacy_attr = op_desc.GetAttr("int32_values");
     } else if (op_desc.HasAttr("int64_values")) {
       legacy_attr = op_desc.GetAttr("int64_values");
+    } else if (op_desc.HasAttr("values")) {
+      legacy_attr = op_desc.GetAttr("values");
     } else {
       IR_THROW(
-          "Op assign_value should have attribute `**_values` but not find");
+          "Op assign_value should have attribute `**_values` or `values` but "
+          "not find");
     }
     ir::Attribute attr_values = attribute_translator(
         attr_info_maps.at("values").type_name, legacy_attr);

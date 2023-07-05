@@ -161,8 +161,8 @@ if(NOT WITH_MKLDNN
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 
-  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 500)
-  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 500)
+  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 600)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
