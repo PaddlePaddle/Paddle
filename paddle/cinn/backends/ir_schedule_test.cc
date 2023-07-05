@@ -195,7 +195,7 @@ void TestSplitThrow() {
   auto source_code = codegen.Compile(module, CodeGenC::OutputKind::CImpl);
 }
 TEST(IrSchedule, split_throw) {
-  ASSERT_THROW(TestSplitThrow(), std::runtime_error);
+  ASSERT_THROW(TestSplitThrow(), ir::enforce::EnforceNotMet);
 }
 
 TEST(IrSchedule, reorder1) {

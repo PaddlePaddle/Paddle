@@ -14,7 +14,26 @@
 
 #pragma once
 
+#ifdef __GNUC__
+#include <cxxabi.h>  // for __cxa_demangle
+#endif               // __GNUC__
+
+#if !defined(_WIN32)
+#include <dlfcn.h>   // dladdr
+#include <unistd.h>  // sleep, usleep
+#else                // _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
+#include <windows.h>  // GetModuleFileName, Sleep
+#endif
+
+#if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
+#include <execinfo.h>
+#endif
+
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -23,16 +42,97 @@
 namespace cinn {
 namespace ir {
 
+namespace enforce {
+
+#ifdef __GNUC__
+inline std::string demangle(std::string name) {
+  int status = -4;  // some arbitrary value to eliminate the compiler warning
+  std::unique_ptr<char, void (*)(void*)> res{
+      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+  return (status == 0) ? res.get() : name;
+}
+#else
+inline std::string demangle(std::string name) { return name; }
+#endif
+
+static std::string GetErrorSumaryString(const std::string& what,
+                                        const char* file,
+                                        int line) {
+  std::ostringstream sout;
+  sout << "\n----------------------\nError Message "
+          "Summary:\n----------------------\n";
+  sout << what << "(at " << file << " : " << line << ")" << std::endl;
+  return sout.str();
+}
+
+static std::string GetCurrentTraceBackString() {
+  std::ostringstream sout;
+  sout << "\n\n--------------------------------------\n";
+  sout << "C++ Traceback (most recent call last):";
+  sout << "\n--------------------------------------\n";
+#if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
+  static constexpr int TRACE_STACK_LIMIT = 100;
+
+  void* call_stack[TRACE_STACK_LIMIT];
+  auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+  auto symbols = backtrace_symbols(call_stack, size);
+  Dl_info info;
+  int idx = 0;
+  int end_idx = 0;
+  for (int i = size - 1; i >= end_idx; --i) {
+    if (dladdr(call_stack[i], &info) && info.dli_sname) {
+      auto demangled = demangle(info.dli_sname);
+      std::string path(info.dli_fname);
+      // C++ traceback info are from core.so
+      if (path.substr(path.length() - 3).compare(".so") == 0) {
+        sout << idx++ << " " << demangled << "\n";
+      }
+    }
+  }
+  free(symbols);
+#else
+  sout << "Not support stack backtrace yet.\n";
+#endif
+  return sout.str();
+}
+
+static std::string GetTraceBackString(const std::string& what,
+                                      const char* file,
+                                      int line) {
+  return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+  // return GetErrorSumaryString(what, file, line);
+}
+
+struct EnforceNotMet : public std::exception {
+ public:
+  EnforceNotMet(const std::string& str, const char* file, int line)
+      : err_str_(GetTraceBackString(str, file, line)) {}
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+
+ private:
+  std::string err_str_;
+};
+
+#define CINN_THROW(...)                                              \
+  do {                                                               \
+    try {                                                            \
+      throw enforce::EnforceNotMet(__VA_ARGS__, __FILE__, __LINE__); \
+    } catch (const std::exception& e) {                              \
+      std::cout << e.what() << std::endl;                            \
+      throw;                                                         \
+    }                                                                \
+  } while (0)
+}  // namespace enforce
+
 /**
  *  \brief Indicates the level of printing error message in the current Schedule
  */
 enum class ScheduleErrorMessageLevel : int32_t {
-  /** \brief No error message*/
-  kBlank = 0,
   /** \brief  Print an error message in short mode*/
-  kGenearl = 1,
+  kGeneral = 0,
   /** \brief Print an error message in detailed mode*/
-  kDetailed = 2,
+  kDetailed = 1,
 };
 
 /**
@@ -45,14 +145,14 @@ class IRScheduleErrorHandler : public std::runtime_error {
    * \brief constructor
    * \param s the error message
    */
-  explicit IRScheduleErrorHandler(const std::string &s)
+  explicit IRScheduleErrorHandler(const std::string& s)
       : std::runtime_error(s) {}
 
   /**
    * \brief Returns a detailed error message corresponding to the kDetailed
    * error level.
    */
-  std::string FormatErrorMessage(const std::string &primitive) const;
+  std::string FormatErrorMessage(const std::string& primitive) const;
 
   /**
    * \brief Returns a short error message corresponding to the kGeneral error

@@ -41,6 +41,8 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
+DECLARE_int32(cinn_schedule_error_message_level);
+
 namespace cinn {
 namespace ir {
 
@@ -53,10 +55,12 @@ class ScheduleImpl {
   explicit ScheduleImpl(const ModuleExpr& module_expr,
                         bool debug_flag = false,
                         ScheduleErrorMessageLevel err_msg_level =
-                            ScheduleErrorMessageLevel::kBlank)
-      : module_expr_(module_expr),
-        debug_flag_(debug_flag),
-        err_msg_level_(err_msg_level) {}
+                            ScheduleErrorMessageLevel::kGeneral)
+      : module_expr_(module_expr), debug_flag_(debug_flag) {
+    err_msg_level_ = static_cast<ScheduleErrorMessageLevel>(
+        FLAGS_cinn_schedule_error_message_level ||
+        static_cast<int>(err_msg_level));
+  }
   explicit ScheduleImpl(ModuleExpr&& module_expr)
       : module_expr_(std::move(module_expr)) {}
 
@@ -134,7 +138,8 @@ class ScheduleImpl {
 
   ModuleExpr module_expr_;
   bool debug_flag_{false};
-  ScheduleErrorMessageLevel err_msg_level_;
+  ScheduleErrorMessageLevel err_msg_level_ =
+      ScheduleErrorMessageLevel::kGeneral;
 };
 
 /** \brief A macro that guards the beginning of each implementation of schedule
@@ -146,21 +151,17 @@ class ScheduleImpl {
  * kind of schedule primitive \param err_msg_level A ScheduleErrorMessageLevel
  * enum, level of error message printing
  */
-#define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                       \
-  }                                                                          \
-  catch (const IRScheduleErrorHandler& err_hanlder) {                        \
-    switch (err_msg_level) {                                                 \
-      case ScheduleErrorMessageLevel::kDetailed:                             \
-        throw std::runtime_error(err_hanlder.FormatErrorMessage(primitive)); \
-      case ScheduleErrorMessageLevel::kGenearl:                              \
-        throw std::runtime_error(err_hanlder.GeneralErrorMessage());         \
-      case ScheduleErrorMessageLevel::kBlank:                                \
-        throw std::runtime_error(                                            \
-            "IRScheduleError occurred! (No more error message)");            \
-      default:                                                               \
-        throw std::runtime_error(                                            \
-            "IRScheduleError occurred! (No more error message)");            \
-    }                                                                        \
+#define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                   \
+  }                                                                      \
+  catch (const IRScheduleErrorHandler& err_hanlder) {                    \
+    switch (err_msg_level) {                                             \
+      case ScheduleErrorMessageLevel::kDetailed:                         \
+        CINN_THROW(err_hanlder.FormatErrorMessage(primitive));           \
+      case ScheduleErrorMessageLevel::kGeneral:                          \
+        CINN_THROW(err_hanlder.GeneralErrorMessage());                   \
+      default:                                                           \
+        CINN_THROW("IRScheduleError occurred! (No more error message)"); \
+    }                                                                    \
   }
 
 std::vector<Expr> ScheduleImpl::Split(const Expr& loop,

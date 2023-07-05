@@ -73,7 +73,7 @@ class IRSchedule {
                       utils::LinearRandomEngine::StateType rand_seed = -1,
                       bool debug_flag = false,
                       ScheduleErrorMessageLevel err_msg_level =
-                          ScheduleErrorMessageLevel::kBlank);
+                          ScheduleErrorMessageLevel::kGeneral);
   IRSchedule(ir::ModuleExpr&& mod_expr,
              ScheduleDesc&& trace,
              utils::LinearRandomEngine::StateType rand_seed = -1);
