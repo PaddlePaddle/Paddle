@@ -71,7 +71,7 @@ bool operator<(const SearchState& left, const SearchState& right) {
 }
 
 // Visit every node by expanding all of their fields in dfs order
-class DfsWithExprsFields : public ir::IRVisitor {
+class DfsWithExprsFields : public ir::IRVisitorBase<void> {
  protected:
 #define __m(t__)                          \
   void Visit(const ir::t__* x) override { \
@@ -85,7 +85,7 @@ class DfsWithExprsFields : public ir::IRVisitor {
   NODETY_FORALL(__m)
 #undef __m
 
-  void Visit(const Expr* expr) override { IRVisitor::Visit(expr); }
+  void Visit(const Expr* expr) override { IRVisitorBase::Visit(expr); }
 };
 
 // Generate a reduce hash of a AST tree by combining hash of each AST node

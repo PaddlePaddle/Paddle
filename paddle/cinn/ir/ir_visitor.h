@@ -34,7 +34,8 @@ struct _Tensor_;
  * @param Args type of the extra arguments passed to the all the methods.
  */
 template <typename RetTy = void, typename... Args>
-struct IRVisitorBase {
+class IRVisitorBase {
+ public:
   //! Visit a expression.
   // @{
   virtual RetTy Visit(const ir::Expr* expr, Args... args) {
@@ -55,22 +56,15 @@ struct IRVisitorBase {
   // @}
 
  protected:
-#define __(op__) virtual RetTy Visit(const ir::op__* op, Args... args) = 0;
+#define __(op__)                                          \
+  virtual RetTy Visit(const ir::op__* op, Args... args) { \
+    return VisitDefault(op, std::forward<Args>(args)...); \
+  }
   NODETY_FORALL(__)
 #undef __
-};
-
-/**
- * Base of all the Ir readonly visitor.
- */
-struct IRVisitor : public IRVisitorBase<void> {
-  IRVisitor() = default;
-
-  void Visit(const Expr* x) { IRVisitorBase::Visit(x); }
-#define __m(t__) \
-  virtual void Visit(const t__* x) {}
-  NODETY_FORALL(__m)
-#undef __m
+  virtual RetTy VisitDefault(const Object* expr, Args... args) {
+    LOG(FATAL) << "not supported NodeTy";
+  }
 };
 
 // std::set<Expr> CollectIRNodes(Expr expr, std::function<bool(const Expr*)>

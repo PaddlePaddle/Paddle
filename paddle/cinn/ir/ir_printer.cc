@@ -32,7 +32,7 @@ namespace ir {
 using common::bfloat16;
 using common::float16;
 
-void IrPrinter::Print(Expr e) { IRVisitor::Visit(&e); }
+void IrPrinter::Print(Expr e) { IRVisitorBase::Visit(&e); }
 void IrPrinter::Print(const std::vector<Expr> &exprs,
                       const std::string &splitter) {
   for (std::size_t i = 0; !exprs.empty() && i + 1 < exprs.size(); i++) {
