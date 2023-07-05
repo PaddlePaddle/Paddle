@@ -67,6 +67,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
   std::vector<int64_t> dst_dim;
   std::vector<int64_t> dst_strides;
   dst_dim.resize(axis.size());
+  dst_strides.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
     dst_strides[i] = src_strides[axis[i]];
