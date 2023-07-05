@@ -60,21 +60,16 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                            DataLayout dst_layout,
                            DenseTensor* out) {
   auto src_dim = x.dims();
-  auto src_strides = x.strides();
 
   auto axis = GetAxis(x.layout(), dst_layout);
 
   std::vector<int64_t> dst_dim;
-  std::vector<int64_t> dst_strides;
   dst_dim.resize(axis.size());
-  dst_strides.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
-    dst_strides[i] = src_strides[axis[i]];
   }
 
   out->Resize(phi::make_ddim(dst_dim));
-  out->set_strides(phi::make_ddim(dst_strides));
   dev_ctx.Alloc(out, x.dtype());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // In GPU fp16 model, we will insert many transfer_layout ops in
