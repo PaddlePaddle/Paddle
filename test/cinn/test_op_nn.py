@@ -23,7 +23,7 @@ import pool_utils
 from cinn import framework
 from test_utils import SingleOpTester
 
-import paddle as paddle
+import paddle
 
 
 class OpTest_relu(SingleOpTester):

@@ -21,7 +21,7 @@ from cinn import framework
 from test_utils import SingleOpTester
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 

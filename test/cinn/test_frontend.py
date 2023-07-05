@@ -22,7 +22,7 @@ from cinn.common import *
 from cinn.framework import *
 from cinn.frontend import *
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 assert len(sys.argv) == 1 + 2 + 1  # model and enable_gpu count
 enable_gpu = sys.argv.pop()

@@ -17,7 +17,7 @@
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 
 def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):

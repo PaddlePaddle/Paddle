@@ -23,8 +23,8 @@ from cinn.common import *
 from cinn.framework import *
 from cinn.frontend import *
 
-import paddle as paddle
-import paddle.fluid as fluid
+import paddle
+from paddle import fluid
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
