@@ -156,6 +156,23 @@ void BuildPhiContext(
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
     } else if (attr_type_name == "ir::StrAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::StrAttribute>().data());
+    } else if (attr_type_name ==
+               "ir::ArrayAttribute<paddle::dialect::ScalarAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      std::vector<phi::Scalar> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<paddle::dialect::ScalarAttribute>(),
+            true,
+            phi::errors::Unimplemented(
+                "the 0th elementwise MUST be dialect::ScalarAttribute"));
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(array_list[i]
+                                .dyn_cast<paddle::dialect::ScalarAttribute>()
+                                .data());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int32Attribute>") {
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
       std::vector<int32_t> vec_res;
@@ -170,6 +187,7 @@ void BuildPhiContext(
               array_list[i].dyn_cast<ir::Int32Attribute>().data());
         }
       }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::FloatAttribute>") {
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
       std::vector<float> vec_res;
@@ -187,9 +205,7 @@ void BuildPhiContext(
       }
       ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
-      std::cerr << "int64 array" << std::endl;
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
-      std::cerr << "len " << array_list.size() << std::endl;
 
       std::vector<int64_t> vec_res;
       if (array_list.size() > 0) {
@@ -198,12 +214,8 @@ void BuildPhiContext(
             true,
             phi::errors::PreconditionNotMet(
                 "Element in array list MUST be ir::Int64Attribute "));
-        std::cerr << "int 64" << std::endl;
 
         for (size_t i = 0; i < array_list.size(); ++i) {
-          std::cerr << "i  " << i << "\t"
-                    << array_list[i].dyn_cast<ir::Int64Attribute>().data()
-                    << std::endl;
           vec_res.push_back(
               array_list[i].dyn_cast<ir::Int64Attribute>().data());
         }
