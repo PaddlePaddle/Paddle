@@ -44,7 +44,7 @@
 namespace ir {
 
 paddle::framework::Variable* CreateVar(ir::Value value,
-                                       std::string name,
+                                       const std::string& name,
                                        paddle::framework::Scope* scope,
                                        paddle::framework::Scope* local_scope) {
   Operation* def_op = value.GetDefiningOp();
@@ -164,7 +164,7 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 }
 
-void BuildScope(ir::Block* block,
+void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
                 std::unordered_map<ir::Value, std::string>* name_map) {
@@ -176,7 +176,7 @@ void BuildScope(ir::Block* block,
 
   // int count = name_map->size();
   int count = name_map->size();
-  for (auto it = block->begin(); it != block->end(); ++it) {
+  for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
     auto attr_map = op->attributes();
