@@ -572,17 +572,18 @@ class Optimizer:
 
                     bd = [2, 4, 6, 8]
                     value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                    adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                                           parameter_list=linear.parameters())
+                    adam = paddle.optimizer.Adam(paddle.optimizer.lr.PiecewiseDecay(bd, value),
+                                           parameters=linear.parameters())
 
                     # first step: learning rate is 0.2
-                    np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
+                    np.allclose(adam.get_lr(), 0.2, rtol=1e-06, atol=0.0) # True
 
                     # learning rate for different steps
                     ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
                     for i in range(12):
                         adam.minimize(loss)
-                        lr = adam.current_step_lr()
+                        adam.step()
+                        lr = adam.get_lr()
                         np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
 
         """
