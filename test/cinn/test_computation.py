@@ -25,8 +25,7 @@ from cinn.framework import *
 from cinn.frontend import *
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 
 assert len(sys.argv) == 3
 enable_gpu = sys.argv.pop()

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <iterator>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
@@ -106,6 +107,10 @@ int64_t ShardingMergeForAxis(const std::string& axis,
                              const int64_t& mesh_dim1,
                              const int64_t& mesh_dim2);
 
+// Intend to use for generating the TensorDistAttr of output based on the input
+// activation TensorDistAttr. The process_mesh, batch_dim, dynamic_dim are
+// copied with annotated is forced to False, and dims_mapping is leave to be
+// null.
 TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr);
 
 // Resolute the partial mesh dimension of a output tensor, giving the
@@ -123,6 +128,10 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
 std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet);
+
+// Return a NEW TensorDistAttr whose dims mapping is consist of "-1"
+// (unsharded).
+TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr);
 
 // The static map that stores and initializes all the registered SPMD rules.
 class SPMDRuleMap {

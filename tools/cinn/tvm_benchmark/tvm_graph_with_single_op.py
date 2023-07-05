@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import numpy as np
 import tvm
 import tvm.contrib.graph_runtime as runtime
 import tvm.relay.testing
-from tvm import autotvm, relay, te
-from tvm.autotvm.tuner import GATuner, GridSearchTuner, RandomTuner, XGBTuner
-from tvm.contrib.utils import tempdir
+from tvm import relay
 
 # To test different ops, change this single-op network.
 # See https://github.com/apache/incubator-tvm/blob/main/docs/langref/relay_op.rst to get the op list.
