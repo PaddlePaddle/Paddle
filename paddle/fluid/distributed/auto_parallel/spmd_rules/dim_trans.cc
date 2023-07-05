@@ -214,7 +214,7 @@ std::pair<int64_t, DimTrans*> GetDimTransSize(
     int64_t nmesh = (*shardable)[0].size();
     std::vector<int64_t> input_sizes;
     for (int64_t i = 1, n = inputs.size(); i < n; i++) {
-      DimTrans* input = inputs.at(i);
+      DimTrans* input = inputs[i];
       if (input->type() == DimTrans::Type::INPUTDIM) {
         (*shardable)[i].assign(nmesh, false);
       }
