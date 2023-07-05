@@ -133,7 +133,7 @@ def shape(input):
             outputs={'Out': out},
             stop_gradient=True,
         )
-
+        out.stop_gradient = True
         return out
 
 

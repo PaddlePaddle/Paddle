@@ -230,6 +230,7 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs
         )
+        self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -958,6 +959,16 @@ class PartialProgramLayer:
         )
         var.stop_gradient = True
         return var
+
+    def _update_stop_gradient(self, out_vars):
+        # Update stop_gradient for all outputs
+        def set_stop_gradient(var_id, eager_tensor):
+            var = self._outputs[var_id]
+            assert isinstance(var, framework.Variable)
+            eager_tensor.stop_gradient = var.stop_gradient
+            return None
+
+        list(map(set_stop_gradient, self._outputs.var_ids, out_vars))
 
     def _restore_out(self, out_vars):
         """
