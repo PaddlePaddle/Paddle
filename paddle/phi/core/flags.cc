@@ -1256,3 +1256,15 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
 PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
+                         false,
+                         "Enable new IR in executor");

@@ -60,6 +60,11 @@ class Context:
 
         return False
 
+    def is_auto_tuner_mode(self):
+        if self.args.auto_tuner_json:
+            return True
+        return False
+
     def get_envs(self):
         return self.envs.copy()
 
