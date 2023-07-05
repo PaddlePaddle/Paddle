@@ -132,10 +132,6 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   manual_signature : [all]
   extra :
     attrs : [bool use_mkldnn = false]
@@ -163,10 +159,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amax_grad : GetReduceGradExpectedKernelType
   manual_signature : [amax]
@@ -181,10 +173,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amin_grad : GetReduceGradExpectedKernelType
   manual_signature : [amin]
@@ -207,10 +195,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     any : GetReduceOpUseInputPlaceExpectedKernelType
   manual_signature : [any]
@@ -224,6 +208,7 @@
 - op : argmax(arg_max)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
@@ -234,6 +219,7 @@
 - op : argmin(arg_min)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
@@ -859,9 +845,15 @@
 
 - op : elementwise_pow
   backward : elementwise_pow_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [elementwise_pow]
 
 - op : elu
   backward : elu_grad, elu_double_grad (elu_grad_grad)
@@ -1284,9 +1276,14 @@
 
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : histogram
   inputs :

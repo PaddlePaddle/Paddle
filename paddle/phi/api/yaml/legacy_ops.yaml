@@ -435,15 +435,6 @@
     func : hardswish
   backward : hardswish_grad
 
-- op : heaviside
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : heaviside
-  backward : heaviside_grad
-
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
   output : Tensor(out), Tensor(pre_out), Tensor(w_out)

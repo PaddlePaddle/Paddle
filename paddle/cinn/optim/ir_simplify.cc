@@ -55,7 +55,8 @@ void PartialSimplify(
 //! Simplify the expression but Load.
 struct SimplifyButStoreLoadMutator : public ir::IRMutator<ir::Expr*> {
   common::cas_intervals_t& var_intervals;
-  explicit SimplifyButStoreLoadMutator(common::cas_intervals_t& var_intervals)
+  explicit SimplifyButStoreLoadMutator(
+      common::cas_intervals_t& var_intervals)  // NOLINT
       : var_intervals(var_intervals) {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }

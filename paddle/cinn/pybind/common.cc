@@ -229,12 +229,12 @@ inline auto __binary_op_fn_dispatch(T1 x, T2 y, F fn, std::false_type) {
 
 template <typename T1, typename T2, typename F>
 inline void __binary_op_visitor_dispatch(
-    CINNValue &v, T1 lhs, T2 rhs, F fn, std::true_type) {
+    CINNValue &v, T1 lhs, T2 rhs, F fn, std::true_type) {  // NOLINT
   v = CINNValue();
 }
 template <typename T1, typename T2, typename F>
 inline void __binary_op_visitor_dispatch(
-    CINNValue &v, T1 lhs, T2 rhs, F fn, std::false_type) {
+    CINNValue &v, T1 lhs, T2 rhs, F fn, std::false_type) {  // NOLINT
   v.Set(fn(lhs, rhs));
 }
 
