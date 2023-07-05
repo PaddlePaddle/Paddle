@@ -13,7 +13,9 @@
 # limitations under the License.
 
 ######
+
 import os
+from distutils.util import strtobool
 from functools import reduce
 
 import paddle
@@ -212,7 +214,17 @@ class DygraphShardingOptimizer:
         for rank_ in range(self._sharding_world_size):
             mapping[rank_] = []
         sizes = [0] * self._sharding_world_size
-        for param in self._parameter_list:
+
+        parameters = list(self._parameter_list)
+        need_sort_parameters = strtobool(
+            os.getenv('FLAGS_sharding_sort_parameters', '1')
+        )
+        if need_sort_parameters:
+            parameters.sort(
+                key=lambda p: reduce(lambda x, y: x * y, p.shape), reverse=True
+            )
+
+        for param in parameters:
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
             numel = reduce(lambda x, y: x * y, param.shape, 1)
