@@ -979,6 +979,7 @@
   kernel :
     func : unique
     data_type : x
+  optional : indices, inverse, counts 
 
 - op : unpool
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)
