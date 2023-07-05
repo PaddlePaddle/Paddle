@@ -58,7 +58,7 @@ def clear_async_save_task_queue():
     '''
     while len(async_save_queue) > 0:
         task = async_save_queue.pop()
-        if task and task.isAlive():
+        if task and task.is_alive():
             task.join()
 
 
