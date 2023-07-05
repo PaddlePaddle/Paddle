@@ -49,7 +49,8 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
     base_ptr += traits_num * sizeof(TypeId);
   }
   // Construct OpInfoImpl.
-  VLOG(6) << "Construct OpInfoImpl at " << (void*)base_ptr << " ......";
+  VLOG(6) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
+          << " ......";
   OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(dialect,
                                                     op_id,
                                                     op_name,
