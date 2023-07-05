@@ -21,7 +21,7 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
-#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif

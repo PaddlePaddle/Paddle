@@ -19,7 +19,7 @@
 #include <limits>
 #include <vector>
 
-#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"

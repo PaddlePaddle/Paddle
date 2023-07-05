@@ -28,7 +28,7 @@
 
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"
-#include "paddle/cinn/ir/function_base.h"
+#include "paddle/cinn/ir/extension/function_base.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/utils/small_vector.h"
 

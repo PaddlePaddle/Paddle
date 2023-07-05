@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/intrinsic_ops.h"
 #include "paddle/cinn/ir/registry.h"
 #include "paddle/cinn/lang/packed_func.h"
 

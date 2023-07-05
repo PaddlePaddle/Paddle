@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/backends/llvm/llvm_intrin_rule.h"
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/intrinsic_ops.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/registry.h"
 

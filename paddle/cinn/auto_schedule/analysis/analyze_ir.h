@@ -17,10 +17,10 @@
 #include <string>
 #include <unordered_set>
 
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/ir/lowered_func.h"
 
 namespace cinn {
 namespace auto_schedule {

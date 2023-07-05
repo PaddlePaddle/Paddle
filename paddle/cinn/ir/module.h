@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/backends/outputs.h"
 #include "paddle/cinn/common/common.h"
-#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/lang/buffer.h"
 
 namespace cinn {

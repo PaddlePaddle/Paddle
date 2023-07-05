@@ -13,17 +13,14 @@ gather_srcs(
   ir_printer.cc
   ir_mutator.cc
   function_definition.cc
-  lowered_func.cc
   ir_operators.cc
   ir_verify.cc
   buffer.cc
-  function_base.cc
   operation.cc
   collect_ir_nodes.cc
   registry.cc
   tensor.cc
   module.cc
-  intrinsic_ops.cc
   layout.cc
   schedule_desc.cc
   ir_compare.cc)

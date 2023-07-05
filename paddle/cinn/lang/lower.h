@@ -20,8 +20,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/packed_func.h"

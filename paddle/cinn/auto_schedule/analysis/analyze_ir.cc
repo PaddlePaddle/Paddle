@@ -22,11 +22,11 @@
 
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_copy.h"

@@ -18,9 +18,9 @@
 
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/collect_ir_nodes.h"
-#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/tensor.h"
 
 namespace cinn {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/function_base.h"
+#include "paddle/cinn/ir/extension/function_base.h"
 
 namespace cinn {
 namespace ir {}  // namespace ir

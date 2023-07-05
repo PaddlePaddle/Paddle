@@ -32,7 +32,7 @@
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/parallel_compiler.h"
 #include "paddle/cinn/hlir/framework/scope.h"
-#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/utils/timer.h"
 

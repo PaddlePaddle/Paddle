@@ -19,7 +19,7 @@
 
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/node.h"
-#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 
 namespace cinn {
 namespace auto_schedule {

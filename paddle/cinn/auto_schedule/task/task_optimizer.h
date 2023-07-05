@@ -22,7 +22,7 @@
 #include "paddle/cinn/auto_schedule/search_strategy/evolutionary_search.h"
 #include "paddle/cinn/auto_schedule/task/tune_task.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
-#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {

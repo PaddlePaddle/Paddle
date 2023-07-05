@@ -17,7 +17,7 @@
  */
 #pragma once
 
-#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/intrinsic_ops.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 

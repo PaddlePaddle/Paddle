@@ -22,11 +22,11 @@
 #include <string>
 #include <type_traits>
 
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_operators.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
-#include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/registry.h"
 #include "paddle/cinn/ir/tensor.h"

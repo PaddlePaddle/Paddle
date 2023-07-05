@@ -17,8 +17,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
 

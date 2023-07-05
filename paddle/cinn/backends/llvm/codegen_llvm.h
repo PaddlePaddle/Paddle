@@ -31,9 +31,9 @@
 
 #include "paddle/cinn/backends/llvm/ir_builder_mixin.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
-#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir_visitor.h"
-#include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
 
 namespace cinn {

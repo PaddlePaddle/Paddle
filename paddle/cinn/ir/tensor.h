@@ -27,7 +27,7 @@
 
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/function_base.h"
+#include "paddle/cinn/ir/extension/function_base.h"
 #include "paddle/cinn/lang/buffer.h"
 #include "paddle/cinn/poly/stage.h"
 

@@ -17,7 +17,7 @@
 #include <string>
 
 #include "paddle/cinn/backends/codegen_c.h"
-#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/extension/intrinsic_ops.h"
 
 namespace cinn {
 namespace backends {

@@ -17,8 +17,8 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/ir/extension/lowered_func.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/lowered_func.h"
 
 namespace cinn {
 
