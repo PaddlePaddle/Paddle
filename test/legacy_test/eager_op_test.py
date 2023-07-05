@@ -1140,6 +1140,7 @@ class OpTest(unittest.TestCase):
         set_flags({"FLAGS_enable_new_ir_in_executor": True})
 
         executor = Executor(place)
+        print(program)
         ir_outs = executor.run(
             program,
             feed=feed_map,

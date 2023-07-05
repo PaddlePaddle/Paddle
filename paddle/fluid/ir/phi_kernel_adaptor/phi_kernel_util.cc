@@ -79,8 +79,11 @@ void BuildScope(ir::Block* block,
       // change opreand name to param_name
 
       auto orig_name = name_map->at(in_ptr);
-      (*name_map)[in_ptr] = param_name;
-      scope->Rename(orig_name, param_name);
+      std::cerr << "orig name " << orig_name << "\t" << param_name << std::endl;
+      if (scope->FindVar(param_name) == nullptr) {
+        (*name_map)[in_ptr] = param_name;
+        scope->Rename(orig_name, param_name);
+      }
       continue;
     }
 
