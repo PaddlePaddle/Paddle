@@ -718,26 +718,25 @@ def monkey_patch_tensor():
                     return True
         return False
 
-    def __getitem__(self, item):
-        def is_list_tuple(index, contain_type):
-            def _is_list_tuple(item):
-                if isinstance(item, (tuple, list)):
-                    for s in item:
-                        if not _is_list_tuple(s):
-                            return False
-                else:
-                    if type(item) != contain_type:
-                        return False
+    def contain_tensor_or_list(item):
+        if not isinstance(item, tuple):
+            item = (item,)
+
+        for slice_item in item:
+            if isinstance(slice_item, (list, np.ndarray, Variable)):
                 return True
+            elif isinstance(slice_item, slice):
+                if (
+                    isinstance(slice_item.start, Variable)
+                    or isinstance(slice_item.stop, Variable)
+                    or isinstance(slice_item.step, Variable)
+                ):
+                    return True
 
-            if not isinstance(index, (tuple, list)):
-                return False
-            for s in index:
-                if not _is_list_tuple(s):
-                    return False
-            return True
+        return False
 
-        if contain_tensor(item) or is_list_tuple(item, int):
+    def __getitem__(self, item):
+        if contain_tensor_or_list(item):
             # 1. Call _getitem_impl_ when item contains tensor.
             # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
             return _getitem_static(self, item)
@@ -747,18 +746,6 @@ def monkey_patch_tensor():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
-        def contain_tensor_or_list(item):
-            if not isinstance(item, tuple):
-                item = [item]
-
-            for slice_item in item:
-                if isinstance(slice_item, list):
-                    return True
-                elif isinstance(slice_item, Variable):
-                    return True
-
-            return False
-
         def is_combine_index(item):
             var_type = None
             item_type = None

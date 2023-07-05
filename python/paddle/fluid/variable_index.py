@@ -1237,6 +1237,8 @@ def get_tensor_with_basic_indexing(
                 stride = attrs['strides']
             if use_strided_slice:
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
+                if len(decrease_axes) > 0:
+                    out = paddle._C_ops.squeeze(out, decrease_axes)
             else:
                 out = paddle._C_ops.slice(
                     x,
