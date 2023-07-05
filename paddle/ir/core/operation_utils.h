@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/region.h"
@@ -61,7 +62,7 @@ struct OperationArgument {
   void AddOutput(Type type) { output_types.emplace_back(type); }
 
   template <class InputIt>
-  void AddTypes(InputIt first, InputIt last);
+  void AddOutputs(InputIt first, InputIt last);
 
   /// Add an attribute with the specified name.
   void AddAttribute(const std::string& name, Attribute attr) {
@@ -86,7 +87,7 @@ void OperationArgument::AddOperands(InputIt first, InputIt last) {
   }
 }
 template <class InputIt>
-void OperationArgument::AddTypes(InputIt first, InputIt last) {
+void OperationArgument::AddOutputs(InputIt first, InputIt last) {
   while (first != last) {
     output_types.emplace_back(*first++);
   }

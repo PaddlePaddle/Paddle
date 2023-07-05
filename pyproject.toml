@@ -18,9 +18,6 @@ extend_skip_glob = [
     # see .flake8 for more details
     "python/paddle/fluid/**",
     "python/paddle/utils/gast/**",
-    # Temporarily ignore CINN files, it will fix later
-    "python/cinn/**",
-    "test/cinn/**",
 ]
 
 [tool.ruff]
@@ -29,9 +26,6 @@ exclude = [
     "third_party",
     "./python/paddle/fluid/**",
     "./python/paddle/utils/gast/**",
-    # Temporarily ignore CINN files, it will fix later
-    "python/cinn/**",
-    "test/cinn/**",
 ]
 target-version = "py37"
 select = [
@@ -103,3 +97,17 @@ ignore = [
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
+# Temporarily ignore CINN files, it will fix later
+"python/cinn/**" = [
+    "F401",
+    "F403",
+]
+"test/cinn/**" = [
+    "F401",
+    "F403",
+    "F632",
+    "F811",
+]
+"tools/cinn/**" = [
+    "F401",
+]

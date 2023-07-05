@@ -25,12 +25,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SigmoidCrossEntropyWithLogitsKernel(const Context& dev_ctx,
-                                         const DenseTensor& x,
-                                         const DenseTensor& label,
-                                         bool normalize,
-                                         int ignore_index,
-                                         DenseTensor* out) {
+void SigmoidCrossEntropyWithLogitsKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& label,
+    const paddle::optional<DenseTensor>& pos_weight,
+    bool normalize,
+    int ignore_index,
+    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
                     true,

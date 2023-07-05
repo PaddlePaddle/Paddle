@@ -328,6 +328,9 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void RegisterOutputHook(const OutputTensorHookFunc &hookfunc) override;
 
+  /// \brief Same as RegisterOutputHook
+  void RegisterInputHook(const InputTensorHookFunc &hookfunc) override;
+
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
   ///
@@ -498,8 +501,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   void StatisticShapeRangeInfo();
-  void CollectShapeRangeInfo();
-
+  void HookCollectShapeRangeInfo();
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
@@ -598,7 +600,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   std::vector<OutputTensorHookFunc> hookfuncs_;
-
+  std::vector<OutputTensorHookFunc> output_hookfuncs_;
+  std::vector<InputTensorHookFunc> input_hookfuncs_;
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
 
