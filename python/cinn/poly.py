@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.poly import create_stages
+from .core_api.poly import create_stages  # noqa: F401

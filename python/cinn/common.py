@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.common import *
-from .core_api.common import (
-    Bool,
-    CINNValue,
-    Float,
-    Int,
-    String,
-    Target,
-    Type,
-    UInt,
-    Void,
-    make_const,
-)
+from .core_api.common import *  # noqa: F401
+from .core_api.common import Bool  # noqa: F401
+from .core_api.common import CINNValue  # noqa: F401
+from .core_api.common import Float  # noqa: F401
+from .core_api.common import Int  # noqa: F401
+from .core_api.common import String  # noqa: F401
+from .core_api.common import Target  # noqa: F401
+from .core_api.common import Type  # noqa: F401
+from .core_api.common import UInt  # noqa: F401
+from .core_api.common import Void  # noqa: F401
+from .core_api.common import make_const  # noqa: F401

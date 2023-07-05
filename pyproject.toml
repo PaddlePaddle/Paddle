@@ -99,7 +99,6 @@ ignore = [
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
 # Temporarily ignore CINN files, it will fix later
 "python/cinn/**" = [
-    "F401",
     "F403",
 ]
 "test/cinn/**" = [
