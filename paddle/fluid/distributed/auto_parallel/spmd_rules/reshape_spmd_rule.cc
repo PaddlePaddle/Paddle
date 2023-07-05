@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reshape_spmd_rule.h"
+#include <numeric>
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dim_trans.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
@@ -29,7 +30,11 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
   int64_t infer_idx = -1;
   for (int64_t i = 0, n = shape.size(); i < n; i++) {
     if (shape[i] == -1) {
-      assert(infer_idx == -1);
+      PADDLE_ENFORCE_EQ(
+          infer_idx,
+          -1,
+          phi::errors::InvalidArgument(
+              "There can't be more than one -1 dimension in target shape."));
       infer_idx = i;
     }
   }
@@ -37,20 +42,20 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
   int64_t product = std::accumulate(
       shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
   if (product > 0) {
-    assert(product == len);
+    PADDLE_ENFORCE_EQ(
+        product,
+        len,
+        phi::errors::InvalidArgument("The total size are not matched"));
     return std::vector<int64_t>(shape);
   } else {
-    std::vector<int64_t> new_shape;
+    std::vector<int64_t> new_shape(shape);
     product = -product;
     int64_t infer_size = len / product;
-    assert(len % infer_size == 0);
-    for (int i = 0, n = shape.size(); i < n; i++) {
-      if (shape[i] == -1) {
-        new_shape.emplace_back(infer_size);
-      } else {
-        new_shape.emplace_back(shape[i]);
-      }
-    }
+    PADDLE_ENFORCE_EQ(len % infer_size,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The total is not diviable by infer_size"));
+    new_shape[infer_idx] = infer_size;
     return new_shape;
   }
 }
@@ -144,7 +149,7 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
 
   // step1: build the transformation from
   // original shape to target shape
-  std::vector<int64_t> src_shape = input_specs[0].get_shape();
+  std::vector<int64_t> src_shape = input_specs[0].shape();
   std::vector<int64_t> tgt_shape =
       ExtractAttr<std::vector<int64_t>>("shape", attrs);
   std::vector<DimTrans*> trans = MakeReshapeDimTrans(src_shape, tgt_shape);
@@ -156,9 +161,9 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
 
   // step3: update the dist attributes of input
   // and output with the inferred dims mapping
-  TensorDistAttr new_input_dist_attr(input_specs[0].get_dist_attr());
+  TensorDistAttr new_input_dist_attr(input_specs[0].dist_attr());
   new_input_dist_attr.set_dims_mapping(dims_mapping_vec[0]);
-  TensorDistAttr output_dist_attr(input_specs[0].get_dist_attr());
+  TensorDistAttr output_dist_attr(input_specs[0].dist_attr());
   output_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
 
   VLOG(4) << "Reshape: input_shape: " << str_join(src_shape)

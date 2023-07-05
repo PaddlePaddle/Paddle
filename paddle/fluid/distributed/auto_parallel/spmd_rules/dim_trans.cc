@@ -52,7 +52,7 @@ int64_t InputDim::input_dim() const { return input_dim_; }
 
 void InputDim::set_input_dim(int64_t dim) { input_dim_ = dim; }
 
-void InputDim::print_info() { printf("InputDim(%d)", input_dim_); }
+void InputDim::print_info() { printf("InputDim(%ld)", input_dim_); }
 
 Singleton::Singleton() : DimTrans(DimTrans::Type::SINGLETON) {
   all_dim_trans.emplace_back(this);
@@ -123,12 +123,12 @@ void Split::print_info() {
   input_dim_trans_->print_info();
   printf(", (");
   for (int64_t i = 0, n = splitted_shape_.size(); i < n; ++i) {
-    printf("%lld", splitted_shape_[i]);
+    printf("%ld", splitted_shape_[i]);
     if (i < n - 1) {
       printf(",");
     }
   }
-  printf("), %d)", split_id_);
+  printf("), %ld)", split_id_);
 }
 
 DimTrans* make_flatten(const std::vector<DimTrans*>& dims) {
@@ -156,7 +156,6 @@ DimTrans* make_split(DimTrans* dim,
   } else {
     // new shape that remove 1
     std::vector<int64_t> new_shape;
-    int64_t new_idx;
     // map between from idx in shape to new_shape
     std::vector<int64_t> idx_map(shape.size(), -1);
     for (int64_t i = 0, n = shape.size(); i < n; ++i) {
@@ -255,8 +254,7 @@ std::pair<int64_t, DimTrans*> GetDimTransSize(
 
     if (split->split_id() == 0) {
       if (dim_size.second != nullptr) {
-        PADDLE_ENFORCE_EQ(dim_size.second->get_type(),
-                          DimTrans::Type::INPUTDIM);
+        PADDLE_ENFORCE_EQ(dim_size.second->type(), DimTrans::Type::INPUTDIM);
         InputDim* inputdim = dynamic_cast<InputDim*>(dim_size.second);
         int64_t nmesh = mesh_shape.size();
         int64_t dim = inputdim->input_dim();
