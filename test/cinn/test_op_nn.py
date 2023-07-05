@@ -26,7 +26,7 @@ from cinn import common, framework, frontend, ir, lang, runtime
 from cinn.poly import create_stages
 from test_utils import SingleOpTester
 
-import paddle as paddle
+import paddle
 
 
 class OpTest_relu(SingleOpTester):
