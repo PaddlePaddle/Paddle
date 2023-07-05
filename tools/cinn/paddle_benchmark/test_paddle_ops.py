@@ -20,8 +20,7 @@ import time
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
