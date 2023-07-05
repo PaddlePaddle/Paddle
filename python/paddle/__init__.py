@@ -211,7 +211,6 @@ from .tensor.math import asin_  # noqa: F401
 from .tensor.math import atan  # noqa: F401
 from .tensor.math import atan_  # noqa: F401
 from .tensor.math import atan2  # noqa: F401
-from .tensor.math import atan2_  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import cos_  # noqa: F401
@@ -616,7 +615,6 @@ __all__ = [  # noqa
     'atan',
     'atan_',
     'atan2',
-    'atan2_',
     'rad2deg',
     'deg2rad',
     'gcd',

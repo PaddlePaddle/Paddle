@@ -217,7 +217,6 @@ from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
-from .math import atan2_  # noqa: F401
 from .math import logsumexp  # noqa: F401
 from .math import logaddexp  # noqa: F401
 from .math import inverse  # noqa: F401
