@@ -24,8 +24,8 @@ if(WITH_CINN)
   # then core_api.so.
   add_custom_command(
     OUTPUT ${CINN_CORE_API} POST_BUILD
-    COMMAND cp -rf --remove-destination ${CINN_PYTHON_DIR}
-            ${CMAKE_BINARY_DIR}/python/cinn
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CINN_PYTHON_DIR}
+            ${PADDLE_BINARY_DIR}/python/cinn
     COMMAND cp --remove-destination
             ${CMAKE_BINARY_DIR}/paddle/cinn/pybind/core_api.so ${CINN_CORE_API}
     COMMAND cd ${CMAKE_CURRENT_BINARY_DIR} && ${PYTHON_EXECUTABLE} setup_cinn.py

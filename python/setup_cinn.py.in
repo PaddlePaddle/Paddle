@@ -127,6 +127,7 @@ else:
         yield
 
 libs_path = '${CMAKE_BINARY_DIR}/python/cinn/libs'
+os.makedirs(libs_path, exist_ok=True)
 
 cinnlibs = []
 package_data = {'cinn': ['core_api.so'], 'cinn.libs': []}
@@ -145,7 +146,6 @@ if '${WITH_GPU}' == 'ON':
 
 for lib in cinnlibs:
     shutil.copy(lib, libs_path)
-    print("copy cinn lib : ", lib, " -->> " , libs_path)
     libname = os.path.basename(lib)
     if lib.endswith('so'):
         set_rpath(os.path.join(libs_path, libname) , '$ORIGIN/')
