@@ -23,8 +23,6 @@ import pool_utils
 from cinn import framework
 from test_utils import SingleOpTester
 
-import paddle
-
 
 class OpTest_relu(SingleOpTester):
     def create_target_data(self, inputs_data, attrs):

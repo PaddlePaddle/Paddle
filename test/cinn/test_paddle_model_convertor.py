@@ -21,10 +21,7 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import (
-    DefaultHostTarget,
-    DefaultNVGPUTarget,
-)
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
 from cinn.frontend import PaddleModelConvertor
 from cinn.runtime import seed as cinn_seed
 from op_mappers.op_mapper_test import OpMapperTest
