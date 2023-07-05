@@ -17,26 +17,39 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace paddle {
 namespace dialect {
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
-inline phi::DataType TransToPhiDataType(ir::Type dtype) {
-  if (dtype.isa<ir::Float16Type>()) {
+static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
+  if (dtype.isa<ir::BFloat16Type>()) {
+    return phi::DataType::BFLOAT16;
+  } else if (dtype.isa<ir::Float16Type>()) {
     return phi::DataType::FLOAT16;
   } else if (dtype.isa<ir::Float32Type>()) {
     return phi::DataType::FLOAT32;
   } else if (dtype.isa<ir::Float64Type>()) {
     return phi::DataType::FLOAT64;
+  } else if (dtype.isa<ir::UInt8Type>()) {
+    return phi::DataType::UINT8;
+  } else if (dtype.isa<ir::Int8Type>()) {
+    return phi::DataType::INT8;
   } else if (dtype.isa<ir::Int16Type>()) {
     return phi::DataType::INT16;
   } else if (dtype.isa<ir::Int32Type>()) {
     return phi::DataType::INT32;
   } else if (dtype.isa<ir::Int64Type>()) {
     return phi::DataType::INT64;
+  } else if (dtype.isa<ir::BoolType>()) {
+    return phi::DataType::BOOL;
+  } else if (dtype.isa<ir::Complex64Type>()) {
+    return phi::DataType::COMPLEX64;
+  } else if (dtype.isa<ir::Complex128Type>()) {
+    return phi::DataType::COMPLEX128;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported ir data type when casting it into "
@@ -44,24 +57,36 @@ inline phi::DataType TransToPhiDataType(ir::Type dtype) {
   }
 }
 
-inline ir::Type TransToIrDataType(phi::DataType dtype,
-                                  ir::IrContext *ctx = nullptr) {
+static inline ir::Type TransToIrDataType(phi::DataType dtype,
+                                         ir::IrContext *ctx = nullptr) {
   if (ctx == nullptr) {
     ctx = ir::IrContext::Instance();
   }
   switch (dtype) {
+    case phi::DataType::BFLOAT16:
+      return ir::BFloat16Type::get(ctx);
     case phi::DataType::FLOAT16:
       return ir::Float16Type::get(ctx);
     case phi::DataType::FLOAT32:
       return ir::Float32Type::get(ctx);
     case phi::DataType::FLOAT64:
       return ir::Float64Type::get(ctx);
+    case phi::DataType::UINT8:
+      return ir::UInt8Type::get(ctx);
+    case phi::DataType::INT8:
+      return ir::Int8Type::get(ctx);
     case phi::DataType::INT16:
       return ir::Int16Type::get(ctx);
     case phi::DataType::INT32:
       return ir::Int32Type::get(ctx);
     case phi::DataType::INT64:
       return ir::Int64Type::get(ctx);
+    case phi::DataType::BOOL:
+      return ir::BoolType::get(ctx);
+    case phi::DataType::COMPLEX64:
+      return ir::Complex64Type::get(ctx);
+    case phi::DataType::COMPLEX128:
+      return ir::Complex128Type::get(ctx);
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
@@ -70,60 +95,29 @@ inline ir::Type TransToIrDataType(phi::DataType dtype,
   }
 }
 
-struct OpInputInfo {
-  std::string name;
-  std::string type_name;
-  bool optional = false;
-  bool no_need_buffer = false;
-  OpInputInfo(std::string name,
-              std::string type_name,
-              bool optional,
-              bool no_need_buffer)
-      : name(name),
-        type_name(type_name),
-        optional(optional),
-        no_need_buffer(no_need_buffer) {}
-};
-
-struct OpOutputInfo {
-  std::string name;
-  std::string type_name;
-  bool optional = false;
-  bool intermediate = false;
-  OpOutputInfo(std::string name,
-               std::string type_name,
-               bool optional,
-               bool intermediate)
-      : name(name),
-        type_name(type_name),
-        optional(optional),
-        intermediate(intermediate) {}
-};
-
-struct OpAttributeInfo {
-  std::string name;
-  std::string type_name;
-  std::string data_type;
-  OpAttributeInfo(std::string name,
-                  std::string type_name,
-                  std::string data_type)
-      : name(name), type_name(type_name), data_type(data_type) {}
-};
-
-struct OpRunTimeInfo {
-  std::string infer_meta_func;
-  std::vector<std::string> infer_meta_param;
-  std::vector<std::string> kernel_func;
-  std::vector<std::string> kernel_param;
-  OpRunTimeInfo(std::string infer_meta_func,
-                std::vector<std::string> infer_meta_param,
-                std::vector<std::string> kernel_func,
-                std::vector<std::string> kernel_param)
-      : infer_meta_func(infer_meta_func),
-        infer_meta_param(infer_meta_param),
-        kernel_func(kernel_func),
-        kernel_param(kernel_param) {}
-};
+static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
+                                               ir::IrContext *ctx = nullptr) {
+  if (ctx == nullptr) {
+    ctx = ir::IrContext::Instance();
+  }
+  switch (scalar.dtype()) {
+    case phi::DataType::FLOAT32:
+      return ir::FloatAttribute::get(ctx, scalar.to<float>());
+    case phi::DataType::FLOAT64:
+      return ir::DoubleAttribute::get(ctx, scalar.to<double>());
+    case phi::DataType::INT32:
+      return ir::Int32Attribute::get(ctx, scalar.to<int32_t>());
+    case phi::DataType::INT64:
+      return ir::Int64Attribute::get(ctx, scalar.to<int64_t>());
+    case phi::DataType::BOOL:
+      return ir::BoolAttribute::get(ctx, scalar.to<bool>());
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported phi data type `%s` when casting it into "
+          "ir attribute.",
+          scalar.dtype()));
+  }
+}
 
 }  // namespace dialect
 }  // namespace paddle

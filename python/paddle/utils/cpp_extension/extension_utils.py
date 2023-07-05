@@ -885,7 +885,6 @@ def add_compile_flag(extra_compile_args, flags):
 
 
 def is_cuda_file(path):
-
     cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
@@ -1267,7 +1266,7 @@ def _write_setup_file(
     ).lstrip()
 
     with_cuda = False
-    if any([is_cuda_file(source) for source in sources]):
+    if any(is_cuda_file(source) for source in sources):
         with_cuda = True
     log_v(f"with_cuda: {with_cuda}", verbose)
 

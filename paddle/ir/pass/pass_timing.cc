@@ -23,6 +23,7 @@
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pass/utils.h"
+
 namespace ir {
 namespace {
 class Timer {

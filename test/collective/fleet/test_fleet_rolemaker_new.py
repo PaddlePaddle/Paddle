@@ -132,7 +132,6 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         pass
 
     def test_ps_rolemaker(self):
-
         ro = role_maker.UserDefinedRoleMaker(
             is_collective=False,
             init_gloo=False,

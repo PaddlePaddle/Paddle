@@ -220,6 +220,8 @@ class WhileOp : public framework::OperatorBase {
           dev_place, *block, &placeholder, execution_config));
     }
 
+    core_->SetOutputHooks(hookfuncs_);
+
     if (!is_test) {
       while (cond_data) {
         auto &current_scope = scope.NewScope();

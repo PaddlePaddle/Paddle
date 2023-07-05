@@ -211,6 +211,9 @@ cc_library(
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
+if(WITH_XPU)
+  target_link_libraries(var_type_traits dynload_xpti)
+endif()
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn
@@ -729,8 +732,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS fleet_executor
-           fleet_wrapper
+      DEPS fleet_wrapper
            recurrent_op_helper
            op_registry
            device_context
@@ -837,7 +839,6 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -907,8 +908,7 @@ if(WITH_DISTRIBUTE)
            graph_to_program_pass
            variable_helper
            timer
-           monitor
-           fleet_executor)
+           monitor)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "")
@@ -969,7 +969,6 @@ elseif(WITH_PSLIB)
          variable_helper
          timer
          monitor
-         fleet_executor
          ${BRPC_DEP})
 else()
   cc_library(
@@ -1017,8 +1016,7 @@ else()
          graph_to_program_pass
          variable_helper
          timer
-         monitor
-         fleet_executor)
+         monitor)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper

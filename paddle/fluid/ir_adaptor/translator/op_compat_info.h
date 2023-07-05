@@ -15,6 +15,7 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "glog/logging.h"
 
@@ -25,12 +26,20 @@
 namespace paddle {
 namespace translator {
 
+using MutableAttributeInfo = std::vector<std::string>;
+
 class OpNameNormalizer {
  private:
   OpNameNormalizer();  // Disallow instantiation outside of the class.
   std::unordered_map<std::string, std::string> op_name_mappings;
   std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
       op_arg_name_mappings;
+
+  std::unordered_map<std::string,
+                     std::unordered_map<std::string, MutableAttributeInfo>>
+      op_mutable_attribute_infos;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      op_mutable_attributes;
 
  public:
   OpNameNormalizer(const OpNameNormalizer&) = delete;
@@ -50,6 +59,21 @@ class OpNameNormalizer {
     return op_name_mappings.at(op_type);
   }
 
+  bool HasMutableAttribute(const std::string& op_type) {
+    return (op_mutable_attributes.find(op_type) != op_mutable_attributes.end());
+  }
+
+  const std::unordered_set<std::string>* GetMutableAttributes(
+      const std::string& op_type) {
+    if (!HasMutableAttribute(op_type)) return nullptr;
+    return &op_mutable_attributes.at(op_type);
+  }
+
+  const MutableAttributeInfo& GetMutableAttributeInfos(
+      const std::string& op_type, const std::string& arg_name) {
+    return op_mutable_attribute_infos.at(op_type).at(arg_name);
+  }
+
   std::string GetLegacyArgName(const std::string& op_type,
                                const std::string& arg_name) {
     bool is_grad_op = (op_type.find("grad") != std::string::npos);
@@ -58,9 +82,10 @@ class OpNameNormalizer {
       std::string target = "_grad";
       std::string data = "@GRAD";
 
-      size_t first_grad_pos = arg_name.find_first_of(target);
-      std::string legacy_name =
-          this->GetLegacyArgName(op_type, arg_name.substr(0, first_grad_pos));
+      size_t first_grad_pos = arg_name.find(target);
+      size_t type_pos = op_type.find(target);
+      std::string legacy_name = this->GetLegacyArgName(
+          op_type.substr(0, type_pos), arg_name.substr(0, first_grad_pos));
       legacy_name += arg_name.substr(first_grad_pos);
       for (size_t pos = 0;
            legacy_name.npos != (pos = legacy_name.find(target, pos));

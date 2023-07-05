@@ -307,7 +307,6 @@ class XPUOpTest(OpTest):
             output_names = [output_names]
 
         if self.dtype not in mean_grad_op_types_np:
-
             prog = Program()
             block = prog.global_block()
             scope = core.Scope()

@@ -316,7 +316,6 @@ class CostModel:
                     if pred.type == CostNodeType.COMPUTATION and (
                         pred_id in graph[node_id][SUCC]
                     ):
-
                         graph[pred_id][SUCC].remove(node_id)
                         graph[node_id][PRED].remove(pred_id)
 

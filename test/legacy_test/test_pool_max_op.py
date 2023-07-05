@@ -38,7 +38,6 @@ def adaptive_end_index(index, input_size, output_size):
 def max_pool3D_forward_naive(
     x, ksize, strides, paddings, global_pool=False, adaptive=False
 ):
-
     N, C, D, H, W = x.shape
     if global_pool:
         ksize = [D, H, W]
@@ -97,7 +96,6 @@ def max_pool3D_forward_naive(
 def max_pool2D_forward_naive(
     x, ksize, strides, paddings, global_pool=False, adaptive=False
 ):
-
     N, C, H, W = x.shape
     if global_pool:
         ksize = [H, W]

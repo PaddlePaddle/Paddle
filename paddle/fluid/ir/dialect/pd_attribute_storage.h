@@ -15,12 +15,12 @@
 #pragma once
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/common/scalar.h"
 
 namespace paddle {
 namespace dialect {
@@ -29,7 +29,7 @@ struct IntArrayAttributeStorage : public ir::AttributeStorage {
 
   explicit IntArrayAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static IntArrayAttributeStorage *Construct(ParamKey key) {
+  static IntArrayAttributeStorage *Construct(const ParamKey &key) {
     return new IntArrayAttributeStorage(key);
   }
 
@@ -54,34 +54,12 @@ struct IntArrayAttributeStorage : public ir::AttributeStorage {
   phi::IntArray data_;
 };
 
-struct ScalarAttributeStorage : public ir::AttributeStorage {
-  using ParamKey = paddle::experimental::Scalar;
-
-  explicit ScalarAttributeStorage(const ParamKey &key) { data_ = key; }
-
-  static ScalarAttributeStorage *Construct(ParamKey key) {
-    return new ScalarAttributeStorage(key);
-  }
-
-  static std::size_t HashValue(const ParamKey &key) {
-    return ir::hash_combine(std::hash<std::string>()(key.ToString()),
-                            std::hash<bool>()(key.FromTensor()));
-  }
-
-  bool operator==(const ParamKey &key) const { return data_ == key; }
-
-  ParamKey GetAsKey() const { return ParamKey(data_); }
-
- private:
-  paddle::experimental::Scalar data_;
-};
-
 struct DataTypeAttributeStorage : public ir::AttributeStorage {
   using ParamKey = phi::DataType;
 
   explicit DataTypeAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static DataTypeAttributeStorage *Construct(ParamKey key) {
+  static DataTypeAttributeStorage *Construct(const ParamKey &key) {
     return new DataTypeAttributeStorage(key);
   }
 
@@ -102,7 +80,7 @@ struct PlaceAttributeStorage : public ir::AttributeStorage {
 
   explicit PlaceAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static PlaceAttributeStorage *Construct(ParamKey key) {
+  static PlaceAttributeStorage *Construct(const ParamKey &key) {
     return new PlaceAttributeStorage(key);
   }
 
@@ -121,7 +99,7 @@ struct DataLayoutAttributeStorage : public ir::AttributeStorage {
 
   explicit DataLayoutAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static DataLayoutAttributeStorage *Construct(ParamKey key) {
+  static DataLayoutAttributeStorage *Construct(const ParamKey &key) {
     return new DataLayoutAttributeStorage(key);
   }
 

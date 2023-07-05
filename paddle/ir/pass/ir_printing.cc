@@ -48,7 +48,7 @@ class IRPrinting : public PassInstrumentation {
   ~IRPrinting() = default;
 
   void RunBeforePass(Pass *pass, Operation *op) override {
-    if (option_->EnablePrintOnChange()) {
+    if (option_->print_on_change()) {
       // TODO(liuyuanle): support print on change
     }
 
@@ -56,13 +56,13 @@ class IRPrinting : public PassInstrumentation {
       std::string header =
           "IRPrinting on " + op->name() + " before " + pass->name() + " pass";
       detail::PrintHeader(header, os);
-      PrintIR(op, option_->EnablePrintModule(), os);
+      PrintIR(op, option_->print_module(), os);
       os << "\n\n";
     });
   }
 
   void RunAfterPass(Pass *pass, Operation *op) override {
-    if (option_->EnablePrintOnChange()) {
+    if (option_->print_on_change()) {
       // TODO(liuyuanle): support print on change
     }
 
@@ -70,7 +70,7 @@ class IRPrinting : public PassInstrumentation {
       std::string header =
           "IRPrinting on " + op->name() + " after " + pass->name() + " pass";
       detail::PrintHeader(header, os);
-      PrintIR(op, option_->EnablePrintModule(), os);
+      PrintIR(op, option_->print_module(), os);
       os << "\n\n";
     });
   }

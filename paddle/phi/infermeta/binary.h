@@ -203,7 +203,8 @@ void ElementwiseInferMeta(const MetaTensor& x,
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
@@ -415,13 +416,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
-
-void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
-                                            const MetaTensor& label,
-                                            bool normalize,
-                                            int ignore_index,
-                                            MetaTensor* out,
-                                            MetaConfig config = MetaConfig());
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,

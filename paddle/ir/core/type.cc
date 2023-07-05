@@ -14,13 +14,14 @@
 
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/type_base.h"
 
 namespace ir {
-IrContext* Type::ir_context() const { return dialect().ir_context(); }
+IrContext *Type::ir_context() const { return dialect().ir_context(); }
 
-std::ostream& operator<<(std::ostream& os, Type type) {
-  type.Print(os);
-  return os;
-}
+TypeId Type::type_id() { return storage_->abstract_type().type_id(); }
 
+const AbstractType &Type::abstract_type() { return storage_->abstract_type(); }
+
+Dialect &Type::dialect() const { return storage_->abstract_type().dialect(); }
 }  // namespace ir

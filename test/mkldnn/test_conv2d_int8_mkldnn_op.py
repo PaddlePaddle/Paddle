@@ -351,7 +351,6 @@ def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
 
 
 def create_test_int8_class(parent):
-
     # --------------------test conv2d s8 in and u8 out--------------------
     class TestS8U8Case(parent):
         def init_data_type(self):

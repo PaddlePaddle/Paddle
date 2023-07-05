@@ -32,9 +32,13 @@ class TestAssignOp(eager_op_test.OpTest):
         self.public_python_api = paddle.assign
         self.op_type = "assign"
         self.prim_op_type = "prim"
-        x = np.random.random(size=(100, 10)).astype('float64')
+        self.init_input_configs()
+        x = np.random.random(size=self.shape).astype('float64')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
+
+    def init_input_configs(self):
+        self.shape = (100, 10)
 
     def test_forward(self):
         paddle.enable_static()
@@ -45,6 +49,11 @@ class TestAssignOp(eager_op_test.OpTest):
         paddle.enable_static()
         self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
+
+
+class TestAssignOp_ZeroDim(TestAssignOp):
+    def init_input_configs(self):
+        self.shape = ()
 
 
 @unittest.skipIf(
@@ -72,7 +81,8 @@ class TestAssignFP16Op(eager_op_test.OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
 )
 class TestAssignBFP16Op(eager_op_test.OpTest):
     def setUp(self):
@@ -80,7 +90,6 @@ class TestAssignBFP16Op(eager_op_test.OpTest):
         self.public_python_api = paddle.assign
         self.op_type = "assign"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         x = np.random.uniform(0, 1, [100, 10]).astype(np.float32)
         x = convert_float_to_uint16(x)
         self.inputs = {'X': x}

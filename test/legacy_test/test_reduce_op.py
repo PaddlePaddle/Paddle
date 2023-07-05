@@ -198,7 +198,8 @@ create_test_fp16_class(TestSumOp3Dim)
 
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
     )
     class TestSumOpBf16(parent):
         def setUp(self):
@@ -277,7 +278,13 @@ class TestMaxOp_ZeroDim(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.max
         self.public_python_api = paddle.max
+        self.if_enable_cinn()
+        self.init_inputs_and_outputs()
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
+
+    def init_inputs_and_outputs(self):
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.attrs = {'dim': []}
         self.outputs = {
@@ -295,6 +302,20 @@ class TestMaxOp_ZeroDim(OpTest):
             check_prim=True,
             only_check_prim=True,
         )
+
+
+class TestMaxOp_ZeroDim1(TestMaxOp_ZeroDim):
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([5]).astype("float64")}
+        self.attrs = {'dim': [0]}
+        self.outputs = {'Out': self.inputs['X'].max(axis=(0,))}
+
+
+class TestMaxOp_ZeroDim2(TestMaxOp_ZeroDim1):
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([5, 20]).astype("float64")}
+        self.attrs = {'dim': [0, 1]}
+        self.outputs = {'Out': self.inputs['X'].max(axis=(0, 1))}
 
 
 class TestMaxFP32Op(OpTest):
@@ -346,6 +367,7 @@ class TestMaxFP16Op(TestMaxFP32Op):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -446,6 +468,9 @@ class TestMin8DOp(OpTest):
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework."
 )
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestMinFP16Op(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -476,6 +501,7 @@ class TestMinFP16Op(OpTest):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -538,6 +564,7 @@ class TestProdFP16OP(TestProdOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -574,10 +601,7 @@ class TestProdOp_ZeroDim(OpTest):
         self.public_python_api = raw_reduce_prod
         self.op_type = "reduce_prod"
         self.prim_op_type = "prim"
-        self.inputs = {'X': np.random.random([]).astype("float64")}
-        self.outputs = {'Out': self.inputs['X'].prod()}
-        self.attrs = {'dim': [], 'reduce_all': True}
-
+        self.init_inputs_and_outputs()
         # 0-D tensor doesn't support in cinn
         self.enable_cinn = False
 
@@ -591,6 +615,29 @@ class TestProdOp_ZeroDim(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestProdOp_ZeroDim1(TestProdOp):
+    def setUp(self):
+        self.python_api = paddle.prod
+        self.public_python_api = paddle.prod
+        self.op_type = "reduce_prod"
+        self.prim_op_type = "prim"
+        self.init_inputs_and_outputs()
+        # 0-D tensor doesn't support in cinn
+        self.enable_cinn = False
+
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([100]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].prod()}
+        self.attrs = {'dim': [], 'reduce_all': True}
+
+
+class TestProdOp_ZeroDim2(TestProdOp_ZeroDim1):
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([5, 6, 10]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].prod()}
+        self.attrs = {'dim': [], 'reduce_all': True}
 
 
 class TestProd6DOp(OpTest):
@@ -645,6 +692,7 @@ class TestProd6DFP16OP(TestProd6DOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -718,6 +766,7 @@ class TestProd8DFP16OP(TestProd8DOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -997,6 +1046,17 @@ class Test1DReduce(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestReduceSum_ZeroDim(Test1DReduce):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.public_python_api = paddle.sum
+        self.prim_op_type = "prim"
+        self.inputs = {'X': np.random.random(()).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.if_enable_cinn()
 
 
 class Test2DReduce0(Test1DReduce):
