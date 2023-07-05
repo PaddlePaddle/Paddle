@@ -43,6 +43,8 @@ void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -721,5 +723,11 @@ void UnStackInferMeta(const MetaTensor& x,
                       int axis,
                       int num,
                       std::vector<MetaTensor*> outs);
+
+void QuantForCompressInferMeta(const MetaTensor& x,
+                               int bits,
+                               const std::string& layout,
+                               MetaTensor* out,
+                               MetaTensor* scale);
 
 }  // namespace phi

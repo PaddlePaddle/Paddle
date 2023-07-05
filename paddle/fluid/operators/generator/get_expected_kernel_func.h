@@ -20,6 +20,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+phi::KernelKey GetConcatExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
@@ -97,6 +101,10 @@ phi::KernelKey GetLayerNormExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr);
 
 phi::KernelKey GetConvExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetBincountExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 

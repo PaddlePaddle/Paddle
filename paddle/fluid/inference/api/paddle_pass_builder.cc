@@ -508,10 +508,12 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
+      "delete_assign_op_pass",
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
       "identity_op_clean_pass",
       "delete_repeated_ops_pass",
+      "reshape_unstack_concat_fuse_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
       "delete_elementwise_mul_op_pass",
@@ -525,21 +527,25 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
       "delete_cast_op_pass",
+      "xpu_delete_cast_op_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
+      "relu6_fuse_pass",
       "sigmoid_elementmul_fuse_pass",
+      "layer_norm_fuse_pass",
       "matmul_weight_trans_pass",
       "map_matmulv2_to_matmul_xpu_pass",
       "reshape2_matmul_xpu_fuse_pass",
+      "squeeze2_matmul_xpu_fuse_pass",
       "redundant_squeeze_unsqueeze_elimination_pass",
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
+      "conv2d_transpose_xpu_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "inplace_op_var_pass",
       "delete_isolated_node_pass",
-      "xpu_delete_cast_op_pass",
   });
   use_xpu_ = true;
 }
