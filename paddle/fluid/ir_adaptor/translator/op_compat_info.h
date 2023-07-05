@@ -28,6 +28,9 @@ namespace translator {
 
 using MutableAttributeInfo = std::vector<std::string>;
 
+static constexpr char phi_grad_suffix[] = "_grad";
+static constexpr char fluid_var_grad_suffix[] = "@GRAD";
+
 class OpNameNormalizer {
  private:
   OpNameNormalizer();  // Disallow instantiation outside of the class.
@@ -76,11 +79,11 @@ class OpNameNormalizer {
 
   std::string GetLegacyArgName(const std::string& op_type,
                                const std::string& arg_name) {
-    bool is_grad_op = (op_type.find("_grad") != std::string::npos);
-    bool is_grad_arg = (arg_name.find("_grad") != std::string::npos);
+    bool is_grad_op = (op_type.find(phi_grad_suffix) != std::string::npos);
+    bool is_grad_arg = (arg_name.find(phi_grad_suffix) != std::string::npos);
     if (is_grad_op && is_grad_arg) {
-      std::string target = "_grad";
-      std::string data = "@GRAD";
+      std::string target = phi_grad_suffix;
+      std::string data = fluid_var_grad_suffix;
 
       size_t first_grad_pos = arg_name.find(target);
       size_t type_pos = op_type.find(target);
@@ -95,9 +98,8 @@ class OpNameNormalizer {
       return legacy_name;
     } else if (is_grad_op && !is_grad_arg) {
       // backwward op using forward args: like trace_grad using forward input
-      std::string target = "_grad";
 
-      size_t type_pos = op_type.find(target);
+      size_t type_pos = op_type.find(phi_grad_suffix);
       std::string legacy_name =
           this->GetLegacyArgName(op_type.substr(0, type_pos), arg_name);
 
