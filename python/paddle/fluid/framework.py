@@ -37,7 +37,7 @@ from . import unique_name
 import paddle.version as fluid_version
 import warnings
 import functools
-from .variable_index import _getitem_static, _setitem_impl_
+from .variable_index import _getitem_static, _setitem_static
 import threading
 
 __all__ = [
@@ -2293,7 +2293,7 @@ class Variable(metaclass=VariableMetaClass):
         return _getitem_static(self, item)
 
     def __setitem__(self, item, value):
-        return _setitem_impl_(self, item, value)
+        return _setitem_static(self, item, value)
 
     def get_value(self, scope=None):
         """

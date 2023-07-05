@@ -1108,21 +1108,15 @@ def _setitem_static(x, indices, values):
         # step3.1: Only basic indexing, use OP set_value to set value.
         if paddle.in_dynamic_mode():
             x._bump_inplace_version()
-            out = x
-        else:
-            helper = paddle.fluid.layer_helper.LayerHelper(
-                'set_value', **locals()
-            )
-            out = helper.create_variable_for_type_inference(dtype=dtype)
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
             inputs=inputs,
-            outputs={'Out': out},
+            outputs={'Out': x},
             attrs=attrs,
             inplace_map={"Input": "Out"},
         )
-        return out
+        return x
     else:
         # step3.2: Case for there are advanced indexing.
         #   1. get __getitem__ result of basic indexing;
@@ -1168,21 +1162,15 @@ def _setitem_static(x, indices, values):
         inputs["ValueTensor"] = transback_sub_tensor
         if paddle.in_dynamic_mode():
             x._bump_inplace_version()
-            out = x
-        else:
-            helper = paddle.fluid.layer_helper.LayerHelper(
-                'set_value', **locals()
-            )
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
             inputs=inputs,
-            outputs={'Out': out},
+            outputs={'Out': x},
             attrs=attrs,
             inplace_map={"Input": "Out"},
         )
-        return out
+        return x
 
 
 def get_tensor_with_basic_indexing(
