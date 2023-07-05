@@ -201,6 +201,16 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
           .Get(ring_id, place_)
           ->dev_context();
     }
+    if (op->HasAttr("ring_id")) {
+        int ring_id = op->Attr<int>("ring_id");
+        dev_ctx =
+            ctx_manager.Get(std::to_string(ring_id), place_, stream_priority)
+            .get()
+            .get();
+        SetDeviceCommContext(op.get(), dev_ctx);
+        VLOG(0) << "debug update comm context for ring_id " << ring_id << ", op: " << op_type;
+        return dev_ctx;
+    }
 #endif
   }
 

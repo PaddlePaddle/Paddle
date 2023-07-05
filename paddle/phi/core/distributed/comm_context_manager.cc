@@ -32,6 +32,7 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
+#include "glog/logging.h"
 
 namespace phi {
 namespace distributed {
@@ -43,6 +44,7 @@ void CommContextManager::CreateNCCLCommContext(
     int ring_id,
     int rank,
     int size) {
+  VLOG(0) << "debug CreateNCCLCommContext ring_id " << ring_id << ", rank " << rank; 
   phi::backends::gpu::SetDeviceId(dev_id);
   ncclUniqueId nccl_id;
   if (rank == 0) {
@@ -61,7 +63,7 @@ void CommContextManager::CreateNCCLCommContext(
   }
 
   auto nccl_comm_context =
-      std::make_unique<NCCLCommContext>(rank, size, nccl_id);
+      std::make_unique<NCCLCommContext>(rank, size, nccl_id, ring_id);
   auto& comm_context_manager = CommContextManager::GetInstance();
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(ring_id, std::move(nccl_comm_context));

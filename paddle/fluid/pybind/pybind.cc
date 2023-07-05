@@ -1617,17 +1617,12 @@ All parameter, weight, gradient are variables in Paddle.
           });
   m.def("set_device_comm_context",
         [](paddle::platform::CUDAPlace &place, int ring_id) {
-          VLOG(3) << "set_device_comm_context begin ring_id: " << ring_id;
           auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
           const auto &comm_context_manager =
               phi::distributed::CommContextManager::GetInstance();
           if (comm_context_manager.Has(ring_id)) {
             auto comm_context = comm_context_manager.Get(ring_id);
-            if (!dev_ctx->GetCommContext()) {
-              dev_ctx->SetCommContext(comm_context);
-            }
-          } else {
-            VLOG(3) << "ring_id: " << ring_id << ", get comm_context failed!";
+            dev_ctx->SetCommContext(comm_context);
           }
         });
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
