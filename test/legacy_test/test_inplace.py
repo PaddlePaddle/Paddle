@@ -687,5 +687,18 @@ class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
         return paddle.addmm_(var, x=self.x, y=self.y)
 
 
+class TestDygraphInplaceAtan2(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+        self.y = paddle.randn([10, 20, 1])
+
+    def non_inplace_api_processing(self, var):
+        return paddle.atan2(var, self.y)
+
+    def inplace_api_processing(self, var):
+        return paddle.atan2_(var, self.y)
+
+
 if __name__ == '__main__':
     unittest.main()

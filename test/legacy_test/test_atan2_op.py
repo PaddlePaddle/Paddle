@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
-from test_inplace import TestDygraphInplaceWithContinuous
 
 import paddle
 from paddle.fluid import core
@@ -130,19 +129,6 @@ class TestAtan2API(unittest.TestCase):
 
         for place in self.place:
             run(place)
-
-
-class TestDygraphInplaceAtan2(TestDygraphInplaceWithContinuous):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-        self.y = paddle.randn([10, 20, 1])
-
-    def non_inplace_api_processing(self, var):
-        return paddle.attan2(var, self.y)
-
-    def inplace_api_processing(self, var):
-        return paddle.attan2_(var, self.y)
 
 
 @unittest.skipIf(

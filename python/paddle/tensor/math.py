@@ -4522,7 +4522,7 @@ def atan2_(x, y, name=None):
     Please refer to :ref:`api_paddle_atan2`.
     """
     if in_dynamic_mode():
-        return _C_ops.atan2(x, y)
+        return _C_ops.atan2_(x, y)
 
 
 def logit(x, eps=None, name=None):
