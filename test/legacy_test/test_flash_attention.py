@@ -57,11 +57,13 @@ def attention_naive(q, k, v, causal=False):
 
 
 is_sm75 = (
-    paddle.device.cuda.get_device_capability()[0] == 7
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 7
     and paddle.device.cuda.get_device_capability()[1] == 5
 )
 is_sm8x = (
-    paddle.device.cuda.get_device_capability()[0] == 8
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 is_sm_supported = is_sm75 or is_sm8x
