@@ -98,7 +98,6 @@ class OpNameNormalizer {
       return legacy_name;
     } else if (is_grad_op && !is_grad_arg) {
       // backwward op using forward args: like trace_grad using forward input
-
       size_t type_pos = op_type.find(kPhiGradSuffix);
       std::string legacy_name =
           this->GetLegacyArgName(op_type.substr(0, type_pos), arg_name);
