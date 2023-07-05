@@ -503,7 +503,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   return block;
 }
 
-void FindInsertionPoint(Expr& root, CacheBlockInfo* info, bool is_write) {
+void FindInsertionPoint(const Expr& root, CacheBlockInfo* info, bool is_write) {
   Expr find_tensor =
       is_write ? Expr(info->write_tensor) : Expr(info->read_tensor);
   auto find_produce_read =
@@ -651,7 +651,7 @@ Expr ConstructOtherStmtChain(const std::vector<Expr>& stmts,
 Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
                            const std::vector<Expr>& ordered_loops,
                            const std::set<Expr, CompExpr>& loop_set,
-                           std::vector<Expr>& if_nodes) {
+                           std::vector<Expr>& if_nodes) {  // NOLINT
   std::vector<std::set<std::string>> condition_vars;
   // In each IfThenElse node, find the vars its condition depends on.
   for (auto& if_expr : if_nodes) {
@@ -923,7 +923,7 @@ void CheckComputeAtValidation(const Expr& block,
   CHECK(find_block_in_loop.empty()) << "loop should not be block's ancestor!";
 }
 
-void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {
+void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
   CHECK(for_loop.As<ir::For>());
   CHECK(for_loop.As<ir::For>()->body.As<Block>());
   ir::Block* dst_block = for_loop.As<ir::For>()->body.As<Block>();
