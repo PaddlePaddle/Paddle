@@ -287,6 +287,8 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   }
 }
 
+const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
+
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
   VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << src

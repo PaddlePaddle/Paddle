@@ -86,6 +86,8 @@ class InterpreterBaseImpl {
 
   virtual void reset_scope(Scope* new_scope) = 0;
 
+  virtual const Scope* local_scope() const = 0;
+
   virtual const platform::Place& GetPlace() const = 0;
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;

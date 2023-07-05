@@ -56,8 +56,12 @@ paddle::framework::Variable* CreateVar(ir::Value value,
                         .data();
   }
   if (is_persisable) {
-    VLOG(6) << "Create var: " << name << " in scope " << scope;
-    return scope->Var(name);
+    const paddle::framework::Scope* ancestor_scope = scope;
+    while (ancestor_scope->parent()) {
+      ancestor_scope = ancestor_scope->parent();
+    }
+    VLOG(6) << "Create var: " << name << " in scope " << ancestor_scope;
+    return const_cast<paddle::framework::Scope*>(ancestor_scope)->Var(name);
   } else {
     VLOG(6) << "Create var: " << name << " in scope " << local_scope;
     return local_scope->Var(name);
