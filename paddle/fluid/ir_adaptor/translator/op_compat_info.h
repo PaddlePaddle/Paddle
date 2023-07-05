@@ -76,8 +76,8 @@ class OpNameNormalizer {
 
   std::string GetLegacyArgName(const std::string& op_type,
                                const std::string& arg_name) {
-    bool is_grad_op = (op_type.find("grad") != std::string::npos);
-    bool is_grad_arg = (arg_name.find("grad") != std::string::npos);
+    bool is_grad_op = (op_type.find("_grad") != std::string::npos);
+    bool is_grad_arg = (arg_name.find("_grad") != std::string::npos);
     if (is_grad_op && is_grad_arg) {
       std::string target = "_grad";
       std::string data = "@GRAD";
@@ -92,6 +92,15 @@ class OpNameNormalizer {
            pos += data.length()) {
         legacy_name.replace(pos, target.length(), data);
       }
+      return legacy_name;
+    } else if (is_grad_op && !is_grad_arg) {
+      // backwward op using forward args: like trace_grad using forward input
+      std::string target = "_grad";
+
+      size_t type_pos = op_type.find(target);
+      std::string legacy_name =
+          this->GetLegacyArgName(op_type.substr(0, type_pos), arg_name);
+
       return legacy_name;
     }
     if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
