@@ -27,7 +27,7 @@
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pass.h"
-#include "paddle/cinn/ir/extension/function_base.h"
+#include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"

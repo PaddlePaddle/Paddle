@@ -13,6 +13,7 @@ gather_srcs(
   ir_printer.cc
   ir_mutator.cc
   function_definition.cc
+  function_base.cc
   ir_operators.cc
   ir_verify.cc
   buffer.cc
