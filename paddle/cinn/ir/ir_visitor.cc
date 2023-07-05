@@ -20,7 +20,6 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/utils/string.h"
-#include "time.h"
 
 namespace cinn {
 namespace ir {
