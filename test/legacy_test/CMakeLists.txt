@@ -1345,7 +1345,7 @@ set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      250)
-file(STRINGS "${CMAKE_SOURCE_DIR}/test/new_ir_op_test_white_list"
+file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_white_list"
      NEW_IR_OP_TESTS)
 foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
   if(TEST ${IR_OP_TEST})
