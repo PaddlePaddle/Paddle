@@ -93,7 +93,7 @@ OpSupportedInfos(const std::string& place,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (info_pair.first.backend() == phi::Backend::CUSTOM) {
         if (is_custom_place(query_place)) {
-          VLOG(4) << op_type << " " << supported_ops.size();
+          VLOG(6) << op_type << " " << supported_ops.size();
           supported_ops.emplace(op_type);
         }
         continue;
@@ -101,7 +101,7 @@ OpSupportedInfos(const std::string& place,
 #endif
       if (is_target_place[query_place](
               phi::TransToPhiPlace(info_pair.first.backend(), false))) {
-        VLOG(4) << op_type << " " << supported_ops.size();
+        VLOG(6) << op_type << " " << supported_ops.size();
         supported_ops.emplace(op_type);
       }
     }

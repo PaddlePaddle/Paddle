@@ -36,7 +36,7 @@ void CustomKernelMap::RegisterCustomKernel(const std::string& name,
 }
 
 void CustomKernelMap::RegisterCustomKernels() {
-  VLOG(3) << "Size of custom_kernel_map: " << kernels_.size();
+  VLOG(6) << "Size of custom_kernel_map: " << kernels_.size();
 
   if (kernels_.size() <= 0) {
     LOG(INFO) << "No custom kernel info found in loaded lib(s).";
@@ -68,7 +68,7 @@ void CustomKernelMap::RegisterCustomKernels() {
 
       kernels[pair.first][info_pair.first] = info_pair.second;
 
-      VLOG(3) << "Successed in registering kernel [" << pair.first << ":"
+      VLOG(6) << "Successed in registering kernel [" << pair.first << ":"
               << info_pair.first
               << "] to Paddle. It will be used like native ones.";
     }
