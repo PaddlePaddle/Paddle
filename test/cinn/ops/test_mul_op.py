@@ -21,17 +21,37 @@ from op_test_helper import TestCaseHelper
 import paddle
 
 
-def infer_shape(shape: list, num_col_dim: int):
-    if len(shape) <= 2:
-        return shape
+def infer_shape(
+    x_shape: list,
+    y_shape: list,
+    x_num_col_dim: int,
+    y_num_col_dim: int,
+    is_infer: bool,
+):
+    def flatten_shape(shape: list, num_col_dim: int) -> list:
+        if len(shape) <= 2:
+            return shape
+        else:
+            new_shape = [1, 1]
+            for i, x in enumerate(shape):
+                if i < num_col_dim:
+                    new_shape[0] *= x
+                else:
+                    new_shape[1] *= x
+            return new_shape
+
+    x_new_shape = flatten_shape(x_shape, x_num_col_dim)
+    y_new_shape = flatten_shape(y_shape, y_num_col_dim)
+    out_shape = []
+    for i in range(x_num_col_dim):
+        out_shape.append(x_shape[i])
+    if is_infer:
+        for i in range(y_num_col_dim):
+            out_shape.append(y_shape[i])
     else:
-        new_shape = [1, 1]
-        for i, x in enumerate(shape):
-            if i < num_col_dim:
-                new_shape[0] *= x
-            else:
-                new_shape[1] *= x
-        return new_shape
+        for i in range(y_num_col_dim, len(y_shape)):
+            out_shape.append(y_shape[i])
+    return x_new_shape, y_new_shape, out_shape
 
 
 @OpTestTool.skip_if(
@@ -52,11 +72,20 @@ class TestMulOp(OpTest):
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=False)
         y = paddle.to_tensor(self.y_np, stop_gradient=False)
-        x_shape = infer_shape(x.shape, self.case["x_num_col_dims"])
-        y_shape = infer_shape(y.shape, self.case["y_num_col_dims"])
+        x_shape, y_shape, out_shape = infer_shape(
+            x.shape,
+            y.shape,
+            self.case["x_num_col_dims"],
+            self.case["y_num_col_dims"],
+            self.case["is_infer"],
+        )
         x = paddle.reshape(x, x_shape)
         y = paddle.reshape(y, y_shape)
-        out = paddle.matmul(x, y)
+        if self.case["is_infer"]:
+            out = paddle.matmul(x, y, transpose_x=False, transpose_y=True)
+        else:
+            out = paddle.matmul(x, y)
+        out = paddle.reshape(out, out_shape)
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
@@ -173,6 +202,31 @@ class TestMulOpDtype(TestCaseHelper):
         ]
 
 
+class TestMulOpAttr(TestCaseHelper):
+    def init_attrs(self):
+        self.class_name = "TestMulOpAttr"
+        self.cls = TestMulOp
+        self.inputs = [
+            {
+                "x_shape": [16, 8, 4, 2],
+                "y_shape": [16, 8, 4, 2],
+                "x_num_col_dims": 2,
+                "y_num_col_dims": 2,
+            },
+        ]
+        self.dtypes = [
+            {
+                "dtype": "float32",
+            },
+        ]
+        self.attrs = [
+            {
+                "is_infer": True,
+            },
+        ]
+
+
 if __name__ == "__main__":
     TestMulOpShape().run()
     TestMulOpDtype().run()
+    TestMulOpAttr().run()

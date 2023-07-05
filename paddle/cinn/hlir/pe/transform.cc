@@ -250,10 +250,18 @@ std::vector<std::vector<int>> GetMulNewShapes(
   new_x_shape = flatten_shape(x_shape, x_num_col_dims);
   new_y_shape = flatten_shape(y_shape, y_num_col_dims);
 
-  CHECK_EQ(new_x_shape.size(), 2UL);
-  CHECK_EQ(new_y_shape.size(), 2UL);
-  out_shape.emplace_back(new_x_shape[0]);
-  out_shape.emplace_back(new_y_shape[1]);
+  for (int i = 0; i < x_num_col_dims; ++i) {
+    out_shape.emplace_back(x_shape[i]);
+  }
+  if (is_infer) {
+    for (int i = 0; i < y_num_col_dims; ++i) {
+      out_shape.emplace_back(y_shape[i]);
+    }
+  } else {
+    for (int i = y_num_col_dims; i < y_shape.size(); ++i) {
+      out_shape.emplace_back(y_shape[i]);
+    }
+  }
 
   return new_shape;
 }
