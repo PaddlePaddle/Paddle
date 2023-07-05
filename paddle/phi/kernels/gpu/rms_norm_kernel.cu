@@ -173,21 +173,10 @@ typename std::enable_if<HasCanPackAs<T>::value == false, bool>::type CanPackAs(
 }
 
 template <typename T, int N>
-struct GetPackType {
-  using type =
-      typename std::aligned_storage<N * sizeof(T), N * sizeof(T)>::type;
-};
-
-template <typename T, int N>
-using PackType = typename GetPackType<T, N>::type;
-
-template <typename T, int N>
-union Pack {
-  static_assert(sizeof(PackType<T, N>) == sizeof(T) * N, "");
+struct alignas(sizeof(T) * N) Pack {
   __device__ Pack() {
     // do nothing
   }
-  PackType<T, N> storage;
   T elem[N];
 };
 
@@ -199,7 +188,7 @@ struct DirectLoad {
   __device__ void load(DST* dst, int32_t row, int32_t col) const {
     Pack<SRC, N> pack;
     const int32_t offset = (row * row_size + col) / N;
-    pack.storage = *(reinterpret_cast<const PackType<SRC, N>*>(src) + offset);
+    pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
 #pragma unroll
     for (int i = 0; i < N; ++i) {
       dst[i] = static_cast<DST>(pack.elem[i]);
@@ -228,14 +217,12 @@ struct ResidualAddBiasLoad {
     Pack<SRC, N> residual_pack;
     Pack<SRC, N> bias_pack;
     const int32_t offset = (row * row_size + col) / N;
-    src_pack.storage =
-        *(reinterpret_cast<const PackType<SRC, N>*>(src) + offset);
-    residual_pack.storage =
-        *(reinterpret_cast<const PackType<SRC, N>*>(residual) + offset);
+
+    src_pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
+    residual_pack = *(reinterpret_cast<const Pack<SRC, N>*>(residual) + offset);
 
     if (bias) {
-      bias_pack.storage =
-          *(reinterpret_cast<const PackType<SRC, N>*>(bias) + col / N);
+      bias_pack = *(reinterpret_cast<const Pack<SRC, N>*>(bias) + col / N);
     } else {
 #pragma unroll
       for (int i = 0; i < N; ++i) {
@@ -252,8 +239,7 @@ struct ResidualAddBiasLoad {
     for (int i = 0; i < N; ++i) {
       dst[i] = static_cast<DST>(src_pack.elem[i]);
     }
-    *(reinterpret_cast<PackType<SRC, N>*>(residual_out) + offset) =
-        src_pack.storage;
+    *(reinterpret_cast<Pack<SRC, N>*>(residual_out) + offset) = src_pack;
   }
   const SRC* src;
   const SRC* residual;
@@ -273,7 +259,7 @@ struct DirectStore {
     for (int i = 0; i < N; ++i) {
       pack.elem[i] = static_cast<DST>(src[i]);
     }
-    *(reinterpret_cast<PackType<DST, N>*>(dst) + offset) = pack.storage;
+    *(reinterpret_cast<Pack<DST, N>*>(dst) + offset) = pack;
   }
   DST* dst;
   int32_t row_size;
@@ -786,12 +772,9 @@ struct SkipLoadAndStoreResidual {
 
     const int32_t offset = (row * row_size + col) / N;
     const int32_t bias_offset = col / N;
-    src_pack.storage =
-        *(reinterpret_cast<const PackType<SRC, N>*>(src) + offset);
-    bias_pack.storage =
-        *(reinterpret_cast<const PackType<SRC, N>*>(bias) + bias_offset);
-    skip_pack.storage =
-        *(reinterpret_cast<const PackType<SRC, N>*>(skip) + offset);
+    src_pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
+    bias_pack = *(reinterpret_cast<const Pack<SRC, N>*>(bias) + bias_offset);
+    skip_pack = *(reinterpret_cast<const Pack<SRC, N>*>(skip) + offset);
 #pragma unroll
     for (int i = 0; i < N; ++i) {
       residual_out_pack.elem[i] =
@@ -801,8 +784,8 @@ struct SkipLoadAndStoreResidual {
     for (int i = 0; i < N; ++i) {
       dst[i] = residual_out_pack.elem[i];
     }
-    *(reinterpret_cast<PackType<SRC, N>*>(residual_bias_out) + offset) =
-        residual_out_pack.storage;
+    *(reinterpret_cast<Pack<SRC, N>*>(residual_bias_out) + offset) =
+        residual_out_pack;
   }
 
   SRC* src;
@@ -824,13 +807,11 @@ struct AffineStore {
     Pack<DST, N> beta_pack;
     const int32_t offset = (row * row_size + col) / N;
     const int32_t gamma_offset = col / N;
-    gamma_pack.storage =
-        *(reinterpret_cast<const PackType<DST, N>*>(gamma) + gamma_offset);
+    gamma_pack = *(reinterpret_cast<const Pack<DST, N>*>(gamma) + gamma_offset);
 
     // Author(Zhengzekang): Bias maybe optional.
     if (beta) {
-      beta_pack.storage =
-          *(reinterpret_cast<const PackType<DST, N>*>(beta) + gamma_offset);
+      beta_pack = *(reinterpret_cast<const Pack<DST, N>*>(beta) + gamma_offset);
     } else {
 #pragma unroll
       for (int i = 0; i < N; i++) {
@@ -846,7 +827,7 @@ struct AffineStore {
           static_cast<float>(beta_pack.elem[i]);
       y_pack.elem[i] = static_cast<DST>(normalized_val);
     }
-    *(reinterpret_cast<PackType<DST, N>*>(y) + offset) = y_pack.storage;
+    *(reinterpret_cast<Pack<DST, N>*>(y) + offset) = y_pack;
   }
   DST* y;
   int32_t row_size;
@@ -911,13 +892,11 @@ struct AffineQuantStore {
     Pack<OutType, N> out_pack;
     const int64_t offset = (row * row_size + col) / N;
     const int64_t gamma_offset = col / N;
-    gamma_pack.storage =
-        *(reinterpret_cast<const PackType<DST, N>*>(gamma) + gamma_offset);
+    gamma_pack = *(reinterpret_cast<const Pack<DST, N>*>(gamma) + gamma_offset);
 
     // Author(Zhengzekang): Bias maybe optional.
     if (beta) {
-      beta_pack.storage =
-          *(reinterpret_cast<const PackType<DST, N>*>(beta) + gamma_offset);
+      beta_pack = *(reinterpret_cast<const Pack<DST, N>*>(beta) + gamma_offset);
     } else {
 #pragma unroll
       for (int i = 0; i < N; i++) {
@@ -937,7 +916,7 @@ struct AffineQuantStore {
                                                        quant_max_bound,
                                                        quant_min_bound);
     }
-    *(reinterpret_cast<PackType<OutType, N>*>(y) + offset) = y_pack.storage;
+    *(reinterpret_cast<Pack<OutType, N>*>(y) + offset) = y_pack;
   }
 
   OutType* y;
