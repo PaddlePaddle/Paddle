@@ -110,7 +110,7 @@ class DygraphShardingOptimizer:
 
         parameters = list(self._parameter_list)
         need_sort_parameters = strtobool(
-            os.getenv('FLAGS_sharding_sort_parameters', '0')
+            os.getenv('FLAGS_sharding_sort_parameters', '1')
         )
         if need_sort_parameters:
             parameters.sort(
