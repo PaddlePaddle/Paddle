@@ -25,6 +25,18 @@ from paddle.framework import core
 SUCC = 0  # successor
 PRED = 1  # predecessor
 
+COMM_OP_TYPE = [
+    'broadcast',
+    'all_gather',
+    'reduce_scatter',
+    'reduce',
+    'all_reduce',
+    'p_send',
+    'p_recv',
+    'all_to_all',
+]
+
+
 
 class CostNodeType(Enum):
     DEFAULT = 0
@@ -100,7 +112,7 @@ class CommOpCostNode(CostNode):
         num_ranks = len(self.ranks)
         comm_volumn = np.prod(self.input_shape) * 4
 
-        if 'allreduce' in self.comm_type:
+        if 'allreduce' in self.comm_type or 'all_reduce' in self.comm_type:
             self._cost = comm_volumn / (
                 BANDWIDTH * num_ranks / (2 * (num_ranks - 1))
             )
@@ -222,6 +234,12 @@ class CostModel:
         self.bwd_time = []
         self.optim_time = []
 
+    def _is_comm_op(self, node):
+        for op in COMM_OP_TYPE:
+            if node.startswith(op):
+                return True
+        return False
+
     def _parse_sub_program(self, program, nodes, graph, cost_data, sub_idx):
         assert (
             len(program.blocks) == 1
@@ -250,18 +268,26 @@ class CostModel:
                 op.type.startswith('c_')
                 or op.type.startswith('send')
                 or op.type.startswith('recv')
+                or self._is_comm_op(op.type)
             ):
+                if not op.has_attr('ring_id'):
+                    continue
                 is_bwd = False
                 if (
                     op.type.startswith('c_')
                     and op.type != "c_sync_calc_stream"
                     and not op.type.startswith('c_embedding')
+                    or self._is_comm_op(op.type)
                 ):
                     ring_id = op.attr('ring_id')
                     if ring_id not in self.ring2rank:
                         self.ring2rank[ring_id] = set()
                     self.ring2rank[ring_id].add(sub_idx)
-                    is_bwd = '@GRAD' in op.output('Out')[0]
+                    if op.type.endswith('send'):
+                        is_bwd = '@GRAD' in op.input('x')[0]
+                    else:
+                        out = 'out' if op.type in COMM_OP_TYPE else 'Out'
+                        is_bwd = '@GRAD' in op.output(out)[0]
                 elif op.type.startswith('recv'):
                     is_bwd = '@GRAD' in op.output('Out')[0]
                 elif op.type.startswith('send'):
@@ -410,11 +436,14 @@ class CostModel:
                     node_id.startswith('c_')
                     and not node.id.startswith("c_sync_calc_stream")
                     and not node.id.startswith('c_embedding')
+                    or self._is_comm_op(node_id)
                 ):
+                    if not node.node.has_attr("ring_id"):
+                        continue
                     ring_id = node.node.attr('ring_id')
                     node.set_ranks(list(self.ring2rank[ring_id]))
                     node.init_comm_cost(self.cluster)
-                elif node_id.startswith('send') or node_id.startswith('recv'):
+                elif node_id.startswith('send') or node_id.startswith('recv') or node_id.endswith('send') or node_id.endswith('recv'):
                     peer_rank = node.node.attr('peer')
                     node.set_ranks([sub_idx, peer_rank])
                     node.init_comm_cost(self.cluster)
