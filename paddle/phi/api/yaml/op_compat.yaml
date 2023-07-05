@@ -208,6 +208,7 @@
 - op : argmax(arg_max)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
@@ -218,6 +219,7 @@
 - op : argmin(arg_min)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
