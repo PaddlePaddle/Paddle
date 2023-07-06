@@ -45,7 +45,7 @@ class Adan(Optimizer):
 
         moemnt2\_out & = {\beta}_2 * moment2 + (1 - {\beta}_2) * grad\_diff
 
-        moemnt3\_out  = {\beta}_3 * moment3 + (1 - {\beta}_3) * updata * updata
+        moemnt3\_out  & = {\beta}_3 * moment3 + (1 - {\beta}_3) * updata * updata
 
         denom & = \frac{\sqrt{moment3\_out}} {1 - {\beta}3\_pow} + epsilon
 
@@ -56,21 +56,21 @@ class Adan(Optimizer):
     Vinilla Adan
     .. math::
 
-        t &= t + 1 \
+        t & = t + 1 \
 
-        grad\_diff &= grad - pre\_grad
+        grad\_diff & = grad - pre\_grad
 
-        updata &= grad + {\beta}_2 * grad\_diff
+        updata & = grad + {\beta}_2 * grad\_diff
 
-        moment1\_out &= {\beta}_1 * moment1 + (1 - {\beta}_1) * grad + {\beta}_2 *(1 - {\beta}_2) * grad\_diff
+        moment1\_out & = {\beta}_1 * moment1 + (1 - {\beta}_1) * grad + {\beta}_2 *(1 - {\beta}_2) * grad\_diff
 
-        moemnt3\_out &= {\beta}_3 * moment3 + (1 - {\beta}_3) * updata * updata
+        moemnt3\_out & = {\beta}_3 * moment3 + (1 - {\beta}_3) * updata * updata
 
-        denom &= \frac{\sqrt{moment3\_out}} {1 - {\beta}3\_pow} + epsilon
+        denom & = \frac{\sqrt{moment3\_out}} {1 - {\beta}3\_pow} + epsilon
 
-        update &= \frac{\frac{moment1\_out} {1 - beta1\_pow}}{denom}
+        update & = \frac{\frac{moment1\_out} {1 - beta1\_pow}}{denom}
 
-        param\_out &= param * (1 - learning\_rate* weight\_decay) - update * learning\_rate
+        param\_out & = param * (1 - learning\_rate* weight\_decay) - update * learning\_rate
 
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
