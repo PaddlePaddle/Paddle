@@ -172,7 +172,7 @@ std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
           << tot_extent << ") to (" << cinn::utils::Join(factors, ", ")
           << ") at loop:\n"
           << loop;
-  std::cout << loop;
+
   std::vector<int> processed_factors;
   CINN_IR_SCHEDULE_BEGIN();
   processed_factors = ValidateFactors(factors, tot_extent, this->module_expr_);
