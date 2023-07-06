@@ -146,7 +146,7 @@ class IR_API Dialect {
   }
 
   virtual void PrintOperation(const Operation *op,
-                              const IrPrinter &printer) const;  // NOLINT
+                              IrPrinter &printer) const;  // NOLINT
 
  private:
   Dialect(const Dialect &) = delete;

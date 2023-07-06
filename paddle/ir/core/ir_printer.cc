@@ -33,7 +33,7 @@ namespace {
 constexpr char newline[] = "\n";
 }  // namespace
 
-void BasicIrPrinter::PrintType(Type type) const {
+void BasicIrPrinter::PrintType(Type type) {
   if (!type) {
     os << "<<NULL TYPE>>";
     return;
@@ -78,7 +78,7 @@ void BasicIrPrinter::PrintType(Type type) const {
   }
 }
 
-void BasicIrPrinter::PrintAttribute(Attribute attr) const {
+void BasicIrPrinter::PrintAttribute(Attribute attr) {
   if (!attr) {
     os << "<#AttrNull>";
     return;
@@ -115,7 +115,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) const {
   }
 }
 
-void IrPrinter::PrintProgram(const Program* program) const {
+void IrPrinter::PrintProgram(const Program* program) {
   auto top_level_op = program->module_op();
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
     auto& region = top_level_op->region(i);
@@ -123,7 +123,7 @@ void IrPrinter::PrintProgram(const Program* program) const {
   }
 }
 
-void IrPrinter::PrintOperation(const Operation* op) const {
+void IrPrinter::PrintOperation(const Operation* op) {
   if (auto* dialect = op->dialect()) {
     dialect->PrintOperation(op, *this);
     return;
@@ -132,7 +132,7 @@ void IrPrinter::PrintOperation(const Operation* op) const {
   PrintGeneralOperation(op);
 }
 
-void IrPrinter::PrintGeneralOperation(const Operation* op) const {
+void IrPrinter::PrintGeneralOperation(const Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -153,7 +153,7 @@ void IrPrinter::PrintGeneralOperation(const Operation* op) const {
   PrintOpReturnType(op);
 }
 
-void IrPrinter::PrintFullOperation(const Operation* op) const {
+void IrPrinter::PrintFullOperation(const Operation* op) {
   PrintOperation(op);
   if (op->num_regions() > 0) {
     os << newline;
@@ -164,14 +164,14 @@ void IrPrinter::PrintFullOperation(const Operation* op) const {
   }
 }
 
-void IrPrinter::PrintRegion(const Region& region) const {
+void IrPrinter::PrintRegion(const Region& region) {
   for (auto it = region.begin(); it != region.end(); ++it) {
     auto* block = *it;
     PrintBlock(block);
   }
 }
 
-void IrPrinter::PrintBlock(const Block* block) const {
+void IrPrinter::PrintBlock(const Block* block) {
   os << "{\n";
   for (auto it = block->begin(); it != block->end(); ++it) {
     PrintOperation(*it);
@@ -180,7 +180,7 @@ void IrPrinter::PrintBlock(const Block* block) const {
   os << "}\n";
 }
 
-void IrPrinter::PrintValue(const Value& v) const {
+void IrPrinter::PrintValue(const Value& v) {
   if (!v) {
     os << "<<NULL VALUE>>";
     return;
@@ -198,7 +198,7 @@ void IrPrinter::PrintValue(const Value& v) const {
   os << new_name;
 }
 
-void IrPrinter::PrintOpResult(const Operation* op) const {
+void IrPrinter::PrintOpResult(const Operation* op) {
   os << " (";
   auto num_op_result = op->num_results();
   std::vector<OpResult> op_results;
@@ -214,7 +214,7 @@ void IrPrinter::PrintOpResult(const Operation* op) const {
   os << ")";
 }
 
-void IrPrinter::PrintAttributeMap(const Operation* op) const {
+void IrPrinter::PrintAttributeMap(const Operation* op) {
   os << " {";
 
   PrintInterleave(
@@ -230,7 +230,7 @@ void IrPrinter::PrintAttributeMap(const Operation* op) const {
   os << "}";
 }
 
-void IrPrinter::PrintOpOperands(const Operation* op) const {
+void IrPrinter::PrintOpOperands(const Operation* op) {
   os << " (";
   auto num_op_operands = op->num_operands();
   std::vector<Value> op_operands;
@@ -246,7 +246,7 @@ void IrPrinter::PrintOpOperands(const Operation* op) const {
   os << ")";
 }
 
-void IrPrinter::PrintOperandsType(const Operation* op) const {
+void IrPrinter::PrintOperandsType(const Operation* op) {
   auto num_op_operands = op->num_operands();
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
@@ -267,7 +267,7 @@ void IrPrinter::PrintOperandsType(const Operation* op) const {
   os << ")";
 }
 
-void IrPrinter::PrintOpReturnType(const Operation* op) const {
+void IrPrinter::PrintOpReturnType(const Operation* op) {
   auto num_op_result = op->num_results();
   std::vector<Type> op_result_types;
   op_result_types.reserve(num_op_result);
@@ -286,8 +286,7 @@ void IrPrinter::PrintOpReturnType(const Operation* op) const {
       [this]() { this->os << ", "; });
 }
 
-void Dialect::PrintOperation(const Operation* op,
-                             const IrPrinter& printer) const {
+void Dialect::PrintOperation(const Operation* op, IrPrinter& printer) {
   printer.PrintGeneralOperation(op);
 }
 

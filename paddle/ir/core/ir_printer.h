@@ -32,9 +32,9 @@ class BasicIrPrinter {
  public:
   explicit BasicIrPrinter(std::ostream& os) : os(os) {}
 
-  void PrintType(Type type) const;
+  void PrintType(Type type);
 
-  void PrintAttribute(Attribute attr) const;
+  void PrintAttribute(Attribute attr);
 
  public:
   std::ostream& os;
@@ -46,33 +46,33 @@ class IR_API IrPrinter : public BasicIrPrinter {
 
   /// @brief print program
   /// @param program
-  void PrintProgram(const Program* program) const;
+  void PrintProgram(const Program* program);
 
   /// @brief dispatch to custom printer function or PrintGeneralOperation
-  void PrintOperation(const Operation* op) const;
+  void PrintOperation(const Operation* op);
   /// @brief print operation itself without its regions
-  void PrintGeneralOperation(const Operation* op) const;
+  void PrintGeneralOperation(const Operation* op);
   /// @brief print operation and its regions
-  void PrintFullOperation(const Operation* op) const;
+  void PrintFullOperation(const Operation* op);
 
-  void PrintRegion(const Region& Region) const;
-  void PrintBlock(const Block* block) const;
+  void PrintRegion(const Region& Region);
+  void PrintBlock(const Block* block);
 
-  void PrintValue(const Value& v) const;
+  void PrintValue(const Value& v);
 
-  void PrintOpResult(const Operation* op) const;
+  void PrintOpResult(const Operation* op);
 
-  void PrintAttributeMap(const Operation* op) const;
+  void PrintAttributeMap(const Operation* op);
 
-  void PrintOpOperands(const Operation* op) const;
+  void PrintOpOperands(const Operation* op);
 
-  void PrintOperandsType(const Operation* op) const;
+  void PrintOperandsType(const Operation* op);
 
-  void PrintOpReturnType(const Operation* op) const;
+  void PrintOpReturnType(const Operation* op);
 
  private:
-  mutable size_t cur_var_number_{0};
-  mutable std::unordered_map<const void*, std::string> aliases_;
+  size_t cur_var_number_{0};
+  std::unordered_map<const void*, std::string> aliases_;
 };
 
 }  // namespace ir
