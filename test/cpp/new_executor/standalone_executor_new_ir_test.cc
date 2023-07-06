@@ -73,7 +73,11 @@ TEST(StandaloneExecutor, run) {
 
   test_core.Run({});
 
-  auto out_tensor = scope.Var("inner_var_2")->Get<phi::DenseTensor>();
+  auto out_tensor = test_core.local_scope() == nullptr
+                        ? scope.FindVar("inner_var_2")->Get<phi::DenseTensor>()
+                        : test_core.local_scope()
+                              ->FindVar("inner_var_2")
+                              ->Get<phi::DenseTensor>();
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
@@ -142,7 +146,11 @@ TEST(StandaloneExecutor, run_2) {
 
   test_core.Run({});
 
-  auto out_tensor = scope.Var("inner_var_10")->Get<phi::DenseTensor>();
+  auto out_tensor = test_core.local_scope() == nullptr
+                        ? scope.FindVar("inner_var_10")->Get<phi::DenseTensor>()
+                        : test_core.local_scope()
+                              ->FindVar("inner_var_10")
+                              ->Get<phi::DenseTensor>();
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.80721);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.70047);
@@ -213,7 +221,11 @@ TEST(StandaloneExecutor, data_transfer) {
 
   test_core.Run({});
 
-  auto out_tensor = scope.Var("inner_var_9")->Get<phi::DenseTensor>();
+  auto out_tensor = test_core.local_scope() == nullptr
+                        ? scope.FindVar("inner_var_9")->Get<phi::DenseTensor>()
+                        : test_core.local_scope()
+                              ->FindVar("inner_var_9")
+                              ->Get<phi::DenseTensor>();
 
   auto& pool = phi::DeviceContextPool::Instance();
   phi::DenseTensor out;
