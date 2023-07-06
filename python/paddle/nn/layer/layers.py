@@ -1823,13 +1823,15 @@ class Layer:
         )
 
     @framework.deprecate_stat_dict
-    def set_state_dict(self, state_dict, use_structured_name=True):
+    def set_state_dict(self, state_dict, use_structured_name=True, strict=True):
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
+                                                  Default: True
+            strict (bool, optional): whether to strictly enforce that the keys in state_dict match the keys in this module's state_dict.
                                                   Default: True
         Returns:
             missing_keys(list):A list of str containing the missing keys
@@ -1893,7 +1895,8 @@ class Layer:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
-                warnings.warn(f"Skip loading for {key}. " + str(err))
+                if strict:
+                    warnings.warn(f"Skip loading for {key}. " + str(err))
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)
