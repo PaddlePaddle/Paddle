@@ -293,6 +293,7 @@
     func : CompareInferMeta
   kernel :
     func : equal
+  inplace: (x -> out)
 
 - op : exponential_
   args : (Tensor x, float lam)
