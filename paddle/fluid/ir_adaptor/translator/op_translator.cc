@@ -69,21 +69,21 @@ using InputHandleFn = std::function<ir::OpResult(ir::IrContext*,
 constexpr char kTargetDialectPrefix[] = "pd.";
 constexpr char kEmptyVarName[] = "@EMPTY@";
 
-static const std::unordered_set<std::string> special_inplace_ops = {
+static const std::unordered_set<std::string> special_non_inplace_ops = {
     "batch_norm",
 };
 
-static const std::unordered_set<std::string> special_non_inplace_ops = {
+static const std::unordered_set<std::string> special_inplace_ops = {
     "adagrad",
     "adam",
     "adamax",
     "adamw",
 };
 inline bool IsInplace(const OpDesc& op_desc) {
-  if (special_inplace_ops.count(op_desc.Type())) {
+  if (special_non_inplace_ops.count(op_desc.Type())) {
     return false;
   }
-  if (special_non_inplace_ops.count(op_desc.Type())) {
+  if (special_inplace_ops.count(op_desc.Type())) {
     return true;
   } 
   bool inplace = false;
