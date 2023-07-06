@@ -39,7 +39,6 @@ ReductionSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   bool keep_dim = ExtractAttr<bool>("keep_dim", attrs);
   std::vector<int64_t> reduce_dims =
       ExtractAttr<std::vector<int64_t>>("axis", attrs);
-  bool linearity = ExtractAttr<bool>("linearity", attrs);
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
 
   // get einsum notation for input
@@ -94,44 +93,27 @@ ReductionSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 
   // step2.4: handle partial
   // Step2.4.1 Output Partial
-  // If the op is a linear op, i.e. `linearity` is true, the output's
-  // dims mapping can be partial. Otherwise, partial is not supported,
-  // the input should be reshard when its sharded axes are reduced,
-  // reduced, i.e., we should replicate the crossponding axes when
-  // when the op is not linear.
-  std::vector<TensorDistAttr> new_input_dist_attrs;
-  std::vector<int64_t> new_input_dims_mapping(input_specs[0].dims_mapping());
-  std::vector<int64_t> partial_on_dims;
-  if (linearity) {
-    // get the partial states for output
-    partial_on_dims =
-        ResoluteOutputPartialDimension(axis_to_dim_map, output_axes);
-  } else {
-    // for non-linear ops, we need to reshard the
-    // input when the sharded axes are reduced
-    for (int64_t i = 0; i < ndim; i++) {
-      std::vector<int64_t>::iterator iter =
-          std::find(reduce_dims.begin(), reduce_dims.end(), i);
-      if (iter != reduce_dims.end()) {
-        new_input_dims_mapping[i] = -1;
-      }
-    }
-  }
-
-  TensorDistAttr new_input_dist_attr(input_specs[0].dist_attr());
-  new_input_dist_attr.set_dims_mapping(new_input_dims_mapping);
-  new_input_dist_attrs.emplace_back(new_input_dist_attr);
+  std::vector<int64_t> partial_on_dims =
+      ResoluteOutputPartialDimension(axis_to_dim_map, output_axes);
 
   // Step2.4.2  handle input tensor partial (TODO)
-  VLOG(4) << "ReductionSPMDRule InferForward: "
-          << "X shape: [" << str_join(input_specs[0].shape())
-          << "], src_dims_mapping: [" << str_join(input_specs[0].dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(new_input_dist_attrs[0].dims_mapping())
-          << "]; Output dims_mapping: [" << str_join(output_dims_mapping)
-          << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
+  // If the op is a linear op, i.e. `linearity` is true, it supports
+  // the input to be partial. Otherwise, the input cannot be partial
+  // on reduced axes, we should reshard the input when the reduced
+  // axes are parital.
+  VLOG(4) << "ReductionSPMDRule InferForward: ";
+  for (int64_t i = 0; i < ninputs; i++) {
+    VLOG(4) << "Input" << std::to_string(i) << " shape: ["
+            << str_join(input_specs[i].shape()) << "] "
+            << "src_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
+            << "] "
+            << "dst_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
+            << "]";
+  }
+  VLOG(4) << "Output dims_mapping: [" + str_join(output_dims_mapping) + "] "
+          << "partial_on_dims: [" + str_join(partial_on_dims) + "]\n\n";
 
-  return {new_input_dist_attrs, output_dist_attrs};
+  return {{input_specs[0].dist_attr()}, output_dist_attrs};
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
