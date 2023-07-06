@@ -265,7 +265,6 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
                 "loss",
                 numeric_grad_delta=0.009,
             )
-            print("~~~~~~~~~~~~~~~~~~")
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
@@ -512,5 +511,4 @@ class TestRNNTLossAPICase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
