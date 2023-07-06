@@ -1347,6 +1347,18 @@ set_tests_properties(test_sync_batch_norm_op_static_build
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      250)
 
+file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_white_list"
+     NEW_IR_OP_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(
+      ${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                               "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
+  else()
+    message(WARNING "not found ${IR_OP_TEST}")
+  endif()
+endforeach()
+
 set(STRIED_TESTS
     test_complex_getitem
     test_complex_grad_accumulated
@@ -1387,15 +1399,3 @@ set_tests_properties(test_imperative_ptb_rnn_with_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient_with_stride
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
-
-file(STRINGS "${CMAKE_SOURCE_DIR}/test/new_ir_op_test_white_list"
-     NEW_IR_OP_TESTS)
-foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
-  if(TEST ${IR_OP_TEST})
-    set_tests_properties(
-      ${IR_OP_TEST} PROPERTIES ENVIRONMENT
-                               "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
-  else()
-    message(WARNING "not found ${IR_OP_TEST}")
-  endif()
-endforeach()
