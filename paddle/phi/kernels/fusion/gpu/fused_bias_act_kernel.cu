@@ -551,7 +551,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_max_bound,
           quant_min_bound,
           out,
-          typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
+          typename DispatchDtypeTrait<phi::dtype::float32>::FuncVersion{});
 
     } else {
       PADDLE_THROW("Only bf16, fp16 and fp32 are supported. ");
