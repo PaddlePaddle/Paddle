@@ -1099,7 +1099,7 @@ def _setitem_static(x, indices, values):
             inputs["ValueTensor"] = values
         else:
             raise TypeError(
-                "Only support to assign an Number, numpy.ndarray or "
+                "Only support to assign an integer, float, numpy.ndarray or "
                 "paddle.Tensor to a paddle.Tensor, but received {}".format(
                     type(values)
                 )

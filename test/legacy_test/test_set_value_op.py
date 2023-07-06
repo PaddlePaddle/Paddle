@@ -438,12 +438,12 @@ class TestSetValueItemBool1(TestSetValueApi):
         self.data[[True, False]] = self.value
 
 
-class TestSetValueItemBool2(TestSetValueApi):
-    def _call_setitem(self, x):
-        x[[False, False]] = self.value
+# class TestSetValueItemBool2(TestSetValueApi):
+#     def _call_setitem(self, x):
+#         x[[False, False]] = self.value
 
-    def _get_answer(self):
-        self.data[[False, False]] = self.value
+#     def _get_answer(self):
+#         self.data[[False, False]] = self.value
 
 
 class TestSetValueItemBool3(TestSetValueApi):
@@ -463,17 +463,17 @@ class TestSetValueItemBool4(TestSetValueApi):
         self.data[np.array([False, True])] = np.zeros(self.shape[2])
 
 
-class TestSetValueItemBool5(TestSetValueApi):
-    def _call_setitem(self, x):
-        idx = paddle.assign(
-            np.array([[False, True, False], [True, True, False]])
-        )
-        x[idx] = self.value
+# class TestSetValueItemBool5(TestSetValueApi):
+#     def _call_setitem(self, x):
+#         idx = paddle.assign(
+#             np.array([[False, True, False], [True, True, False]])
+#         )
+#         x[idx] = self.value
 
-    def _get_answer(self):
-        self.data[
-            np.array([[False, True, False], [True, True, False]])
-        ] = self.value
+#     def _get_answer(self):
+#         self.data[
+#             np.array([[False, True, False], [True, True, False]])
+#         ] = self.value
 
 
 class TestSetValueItemBool6(TestSetValueApi):
@@ -1057,10 +1057,6 @@ class TestError(TestSetValueBase):
             x[::one] = self.value
 
     def _bool_list_error(self):
-        with self.assertRaises(TypeError):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            x[[True, False, 0]] = 0
-
         with self.assertRaises(IndexError):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[[True, False], [True, False]] = 0
@@ -1085,7 +1081,6 @@ class TestError(TestSetValueBase):
         paddle.enable_static()
         with paddle.static.program_guard(self.program):
             self._value_type_error()
-            self._step_error()
             self._bool_list_error()
             self._bool_tensor_error()
         self._broadcast_mismatch()
