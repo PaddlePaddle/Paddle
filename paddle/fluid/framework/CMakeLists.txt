@@ -661,36 +661,30 @@ cc_library(
   SRCS variable_helper.cc
   DEPS lod_tensor)
 
+set(NAIVE_EXECUTOR_DEPS
+    op_registry
+    denormal
+    device_context
+    scope
+    framework_proto
+    glog
+    lod_rank_table
+    feed_fetch_method
+    graph_to_program_pass
+    variable_helper)
+
 if(TENSORRT_FOUND)
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper
-         tensorrt_engine_op)
-else()
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
 endif()
+
+if(WITH_NVTX AND NOT WIN32)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} cuda_profiler)
+endif()
+
+cc_library(
+  naive_executor
+  SRCS naive_executor.cc
+  DEPS ${NAIVE_EXECUTOR_DEPS})
 
 cc_library(
   executor_gc_helper
