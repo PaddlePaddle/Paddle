@@ -30,9 +30,9 @@ using cinn::utils::StringFormat;
 
 namespace {
 
-struct StoreDebugInfoBuilder : public ir::IRVisitorBase<void> {
+struct StoreDebugInfoBuilder : public ir::IRVisitor {
   std::tuple<std::string, std::vector<Expr>> operator()(const Expr *e) {
-    IRVisitorBase::Visit(e);
+    IRVisitor::Visit(e);
     return std::make_tuple(format_.str(), args_);
   }
 
@@ -40,9 +40,9 @@ struct StoreDebugInfoBuilder : public ir::IRVisitorBase<void> {
 #define _BINARY_OP(Op__, repr__)           \
   void Visit(const ir::Op__ *x) override { \
     format_ << "(";                        \
-    IRVisitorBase::Visit(&x->a());         \
+    IRVisitor::Visit(&x->a());             \
     format_ << " " << #repr__ << " ";      \
-    IRVisitorBase::Visit(&x->b());         \
+    IRVisitor::Visit(&x->b());             \
     format_ << ")";                        \
   }
   _BINARY_OP(Add, +);
@@ -62,7 +62,7 @@ struct StoreDebugInfoBuilder : public ir::IRVisitorBase<void> {
   }
 
  public:
-  void Visit(const Expr *x) override { IRVisitorBase::Visit(x); }
+  void Visit(const Expr *x) override { IRVisitor::Visit(x); }
   void Visit(const ir::IntImm *x) override {
     format_ << type_specifier(x->type());
     args_.push_back(&Reference(x));

@@ -32,7 +32,8 @@ bool IrEqualVisitor::Compare(const Expr& lhs, const Expr& rhs) {
     VLOG(5) << "Not equal on Expr, someone not defined";
   }
   bool equal = lhs->node_type() == rhs->node_type();
-  equal = equal && IRVisitorBase<bool, const Expr*>::Visit(&lhs, &rhs);
+  equal = equal &&
+          IRVisitorRequireReImplVisitor<bool, const Expr*>::Visit(&lhs, &rhs);
 
   if (!equal) {
     VLOG(5) << "Not equal on Expr, lhs:[type:"

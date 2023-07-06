@@ -45,7 +45,9 @@ using namespace ::cinn::ir;  // NOLINT
 
 FeatureExtractor::FeatureExtractor() {}
 
-void FeatureExtractor::Visit(const Expr *x) { IRVisitorBase::Visit(x); }
+void FeatureExtractor::Visit(const Expr *x) {
+  IRVisitorRequireReImplVisitor::Visit(x);
+}
 
 Feature FeatureExtractor::Extract(const ir::ModuleExpr &mod_expr,
                                   const common::Target &target) {

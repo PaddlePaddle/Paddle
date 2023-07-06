@@ -23,7 +23,7 @@ namespace ir {
 
 // Determine whether two ir AST trees are euqal by comparing their struct and
 // fields of each node through dfs visitor
-class IrEqualVisitor : public IRVisitorBase<bool, const Expr*> {
+class IrEqualVisitor : public IRVisitorRequireReImplVisitor<bool, const Expr*> {
  public:
   explicit IrEqualVisitor(bool allow_name_suffix_diff = false)
       : allow_name_suffix_diff_(allow_name_suffix_diff) {}
