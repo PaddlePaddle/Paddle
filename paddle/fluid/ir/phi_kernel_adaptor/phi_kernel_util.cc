@@ -145,8 +145,10 @@ void HandleForSpecialOp(ir::Operation* op,
     // change opreand name to param_name
 
     auto orig_name = name_map->at(in_ptr);
+    if (scope->FindVar(param_name) == nullptr) {
+      scope->Rename(orig_name, param_name);
+    }
     (*name_map)[in_ptr] = param_name;
-    scope->Rename(orig_name, param_name);
   }
 
   if (op_name == "builtin.get_parameter") {
