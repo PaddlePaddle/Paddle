@@ -36,7 +36,8 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT16,
   CCL_DATA_TYPE_INT8,
   CCL_DATA_TYPE_UINT8,
-  CCL_DATA_TYPE_BF16
+  CCL_DATA_TYPE_BF16,
+  ALL_DTYPE = UNDEFINED
 };
 
 inline CCLDataType ToCCLDataType(phi::DataType type) {
@@ -83,12 +84,12 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "This datatype %s in Paddle is not supported.",
-        phi::ccl::CCLDataTypeToString(type)));
+        CCLDataTypeToString(type)));
   }
 }
 
 inline std::string CCLDataTypeToString(const CCLDataType& ccl_dtype) {
-  switch (dtype) {
+  switch (ccl_dtype) {
     case CCLDataType::UNDEFINED:
       return "Undefined(ALL_DTYPE)";
     case CCLDataType::CCL_DATA_TYPE_FP64:
@@ -108,7 +109,8 @@ inline std::string CCLDataTypeToString(const CCLDataType& ccl_dtype) {
     case CCLDataType::CCL_DATA_TYPE_BF16:
       return "bfloat16";
     default:
-      PD_THROW("Invalid enum ccl data type `", static_cast<int>(dtype), "`.");
+      PD_THROW(
+          "Invalid enum ccl data type `", static_cast<int>(ccl_dtype), "`.");
   }
 }
 
