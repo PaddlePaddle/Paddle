@@ -336,30 +336,26 @@ class OpInfoParser:
             for scalar_attr in self.op_compat_item['scalar'].keys():
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
                     if (
-                        self.op_compat_item['scalar'][scalar_attr]['data_type']
-                        == "std::string"
+                        scalar_attr == "depth"
+                        and self.op_phi_name[0] == "one_hot"
                     ):
-                        # see isclose and allclose in op_compat.yaml
-                        mutable_attribute_name_list.append(scalar_attr)
-                        mutable_attribute_type_list.append(
-                            ["ir::StrAttribute", "std::string"]
-                        )
+                        mutable_attribute_name_list.append("num_classes")
                     else:
-                        if (
-                            scalar_attr == "depth"
-                            and self.op_phi_name[0] == "one_hot"
-                        ):
-                            mutable_attribute_name_list.append("num_classes")
-                        else:
-                            mutable_attribute_name_list.append(scalar_attr)
-                        mutable_attribute_type_list.append(
-                            [
-                                "paddle::dialect::ScalarAttribute",
-                                self.op_compat_item['scalar'][scalar_attr][
-                                    'data_type'
-                                ],
-                            ]
-                        )
+                        mutable_attribute_name_list.append(scalar_attr)
+                    data_type = self.op_compat_item['scalar'][scalar_attr][
+                        'data_type'
+                    ]
+                    # patch for isclose and allclose
+                    if (self.op_compat_item['op'] == "isclose") or (
+                        self.op_compat_item['op'] == "allclose"
+                    ):
+                        data_type = "float"
+                    mutable_attribute_type_list.append(
+                        [
+                            "paddle::dialect::ScalarAttribute",
+                            data_type,
+                        ]
+                    )
                 # See eye in op_compat.yaml
                 else:
                     mutable_attribute_name_list.append(scalar_attr)
@@ -371,7 +367,6 @@ class OpInfoParser:
                             ],
                         ]
                     )
-
         # int_array
         if (self.op_compat_item is not None) and (
             'int_array' in self.op_compat_item
