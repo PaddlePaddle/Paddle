@@ -31,8 +31,6 @@ class TestCollectiveConcat(TestCollectiveRunnerBase):
     def get_model(self, main_prog, startup_program):
         ring_id = 0
         nranks = 2
-        print("!!!!!!!!!!!!!! in get_model_old !!!!!!!!!!!!!!")
-
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
@@ -56,7 +54,6 @@ class TestCollectiveConcat(TestCollectiveRunnerBase):
     def get_model_new(self, main_prog, startup_program):
         ring_id = 0
         nranks = 2
-        print("############### in get_model_new #############")
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
@@ -70,7 +67,7 @@ class TestCollectiveConcat(TestCollectiveRunnerBase):
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
-                type="concat_new",
+                type="dist_concat",
                 inputs={'x': tindata},
                 attrs={'ring_id': ring_id, 'rank': self.rank, 'nranks': nranks},
                 outputs={'out': toutdata},

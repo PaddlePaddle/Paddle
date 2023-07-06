@@ -63,7 +63,7 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
 
-void ConcatNewInferMeta(
+void DistConcatInferMeta(
     const MetaTensor& x, int rank, int nranks, int ring_id, MetaTensor* out);
 
 void FlashAttnInferMeta(const MetaTensor& q,

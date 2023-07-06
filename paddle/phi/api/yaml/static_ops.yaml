@@ -110,16 +110,6 @@
     func : broadcast
     param: [x, root]
 
-- op : concat_new
-  args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : ConcatNewInferMeta
-    param: [x, rank, nranks, ring_id]
-  kernel :
-    func : concat_new
-    param: [x, rank, nranks, ring_id]
-
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -165,6 +155,16 @@
     data_type : x
   optional : bias
   backward : depthwise_conv2d_transpose_grad
+
+- op : dist_concat
+  args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistConcatInferMeta
+    param: [x, rank, nranks, ring_id]
+  kernel :
+    func : dist_concat
+    param: [x, rank, nranks, ring_id]
 
 - op : einsum
   args : (Tensor[] x, str equation)
