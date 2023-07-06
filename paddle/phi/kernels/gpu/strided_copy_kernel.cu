@@ -84,7 +84,12 @@ void StridedCopyKernel(const Context& dev_ctx,
     input_stride[i] = input.strides()[i];
   }
 
-  T* output_data = dev_ctx.template Alloc<T>(out);
+  const T* output_data = out->data<T>();
+  PADDLE_ENFORCE_NOT_NULL(output_data,
+                          phi::errors::InvalidArgument(
+                              "StridedCopyKernel's out tensor must complete "
+                              "mutable data before call kernel."));
+
   int output_rank = meta.dims.size();
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride;
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_dims;

@@ -203,8 +203,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     return array;
   }
 
-  void* array_buffer = nullptr;
-  size_t array_offset = 0;
+  phi::DenseTensor cpu_tensor;
+  platform::CPUPlace cpu_place;
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     eager_gil_scoped_release guard;
@@ -215,11 +215,14 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       // deep copy
       paddle::memory::Copy(place,
-                           array_buffer,
+                           cpu_tensor.Holder()->ptr(),
                            place,
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
@@ -227,11 +230,14 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       // deep copy
       paddle::memory::Copy(place,
-                           array_buffer,
+                           cpu_tensor.Holder()->ptr(),
                            place,
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
@@ -261,9 +267,12 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
-      paddle::platform::GpuMemcpySync(array_buffer,
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
                                       dense_tensor->Holder()->ptr(),
                                       dense_tensor->Holder()->size(),
                                       kind);
@@ -278,10 +287,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       paddle::memory::Copy(place,
-                           array_buffer,
+                           cpu_tensor.Holder()->ptr(),
                            dense_tensor->place(),
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
@@ -289,10 +301,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       paddle::memory::Copy(place,
-                           array_buffer,
+                           cpu_tensor.Holder()->ptr(),
                            dense_tensor->place(),
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
@@ -307,10 +322,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
-          ->MemoryCopyD2H(array_buffer,
+          ->MemoryCopyD2H(cpu_tensor.Holder()->ptr(),
                           dense_tensor->Holder()->ptr(),
                           dense_tensor->Holder()->size());
     } else {
@@ -325,10 +343,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
         dense_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(temp_tensor.impl());
       }
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
-          ->MemoryCopyD2H(array_buffer,
+          ->MemoryCopyD2H(cpu_tensor.Holder()->ptr(),
                           dense_tensor->Holder()->ptr(),
                           dense_tensor->Holder()->size());
     }
@@ -339,18 +360,25 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     RETURN_PY_NONE
   }
 
-  PyObject* array = api.PyArray_NewFromDescr_(
-      api.PyArray_Type_,
-      api.PyArray_DescrFromType_(numpy_dtype),
-      py_rank,
-      py_dims,
-      py_strides,
-      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
-                              array_offset),
-      pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
-          pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_ |
-          pybind11::detail::npy_api::NPY_ARRAY_OWNDATA_,
-      nullptr);
+  void* array_buffer = cpu_tensor.Holder()->ptr();
+  size_t array_offset = cpu_tensor.offset();
+
+  PyObject* base = ToPyObject(
+      paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(cpu_tensor))))
+
+      PyObject* array = api.PyArray_NewFromDescr_(
+          api.PyArray_Type_,
+          api.PyArray_DescrFromType_(numpy_dtype),
+          py_rank,
+          py_dims,
+          py_strides,
+          reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
+                                  array_offset),
+          pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+              pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+          nullptr);
+
+  PyArray_SetBaseObject(array, base);
 
   return array;
   EAGER_CATCH_AND_THROW_RETURN_NULL

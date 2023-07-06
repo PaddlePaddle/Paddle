@@ -57,7 +57,11 @@ void StridedCopyKernel(const Context& dev_ctx,
   const int64_t* input_dims = input.dims().Get();
   const int64_t* input_stride = input.strides().Get();
 
-  T* output_data = dev_ctx.template Alloc<T>(out);
+  const T* output_data = out->data<T>();
+  PADDLE_ENFORCE_NOT_NULL(output_data,
+                          phi::errors::InvalidArgument(
+                              "StridedCopyKernel's out tensor must complete "
+                              "mutable data before call kernel."));
   int output_rank = meta.dims.size();
   const int64_t* output_dims = meta.dims.Get();
   const int64_t* output_stride = meta.strides.Get();

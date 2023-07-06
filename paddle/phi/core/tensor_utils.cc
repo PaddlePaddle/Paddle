@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -31,6 +32,13 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           DenseTensor* dst) {
+  if (!src.meta().is_contiguous(src.layout())) {
+    DenseTensor src_copy =
+        paddle::experimental::Trans2Contiguous(*(dense_tensor.get()));
+    Copy(dev_ctx, src_copy, dst_place, blocking, dst);
+    return;
+  }
+
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
