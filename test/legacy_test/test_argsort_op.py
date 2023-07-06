@@ -528,10 +528,10 @@ class TestArgsortFP16Op(OpTest):
         X = np.random.rand(*self.input_shape).astype('float16')
         self.inputs = {'X': X}
         Out = np.sort(X, axis=self.axis)
-        indices = np.argsort(X, axis=self.axis).astype('int64')
+        indices = np.argsort(X, axis=self.axis)
         self.outputs = {
             'Out': Out,
-            'Indices': indices,
+            'Indices': indices.astype('int64'),
         }
 
     def init(self):
@@ -547,7 +547,7 @@ class TestArgsortFP16Op(OpTest):
         self.check_output(no_check_set=['Indices'])
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', no_grad_set=['Indices'])
 
 
 class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
@@ -596,7 +596,7 @@ class TestArgsortBF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=['Indices'])
 
 
 class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
