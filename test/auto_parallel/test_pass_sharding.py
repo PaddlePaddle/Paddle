@@ -36,6 +36,8 @@ class TestShardingPass(unittest.TestCase):
             + [
                 "-m",
                 "paddle.distributed.launch",
+                "--devices",
+                "0,1",
                 "--log_dir",
                 tmp_dir.name,
                 launch_model_path,
