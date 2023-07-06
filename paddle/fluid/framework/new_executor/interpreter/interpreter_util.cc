@@ -1094,7 +1094,8 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
     if (comm_context_manager.Has(ring_id)) {
       auto comm_context = comm_context_manager.Get(ring_id);
       dev_ctx->SetCommContext(comm_context);
-      VLOG(0) << "debug set comm context for ring_id " << ring_id << ", op: " << operator_base->Type();
+      VLOG(0) << "debug set comm context for ring_id " << ring_id
+              << ", op: " << operator_base->Type();
     } else {
       VLOG(3) << "op: " << operator_base->Type() << ", ring_id: " << ring_id
               << ", get comm_context failed!";

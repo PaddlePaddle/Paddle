@@ -107,8 +107,14 @@ class TestPrimDistOp(unittest.TestCase):
             self.main_program, self.startup_program, [(self.w, self.w_grad)]
         )
         ops = dist_main_prog.global_block().ops
-        self.assertTrue(ops[1].type == "all_reduce" and ops[1].attr("reduce_type") == paddle.distributed.ReduceOp.SUM)
-        self.assertTrue(ops[3].type == "all_reduce" and ops[3].attr("reduce_type") == paddle.distributed.ReduceOp.SUM)
+        self.assertTrue(
+            ops[1].type == "all_reduce"
+            and ops[1].attr("reduce_type") == paddle.distributed.ReduceOp.SUM
+        )
+        self.assertTrue(
+            ops[3].type == "all_reduce"
+            and ops[3].attr("reduce_type") == paddle.distributed.ReduceOp.SUM
+        )
 
 
 if __name__ == "__main__":

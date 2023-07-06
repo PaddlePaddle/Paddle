@@ -37,7 +37,6 @@ COMM_OP_TYPE = [
 ]
 
 
-
 class CostNodeType(Enum):
     DEFAULT = 0
     COMPUTATION = 1
@@ -443,7 +442,12 @@ class CostModel:
                     ring_id = node.node.attr('ring_id')
                     node.set_ranks(list(self.ring2rank[ring_id]))
                     node.init_comm_cost(self.cluster)
-                elif node_id.startswith('send') or node_id.startswith('recv') or node_id.endswith('send') or node_id.endswith('recv'):
+                elif (
+                    node_id.startswith('send')
+                    or node_id.startswith('recv')
+                    or node_id.endswith('send')
+                    or node_id.endswith('recv')
+                ):
                     peer_rank = node.node.attr('peer')
                     node.set_ranks([sub_idx, peer_rank])
                     node.init_comm_cost(self.cluster)

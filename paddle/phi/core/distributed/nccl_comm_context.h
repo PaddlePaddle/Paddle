@@ -72,6 +72,7 @@ class NCCLCommContext final : public CommContext {
   void GroupEnd();
 
   int ring_id_;
+
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
 

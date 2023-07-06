@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
 from collections import OrderedDict
 
 import paddle
@@ -23,6 +22,7 @@ from ...utils.log_utils import get_logger
 from .utils import dygraph_guard
 
 logger = get_logger("INFO", __name__)
+
 
 def get_all_process_groups():
     global _g_process_group_map
@@ -77,6 +77,7 @@ def new_process_group(
     _g_process_group_map[group_id] = new_pg
 
     return new_pg
+
 
 # This implementation refers to lots of Paddle/python/paddle/distributed/collective.py,
 # Fleet also has a collective helper which uses ops to initialize communication in
@@ -160,10 +161,16 @@ class ProcessGroup:
             if core.is_compiled_with_cuda():
                 global _g_process_group_store
                 if _g_process_group_store is None:
-                    _g_process_group_store = paddle.distributed.collective.StaticTCPStore()
+                    _g_process_group_store = (
+                        paddle.distributed.collective.StaticTCPStore()
+                    )
                 place = core.CUDAPlace(genv.device_id)
                 core.CommContextManager.create_nccl_comm_context(
-                    _g_process_group_store, genv.device_id, ring_id, strategy.local_rank, genv.world_size
+                    _g_process_group_store,
+                    genv.device_id,
+                    ring_id,
+                    strategy.local_rank,
+                    genv.world_size,
                 )
                 core.set_device_comm_context(place, ring_id)
             elif core.is_compiled_with_xpu():

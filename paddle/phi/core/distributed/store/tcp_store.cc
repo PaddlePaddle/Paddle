@@ -352,7 +352,7 @@ TCPStore::TCPStore(std::string host,
 
   VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-      _server = detail::TCPServer::create(port, num_workers, timeout);
+    _server = detail::TCPServer::create(port, num_workers, timeout);
   }
 
   _client = detail::TCPClient::connect(host, port);
