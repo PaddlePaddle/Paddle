@@ -103,10 +103,18 @@ void StridedCopyKernel(const Context& dev_ctx,
   int64_t grid = (numel + block - 1) / block;
 
   if (numel == 1) {
+#ifdef PADDLE_WITH_HIP
+    hipMemcpy(output_data,
+              input_data,
+              phi::SizeOf(input.dtype()),
+              hipMemcpyDeviceToDevice);
+#else
     cudaMemcpy(output_data,
                input_data,
                phi::SizeOf(input.dtype()),
                cudaMemcpyDeviceToDevice);
+#endif
+
     return;
   }
 
