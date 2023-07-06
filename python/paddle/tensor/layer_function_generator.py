@@ -17,7 +17,6 @@ import string
 from io import StringIO
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_variable_and_dtype
@@ -360,7 +359,6 @@ Please refer to :ref:`api_paddle_{}`.
 """.format(
         origin_op_type, origin_op_type
     )
-    func = inplace_apis_in_dygraph_only(func)
     return func
 
 

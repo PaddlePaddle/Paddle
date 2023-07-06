@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_mode
@@ -89,7 +91,8 @@ for _OP in set(__inplace_unary_func__):
     _new_OP = _OP
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
-    _func = generate_inplace_fn(_OP)
+    func = generate_inplace_fn(_OP)
+    _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
 
 add_sample_code(
