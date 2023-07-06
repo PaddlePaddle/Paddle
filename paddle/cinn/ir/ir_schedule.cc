@@ -147,9 +147,10 @@ class ScheduleImpl {
 #define CINN_IR_SCHEDULE_BEGIN() try {
 /**
  * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
- * errors and error message printing \param primitive A string representing the
- * kind of schedule primitive \param err_msg_level A ScheduleErrorMessageLevel
- * enum, level of error message printing
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
  */
 #define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                    \
   }                                                                       \
