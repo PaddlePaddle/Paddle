@@ -381,7 +381,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
       nullptr);
 
-  PyArray_SetBaseObject(array, base);
+  api.PyArray_SetBaseObject_(array, base);
 
   return array;
   EAGER_CATCH_AND_THROW_RETURN_NULL
