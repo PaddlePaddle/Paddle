@@ -176,7 +176,7 @@ void TestSplitThrow() {
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(
-      mod_expr, -1, false, ir::ScheduleErrorMessageLevel::kDetailed);
+      mod_expr, -1, false, ir::ScheduleErrorMessageLevel::kGeneral);
   auto fused = ir_sch.Fuse("B", {0, 1});
   // statement that cause the exception
   auto splited = ir_sch.Split(fused, {-1, -1});
