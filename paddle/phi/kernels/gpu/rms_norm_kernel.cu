@@ -36,14 +36,18 @@ limitations under the License.
 
 #include "paddle/phi/kernels/rms_norm_kernel.h"
 #include <assert.h>
-#include <cub/cub.cuh>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#ifndef PADDLE_WITH_HIP
+#include <cub/cub.cuh>
+#endif
 
 namespace phi {
 
 namespace {
+
+#ifndef PADDLE_WITH_HIP
 
 constexpr int kWarpSize = 32;
 
@@ -928,6 +932,8 @@ struct AffineQuantStore {
   const float quant_min_bound;
 };
 
+#endif
+
 }  // namespace
 
 template <typename T, typename Context>
@@ -938,6 +944,9 @@ void RmsNormKernel(const Context& dev_ctx,
                    float epsilon,
                    int begin_norm_axis,
                    DenseTensor* out) {
+#if defined(PADDLE_WITH_HIP)
+  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+#else
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   const T* x_data = x.data<T>();
@@ -960,6 +969,7 @@ void RmsNormKernel(const Context& dev_ctx,
 
   DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
       dev_ctx.stream(), load, store, rows, cols, epsilon);
+#endif
 }
 
 template <typename T, typename Context>
@@ -971,12 +981,16 @@ void RmsNormWrapper(const Context& ctx,
                     const int rows,
                     const int cols,
                     T* output) {
+#if defined(PADDLE_WITH_HIP)
+  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+#else
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   DirectLoad<T, ComputeType> load(x, cols);
   AffineStore<ComputeType, T> store(output, cols, weight, bias);
   DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
       ctx.stream(), load, store, rows, cols, epsilon);
+#endif
 }
 
 template void RmsNormWrapper(const phi::GPUContext& ctx,
@@ -1020,12 +1034,16 @@ void ResidualAddRmsNormWrapper(const Context& ctx,
                                const int cols,
                                T* residual_output,
                                T* output) {
+#if defined(PADDLE_WITH_HIP)
+  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+#else
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
   ResidualAddBiasLoad<T, ComputeType> load(
       x, residual, bias, residual_output, cols);
   AffineStore<ComputeType, T> store(output, cols, norm_weight, norm_bias);
   DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
       ctx.stream(), load, store, rows, cols, epsilon);
+#endif
 }
 
 template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
@@ -1078,6 +1096,9 @@ void RmsNormInt8OutWrapper(const Context& ctx,
                            const float quant_max_bound,
                            const float quant_min_bound,
                            int8_t* output) {
+#if defined(PADDLE_WITH_HIP)
+  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+#else
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   DirectLoad<T, ComputeType> load(x, cols);
@@ -1091,6 +1112,7 @@ void RmsNormInt8OutWrapper(const Context& ctx,
                                                              quant_min_bound);
   DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
       ctx.stream(), load, store, rows, cols, epsilon);
+#endif
 }
 
 template void RmsNormInt8OutWrapper(const phi::GPUContext& ctx,
@@ -1149,6 +1171,9 @@ void ResidualAddRmsNormInt8OutWrapper(const Context& ctx,
                                       const float quant_min_bound,
                                       T* residual_output,
                                       int8_t* output) {
+#if defined(PADDLE_WITH_HIP)
+  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+#else
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   ResidualAddBiasLoad<T, ComputeType> load(
@@ -1163,6 +1188,7 @@ void ResidualAddRmsNormInt8OutWrapper(const Context& ctx,
                                                              quant_min_bound);
   DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
       ctx.stream(), load, store, rows, cols, epsilon);
+#endif
 }
 
 template void ResidualAddRmsNormInt8OutWrapper(const phi::GPUContext& ctx,
