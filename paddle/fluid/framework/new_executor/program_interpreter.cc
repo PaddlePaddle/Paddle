@@ -275,6 +275,7 @@ void ProgramInterpreter::reset_scope(Scope* new_scope) {
   }
 }
 
+const Scope* ProgramInterpreter::local_scope() const { return local_scope_; }
 void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ =
       reinterpret_cast<ProgramInterpreter*>(src)->GetWorkQueue();

@@ -79,13 +79,14 @@ static const std::unordered_set<std::string> special_inplace_ops = {
     "adamax",
     "adamw",
 };
+
 inline bool IsInplace(const OpDesc& op_desc) {
   if (special_non_inplace_ops.count(op_desc.Type())) {
     return false;
   }
   if (special_inplace_ops.count(op_desc.Type())) {
     return true;
-  } 
+  }
   bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
@@ -332,7 +333,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
       continue;
     }
-  
+
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
@@ -432,7 +433,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         is_vector = false;
       }
     }
-  
+
     // if src type is Tensor
     if (!is_vector) {
       auto defining_info = (*param_map)[legacy_input_vars[0]];
