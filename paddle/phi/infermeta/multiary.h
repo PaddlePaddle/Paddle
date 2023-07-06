@@ -289,7 +289,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            int rows,
                            int cols,
                            float quant_scale,
-                           int quant_rount_type,
+                           int quant_round_type,
                            float quant_max_bound,
                            float quant_min_bound,
                            MetaTensor* out);
