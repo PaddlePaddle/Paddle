@@ -21,10 +21,10 @@
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
-class TensorBase;
 
 // In static model pre analysis, we can't get the data from tensor
 class TensorRef {
@@ -42,5 +42,22 @@ class TensorRef {
  private:
   const DenseTensor* tensor_base_{nullptr};
 };
+
+// class TensorVecRef {
+//  public:
+//   // Constructor support implicit
+//   TensorVecRef() = default;
+//   explicit TensorVecRef(const std::vector<phi::DenseTensor*>& tensor_list ) :
+//   tensor_list_(tensor_list) {}
+
+//   const std::vector<phi::DenseTensor*>& Get() const {
+//     PADDLE_ENFORCE_GT( tensor_list_.size(), 0,
+//                             "tensor list can not be empty");
+//     return tensor_list_;
+//   }
+
+//  private:
+//   const std::vector<phi::DenseTensor*> tensor_list_;
+// };
 
 }  // namespace phi

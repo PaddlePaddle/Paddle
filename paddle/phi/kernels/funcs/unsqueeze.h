@@ -105,6 +105,11 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
 
 inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
                               const DDim& in_dims) {
+  std::cerr << "!!!!!!! gen unsqueeze size " << unsqz_dims.size() << std::endl;
+
+  for (auto& t : unsqz_dims) {
+    std::cerr << "!!!!!!!!!!!!!!!!! " << t << std::endl;
+  }
   int output_rank = in_dims.size() + static_cast<int>(unsqz_dims.size());
   int cur_output_rank = in_dims.size();
   std::vector<int64_t> output_shape(output_rank, 0);

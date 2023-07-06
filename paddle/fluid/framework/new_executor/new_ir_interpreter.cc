@@ -64,7 +64,8 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
-  if (execution_config_.create_local_scope) {
+  // if (execution_config_.create_local_scope) {
+  if (true) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
     VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
@@ -184,6 +185,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    std::cerr << "build scope" << std::endl;
     ::ir::BuildScope(
         ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
 

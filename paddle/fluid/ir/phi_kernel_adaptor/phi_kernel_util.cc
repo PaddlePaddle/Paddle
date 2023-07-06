@@ -108,6 +108,8 @@ void HandleForSpecialOp(ir::Operation* op,
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
     auto feed_list = feed_var->Get<paddle::framework::FeedList>();
     auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
+    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~ share here  " << in_tensor.dims()
+              << std::endl;
     out_tensor->ShareDataWith(in_tensor);
   }
 
@@ -124,6 +126,8 @@ void HandleForSpecialOp(ir::Operation* op,
 
     auto var = CreateVar(out_value, name, scope, local_scope);
     auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
+    // clear tensor array
+    tensor_array->clear();
 
     for (size_t i = 0; i < input_num; ++i) {
       auto ptr = op->operand(i);
