@@ -1130,8 +1130,6 @@ class OpTest(unittest.TestCase):
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
             return
-        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
-            return
         if self.check_prim:
             return
         if self._check_cinn:
@@ -2804,8 +2802,6 @@ class OpTest(unittest.TestCase):
         self, place, program, scope, feed_dict, fetch_list, gradients
     ):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
-            return
-        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
             return
         if self.check_prim:
             return
