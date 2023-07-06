@@ -152,7 +152,9 @@ class IRScheduleErrorHandler : public std::runtime_error {
    * \brief Returns a detailed error message corresponding to the kDetailed
    * error level.
    */
-  std::string FormatErrorMessage(const std::string& primitive) const;
+  std::string FormatErrorMessage(
+      const std::string& primitive,
+      const ScheduleErrorMessageLevel& err_msg_level) const;
 
   /**
    * \brief Returns a short error message corresponding to the kGeneral error

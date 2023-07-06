@@ -151,17 +151,10 @@ class ScheduleImpl {
  * kind of schedule primitive \param err_msg_level A ScheduleErrorMessageLevel
  * enum, level of error message printing
  */
-#define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                   \
-  }                                                                      \
-  catch (const IRScheduleErrorHandler& err_hanlder) {                    \
-    switch (err_msg_level) {                                             \
-      case ScheduleErrorMessageLevel::kDetailed:                         \
-        CINN_THROW(err_hanlder.FormatErrorMessage(primitive));           \
-      case ScheduleErrorMessageLevel::kGeneral:                          \
-        CINN_THROW(err_hanlder.GeneralErrorMessage());                   \
-      default:                                                           \
-        CINN_THROW("IRScheduleError occurred! (No more error message)"); \
-    }                                                                    \
+#define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                    \
+  }                                                                       \
+  catch (const IRScheduleErrorHandler& err_hanlder) {                     \
+    CINN_THROW(err_hanlder.FormatErrorMessage(primitive, err_msg_level)); \
   }
 
 std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
@@ -179,9 +172,10 @@ std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
           << tot_extent << ") to (" << cinn::utils::Join(factors, ", ")
           << ") at loop:\n"
           << loop;
+  std::cout << loop;
   std::vector<int> processed_factors;
   CINN_IR_SCHEDULE_BEGIN();
-  processed_factors = ValidateFactors(factors, tot_extent);
+  processed_factors = ValidateFactors(factors, tot_extent, this->module_expr_);
   CINN_IR_SCHEDULE_END("split", this->err_msg_level_);
   int prod_size = std::accumulate(processed_factors.begin(),
                                   processed_factors.end(),

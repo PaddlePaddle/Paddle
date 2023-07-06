@@ -221,60 +221,85 @@ void ReplaceExpr(Expr* source,
 }
 
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
-                                 int total_extent) {
+                                 int total_extent,
+                                 const ModuleExpr& module_expr) {
   class NegativeFactorErrorHandler : public IRScheduleErrorHandler {
    public:
-    explicit NegativeFactorErrorHandler(int64_t factor, size_t idx)
-        : factor_(factor), idx_(idx) {}
+    explicit NegativeFactorErrorHandler(int64_t factor,
+                                        size_t idx,
+                                        const ModuleExpr& module_expr)
+        : factor_(factor), idx_(idx), module_expr_(module_expr) {}
 
     std::string GeneralErrorMessage() const final {
-      return "[IRScheduleError]: The params in factors of Split should be "
-             "positive. However, some "
-             "factor is zero or negative.";
+      std::ostringstream os;
+      os << "The params in factors of Split should be positive. However, the "
+            "factor at position "
+         << idx_ << " is " << factor_ << std::endl;
+      return os.str();
     }
 
     std::string DetailedErrorMessage() const final {
       std::ostringstream os;
-      os << "The params in factors of Split should be positive. However, the "
-            "factor at position "
-         << idx_ << " is " << factor_;
+      os << GeneralErrorMessage();
+      os << "[Expr info] The Expr of current schedule is: "
+         << module_expr_.GetExprs() << std::endl;
       return os.str();
     }
 
    private:
+    ModuleExpr module_expr_;
     int64_t factor_;
     size_t idx_;
   };
 
   class InferFactorErrorHandler : public IRScheduleErrorHandler {
    public:
+    explicit InferFactorErrorHandler(const ModuleExpr& module_expr)
+        : module_expr_(module_expr) {}
+
     std::string GeneralErrorMessage() const final {
-      return "[IRScheduleError]: The params in factors of Split should not be "
-             "less than -1 or have more than one -1!";
+      std::ostringstream os;
+      os << "The params in factors of Split should not be less than -1 or have "
+            "more than one -1!"
+         << std::endl;
+      return os.str();
     }
 
     std::string DetailedErrorMessage() const final {
       std::ostringstream os;
-      os << "The params in factors of Split should not be less than -1 or have "
-            "more than one -1!";
+      os << GeneralErrorMessage();
+      os << "[Expr info] The Expr of current schedule is: "
+         << module_expr_.GetExprs() << std::endl;
       return os.str();
     }
+
+   private:
+    ModuleExpr module_expr_;
   };
 
   class FactorProductErrorHandler : public IRScheduleErrorHandler {
    public:
+    explicit FactorProductErrorHandler(const ModuleExpr& module_expr)
+        : module_expr_(module_expr) {}
+
     std::string GeneralErrorMessage() const final {
-      return "[IRScheduleError]: In Split, the factors' product should be not "
-             "larger than or equal to original loop's "
-             "extent!";
+      std::ostringstream os;
+      os << "In Split, the factors' product should be not larger than or equal "
+            "to original loop's extent!"
+         << std::endl;
+      return os.str();
     }
 
     std::string DetailedErrorMessage() const final {
       std::ostringstream os;
-      os << "In Split, the factors' product should be not larger than or equal "
-            "to original loop's extent!";
+      os << GeneralErrorMessage();
+      os << "[Expr info] The Expr of current schedule is: "
+         << module_expr_.GetExprs() << std::endl;
       return os.str();
     }
+
+   private:
+    ModuleExpr module_expr_;
   };
 
   CHECK(!factors.empty())
@@ -285,10 +310,10 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   for (auto& i : factors) {
     idx++;
     if (i == 0 || i < -1) {
-      throw NegativeFactorErrorHandler(i, idx);
+      throw NegativeFactorErrorHandler(i, idx, module_expr);
     } else if (i == -1) {
       if (has_minus_one) {
-        throw InferFactorErrorHandler();
+        throw InferFactorErrorHandler(module_expr);
       }
       has_minus_one = true;
     } else {
@@ -298,12 +323,12 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   std::vector<int> validated_factors = factors;
   if (!has_minus_one) {
     if (product < total_extent) {
-      throw FactorProductErrorHandler();
+      throw FactorProductErrorHandler(module_expr);
     }
     return validated_factors;
   } else {
     if (product > total_extent) {
-      throw FactorProductErrorHandler();
+      throw FactorProductErrorHandler(module_expr);
     }
     int minus_one_candidate = static_cast<int>(
         ceil(static_cast<double>(total_extent) / static_cast<double>(product)));
