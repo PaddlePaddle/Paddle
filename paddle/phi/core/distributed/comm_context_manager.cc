@@ -44,7 +44,8 @@ void CommContextManager::CreateNCCLCommContext(
     int ring_id,
     int rank,
     int size) {
-  VLOG(0) << "debug CreateNCCLCommContext ring_id " << ring_id << ", rank " << rank; 
+  VLOG(0) << "debug CreateNCCLCommContext ring_id " << ring_id << ", rank "
+          << rank;
   phi::backends::gpu::SetDeviceId(dev_id);
   ncclUniqueId nccl_id;
   if (rank == 0) {

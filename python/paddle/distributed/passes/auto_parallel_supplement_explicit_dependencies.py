@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import logging
+
 from paddle.distributed.utils.log_utils import get_logger
+
 logger = get_logger(logging.INFO)
 
 from paddle.distributed.auto_parallel.static.operators.common import (

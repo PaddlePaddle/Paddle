@@ -985,7 +985,8 @@ class TestGPTPartitioner(unittest.TestCase):
                 for op in auto_parallel_main_prog.global_block().ops
                 if (
                     op.type == 'all_reduce'
-                    and op.attr('reduce_type') == paddle.distributed.ReduceOp.SUM
+                    and op.attr('reduce_type')
+                    == paddle.distributed.ReduceOp.SUM
                     and op.desc.attr('ring_id') == dp_ring_id
                 )
             ]
