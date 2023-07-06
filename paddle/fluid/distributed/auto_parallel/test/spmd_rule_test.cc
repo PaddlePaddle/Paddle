@@ -38,13 +38,11 @@ TEST(MatmulSPMDRule, Ctor) {
   TensorDistAttr x_dist_attr = TensorDistAttr();
   x_dist_attr.set_process_mesh(process_mesh);
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({1, -1}));
-  x_dist_attr.set_batch_dim(-1);
   x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
 
   TensorDistAttr y_dist_attr = TensorDistAttr();
   y_dist_attr.set_process_mesh(process_mesh);
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
-  y_dist_attr.set_batch_dim(-1);
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
 
   DistTensorSpec x_dist_tensor_spec = DistTensorSpec(x_shape, x_dist_attr);
@@ -199,6 +197,101 @@ TEST(MatmulSPMDRule, Ctor) {
                        {x_dist_tensor_spec, y_dist_tensor_spec}, attrs));
   // Error
   VLOG(4) << "test10 done." << std::endl << std::endl << std::endl;
+}
+
+TEST(LayerNormSPMDRule, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {64, 32, 1024};
+  std::vector<int64_t> scale_shape = {1024};
+  std::vector<int64_t> bias_shape = {1024};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({1, -1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  TensorDistAttr scale_dist_attr = TensorDistAttr();
+  scale_dist_attr.set_process_mesh(process_mesh);
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
+  scale_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
+
+  TensorDistAttr bias_dist_attr = TensorDistAttr();
+  bias_dist_attr.set_process_mesh(process_mesh);
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
+  bias_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
+
+  DistTensorSpec x_dist_tensor_spec = DistTensorSpec(x_shape, x_dist_attr);
+  DistTensorSpec scale_dist_tensor_spec =
+      DistTensorSpec(scale_shape, scale_dist_attr);
+  DistTensorSpec bias_dist_tensor_spec =
+      DistTensorSpec(bias_shape, bias_dist_attr);
+
+  paddle::framework::AttributeMap attrs;
+  attrs["begin_norm_axis"] = 2;
+
+  SPMDRuleBase* layer_norm_rule = SPMDRuleMap::Instance().Get("layer_norm");
+
+  // ijk[1, -1, -1],k[-1],k[-1] --> ijk[1, -1, -1] partial[1]
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+      infered_dist_attrs = layer_norm_rule->InferForward(
+          {x_dist_tensor_spec, scale_dist_tensor_spec, bias_dist_tensor_spec},
+          attrs);
+
+  size_t input_size = 3;
+  size_t output_size = 3;
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
+
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({1, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  EXPECT_EQ(infered_dist_attrs.first[2].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({1, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.second[1].dims_mapping(),
+            std::vector<int64_t>({1}));
+  EXPECT_EQ(infered_dist_attrs.second[2].dims_mapping(),
+            std::vector<int64_t>({1}));
+  VLOG(4) << "test1 done.";
+
+  // ijk[1, 0, -1],k[0],k[0] --> ijk[1, 0, -1]
+  x_dist_tensor_spec.set_dims_mapping({1, 0, -1});
+  scale_dist_tensor_spec.set_dims_mapping({0});
+  bias_dist_tensor_spec.set_dims_mapping({0});
+  EXPECT_ANY_THROW(
+      infered_dist_attrs = layer_norm_rule->InferForward(
+          {x_dist_tensor_spec, scale_dist_tensor_spec, bias_dist_tensor_spec},
+          attrs););
+  VLOG(4) << "test2 done.";
+
+  // ijk[0, -1, -1],z[-1],z[1] --> ijk[0, 1, -1, -1], z=jk
+  x_dist_tensor_spec.set_dims_mapping({0, -1, -1});
+  scale_dist_tensor_spec.set_dims_mapping({-1});
+  bias_dist_tensor_spec.set_dims_mapping({1});
+  attrs["begin_norm_axis"] = 1;
+  infered_dist_attrs = layer_norm_rule->InferForward(
+      {x_dist_tensor_spec, scale_dist_tensor_spec, bias_dist_tensor_spec},
+      attrs);
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  EXPECT_EQ(infered_dist_attrs.first[2].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.second[1].dims_mapping(),
+            std::vector<int64_t>({0}));
+  EXPECT_EQ(infered_dist_attrs.second[2].dims_mapping(),
+            std::vector<int64_t>({0}));
+  VLOG(4) << "test2 done.";
 }
 
 }  // namespace auto_parallel
