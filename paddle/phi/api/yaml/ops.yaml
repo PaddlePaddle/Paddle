@@ -311,6 +311,7 @@
   kernel :
     func : bitwise_and
     backend : x
+  inplace: (x -> out)
 
 - op : bitwise_not
   args : (Tensor x)
@@ -320,6 +321,7 @@
   kernel :
     func : bitwise_not
     backend : x
+  inplace: (x -> out)
 
 - op : bitwise_or
   args : (Tensor x, Tensor y)
@@ -329,6 +331,7 @@
   kernel :
     func : bitwise_or
     backend : x
+  inplace: (x -> out)
 
 - op : bitwise_xor
   args : (Tensor x, Tensor y)
@@ -338,6 +341,7 @@
   kernel :
     func : bitwise_xor
     backend : x
+  inplace: (x -> out)
 
 - op : bmm
   args : (Tensor x, Tensor y)
@@ -597,6 +601,7 @@
     func : UnchangedInferMetaCheckAxis
   kernel :
     func : cumprod
+  inplace: (x -> out)
   backward : cumprod_grad
 
 - op : cumsum
@@ -607,6 +612,7 @@
   kernel :
     func : cumsum
     data_type : x
+  inplace: (x -> out)
   backward : cumsum_grad
 
 - op : depthwise_conv2d
