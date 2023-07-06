@@ -899,7 +899,7 @@ class Conv2dAddFusePattern
     if (!conv2d_op) return false;
 
     ir::OpResult conv2d_out = conv2d_op.out();
-    //  if (!conv2d_out.HasOneUse()) return false;
+    if (!conv2d_out.HasOneUse()) return false;
 
     ir::Value conv2d_filter = conv2d_op.filter();
 
@@ -960,6 +960,7 @@ class TestPass : public ir::Pass {
     ir::RewritePatternSet ps(op->ir_context());
     ps.Add<RedundantTransposeFusePattern>(op->ir_context());
     ps.Add<Conv2dBnFusePattern>(op->ir_context());
+    ps.Add<Conv2dAddFusePattern>(op->ir_context());
 
     ir::FrozenRewritePatternSet frozen_ps(std::move(ps));
     ir::GreedyRewriteConfig cfg;
