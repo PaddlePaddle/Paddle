@@ -54,9 +54,9 @@ class PipelineFThenBPass(PipelinePassBase):
         return job_list
 
     def partial_programs(self, program):
-        names = ["lr", "forward", "backward", "optimizer"]
+        types = ["lr", "forward", "backward", "optimizer"]
         sub_program_list = _program_for_fthenb_and_1f1b(program)
-        return names, sub_program_list
+        return types, sub_program_list
 
 
 @register_pass("pipeline_scheduler_1F1B")
@@ -109,9 +109,9 @@ class Pipeline1F1BPass(PipelinePassBase):
         return job_list
 
     def partial_programs(self, program):
-        names = ["lr", "forward", "backward", "optimizer"]
+        types = ["lr", "forward", "backward", "optimizer"]
         sub_program_list = _program_for_fthenb_and_1f1b(program)
-        return names, sub_program_list
+        return types, sub_program_list
 
 
 def apply_pass(main_program, startup_program, pass_name, pass_attr={}):

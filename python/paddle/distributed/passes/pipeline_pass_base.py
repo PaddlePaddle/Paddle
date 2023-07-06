@@ -37,8 +37,8 @@ class PipelinePassBase(PassBase):
     def partial_programs(self, program):
         """
         An interface that MUST be implemented by subclasses.
-        The return value MUST be two lists, one is a list of names(str), another
-        is a list of values.
+        The return value MUST be two lists, one is a list of types(str), another
+        is a list of sub programs.
         For example:
         return ["lr", "forward", "backward", "optimizer"], [lr_prog, fwd_prog, bwd_prog, opt_prog]
         or
@@ -57,16 +57,16 @@ class PipelinePassBase(PassBase):
 
         # Following is a shared gc process for base class.
         gc_vars_list = get_skip_gc_vars(sub_program_list)
-        name_to_gc_vars = {}
-        for name, gc_var in zip(type_list, gc_vars_list):
-            name_to_gc_vars[name] = gc_var
+        type_to_gc_vars = {}
+        for type, gc_var in zip(type_list, gc_vars_list):
+            type_to_gc_vars[type] = gc_var
 
         for job in job_list:
-            job.set_skip_gc_vars(name_to_gc_vars[job.type()])
+            job.set_skip_gc_vars(type_to_gc_vars[job.type()])
 
         type_to_program = {}
-        for name, value in zip(type_list, sub_program_list):
-            type_to_program[name] = value.desc
+        for type, sub_program in zip(type_list, sub_program_list):
+            type_to_program[type] = sub_program.desc
 
         plan = core.Plan(job_list, type_to_program)
         context.set_attr("plan", plan)
