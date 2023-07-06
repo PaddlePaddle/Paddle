@@ -35,7 +35,8 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT32,
   CCL_DATA_TYPE_INT16,
   CCL_DATA_TYPE_INT8,
-  CCL_DATA_TYPE_UINT8
+  CCL_DATA_TYPE_UINT8,
+  CCL_DATA_TYPE_BF16
 };
 
 inline CCLDataType ToCCLDataType(phi::DataType type) {
@@ -53,6 +54,8 @@ inline CCLDataType ToCCLDataType(phi::DataType type) {
     return CCL_DATA_TYPE_INT8;
   } else if (type == phi::DataType::UINT8) {
     return CCL_DATA_TYPE_UINT8;
+  } else if (type == phi::DataType::BFLOAT16) {
+    return CCL_DATA_TYPE_BF16;
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("This datatype %s in CCL is not supported.",
@@ -73,9 +76,39 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
     return phi::DataType::INT32;
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT8) {
     return phi::DataType::INT8;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_UINT8) {
+    return phi::DataType::UINT8
+  } else if (type == CCLDataType::CCL_DATA_TYPE_BF16) {
+    return phi::DataType::BFLOAT16;
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("This datatype in CCL is not supported."));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "This datatype %s in Paddle is not supported.",
+        phi::ccl::CCLDataTypeToString(type)));
+  }
+}
+
+inline std::string CCLDataTypeToString(const CCLDataType& ccl_dtype) {
+  switch (dtype) {
+    case CCLDataType::UNDEFINED:
+      return "Undefined(ALL_DTYPE)";
+    case CCLDataType::CCL_DATA_TYPE_FP64:
+      return "float64";
+    case CCLDataType::CCL_DATA_TYPE_FP32:
+      return "float32";
+    case CCLDataType::CCL_DATA_TYPE_FP16:
+      return "float16";
+    case CCLDataType::CCL_DATA_TYPE_INT64:
+      return "int64";
+    case CCLDataType::CCL_DATA_TYPE_INT32:
+      return "int32";
+    case CCLDataType::CCL_DATA_TYPE_INT8:
+      return "int8";
+    case CCLDataType::CCL_DATA_TYPE_UINT8:
+      return "uint8";
+    case CCLDataType::CCL_DATA_TYPE_BF16:
+      return "bfloat16";
+    default:
+      PD_THROW("Invalid enum ccl data type `", static_cast<int>(dtype), "`.");
   }
 }
 
