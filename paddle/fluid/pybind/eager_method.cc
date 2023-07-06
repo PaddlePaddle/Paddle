@@ -366,20 +366,20 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   void* array_buffer = cpu_tensor.Holder()->ptr();
   size_t array_offset = cpu_tensor.offset();
 
-  PyObject* base = ToPyObject(
-      paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(cpu_tensor))))
+  PyObject* base = ToPyObject(paddle::Tensor(
+      std::make_shared<phi::DenseTensor>(std::move(cpu_tensor))));
 
-      PyObject* array = api.PyArray_NewFromDescr_(
-          api.PyArray_Type_,
-          api.PyArray_DescrFromType_(numpy_dtype),
-          py_rank,
-          py_dims,
-          py_strides,
-          reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
-                                  array_offset),
-          pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
-              pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
-          nullptr);
+  PyObject* array = api.PyArray_NewFromDescr_(
+      api.PyArray_Type_,
+      api.PyArray_DescrFromType_(numpy_dtype),
+      py_rank,
+      py_dims,
+      py_strides,
+      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
+                              array_offset),
+      pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+          pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+      nullptr);
 
   PyArray_SetBaseObject(array, base);
 
