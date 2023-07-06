@@ -427,21 +427,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
-        # NOTE(zhangxiaoci): When trained in XPU multi-node RDMA environment, an unexpected
-        # segmentfault will be raised in dataloader process, where the traceback goes all
-        # back to a runtime error that dataloader workers exit unexpectedly. Similar problems
-        # have been discussed that lead to a misbehavior of OpenCV working in multiprocessing
-        # environment. A possible solution is to change default 'fork' mode of multiprocessing
-        # start method to 'spawn'. See https://stackoverflow.com/questions/54013846 for details.
-        # NOTE(zhangxiaoci): Replace multiprocessing with multiprocess since in some training
-        # environments the former will raise 'AttributeError: Can't pickle local object xxx',
-        # which is a side effect of changing the default start method.
-        if paddle.is_compiled_with_xpu():
-            import multiprocess as multiprocessing
-
-            multiprocessing.set_start_method('spawn', force=True)
-        else:
-            from paddle.incubate import multiprocessing
+        from paddle.incubate import multiprocessing
 
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
