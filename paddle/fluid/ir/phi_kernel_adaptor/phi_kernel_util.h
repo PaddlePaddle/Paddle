@@ -41,7 +41,7 @@
 
 namespace ir {
 paddle::framework::Variable* CreateVar(ir::Value value,
-                                       std::string name,
+                                       const std::string& name,
                                        paddle::framework::Scope* scope,
                                        paddle::framework::Scope* local_scope);
 
@@ -51,7 +51,7 @@ void HandleForSpecialOp(ir::Operation* op,
                         std::unordered_map<ir::Value, std::string>* name_map,
                         int& count);  // NOLINT
 
-void BuildScope(ir::Block* block,
+void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
                 std::unordered_map<ir::Value, std::string>* name_map);
