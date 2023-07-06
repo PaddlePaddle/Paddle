@@ -661,6 +661,10 @@ if(WITH_MIPS)
   add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if(WITH_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_NVTX)
+endif()
+
 if(WITH_LOONGARCH)
   set(WITH_XBYAK
       OFF
