@@ -77,7 +77,7 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT8) {
     return phi::DataType::INT8;
   } else if (type == CCLDataType::CCL_DATA_TYPE_UINT8) {
-    return phi::DataType::UINT8
+    return phi::DataType::UINT8;
   } else if (type == CCLDataType::CCL_DATA_TYPE_BF16) {
     return phi::DataType::BFLOAT16;
   } else {
