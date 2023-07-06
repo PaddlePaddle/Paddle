@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_collective_base import TestDistBase
+from legacy_test.test_collective_base import TestDistBase
 
 import paddle
 
@@ -26,7 +26,16 @@ class TestConcatOp(TestDistBase):
         pass
 
     def test_concat(self, col_type="concat"):
+        print("############### in test_concat #############")
         self.check_with_place("collective_concat_op.py", col_type)
+
+    def test_concat_with_comm_context(self, col_type="concat_new"):
+        print("############### in test_concat_with_comm_context #############")
+        self.check_with_place(
+            "collective_concat_op.py",
+            col_type,
+            need_envs={"USE_COMM_CONTEXT": "1"},
+        )
 
 
 if __name__ == '__main__':
