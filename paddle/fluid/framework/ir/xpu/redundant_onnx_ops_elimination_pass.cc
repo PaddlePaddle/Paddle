@@ -107,9 +107,9 @@ ReduceMeanFusePattern::ReduceMeanFusePattern(PDPattern* pattern,
 }
 
 struct FoldConv1dSqueeze2Pattern : public PatternBase {
-  Conv1dSqueeze2Pattern(PDPattern* pattern,
-                        const std::string& name_scope,
-                        const std::string& act_type);
+  FoldConv1dSqueeze2Pattern(PDPattern* pattern,
+                            const std::string& name_scope,
+                            const std::string& act_type);
 
   // declare operator node's name
   PATTERN_DECL_NODE(squeeze2);
@@ -289,10 +289,10 @@ void RedundantOnnxOpsEliminationPass::FoldConv1dSqueeze2Ops(
     bn_op_desc->Flush();
     IR_NODE_LINK_TO(x, bn);
     // behind unsqueeze op node
-    auto unsqueeze_out_link_nodes = unsqueeze_out->outputs;
+    auto unsqueeze_out_link_nodes = unsqueeze2_out->outputs;
     for (auto out_link_node : unsqueeze_out_link_nodes) {
       auto op_desc = out_link_node->Op();
-      op_desc->RenameInput(unsqueeze_out->Var()->Name(),
+      op_desc->RenameInput(unsqueeze2_out->Var()->Name(),
                            act_out->Var()->Name());
       op_desc->Flush();
       IR_NODE_LINK_TO(act_out, out_link_node);

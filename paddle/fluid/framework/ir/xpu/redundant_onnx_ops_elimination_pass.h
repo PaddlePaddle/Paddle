@@ -84,7 +84,8 @@ class RedundantOnnxOpsEliminationPass : public FusePassBase {
                       |
                   conv2d(conv1d)
   */
-  void FoldConv1dSqueeze2Ops(ir::Graph* graph) const;
+  void FoldConv1dSqueeze2Ops(ir::Graph* graph,
+                             const std::string& act_type) const;
 
   const std::string name_scope_{"redundant_onnx_ops_elimination_pass"};
 };
