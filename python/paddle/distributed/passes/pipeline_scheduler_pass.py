@@ -33,18 +33,18 @@ class PipelineFThenBPass(PipelinePassBase):
         super().__init__()
 
     def create_job_list(self):
-        self._num_micro_batches = self.get_attr("num_micro_batches")
+        num_micro_batches = self.get_attr("num_micro_batches")
 
         job_list = []
         lr_job = core.Job("lr")
         job_list.append(lr_job)
 
-        for i in range(self._num_micro_batches):
+        for i in range(num_micro_batches):
             forward_job = core.Job("forward")
             forward_job.set_micro_batch_id(i)
             job_list.append(forward_job)
 
-        for i in range(self._num_micro_batches):
+        for i in range(num_micro_batches):
             backward_job = core.Job("backward")
             backward_job.set_micro_batch_id(i)
             job_list.append(backward_job)
@@ -55,8 +55,8 @@ class PipelineFThenBPass(PipelinePassBase):
 
     def partial_programs(self, program):
         names = ["lr", "forward", "backward", "optimizer"]
-        values = _program_for_fthenb_and_1f1b(program)
-        return names, values
+        sub_program_list = _program_for_fthenb_and_1f1b(program)
+        return names, sub_program_list
 
 
 @register_pass("pipeline_scheduler_1F1B")
@@ -65,20 +65,20 @@ class Pipeline1F1BPass(PipelinePassBase):
         super().__init__()
 
     def create_job_list(self):
-        self._num_micro_batches = self.get_attr("num_micro_batches")
-        self._pp_stage = self.get_attr("pp_stage")
-        self._pp_degree = self.get_attr("pp_degree")
+        num_micro_batches = self.get_attr("num_micro_batches")
+        pp_stage = self.get_attr("pp_stage")
+        pp_degree = self.get_attr("pp_degree")
 
         job_list = []
         lr_job = core.Job("lr")
         job_list.append(lr_job)
 
         assert (
-            self._pp_degree <= self._num_micro_batches
+            pp_degree <= num_micro_batches
         ), "Num of micro batches should larger than pp degree."
 
-        micro_batch_in_warmup = self._pp_degree - self._pp_stage
-        micro_batch_in_1f1b = self._num_micro_batches - micro_batch_in_warmup
+        micro_batch_in_warmup = pp_degree - pp_stage
+        micro_batch_in_1f1b = num_micro_batches - micro_batch_in_warmup
 
         forward_micro_batch_id = 0
         for i in range(micro_batch_in_warmup):
@@ -110,8 +110,8 @@ class Pipeline1F1BPass(PipelinePassBase):
 
     def partial_programs(self, program):
         names = ["lr", "forward", "backward", "optimizer"]
-        values = _program_for_fthenb_and_1f1b(program)
-        return names, values
+        sub_program_list = _program_for_fthenb_and_1f1b(program)
+        return names, sub_program_list
 
 
 def apply_pass(main_program, startup_program, pass_name, pass_attr={}):

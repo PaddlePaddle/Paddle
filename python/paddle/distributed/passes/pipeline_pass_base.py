@@ -51,21 +51,21 @@ class PipelinePassBase(PassBase):
         The shared process is implemented in this function and new subclass only need
         to implement two interfaces above, 'create_job_list' and 'partial_programs'.
         """
-        type_name, type_values = self.partial_programs(main_program)
+        type_list, sub_program_list = self.partial_programs(main_program)
 
         job_list = self.create_job_list()
 
         # Following is a shared gc process for base class.
-        type_gc_vars = get_skip_gc_vars(type_values)
+        gc_vars_list = get_skip_gc_vars(sub_program_list)
         name_to_gc_vars = {}
-        for name, gc_var in zip(type_name, type_gc_vars):
+        for name, gc_var in zip(type_list, gc_vars_list):
             name_to_gc_vars[name] = gc_var
 
         for job in job_list:
             job.set_skip_gc_vars(name_to_gc_vars[job.type()])
 
         type_to_program = {}
-        for name, value in zip(type_name, type_values):
+        for name, value in zip(type_list, sub_program_list):
             type_to_program[name] = value.desc
 
         plan = core.Plan(job_list, type_to_program)
