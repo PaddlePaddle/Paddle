@@ -526,12 +526,16 @@ class TestArgsortFP16Op(OpTest):
         self.descending = False
         self.attrs = {"axis": self.axis, "descending": self.descending}
         X = np.random.rand(*self.input_shape).astype('float16')
+        self.label = np.random.rand(*self.input_shape).astype('float16')
+        Out = np.sort(X, kind='quicksort', axis=self.axis)
+        indices = np.argsort(X, kind='quicksort', axis=self.axis)
+        self.loss = Out * self.label
+        self.loss = np.sum(self.loss)
         self.inputs = {'X': X}
-        Out = np.sort(X, axis=self.axis)
-        indices = np.argsort(X, axis=self.axis)
         self.outputs = {
             'Out': Out,
-            'Indices': indices.astype('int64'),
+            'Indices': indices,
+            'Loss': self.loss,
         }
 
     def init(self):
@@ -573,12 +577,16 @@ class TestArgsortBF16Op(OpTest):
         self.descending = False
         self.attrs = {"axis": self.axis, "descending": self.descending}
         X = np.random.rand(*self.input_shape).astype(self.np_dtype)
-        Out = np.sort(X, axis=self.axis)
-        indices = np.argsort(X, axis=self.axis)
+        self.label = np.random.rand(*self.input_shape).astype(self.np_dtype)
+        Out = np.sort(X, kind='quicksort', axis=self.axis)
+        indices = np.argsort(X, kind='quicksort', axis=self.axis)
+        self.loss = Out * self.label
+        self.loss = np.sum(self.loss)
         self.inputs = {'X': convert_float_to_uint16(X)}
         self.outputs = {
             'Out': convert_float_to_uint16(Out),
             'Indices': convert_float_to_uint16(indices),
+            'Loss': convert_float_to_uint16(self.loss),
         }
 
     def init(self):
@@ -592,11 +600,13 @@ class TestArgsortBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, no_check_set=['Indices'])
+        self.check_output_with_place(place, no_check_set=['Indices', 'Loss'])
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=['Indices'])
+        self.check_grad_with_place(
+            place, ['X'], 'Out', no_grad_set=['Indices', 'Loss']
+        )
 
 
 class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
