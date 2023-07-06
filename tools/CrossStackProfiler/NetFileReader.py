@@ -26,7 +26,6 @@ from CspFileReader import (
 
 class netFileReader(FileReader):
     def _parseSingleFile(self, fileNameList, tx_pid, rx_pid, q=None):
-
         traceInfo = {}
         traceEventList = []
 

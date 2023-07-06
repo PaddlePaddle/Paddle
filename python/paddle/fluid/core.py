@@ -397,6 +397,7 @@ def set_paddle_lib_path():
 
 set_paddle_lib_path()
 
+
 # We have 3 FLAGS to judge whether prim is enabled
 # FLAGS_prim_forward: Open or close forward prim strategy
 # FLAGS_prim_backward: Open or close backward prim strategy
@@ -462,6 +463,28 @@ def _test_use_sync(value):
 
 # ops in forward_blacklisk will not be replaced by composite ops.
 prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
+
+
+def _get_batch_norm_none_var(op):
+    """Some outputs of batch_norm's replaced composite rule are not needed and will be removed."""
+    use_run_stat = (
+        op.attr("is_test") and (not op.attr("trainable_statistics"))
+    ) or op.attr("use_global_stats")
+    if use_run_stat:
+        return ["ReserveSpace", "SavedMean", "SavedVariance"]
+    else:
+        return ["ReserveSpace"]
+
+
+# In some case, inputs and outputs of composite op or its replaced composite rule might be None.
+# It means such arg will be no longer required in processed program by composite mechanism.
+# Therefore, such special ops should be recorded in advance and be released in args check.
+ops_contain_none = {
+    "batch_norm": _get_batch_norm_none_var,
+    "flatten_contiguous_range": ["XShape"],
+    "squeeze2": ["XShape"],
+    "unsqueeze2": ["XShape"],
+}
 
 
 def _set_prim_forward_blacklist(ops=None):

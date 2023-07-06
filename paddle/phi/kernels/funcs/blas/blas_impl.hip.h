@@ -999,12 +999,10 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                         int ldc) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  rocblas_operation cuTransA = (transA == CblasNoTrans)
-                                   ? rocblas_operation_none
-                                   : rocblas_operation_transpose;
-  rocblas_operation cuTransB = (transB == CblasNoTrans)
-                                   ? rocblas_operation_none
-                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransA =
+      transA ? rocblas_operation_none : rocblas_operation_transpose;
+  rocblas_operation cuTransB =
+      transB ? rocblas_operation_none : rocblas_operation_transpose;
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       80,

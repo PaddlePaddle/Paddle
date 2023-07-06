@@ -173,7 +173,6 @@ def append_fluid_kernels():
 
 
 if __name__ == '__main__':
-
     print("================ step 1: apply patches =======================")
     assert apply_patches()
     print("==============================================================\n")

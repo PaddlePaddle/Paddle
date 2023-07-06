@@ -580,17 +580,18 @@ class Optimizer:
 
                     bd = [2, 4, 6, 8]
                     value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                    adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                                           parameter_list=linear.parameters())
+                    adam = paddle.optimizer.Adam(paddle.optimizer.lr.PiecewiseDecay(bd, value),
+                                           parameters=linear.parameters())
 
                     # first step: learning rate is 0.2
-                    np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
+                    np.allclose(adam.get_lr(), 0.2, rtol=1e-06, atol=0.0) # True
 
                     # learning rate for different steps
                     ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
                     for i in range(12):
                         adam.minimize(loss)
-                        lr = adam.current_step_lr()
+                        adam.step()
+                        lr = adam.get_lr()
                         np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
 
         """
@@ -1584,7 +1585,6 @@ class SGDOptimizer(Optimizer):
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
-
         find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
             param_and_grad[0].dtype
         )
@@ -3909,7 +3909,7 @@ Lamb = LambOptimizer
 
 class ModelAverage(Optimizer):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     The ModelAverage optimizer accumulates specific continuous historical parameters
     during training. The accumulated historical range can be controlled by the passed
@@ -6761,7 +6761,6 @@ class RecomputeOptimizer(Optimizer):
         self.idx2insertions[idx] = ("sync", checkpoint_name)
 
     def _parse_backward(self):
-
         self.idx2insertions = {}
         # don't offload the last checkpoints, to favor throughput
         self.un_fetch_checkpoint_names = self.sorted_checkpoint_names[:]
@@ -6855,7 +6854,6 @@ class RecomputeOptimizer(Optimizer):
         )
 
     def _parse_forward(self):
-
         self.idx2insertions = {}
         # don't offload the last checkpoints, faster, less memory saving
         self.un_offload_checkpoint_names = self.sorted_checkpoint_names[:]
@@ -6882,7 +6880,6 @@ class RecomputeOptimizer(Optimizer):
         for i, op in enumerate(
             self.block.ops[self.fw_strart_op_idx : self.bw_strart_op_idx]
         ):
-
             idx = self.fw_strart_op_idx + i
             output_vars = op.desc.output_arg_names()
             input_vars = op.desc.input_arg_names()
@@ -7306,7 +7303,6 @@ class LookaheadOptimizer:
     """
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
-
         if in_dygraph_mode():
             raise Exception("In dygraph, don't support LookaheadOptimizer.")
         assert inner_optimizer is not None, "inner optimizer can not be None"
@@ -7321,7 +7317,6 @@ class LookaheadOptimizer:
         self.type = "lookahead"
 
     def minimize(self, loss, startup_program=None):
-
         # Apply inner optimizer to the main_program
         mini_out = self.inner_optimizer.minimize(
             loss, startup_program=startup_program

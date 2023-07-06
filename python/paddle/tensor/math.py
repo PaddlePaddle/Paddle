@@ -137,7 +137,7 @@ def log(x, name=None):
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -159,7 +159,10 @@ def log(x, name=None):
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['uint16', 'float16', 'float32', 'float64'], "log"
+            x,
+            'x',
+            ['int32', 'int64', 'uint16', 'float16', 'float32', 'float64'],
+            "log",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
@@ -471,6 +474,22 @@ def pow(x, y, name=None):
             )
 
 
+@inplace_apis_in_dygraph_only
+def pow_(x, y, name=None):
+    """
+    Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_pow`.
+    """
+    if isinstance(y, (int, float)):
+        return _C_ops.pow_(x, y)
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        return _C_ops.elementwise_pow_(x, y)
+    else:
+        raise TypeError(
+            'y must be scalar or tensor type, but received: %s ' % (type(y))
+        )
+
+
 OP_NAMEMAPPING = {
     'elementwise_max': 'maximum',
     'elementwise_min': 'minimum',
@@ -672,8 +691,8 @@ def logaddexp(x, y, name=None):
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
-        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
-        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
         name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1614,7 +1633,7 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
             # x is a 2-D Tensor:
             x = paddle.to_tensor([[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]])
             out1 = paddle.count_nonzero(x)
-            # [3]
+            # 3
             out2 = paddle.count_nonzero(x, axis=0)
             # [0, 1, 2]
             out3 = paddle.count_nonzero(x, axis=0, keepdim=True)
@@ -1635,17 +1654,8 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
             # [1, 3, 5]
     """
 
-    if axis is not None:
-        if isinstance(axis, int):
-            axis = [axis]
-        dims = len(x.shape)
-        for i in range(len(axis)):
-            if not isinstance(axis[i], int) or not (
-                axis[i] < dims and axis[i] >= -dims
-            ):
-                raise ValueError(
-                    "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-                )
+    if isinstance(axis, int):
+        axis = [axis]
 
     bool_tensor = paddle.cast(x, 'bool')
     int_tensor = paddle.cast(bool_tensor, 'int64')
@@ -2763,7 +2773,7 @@ def log1p(x, name=None):
         Out = \ln(x+1)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2783,7 +2793,10 @@ def log1p(x, name=None):
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log1p"
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            "log1p",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
@@ -2802,7 +2815,7 @@ def log2(x, name=None):
         Out = \log_2x
 
     Args:
-        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 
@@ -2835,7 +2848,10 @@ def log2(x, name=None):
         return _C_ops.log2(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log2"
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            "log2",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log2', **locals())
@@ -2854,7 +2870,7 @@ def log10(x, name=None):
         Out = \log_10_x
 
     Args:
-        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 
@@ -2887,7 +2903,10 @@ def log10(x, name=None):
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log10"
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            "log10",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log10', **locals())
@@ -3370,6 +3389,155 @@ def cumsum(x, axis=None, dtype=None, name=None):
                 kwargs[name] = val
         _cum_sum_ = generate_layer_fn('cumsum')
         return _cum_sum_(**kwargs)
+
+
+def cummax(x, axis=None, dtype='int64', name=None):
+    """
+    The cumulative max of the elements along a given axis.
+
+    Note:
+        The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): The input tensor needed to be cummaxed.
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummax over the flattened array.
+        dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), The result of cummax operation. The dtype of cummax result is same with input x.
+
+        indices (Tensor), The corresponding index results of cummax operation.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.to_tensor([-1, 5, 0, -2, -3, 2])
+            data = paddle.reshape(data, (2, 3))
+
+            y = paddle.cummax(data)
+            # value: [-1, 5, 5, 5, 5, 5]
+            # indcies: [0, 1, 1, 1, 1, 1]
+
+            y = paddle.cummax(data, axis=0)
+            # value: [[-1, 5, 0]
+            #         [-1, 5, 2]]
+            # indcies: [[0, 0, 0]
+            #           [0, 0, 1]]
+
+            y = paddle.cummax(data, axis=-1)
+            # value: [[-1, 5, 5]
+            #         [-2, -2, 2]]
+            # indcies: [[0, 1, 1]
+            #           [0, 0, 2]]
+
+            y = paddle.cummax(data, dtype='int64')
+            print(y[1].dtype)
+            # indcies type: paddle.int64
+    """
+    if axis is None:
+        axis = -1
+        x = x.flatten(0, len(x.shape) - 1)
+
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
+    dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.cummax(x, axis, dtype)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float32', 'float64', 'int32', 'int64'],
+            'cummax',
+        )
+        check_type(x, 'x', (Variable), 'cummax')
+        helper = LayerHelper('cummax', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        indices = helper.create_variable_for_type_inference(dtype='int64')
+        helper.append_op(
+            type='cummax',
+            inputs={'x': x},
+            outputs={'out': out, 'indices': indices},
+            attrs={'axis': axis, 'dtype': dtype},
+        )
+        return out, indices
+
+
+def cummin(x, axis=None, dtype='int64', name=None):
+    """
+    The cumulative min of the elements along a given axis.
+
+    Note:
+        The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): The input tensor needed to be cummined.
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummin over the flattened array.
+        dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), The result of cummin operation. The dtype of cummin result is same with input x.
+
+        indices (Tensor), The corresponding index results of cummin operation.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            data = paddle.to_tensor([-1, 5, 0, -2, -3, 2])
+            data = paddle.reshape(data, (2, 3))
+
+            y = paddle.cummin(data)
+            # value: [-1, -1, -1, -2, -3, -3]
+            # indcies: [0, 0, 0, 3, 4, 4]
+
+            y = paddle.cummin(data, axis=0)
+            # value: [[-1, 5, 0]
+            #         [-2, -3, 0]]
+            # indcies: [[0, 0, 0]
+            #           [1, 1, 0]]
+
+            y = paddle.cummin(data, axis=-1)
+            # value: [[-1, -1, -1]
+            #         [-2, -3, -3]]
+            # indcies: [[0, 0, 0]
+            #           [0, 1, 1]]
+
+            y = paddle.cummin(data, dtype='int64')
+            print(y[1].dtype)
+            # indcies type: paddle.int64
+    """
+    if axis is None:
+        axis = -1
+        x = x.flatten(0, len(x.shape) - 1)
+
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
+    dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.cummin(x, axis, dtype)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float32', 'float64', 'int32', 'int64'],
+            'cummin',
+        )
+        check_type(x, 'x', (Variable), 'cummin')
+        helper = LayerHelper('cummin', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        indices = helper.create_variable_for_type_inference(dtype='int64')
+        helper.append_op(
+            type='cummin',
+            inputs={'x': x},
+            outputs={'out': out, 'indices': indices},
+            attrs={'axis': axis, 'dtype': dtype},
+        )
+        return out, indices
 
 
 def logcumsumexp(x, axis=None, dtype=None, name=None):
@@ -4344,9 +4512,9 @@ def lerp(x, y, weight, name=None):
             lerp(x, y, weight) = x + weight * (y - x).
 
     Args:
-        x (Tensor): An N-D Tensor with starting points, the data type is float16, float32, float64.
-        y (Tensor): An N-D Tensor with ending points, the data type is float16, float32, float64.
-        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float16, float32, float64.
+        x (Tensor): An N-D Tensor with starting points, the data type is bfloat16, float16, float32, float64.
+        y (Tensor): An N-D Tensor with ending points, the data type is bfloat16, float16, float32, float64.
+        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is bfloat16, float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4371,13 +4539,16 @@ def lerp(x, y, weight, name=None):
         return _C_ops.lerp(x, y, weight)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'lerp'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
         )
         check_variable_and_dtype(
-            y, 'y', ['float16', 'float32', 'float64'], 'lerp'
+            y, 'y', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
         )
         check_variable_and_dtype(
-            weight, 'weight', ['float16', 'float32', 'float64'], 'lerp'
+            weight,
+            'weight',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'lerp',
         )
 
         helper = LayerHelper('lerp', **locals())

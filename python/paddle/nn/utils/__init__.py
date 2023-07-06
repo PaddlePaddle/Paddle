@@ -20,6 +20,7 @@ from .transform_parameters import (
     _stride_column,
 )  # noqa: F401
 from .clip_grad_norm_ import clip_grad_norm_  # noqa: F401
+from .clip_grad_value_ import clip_grad_value_  # noqa: F401
 
 __all__ = [  # noqa
     'weight_norm',
@@ -28,4 +29,5 @@ __all__ = [  # noqa
     'parameters_to_vector',
     'vector_to_parameters',
     'clip_grad_norm_',
+    'clip_grad_value_',
 ]

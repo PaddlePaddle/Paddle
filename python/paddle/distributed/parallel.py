@@ -38,7 +38,11 @@ from paddle.distributed.collective import (
     _set_group_map_by_name,
     _valid_backend_list,
 )
-from paddle.distributed.communication.group import _add_new_group
+from paddle.distributed.communication.group import (
+    _add_new_group,
+    _get_global_group,
+    is_initialized,
+)
 from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
     wait_server_ready,
 )
@@ -870,7 +874,6 @@ def _is_cpuonly(backend):
         backend in ['auto', 'nccl', 'bkcl', 'heter']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
-
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:
@@ -1018,7 +1021,6 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
-    _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode,
@@ -1243,6 +1245,10 @@ def get_world_size(group=None):
             print("The world_size is %d" % dist.get_world_size())
             # The world_size is 1
     """
+    if in_dynamic_mode() and (group is None):
+        if is_initialized():
+            group = _get_global_group()
+
     if in_dynamic_mode() and group:
         return group.world_size
 

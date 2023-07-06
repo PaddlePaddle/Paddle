@@ -494,7 +494,6 @@ def run_with_coverage(*args):
 def start_local_trainers(
     cluster, pod, training_script, training_script_args, log_dir=None, envs=None
 ):
-
     if envs is None:
         current_env = copy.copy(os.environ.copy())
     else:

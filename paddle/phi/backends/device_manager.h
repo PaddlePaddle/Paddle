@@ -241,6 +241,17 @@ class DeviceManager {
                       const ccl::CCLComm& ccl_comm,
                       const stream::Stream& stream);
 
+  static void CCLAllToAll(const std::string& device_type,
+                          const void** send_buf,
+                          const size_t* send_count,
+                          const ccl::CCLDataType* send_dtype,
+                          void** recv_buf,
+                          const size_t* recv_count,
+                          const ccl::CCLDataType* recv_dtype,
+                          size_t rank,
+                          size_t nranks,
+                          const ccl::CCLComm& comm,
+                          const stream::Stream& stream);
   // profiler
   static void ProfilerInitialize(const std::string& dev_type,
                                  phi::TraceEventCollector* collector,

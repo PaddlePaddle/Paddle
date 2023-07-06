@@ -32,7 +32,6 @@ def adaptive_end_index(index, input_size, output_size):
 def adaptive_pool3d_forward(
     x, output_size, adaptive=True, data_format='NCDHW', pool_type='avg'
 ):
-
     N = x.shape[0]
     C, D, H, W = (
         [x.shape[1], x.shape[2], x.shape[3], x.shape[4]]

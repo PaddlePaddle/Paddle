@@ -25,7 +25,6 @@ from paddle.fluid import core
 
 class TestConv2DAPI(unittest.TestCase):
     def test_api(self):
-
         input_NHWC = paddle.static.data(
             name="input_NHWC",
             shape=[2, 5, 5, 3],

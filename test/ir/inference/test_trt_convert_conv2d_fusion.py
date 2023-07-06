@@ -91,7 +91,6 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
             dilations,
             data_format,
         ) in product(*configurations):
-
             attrs = [
                 {
                     "strides": strides,

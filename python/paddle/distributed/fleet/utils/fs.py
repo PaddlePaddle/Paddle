@@ -1223,7 +1223,6 @@ class AFSClient(FS):
         return self._ls_dir(fs_path)
 
     def _ls_dir(self, fs_path):
-
         files = self._fs.list(fs_path)
         dirs = [fs_path]
         return dirs, files

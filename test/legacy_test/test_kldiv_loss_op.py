@@ -123,7 +123,6 @@ class TestKLDivLossDygraph(unittest.TestCase):
 
 class TestKLDivLossTypePromotion(unittest.TestCase):
     def test_kl_div_promotion(self):
-
         with paddle.fluid.dygraph.guard():
             x1 = paddle.rand([5, 20], dtype='float32')
             target1 = paddle.rand([5, 20], dtype='float64')

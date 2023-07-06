@@ -22,6 +22,10 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
@@ -122,7 +126,8 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
-bool IsCommunicationOp(const std::string& op_name) {
+bool IsCommunicationOp(const OperatorBase* op) {
+  const std::string& op_name = op->Type();
   const std::set<std::string> special_comm_op_set = {
       "send",
       "recv",
@@ -134,11 +139,17 @@ bool IsCommunicationOp(const std::string& op_name) {
       special_comm_op_set.count(op_name)) {
     return true;
   }
+  if (op->HasAttr("ring_id")) {
+    return true;
+  }
   return false;
 }
 
 bool IsCommunicationOp(const Instruction& instr) {
-  return IsCommunicationOp(instr.OpBase()->Type());
+  if (!instr.OpBaseValid()) {
+    return false;
+  }
+  return IsCommunicationOp(instr.OpBase());
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -573,7 +584,7 @@ void BuildOpFuncList(const platform::Place& place,
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
     } else {
-      if (interpreter::IsCommunicationOp(op_type)) {
+      if (interpreter::IsCommunicationOp(op)) {
         // NOTE(Ruibiao): Dispatching computation before communication improves
         // multi-stream overlap when the time cost of communication less than
         // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
@@ -922,6 +933,94 @@ void BuildOpFuncList(const platform::Place& place,
     }
   }
   delete garbages;
+}
+
+void BuildOpFuncList(
+    const platform::Place& place,
+    ::ir::Block* block,
+    std::vector<OpFuncNode>* vec_func_list,
+    framework::Scope* scope,
+    framework::Scope* local_scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const ExecutionConfig& execution_config) {
+  vec_func_list->reserve(block->size());
+  ::ir::IrContext* ctx = ir::IrContext::Instance();
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+  for (auto it = block->begin(); it != block->end(); ++it) {
+    OpFuncNode op_func_node;
+    auto attr_map = (*it)->attributes();
+
+    auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+    op_func_node.phi_op_name_ = op_name;
+
+    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
+        op_name == "builtin.set_parameter" ||
+        op_name == "builtin.get_parameter") {
+      VLOG(6) << "skip process " << op_name;
+      continue;
+    }
+
+    ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+
+    auto impl =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+
+    op_func_node.infer_meta_interface_ =
+        op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
+
+    VLOG(6) << "op name" << op_func_node.phi_op_name_;
+    dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
+    ::ir::BuildPhiContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>((*it),
+               value_2_name_map,
+               scope,
+               local_scope,
+               op_yaml_info_parser,
+               &(op_func_node.infer_meta_context_));
+
+    auto kernel_name =
+        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+    auto kernel_key = attr_map.at("kernel_key")
+                          .dyn_cast<paddle::dialect::KernelAttribute>()
+                          .data();
+
+    VLOG(6) << "finish process infer meta context";
+    auto t1 = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        kernel_name, kernel_key);
+    op_func_node.phi_kernel_ = new phi::Kernel(t1.kernel);
+
+    PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
+                      true,
+                      "not found kernel for [%s]",
+                      kernel_name);
+    ::ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          true>((*it),
+                                value_2_name_map,
+                                scope,
+                                local_scope,
+                                op_yaml_info_parser,
+                                &(op_func_node.kernel_context_),
+                                &(op_func_node.input_index),
+                                &(op_func_node.output_index));
+
+    VLOG(6) << "finish process kernel context";
+    op_func_node.kernel_context_.SetDeviceContext(
+        phi::DeviceContextPool::Instance().Get(
+            phi::TransToPhiPlace(kernel_key.backend())));
+    op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
+        phi::TransToPhiPlace(kernel_key.backend()));
+
+    vec_func_list->emplace_back(op_func_node);
+  }
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,

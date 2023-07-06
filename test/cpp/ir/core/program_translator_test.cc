@@ -16,6 +16,7 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 
 #include "paddle/fluid/framework/framework.pb.h"
@@ -46,8 +47,8 @@ ProgramDesc load_from_file(const std::string &file_name) {
   return ProgramDesc(buffer);
 }
 
-TEST(PaddleDialectTest, Translator) {
-  auto p = load_from_file("restnet50_main.prog");
+TEST(PaddleDialectTest, MainProgram) {
+  auto p = load_from_file("resnet50_main.prog");
   EXPECT_EQ(p.Size(), 1u);
 
   ir::IrContext *ctx = ir::IrContext::Instance();
@@ -61,5 +62,27 @@ TEST(PaddleDialectTest, Translator) {
   EXPECT_EQ(op_size,
             p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
 
-  program->Print(std::cout);
+  std::stringstream ss;
+  program->Print(ss);
+  EXPECT_GT(ss.str().size(), 0u);
+}
+
+TEST(PaddleDialectTest, StartupProgram) {
+  auto p = load_from_file("resnet50_startup.prog");
+  EXPECT_EQ(p.Size(), 1u);
+
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
+
+  size_t op_size = program->block()->size();
+  // ops.size() = op size in BlockDesc + get_parameter_op +
+  // consant_op_for_uniform
+  // + consant_op for guassian
+  EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
+
+  std::stringstream ss;
+  program->Print(ss);
+  EXPECT_GT(ss.str().size(), 0u);
 }

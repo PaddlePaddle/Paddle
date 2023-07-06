@@ -101,7 +101,7 @@ OpSupportedInfos(const std::string& place,
 #endif
       if (is_target_place[query_place](
               phi::TransToPhiPlace(info_pair.first.backend(), false))) {
-        VLOG(4) << op_type << " " << supported_ops.size();
+        VLOG(8) << op_type << " " << supported_ops.size();
         supported_ops.emplace(op_type);
       }
     }

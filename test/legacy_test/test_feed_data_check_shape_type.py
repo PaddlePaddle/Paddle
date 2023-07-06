@@ -231,7 +231,6 @@ class TestFeedData(unittest.TestCase):
         feed_label,
         use_cuda,
     ):
-
         startup_program = fluid.Program()
         main_program = fluid.Program()
 

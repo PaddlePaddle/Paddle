@@ -439,7 +439,6 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
 
     new_list_tensor = []
     for ele in old_list:
-
         if isinstance(ele, Variable):
             ele.stop_gradient = True
             new_list_tensor.append(ele)

@@ -127,7 +127,6 @@ def _conv_nd(
     use_mkldnn=False,
     name=None,
 ):
-
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dynamic_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(

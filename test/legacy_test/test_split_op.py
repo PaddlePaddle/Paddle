@@ -403,7 +403,11 @@ class API_TestSplit(unittest.TestCase):
             exe = fluid.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
             input2 = np.array([2]).astype('int32')
-            r0, r1, r2, = exe.run(
+            (
+                r0,
+                r1,
+                r2,
+            ) = exe.run(
                 feed={"data1": input1, "data2": input2}, fetch_list=[x0, x1, x2]
             )
             ex_x0, ex_x1, ex_x2 = np.split(input1, 3, axis=2)

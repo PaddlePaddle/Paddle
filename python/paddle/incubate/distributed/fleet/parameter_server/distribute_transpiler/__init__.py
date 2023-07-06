@@ -946,7 +946,6 @@ class ParameterServerOptimizer(DistributedOptimizer):
         parameter_list=None,
         no_grad_set=None,
     ):
-
         if isinstance(losses, list):
             raise ValueError("need implement later")
 

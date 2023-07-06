@@ -505,7 +505,6 @@ class BuildExtension(build_ext):
             extra_postargs=None,
             depends=None,
         ):
-
             self.cflags = copy.deepcopy(extra_postargs)
             extra_postargs = None
 

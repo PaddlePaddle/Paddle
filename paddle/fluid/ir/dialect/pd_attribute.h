@@ -44,8 +44,8 @@ class ScalarAttribute : public ir::Attribute {
     return (val.type_id() == ir::BoolAttribute::type_id()) ||
            (val.type_id() == ir::FloatAttribute::type_id()) ||
            (val.type_id() == ir::DoubleAttribute::type_id()) ||
-           (val.type_id() == ir::Int32_tAttribute::type_id()) ||
-           (val.type_id() == ir::Int64_tAttribute::type_id());
+           (val.type_id() == ir::Int32Attribute::type_id()) ||
+           (val.type_id() == ir::Int64Attribute::type_id());
   }
 
   phi::Scalar data();
@@ -94,3 +94,9 @@ class DataLayoutAttribute : public ir::Attribute {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IntArrayAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ScalarAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DataTypeAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PlaceAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DataLayoutAttribute)

@@ -168,7 +168,7 @@ class Dirac(Initializer):
             for j in range(min_shape):
                 value_list.append(1.0)
                 offset = 0
-                for (k, stride) in enumerate(strides):
+                for k, stride in enumerate(strides):
                     if k == 0:
                         offset += (j + i * num_per_group) * stride
                     elif k == 1:
