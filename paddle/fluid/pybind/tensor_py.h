@@ -1009,8 +1009,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                            tensor.Holder()->ptr(),
                            tensor.Holder()->size());
 
-      auto data_ptr = tensor.data();
-      auto base = py::cast(std::move(tensor));
+      auto data_ptr = cpu_tensor.data();
+      auto base = py::cast(std::move(cpu_tensor));
 
       auto py_arr = py::array(
           py::dtype(py_dtype_str.c_str()), py_dims, py_strides, data_ptr, base);
@@ -1034,8 +1034,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                          tensor.Holder()->ptr(),
                          tensor.Holder()->size());
 
-    auto data_ptr = tensor.data();
-    auto base = py::cast(std::move(tensor));
+    auto data_ptr = cpu_tensor.data();
+    auto base = py::cast(std::move(cpu_tensor));
 
     auto py_arr = py::array(
         py::dtype(py_dtype_str.c_str()), py_dims, py_strides, data_ptr, base);
@@ -1063,8 +1063,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                          tensor.Holder()->ptr(),
                          tensor.Holder()->size());
 
-    auto data_ptr = tensor.data();
-    auto base = py::cast(std::move(tensor));
+    auto data_ptr = cpu_tensor.data();
+    auto base = py::cast(std::move(cpu_tensor));
 
     auto py_arr = py::array(
         py::dtype(py_dtype_str.c_str()), py_dims, py_strides, data_ptr, base);
@@ -1108,8 +1108,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
               .stream());
       ctx.Wait();
 
-      auto data_ptr = tensor.data();
-      auto base = py::cast(std::move(tensor));
+      auto data_ptr = cpu_tensor.data();
+      auto base = py::cast(std::move(cpu_tensor));
 
       auto py_arr = py::array(
           py::dtype(py_dtype_str.c_str()), py_dims, py_strides, data_ptr, base);
@@ -1137,8 +1137,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
         reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
     ctx.Wait();
 
-    auto data_ptr = tensor.data();
-    auto base = py::cast(std::move(tensor));
+    auto data_ptr = cpu_tensor.data();
+    auto base = py::cast(std::move(cpu_tensor));
 
     auto py_arr = py::array(
         py::dtype(py_dtype_str.c_str()), py_dims, py_strides, data_ptr, base);
