@@ -36,7 +36,6 @@ limitations under the License.
 
 #include "paddle/phi/kernels/rms_norm_kernel.h"
 #include <assert.h>
-#include <math_constants.h>
 #include <cub/cub.cuh>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
