@@ -125,6 +125,10 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
 endif()
 
+if (WITH_XPU)
+    op_library(sync_batch_norm_op DEPS ${OP_HEADER_DEPS})
+endif()
+
 op_library(lstm_op DEPS ${OP_HEADER_DEPS})
 if (WITH_ROCM)
     op_library(recurrent_op DEPS executor ${OP_HEADER_DEPS})
