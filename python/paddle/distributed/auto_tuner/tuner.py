@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from .utils import default_candidates
+from .utils import default_candidates, GBS_default_candidates
 
 
 class AutoTuner:
@@ -36,6 +36,11 @@ class AutoTuner:
             from .search import GridSearch
 
             self.algo = GridSearch(tuner_cfg)
+        elif search_algo == "gbs":
+            from .search import GBSSearch
+
+            tuner_cfg["candidates"] = default_candidates(tuner_cfg)
+            self.algo = GBSSearch(tuner_cfg)
         else:
             raise NotImplementedError()
 

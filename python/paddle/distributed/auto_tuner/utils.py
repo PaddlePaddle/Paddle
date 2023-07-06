@@ -355,3 +355,146 @@ def read_log(
         metric_ave = round(metric_ave, 5)
     res = metric_ave, flag
     return res
+
+def three_mul_combinations(target):
+    """Return the combinations of three numbers which product is target."""
+    results = []
+    for i in range(1, target // 3 + 1):
+        if target % i == 0:
+            for j in range(i, target // 2 + 1):
+                if (target // i) % j == 0:
+                    results.append((i, j, target // i // j))
+    return results
+
+def GBS_dp_mp_pp_candidates(tuner_cfg, num_gpus, num_nodes):
+    """Return middle candidates of dp, mp, pp"""
+    res = three_mul_combinations(num_gpus)
+    return res[len(res) // 2 ]
+    
+def GBS_default_candidates(tuner_cfg):
+    """Return the default candidates of every hyper param which user defined auto"""
+    candidates = {}
+    assert num_gpus > 0
+    if tuner_cfg["model_cfg"]["global_batch_size"] == "auto":
+        num_gpus = tuner_cfg["num_gpus"]
+        num_nodes = tuner_cfg["nodes"]
+        dp_candidate, mp_candidate, pp_candidate = GBS_dp_mp_pp_candidates(tuner_cfg, num_gpus, num_nodes)
+        candidates["dp_degree"] = [dp_candidate]
+        candidates["mp_degree"] = [mp_candidate]
+        candidates["pp_degree"] = [pp_candidate]
+        candidates["sharding_degree"] = [16]
+        candidates["sharding_stage"] = [1]
+        candidates["use_recompute"] = [True]
+        candidates["recompute_granularity"] = ["full"] 
+        candidates["micro_batch_size"] = [i for i in range(1, 16)]
+        tuner_cfg["model_cfg"]["global_batch_size"] = [pp_candidate * dp_candidate * e for e in candidates["micro_batch_size"]]
+    else:
+        if tuner_cfg.get("dp_degree", None) == "auto":
+            candidates["dp_degree"] = dist_degree("dp", num_gpus, num_nodes)
+        elif tuner_cfg.get("dp_degree", None):
+            candidates["dp_degree"] = tuner_cfg.get("dp_degree")
+        else:
+            candidates["dp_degree"] = [1]
+
+        if tuner_cfg.get("mp_degree", None) == "auto":
+            candidates["mp_degree"] = dist_degree("mp", num_gpus, num_nodes)
+        elif tuner_cfg.get("mp_degree", None):
+            candidates["mp_degree"] = tuner_cfg.get("mp_degree")
+        else:
+            candidates["mp_degree"] = [1]
+
+        if tuner_cfg.get("pp_degree", None) == "auto":
+            candidates["pp_degree"] = dist_degree("pp", num_gpus, num_nodes)
+        elif tuner_cfg.get("pp_degree", None):
+            candidates["pp_degree"] = tuner_cfg.get("pp_degree")
+        else:
+            candidates["pp_degree"] = [1]
+
+        if tuner_cfg.get("sharding_degree", None) == "auto":
+            candidates["sharding_degree"] = dist_degree(
+                "sharding", num_gpus, num_nodes
+            )
+        elif tuner_cfg.get("sharding_degree", None):
+            candidates["sharding_degree"] = tuner_cfg.get("sharding_degree")
+        else:
+            candidates["sharding_degree"] = [1]
+
+        if tuner_cfg.get("sharding_stage", None) == "auto":
+            candidates["sharding_stage"] = [1, 2, 3]
+        elif tuner_cfg.get("sharding_stage", None):
+            candidates["sharding_stage"] = tuner_cfg.get("sharding_stage")
+        else:
+            candidates["sharding_stage"] = [None]
+
+        if tuner_cfg.get("use_recompute", None) == "auto":
+            candidates["use_recompute"] = [False, True]
+        elif tuner_cfg.get("use_recompute", None):
+            candidates["use_recompute"] = tuner_cfg.get("use_recompute")
+        else:
+            candidates["use_recompute"] = [None]
+
+        if tuner_cfg.get("recompute_granularity", None) == "auto":
+            candidates["recompute_granularity"] = ["full_attn", "full"]
+        elif tuner_cfg.get("recompute_granularity", None):
+            candidates["recompute_granularity"] = tuner_cfg.get(
+                "recompute_granularity"
+            )
+        else:
+            candidates["recompute_granularity"] = [None]
+
+        if tuner_cfg.get("micro_batch_size", None) == "auto":
+            candidates["micro_batch_size"] = list(
+                range(tuner_cfg["model_cfg"]["global_batch_size"], 0, -1)
+            )
+        elif tuner_cfg.get("micro_batch_size", None):
+            candidates["micro_batch_size"] = tuner_cfg.get("micro_batch_size")
+        else:
+            candidates["micro_batch_size"] = [
+                tuner_cfg["model_cfg"]["global_batch_size"]
+            ] 
+    return candidates
+
+def GBS_search_all(tuner_cfg):
+    """Permutate the candidates of all hyper params."""
+    candidates = tuner_cfg["candidates"]
+    # Order: dp -> mp -> pp -> mbs -> sharding-> recompute
+    dp_degree_candidates = candidates["dp_degree"]
+    mp_degree_candidates = candidates["mp_degree"]
+    pp_degree_candidates = candidates["pp_degree"]
+    mbs_candidates = candidates["micro_batch_size"]
+    sharding_stage_candidates = candidates["sharding_stage"]
+    sharding_degree_candidates = candidates["sharding_degree"]
+    use_recompute_candidates = candidates["use_recompute"]
+    recompute_granularity_candidates = candidates["recompute_granularity"]
+    gbs_candidates = candidates["global_batch_size"]
+    all_cfgs = list(
+        itertools.product(
+            dp_degree_candidates,
+            mp_degree_candidates,
+            pp_degree_candidates,
+            mbs_candidates,
+            sharding_degree_candidates,
+            sharding_stage_candidates,
+            use_recompute_candidates,
+            recompute_granularity_candidates,
+            gbs_candidates,
+        )
+    )
+    mapping = {
+        0: "dp_degree",
+        1: "mp_degree",
+        2: "pp_degree",
+        3: "micro_batch_size",
+        5: "sharding_stage",
+        4: "sharding_degree",
+        6: "use_recompute",
+        7: "recompute_granularity",
+        8: "global_batch_size",
+    }
+    new_all_cfgs = []
+    for cfg in all_cfgs:
+        new_cfg = {}
+        for idx, val in enumerate(cfg):
+            new_cfg[mapping[idx]] = val
+        new_all_cfgs.append(new_cfg)
+    return new_all_cfgs

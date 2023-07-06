@@ -361,8 +361,31 @@ def launch():
         recorder = History_recorder()
 
         job_id = 0
+<<<<<<< HEAD
         ctx.args.max_restart = -1
         raw_ctx = copy.deepcopy(ctx)
+=======
+        if tuner_cfg.get("global_batch_size") == "auto":
+            # search and set global batch size
+            # adjust micron batch with fixed dp mp pp
+            GBS_cur_cfg, GBS_cur_cfg  =  micron_search(cur_cfg, tuner_cfg)
+            # generate script args of task
+            new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
+            ctx.args.training_script_args = new_args
+            # launch task
+            ctx.logger.info(
+                "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
+                    task_job_id, log_dir, cur_cfg
+                )
+            )
+            c = controllers.init(ctx)
+            # set per task timeout
+            signal.signal(signal.SIGALRM, c.not_exit_signal_handler)
+            signal.alarm(max_time_per_task)
+            c.run()
+            # Process generated result
+
+>>>>>>> a87d9dcc2e (temp commit)
         while cur_cfg:
             ctx = copy.deepcopy(raw_ctx)
             if is_first_task:
@@ -409,6 +432,7 @@ def launch():
             if err:
                 ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
                 # for pruner use
+<<<<<<< HEAD
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
             else:
@@ -416,6 +440,14 @@ def launch():
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
 
+=======
+                cur_cfg['time'] = None  
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+            else:
+                # for pruner use.
+                cur_cfg['time'] = metric  
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
+>>>>>>> a87d9dcc2e (temp commit)
             # record history
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)

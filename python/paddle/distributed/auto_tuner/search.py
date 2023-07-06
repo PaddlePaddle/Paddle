@@ -16,7 +16,7 @@
 from abc import ABC, abstractmethod
 
 from .prune import _PRUNE_FUNC
-from .utils import search_all
+from .utils import search_all, GBS_search_all
 
 
 class SearchAlgo(ABC):
@@ -52,3 +52,22 @@ class GridSearch(SearchAlgo):
             else:
                 return None
         return new_cfg
+
+class GBSSearch(SearchAlgo):
+    def __init__(self, tuner_cfg):
+        super().__init__(tuner_cfg)
+        self.idx = 0
+        self.all_tasks = GBS_search_all(tuner_cfg)
+       
+    def search_once(self, history_cfgs):
+        new_cfg = None
+        stop = False
+        while not stop:
+            if self.idx < len(self.all_tasks):
+                new_cfg = self.all_tasks[self.idx]
+                self.idx += 1
+                stop = not self.prune(self.tuner_cfg, new_cfg, history_cfgs)
+            else:
+                return None
+        return new_cfg 
+    
