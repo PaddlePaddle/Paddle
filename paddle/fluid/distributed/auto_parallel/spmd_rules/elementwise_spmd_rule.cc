@@ -110,13 +110,16 @@ ElementwiseSPMDRule::InferForward(
 
   // step2.4: handle partial
   // Step2.3.2  handle input tensor partial (TODO)
-  std::string log_str =
-      "ElementwiseSPMDRule InferForward: Input dims_mapping: ";
+  VLOG(4) << "ElementwiseSPMDRule InferForward:";
   for (int64_t i = 0; i < ninputs; i++) {
-    log_str += "[" + str_join(new_input_dist_attrs[i].dims_mapping()) + "], ";
+    VLOG(4) << "Input" << std::to_string(i) << " shape: ["
+            << str_join(input_specs[i].shape()) << "] "
+            << "src_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
+            << "] "
+            << "dst_dims_mapping: ["
+            << str_join(new_input_dist_attrs[i].dims_mapping()) << "]";
   }
-  log_str += " Output dims_mapping: [" + str_join(output_dims_mapping) + "]";
-  VLOG(4) << log_str;
+  VLOG(4) << "Output dims_mapping: [" + str_join(output_dims_mapping) + "]\n\n";
 
   output_dist_attrs.emplace_back(output_dist_attr);
   return {new_input_dist_attrs, output_dist_attrs};
