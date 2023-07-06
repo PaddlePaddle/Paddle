@@ -26,11 +26,9 @@ class TestConcatOp(TestDistBase):
         pass
 
     def test_concat(self, col_type="concat"):
-        print("############### in test_concat #############")
         self.check_with_place("collective_concat_op.py", col_type)
 
-    def test_concat_with_comm_context(self, col_type="concat_new"):
-        print("############### in test_concat_with_comm_context #############")
+    def test_concat_with_comm_context(self, col_type="dist_concat"):
         self.check_with_place(
             "collective_concat_op.py",
             col_type,

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,9 @@ namespace phi {
 template <typename T, typename Context>
 void DistConcatKernel(const Context& dev_ctx,
                       const DenseTensor& x,
+                      int rank,
                       int nranks,
+                      int rid,
                       DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   DenseTensor temp_out;
@@ -72,11 +74,9 @@ void DistConcatKernel(const Context& dev_ctx,
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
 #endif
-}
-
+}  // namespace phi
 }  // namespace phi
 
-#if NCCL_VERSION_CODE >= 21000
 PD_REGISTER_KERNEL(dist_concat,
                    GPU,
                    ALL_LAYOUT,
@@ -84,23 +84,9 @@ PD_REGISTER_KERNEL(dist_concat,
                    float,
                    double,
                    int,
-                   uint8_t,
-                   int8_t,
                    int64_t,
-                   bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
-#else
-PD_REGISTER_KERNEL(dist_concat,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::DistConcatKernel,
-                   float,
-                   double,
-                   int,
-                   uint8_t,
-                   int8_t,
-                   int64_t,
-                   bool,
-                   phi::dtype::float16) {}
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+                   plat::bfloat16,
 #endif
+                   phi::dtype::float16) {
+}

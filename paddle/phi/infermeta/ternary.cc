@@ -255,7 +255,7 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
-void ConcatNewInferMeta(
+void DistConcatInferMeta(
     const MetaTensor& x, int rank, int nranks, int ring_id, MetaTensor* out) {
   auto dim = x.dims();
   dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
