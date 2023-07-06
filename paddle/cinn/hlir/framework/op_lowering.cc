@@ -36,7 +36,6 @@ using framework::shape_t;
 using framework::StrategyFunction;
 
 using common::Type;
-using namespace lang;
 
 using cinn::hlir::op::ExternalApiRegistry;
 
@@ -46,7 +45,7 @@ OpLowerer::OpLowerer(
     const Target& target)
     : type_dict_(type_dict), shape_dict_(shape_dict), target_(target) {}
 
-std::vector<ir::LoweredFunc> OpLowerer::Lower(GroupPtr& group,
+std::vector<ir::LoweredFunc> OpLowerer::Lower(const GroupPtr& group,
                                               bool apply_op_schedule,
                                               bool apply_group_schedule) {
   VLOG(3) << "Lowering Group : " << group->group_id
@@ -97,7 +96,7 @@ bool OpLowerer::ReduceScheduleDetermineFunction(Node* node) {
 bool OpLowerer::NonFusibleScheduleDetermineFunction(Node* node) { return true; }
 
 std::vector<ir::LoweredFunc> OpLowerer::LowerGroup(
-    GroupPtr& group,
+    const GroupPtr& group,
     bool apply_op_schedule,
     bool apply_group_schedule,
     ScheduleDetermineFunction schedule_determine_func) {
@@ -135,7 +134,7 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerGroup(
       &ir_sch, group, tensor_map, &group_func_arg_tensors, do_op_schedule);
 }
 
-std::vector<ir::LoweredFunc> OpLowerer::LowerCustomCall(GroupPtr& group) {
+std::vector<ir::LoweredFunc> OpLowerer::LowerCustomCall(const GroupPtr& group) {
   std::vector<Node*> nodes = group->CollectNodes();
   CHECK_EQ(nodes.size(), 1);
   Node* node = nodes[0];

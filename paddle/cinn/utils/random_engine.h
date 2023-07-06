@@ -49,7 +49,7 @@ class LinearRandomEngine {
   static constexpr StateType modulus = 2147483647;
 
   // Construct a linear random engine with a random state pointer
-  LinearRandomEngine(StateType* state) : state_(state) {}
+  explicit LinearRandomEngine(StateType* state) : state_(state) {}
 
   // operator() is needed by std::xxx_distribution
   result_type operator()() { return Next(); }
@@ -109,7 +109,7 @@ double SampleUniformDouble(double min,
 template <typename T>
 int SampleDiscreteFromDistribution(const std::vector<T>& weights,
                                    LinearRandomEngine::StateType* rand_seed) {
-  CHECK(weights.size() > 0);
+  CHECK_GT(weights.size(), 0);
   LinearRandomEngine engine(rand_seed);
   std::discrete_distribution<int> dist(weights.begin(), weights.end());
   return dist(engine);

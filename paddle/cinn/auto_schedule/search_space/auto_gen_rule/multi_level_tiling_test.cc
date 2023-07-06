@@ -52,7 +52,8 @@ TEST(MultiLevelTile, SampleSplitTwo) {
       target, MultiLevelTiling::kConfigs.at(target.arch));
 
   for (int i = 0; i < 100; ++i) {
-    size_t number_to_split = rand() % 65535 + 2;  // random number in [2, 2^16]
+    size_t number_to_split =
+        rand() % 65535 + 2;  // NOLINT, random number in [2, 2^16]
     std::vector<size_t> split =
         multi_level_tiling.SampleSplitTwo<size_t>(number_to_split);
     EXPECT_EQ(split.size(), 2UL);
@@ -73,8 +74,9 @@ TEST(MultiLevelTile, SampleTileSplit) {
       target, MultiLevelTiling::kConfigs.at(target.arch));
 
   for (int i = 0; i < 100; ++i) {
-    int number_to_split = rand() % 65535 + 2;  // random number in [2, 2^16]
-    int split_size = rand() % 5 + 1;           // random in [1, 5]
+    int number_to_split =
+        rand() % 65535 + 2;           // NOLINT, random number in [2, 2^16]
+    int split_size = rand() % 5 + 1;  // NOLINT, random in [1, 5]
     std::vector<int> split =
         multi_level_tiling.SampleTileSplit<int>(number_to_split, split_size);
     EXPECT_EQ(split.size(), static_cast<size_t>(split_size));
@@ -146,7 +148,7 @@ TEST(MultiLevelTile, SimpleLoops) {
   test_func(&new_states[0]->ir_schedule);
 }
 
-// TODO: fix in future
+// TODO(SunNy820828449): fix in future
 /*
 TEST(MulitLevelTile, MatrixMultiply) {
   srand(0);

@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import argparse
 import itertools
-import unittest
 import re
-
+import sys
+import unittest
+from typing import List, Union
 from unittest import suite
-from typing import Union, List
 
 parser = argparse.ArgumentParser(description="Argparse for op test helper")
 parser.add_argument(

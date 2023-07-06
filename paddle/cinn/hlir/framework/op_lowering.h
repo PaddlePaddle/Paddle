@@ -55,7 +55,7 @@ class OpLowerer {
    * @param apply_group_schedule Whether to schedule at group level.
    * @return The lowered funcs.
    */
-  std::vector<ir::LoweredFunc> Lower(GroupPtr& group,
+  std::vector<ir::LoweredFunc> Lower(const GroupPtr& group,
                                      bool apply_op_schedule = true,
                                      bool apply_group_schedule = true);
 
@@ -70,7 +70,7 @@ class OpLowerer {
    * @return The lowered funcs.
    */
   std::vector<ir::LoweredFunc> LowerGroup(
-      GroupPtr& group,
+      const GroupPtr& group,
       bool apply_op_schedule,
       bool apply_group_schedule,
       ScheduleDetermineFunction schedule_determine_func);
@@ -80,7 +80,7 @@ class OpLowerer {
    * @param group The group to be lowered.
    * @return The lowered funcs.
    */
-  std::vector<ir::LoweredFunc> LowerCustomCall(GroupPtr& group);
+  std::vector<ir::LoweredFunc> LowerCustomCall(const GroupPtr& group);
 
   /**
    * @brief Post processing, including preparing function args and temporary
@@ -153,7 +153,7 @@ class OpLowerer {
    * @return The lowered func body after schedule of the group.
    */
   ir::Expr DoGroupSchedule(
-      ir::IRSchedule& ir_sch,
+      ir::IRSchedule& ir_sch,  // NOLINT
       const GroupPtr& group,
       const std::unordered_map<std::string, ir::Tensor>& tensor_map);
 

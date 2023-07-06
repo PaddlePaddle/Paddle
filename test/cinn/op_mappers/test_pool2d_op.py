@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from op_mapper_test import OpMapperTest
+
 from cinn.common import *
+from op_mapper_test import OpMapperTest
+
+import paddle
 
 
 @unittest.skipIf(

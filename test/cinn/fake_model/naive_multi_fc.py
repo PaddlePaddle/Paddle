@@ -14,12 +14,14 @@
 """
 A fake model with multiple FC layers to test CINN on a more complex model.
 """
+import os
+import sys
+
 import numpy
-import sys, os
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 
 size = 64
 num_layers = 6
