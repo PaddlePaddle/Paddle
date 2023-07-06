@@ -38,18 +38,6 @@ class RedundantOnnxOpsEliminationPass : public FusePassBase {
  private:
   /*
    Origin subgraph:
-              unsqueeze2
-                 |
-               pool2d(avg)
-                 |
-              squeeze2
-
-   Fused subgraph:
-               reduce_mean
-  */
-  void FuseReduceMean(ir::Graph* graph) const;
-  /*
-   Origin subgraph:
            x                    filter
            |                      |
       unsqueeze2(axes={-2})   unsqueeze2(axes={-2})

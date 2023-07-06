@@ -27,85 +27,6 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct ReduceMeanFusePattern : public PatternBase {
-  ReduceMeanFusePattern(PDPattern* pattern, const std::string& name_scope);
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(unsqueeze2);
-  PATTERN_DECL_NODE(pool2d);
-  PATTERN_DECL_NODE(squeeze2);
-  // declare variable node's name
-  PATTERN_DECL_NODE(x);
-  PATTERN_DECL_NODE(unsqueeze2_out);
-  PATTERN_DECL_NODE(pool2d_out);
-  PATTERN_DECL_NODE(squeeze2_out);
-};
-
-ReduceMeanFusePattern::ReduceMeanFusePattern(PDPattern* pattern,
-                                             const std::string& name_scope)
-    : PatternBase(pattern, name_scope, name_scope) {
-  auto* x = pattern->NewNode(x_repr())
-                ->assert_is_op_input("unsqueeze2", "X")
-                ->assert_more([](Node* node) {
-                  auto x_shape = node->Var()->GetShape();
-                  size_t x_rank = x_shape.size();
-                  return x_rank == 3;
-                });
-  auto* unsqueeze2 =
-      pattern->NewNode(unsqueeze2_repr())
-          ->assert_is_op("unsqueeze2")
-          ->assert_more([](Node* node) {
-            auto* op_desc = node->Op();
-            auto axes_array =
-                op_desc->GetAttrIfExists<std::vector<int>>("axes");
-            return axes_array == std::vector<int>{2};
-          });
-  auto* unsqueeze2_out = pattern->NewNode(unsqueeze2_out_repr())
-                             ->assert_is_op_output("unsqueeze2", "Out")
-                             ->assert_is_op_input("pool2d", "X");
-
-  auto* pool2d =
-      pattern->NewNode(pool2d_repr())
-          ->assert_is_op("pool2d")
-          ->assert_more([](Node* node) {
-            auto* op_desc = node->Op();
-            auto input_var = node->inputs[0]->Var();
-            auto pool2d_x_shape = input_var->GetShape();
-            std::vector<int> HW = {static_cast<int>(pool2d_x_shape[2]),
-                                   static_cast<int>(pool2d_x_shape[3])};
-            auto pool_type =
-                op_desc->GetAttrIfExists<std::string>("pooling_type");
-            auto ksize_array =
-                op_desc->GetAttrIfExists<std::vector<int>>("ksize");
-            auto strides_array =
-                op_desc->GetAttrIfExists<std::vector<int>>("strides");
-            auto paddings_array =
-                op_desc->GetAttrIfExists<std::vector<int>>("paddings");
-            return pool_type == "avg" && ksize_array == HW &&
-                   strides_array == HW &&
-                   paddings_array == std::vector<int>{0, 0};
-          });
-  auto* pool2d_out = pattern->NewNode(pool2d_out_repr())
-                         ->assert_is_op_output("pool2d", "Out")
-                         ->assert_is_op_input("squeeze2", "X");
-
-  auto* squeeze2 = pattern->NewNode(squeeze2_repr())
-                       ->assert_is_op("squeeze2")
-                       ->assert_more([](Node* node) {
-                         auto* op_desc = node->Op();
-                         auto axes_array =
-                             op_desc->GetAttrIfExists<std::vector<int>>("axes");
-                         return axes_array == std::vector<int>{2};
-                       });
-  auto* squeeze2_out = pattern->NewNode(squeeze2_out_repr())
-                           ->assert_is_op_output("squeeze2", "Out")
-                           ->assert_is_op_input("transpose2", "X");
-
-  unsqueeze2->LinksFrom({x}).LinksTo({unsqueeze2_out});
-  pool2d->LinksFrom({unsqueeze2_out}).LinksTo({pool2d_out});
-  squeeze2->LinksFrom({pool2d_out}).LinksTo({squeeze2_out});
-}
-
 struct FoldConv1dSqueeze2Pattern : public PatternBase {
   FoldConv1dSqueeze2Pattern(PDPattern* pattern,
                             const std::string& name_scope,
@@ -208,7 +129,8 @@ FoldConv1dSqueeze2Pattern::FoldConv1dSqueeze2Pattern(
             auto* op_desc = node->Op();
             auto axes_array =
                 op_desc->GetAttrIfExists<std::vector<int>>("axes");
-            return axes_array == std::vector<int>{-2};
+            return axes_array == std::vector<int>{-2} ||
+                   axes_array == std::vector<int>{2};
           });
   auto* unsqueeze2_out = pattern->NewNode(unsqueeze2_out_repr())
                              ->assert_is_op_output("unsqueeze2", "Out");
@@ -216,49 +138,6 @@ FoldConv1dSqueeze2Pattern::FoldConv1dSqueeze2Pattern(
 }
 
 }  // namespace patterns
-
-void RedundantOnnxOpsEliminationPass::FuseReduceMean(ir::Graph* graph) const {
-  GraphPatternDetector gpd;
-  patterns::ReduceMeanFusePattern pattern(gpd.mutable_pattern(), name_scope_);
-  int found_subgraph_count = 0;
-
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* graph) {
-    VLOG(4) << "handle FuseReduceMean";
-    // declare operator node's name
-    GET_IR_NODE(unsqueeze2);
-    GET_IR_NODE(pool2d);
-    GET_IR_NODE(squeeze2);
-    // declare variable node's name
-    GET_IR_NODE(x);
-    GET_IR_NODE(unsqueeze2_out);
-    GET_IR_NODE(pool2d_out);
-    GET_IR_NODE(squeeze2_out);
-
-    auto* block = pool2d->Op()->Block();
-    // Generate reduce_mean op
-    framework::OpDesc reduce_op_desc(block);
-    reduce_op_desc.SetType("reduce_mean");
-    reduce_op_desc.SetInput("X", {x->Name()});
-    reduce_op_desc.SetAttr("dim", std::vector<int>{-2});
-    reduce_op_desc.SetAttr("reduce_all", false);
-    reduce_op_desc.SetAttr("keep_dim", true);
-    reduce_op_desc.SetOutput("Out", {squeeze2_out->Name()});
-
-    auto* reduce_op = graph->CreateOpNode(&reduce_op_desc);
-
-    IR_NODE_LINK_TO(x, reduce_op);
-    IR_NODE_LINK_TO(reduce_op, squeeze2_out);
-    // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {
-        unsqueeze2, unsqueeze2_out, pool2d, pool2d_out, squeeze2};
-    GraphSafeRemoveNodes(graph, delete_nodes);
-    found_subgraph_count++;
-  };
-
-  gpd(graph, handler);
-  AddStatis(found_subgraph_count);
-}
 
 void RedundantOnnxOpsEliminationPass::FoldConv1dSqueeze2Ops(
     ir::Graph* graph, const std::string& act_type) const {
@@ -315,7 +194,6 @@ void RedundantOnnxOpsEliminationPass::ApplyImpl(ir::Graph* graph) const {
   for (auto act_type : {"leaky_relu", "elu"}) {
     FoldConv1dSqueeze2Ops(graph, act_type);
   }
-  FuseReduceMean(graph);
 }
 
 }  // namespace ir
@@ -328,4 +206,4 @@ REGISTER_PASS(redundant_onnx_ops_elimination_pass,
 REGISTER_PASS_CAPABILITY(redundant_onnx_ops_elimination_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "reduce_mean", 0));
+            "conv2d", 0));
