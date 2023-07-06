@@ -24,6 +24,7 @@ from contextlib import closing
 
 import numpy as np
 
+import paddle
 import paddle.fluid.unique_name as nameGen
 from paddle import fluid
 from paddle.fluid import core
@@ -110,11 +111,18 @@ class TestCollectiveRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        self.initCommunicator(
-            startup_prog, rank, nranks, True, current_endpoint, endpoints
-        )
+        if args["use_comm_context"]:
+            paddle.distributed.collective._init_parallel_env("nccl")
+        else:
+            self.initCommunicator(
+                startup_prog, rank, nranks, True, current_endpoint, endpoints
+            )
         self.rank = rank
-        result = self.get_model(train_prog, startup_prog)
+        result = (
+            self.get_model_new(train_prog, startup_prog)
+            if args["use_comm_context"]
+            else self.get_model(train_prog, startup_prog)
+        )
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(
             device_id
@@ -140,6 +148,7 @@ def runtime_main(test_class, col_type, sub_type):
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
+    args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     model.run_trainer(args)
 
 
@@ -175,7 +184,7 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
-        # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+        print("w0_ep:", w0_ep, " w1_ep:", w1_ep)
         env0 = {
             "FLAGS_selected_gpus": "0",
             "PADDLE_TRAINER_ID": "0",
@@ -209,7 +218,7 @@ class TestDistBase(unittest.TestCase):
         path1 = os.path.join(self.temp_dir.name, "/tmp/tr1_err.log")
         tr0_pipe = open(path0, "wb")
         tr1_pipe = open(path1, "wb")
-        # print(tr0_cmd)
+        print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -226,6 +235,11 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
+        print(tr0_out)
+        print(tr0_err)
+        print(tr1_out)
+        print(tr1_err)
+
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
         # close trainer file
@@ -325,7 +339,18 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr0_out, need_result1, rtol=1e-05)
             np.testing.assert_allclose(tr1_out, need_result2, rtol=1e-05)
         elif col_type == "concat":
+            print("---------- in col_type == concat: ----------")
             need_result = np.concatenate((input1, input2), axis=1)
+            np.testing.assert_allclose(
+                tr0_out[0], need_result, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out[0], need_result, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "concat_new":
+            print("---------- in col_type == concat_new: ----------")
+            need_result = np.concatenate((input1, input2), axis=1)
+            print("##### 111 :", tr0_out[0].shape, need_result.shape)
             np.testing.assert_allclose(
                 tr0_out[0], need_result, rtol=1e-05, atol=1e-05
             )
