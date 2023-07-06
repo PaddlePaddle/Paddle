@@ -65,6 +65,66 @@ paddle::framework::Variable* CreateVar(ir::Value value,
   }
 }
 
+void CheckInputVars(
+    ir::Operation* op,
+    const std::string& op_name,
+    const std::unordered_map<ir::Value, std::string>& name_map) {
+  size_t input_num = op->num_operands();
+  if (input_num > 0) {
+    for (size_t i = 0; i < input_num; ++i) {
+      auto value = op->operand(i);
+      if (value) {
+        PADDLE_ENFORCE_NE(
+            name_map.find(value),
+            name_map.end(),
+            phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                op_name));
+      }
+    }
+  }
+}
+
+void BuildValue(ir::Value value,
+                paddle::framework::Scope* scope,
+                paddle::framework::Scope* local_scope,
+                std::unordered_map<ir::Value, std::string>* name_map,
+                int& count) {  // NOLINT
+  auto inner_local_scope = local_scope != nullptr ? local_scope : scope;
+  std::string name;
+  if (name_map->find(value) != name_map->end()) {
+    name = name_map->at(value);
+  } else {
+    name = "inner_var_" + std::to_string(count++);
+    name_map->emplace(value, name);
+  }
+  auto var = CreateVar(value, name, scope, inner_local_scope);
+  // Only support DenseTensor or Vector<DenseTensor>
+  if (!value.type()) {
+    var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<ir::VectorType>()) {
+    auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
+    for (size_t i = 0; i < value.type().dyn_cast<ir::VectorType>().size();
+         i++) {
+      PADDLE_ENFORCE(value.type()
+                         .dyn_cast<ir::VectorType>()[i]
+                         .isa<paddle::dialect::AllocatedDenseTensorType>(),
+                     paddle::platform::errors::Fatal(
+                         "Element of VectorType output only support "
+                         "DenseTensorType"));
+      std::string name_i = "inner_var_" + std::to_string(count++);
+      auto var_i = CreateVar(value, name_i, scope, inner_local_scope);
+      tensor_array->emplace_back(var_i->GetMutable<phi::DenseTensor>());
+    }
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType or VectorType"));
+  }
+}
+
 void HandleForSpecialOp(ir::Operation* op,
                         paddle::framework::Scope* scope,
                         paddle::framework::Scope* local_scope,
@@ -92,10 +152,10 @@ void HandleForSpecialOp(ir::Operation* op,
 
   if (op_name == "pd.feed") {
     VLOG(6) << "Handle for pd.feed:";
-    auto ptr = op->result(0);
+    auto value = op->result(0);
     std::string name = "inner_var_" + std::to_string(count++);
-    name_map->emplace(ptr, name);
-    auto var = CreateVar(ptr, name, scope, local_scope);
+    name_map->emplace(value, name);
+    auto var = CreateVar(value, name, scope, local_scope);
     // TODO(phlrain): need to update here, support StringTensor
     auto out_tensor = var->GetMutable<phi::DenseTensor>();
 
@@ -123,14 +183,14 @@ void HandleForSpecialOp(ir::Operation* op,
     auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
 
     for (size_t i = 0; i < input_num; ++i) {
-      auto ptr = op->operand(i);
+      auto value = op->operand(i);
 
       PADDLE_ENFORCE_EQ(
-          name_map->count(ptr),
+          name_map->count(value),
           true,
           phi::errors::PreconditionNotMet("can not found input of combine op"));
       tensor_array->emplace_back(
-          &(CreateVar(ptr, name_map->at(ptr), scope, local_scope)
+          &(CreateVar(value, name_map->at(value), scope, local_scope)
                 ->Get<phi::DenseTensor>()));
     }
   }
@@ -161,30 +221,24 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 }
 
-void BuildInplaceOp(ir::Operation* op,
-                    paddle::framework::Scope* scope,
-                    paddle::framework::Scope* local_scope,
-                    std::unordered_map<ir::Value, std::string>* name_map,
-                    int& count) {  // NOLINT
-}
-
-void CheckInputVars(
-    ir::Operation* op,
-    const std::string& op_name,
-    const std::unordered_map<ir::Value, std::string>& name_map) {
-  size_t input_num = op->num_operands();
-  if (input_num > 0) {
-    for (size_t i = 0; i < input_num; ++i) {
-      auto ptr = op->operand(i);
-      if (ptr) {
-        PADDLE_ENFORCE_NE(
-            name_map.find(ptr),
-            name_map.end(),
-            phi::errors::PreconditionNotMet(
-                "input should in name map, [%d] 'th input of [%s] op",
-                i,
-                op_name));
-      }
+void HandleForInplaceOp(ir::Operation* op,
+                        paddle::framework::Scope* scope,
+                        paddle::framework::Scope* local_scope,
+                        std::unordered_map<ir::Value, std::string>* name_map,
+                        int& count) {  // NOLINT
+  if (op->num_results() < 1) return;
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()->get_op_info_());
+  for (int i = 0; i < op->num_results(); ++i) {
+    ir::Value value = op->result(i);
+    std::string value_name = yaml_parser.InputNames[i];
+    std::string inplace_name = yaml_parser.InplaceName(value_name);
+    if (inplace_name != "") {
+      ir::Value inplace_value = op->operand(InputName2Id().at(inplace_name));
+      std::string var_name = name_map->at(inplace_value);
+      name_map->emplace(value, var_name);
+    } else {
+      BuildValue(value, scope, local_scope, name_map, count);
     }
   }
 }
@@ -205,6 +259,8 @@ void BuildScope(const ir::Block& block,
   // int count = name_map->size();
   int count = name_map->size();
   for (auto it = block.begin(); it != block.end(); ++it) {
+    if (op->num_results() < 1) continue;
+
     ir::Operation* op = *it;
 
     std::string op_name = op->name();
@@ -224,51 +280,15 @@ void BuildScope(const ir::Block& block,
     CheckInputVars(op, op_name, *name_map);
 
     if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
-      BuildInplaceOp(op, scope, inner_local_scope, name_map, count);
+      HandleForInplaceOp(op, scope, inner_local_scope, name_map, count);
       continue;
-    }
-
-    int out_num = op->num_results();
-    if (out_num > 0) {
-      for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = op->result(i);
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          name = "inner_var_" + std::to_string(count++);
-          name_map->emplace(ptr, name);
-        }
-        auto var = CreateVar(ptr, name, scope, inner_local_scope);
-        // Only support DenseTensor or Vector<DenseTensor>
-        if (!ptr.type()) {
-          var->GetMutable<phi::DenseTensor>();
-        } else if (ptr.type()
-                       .isa<paddle::dialect::AllocatedDenseTensorType>()) {
-          var->GetMutable<phi::DenseTensor>();
-        } else if (ptr.type().isa<ir::VectorType>()) {
-          auto tensor_array =
-              var->GetMutable<paddle::framework::TensorRefArray>();
-          for (size_t i = 0; i < ptr.type().dyn_cast<ir::VectorType>().size();
-               i++) {
-            PADDLE_ENFORCE(
-                ptr.type()
-                    .dyn_cast<ir::VectorType>()[i]
-                    .isa<paddle::dialect::AllocatedDenseTensorType>(),
-                paddle::platform::errors::Fatal(
-                    "Element of VectorType output only support "
-                    "DenseTensorType"));
-            std::string name_i = "inner_var_" + std::to_string(count++);
-            auto var_i = CreateVar(ptr, name_i, scope, inner_local_scope);
-            tensor_array->emplace_back(var_i->GetMutable<phi::DenseTensor>());
-          }
-        } else {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "Output only support DenseTensorType or VectorType"));
-        }
+    } else {
+      for (int i = 0; i < op->num_results(); ++i) {
+        BuildValue(op->result(i), scope, local_scope, name_map, count);
       }
     }
   }
+
   VLOG(4) << "***** [after build] scope: ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
                  const_cast<paddle::framework::Scope*>(scope->root()));

@@ -45,17 +45,23 @@ paddle::framework::Variable* CreateVar(ir::Value value,
                                        paddle::framework::Scope* scope,
                                        paddle::framework::Scope* local_scope);
 
+void BuildValue(ir::Value value,
+                paddle::framework::Scope* scope,
+                paddle::framework::Scope* local_scope,
+                std::unordered_map<ir::Value, std::string>* name_map,
+                int& count);  // NOLINT
+
 void HandleForSpecialOp(ir::Operation* op,
                         paddle::framework::Scope* scope,
                         paddle::framework::Scope* local_scope,
                         std::unordered_map<ir::Value, std::string>* name_map,
                         int& count);  // NOLINT
 
-void BuildInplaceOp(ir::Operation* op,
-                    paddle::framework::Scope* scope,
-                    paddle::framework::Scope* local_scope,
-                    std::unordered_map<ir::Value, std::string>* name_map,
-                    int& count);  // NOLINT
+void HandleForInplaceOp(ir::Operation* op,
+                        paddle::framework::Scope* scope,
+                        paddle::framework::Scope* local_scope,
+                        std::unordered_map<ir::Value, std::string>* name_map,
+                        int& count);  // NOLINT
 
 void CheckInputVars(ir::Operation* op,
                     const std::unordered_map<ir::Value, std::string>& name_map);
@@ -89,13 +95,13 @@ void BuildPhiContext(
 
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
 
-  auto& name2id = op_yaml_info.Name2Id();
+  auto& name2id = op_yaml_info.InputName2Id();
   for (auto& t : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
-    auto index = op_yaml_info.Name2Id().at(t);
+    auto index = op_yaml_info.InputName2Id().at(t);
     ir::Value ptr = op->operand(index);
     if (!ptr) {
       phi::DenseTensor* ptr = nullptr;
