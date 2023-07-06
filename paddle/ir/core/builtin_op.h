@@ -55,7 +55,7 @@ class IR_API GetParameterOp : public ir::Op<GetParameterOp> {
                     OperationArgument &argument,  // NOLINT
                     const std::string &name,
                     Type type);
-  void Verify();
+  void Verify() const;
 };
 
 ///
