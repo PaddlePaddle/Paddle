@@ -257,9 +257,12 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->Holder()->size());
-      array_offset = dense_tensor->offset();
-      paddle::platform::GpuMemcpySync(array_buffer,
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
                                       dense_tensor->Holder()->ptr(),
                                       dense_tensor->Holder()->size(),
                                       kind);
