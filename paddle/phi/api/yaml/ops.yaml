@@ -755,11 +755,12 @@
 
 - op : erf
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : erf
+  inplace : (x -> out)
   backward : erf_grad
 
 - op : erfinv
@@ -805,12 +806,13 @@
 
 - op : expm1
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : expm1
+  inplace: (x -> out)
   backward : expm1_grad
 
 - op : fft_c2c

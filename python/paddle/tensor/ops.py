@@ -62,6 +62,9 @@ __inplace_unary_func__ = [
     'tan_',
     'atan_',
     'atanh_',
+    'expm1_',
+    'erf_',
+    'square_',
 ]
 
 __all__ = []
@@ -92,6 +95,7 @@ for _OP in set(__inplace_unary_func__):
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
     func = generate_inplace_fn(_OP)
+    func.__module__ = __name__
     _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
 

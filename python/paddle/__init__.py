@@ -226,6 +226,7 @@ from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
+from .tensor.math import expm1_  # noqa: F401
 from .tensor.math import floor  # noqa: F401
 from .tensor.math import increment  # noqa: F401
 from .tensor.math import log  # noqa: F401
@@ -247,6 +248,7 @@ from .tensor.math import sinh  # noqa: F401
 from .tensor.math import sinh_  # noqa: F401
 from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
+from .tensor.math import square_  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nan_to_num  # noqa: F401
@@ -278,6 +280,7 @@ from .tensor.math import logaddexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
 from .tensor.math import erf  # noqa: F401
+from .tensor.math import erf_  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
 from .tensor.math import addmm_  # noqa: F401
 from .tensor.math import clip  # noqa: F401
@@ -593,6 +596,7 @@ __all__ = [  # noqa
     'logical_xor',
     'exp',
     'expm1',
+    'expm1_',
     'bernoulli',
     'poisson',
     'sinh',
@@ -610,6 +614,7 @@ __all__ = [  # noqa
     'inner',
     'outer',
     'square',
+    'square_',
     'divide',
     'ceil',
     'atan',
@@ -639,6 +644,7 @@ __all__ = [  # noqa
     'dot',
     'increment',
     'erf',
+    'erf_',
     'bmm',
     'chunk',
     'tolist',

@@ -63,9 +63,11 @@ from .ops import cos_  # noqa: F401
 from .ops import cosh  # noqa: F401
 from .ops import cosh_  # noqa: F401
 from .ops import erf  # noqa: F401
+from .ops import erf_  # noqa: F401
 from .ops import exp  # noqa: F401
 from .ops import exp_  # noqa: F401
 from .ops import expm1  # noqa: F401
+from .ops import expm1_  # noqa: F401
 from .ops import floor  # noqa: F401
 from .ops import floor_  # noqa: F401
 from .ops import reciprocal  # noqa: F401
@@ -83,6 +85,7 @@ from .ops import sinh_  # noqa: F401
 from .ops import sqrt  # noqa: F401
 from .ops import sqrt_  # noqa: F401
 from .ops import square  # noqa: F401
+from .ops import square_  # noqa: F401
 from .ops import tan  # noqa: F401
 from .ops import tan_  # noqa: F401
 
