@@ -31,7 +31,7 @@
 
 PADDLE_DEFINE_EXPORTED_bool(
     use_stride_kernel,
-    false,
+    true,
     "Whether to use strdie kernel if op support stride.");
 
 DECLARE_int32(low_precision_op_list);
