@@ -44,7 +44,7 @@
 namespace ir {
 
 paddle::framework::Variable* CreateVar(ir::Value value,
-                                       std::string name,
+                                       const std::string& name,
                                        paddle::framework::Scope* scope,
                                        paddle::framework::Scope* local_scope) {
   Operation* def_op = value.GetDefiningOp();
@@ -56,12 +56,8 @@ paddle::framework::Variable* CreateVar(ir::Value value,
                         .data();
   }
   if (is_persisable) {
-    const paddle::framework::Scope* ancestor_scope = scope;
-    while (ancestor_scope->parent()) {
-      ancestor_scope = ancestor_scope->parent();
-    }
-    VLOG(6) << "Create var: " << name << " in scope " << ancestor_scope;
-    return const_cast<paddle::framework::Scope*>(ancestor_scope)->Var(name);
+    VLOG(6) << "Create var: " << name << " in scope " << scope->root();
+    return const_cast<paddle::framework::Scope*>(scope->root())->Var(name);
   } else {
     VLOG(6) << "Create var: " << name << " in scope " << local_scope;
     return local_scope->Var(name);
@@ -170,10 +166,13 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 }
 
-void BuildScope(ir::Block* block,
+void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
                 std::unordered_map<ir::Value, std::string>* name_map) {
+  VLOG(4) << "***** [before build] scope: ******\n"
+          << paddle::framework::GenScopeTreeDebugInfo(
+                 const_cast<paddle::framework::Scope*>(scope->root()));
   // NOTE(zhiqiu): if use local_scope (local_scope != nullptr), the persistable
   // is created in scope , and other is created in local_scope.
   auto inner_local_scope = local_scope != nullptr ? local_scope : scope;
@@ -182,7 +181,7 @@ void BuildScope(ir::Block* block,
 
   // int count = name_map->size();
   int count = name_map->size();
-  for (auto it = block->begin(); it != block->end(); ++it) {
+  for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
     auto attr_map = op->attributes();
@@ -256,6 +255,9 @@ void BuildScope(ir::Block* block,
       }
     }
   }
+  VLOG(4) << "***** [after build] scope: ******\n"
+          << paddle::framework::GenScopeTreeDebugInfo(
+                 const_cast<paddle::framework::Scope*>(scope->root()));
 }
 
 }  // namespace ir

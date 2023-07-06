@@ -1147,21 +1147,25 @@ class OpTest(unittest.TestCase):
             fetch_list=fetch_list,
             return_numpy=False,
         )
-        np.testing.assert_array_equal(
-            outs,
-            ir_outs,
-            err_msg='Operator ('
-            + self.op_type
-            + ') has diff at '
-            + str(place)
-            + '\nExpect '
-            + str(outs)
-            + '\n'
-            + 'But Got'
-            + str(ir_outs)
-            + ' in class '
-            + self.__class__.__name__,
-        )
+        assert len(outs) == len(
+            ir_outs
+        ), "Fetch result should have same length when executed in new ir"
+        for i in range(len(outs)):
+            np.testing.assert_array_equal(
+                outs[i],
+                ir_outs[i],
+                err_msg='Operator Check ('
+                + self.op_type
+                + ') has diff at '
+                + str(place)
+                + '\nExpect '
+                + str(outs[i])
+                + '\n'
+                + 'But Got'
+                + str(ir_outs[i])
+                + ' in class '
+                + self.__class__.__name__,
+            )
 
         set_flags({"FLAGS_enable_new_ir_in_executor": False})
 
