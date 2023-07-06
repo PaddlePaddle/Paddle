@@ -372,8 +372,8 @@ else()
   )
 endif()
 
-if(WITH_INFERENCE_NVTX AND NOT WIN32)
-  add_definitions(-DPADDLE_WITH_INFERENCE_NVTX)
+if(WITH_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_NVTX)
 endif()
 
 copy(
