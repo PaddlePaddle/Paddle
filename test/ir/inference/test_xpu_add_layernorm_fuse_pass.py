@@ -20,10 +20,10 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestAddActXPUFusePass(PassAutoScanTest):
+class TestAddLayernormXPUFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ["add_act_xpu"], (1e-3, 1e-3)
+        yield config, ["add_layernorm_xpu"], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
         batch_size = draw(st.integers(min_value=1, max_value=50))
@@ -65,8 +65,8 @@ class TestAddActXPUFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=mini_graph,
             weights={
-                "layer_norm_scale": TensorConfig(shape=x_shape[2]),
-                "layer_norm_bias": TensorConfig(shape=x_shape[2]),
+                "layer_norm_scale": TensorConfig(shape=[x_shape[2]]),
+                "layer_norm_bias": TensorConfig(shape=[x_shape[2]]),
             },
             inputs={
                 "eltwise_X": TensorConfig(shape=x_shape),
