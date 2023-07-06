@@ -320,6 +320,7 @@ class DataLoader:
     Examples:
 
         .. code-block:: python
+            :name data-loader-example
 
             import numpy as np
 

@@ -223,9 +223,10 @@ class DataLoader:
         Returns:
             loader (DataLoader): the created DataLoader object.
 
-        Examples 1:
+        Examples:
 
             .. code-block:: python
+                :name static-data-loader-example-1
 
                 '''
                 Example in static graph mode
@@ -344,10 +345,8 @@ class DataLoader:
                 else:
                     train_non_iterable(exe, prog, loss, loader)
 
-
-        Examples 2:
-
             .. code-block:: python
+                :name static-data-loader-example-2
 
                 '''
                 Example in dynamic graph mode.
