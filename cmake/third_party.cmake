@@ -259,10 +259,48 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
   )# adds --depth=1 arg to git clone of External_Projects
 endif()
 
-########################### include third_party according to flags ###############################
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
+
+########################### include third_party according to flags ###############################
+if(WITH_CINN)
+  if(WITH_MKL)
+    add_definitions(-DCINN_WITH_MKL_CBLAS)
+  endif()
+  if(WITH_MKLDNN)
+    add_definitions(-DCINN_WITH_MKLDNN)
+  endif()
+  include(cmake/cinn/version.cmake)
+  if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+    file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake
+         DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
+  endif()
+  include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+  include(cmake/cinn/external/absl.cmake)
+  include(cmake/cinn/external/llvm.cmake)
+  include(cmake/cinn/external/isl.cmake)
+  include(cmake/cinn/external/ginac.cmake)
+  include(cmake/cinn/external/openmp.cmake)
+  include(cmake/cinn/external/jitify.cmake)
+endif()
+
+# cinn_only includes third-party libraries separately
+if(CINN_ONLY)
+  include(external/gtest)
+  include(external/protobuf)
+  if(WITH_PYTHON)
+    include(external/pybind11)
+  endif()
+  if(WITH_MKL)
+    include(external/mklml)
+  endif()
+  if(WITH_MKLDNN)
+    include(external/mkldnn)
+  endif()
+  return()
+endif()
+
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
@@ -472,20 +510,6 @@ endif()
 if(WITH_LITE)
   message(STATUS "Compile Paddle with Lite Engine.")
   include(external/lite)
-endif()
-
-if(WITH_CINN)
-  message(STATUS "Compile Paddle with CINN.")
-  include(external/cinn)
-  add_definitions(-DPADDLE_WITH_CINN)
-  if(WITH_GPU)
-    add_definitions(-DCINN_WITH_CUDA)
-    add_definitions(-DCINN_WITH_CUDNN)
-  endif()
-  if(WITH_MKL)
-    add_definitions(-DCINN_WITH_MKL_CBLAS)
-    add_definitions(-DCINN_WITH_MKLDNN)
-  endif()
 endif()
 
 if(WITH_CRYPTO)

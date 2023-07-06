@@ -257,6 +257,9 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph) const {
                  "relu",
                  "gelu",
                  "tanh",
+                 "sigmoid",
+                 "swish",
+                 "relu6",
                  "",
              }) {
           found_subgraph_count +=

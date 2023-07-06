@@ -405,6 +405,7 @@ create_test_fp16_class(TestMatMulOpBroadcast2)
 def create_test_bf16_class(parent, atol=0.01):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
+        or paddle.is_compiled_with_rocm()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
         "core is not compiled with CUDA and not support the bfloat16",
     )

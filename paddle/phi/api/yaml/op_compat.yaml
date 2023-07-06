@@ -132,10 +132,6 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   manual_signature : [all]
   extra :
     attrs : [bool use_mkldnn = false]
@@ -163,10 +159,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amax_grad : GetReduceGradExpectedKernelType
   manual_signature : [amax]
@@ -181,10 +173,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     amin_grad : GetReduceGradExpectedKernelType
   manual_signature : [amin]
@@ -207,10 +195,6 @@
     { axis : dim,  keepdim : keep_dim }
   extra :
     attrs : [bool use_mkldnn = false]
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     any : GetReduceOpUseInputPlaceExpectedKernelType
   manual_signature : [any]
@@ -224,6 +208,7 @@
 - op : argmax(arg_max)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
@@ -234,6 +219,7 @@
 - op : argmin(arg_min)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
@@ -297,6 +283,7 @@
     out : Out
 
 - op : atan2
+  backward : atan2_grad
   inputs :
     {x : X1, y : X2}
   outputs :
@@ -371,6 +358,18 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : bincount
+  inputs :
+    {x : X, weights : Weights}
+  outputs :
+    out : Out
+  scalar:
+    minlength:
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    bincount : GetBincountExpectedKernelType
 
 - op : bitwise_and
   inputs :
@@ -496,7 +495,7 @@
     out : Out
 
 - op : concat
-  backward : concat_grad
+  backward : concat_grad, concat_double_grad
   inputs:
     x: X
   outputs:
@@ -507,8 +506,11 @@
     axis :
       data_type : int
       tensor_name : AxisTensor
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+  get_expected_kernel_type :
+    concat : GetConcatExpectedKernelType
 
 - op : conditional_block
   backward : conditional_block_grad
@@ -650,7 +652,7 @@
   scalar:
     axis:
       data_type : int
-      tensor_name: AxisTensor
+      support_tensor : true
 
 - op : data_norm
   backward : data_norm_grad
@@ -756,7 +758,7 @@
     attrs : ['int[] slots = {}']
 
 - op : divide (elementwise_div)
-  backward : divide_grad (elementwise_div)
+  backward : divide_grad (elementwise_div_grad)
   inputs :
     {x: X, y : Y}
   outputs :
@@ -831,11 +833,27 @@
   attrs :
     uplo : UPLO
 
+- op : einsum
+  backward : einsum_grad
+  inputs :
+    x : Operands
+  outputs:
+    {out : Out, inner_cache: InnerCache, xshape : XShape}
+  drop_empty_grad: [x_grad]
+  extra:
+    outputs: [inner_cache, xshape]
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [elementwise_pow]
 
 - op : elu
   backward : elu_grad, elu_double_grad (elu_grad_grad)
@@ -901,7 +919,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : expand (expand_v2)
-  backward : expand_grad (expand_v2_grad)
+  backward : expand_grad (expand_v2_grad), expand_double_grad(expand_v2_double_grad)
   inputs :
     x : X
   attrs :
@@ -915,6 +933,7 @@
       tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [expand, expand_grad]
 
 - op : expand_as (expand_as_v2)
   backward : expand_as_grad (expand_as_v2_grad)
@@ -931,6 +950,15 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : exponential_
+  backward : exponential__grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    lam : lambda
 
 - op : eye
   outputs :
@@ -981,6 +1009,17 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill (fill_any)
+  backward : fill_grad (fill_any_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
+
 - op : fill_diagonal
   backward : fill_diagonal_grad
   inputs :
@@ -1022,9 +1061,15 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : floor_divide (elementwise_floordiv)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [floor_divide]
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
@@ -1084,8 +1129,10 @@
     x : X
   outputs :
     out : Out
-  attrs :
-    {value: value, dtype: dtype}
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
 
 - op : fused_conv2d
   extra :
@@ -1098,6 +1145,14 @@
 
 - op : gather
   backward : gather_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : Axis
 
 - op : gather_nd
   backward : gather_nd_grad
@@ -1221,9 +1276,14 @@
 
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : histogram
   inputs :
@@ -1560,7 +1620,7 @@
     out : Y
 
 - op : matmul (matmul_v2)
-  backward : matmul_grad (matmul_v2_grad)
+  backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
   inputs :
     {x : X, y : Y}
   attrs :
@@ -1569,6 +1629,7 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
@@ -1731,6 +1792,8 @@
 
 - op : mish
   backward : mish_grad
+  inputs:
+    lambda:  threshold
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1843,6 +1906,15 @@
   outputs :
     out : Out
 
+- op : norm
+  backward : norm_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, norm : Norm}
+  extra :
+    outputs : [norm]
+
 - op : not_equal
   inputs :
     {x : X, y : Y}
@@ -1935,7 +2007,7 @@
     pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false, bool use_cudnn = false]
+              str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : pool3d
   backward : pool3d_grad
@@ -1949,7 +2021,7 @@
     pool3d : GetPoolExpectedKernelType
     pool3d_grad : GetPoolExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : pow
   backward : pow_grad, pow_double_grad, pow_triple_grad
@@ -1973,19 +2045,39 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : prior_box
+  inputs :
+    {input: Input, image: Image}
+  outputs :
+    {out: Boxes, var: Variances}
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+
 - op : prod (reduce_prod)
   backward : prod_grad (reduce_prod_grad)
   inputs:
     x : X
-  attrs:
-    { dims : dim,  keep_dim : keep_dim}
   outputs:
     out : Out
+  attrs:
+    { dims : dim,  keep_dim : keep_dim}
   int_array:
     dims :
       data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false]
+  get_expected_kernel_type :
+    prod : GetReduceExpectedKernelType
+    prod_grad : GetReduceGradExpectedKernelType
+  manual_signature : [prod]
+
+- op : psroi_pool
+  backward : psroi_pool_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    out : Out
 
 - op : put_along_axis
   backward : put_along_axis_grad
@@ -2058,9 +2150,15 @@
     attrs : [bool use_mkldnn = false]
 
 - op : remainder (elementwise_mod)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [remainder]
 
 - op : renorm
   backward : renorm_grad
@@ -2110,6 +2208,20 @@
   outputs:
     { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
   drop_empty_grad : [pre_state_grad, weight_list_grad]
+
+- op : roi_align
+  backward : roi_align_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    out : Out
+
+- op : roi_pool
+  backward : roi_pool_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    {out : Out, arg_max : Argmax}
 
 - op : roll
   backward : roll_grad
@@ -2489,7 +2601,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, float beta = 1.0]
 
 - op : sync_batch_norm
   backward : sync_batch_norm_grad
@@ -2515,7 +2627,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
   inputs :
     x : X
   outputs :
@@ -2750,6 +2862,8 @@
   get_expected_kernel_type :
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
+
+- op: full_batch_size_like (fill_constant_batch_size_like)
 
 - op: lu
   backward: lu_grad

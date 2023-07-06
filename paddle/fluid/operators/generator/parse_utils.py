@@ -29,6 +29,12 @@ def to_named_dict(items: List[Dict], is_op=False) -> Dict[str, Dict]:
             item["name"] = (
                 item["name"] if item["name"][-1] != '_' else item["name"][:-1]
             )
+            if "forward" in item:
+                item["forward"]["name"] = (
+                    item["forward"]["name"]
+                    if item["forward"]["name"][-1] != '_'
+                    else item["forward"]["name"][:-1]
+                )
             name = item["name"]
             named_dict[name] = item
     else:
@@ -283,7 +289,7 @@ def parse_invoke(op_name: str, invoke_config: str) -> Dict[str, Any]:
     invoke_config = invoke_config.strip()
     func, rest = invoke_config.split("(", 1)
     func = func.strip()
-    args = rest.rstrip(")").strip()
+    args = rest[:-1].strip()  # deal the last ')'
     invocation = {"func": func, "args": args}
     return invocation
 

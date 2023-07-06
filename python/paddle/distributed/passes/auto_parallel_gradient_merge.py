@@ -94,8 +94,13 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     )
     set_var_dist_attr(dist_context, step_var, [-1], world_process_group.ranks)
 
-    cond_var = main_block.create_var(
-        name="gradient_merge_cond", shape=[1], dtype='bool'
+    cond_var = paddle.static.create_global_var(
+        name="gradient_merge_cond",
+        shape=[1],
+        value=bool(0),
+        dtype='bool',
+        persistable=True,
+        force_cpu=True,
     )
     set_var_dist_attr(dist_context, cond_var, [-1], world_process_group.ranks)
 

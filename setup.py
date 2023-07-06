@@ -429,52 +429,7 @@ def is_taged():
 def get_cinn_version():
     if env_dict.get("WITH_CINN") != 'ON':
         return "False"
-
-    cinn_git_version = 'Unknown'
-    # try get cinn tag name
-    try:
-        cmd = [
-            'git',
-            'describe',
-            '--exact-match',
-            '--tags',
-            'HEAD',
-            '2>/dev/null',
-        ]
-        cinn_tag = (
-            subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                cwd=env_dict.get("CINN_SOURCE_DIR"),
-            )
-            .communicate()[0]
-            .strip()
-        )
-        if len(cinn_tag) > 0:
-            cinn_git_version = cinn_tag
-    except:
-        pass
-
-    if cinn_git_version == 'Unknown':
-        # try get cinn commit id
-        try:
-            cmd = ['git', 'rev-parse', 'HEAD']
-            cinn_commit = (
-                subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    cwd=env_dict.get("CINN_SOURCE_DIR"),
-                )
-                .communicate()[0]
-                .strip()
-            )
-            if len(cinn_commit) > 0:
-                cinn_git_version = cinn_commit
-        except:
-            pass
-
-    cinn_git_version = cinn_git_version.decode('utf-8')
-    return str(cinn_git_version)
+    return "0.3.0"
 
 
 def write_version_py(filename='paddle/version/__init__.py'):
@@ -966,10 +921,16 @@ def get_package_data_and_package_dir():
     package_data['paddle.libs'] = []
 
     if env_dict.get("WITH_SHARED_PHI") == "ON":
-        package_data['paddle.libs'] = [
+        package_data['paddle.libs'] += [
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+
+    if env_dict.get("WITH_SHARED_IR") == "ON":
+        package_data['paddle.libs'] += [
+            ('libir' if os.name != 'nt' else 'ir') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("IR_LIB"), libs_path)
 
     package_data['paddle.libs'] += [
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
@@ -1064,20 +1025,22 @@ def get_package_data_and_package_dir():
         )
         shutil.copy(
             env_dict.get("CINN_INCLUDE_DIR")
-            + '/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
+            + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
 
         cinn_fp16_file = (
-            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h'
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/float16.h'
         )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
         cinn_bf16_file = (
-            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/bfloat16.h'
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/bfloat16.h'
         )
         if os.path.exists(cinn_bf16_file):
             shutil.copy(cinn_bf16_file, libs_path)
@@ -1182,6 +1145,11 @@ def get_package_data_and_package_dir():
     if env_dict.get("WITH_XPU_XFT") == 'ON':
         shutil.copy(env_dict.get("XPU_XFT_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XFT_LIB_NAME")]
+
+    if env_dict.get("WITH_XPTI") == 'ON':
+        shutil.copy(env_dict.get("XPU_XPTI_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XPTI_LIB_NAME")]
+
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):
         os.remove(libs_path + '/__init__.py')
@@ -1216,6 +1184,13 @@ def get_package_data_and_package_dir():
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
+                if env_dict.get("WITH_SHARED_IR") == "ON":
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("IR_NAME")
+                    )
             else:
                 commands = [
                     "patchelf --set-rpath '$ORIGIN/../libs/' "
@@ -1230,6 +1205,13 @@ def get_package_data_and_package_dir():
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
+                    )
+                if env_dict.get("WITH_SHARED_IR") == "ON":
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("IR_NAME")
                     )
             # The sw_64 not suppot patchelf, so we just disable that.
             if platform.machine() != 'sw_64' and platform.machine() != 'mips64':

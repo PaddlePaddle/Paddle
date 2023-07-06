@@ -158,6 +158,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
             else:
                 optimizer_class = paddle.optimizer.Lamb
                 kwargs = dict(kwargs)
+                kwargs['always_adapt'] = True
                 kwargs.pop('clip_after_allreduce', None)
                 kwargs.pop('alignment', None)
                 kwargs.pop('use_master_acc_grad', None)
