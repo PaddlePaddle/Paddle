@@ -50,7 +50,7 @@ class DimTrans {
 
   void set_type(Type type);
 
-  virtual void print_info();
+  virtual std::string to_string();
 
  private:
   Type type_;
@@ -70,7 +70,7 @@ class InputDim : public DimTrans {
 
   void set_input_dim(int64_t dim);
 
-  virtual void print_info();
+  std::string to_string() override;
 
  private:
   int64_t input_dim_;
@@ -81,7 +81,7 @@ class InputDim : public DimTrans {
 class Singleton : public DimTrans {
  public:
   Singleton();
-  virtual void print_info();
+  std::string to_string() override;
 };
 
 // Flatten indicates that the output dimension
@@ -98,7 +98,7 @@ class Flatten : public DimTrans {
 
   void set_inputs(const std::vector<DimTrans*>& dims);
 
-  virtual void print_info();
+  std::string to_string() override;
 
  private:
   std::vector<DimTrans*> input_dims_;
@@ -123,7 +123,7 @@ class Split : public DimTrans {
   // get the splitted shape of the split_id_ dimension
   int64_t local_split_shape();
 
-  virtual void print_info();
+  std::string to_string() override;
 
  private:
   DimTrans* input_dim_trans_;

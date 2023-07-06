@@ -34,7 +34,7 @@ DimTrans::Type DimTrans::type() const { return type_; }
 
 void DimTrans::set_type(Type type) { type_ = type; }
 
-void DimTrans::print_info() {}
+std::string DimTrans::to_string() { return std::string(""); }
 
 InputDim::InputDim() : DimTrans(DimTrans::Type::INPUTDIM) {
   input_dim_ = -1;
@@ -52,13 +52,15 @@ int64_t InputDim::input_dim() const { return input_dim_; }
 
 void InputDim::set_input_dim(int64_t dim) { input_dim_ = dim; }
 
-void InputDim::print_info() { printf("InputDim(%ld)", input_dim_); }
+std::string InputDim::to_string() {
+  return ("InputDim(" + std::to_string(input_dim_) + ")");
+}
 
 Singleton::Singleton() : DimTrans(DimTrans::Type::SINGLETON) {
   all_dim_trans.emplace_back(this);
 }
 
-void Singleton::print_info() { printf("Singleton()"); }
+std::string Singleton::to_string() { return "Singleton()"; }
 
 Flatten::Flatten() : DimTrans(DimTrans::Type::FLATTEN) {
   all_dim_trans.emplace_back(this);
@@ -81,15 +83,15 @@ void Flatten::set_inputs(const std::vector<DimTrans*>& dims) {
   input_dims_.assign(dims.begin(), dims.end());
 }
 
-void Flatten::print_info() {
-  printf("Flatten(");
+std::string Flatten::to_string() {
+  std::string ret_str("Flatten(");
   for (int64_t i = 0, n = input_dims_.size(); i < n; ++i) {
-    input_dims_[i]->print_info();
+    ret_str += input_dims_[i]->to_string();
     if (i < n - 1) {
-      printf(",");
+      ret_str += ",";
     }
   }
-  printf(")");
+  return ret_str + ")";
 }
 
 Split::Split() : DimTrans(DimTrans::Type::SPLIT) {
@@ -118,17 +120,16 @@ int64_t Split::split_id() const { return split_id_; }
 
 int64_t Split::local_split_shape() { return splitted_shape_[split_id_]; }
 
-void Split::print_info() {
-  printf("Split(");
-  input_dim_trans_->print_info();
-  printf(", (");
+std::string Split::to_string() {
+  std::string ret_str("Split(");
+  ret_str += input_dim_trans_->to_string() + ", (";
   for (int64_t i = 0, n = splitted_shape_.size(); i < n; ++i) {
-    printf("%ld", splitted_shape_[i]);
+    ret_str += std::to_string(splitted_shape_[i]);
     if (i < n - 1) {
-      printf(",");
+      ret_str += ",";
     }
   }
-  printf("), %ld)", split_id_);
+  return ret_str + "), " + std::to_string(split_id_) + ")";
 }
 
 DimTrans* make_flatten(const std::vector<DimTrans*>& dims) {

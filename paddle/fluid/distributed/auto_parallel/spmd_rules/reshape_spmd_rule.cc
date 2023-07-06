@@ -166,10 +166,15 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
   TensorDistAttr output_dist_attr(input_specs[0].dist_attr());
   output_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
 
-  VLOG(4) << "Reshape: input_shape: " << str_join(src_shape)
-          << " output_shape: " << str_join(tgt_shape)
-          << "input_dims_mapping: " << str_join(dims_mapping_vec[0])
-          << "output_dims_mapping: " << str_join(dims_mapping_vec[1]);
+  VLOG(4) << "Reshape: input_shape: [" << str_join(src_shape)
+          << "] output_shape: [" << str_join(tgt_shape) << "]";
+  VLOG(4) << "Transformation:";
+  for (DimTrans* t : trans) {
+    VLOG(4) << t->to_string();
+  }
+  VLOG(4) << "input_dims_mapping: [" << str_join(dims_mapping_vec[0])
+          << "] output_dims_mapping: [" << str_join(dims_mapping_vec[1])
+          << "]\n\n";
 
   CleanUp();
 
