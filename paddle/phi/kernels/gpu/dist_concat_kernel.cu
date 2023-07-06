@@ -74,9 +74,10 @@ void DistConcatKernel(const Context& dev_ctx,
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
 #endif
-}  // namespace phi
+}
 }  // namespace phi
 
+#if NCCL_VERSION_CODE >= 21000
 PD_REGISTER_KERNEL(dist_concat,
                    GPU,
                    ALL_LAYOUT,
@@ -85,8 +86,16 @@ PD_REGISTER_KERNEL(dist_concat,
                    double,
                    int,
                    int64_t,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                   plat::bfloat16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(dist_concat,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DistConcatKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
 #endif
-                   phi::dtype::float16) {
-}
