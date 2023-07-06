@@ -248,7 +248,6 @@ void MakeSimpleReusePlan(
   }
 }
 
-
 std::string MemoryOptimizePass::repr() const { return "memory_optimize_pass"; }
 
 void MemoryOptimizePass::RunImpl(Argument* argument) {
