@@ -37,6 +37,7 @@
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/phi/core/enforce.h"
 
 #include "glog/logging.h"
@@ -160,6 +161,34 @@ void HandleForSpecialOp(ir::Operation* op,
   }
 }
 
+void BuildInplaceOp(ir::Operation* op,
+                    paddle::framework::Scope* scope,
+                    paddle::framework::Scope* local_scope,
+                    std::unordered_map<ir::Value, std::string>* name_map,
+                    int& count) {  // NOLINT
+}
+
+void CheckInputVars(
+    ir::Operation* op,
+    const std::string& op_name,
+    const std::unordered_map<ir::Value, std::string>& name_map) {
+  size_t input_num = op->num_operands();
+  if (input_num > 0) {
+    for (size_t i = 0; i < input_num; ++i) {
+      auto ptr = op->operand(i);
+      if (ptr) {
+        PADDLE_ENFORCE_NE(
+            name_map.find(ptr),
+            name_map.end(),
+            phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                op_name));
+      }
+    }
+  }
+}
+
 void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
@@ -178,10 +207,10 @@ void BuildScope(const ir::Block& block,
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
-    auto attr_map = op->attributes();
     std::string op_name = op->name();
-    if (attr_map.count("op_name")) {
-      op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+    if (op->attributes().count("op_name")) {
+      op_name =
+          op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
 
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
@@ -192,20 +221,11 @@ void BuildScope(const ir::Block& block,
       continue;
     }
 
-    size_t input_num = op->num_operands();
-    if (input_num > 0) {
-      for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = op->operand(i);
-        if (ptr) {
-          PADDLE_ENFORCE_NE(
-              name_map->find(ptr),
-              name_map->end(),
-              phi::errors::PreconditionNotMet(
-                  "input should in name map, [%d] 'th input of [%s] op",
-                  i,
-                  op_name));
-        }
-      }
+    CheckInputVars(op, op_name, *name_map);
+
+    if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
+      BuildInplaceOp(op, scope, inner_local_scope, name_map, count);
+      continue;
     }
 
     int out_num = op->num_results();

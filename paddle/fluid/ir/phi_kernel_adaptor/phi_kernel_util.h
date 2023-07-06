@@ -51,6 +51,15 @@ void HandleForSpecialOp(ir::Operation* op,
                         std::unordered_map<ir::Value, std::string>* name_map,
                         int& count);  // NOLINT
 
+void BuildInplaceOp(ir::Operation* op,
+                    paddle::framework::Scope* scope,
+                    paddle::framework::Scope* local_scope,
+                    std::unordered_map<ir::Value, std::string>* name_map,
+                    int& count);  // NOLINT
+
+void CheckInputVars(ir::Operation* op,
+                    const std::unordered_map<ir::Value, std::string>& name_map);
+
 void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
