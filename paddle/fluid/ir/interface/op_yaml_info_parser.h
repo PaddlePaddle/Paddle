@@ -46,6 +46,8 @@ class OpYamlInfoParser {
     return output_name_list_;
   }
 
+  bool HasInplace(const std::string& out_name) const;
+
   const std::string& InplaceName(const std::string& out_name) const;
 
  private:

@@ -228,13 +228,14 @@ void HandleForInplaceOp(ir::Operation* op,
                         int& count) {  // NOLINT
   if (op->num_results() < 1) return;
   paddle::dialect::OpYamlInfoParser yaml_parser(
-      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()->get_op_info_());
-  for (int i = 0; i < op->num_results(); ++i) {
+      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo());
+  for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value value = op->result(i);
-    std::string value_name = yaml_parser.InputNames[i];
-    std::string inplace_name = yaml_parser.InplaceName(value_name);
-    if (inplace_name != "") {
-      ir::Value inplace_value = op->operand(InputName2Id().at(inplace_name));
+    std::string value_name = yaml_parser.InputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      std::string inplace_name = yaml_parser.InplaceName(value_name);
+      ir::Value inplace_value =
+          op->operand(yaml_parser.InputName2Id().at(inplace_name));
       std::string var_name = name_map->at(inplace_value);
       name_map->emplace(value, var_name);
     } else {
@@ -259,9 +260,9 @@ void BuildScope(const ir::Block& block,
   // int count = name_map->size();
   int count = name_map->size();
   for (auto it = block.begin(); it != block.end(); ++it) {
-    if (op->num_results() < 1) continue;
-
     ir::Operation* op = *it;
+
+    if (op->num_results() < 1) continue;
 
     std::string op_name = op->name();
     if (op->attributes().count("op_name")) {
@@ -283,7 +284,7 @@ void BuildScope(const ir::Block& block,
       HandleForInplaceOp(op, scope, inner_local_scope, name_map, count);
       continue;
     } else {
-      for (int i = 0; i < op->num_results(); ++i) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
         BuildValue(op->result(i), scope, local_scope, name_map, count);
       }
     }
