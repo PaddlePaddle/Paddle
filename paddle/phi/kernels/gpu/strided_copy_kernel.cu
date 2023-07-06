@@ -84,7 +84,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     input_stride[i] = input.strides()[i];
   }
 
-  const T* output_data = out->data<T>();
+  T* output_data = out->data<T>();
   PADDLE_ENFORCE_NOT_NULL(output_data,
                           phi::errors::InvalidArgument(
                               "StridedCopyKernel's out tensor must complete "
