@@ -55,7 +55,6 @@ class IRVisitorBase {
   }
   // @}
 
- protected:
 #define __(op__)                                          \
   virtual RetTy Visit(const ir::op__* op, Args... args) { \
     return VisitDefault(op, std::forward<Args>(args)...); \
