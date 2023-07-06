@@ -92,11 +92,8 @@ endfunction()
 
 if(WITH_TESTING)
   if(WITH_CINN)
+    add_subdirectory(cpp/cinn)
     add_subdirectory(cinn)
-    if(CINN_ONLY)
-      add_subdirectory(cpp/cinn)
-      return()
-    endif()
   endif()
 
   add_subdirectory(amp)
