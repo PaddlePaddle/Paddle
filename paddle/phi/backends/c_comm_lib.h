@@ -36,8 +36,7 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT16,
   CCL_DATA_TYPE_INT8,
   CCL_DATA_TYPE_UINT8,
-  CCL_DATA_TYPE_BF16,
-  ALL_DTYPE = UNDEFINED
+  CCL_DATA_TYPE_BF16
 };
 
 inline CCLDataType ToCCLDataType(phi::DataType type) {
@@ -51,6 +50,8 @@ inline CCLDataType ToCCLDataType(phi::DataType type) {
     return CCL_DATA_TYPE_INT64;
   } else if (type == phi::DataType::INT32) {
     return CCL_DATA_TYPE_INT32;
+  } else if (type == phi::DataType::INT16) {
+    return CCL_DATA_TYPE_INT16;
   } else if (type == phi::DataType::INT8) {
     return CCL_DATA_TYPE_INT8;
   } else if (type == phi::DataType::UINT8) {
@@ -75,6 +76,8 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
     return phi::DataType::INT64;
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT32) {
     return phi::DataType::INT32;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_INT16) {
+    return phi::DataType::INT16;
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT8) {
     return phi::DataType::INT8;
   } else if (type == CCLDataType::CCL_DATA_TYPE_UINT8) {
@@ -90,8 +93,6 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
 
 inline std::string CCLDataTypeToString(const CCLDataType& ccl_dtype) {
   switch (ccl_dtype) {
-    case CCLDataType::UNDEFINED:
-      return "Undefined(ALL_DTYPE)";
     case CCLDataType::CCL_DATA_TYPE_FP64:
       return "float64";
     case CCLDataType::CCL_DATA_TYPE_FP32:
@@ -102,6 +103,8 @@ inline std::string CCLDataTypeToString(const CCLDataType& ccl_dtype) {
       return "int64";
     case CCLDataType::CCL_DATA_TYPE_INT32:
       return "int32";
+    case CCLDataType::CCL_DATA_TYPE_INT16:
+      return "int16";
     case CCLDataType::CCL_DATA_TYPE_INT8:
       return "int8";
     case CCLDataType::CCL_DATA_TYPE_UINT8:
@@ -109,7 +112,7 @@ inline std::string CCLDataTypeToString(const CCLDataType& ccl_dtype) {
     case CCLDataType::CCL_DATA_TYPE_BF16:
       return "bfloat16";
     default:
-      PD_THROW(
+      PADDLE_THROW(
           "Invalid enum ccl data type `", static_cast<int>(ccl_dtype), "`.");
   }
 }
