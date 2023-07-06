@@ -31,8 +31,8 @@ class IR_API ModuleOp : public ir::Op<ModuleOp> {
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
   void Verify() const;
-  Program *program() const;
-  Block *block() const;
+  Program *program();
+  Block *block();
 
   //
   // As the top operation, ModuleOp only support create&destroye through

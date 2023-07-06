@@ -52,13 +52,14 @@ class IR_API Program {
 
   void Print(std::ostream& os) const;
 
-  Block* block() const { return module_.block(); }
+  Block* block() { return module_.block(); }
+  const Block* block() const { return module_op().block(); }
 
-  Parameter* GetParameter(const std::string& name) const;
+  Parameter* GetParameter(const std::string& name);
   void SetParameter(const std::string& name,
                     std::unique_ptr<Parameter>&& parameter);
 
-  ParameterMap& parameters() const { return parameters_; }
+  ParameterMap& parameters() { return parameters_; }
   void set_parameters(ParameterMap&& parameters) {
     parameters_ = std::move(parameters);
   }

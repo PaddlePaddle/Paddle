@@ -286,7 +286,7 @@ void IrPrinter::PrintOpReturnType(const Operation* op) {
       [this]() { this->os << ", "; });
 }
 
-void Dialect::PrintOperation(const Operation* op, IrPrinter& printer) {
+void Dialect::PrintOperation(const Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
 

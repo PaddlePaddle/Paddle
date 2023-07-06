@@ -222,7 +222,12 @@ Program *Operation::GetParentProgram() {
   return module_op ? module_op.program() : nullptr;
 }
 
-Region &Operation::region(unsigned index) const {
+Region &Operation::region(unsigned index) {
+  assert(index < num_regions_ && "invalid region index");
+  return regions_[index];
+}
+
+const Region &Operation::region(unsigned index) const {
   assert(index < num_regions_ && "invalid region index");
   return regions_[index];
 }

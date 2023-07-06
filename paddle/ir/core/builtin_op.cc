@@ -22,7 +22,7 @@ namespace ir {
 
 const char *ModuleOp::attributes_name[attributes_num] = {"program"};
 
-Program *ModuleOp::program() const {
+Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
   auto iter = attr.find("program");
   if (iter == attr.end() || !iter->second) return nullptr;
@@ -30,7 +30,7 @@ Program *ModuleOp::program() const {
       iter->second.dyn_cast<PointerAttribute>().data());
 }
 
-Block *ModuleOp::block() const {
+Block *ModuleOp::block() {
   assert(operation() != nullptr);
   assert(operation()->num_regions() == 1);
   assert(operation()->region(0).size() == 1);
