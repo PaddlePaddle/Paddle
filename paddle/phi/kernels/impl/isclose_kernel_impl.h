@@ -162,11 +162,13 @@ void IscloseKernel(const Context& dev_ctx,
                    const Scalar& atol,
                    bool equal_nan,
                    DenseTensor* out) {
+  std::cerr << "her e " << atol.dtype() << std::endl;
   PADDLE_ENFORCE_EQ(
       atol.dtype(),
       DataType::FLOAT64,
       phi::errors::InvalidArgument("Input(Atol) type must be double"));
 
+  std::cerr << "rotl e " << atol.dtype() << std::endl;
   PADDLE_ENFORCE_EQ(
       rtol.dtype(),
       DataType::FLOAT64,

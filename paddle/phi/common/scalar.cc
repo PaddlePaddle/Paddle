@@ -26,6 +26,7 @@ namespace experimental {
 template <>
 ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
     : dtype_(tensor_in.dtype()) {  // NOLINT
+  std::cerr << "!!!!!! cosnt " << std::endl;
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
                     phi::errors::InvalidArgument(
@@ -42,6 +43,7 @@ ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
   } else {
     GetDataFromTensor(tensor_in);
   }
+  std::cerr << "construct fin" << std::endl;
 }
 
 bool operator==(const Scalar& lhs, const Scalar& rhs) {

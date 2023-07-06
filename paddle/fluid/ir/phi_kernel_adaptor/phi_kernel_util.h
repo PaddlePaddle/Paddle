@@ -146,7 +146,11 @@ void BuildPhiContext(
         phi::Attribute r1 = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
 
+        std::cerr << "!!" << std::endl;
+        auto t1 = inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>();
+        std::cerr << "sclar " << t1.dims() << "\t" << t1.dtype() << std::endl;
         ctx->EmplaceBackAttr(r1);
+
       } else {
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 tensor_attr_type));

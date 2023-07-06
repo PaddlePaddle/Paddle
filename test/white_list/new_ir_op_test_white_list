@@ -32,6 +32,7 @@ test_grid_sampler_op
 test_histogram_op
 test_huber_loss_op
 test_index_add_op
+test_isclose_op
 test_kron_op
 test_kthvalue_op
 test_label_smooth_op
@@ -55,5 +56,6 @@ test_temporal_shift_op
 test_triangular_solve_op
 test_trunc_op
 test_unfold_op
+test_unique
 test_unpool3d_op
 test_warprnnt_op
