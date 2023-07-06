@@ -33,6 +33,7 @@ void EmbeddingWithEltwiseAddXpuKernel(
   int emb_dim = tables[0]->dims()[1];
   std::vector<int> table_lens;
   std::vector<const float*> arg_tables;
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
   for (auto* table : tables) {
     auto& table_dims = table->dims();
     PADDLE_ENFORCE_EQ(
@@ -50,16 +51,15 @@ void EmbeddingWithEltwiseAddXpuKernel(
             emb_dim));
     table_lens.push_back(table_dims[0]);
     if (std::is_same<T, phi::dtype::float16>::value) {
-      DenseTensor table_data_fp32_t;
-      ctx.template Alloc<float>(&table_data_fp32_t,
-                                table->numel() * sizeof(float));
+      float* table_data_fp32_t = RAII_GUARD.alloc<float>(table->numel());
+      PADDLE_ENFORCE_XDNN_NOT_NULL(table_data_fp32_t);
       int r = xpu::cast<XPUType, float>(
           ctx.x_context(),
           reinterpret_cast<const XPUType*>(table->data<T>()),
-          table_data_fp32_t.data<float>(),
+          table_data_fp32_t,
           table->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-      arg_tables.push_back(table_data_fp32_t.data<float>());
+      arg_tables.push_back(static_cast<const float*>(table_data_fp32_t));
     } else {
       arg_tables.push_back(table->data<float>());
     }
