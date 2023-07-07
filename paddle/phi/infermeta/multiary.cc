@@ -1357,6 +1357,12 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   auto token_num = x_dims[0];
   auto dim = x_dims[1];
 
+  PADDLE_ENFORCE_GT(
+      rows, 0, phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
+
+  PADDLE_ENFORCE_GT(
+      cols, 0, phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+
   if (act_method == "geglu" || act_method == "swiglu") {
     PADDLE_ENFORCE_EQ(
         dim % 2,
@@ -1414,16 +1420,20 @@ void FusedBiasActInferMeta(const MetaTensor& x,
       FBADtypeCheck(bias, "bias", compute_dtype);
     }
 
-    if (compute_dtype == "bf16") {
-      out->set_dtype(phi::DataType::BFLOAT16);
-    } else if (compute_dtype == "fp16") {
-      out->set_dtype(phi::DataType::FLOAT16);
-    } else if (compute_dtype == "fp32") {
-      out->set_dtype(phi::DataType::FLOAT32);
+    if (quant_scale > 0) {
+      out->set_dtype(phi::DataType::INT8);
     } else {
-      PADDLE_THROW(
-          "In the case of quantization enabled with Input(x) INT32, "
-          "Attr(compute_dtype) must be set in (bf16, fp16, fp32)");
+      if (compute_dtype == "bf16") {
+        out->set_dtype(phi::DataType::BFLOAT16);
+      } else if (compute_dtype == "fp16") {
+        out->set_dtype(phi::DataType::FLOAT16);
+      } else if (compute_dtype == "fp32") {
+        out->set_dtype(phi::DataType::FLOAT32);
+      } else {
+        PADDLE_THROW(
+            "In the case of quantization enabled with Input(x) INT32, "
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32)");
+      }
     }
   } else {
     // x.dtype() != phi::DataType::INT32

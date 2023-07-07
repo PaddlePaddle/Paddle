@@ -301,7 +301,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
   if (dequant_scales != nullptr && quant_scale > 0) {
     DequantLoad<T> load_func(
         x.data<int32_t>(), dequant_scales->data<float>(), cols);
-    QuantStore<T> store_func(out->data<int8_t>(),
+    QuantStore<T> store_func(dev_ctx.template Alloc<int8_t>(out),
                              quant_round_type,
                              quant_scale,
                              quant_max_bound,
@@ -310,7 +310,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else if (dequant_scales == nullptr && quant_scale > 0) {
     Load<T> load_func(x.data<T>());
-    QuantStore<T> store_func(out->data<int8_t>(),
+    QuantStore<T> store_func(dev_ctx.template Alloc<int8_t>(out),
                              quant_round_type,
                              quant_scale,
                              quant_max_bound,
@@ -320,12 +320,12 @@ void DispatchComputeImpl(const Context &dev_ctx,
   } else if (dequant_scales != nullptr && quant_scale <= 0) {
     DequantLoad<T> load_func(
         x.data<int32_t>(), dequant_scales->data<float>(), cols);
-    Store<T> store_func(out->data<T>());
+    Store<T> store_func(dev_ctx.template Alloc<T>(out));
     ComputeImpl<T, Context, DequantLoad<T>, Store<T>, int32_t>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else {
     Load<T> load_func(x.data<T>());
-    Store<T> store_func(out->data<T>());
+    Store<T> store_func(dev_ctx.template Alloc<T>(out));
     ComputeImpl<T>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   }
@@ -348,10 +348,12 @@ void DispatchComputeImpl(const Context &dev_ctx,
                          DenseTensor *out) {
   bool use_glu = (act_method == "geglu" || act_method == "swiglu");
   const T *bias_data = bias == nullptr ? nullptr : bias->data<T>();
+
   if (dequant_scales != nullptr && quant_scale > 0) {
+    int8_t *out_data = dev_ctx.template Alloc<int8_t>(out);
     DequantLoad<T> load_func(
         x.data<int32_t>(), dequant_scales->data<float>(), cols);
-    QuantStore<T, true> store_func(out->data<int8_t>(),
+    QuantStore<T, true> store_func(dev_ctx.template Alloc<int8_t>(out),
                                    shift->data<T>(),
                                    smooth->data<T>(),
                                    use_glu ? cols / 2 : cols,
@@ -363,7 +365,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else if (dequant_scales == nullptr && quant_scale > 0) {
     Load<T> load_func(x.data<T>());
-    QuantStore<T, true> store_func(out->data<int8_t>(),
+    QuantStore<T, true> store_func(dev_ctx.template Alloc<int8_t>(out),
                                    shift->data<T>(),
                                    smooth->data<T>(),
                                    use_glu ? cols / 2 : cols,
@@ -376,7 +378,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
   } else if (dequant_scales != nullptr && quant_scale <= 0) {
     DequantLoad<T> load_func(
         x.data<int32_t>(), dequant_scales->data<float>(), cols);
-    Store<T, true> store_func(out->data<T>(),
+    Store<T, true> store_func(dev_ctx.template Alloc<T>(out),
                               shift->data<T>(),
                               smooth->data<T>(),
                               use_glu ? cols / 2 : cols);
@@ -384,7 +386,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else {
     Load<T> load_func(x.data<T>());
-    Store<T, true> store_func(out->data<T>(),
+    Store<T, true> store_func(dev_ctx.template Alloc<T>(out),
                               shift->data<T>(),
                               smooth->data<T>(),
                               use_glu ? cols / 2 : cols);
@@ -459,7 +461,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   } else {
     const T *bias_data = bias_p == nullptr ? nullptr : bias_p->data<T>();
     Load<T> load_func(x.data<T>());
-    Store<T> store_func(out->data<T>());
+    Store<T> store_func(dev_ctx.template Alloc<T>(out));
     ComputeImpl<T>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   }
