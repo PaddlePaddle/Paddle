@@ -116,15 +116,15 @@ class QuantDequantTest(unittest.TestCase):
         return copy_program
 
     def _save_models(
-        self, dirname, feeded_var_names, target_vars, executor, program, scope
+        self, dirname, feeded_vars, target_vars, executor, program, scope
     ):
         with fluid.scope_guard(scope):
-            fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 dirname,
-                feeded_var_names,
+                feeded_vars,
                 target_vars,
                 executor,
-                program,
+                program=program,
                 clip_extra=True,
             )
 
@@ -285,7 +285,7 @@ class QuantDequantTest(unittest.TestCase):
 
         self._save_models(
             self.path,
-            list(self.feeds.keys()),
+            list(self.feeds.values()),
             self.fetch_list,
             executor,
             self.main_program,

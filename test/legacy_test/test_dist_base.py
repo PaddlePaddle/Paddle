@@ -458,12 +458,12 @@ class TestDistRunnerBase:
             )
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
             feeded_var_names = [var.name for var in feed_var_list]
-            fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 infer_save_dir_fluid,
-                feeded_var_names,
+                feed_var_list,
                 [avg_cost],
                 exe,
-                fleet._origin_program,
+                program=fleet._origin_program,
             )
             fleet.save_inference_model(
                 exe, infer_save_dir_fleet, feeded_var_names, [avg_cost]

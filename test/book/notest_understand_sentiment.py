@@ -110,8 +110,8 @@ def train(
                 print("cost=" + str(cost_val) + " acc=" + str(acc_val))
                 if cost_val < 0.4 and acc_val > 0.8:
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(
-                            save_dirname, ["words"], prediction, exe
+                        paddle.static.io.save_inference_model(
+                            save_dirname, data, prediction, exe
                         )
                     return
                 if math.isnan(float(cost_val)):

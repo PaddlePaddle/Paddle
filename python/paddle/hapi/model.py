@@ -2268,17 +2268,15 @@ class Model:
 
             infer_prog = prog.clone(for_test=True)
 
-            input_names = [v.name for v in self._adapter._input_vars['test']]
+            inputs = list(self._adapter._input_vars['test'])
             endpoints = self._adapter._endpoints['test']['output']
 
-            fluid.io.save_inference_model(
+            paddle.static.save_inference_model(
                 model_path,
-                input_names,
+                inputs,
                 endpoints,
                 self._adapter._executor,
-                main_program=infer_prog,
-                model_filename=model_filename,
-                params_filename=params_filename,
+                program=infer_prog,
             )
 
     def _run_one_epoch(

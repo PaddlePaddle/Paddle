@@ -131,7 +131,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             feed_target_names,
             fetch_targets,
         ] = paddle.static.io.load_inference_model(
-            dirname=model_path,
+            path_prefix=model_path,
             executor=exe,
             model_filename=model_filename,
             params_filename=params_filename,
