@@ -87,7 +87,7 @@ class SPMDRuleBase {
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
         tensor_axes_to_dim_pairs,
-    const bool merge_conflicts);
+    const bool merge_conflicts = true);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A repicated dimension could be merged by any sharded dimension.
