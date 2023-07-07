@@ -16,6 +16,7 @@ test_conv3d_transpose_part2_op
 test_cumprod_op
 test_dataloader_dataset
 test_deformable_conv_op
+test_diag_v2
 test_eigvalsh_op
 test_elementwise_div_op
 test_elementwise_div_op
