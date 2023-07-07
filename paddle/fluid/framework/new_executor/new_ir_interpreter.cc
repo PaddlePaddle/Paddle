@@ -1153,7 +1153,8 @@ void NewIRInterpreter::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
-  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+  if (instr.DeviceContext().GetPlace().GetType() ==
+      phi::AllocationType::CUSTOM) {
     return;
   }
   platform::RecordEvent record(

@@ -1136,7 +1136,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     return;
   }
 
-  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+  if (instr.DeviceContext().GetPlace().GetType() ==
+      phi::AllocationType::CUSTOM) {
     return;
   }
 
