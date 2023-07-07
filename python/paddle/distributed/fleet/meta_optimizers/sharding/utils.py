@@ -276,14 +276,6 @@ def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
     """
     _insert_sync_calc_op
     """
-    op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(
-        insert_idx,
-        type='c_sync_calc_stream',
-        inputs={'X': calc_dep_vars},
-        outputs={'Out': calc_dep_vars},
-        attrs={OP_ROLE_KEY: op_role},
-    )
     return
 
 
@@ -291,14 +283,14 @@ def insert_sync_comm_op(block, insert_idx, ring_id, comm_dep_vars):
     """
     insert sync_comm_op for single var
     """
-    op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(
-        insert_idx,
-        type='c_sync_comm_stream',
-        inputs={'X': comm_dep_vars},
-        outputs={'Out': comm_dep_vars},
-        attrs={'ring_id': ring_id, OP_ROLE_KEY: op_role},
-    )
+    # op_role = get_valid_op_role(block, insert_idx)
+    # block._insert_op_without_sync(
+    #     insert_idx,
+    #     type='c_sync_comm_stream',
+    #     inputs={'X': comm_dep_vars},
+    #     outputs={'Out': comm_dep_vars},
+    #     attrs={'ring_id': ring_id, OP_ROLE_KEY: op_role},
+    # )
     return 1
 
 
@@ -310,14 +302,6 @@ def insert_sync_comm_ops(block, insert_idx, ring_id, comm_dep_vars):
     if len(comm_dep_vars) == 0:
         return 0
 
-    op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(
-        insert_idx,
-        type='c_sync_comm_stream',
-        inputs={'X': comm_dep_vars},
-        outputs={'Out': comm_dep_vars},
-        attrs={'ring_id': int(ring_id), OP_ROLE_KEY: op_role},
-    )
     return 1
 
 
@@ -397,12 +381,12 @@ def insert_allreduce_ops(
         for var in allreduce_vars:
             block._insert_op_without_sync(
                 insert_idx,
-                type='c_allreduce_sum',
-                inputs={'X': var},
-                outputs={'Out': var},
+                type='all_reduce',
+                inputs={'x': var},
+                outputs={'out': var},
                 attrs={
                     'ring_id': ring_id,
-                    'use_calc_stream': use_calc_stream,
+                    'reduce_type': 0,
                     OP_ROLE_KEY: op_role,
                 },
             )
@@ -506,24 +490,18 @@ def insert_fused_allreduce_ops(
 
     for fused_var in fused_vars:
         block._insert_op_without_sync(
-            insert_idx + insert_num,
-            type='c_allreduce_sum',
-            inputs={'X': fused_var},
-            outputs={'Out': fused_var},
+            insert_idx,
+            type='all_reduce',
+            inputs={'x': fused_var},
+            outputs={'out': fused_var},
             attrs={
                 'ring_id': ring_id,
-                'use_calc_stream': use_calc_stream,
+                'reduce_type': 0,
                 OP_ROLE_KEY: op_role,
             },
         )
         if not use_calc_stream:
-            block._insert_op_without_sync(
-                insert_idx + insert_num,
-                type='c_sync_calc_stream',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
-                attrs={OP_ROLE_KEY: op_role},
-            )
+            pass
 
 
 def insert_fused_reduce_ops(
@@ -560,24 +538,16 @@ def insert_fused_reduce_ops(
         for fused_var in fused_vars:
             block._insert_op_without_sync(
                 insert_idx + insert_num,
-                type='c_reduce_sum',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
+                type='reduce',
+                inputs={'x': fused_var},
+                outputs={'out': fused_var},
                 attrs={
                     'ring_id': ring_id,
                     'root_id': root_id,
-                    'use_calc_stream': use_calc_stream,
+                    'reduce_type': 0,
                     OP_ROLE_KEY: op_role,
                 },
             )
-            if not use_calc_stream:
-                block._insert_op_without_sync(
-                    insert_idx + insert_num,
-                    type='c_sync_calc_stream',
-                    inputs={'X': fused_var},
-                    outputs={'Out': fused_var},
-                    attrs={OP_ROLE_KEY: op_role},
-                )
 
     return [] if rank is None else device_to_vars[rank]
 
@@ -634,13 +604,13 @@ def insert_reduce_ops(
             grad_in_this_device.append(var)
         block._insert_op_without_sync(
             insert_idx,
-            type='c_reduce_sum',
-            inputs={'X': var},
-            outputs={'Out': var},
+            type='reduce',
+            inputs={'x': var},
+            outputs={'out': var},
             attrs={
                 'ring_id': ring_id,
                 'root_id': root_id,
-                'use_calc_stream': use_calc_stream,
+                'reduce_type': 0,
                 OP_ROLE_KEY: op_role,
             },
         )
@@ -682,24 +652,15 @@ def insert_fused_broadcast_param_ops(
         for fused_var in fused_vars:
             block._insert_op_without_sync(
                 insert_idx + insert_num,
-                type='c_broadcast',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
+                type='broadcast',
+                inputs={'x': fused_var},
+                outputs={'out': fused_var},
                 attrs={
                     'ring_id': ring_id,
                     'root': root_id,
-                    'use_calc_stream': use_calc_stream,
                     OP_ROLE_KEY: op_role,
                 },
             )
-            if not use_calc_stream:
-                block._insert_op_without_sync(
-                    insert_idx + insert_num,
-                    type='c_sync_calc_stream',
-                    inputs={'X': fused_var},
-                    outputs={'Out': fused_var},
-                    attrs={OP_ROLE_KEY: op_role},
-                )
 
     return [] if rank is None else device_to_vars[rank]
 
@@ -744,13 +705,12 @@ def insert_broadcast_param_ops(
             param_in_this_device.append(param)
         block._insert_op_without_sync(
             insert_idx,
-            type='c_broadcast',
-            inputs={'X': param},
-            outputs={'Out': param},
+            type='broadcast',
+            inputs={'x': param},
+            outputs={'out': param},
             attrs={
                 'ring_id': ring_id,
                 'root': root_id,
-                'use_calc_stream': use_calc_stream,
                 OP_ROLE_KEY: op_role,
             },
         )
@@ -792,13 +752,12 @@ def fuse_opt_broadcast_param_ops(
         for fused_var in fused_vars:
             block._insert_op_without_sync(
                 insert_idx + insert_num,
-                type='c_broadcast',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
+                type='broadcast',
+                inputs={'x': fused_var},
+                outputs={'out': fused_var},
                 attrs={
                     'ring_id': ring_id,
                     'root': root_id,
-                    'use_calc_stream': True,
                     OP_ROLE_KEY: op_role,
                 },
             )
@@ -863,9 +822,9 @@ def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
     for broadcast_name, root_device in broadcast2root:
         block._insert_op_without_sync(
             insert_idx,
-            type='c_broadcast',
-            inputs={'X': broadcast_name},
-            outputs={'Out': broadcast_name},
+            type='broadcast',
+            inputs={'x': broadcast_name},
+            outputs={'out': broadcast_name},
             attrs={
                 'ring_id': ring_id,
                 'root': root_device,
@@ -1076,12 +1035,12 @@ def append_naive_sync(block, sync_var, ring_id):
         },
     )
     block.append_op(
-        type='c_allreduce_sum',
-        inputs={'X': sync_var},
-        outputs={'Out': sync_var},
+        type='all_reduce',
+        inputs={'x': sync_var},
+        outputs={'out': sync_var},
         attrs={
             'ring_id': ring_id,
-            'use_calc_stream': True,
+            'reduce_type': 0,
             OP_ROLE_KEY: OpRole.Forward,
         },
     )

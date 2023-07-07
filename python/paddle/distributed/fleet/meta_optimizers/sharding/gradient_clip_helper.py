@@ -119,13 +119,13 @@ class GradientClipHelper:
                     # this allreduce should not overlap with calc and should be scheduled in calc stream
                     block._insert_op_without_sync(
                         idx + idx_offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': sum_res},
-                        outputs={'Out': sum_res},
+                        type='all_reduce',
+                        inputs={'x': sum_res},
+                        outputs={'out': sum_res},
                         attrs={
                             'ring_id': ring_id,
                             'op_namescope': "/gradient_clip_model_parallelism",
-                            'use_calc_stream': True,
+                            'reduce_type': 0,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
@@ -250,13 +250,13 @@ class GradientClipHelper:
             idx = idx + 1
             block._insert_op_without_sync(
                 idx,
-                type='c_allreduce_sum',
-                inputs={'X': var},
-                outputs={'Out': var},
+                type='all_reduce',
+                inputs={'x': var},
+                outputs={'out': var},
                 attrs={
                     'ring_id': ring_id,
+                    'reduce_type': 0,
                     'op_namescope': "/gradient_clip_model_parallelism",
-                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
