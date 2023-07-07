@@ -92,6 +92,40 @@ void AddActXPUInferMeta(const MetaTensor& x,
   out_max->set_layout(x.layout());
 }
 
+void AddLayernormXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int64_t m,
+                              int64_t n,
+                              float epsilon,
+                              MetaTensor* out,
+                              MetaTensor* mean,
+                              MetaTensor* variance,
+                              MetaTensor* z_add) {
+  int axis = -1;
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims != y_dims) {
+    auto out_dims = BroadCastInferShape(x_dims, y_dims, axis);
+    out->set_dims(out_dims);
+  } else {
+    out->set_dims(x_dims);
+  }
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+  mean->set_dims(phi::make_ddim({m}));
+  mean->set_dtype(DataType::FLOAT32);
+  mean->set_layout(x.layout());
+  variance->set_dims(phi::make_ddim({m}));
+  variance->set_dtype(DataType::FLOAT32);
+  variance->set_layout(x.layout());
+  z_add->set_dims(phi::make_ddim({m, n}));
+  z_add->set_dtype(x.dtype());
+  z_add->set_layout(x.layout());
+}
+
 inline int ConvOutSize(int input_size,
                        int filter_size,
                        int dilation,
