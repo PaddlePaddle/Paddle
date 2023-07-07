@@ -60,8 +60,12 @@ class InferencePassTest(unittest.TestCase):
             # save models as combined to ensure that
             # there won't be too many useless files
             # after finishing a couple of tests.
-            fluid.io.save_inference_model(
-                dirname, feeded_var_names, target_vars, executor, program
+            paddle.static.io.save_inference_model(
+                dirname,
+                self.feeds[feeded_var_names],
+                target_vars,
+                executor,
+                program=program,
             )
 
     def _get_paddle_outs(self, executor, program, scope):

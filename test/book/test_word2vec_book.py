@@ -159,9 +159,9 @@ def train(
                 )
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None and not pure_bf16:
-                        fluid.io.save_inference_model(
+                        paddle.static.io.save_inference_model(
                             save_dirname,
-                            ['firstw', 'secondw', 'thirdw', 'forthw'],
+                            [first_word, second_word, third_word, forth_word],
                             [predict_word],
                             exe,
                         )

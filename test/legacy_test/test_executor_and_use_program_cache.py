@@ -88,13 +88,12 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
         config = RNNConfig("test", rnn_model)
         with fluid.scope_guard(fluid.Scope()):
             self.train(config, use_program_cache)
-            fluid.io.save_inference_model(
-                main_program=self.main_program,
-                feeded_var_names=self.feed_order,
-                target_vars=[self.loss, self.last_hidden, self.last_cell],
+            paddle.static.io.save_inference_model(
+                path_prefix="padding_rnn." + rnn_model + ".inference_model",
+                feed_vars=self.feed_order,
+                fetch_vars=[self.loss, self.last_hidden, self.last_cell],
                 executor=self.exe,
-                dirname="padding_rnn." + rnn_model + ".inference_model",
-                params_filename="__params__",
+                program=self.main_program,
             )
 
     def test_inference_output(self):
