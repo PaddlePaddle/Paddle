@@ -987,11 +987,7 @@ def add_sync_comm(program, sharding_ring_id):
             for input_name in op.desc.input_arg_names():
                 not_sync_vars.add(input_name)
         if op.type == "c_sync_comm_stream":
-            print(
-                f"debug op: {op},  input: {op.desc.input_arg_names()}, not_sync_vars: {not_sync_vars}"
-            )
             for input_name in op.desc.input_arg_names():
-                print(f"debug remove input_name: {input_name}")
                 not_sync_vars.remove(input_name)
     if not_sync_vars:
         block.append_op(
