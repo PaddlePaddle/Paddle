@@ -208,8 +208,6 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
               .get()
               .get();
       SetDeviceCommContext(op.get(), dev_ctx);
-      VLOG(0) << "debug update comm context for ring_id " << ring_id
-              << ", op: " << op_type;
       return dev_ctx;
     }
 #endif

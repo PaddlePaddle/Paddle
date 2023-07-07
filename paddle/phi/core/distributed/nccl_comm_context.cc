@@ -29,14 +29,8 @@ namespace distributed {
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
-NCCLCommContext::NCCLCommContext(int rank,
-                                 int size,
-                                 ncclUniqueId nccl_id,
-                                 int ring_id)
+NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
     : CommContext(rank, size) {
-  ring_id_ = ring_id;
-  VLOG(0) << "debug NCCLCommContext init rank " << rank << ", GetRank "
-          << GetRank() << ", ring_id: " << ring_id_;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
 }
@@ -116,8 +110,6 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
-  VLOG(0) << "debug ring_id :" << ring_id_ << " rank " << GetRank() << " send "
-          << phi::product(in_tensor.dims()) << " to " << peer;
   phi::distributed::CommStaticCheck::CheckShape(in_tensor, rank_, size_);
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -131,16 +123,14 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                              peer,
                              nccl_comm_,
                              stream));
-  VLOG(0) << "debug ring_id:" << ring_id_ << " rank " << GetRank() << " send "
-          << phi::product(in_tensor.dims()) << " to " << peer;
+  VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
+          << " to " << peer;
 }
 
 void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
-  VLOG(0) << "debug ring_id:" << ring_id_ << " rank " << GetRank() << " recv "
-          << phi::product(out_tensor->dims()) << " from " << peer;
   phi::distributed::CommStaticCheck::CheckShape(*out_tensor, rank_, size_);
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);
@@ -153,7 +143,7 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                              peer,
                              nccl_comm_,
                              stream));
-  VLOG(0) << "debug ring_id:" << ring_id_ << " rank " << GetRank() << " recv "
+  VLOG(3) << "rank " << GetRank() << " recv "
           << phi::product(out_tensor->dims()) << " from " << peer;
 }
 
