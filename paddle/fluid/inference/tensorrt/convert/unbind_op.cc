@@ -31,7 +31,6 @@ class UnbindOpConverter : public OpConverter {
     auto in_shape_tensor = Shape(input_x_tensor);
     auto rank = in_dims.nbDims;
     int axis = 0;
-    std::cout << std::endl;
     if (op_desc.HasAttr("axis")) {
       axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
       if (axis < 0) {
