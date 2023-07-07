@@ -242,7 +242,7 @@ def try_load_model_vars(
             inference_program,
             feed_target_names,
             fetch_targets,
-        ) = fluid.io.load_inference_model(
+        ) = paddle.static.io.load_inference_model(
             dump_dir,
             exe,
             model_filename=dump_prog_fn,

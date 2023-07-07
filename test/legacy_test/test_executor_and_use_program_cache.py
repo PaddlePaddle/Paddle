@@ -134,7 +134,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
                         inference_program,
                         feed_target_names,
                         fetch_targets,
-                    ] = fluid.io.load_inference_model(
+                    ] = paddle.static.io.load_inference_model(
                         save_dirname, self.exe, params_filename="__params__"
                     )
 

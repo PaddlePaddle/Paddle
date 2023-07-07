@@ -173,7 +173,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                     inference_program,
                     feed_target_names,
                     fetch_targets,
-                ] = paddle.fluid.io.load_inference_model(model_path, exe)
+                ] = paddle.static.io.load_inference_model(model_path, exe)
             else:
                 [
                     inference_program,

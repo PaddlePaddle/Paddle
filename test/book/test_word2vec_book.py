@@ -205,7 +205,7 @@ def infer(target, save_dirname=None):
     exe = fluid.Executor(place)
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -213,7 +213,7 @@ def infer(target, save_dirname=None):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
