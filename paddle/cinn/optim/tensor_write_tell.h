@@ -26,12 +26,16 @@ struct TensorWriteTeller : public ir::IRMutator<const Expr*> {
   //! Collect the write info in \p op.
   void Collect(const Expr* op) { Visit(op, op); }
 
-  bool IsWrite(const std::string& tensor_name) const { return tensor_written.count(tensor_name); }
+  bool IsWrite(const std::string& tensor_name) const {
+    return tensor_written.count(tensor_name);
+  }
 
  private:
   std::set<std::string> tensor_written;
 
-  void Visit(const Expr* expr, const Expr* op) override { IRMutator::Visit(expr, op); }
+  void Visit(const Expr* expr, const Expr* op) override {
+    IRMutator::Visit(expr, op);
+  }
 
   void Visit(const ir::Store* expr, const Expr* op) override {
     auto* node = op->As<ir::Store>();

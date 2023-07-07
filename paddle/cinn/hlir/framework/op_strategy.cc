@@ -17,9 +17,10 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-std::shared_ptr<OpImpl> OpStrategy::SelectImpl(const std::shared_ptr<OpStrategy>& strategy) {
+std::shared_ptr<OpImpl> OpStrategy::SelectImpl(
+    const std::shared_ptr<OpStrategy>& strategy) {
   //! should get the host info from global environment.
-  std::string curr_condition  = "default";
+  std::string curr_condition = "default";
   std::shared_ptr<OpImpl> res = nullptr;
   for (auto& spec : strategy->specializations) {
     if (spec->condition == "default") {
@@ -30,11 +31,15 @@ std::shared_ptr<OpImpl> OpStrategy::SelectImpl(const std::shared_ptr<OpStrategy>
       }
     }
   }
-  CHECK(res) << "There is no available strategy implementation! SelectImpl failed!";
+  CHECK(res)
+      << "There is no available strategy implementation! SelectImpl failed!";
   return res;
 }
 
-void OpStrategy::AddImpl(CINNCompute fcompute, CINNSchedule fschedule, std::string name, int plevel) {
+void OpStrategy::AddImpl(CINNCompute fcompute,
+                         CINNSchedule fschedule,
+                         std::string name,
+                         int plevel) {
   //! TODO(haozech) : here curr_cond should get the condition from outside.
   //! Expected : auto curr_cond = SpecializedCondition::Current();
   std::string curr_condition = "default";
@@ -45,7 +50,7 @@ void OpStrategy::AddImpl(CINNCompute fcompute, CINNSchedule fschedule, std::stri
     }
   }
   std::shared_ptr<OpSpec> n = std::make_shared<OpSpec>();
-  n->condition              = curr_condition;
+  n->condition = curr_condition;
   n->AddImpl(fcompute, fschedule, std::move(name), plevel);
   this->specializations.push_back(n);
 }

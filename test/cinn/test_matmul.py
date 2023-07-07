@@ -15,13 +15,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
+
 import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn import Target
-from cinn import utils
+import numpy as np
+from cinn import Target, ir, lang, runtime, utils
 from cinn.poly import create_stages
 
 
@@ -50,7 +47,7 @@ class TestMamul(unittest.TestCase):
         matmul(args)
         cd = c.numpy()
         cd_target = c_target.numpy()
-        self.assertTrue(np.allclose(cd, cd_target, atol=1e-4))
+        np.testing.assert_allclose(cd, cd_target, atol=1e-4, rtol=1e-5)
         print(utils.HostEventRecorder.table())
 
     def test_matmul_tile(self):
@@ -62,11 +59,11 @@ class TestMamul(unittest.TestCase):
         matmul(args)
         cd = c.numpy()
         cd_target = c_target.numpy()
-        self.assertTrue(np.allclose(cd, cd_target, atol=1e-4))
+        np.testing.assert_allclose(cd, cd_target, atol=1e-4, rtol=1e-5)
 
 
 def create_matmul_basic(target, m, n, k):
-    m, n, k = [ir.Expr(_) for _ in (m, n, k)]
+    m, n, k = (ir.Expr(_) for _ in (m, n, k))
 
     a = lang.Placeholder("float32", "A", [m, k])
     b = lang.Placeholder("float32", "B", [k, n])
@@ -93,7 +90,7 @@ def create_matmul_basic(target, m, n, k):
 
 
 def create_matmul_tile(target, m, n, k):
-    m, n, k = [ir.Expr(_) for _ in [m, n, k]]
+    m, n, k = (ir.Expr(_) for _ in [m, n, k])
     a = lang.Placeholder("float32", "A", [m, k])
     b = lang.Placeholder("float32", "B", [k, n])
 

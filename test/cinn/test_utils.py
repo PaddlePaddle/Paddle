@@ -14,18 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import math
-import numpy as np
-import cinn
-from cinn import frontend
-from cinn import runtime
-from cinn import lang
-from cinn import framework
-from cinn import ir
-from cinn import common
-from cinn.poly import create_stages
 import logging
+import unittest
+
+import cinn
+import numpy as np
+from cinn import common, framework, ir, lang, runtime
 
 
 class SingleOpTester(unittest.TestCase):
@@ -47,7 +41,7 @@ class SingleOpTester(unittest.TestCase):
         '''
         create the target of the operator's execution output.
         '''
-        raise NotImplemented
+        raise NotImplementedError
 
     def test_op(self):
         '''
@@ -101,7 +95,7 @@ class SingleOpTester(unittest.TestCase):
             )
         for in_data in temp_inputs:
             args.append(runtime.cinn_pod_value_t(in_data))
-        if output_shapes == None:
+        if output_shapes is None:
             correct_result, output_shapes = self.create_target_data(
                 inputs_data, attrs
             )
@@ -146,9 +140,9 @@ class SingleOpTester(unittest.TestCase):
         fn(args)
 
         out_result = out[len(out) - 1].numpy()
-        if out_index != None:
+        if out_index is not None:
             out_result = out[out_index].numpy()
-        self.assertTrue(np.allclose(out_result, correct_result, atol=1e-4))
+        np.testing.assert_allclose(out_result, correct_result, atol=1e-4)
 
     def __lower(self, op_name, inputs, output_shapes, attrs):
         types = [common.Float(32)]

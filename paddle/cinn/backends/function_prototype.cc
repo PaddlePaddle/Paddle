@@ -43,9 +43,12 @@ bool FunctionProto::Match(const ir::Call *op) const {
 
 void FunctionProto::AssertMatch(const ir::Call *op) const {
   CHECK_EQ(name, op->name);
-  CHECK_EQ(ret_type, op->type()) << "function proto " << name << " check failed";
-  CHECK_EQ(op->read_args.size(), readonly_arg_types.size()) << "function proto " << name << " check failed";
-  CHECK_EQ(op->write_args.size(), mutable_arg_types.size()) << "function proto " << name << " check failed";
+  CHECK_EQ(ret_type, op->type())
+      << "function proto " << name << " check failed";
+  CHECK_EQ(op->read_args.size(), readonly_arg_types.size())
+      << "function proto " << name << " check failed";
+  CHECK_EQ(op->write_args.size(), mutable_arg_types.size())
+      << "function proto " << name << " check failed";
 
   auto get_type = [](Expr u) {
     if (u.as_tensor() || u.as_buffer()) {
@@ -73,9 +76,11 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
 void FunctionProto::CheckValid() {
   if (ret_type.is_void()) {
     CHECK(!mutable_arg_types.empty())
-        << "A void function should have at least one mutable argument to output something";
+        << "A void function should have at least one mutable argument to "
+           "output something";
   } else {
-    CHECK(mutable_arg_types.empty()) << "A function with return should not have mutable argument";
+    CHECK(mutable_arg_types.empty())
+        << "A function with return should not have mutable argument";
   }
 }
 
@@ -109,7 +114,8 @@ FunctionProto *FunctionProtoRegistry::Lookup(const std::string &name) {
   return nullptr;
 }
 
-FunctionProto *FunctionProtoRegistry::Register(absl::string_view name, FunctionProto *x) {
+FunctionProto *FunctionProtoRegistry::Register(absl::string_view name,
+                                               FunctionProto *x) {
 #ifdef CINN_WITH_DEBUG
   if (FLAGS_verbose_function_register) {
     RAW_LOG_INFO("Register function prototype  [%s]", name.data());

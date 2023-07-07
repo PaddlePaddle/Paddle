@@ -15,10 +15,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_mapper_test import OpMapperTest, logger
+
+from op_mapper_test import OpMapperTest
+
 import paddle
-import functools
 
 
 class TestLayerNormOp(OpMapperTest):

@@ -39,10 +39,10 @@ Program CreateAddProgram() {
   constexpr int N = 24;
 
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {M, N}, "A");
-  auto b       = builder.CreateInput(Float(32), {M, N}, "B");
-  auto c       = builder.Add(a, b);
-  auto d       = builder.Add(a, c);
+  auto a = builder.CreateInput(Float(32), {M, N}, "A");
+  auto b = builder.CreateInput(Float(32), {M, N}, "B");
+  auto c = builder.Add(a, b);
+  auto d = builder.Add(a, c);
   auto program = builder.Build();
 
   return program;
@@ -55,7 +55,7 @@ TEST(TaskCreator, Basic) {
   Target target = common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
-  auto graph   = std::make_shared<hlir::framework::Graph>(prog, target);
+  auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
 
   TaskCreator task_creator;
   std::vector<TuneTask> tasks = task_creator.CreateTuneTaskOpLevel(graph.get());

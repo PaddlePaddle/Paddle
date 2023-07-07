@@ -33,7 +33,8 @@ namespace cinn {
 namespace poly {
 
 /**
- * Schedule a single group with iterator domain considered and follow the stage order.
+ * Schedule a single group with iterator domain considered and follow the stage
+ * order.
  */
 class PolyGroupScheduler : public SchedulerBase {
  public:
@@ -49,7 +50,8 @@ class PolyGroupScheduler : public SchedulerBase {
 
 /**
  * PolyScheduler - Perform schedule on polyhedral model.
- * It takes a normal schedule as input, merge two stages automatically if they have the same domain.
+ * It takes a normal schedule as input, merge two stages automatically if they
+ * have the same domain.
  */
 class PolyScheduler : public SchedulerBase {
  public:
@@ -61,8 +63,9 @@ class PolyScheduler : public SchedulerBase {
    *   '{ S[i,j] -> [i_outer, i_inner, j]: i_outer=floor(i/4) and i_inner=i%4 }'
    * that's OK.
    */
-  explicit PolyScheduler(const std::vector<Stage *> &stages,
-                         const std::vector<std::pair<std::string, std::string>> &extra_links = {});
+  explicit PolyScheduler(
+      const std::vector<Stage *> &stages,
+      const std::vector<std::pair<std::string, std::string>> &extra_links = {});
 
   /**
    * Build and create schedule.

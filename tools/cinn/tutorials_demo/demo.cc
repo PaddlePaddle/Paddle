@@ -40,9 +40,9 @@ int run() {
 
   // test x86
   auto module = create_module();  // NOLINT
-  auto& A     = std::get<0>(module);
-  auto& B     = std::get<1>(module);
-  auto& C     = std::get<2>(module);
+  auto& A = std::get<0>(module);
+  auto& B = std::get<1>(module);
+  auto& C = std::get<2>(module);
 
   auto stages = CreateStages({C});
 
@@ -60,9 +60,15 @@ int run() {
     return 1;
   }
 
-  auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_zero().Build();
+  auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                 .set_random()
+                 .Build();
+  auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                 .set_random()
+                 .Build();
+  auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                 .set_zero()
+                 .Build();
 
   auto args = common::ArgsBuilder().Add(Ab).Add(Bb).Add(Cb).Build();
   reinterpret_cast<void (*)(void*, int)>(fnp)(args.data(), args.size());

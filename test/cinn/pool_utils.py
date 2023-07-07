@@ -15,8 +15,9 @@
 # limitations under the License.
 
 import math
-import numpy as np
 import sys
+
+import numpy as np
 
 
 def pool2d(np_data, attrs, dtype="float32"):
@@ -40,7 +41,7 @@ def pool2d(np_data, attrs, dtype="float32"):
         elif key == "data_format":
             data_format = attrs.get_attr("data_format")
         else:
-            raise ValueError("attr_store {} is not supported".format(key))
+            raise ValueError(f"attr_store {key} is not supported")
 
     if data_format == "NCHW":
         in_n, in_c, in_h, in_w = in_shape = np_data.shape
@@ -51,7 +52,7 @@ def pool2d(np_data, attrs, dtype="float32"):
         height_axis = 1
         width_axis = 2
     else:
-        raise ValueError("data_format {} is not supported".format(data_format))
+        raise ValueError(f"data_format {data_format} is not supported")
 
     if isinstance(kernel_size, int):
         k_h = k_w = kernel_size
@@ -204,7 +205,7 @@ def pool2d(np_data, attrs, dtype="float32"):
                         axis=(height_axis, width_axis),
                     )
     else:
-        raise ValueError("pool type {} is not supported".format(pool_type))
+        raise ValueError(f"pool type {pool_type} is not supported")
 
     ret_np = np.maximum(ret_np, fill_value)
     return ret_np, [out_shape]
@@ -231,7 +232,7 @@ def pool3d(np_data, attrs, dtype="float32"):
         elif key == "data_format":
             data_format = attrs.get_attr("data_format")
         else:
-            raise ValueError("attr_store {} is not supported".format(key))
+            raise ValueError(f"attr_store {key} is not supported")
 
     if data_format == "NCDHW":
         in_n, in_c, in_d, in_h, in_w = in_shape = np_data.shape
@@ -244,7 +245,7 @@ def pool3d(np_data, attrs, dtype="float32"):
         height_axis = 2
         width_axis = 3
     else:
-        raise ValueError("data_format {} is not supported".format(data_format))
+        raise ValueError(f"data_format {data_format} is not supported")
 
     if isinstance(kernel_size, int):
         k_d = k_h = k_w = kernel_size
@@ -415,7 +416,7 @@ def pool3d(np_data, attrs, dtype="float32"):
                             axis=(depth_axis, height_axis, width_axis),
                         )
     else:
-        raise ValueError("pool type {} is not supported".format(pool_type))
+        raise ValueError(f"pool type {pool_type} is not supported")
 
     ret_np = np.maximum(ret_np, fill_value)
     return ret_np, [out_shape]
@@ -442,7 +443,7 @@ def pool1d(np_data, attrs, dtype="float32"):
         elif key == "data_format":
             data_format = attrs.get_attr("data_format")
         else:
-            raise ValueError("attr_store {} is not supported".format(key))
+            raise ValueError(f"attr_store {key} is not supported")
 
     if data_format == "NCW":
         in_n, in_c, in_w = in_shape = np_data.shape
@@ -451,7 +452,7 @@ def pool1d(np_data, attrs, dtype="float32"):
         in_n, in_w, in_c = in_shape = np_data.shape
         width_axis = 1
     else:
-        raise ValueError("data_format {} is not supported".format(data_format))
+        raise ValueError(f"data_format {data_format} is not supported")
 
     if isinstance(kernel_size, int):
         k_w = kernel_size
@@ -538,7 +539,7 @@ def pool1d(np_data, attrs, dtype="float32"):
                     pad_np[:, k * s_w : k * s_w + k_w, :], axis=width_axis
                 )
     else:
-        raise ValueError("pool type {} is not supported".format(pool_type))
+        raise ValueError(f"pool type {pool_type} is not supported")
 
     ret_np = np.maximum(ret_np, fill_value)
     return ret_np, [out_shape]

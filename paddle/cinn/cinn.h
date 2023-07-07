@@ -13,7 +13,8 @@
 // limitations under the License.
 
 /**
- * This file exposes some internal APIs to global cinn namespace to make usage more friendly.
+ * This file exposes some internal APIs to global cinn namespace to make usage
+ * more friendly.
  */
 #pragma once
 #include "paddle/cinn/backends/codegen_c.h"

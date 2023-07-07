@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest
 from op_test_helper import TestCaseHelper
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
 class TestLogOp(OpTest):

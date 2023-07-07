@@ -15,11 +15,7 @@
 # limitations under the License.
 
 import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn import Target
+
 from cinn.common import *
 
 

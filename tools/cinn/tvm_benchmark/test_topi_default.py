@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy
 import tvm
 import tvm.testing
-from tvm import te
-import numpy
-import timeit
-from tvm.contrib import tar, ndk
-import os
-from tvm import topi
+from tvm import te, topi
 
 dtype = ["float32", "float32", "float32", "float32"]
 target = "llvm"

@@ -23,12 +23,12 @@ This script helps to extract the tutorial content from a C++ source file.
 #  - @ROC, the code block inside a C++ multi-line string guard `ROC()ROC`,
 #          display as a markdown code block.
 
+import logging
 import sys
 from typing import List
-import logging
 
 
-class Markdown(object):
+class Markdown:
     '''
     A simple markdown generator.
     '''
@@ -92,7 +92,7 @@ class Mark:
     roc = "@ROC"
 
 
-class ContentGenerator(object):
+class ContentGenerator:
     '''
     Interface for some content passed into the parser.
     '''
@@ -104,7 +104,7 @@ class ContentGenerator(object):
         pass
 
 
-class Parser(object):
+class Parser:
     DOC_COMMENT_PREFIX = "//!"
 
     def __init__(self):
@@ -201,7 +201,7 @@ if __name__ == '__main__':
 
     class Content(ContentGenerator):
         def __init__(self):
-            self.lines = [line for line in sys.stdin]
+            self.lines = list(sys.stdin)
             self.cur = 0
 
         def has_next(self):

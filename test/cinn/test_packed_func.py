@@ -15,11 +15,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
+from math import isclose
+
 import cinn
 from cinn import ir
-from cinn import CINNValue
-from math import isclose
 
 
 class TestPackedFunc(unittest.TestCase):
@@ -43,7 +42,7 @@ class TestPackedFunc(unittest.TestCase):
         self.assertEqual(mul(4, 5), 20)
 
     def test_callable_object(self):
-        class Accumulator(object):
+        class Accumulator:
             def __init__(self, init):
                 self.init = init
 

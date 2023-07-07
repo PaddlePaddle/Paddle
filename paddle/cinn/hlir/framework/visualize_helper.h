@@ -41,7 +41,8 @@ class PassPrinter {
   }
 
   bool Begin(const std::unordered_set<std::string>& fetch_ids = {});
-  bool PassBegin(const std::string& pass_name, const frontend::Program& program);
+  bool PassBegin(const std::string& pass_name,
+                 const frontend::Program& program);
   bool PassEnd(const std::string& pass_name, const frontend::Program& program);
   bool PassBegin(const std::string& pass_name, Graph* g);
   bool PassEnd(const std::string& pass_name, Graph* g);
@@ -54,7 +55,8 @@ class PassPrinter {
   int64_t pass_id_{0};
 };
 
-inline void WriteToFile(const std::string& filepath, const std::string& content) {
+inline void WriteToFile(const std::string& filepath,
+                        const std::string& content) {
   VLOG(4) << "Write to " << filepath;
   std::ofstream of(filepath);
   CHECK(of.is_open()) << "Failed to open " << filepath;
@@ -63,10 +65,13 @@ inline void WriteToFile(const std::string& filepath, const std::string& content)
 }
 
 inline std::string GenClusterId(const std::vector<Node*>& group, int group_id) {
-  return "group_" + std::to_string(group_id) + "(size=" + std::to_string(group.size()) + ")";
+  return "group_" + std::to_string(group_id) +
+         "(size=" + std::to_string(group.size()) + ")";
 }
 
-inline std::string GenNodeId(const Node* node, bool is_recomputed, int recompute_id) {
+inline std::string GenNodeId(const Node* node,
+                             bool is_recomputed,
+                             int recompute_id) {
   if (is_recomputed) {
     return node->id() + "/" + std::to_string(recompute_id);
   } else {
@@ -74,7 +79,9 @@ inline std::string GenNodeId(const Node* node, bool is_recomputed, int recompute
   }
 }
 
-inline std::string GenNodeDataId(const NodeData* data, bool is_recomputed, int recompute_id) {
+inline std::string GenNodeDataId(const NodeData* data,
+                                 bool is_recomputed,
+                                 int recompute_id) {
   if (is_recomputed) {
     return data->id() + "/" + std::to_string(recompute_id);
   } else {
@@ -84,21 +91,25 @@ inline std::string GenNodeDataId(const NodeData* data, bool is_recomputed, int r
 
 inline std::vector<utils::DotAttr> GetGroupOpAttrs(bool is_recomputed = false) {
   std::string color = is_recomputed ? "#836FFF" : "#8EABFF";
-  return std::vector<utils::DotAttr>{
-      utils::DotAttr("shape", "Mrecord"), utils::DotAttr("color", color), utils::DotAttr("style", "filled")};
+  return std::vector<utils::DotAttr>{utils::DotAttr("shape", "Mrecord"),
+                                     utils::DotAttr("color", color),
+                                     utils::DotAttr("style", "filled")};
 }
 
 inline std::vector<utils::DotAttr> GetOutlinkOpAttrs() {
-  return std::vector<utils::DotAttr>{
-      utils::DotAttr("shape", "Mrecord"), utils::DotAttr("color", "#ff7f00"), utils::DotAttr("style", "filled")};
+  return std::vector<utils::DotAttr>{utils::DotAttr("shape", "Mrecord"),
+                                     utils::DotAttr("color", "#ff7f00"),
+                                     utils::DotAttr("style", "filled")};
 }
 
 inline std::vector<utils::DotAttr> GetGroupVarAttrs(bool is_fetched = false) {
   if (is_fetched) {
-    return std::vector<utils::DotAttr>{
-        utils::DotAttr("peripheries", "2"), utils::DotAttr("color", "#43CD80"), utils::DotAttr("style", "filled")};
+    return std::vector<utils::DotAttr>{utils::DotAttr("peripheries", "2"),
+                                       utils::DotAttr("color", "#43CD80"),
+                                       utils::DotAttr("style", "filled")};
   } else {
-    return std::vector<utils::DotAttr>{utils::DotAttr("color", "#FFDC85"), utils::DotAttr("style", "filled")};
+    return std::vector<utils::DotAttr>{utils::DotAttr("color", "#FFDC85"),
+                                       utils::DotAttr("style", "filled")};
   }
 }
 
@@ -114,8 +125,9 @@ inline std::vector<utils::DotAttr> GetGroupAttrs(size_t group_size) {
     // group_size > 10
     fillcolor = "#EEE5DE";
   }
-  std::vector<utils::DotAttr> attrs = {
-      utils::DotAttr("color", "grey"), utils::DotAttr("style", "filled"), utils::DotAttr("fillcolor", fillcolor)};
+  std::vector<utils::DotAttr> attrs = {utils::DotAttr("color", "grey"),
+                                       utils::DotAttr("style", "filled"),
+                                       utils::DotAttr("fillcolor", fillcolor)};
   return attrs;
 }
 
@@ -125,27 +137,30 @@ std::string GetFilePathForGroup(const std::vector<std::vector<Node*>>& groups,
                                 const int group_id,
                                 const std::string& viz_path);
 
-std::string GenNodeDataLabel(const NodeData* node,
-                             const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-                             const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
-                             const std::string dot_nodedata_id);
+std::string GenNodeDataLabel(
+    const NodeData* node,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
+    const std::string dot_nodedata_id);
 
-void Summary(const std::vector<std::vector<Node*>>& groups, const std::string& viz_path);
+void Summary(const std::vector<std::vector<Node*>>& groups,
+             const std::string& viz_path);
 
 std::string DebugString(const Node* node);
 
 void FindRecomputeNodes(const std::vector<std::vector<Node*>>& groups,
                         std::unordered_map<std::string, int>* recompute_nodes);
 
-void AddGroupNode(const Node* node,
-                  const std::string& dot_cluster_id,
-                  const std::unordered_set<std::string>& fetch_var_ids,
-                  const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-                  const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
-                  std::unordered_map<std::string, int>* recompute_nodes,
-                  std::unordered_map<std::string, std::string>* outnode2dot_id,
-                  std::unordered_set<std::string>* nodedatas_set,
-                  utils::DotLang* dot);
+void AddGroupNode(
+    const Node* node,
+    const std::string& dot_cluster_id,
+    const std::unordered_set<std::string>& fetch_var_ids,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
+    std::unordered_map<std::string, int>* recompute_nodes,
+    std::unordered_map<std::string, std::string>* outnode2dot_id,
+    std::unordered_set<std::string>* nodedatas_set,
+    utils::DotLang* dot);
 
 // used for CheckFusionAccuracyPass
 std::string GenerateAccCheckNodeId(const std::string& node_id);
@@ -154,7 +169,8 @@ bool IsAccCheckOp(const Node* op);
 bool IsAccCheckVar(const NodeData* var);
 bool IsAccCheckGroup(const std::vector<Node*>& group);
 
-std::vector<std::vector<Node*>> RemoveAccCheckGroups(const std::vector<std::vector<Node*>>& groups);
+std::vector<std::vector<Node*>> RemoveAccCheckGroups(
+    const std::vector<std::vector<Node*>>& groups);
 
 }  // namespace framework
 }  // namespace hlir

@@ -38,9 +38,11 @@ TEST(RemovescheduleBlock, basic) {
   // C = A * B
   Var k(20, "k0");
   Tensor C = Compute(
-      {Expr(100), Expr(50)}, [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {Expr(100), Expr(50)},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
   auto stages = CreateStages({A, B, C});
-  auto func   = Lower("matmul", stages, {A, B, C}, {}, {}, nullptr, target, true);
+  auto func = Lower("matmul", stages, {A, B, C}, {}, {}, nullptr, target, true);
   LOG(INFO) << "func\n" << func;
 
   std::string origin = utils::GetStreamCnt(func);

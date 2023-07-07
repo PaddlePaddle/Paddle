@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <tuple>
 #include <vector>
 
@@ -27,8 +29,9 @@ namespace poly {
  */
 class DomainAddUnitLoopMutator : public ir::IRMutator<> {
  public:
-  DomainAddUnitLoopMutator(const std::vector<std::string>& dim_names,
-                           const std::vector<std::tuple<int, int, int>>& dim_min_max);
+  DomainAddUnitLoopMutator(
+      const std::vector<std::string>& dim_names,
+      const std::vector<std::tuple<int, int, int>>& dim_min_max);
 
   void operator()(ir::Expr* expr);
 
