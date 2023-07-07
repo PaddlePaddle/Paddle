@@ -1048,7 +1048,11 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #endif
   } else if (is_gpu_tensor) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto p = tensor.place();
+#if defined(PADDLE_WITH_CUDA)
+    gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
+#elif defined(PADDLE_WITH_HIP)
+    gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+#endif
     phi::DenseTensor cpu_tensor;
     platform::CPUPlace cpu_place;
 
@@ -1057,11 +1061,10 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
         tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
 
-    paddle::memory::Copy(cpu_place,
-                         cpu_tensor.Holder()->ptr(),
-                         p,
-                         tensor.Holder()->ptr(),
-                         tensor.Holder()->size());
+    paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
+                                    tensor.Holder()->ptr(),
+                                    tensor.Holder()->size(),
+                                    kind);
 
     auto data_ptr = cpu_tensor.data();
     auto base = py::cast(std::move(cpu_tensor));
