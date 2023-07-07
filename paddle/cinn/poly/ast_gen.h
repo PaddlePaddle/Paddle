@@ -13,8 +13,8 @@
 // limitations under the License.
 
 /**
- * This file implements the isl AST build interface, it helps to generate isl AST given the polyhedral domain and
- * schedule.
+ * This file implements the isl AST build interface, it helps to generate isl
+ * AST given the polyhedral domain and schedule.
  */
 #pragma once
 #include <isl/cpp.h>
@@ -40,7 +40,9 @@ static const char* kIslParamConstPrefix = "_const_";
  */
 class AstGen {
  public:
-  AstGen(const isl::set& context, const std::vector<Stage*>& stages, const poly::ScheduleGroup& group);
+  AstGen(const isl::set& context,
+         const std::vector<Stage*>& stages,
+         const poly::ScheduleGroup& group);
   ~AstGen();
 
   /**
@@ -54,10 +56,13 @@ class AstGen {
 
   isl::ast_node Build();
 
-  //! Get the map from original CINN iterators to the transformed actual ISL ast nodes.
-  const std::map<std::string, isl::ast_expr>& axis2ast(const std::string& tuple_name) const;
+  //! Get the map from original CINN iterators to the transformed actual ISL ast
+  //! nodes.
+  const std::map<std::string, isl::ast_expr>& axis2ast(
+      const std::string& tuple_name) const;
 
-  const std::map<std::string, Expr> axis2expr(const std::string& tuple_name) const;
+  const std::map<std::string, Expr> axis2expr(
+      const std::string& tuple_name) const;
 
   bool ContainsStatement(const std::string& name) const;
 
@@ -70,13 +75,17 @@ class AstGen {
   std::unique_ptr<Impl> impl_;
 };
 
-void AddUnitLoopOfDomain(const isl::ast_node& node, const isl::set& domain, ir::Expr* expr);
+void AddUnitLoopOfDomain(const isl::ast_node& node,
+                         const isl::set& domain,
+                         ir::Expr* expr);
 
 /**
  * Transform the isl ast to Expr.
  */
 void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr);
-void IslAstNodeToCinnExpr(const isl::ast_node& node, const isl::union_set& domain, ir::Expr* expr);
+void IslAstNodeToCinnExpr(const isl::ast_node& node,
+                          const isl::union_set& domain,
+                          ir::Expr* expr);
 void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr);
 
 /**

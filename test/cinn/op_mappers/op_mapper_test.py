@@ -14,19 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ast import arg
-import os
 import logging
+import os
+import sys
+from ast import arg
 
-import paddle
-from paddle.static import Variable as PaddleVariable
-from paddle.fluid.layer_helper import LayerHelper
-
-from cinn.frontend import NetBuilder, PaddleModelConvertor
 from cinn.common import is_compiled_with_cuda
 from cinn.framework import Scope
+from cinn.frontend import NetBuilder, PaddleModelConvertor
 
-import sys
+import paddle
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.static import Variable as PaddleVariable
+
 sys.path.append("/work/dev_CINN/build/python/tests")
 from test.cinn.ops.op_test import OpTest, OpTestTool
 
@@ -38,7 +38,7 @@ paddle.enable_static()
 
 class OpMapperTest(OpTest):
     def __init__(self, *args, **kwargs):
-        super(OpMapperTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._init_place()
         self.init_input_data()
 
@@ -76,8 +76,8 @@ class OpMapperTest(OpTest):
         x1 = paddle.static.data(name='x1', shape=[1, 2], dtype='float32')
         x2 = paddle.static.data(name='x2', shape=[1, 2], dtype='float32')
         return {'X' : [x1, x2]}
-        ```        """
-        return dict()
+        ```"""
+        return {}
 
     def set_op_attrs(self) -> dict:
         """Map from attribute name to attribute value:\n
@@ -86,7 +86,7 @@ class OpMapperTest(OpTest):
         return {'axis' : 0}
         ```
         """
-        return dict()
+        return {}
 
     def set_op_outputs(self) -> dict:
         """Map from output parameter name to argument type, the argument type should be represented by a string.\n
@@ -113,7 +113,7 @@ class OpMapperTest(OpTest):
         return {'MeanOut' : 'Mean'}
         ```
         """
-        return dict()
+        return {}
 
     def __set_paddle_op(self):
         # paddle C++ op type
@@ -130,35 +130,37 @@ class OpMapperTest(OpTest):
         self.inplace_outputs = self.set_inplace_outputs()
         # collect some important infomation
         self.input_arg_map = self.__get_arguments_map(self.inputs)
-        self.fetch_targets = list()
-        self.skip_check_list = list()
+        self.fetch_targets = []
+        self.skip_check_list = []
         self.op_desc = None
 
     def __check_valid(self):
         self.assertIsInstance(
-            self.op_type, str, msg="The op type should be a string")
+            self.op_type, str, msg="The op type should be a string"
+        )
         self.assertNotEqual(
-            self.op_type, "", msg="The op type should not empty")
+            self.op_type, "", msg="The op type should not empty"
+        )
         self.assertIsInstance(
             self.inputs,
             dict,
-            msg=
-            "The set_op_inputs should be return dict(InputName, list(Variable)), where Variable are created by paddle.static.data"
+            msg="The set_op_inputs should be return dict(InputName, list(Variable)), where Variable are created by paddle.static.data",
         )
         self.assertIsInstance(
             self.attrs,
             dict,
-            msg="The set_op_attrs should be return dict(AttrName, AttrValue)")
+            msg="The set_op_attrs should be return dict(AttrName, AttrValue)",
+        )
         self.assertIsInstance(
             self.output_dtypes,
             dict,
-            msg=
-            "The set_op_outputs should be return dict(OutName, list(OutDtype)), where OutName and OutDtype are string"
+            msg="The set_op_outputs should be return dict(OutName, list(OutDtype)), where OutName and OutDtype are string",
         )
         self.assertGreater(
             len(self.output_dtypes),
             0,
-            msg="The set_op_outputs cannot return a empty dict")
+            msg="The set_op_outputs cannot return a empty dict",
+        )
 
         for name, var in self.input_arg_map.items():
             self.assertIn(name, self.feed_data)
@@ -166,43 +168,49 @@ class OpMapperTest(OpTest):
                 var.shape,
                 self.feed_data[name].shape,
                 msg="The shape of input {} in feed_data is error".format(
-                    var.name))
+                    var.name
+                ),
+            )
             self.assertEqual(
                 self.paddleddtype2nptype(var.dtype),
                 str(self.feed_data[name].dtype),
                 msg="The dtype of input {} in feed_data is error".format(
-                    var.name))
+                    var.name
+                ),
+            )
 
         for out_name, in_name in self.inplace_outputs.items():
             self.assertNotIn(
                 out_name,
                 self.output_dtypes,
-                msg=
-                "The {} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\""
-                .format(out_name))
+                msg="The {} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\"".format(
+                    out_name
+                ),
+            )
             self.assertIn(
                 in_name,
                 self.inputs,
-                msg="The inplace var should existed in op' inputs dict")
+                msg="The inplace var should existed in op' inputs dict",
+            )
 
     def __get_arguments_map(self, param_maps):
-        arg_maps = dict()
+        arg_maps = {}
         for args in param_maps.values():
             self.assertIsInstance(
                 args,
                 list,
-                msg=
-                "The type of arguments should be list(Variable), where Variable are created by paddle.static.data"
+                msg="The type of arguments should be list(Variable), where Variable are created by paddle.static.data",
             )
             for var in args:
                 self.assertIsInstance(
                     var,
                     PaddleVariable,
-                    msg="The type of argument should be paddle.static.Variable"
+                    msg="The type of argument should be paddle.static.Variable",
                 )
                 self.assertTrue(
                     (var.name not in arg_maps) or (arg_maps[var.name] == var),
-                    msg="Argument %s is duplicated" % var.name)
+                    msg="Argument %s is duplicated" % var.name,
+                )
                 arg_maps[var.name] = var
         return arg_maps
 
@@ -211,13 +219,18 @@ class OpMapperTest(OpTest):
         self.__check_valid()
 
     def __remove_skip_outputs(self, results):
-        check_outputs = list()
+        check_outputs = []
         for i in range(len(self.fetch_targets)):
             if self.fetch_targets[i].name not in self.skip_check_list:
                 check_outputs.append(results[i])
-                logger.debug(msg="{}, shape={}, dtype={}:\n{}".format(
-                    self.fetch_targets[i].name, results[i].shape,
-                    str(results[i].dtype), results[i]))
+                logger.debug(
+                    msg="{}, shape={}, dtype={}:\n{}".format(
+                        self.fetch_targets[i].name,
+                        results[i].shape,
+                        str(results[i].dtype),
+                        results[i],
+                    )
+                )
 
         return check_outputs
 
@@ -225,8 +238,14 @@ class OpMapperTest(OpTest):
         if logger.isEnabledFor(logging.DEBUG):
             debug_info = ""
             for k, v in info_dict.items():
-                debug_info += k + ", shape=" + str(v.shape) + ", dtype=" + str(
-                    v.dtype) + ":\n"
+                debug_info += (
+                    k
+                    + ", shape="
+                    + str(v.shape)
+                    + ", dtype="
+                    + str(v.dtype)
+                    + ":\n"
+                )
                 debug_info += str(v) + "\n"
 
             logger.debug(title + ":\n" + debug_info)
@@ -240,15 +259,14 @@ class OpMapperTest(OpTest):
             self.__init_paddle_op()
             helper = LayerHelper(self.op_type)
 
-            self.outputs = dict()
+            self.outputs = {}
             for var_name, dtypes in self.output_dtypes.items():
                 self.assertIsInstance(
                     dtypes,
                     list,
-                    msg=
-                    "The set_op_outputs should be return dict(OutName, list(OutDtype)), where OutName and OutDtype are string"
+                    msg="The set_op_outputs should be return dict(OutName, list(OutDtype)), where OutName and OutDtype are string",
                 )
-                self.outputs[var_name] = list()
+                self.outputs[var_name] = []
                 for dtype in dtypes:
                     out_var = helper.create_variable_for_type_inference(dtype)
                     self.fetch_targets.append(out_var)
@@ -268,7 +286,8 @@ class OpMapperTest(OpTest):
                 type=self.op_type,
                 inputs=self.inputs,
                 outputs=self.outputs,
-                attrs=self.attrs).desc
+                attrs=self.attrs,
+            ).desc
 
         logger.debug("Paddle Program:\n" + str(main_program))
 
@@ -279,7 +298,8 @@ class OpMapperTest(OpTest):
             main_program,
             self.feed_data,
             fetch_list=self.fetch_targets,
-            return_numpy=True)
+            return_numpy=True,
+        )
 
         # NOTE: The unittest of `test_reduce_op`, `test_argmax_op`, `test_argmin_op` will
         # output 0D-Tensor, hence we need to reshape them into 1D-Tensor temporarily.
@@ -288,7 +308,7 @@ class OpMapperTest(OpTest):
             if results[i] is not None and len(results[i].shape) == 0:
                 results[i] = results[i].reshape(1)
 
-        logger.debug(msg="Paddle result:")
+        logger.debug("Paddle result:")
         self.paddle_outputs = self.__remove_skip_outputs(results)
 
     def build_cinn_program(self, target):
@@ -299,13 +319,15 @@ class OpMapperTest(OpTest):
             convertor.create_input(
                 dtype=self.paddleddtype2nptype(var.dtype),
                 shape=var.shape,
-                name=var_name)
+                name=var_name,
+            )
 
         convertor.append_op(
             type=self.op_type,
             inputs=self.op_desc.inputs(),
             outputs=self.op_desc.outputs(),
-            attrs=self.attrs)
+            attrs=self.attrs,
+        )
 
         prog = convertor()
 
@@ -326,13 +348,15 @@ class OpMapperTest(OpTest):
                 self.assertIn(
                     cinn_name,
                     vars,
-                    msg="Cannot find variable " + cinn_name +
-                    " in cinn program's var list")
+                    msg="Cannot find variable "
+                    + cinn_name
+                    + " in cinn program's var list",
+                )
                 cinn_inputs.append(vars[cinn_name])
                 cinn_feed_datas.append(self.feed_data[name])
 
         # get the CINN output list
-        fetch_names = list()
+        fetch_names = []
         inplace_start = 0
         for dtypes in self.output_dtypes.values():
             inplace_start += len(dtypes)
@@ -348,16 +372,19 @@ class OpMapperTest(OpTest):
 
         # map the name the variable
         self.assertGreater(
-            len(fetch_names), 0, msg="The program's output cannot be empty!")
-        cinn_output_vars = list()
+            len(fetch_names), 0, msg="The program's output cannot be empty!"
+        )
+        cinn_output_vars = []
         for name in fetch_names:
             cinn_name = convertor.get_cinn_name(name)
 
             self.assertIn(
                 cinn_name,
                 vars,
-                msg="Cannot find variable " + cinn_name +
-                " in cinn program's var list")
+                msg="Cannot find variable "
+                + cinn_name
+                + " in cinn program's var list",
+            )
             cinn_output_vars.append(vars[cinn_name])
 
         # run and get result
@@ -367,15 +394,16 @@ class OpMapperTest(OpTest):
             cinn_inputs,
             cinn_feed_datas,
             cinn_output_vars,
-            passes=list(),
-            scope=scope)
+            passes=[],
+            scope=scope,
+        )
 
-        logger.debug(msg="CINN result:")
+        logger.debug("CINN result:")
         self.cinn_outputs = self.__remove_skip_outputs(results)
 
     @staticmethod
     def get_program_vars(program) -> dict:
-        vars = dict()
+        vars = {}
         for i in range(program.size()):
             instr = program[i]
             for var in instr.get_inputs():

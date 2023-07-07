@@ -80,9 +80,12 @@ class Tensor : public ir::IrNodeRef {
    * A(i,j) get the [i][j] element.
    */
   // @{
-  Expr operator()(const Expr& a) const { return operator()(std::vector<Expr>({a})); }
+  Expr operator()(const Expr& a) const {
+    return operator()(std::vector<Expr>({a}));
+  }
   template <typename... Args>
-  inline typename std::enable_if<detail::GE(sizeof...(Args), 2), Expr>::type operator()(Args&&... args) const {
+  inline typename std::enable_if<detail::GE(sizeof...(Args), 2), Expr>::type
+  operator()(Args&&... args) const {
     return operator()({std::forward<Args>(args)...});
   }
   // @}
@@ -108,7 +111,8 @@ class Tensor : public ir::IrNodeRef {
 
 /**
  * \brief Generate the name of the reduce init tensor of \p tensor.
- * This is used for retrieving the corresponding reduction-init tensor from a stage map by name.
+ * This is used for retrieving the corresponding reduction-init tensor from a
+ * stage map by name.
  */
 std::string GenReduceInitTensorNameOf(const std::string& tensor_name);
 
@@ -159,7 +163,8 @@ class _Tensor_ : public ExprNode<_Tensor_> {
 
   bool IsReduceInited(poly::StageMap stages) const;
 
-  //! Tell whether this tensor represents a tuple (consists of one or multiple tensors as output of a extern Call).
+  //! Tell whether this tensor represents a tuple (consists of one or multiple
+  //! tensors as output of a extern Call).
   bool is_tuple() const;
   bool is_tuple_get() const;
 
@@ -172,7 +177,8 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   std::set<std::string> GetDependTensorNames() const;
 
   /**
-   * \brief Tell whether this tensor's computation relays on a specific statement.
+   * \brief Tell whether this tensor's computation relays on a specific
+   * statement.
    * @param statement The name of a statement(equivalent to the id of tensor).
    * @return A boolean.
    */
@@ -187,13 +193,15 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * Get a new tensor with the \p shape, but the underlying buffer shared.
    * NOTE the tensor to Reshape should not be an inlined computation.
    */
-  ir::Tensor Reshape(const std::vector<Expr>& shape, poly::StageMap stages) const;
+  ir::Tensor Reshape(const std::vector<Expr>& shape,
+                     poly::StageMap stages) const;
 
   /**
    * Get a new tensor with the \p shape with a newly allocated buffer.
    * NOTE the tensor to Reshape should not be an inlined computation.
    */
-  ir::Tensor ReshapeCopied(const std::vector<Expr>& shape, poly::StageMap stages) const;
+  ir::Tensor ReshapeCopied(const std::vector<Expr>& shape,
+                           poly::StageMap stages) const;
 
   /**
    * Tell whether this tensor has same shape with \p other.
@@ -245,7 +253,9 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   /**
    * Get the tensors thouse depend on the same buffer belong to this tensor.
    */
-  const std::set<std::string>& buffer_depended_tensor_names() const { return buffer_depended_tensor_names_; }
+  const std::set<std::string>& buffer_depended_tensor_names() const {
+    return buffer_depended_tensor_names_;
+  }
 
   static const IrNodeTy _node_type_ = IrNodeTy::_Tensor_;
 
@@ -267,8 +277,12 @@ class _Tensor_ : public ExprNode<_Tensor_> {
 
   //! Create a buffer belong to this tensor.
   void WithBuffer(const Type& type = Void());
-  void WithBuffer(const std::string& memory_type, const std::string& buffer_name = "", const Type& type = Void());
-  Tensor GetInitTensor(poly::StageMap stages, const Target& target = common::DefaultHostTarget()) const;
+  void WithBuffer(const std::string& memory_type,
+                  const std::string& buffer_name = "",
+                  const Type& type = Void());
+  Tensor GetInitTensor(
+      poly::StageMap stages,
+      const Target& target = common::DefaultHostTarget()) const;
 
  private:
   //! Initialize the axis field after the shape field is assigned.
@@ -282,14 +296,19 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * @param init_val The initial value.
    * @return The initializing tensor.
    */
-  ir::Tensor InitReduction(poly::StageMap stages, const Target& target = common::DefaultHostTarget()) const;
+  ir::Tensor InitReduction(
+      poly::StageMap stages,
+      const Target& target = common::DefaultHostTarget()) const;
 
-  //! The names of the tensors depend the same buffer and should schedule before this.
+  //! The names of the tensors depend the same buffer and should schedule before
+  //! this.
   std::set<std::string> buffer_depended_tensor_names_;
 
   friend Shared<poly::Stage> CreateStage(Tensor tensor);
 
-  friend void lang::InitReduceTensor(poly::StageMap stages, const ir::Tensor& tensor, const Target& target);
+  friend void lang::InitReduceTensor(poly::StageMap stages,
+                                     const ir::Tensor& tensor,
+                                     const Target& target);
 };
 
 Shared<poly::Stage> CreateStage(Tensor tensor);
@@ -300,8 +319,12 @@ class Operation : public FunctionRef {
   Operation() = default;
   explicit Operation(IrNode* n) : FunctionRef(n) {}
 
-  inline const _Operation_* operator->() const { return reinterpret_cast<_Operation_*>(get()); }
-  inline _Operation_* operator->() { return reinterpret_cast<_Operation_*>(get()); }
+  inline const _Operation_* operator->() const {
+    return reinterpret_cast<_Operation_*>(get());
+  }
+  inline _Operation_* operator->() {
+    return reinterpret_cast<_Operation_*>(get());
+  }
 
   //! Get the i-th output of the operation.
   // Tensor output(size_t i) const;

@@ -22,8 +22,8 @@ namespace cinn {
 namespace backends {
 class HeaderGeneratorBase {
  public:
-  virtual const size_t size() const                             = 0;
-  virtual const std::vector<const char*>& headers() const       = 0;
+  virtual const size_t size() const = 0;
+  virtual const std::vector<const char*>& headers() const = 0;
   virtual const std::vector<const char*>& include_names() const = 0;
 };
 
@@ -34,7 +34,9 @@ class JitSafeHeaderGenerator : public HeaderGeneratorBase {
   static HeaderGeneratorBase& GetInstance();
   const size_t size() const;
   const std::vector<const char*>& headers() const override { return headers_; }
-  const std::vector<const char*>& include_names() const override { return include_names_; }
+  const std::vector<const char*>& include_names() const override {
+    return include_names_;
+  }
 
  private:
   JitSafeHeaderGenerator();

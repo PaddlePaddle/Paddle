@@ -52,14 +52,14 @@ TEST(IrSimplify, basic) {
     auto B = Compute(
         {Expr(100), Expr(20)},
         [&](Expr i, Expr j) {
-          return x(i + 0, j + 0) + y(i, j * 0) * 1.f + 0.f * x(i, j) + 25.f + 100.f - 0.f +
-                 9.f * 10000.f * 1.f * 1.f * 0.f;
+          return x(i + 0, j + 0) + y(i, j * 0) * 1.f + 0.f * x(i, j) + 25.f +
+                 100.f - 0.f + 9.f * 10000.f * 1.f * 1.f * 0.f;
         },
         "B");
 
     auto stages = CreateStages({B});
-    auto func   = Lower("func", stages, {B});
-    auto body   = func->body;
+    auto func = Lower("func", stages, {B});
+    auto body = func->body;
 
     LOG(INFO) << "original body:\n" << body;
     Simplify(&body);
@@ -84,7 +84,8 @@ TEST(IrSimplify, basic) {
     auto B = Compute(
         {Expr(100), Expr(20)},
         [&](Expr i, Expr j) {
-          return x(100 * 10 * 1 * i + 0, j * 0) + y(i, j * 0) / (1.f + 2.f) + 0.f * x(i, j) + 25.f + 100.f - 0.f +
+          return x(100 * 10 * 1 * i + 0, j * 0) + y(i, j * 0) / (1.f + 2.f) +
+                 0.f * x(i, j) + 25.f + 100.f - 0.f +
                  9.f * 10000.f * 1.f * 1.f * 0.f;
         },
         "B");
@@ -119,7 +120,7 @@ TEST(reverse, prod) {
       {M, N}, [=](Var i, Var j) { return Expr(1.f) / A(i, j); }, "C");
 
   auto stages = CreateStages({A, C});
-  auto fn     = Lower("fn", stages, {A, C});
+  auto fn = Lower("fn", stages, {A, C});
   LOG(INFO) << "fn:\n" << fn;
 }
 

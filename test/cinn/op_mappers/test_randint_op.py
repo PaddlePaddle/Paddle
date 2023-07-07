@@ -15,14 +15,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
 class TestRandIntOp(OpMapperTest):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3]
         self.min = 1
         self.max = 5
@@ -41,7 +43,7 @@ class TestRandIntOp(OpMapperTest):
             "high": self.max,
             "seed": self.seed,
             "shape": self.shape,
-            "dtype": self.nptype2paddledtype(self.dtype)
+            "dtype": self.nptype2paddledtype(self.dtype),
         }
 
     def set_op_outputs(self):
@@ -59,7 +61,7 @@ class TestRandIntOp(OpMapperTest):
 
 class TestRandIntCase1(TestRandIntOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3, 4]
         self.min = 1
         self.max = 9
@@ -69,7 +71,7 @@ class TestRandIntCase1(TestRandIntOp):
 
 class TestRandIntCase2(TestRandIntOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3, 4]
         self.min = 1
         self.max = 9

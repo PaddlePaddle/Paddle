@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -35,7 +37,8 @@ class TestStackOp(OpMapperTest):
             paddle.static.data(
                 name=var_name,
                 shape=self.feed_data[var_name].shape,
-                dtype=self.feed_data[var_name].dtype)
+                dtype=self.feed_data[var_name].dtype,
+            )
             for var_name in self.feed_data.keys()
         ]
         return {'X': x}

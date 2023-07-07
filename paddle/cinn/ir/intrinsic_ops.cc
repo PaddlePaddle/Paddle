@@ -27,7 +27,8 @@ const Type& IntrinsicOp::GetOutputType(int offset) const {
   return output_types_[offset];
 }
 
-void IntrinsicOp::Verify(llvm::ArrayRef<Type> input_types, llvm::ArrayRef<Type> output_types) const {
+void IntrinsicOp::Verify(llvm::ArrayRef<Type> input_types,
+                         llvm::ArrayRef<Type> output_types) const {
   CHECK_EQ(input_types.size(), input_types_.size());
   CHECK_EQ(output_types.size(), output_types_.size());
 
@@ -47,7 +48,8 @@ void IntrinsicOp::Verify(llvm::ArrayRef<Expr> inputs) const {
   }
 }
 
-void IntrinsicOp::Verify(llvm::ArrayRef<Expr> inputs, llvm::ArrayRef<Expr> outputs) const {
+void IntrinsicOp::Verify(llvm::ArrayRef<Expr> inputs,
+                         llvm::ArrayRef<Expr> outputs) const {
   llvm::SmallVector<Type, 4> input_types, output_types;
   for (auto& e : inputs) input_types.push_back(e.type());
   for (auto& e : outputs) output_types.push_back(e.type());
@@ -90,8 +92,8 @@ Expr intrinsics::BufferCreate::Make(Expr buffer) {
 Expr intrinsics::GetAddr::Make(Expr data) {
   auto* n = new GetAddr;
   n->set_type(data.type().PointerOf());
-  n->data          = data;
-  n->input_types_  = {data.type()};
+  n->data = data;
+  n->input_types_ = {data.type()};
   n->output_types_ = {data.type().PointerOf()};
   return Expr(n);
 }
@@ -111,12 +113,15 @@ Expr intrinsics::ArgsConstruct::Make(Var var, llvm::ArrayRef<Expr> args) {
   return Expr(n);
 }
 
-Expr intrinsics::BuiltinIntrin::Make(
-    const std::string& name, llvm::ArrayRef<Expr> args, llvm::Intrinsic::ID id, int64_t arg_nums, const Type& type) {
+Expr intrinsics::BuiltinIntrin::Make(const std::string& name,
+                                     llvm::ArrayRef<Expr> args,
+                                     llvm::Intrinsic::ID id,
+                                     int64_t arg_nums,
+                                     const Type& type) {
   auto* n = new BuiltinIntrin;
   n->name = name;
   n->args.assign(args.begin(), args.end());
-  n->id       = id;
+  n->id = id;
   n->arg_nums = arg_nums;
   CHECK(!type.is_unk());
   n->type_ = type;

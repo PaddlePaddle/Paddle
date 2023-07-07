@@ -19,19 +19,22 @@
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/utils/registry.h"
 
-#define CINN_OP_REGISTER_EXTERNAL_API(Name, Target)                                                               \
-  static ::cinn::hlir::op::ExternalApiInfo& CINN_STR_CONCAT(__make_##ExternalApiInfo##_##Name##__, __COUNTER__) = \
+#define CINN_OP_REGISTER_EXTERNAL_API(Name, Target)          \
+  static ::cinn::hlir::op::ExternalApiInfo& CINN_STR_CONCAT( \
+      __make_##ExternalApiInfo##_##Name##__, __COUNTER__) =  \
       ::cinn::hlir::op::ExternalApiRegistry::Global()->Register(#Name, Target)
 
 namespace cinn {
 namespace hlir {
 namespace op {
 
-using OpNodeTransToExternalApiFunction = std::function<std::string(const framework::Node* op_node)>;
+using OpNodeTransToExternalApiFunction =
+    std::function<std::string(const framework::Node* op_node)>;
 
 // This class contains detail external api information of a specified Operator.
-// To provide the external api name, we can directly set it through `set_api_name`
-// or set a transform function wth `set_trans_func` that return a api name finally
+// To provide the external api name, we can directly set it through
+// `set_api_name` or set a transform function wth `set_trans_func` that return a
+// api name finally
 struct ExternalApiInfo {
   std::string name;
   std::string api_name;
@@ -42,7 +45,8 @@ struct ExternalApiInfo {
     return *this;
   }
 
-  inline ExternalApiInfo& set_trans_func(OpNodeTransToExternalApiFunction func) {
+  inline ExternalApiInfo& set_trans_func(
+      OpNodeTransToExternalApiFunction func) {
     this->trans_func = func;
     return *this;
   }
@@ -56,14 +60,16 @@ class ExternalApiRegistry : public Registry<ExternalApiInfo> {
     return &x;
   }
 
-  ExternalApiInfo& Register(const std::string& op_name, const common::Target& target);
+  ExternalApiInfo& Register(const std::string& op_name,
+                            const common::Target& target);
 
   bool Has(const std::string& op_name, const common::Target& target) {
     return nullptr != Registry<ExternalApiInfo>::Find(GenKey(op_name, target));
   }
 
   // return the api name on the specified target
-  std::string GetExternalApi(const framework::Node* op_node, const common::Target& target);
+  std::string GetExternalApi(const framework::Node* op_node,
+                             const common::Target& target);
 
  private:
   ExternalApiRegistry() = default;

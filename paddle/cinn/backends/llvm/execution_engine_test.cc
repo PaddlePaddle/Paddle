@@ -58,10 +58,12 @@ bool RegisterKnownSymbols() {
   decltype(auto) registry = GlobalSymbolRegistry::Global();
 
   registry.RegisterFn("sinf", reinterpret_cast<void *>(&sinf));
-  registry.RegisterFn("sin", reinterpret_cast<void *>(static_cast<double (*)(double)>(&sin)));
+  registry.RegisterFn(
+      "sin", reinterpret_cast<void *>(static_cast<double (*)(double)>(&sin)));
 
   registry.RegisterFn("cosf", reinterpret_cast<void *>(&cosf));
-  registry.RegisterFn("cos", reinterpret_cast<void *>(static_cast<double (*)(double)>(&cos)));
+  registry.RegisterFn(
+      "cos", reinterpret_cast<void *>(static_cast<double (*)(double)>(&cos)));
   return true;
 }
 
@@ -71,9 +73,12 @@ constexpr int kM = 100;
 constexpr int kN = 32;
 
 auto CreateTestBuffer() {
-  auto *A = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {kM, kN}, 32);
-  auto *B = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {kM, kN}, 32);
-  auto *C = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {kM, kN}, 32);
+  auto *A = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {kM, kN}, 32);
+  auto *B = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {kM, kN}, 32);
+  auto *C = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {kM, kN}, 32);
   cinn_buffer_malloc(nullptr, A);
   cinn_buffer_malloc(nullptr, B);
   cinn_buffer_malloc(nullptr, C);
@@ -105,11 +110,11 @@ auto CreateTestCinnModule() {
   common::Target target;
   target.arch = common::Target::Arch::X86;
   target.bits = common::Target::Bit::k32;
-  target.os   = common::Target::OS::Linux;
+  target.os = common::Target::OS::Linux;
   ir::Module::Builder builder("module1", target);
 
   auto stages = CreateStages({C});
-  auto funcs  = lang::Lower("elementwise_add", stages, {A, B, C});
+  auto funcs = lang::Lower("elementwise_add", stages, {A, B, C});
 
   // auto func = optim::Optimize(funcs);
 
@@ -123,9 +128,9 @@ TEST(llvm_test01, elementwise_add) {
   auto engine = backends::ExecutionEngine::Create({1});
 
   auto _a_b_c_ = CreateTestBuffer();  // NOLINT
-  auto &a      = std::get<0>(_a_b_c_);
-  auto &b      = std::get<1>(_a_b_c_);
-  auto &c      = std::get<2>(_a_b_c_);
+  auto &a = std::get<0>(_a_b_c_);
+  auto &b = std::get<1>(_a_b_c_);
+  auto &c = std::get<2>(_a_b_c_);
 
   auto module = CreateTestCinnModule();
 
@@ -133,7 +138,8 @@ TEST(llvm_test01, elementwise_add) {
 
   auto elementwise_add_addr = engine->Lookup("elementwise_add");
   return;
-  auto elementwise_add = reinterpret_cast<void (*)(void *, int32_t)>(elementwise_add_addr);
+  auto elementwise_add =
+      reinterpret_cast<void (*)(void *, int32_t)>(elementwise_add_addr);
   cinn_pod_value_t a_arg(a), b_arg(b), c_arg(c);
   cinn_pod_value_t args[3] = {a_arg, b_arg, c_arg};
   elementwise_add(args, 3);
@@ -158,7 +164,7 @@ TEST(llvm, module_call_lowered_func) {
         {M, N}, [&](auto i, auto j) { return a(i, j) + b(i, j); }, "C");
 
     auto stages = CreateStages({c});
-    auto fn     = lang::Lower("elementwise_add", stages, {a, b, c}, {});
+    auto fn = lang::Lower("elementwise_add", stages, {a, b, c}, {});
     builder.AddFunction(fn);
   }
 
@@ -166,26 +172,28 @@ TEST(llvm, module_call_lowered_func) {
     lang::Placeholder<float> a("A", {M, N});
     lang::Placeholder<float> b("B", {M, N});
 
-    std::vector<lang::ReturnType> ret_types({lang::ReturnType{Float(32), {M, N}, "c_out"}});
+    std::vector<lang::ReturnType> ret_types(
+        {lang::ReturnType{Float(32), {M, N}, "c_out"}});
 
     auto call_outs = lang::CallLowered("elementwise_add", {a, b}, ret_types);
-    auto c         = call_outs[0];
+    auto c = call_outs[0];
 
     // here we must call the output, so that it cal output something.
 
-    auto stages  = CreateStages({c});
+    auto stages = CreateStages({c});
     auto main_fn = lang::Lower("main", stages, {a, b, c}, {});
     builder.AddFunction(main_fn);
 
     CodeGenC codegen(common::DefaultHostTarget());
     codegen.SetInlineBuiltinCodes(false);
-    LOG(INFO) << "module:\n" << codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
+    LOG(INFO) << "module:\n"
+              << codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
   }
 
   auto _ab_bb_cb_ = CreateTestBuffer();  // NOLINT
-  auto &ab        = std::get<0>(_ab_bb_cb_);
-  auto &bb        = std::get<1>(_ab_bb_cb_);
-  auto &cb        = std::get<2>(_ab_bb_cb_);
+  auto &ab = std::get<0>(_ab_bb_cb_);
+  auto &bb = std::get<1>(_ab_bb_cb_);
+  auto &cb = std::get<2>(_ab_bb_cb_);
   do {  // call the function
     auto engine = backends::ExecutionEngine::Create({1});
 
@@ -194,7 +202,8 @@ TEST(llvm, module_call_lowered_func) {
     auto cos_fn = (double (*)(double))engine->Lookup("cos");
     LOG(INFO) << "=> LLVM JIT cos(0) = " << cos_fn(0);
     auto elementwise_add_addr = engine->Lookup("elementwise_add");
-    auto elementwise_add      = reinterpret_cast<void (*)(void *, int32_t)>(elementwise_add_addr);
+    auto elementwise_add =
+        reinterpret_cast<void (*)(void *, int32_t)>(elementwise_add_addr);
     LOG(INFO) << "JIT get elementwise_add_addr";
     break;
 
@@ -216,19 +225,24 @@ TEST(llvm, module_call_lowered_func) {
 
 TEST(ExecutionEngine, custom_runtime_symbols) {
   auto context = std::make_unique<llvm::LLVMContext>();
-  auto module  = std::make_unique<llvm::Module>("test_llvm_cpu_runtime", *context);
+  auto module =
+      std::make_unique<llvm::Module>("test_llvm_cpu_runtime", *context);
   auto builder = std::make_unique<llvm::IRBuilder<>>(*context);
 
   auto call_custom_target = [&](std::string name, llvm::Type *ty) {
     llvm::FunctionType *fn_type = llvm::FunctionType::get(ty, {ty}, false);
     llvm::Function *function =
-        llvm::Function::Create(fn_type, llvm::Function::ExternalLinkage, "_call_custom_" + name, module.get());
+        llvm::Function::Create(fn_type,
+                               llvm::Function::ExternalLinkage,
+                               "_call_custom_" + name,
+                               module.get());
     function->setCallingConv(llvm::CallingConv::C);
-    llvm::BasicBlock *entry = llvm::BasicBlock::Create(module->getContext(), "entry", function);
+    llvm::BasicBlock *entry =
+        llvm::BasicBlock::Create(module->getContext(), "entry", function);
     builder->SetInsertPoint(entry);
     llvm::Argument *arg = &*function->args().begin();
-    llvm::Function *custom_function =
-        llvm::dyn_cast<llvm::Function>(module->getOrInsertFunction(name, fn_type).getCallee());
+    llvm::Function *custom_function = llvm::dyn_cast<llvm::Function>(
+        module->getOrInsertFunction(name, fn_type).getCallee());
     custom_function->setCallingConv(llvm::CallingConv::C);
     llvm::Value *ret = builder->CreateCall(custom_function, {arg});
     builder->CreateRet(ret);
@@ -252,7 +266,8 @@ TEST(ExecutionEngine, custom_runtime_symbols) {
   int random_y = dis(mt);
 
   decltype(auto) registry = GlobalSymbolRegistry::Global();
-  // registry.Register("dereference_f64_ptr", (void *)+[](double *x) { return *x; });
+  // registry.Register("dereference_f64_ptr", (void *)+[](double *x) { return
+  // *x; });
 
   for (size_t i = 0; i < angle.size(); i++) {
     registry.RegisterVar("theta_" + std::to_string(i), angle[i]);
@@ -261,10 +276,14 @@ TEST(ExecutionEngine, custom_runtime_symbols) {
   auto engine = cinn::backends::ExecutionEngine::Create({1});
   engine->AddModule(std::move(module), std::move(context));
 
-  auto *call_cosf = reinterpret_cast<float (*)(float)>(engine->Lookup("_call_custom_cosf"));
-  auto *call_cos  = reinterpret_cast<double (*)(double)>(engine->Lookup("_call_custom_cos"));
-  auto *call_sinf = reinterpret_cast<float (*)(float)>(engine->Lookup("_call_custom_sinf"));
-  auto *call_sin  = reinterpret_cast<double (*)(double)>(engine->Lookup("_call_custom_sin"));
+  auto *call_cosf =
+      reinterpret_cast<float (*)(float)>(engine->Lookup("_call_custom_cosf"));
+  auto *call_cos =
+      reinterpret_cast<double (*)(double)>(engine->Lookup("_call_custom_cos"));
+  auto *call_sinf =
+      reinterpret_cast<float (*)(float)>(engine->Lookup("_call_custom_sinf"));
+  auto *call_sin =
+      reinterpret_cast<double (*)(double)>(engine->Lookup("_call_custom_sin"));
 
   ASSERT_TRUE(call_cosf && call_cos && call_sinf && call_sin);
 
@@ -288,7 +307,11 @@ TEST(ExecutionEngine, call_extern) {
       {M, N}, [=](Var i, Var j) { return x(i, j) + y(i, j); }, "add_out");
 
   ir::Tensor res = Compute(
-      {M, N}, [&](Var i, Var j) -> Expr { return lang::CallExtern("tanh", {add_out(i, j)}); }, "res");
+      {M, N},
+      [&](Var i, Var j) -> Expr {
+        return lang::CallExtern("tanh", {add_out(i, j)});
+      },
+      "res");
 
   auto stages = CreateStages({add_out, res});
 
@@ -303,12 +326,12 @@ TEST(ExecutionEngine, call_extern) {
   engine->Link(builder.Build());
 
   auto _ab_bb_cb_ = CreateTestBuffer();  // NOLINT
-  auto &ab        = std::get<0>(_ab_bb_cb_);
-  auto &bb        = std::get<1>(_ab_bb_cb_);
-  auto &cb        = std::get<2>(_ab_bb_cb_);
+  auto &ab = std::get<0>(_ab_bb_cb_);
+  auto &bb = std::get<1>(_ab_bb_cb_);
+  auto &cb = std::get<2>(_ab_bb_cb_);
 
   auto comp_addr = engine->Lookup("comp");
-  auto comp      = reinterpret_cast<void (*)(void *, int32_t)>(comp_addr);
+  auto comp = reinterpret_cast<void (*)(void *, int32_t)>(comp_addr);
 
   cinn_pod_value_t a_arg(ab), b_arg(bb), c_arg(cb);
   cinn_pod_value_t args[3] = {a_arg, b_arg, c_arg};

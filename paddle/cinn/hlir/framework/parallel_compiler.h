@@ -36,8 +36,8 @@ class ParallelCompiler {
   };
 
  public:
-  explicit ParallelCompiler(std::shared_ptr<Scope>& scope,
-                            std::shared_ptr<Graph>& graph,
+  explicit ParallelCompiler(std::shared_ptr<Scope>& scope,  // NOLINT
+                            std::shared_ptr<Graph>& graph,  // NOLINT
                             const CompileOptions& option,
                             const common::Target& target)
       : scope_(scope), graph_(graph), option_(option), target_(target) {}
@@ -53,8 +53,8 @@ class ParallelCompiler {
   struct Task {
    public:
     Task(ParallelCompiler* p,
-         std::shared_ptr<Scope>& s,
-         std::shared_ptr<Graph>& g,
+         std::shared_ptr<Scope>& s,  // NOLINT
+         std::shared_ptr<Graph>& g,  // NOLINT
          const CompileOptions& cp,
          const Target& t)
         : compiler(p), scope(s), graph(g), options(cp), target(t) {}

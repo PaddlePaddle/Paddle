@@ -36,7 +36,7 @@ class RuntimeSymbols {
   RuntimeSymbols(const RuntimeSymbols &) = delete;
 
   RuntimeSymbols(RuntimeSymbols &&rhs) {
-    symbols_       = std::move(rhs.symbols_);
+    symbols_ = std::move(rhs.symbols_);
     scalar_holder_ = std::move(rhs.scalar_holder_);
   }
 
@@ -45,7 +45,9 @@ class RuntimeSymbols {
    * @param name Name of the symbol.
    * @param address Address of the function.
    */
-  void RegisterFn(const std::string &name, void *address) { Register(name, address); }
+  void RegisterFn(const std::string &name, void *address) {
+    Register(name, address);
+  }
 
   /**
    * Register scalar.
@@ -85,7 +87,8 @@ class RuntimeSymbols {
 
  private:
   /**
-   * Register external symbol to the registry, the symbols in the registry will finally registered to JIT .
+   * Register external symbol to the registry, the symbols in the registry will
+   * finally registered to JIT .
    * @param name Name of the symbol in the JIT.
    * @param address The address of the variable in external space.
    */

@@ -21,7 +21,7 @@
 #include <thread>
 #include <vector>
 
-#include "cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 extern "C" {
 int max_num_workers = std::thread::hardware_concurrency();
@@ -58,17 +58,17 @@ void *load_program(const char *paramfile) {
   fclose(f);
 
   if (std::string(buf, buf + 4) != "CINN") {
-    // TODO LOG fatal
+    // TODO(hp03): LOG fatal
     return nullptr;
   }
-  // TODO check param file version
-  ctx->major_v = *(int *)(buf + 4);
-  ctx->minor_v = *(int *)(buf + 8);
+  // TODO(hp03): check param file version
+  ctx->major_v = *reinterpret_cast<int *>(buf + 4);
+  ctx->minor_v = *reinterpret_cast<int *>(buf + 8);
 
-  int *namelist_pos   = (int *)(buf + 16);
-  int *podvalue_pos   = (int *)(buf + *namelist_pos);
-  int *persistent_pos = (int *)(buf + *podvalue_pos);
-  int *inst_pos       = (int *)(buf + *persistent_pos);
+  int *namelist_pos = reinterpret_cast<int *>(buf + 16);
+  int *podvalue_pos = reinterpret_cast<int *>(buf + *namelist_pos);
+  int *persistent_pos = reinterpret_cast<int *>(buf + *podvalue_pos);
+  int *inst_pos = reinterpret_cast<int *>(buf + *persistent_pos);
   if (fsize < *inst_pos) {
     return nullptr;
   }
@@ -77,12 +77,12 @@ void *load_program(const char *paramfile) {
   std::vector<const char *> namev(namelen);
   std::map<std::string, int> name2index;
   for (int i = 0; i < namelen; i++) {
-    int offset           = (namelist_pos + 2)[i];
-    namev[i]             = (char *)(buf + offset);
+    int offset = (namelist_pos + 2)[i];
+    namev[i] = reinterpret_cast<char *>(buf + offset);
     name2index[namev[i]] = i;
   }
 
-  cinn_buffer_t *cb = (cinn_buffer_t *)(buf + podvalue_pos[1]);
+  cinn_buffer_t *cb = reinterpret_cast<cinn_buffer_t *>(buf + podvalue_pos[1]);
   for (int i = 0; i < namelen; i++) {
     // currently only CPU device is supported, so just use malloc
     if (cb[i].memory) {
@@ -106,9 +106,10 @@ void *load_program(const char *paramfile) {
     ctx->instructions.push_back(inst);
     int instargc = inst_pos[2 + i * 3 + 1];
     ctx->inst_argc.push_back(instargc);
-    cinn_pod_value_t *argv = (cinn_pod_value_t *)(buf + inst_pos[2 + i * 3 + 2]);
+    cinn_pod_value_t *argv =
+        reinterpret_cast<cinn_pod_value_t *>(buf + inst_pos[2 + i * 3 + 2]);
     for (int i = 0; i < instargc; i++) {
-      int idx = (uintptr_t)((cinn_buffer_t *)argv[i]);
+      int idx = (uintptr_t)((cinn_buffer_t *)(argv[i]));  // NOLINT
       cinn_value_t tmp_v;
       tmp_v.v_handle = &cb[idx];
       argv[i].set_value(tmp_v);
@@ -119,24 +120,24 @@ void *load_program(const char *paramfile) {
 }
 
 int set_maxconcurrency(int c) {
-  int old_c       = max_num_workers;
+  int old_c = max_num_workers;
   max_num_workers = c;
   return old_c;
 }
 
 typedef void (*func_t)(cinn_pod_value_t *, int);
 void run_program(void *ctx) {
-  param_context_t *pc = (param_context_t *)ctx;
+  param_context_t *pc = reinterpret_cast<param_context_t *>(ctx);
   for (int i = 0; i < pc->instructions.size(); i++) {
     const char *sym = pc->instructions[i].c_str();
-    void *p         = dlsym(RTLD_DEFAULT, sym);
-    func_t f        = (func_t)p;
+    void *p = dlsym(RTLD_DEFAULT, sym);
+    func_t f = (func_t)p;
     f(pc->inst_argv[i], pc->inst_argc[i]);
   }
 }
 
 cinn_pod_value_t *get_pod_value(void *ctx, const char *tname) {
-  param_context_t *pc = (param_context_t *)ctx;
+  param_context_t *pc = reinterpret_cast<param_context_t *>(ctx);
   if (pc->name2podvalue.find(tname) != pc->name2podvalue.end()) {
     return &pc->name2podvalue[tname];
   }
@@ -144,7 +145,9 @@ cinn_pod_value_t *get_pod_value(void *ctx, const char *tname) {
 }
 
 typedef int (*FCINNParallelLambda)(int task_id, int num_task, void *datas);
-int cinn_backend_parallel_launch(FCINNParallelLambda flambda, void *datas, int num_task) {
+int cinn_backend_parallel_launch(FCINNParallelLambda flambda,
+                                 void *datas,
+                                 int num_task) {
   int num_workers = max_num_workers;
   if (num_task == 0) num_task = num_workers;
   omp_set_num_threads(num_task);

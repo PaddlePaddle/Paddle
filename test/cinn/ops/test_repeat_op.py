@@ -14,16 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numpy as np
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestRepeatOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -41,12 +43,13 @@ class TestRepeatOp(OpTest):
         self.inputs = {
             "x": self.random(shape, dtype, -1.0, 1.0),
             "repeats": repeats,
-            "axis": axis
+            "axis": axis,
         }
 
     def build_paddle_program(self, target):
-        x = np.repeat(self.inputs["x"], self.inputs["repeats"],
-                      self.inputs["axis"])
+        x = np.repeat(
+            self.inputs["x"], self.inputs["repeats"], self.inputs["axis"]
+        )
         out = paddle.to_tensor(x, stop_gradient=True)
         self.paddle_outputs = [out]
 
@@ -54,12 +57,13 @@ class TestRepeatOp(OpTest):
         builder = NetBuilder("repeat")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.repeat(x, self.inputs["repeats"], self.inputs["axis"])
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
@@ -110,15 +114,10 @@ class TestRepeatOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "repeats": 2,
-                "axis": 0
-            },
+            {"repeats": 2, "axis": 0},
         ]
 
 
@@ -138,33 +137,16 @@ class TestRepeatOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "int8"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "bool"},
+            {"dtype": "int8"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = [
-            {
-                "repeats": 4,
-                "axis": 0
-            },
+            {"repeats": 4, "axis": 0},
         ]
 
 
@@ -184,23 +166,12 @@ class TestRepeatOpAttributeRepeats(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "repeats": 256,
-                "axis": 0
-            },
-            {
-                "repeats": 1024,
-                "axis": 0
-            },
-            {
-                "repeats": 2048,
-                "axis": 0
-            },
+            {"repeats": 256, "axis": 0},
+            {"repeats": 1024, "axis": 0},
+            {"repeats": 2048, "axis": 0},
         ]
 
 
@@ -220,43 +191,17 @@ class TestRepeatOpAttributeAxis(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "repeats": 128,
-                "axis": 0
-            },
-            {
-                "repeats": 128,
-                "axis": 1
-            },
-            {
-                "repeats": 128,
-                "axis": 2
-            },
-            {
-                "repeats": 128,
-                "axis": 3
-            },
-            {
-                "repeats": 128,
-                "axis": -1
-            },
-            {
-                "repeats": 128,
-                "axis": -2
-            },
-            {
-                "repeats": 128,
-                "axis": -3
-            },
-            {
-                "repeats": 128,
-                "axis": -4
-            },
+            {"repeats": 128, "axis": 0},
+            {"repeats": 128, "axis": 1},
+            {"repeats": 128, "axis": 2},
+            {"repeats": 128, "axis": 3},
+            {"repeats": 128, "axis": -1},
+            {"repeats": 128, "axis": -2},
+            {"repeats": 128, "axis": -3},
+            {"repeats": 128, "axis": -4},
         ]
 
 

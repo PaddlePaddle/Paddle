@@ -17,7 +17,8 @@
 namespace cinn::frontend::paddle::pb {
 
 template <>
-framework_proto::VarDesc* BlockDesc::GetVar<framework_proto::VarDesc>(int32_t idx) {
+framework_proto::VarDesc* BlockDesc::GetVar<framework_proto::VarDesc>(
+    int32_t idx) {
   CHECK_LT(idx, VarsSize()) << "idx >= vars.size()";
   return desc_->mutable_vars(idx);
 }
@@ -28,7 +29,8 @@ framework_proto::VarDesc* BlockDesc::AddVar<framework_proto::VarDesc>() {
 }
 
 template <>
-framework_proto::OpDesc* BlockDesc::GetOp<framework_proto::OpDesc>(int32_t idx) {
+framework_proto::OpDesc* BlockDesc::GetOp<framework_proto::OpDesc>(
+    int32_t idx) {
   CHECK_LT(idx, OpsSize()) << "idx >= ops.size()";
   return desc_->mutable_ops(idx);
 }

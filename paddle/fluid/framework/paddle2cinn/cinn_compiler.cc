@@ -22,6 +22,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "gflags/gflags.h"
 #include "paddle/cinn/auto_schedule/auto_tuner.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/target.h"
@@ -32,7 +33,6 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -112,6 +112,7 @@ const CinnCompiledObject &CinnCompiler::Compile(
 
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
+
       std::unique_lock<std::mutex> guard(lock_);
       // double check cache_by_struct_
       if (!cache_by_struct_.count(cur_key_by_struct)) {

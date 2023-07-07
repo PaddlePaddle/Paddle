@@ -22,11 +22,17 @@
 namespace cinn {
 namespace backends {
 
-void ExternFunctionLLVMEmitter::BindCodeGen(void* codegen) { codegen_ = reinterpret_cast<CodeGenLLVM*>(codegen); }
+void ExternFunctionLLVMEmitter::BindCodeGen(void* codegen) {
+  codegen_ = reinterpret_cast<CodeGenLLVM*>(codegen);
+}
 
-const char* ExternFunctionLLVMEmitter::func_name() const { return fn_name_.c_str(); }
+const char* ExternFunctionLLVMEmitter::func_name() const {
+  return fn_name_.c_str();
+}
 
-bool ExternFunctionLLVMEmitter::RetValuePacked() const { return fn_proto().ret_type.is_void(); }
+bool ExternFunctionLLVMEmitter::RetValuePacked() const {
+  return fn_proto().ret_type.is_void();
+}
 
 FunctionProto& ExternFunctionLLVMEmitter::fn_proto() const {
   auto* proto = ExternFunctionProtoRegistry::Global().Lookup(fn_name_);
@@ -54,14 +60,17 @@ void ExternFunctionLLVMEmitter::EmitImpl(const ir::Call* op) {
   CHECK(codegen_);
   CodeGenLLVMforEmitter codegen_for_emitter(codegen_);
   llvm::Function* custom_function = llvm::dyn_cast<llvm::Function>(
-      codegen_for_emitter.m()->getOrInsertFunction(fn_name_, llvm_fn_type()).getCallee());
+      codegen_for_emitter.m()
+          ->getOrInsertFunction(fn_name_, llvm_fn_type())
+          .getCallee());
   CHECK(custom_function) << "No function registered in JIT called " << fn_name_;
   custom_function->setCallingConv(llvm::CallingConv::C);
 
   std::vector<llvm::Value*> args;
   for (auto& v : op->read_args) {
     if (v.as_tensor()) {
-      args.push_back(codegen_for_emitter.GetVar(v.as_tensor()->buffer->name, false));
+      args.push_back(
+          codegen_for_emitter.GetVar(v.as_tensor()->buffer->name, false));
     } else {
       auto* arg = codegen_for_emitter.Visit(&v);
       args.push_back(arg);
@@ -69,16 +78,18 @@ void ExternFunctionLLVMEmitter::EmitImpl(const ir::Call* op) {
   }
   for (auto& v : op->write_args) {
     if (v.as_tensor()) {
-      args.push_back(codegen_for_emitter.GetVar(v.as_tensor()->buffer->name, false));
+      args.push_back(
+          codegen_for_emitter.GetVar(v.as_tensor()->buffer->name, false));
     } else {
       auto* arg = codegen_->Visit(&v);
       args.push_back(arg);
     }
   }
 
-  VLOG(3) << "function type " << op->name << ": " << DumpToString(*custom_function);
+  VLOG(3) << "function type " << op->name << ": "
+          << DumpToString(*custom_function);
 
-  auto* command                   = codegen_for_emitter.b()->CreateCall(custom_function, args);
+  auto* command = codegen_for_emitter.b()->CreateCall(custom_function, args);
   codegen_->extern_func_emit_res_ = command;
   VLOG(3) << "call: " << DumpToString(*command);
 }

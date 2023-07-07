@@ -36,9 +36,11 @@ namespace backends {
 /**
  * CUDA device code generator.
  *
- * It generates the device function, e.g, the function called "myadd" will have a __global__ functon called
- * "myadd_kernel", different from codegen_c, the declaration of the "myadd_kernel" function has an expanded argument
- * list, which finally similar to `__global__ void myadd(float* __restrict__ A, float* __restrict__ B, int n);`
+ * It generates the device function, e.g, the function called "myadd" will have
+ * a __global__ functon called "myadd_kernel", different from codegen_c, the
+ * declaration of the "myadd_kernel" function has an expanded argument list,
+ * which finally similar to `__global__ void myadd(float* __restrict__ A, float*
+ * __restrict__ B, int n);`
  */
 class CodeGenCUDA_Dev : public CodeGenC {
  public:
@@ -55,7 +57,8 @@ class CodeGenCUDA_Dev : public CodeGenC {
   std::string Compile(const ir::LoweredFunc& func);
 
   /**
-   * \brief Print a function argument in CUDA syntax. Currently, just some decoration of __restrict__.
+   * \brief Print a function argument in CUDA syntax. Currently, just some
+   * decoration of __restrict__.
    * @param arg the argument.
    * @return the representation in CUDA syntax.
    *
@@ -79,7 +82,9 @@ class CodeGenCUDA_Dev : public CodeGenC {
   void Visit(const ir::Let* op) override;
 
   // Print element access at a cuda built-in vector on a load/store node
-  bool PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger* op, ir::Expr index, bool is_store);
+  bool PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger* op,
+                                ir::Expr index,
+                                bool is_store);
 
   void PrintBuiltinCodes();
 
@@ -89,19 +94,23 @@ class CodeGenCUDA_Dev : public CodeGenC {
 
   void PrintTempBufferAliasDefinition(const ir::Buffer& buffer);
 
-  std::vector<Expr> GenerateBufferAliasExprs(const ir::_LoweredFunc_* op, const std::vector<ir::Buffer>& temp_buffers);
+  std::vector<Expr> GenerateBufferAliasExprs(
+      const ir::_LoweredFunc_* op, const std::vector<ir::Buffer>& temp_buffers);
 
   /**
-   * Print the function declaration, this is different from C, we expand the arguments and get something like
-   * `__global__ void myadd(float* __restrict__ A, float* __restrict__ B, int n);`
+   * Print the function declaration, this is different from C, we expand the
+   * arguments and get something like
+   * `__global__ void myadd(float* __restrict__ A, float* __restrict__ B, int
+   * n);`
    */
   void PrintFunctionDeclaration(const ir::_LoweredFunc_* op);
 
  private:
   Target target_;
   bool for_nvrtc_{false};
-  // names of vectorized tensors from `Let` statments where dtypes of the tensors
-  // are customized_type with customized_type::kcuda_builtin_vector_t prefix
+  // names of vectorized tensors from `Let` statments where dtypes of the
+  // tensors are customized_type with customized_type::kcuda_builtin_vector_t
+  // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
   static const std::string source_header_;
 };

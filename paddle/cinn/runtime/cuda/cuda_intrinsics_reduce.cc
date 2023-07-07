@@ -93,10 +93,11 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
       .AddInputType<int>()
       .End();
 
-#define REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL(REDUCE_TYPE, DTYPE)                     \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_block_reduce_##REDUCE_TYPE##_internal, target) \
-      .SetRetType<DTYPE>()                                                               \
-      .AddInputType<DTYPE>()                                                             \
+#define REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL(REDUCE_TYPE, DTYPE) \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(                                \
+      cinn_block_reduce_##REDUCE_TYPE##_internal, target)            \
+      .SetRetType<DTYPE>()                                           \
+      .AddInputType<DTYPE>()                                         \
       .End();
 
   EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_INTERNAL_FUNC_IMPL)

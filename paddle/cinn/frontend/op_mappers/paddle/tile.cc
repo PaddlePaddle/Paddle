@@ -20,7 +20,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void TileOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void TileOpMapper(const paddle::cpp::OpDesc& op_desc,
+                  const OpMapperContext& ctx) {
   // input
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
@@ -29,7 +30,8 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
   auto out_name = op_desc.Output("Out").front();
 
   // attr repeat_times
-  std::vector<int> repeat_times = op_desc.GetAttr<std::vector<int>>("repeat_times");
+  std::vector<int> repeat_times =
+      op_desc.GetAttr<std::vector<int>>("repeat_times");
 
   for (auto i : repeat_times) {
     CHECK_GT(i, 0) << "repeat_times's element must be greater than 0";
@@ -48,7 +50,8 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
   }
 
   CHECK_EQ(vec_x_dims.size(), repeat_times.size())
-      << "vec_x_dims's size must be equal to repeat_times's size after promotion";
+      << "vec_x_dims's size must be equal to repeat_times's size after "
+         "promotion";
 
   // output's shape
   std::vector<int> output_shape = vec_x_dims;
@@ -60,9 +63,11 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
 
   VLOG(4) << "output_shape: " << cinn::utils::Join(output_shape, ",");
 
-  // NOTE(wuweilong): Paddle's tile is implemented by Eigen's broadcast directly, but CINN's tile can not be implemented
-  // by BroadcastTo directly, because it is different from Eigen's broadcast. The semantics of Eigen's broadcast is same
-  // as tile, but CINN can not use Eigen's broadcast. So we need to Combine Reshape and BroadcastTo to implement tile.
+  // NOTE(wuweilong): Paddle's tile is implemented by Eigen's broadcast
+  // directly, but CINN's tile can not be implemented by BroadcastTo directly,
+  // because it is different from Eigen's broadcast. The semantics of Eigen's
+  // broadcast is same as tile, but CINN can not use Eigen's broadcast. So we
+  // need to Combine Reshape and BroadcastTo to implement tile.
 
   // make a copy of vec_x_dims
   std::vector<int> vec_x_dims_copy = vec_x_dims;
@@ -81,7 +86,7 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
     }
   }
 
-  auto tmp    = ctx.Builder()->BroadcastTo(x, vec_x_dims_copy);
+  auto tmp = ctx.Builder()->BroadcastTo(x, vec_x_dims_copy);
   auto output = ctx.Builder()->Reshape(tmp, output_shape);
 
   ctx.AddVar(out_name, output);

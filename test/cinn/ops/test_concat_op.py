@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestConcatOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -47,7 +49,8 @@ class TestConcatOp(OpTest):
     def cinn_inputs(self, builder, inputs):
         return [
             builder.create_input(
-                self.nptype2cinntype(data.dtype), data.shape, name)
+                self.nptype2cinntype(data.dtype), data.shape, name
+            )
             for name, data in inputs.items()
         ]
 
@@ -67,8 +70,7 @@ class TestConcatOp(OpTest):
 
         input_datas = [data for _, data in self.inputs.items()]
 
-        res = self.get_cinn_output(prog, target, input_list, input_datas,
-                                   [out])
+        res = self.get_cinn_output(prog, target, input_list, input_datas, [out])
 
         self.cinn_outputs = res
 
@@ -119,14 +121,10 @@ class TestConcatOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "axis": 0
-            },
+            {"axis": 0},
         ]
 
 
@@ -149,35 +147,17 @@ class TestConcatOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "uint8"
-            },
-            {
-                "dtype": "int8"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "bool"},
+            {"dtype": "uint8"},
+            {"dtype": "int8"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [
-            {
-                "axis": 0
-            },
+            {"axis": 0},
         ]
 
 
@@ -187,80 +167,39 @@ class TestConcatOpMultipleInputs(TestCaseHelper):
         self.cls = TestConcatOp
         self.inputs = [
             # 1D tensor with 1~4 inputs
-            {
-                "shapes": [[10]],
-                "axis": 0
-            },
-            {
-                "shapes": [[10], [6]],
-                "axis": 0
-            },
-            {
-                "shapes": [[10], [6], [8]],
-                "axis": 0
-            },
-            {
-                "shapes": [[10], [6], [10], [6]],
-                "axis": 0
-            },
+            {"shapes": [[10]], "axis": 0},
+            {"shapes": [[10], [6]], "axis": 0},
+            {"shapes": [[10], [6], [8]], "axis": 0},
+            {"shapes": [[10], [6], [10], [6]], "axis": 0},
             # 2D tensor with 1~4 inputs
-            {
-                "shapes": [[8, 5]],
-                "axis": 1
-            },
-            {
-                "shapes": [[8, 5], [8, 8]],
-                "axis": 1
-            },
-            {
-                "shapes": [[8, 5], [8, 5], [16, 5]],
-                "axis": 0
-            },
-            {
-                "shapes": [[8, 5], [8, 5], [8, 5], [8, 5]],
-                "axis": 0
-            },
+            {"shapes": [[8, 5]], "axis": 1},
+            {"shapes": [[8, 5], [8, 8]], "axis": 1},
+            {"shapes": [[8, 5], [8, 5], [16, 5]], "axis": 0},
+            {"shapes": [[8, 5], [8, 5], [8, 5], [8, 5]], "axis": 0},
             # 3D tensor with 1~4 inputs
-            {
-                "shapes": [[10, 3, 5]],
-                "axis": 0
-            },
-            {
-                "shapes": [[10, 3, 5], [10, 7, 5]],
-                "axis": 1
-            },
-            {
-                "shapes": [[10, 3, 5], [10, 3, 6], [10, 3, 7]],
-                "axis": 2
-            },
-            {
-                "shapes": [[10, 3, 5], [4, 3, 5], [2, 3, 5]],
-                "axis": 0
-            },
+            {"shapes": [[10, 3, 5]], "axis": 0},
+            {"shapes": [[10, 3, 5], [10, 7, 5]], "axis": 1},
+            {"shapes": [[10, 3, 5], [10, 3, 6], [10, 3, 7]], "axis": 2},
+            {"shapes": [[10, 3, 5], [4, 3, 5], [2, 3, 5]], "axis": 0},
             # 4D tensor with 1~4 inputs
-            {
-                "shapes": [[80, 1, 5, 7]],
-                "axis": 0
-            },
-            {
-                "shapes": [[80, 1, 5, 7], [80, 79, 5, 7]],
-                "axis": 1
-            },
+            {"shapes": [[80, 1, 5, 7]], "axis": 0},
+            {"shapes": [[80, 1, 5, 7], [80, 79, 5, 7]], "axis": 1},
             {
                 "shapes": [[80, 1, 50, 7], [80, 1, 5, 7], [80, 1, 10, 7]],
-                "axis": 2
+                "axis": 2,
             },
             {
-                "shapes": [[80, 1, 5, 17], [80, 1, 5, 27], [80, 1, 5, 37],
-                           [80, 1, 5, 47]],
-                "axis":
-                3
+                "shapes": [
+                    [80, 1, 5, 17],
+                    [80, 1, 5, 27],
+                    [80, 1, 5, 37],
+                    [80, 1, 5, 47],
+                ],
+                "axis": 3,
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -271,86 +210,30 @@ class TestConcatOpAttrs(TestCaseHelper):
         self.cls = TestConcatOp
         self.inputs = [
             # 1D tensor
-            {
-                "shapes": [[10], [8]],
-                "axis": 0
-            },
-            {
-                "shapes": [[10], [6]],
-                "axis": -1
-            },
+            {"shapes": [[10], [8]], "axis": 0},
+            {"shapes": [[10], [6]], "axis": -1},
             # 2D tensor
-            {
-                "shapes": [[8, 5], [10, 5]],
-                "axis": 0
-            },
-            {
-                "shapes": [[8, 5], [8, 8]],
-                "axis": 1
-            },
+            {"shapes": [[8, 5], [10, 5]], "axis": 0},
+            {"shapes": [[8, 5], [8, 8]], "axis": 1},
             # 3D tensor
-            {
-                "shapes": [[10, 3, 5], [10, 3, 5]],
-                "axis": 0
-            },
-            {
-                "shapes": [[10, 3, 5], [10, 7, 5]],
-                "axis": 1
-            },
-            {
-                "shapes": [[10, 3, 15], [10, 3, 5]],
-                "axis": 2
-            },
-            {
-                "shapes": [[10, 3, 7], [10, 3, 5]],
-                "axis": -1
-            },
-            {
-                "shapes": [[10, 3, 5], [10, 7, 5]],
-                "axis": -2
-            },
-            {
-                "shapes": [[10, 7, 5], [20, 7, 5]],
-                "axis": -3
-            },
+            {"shapes": [[10, 3, 5], [10, 3, 5]], "axis": 0},
+            {"shapes": [[10, 3, 5], [10, 7, 5]], "axis": 1},
+            {"shapes": [[10, 3, 15], [10, 3, 5]], "axis": 2},
+            {"shapes": [[10, 3, 7], [10, 3, 5]], "axis": -1},
+            {"shapes": [[10, 3, 5], [10, 7, 5]], "axis": -2},
+            {"shapes": [[10, 7, 5], [20, 7, 5]], "axis": -3},
             # 4D tensor
-            {
-                "shapes": [[80, 1, 5, 7], [80, 1, 5, 7]],
-                "axis": 0
-            },
-            {
-                "shapes": [[80, 1, 5, 7], [80, 79, 5, 7]],
-                "axis": 1
-            },
-            {
-                "shapes": [[80, 1, 5, 7], [80, 1, 10, 7]],
-                "axis": 2
-            },
-            {
-                "shapes": [[80, 1, 5, 7], [80, 1, 5, 7]],
-                "axis": 3
-            },
-            {
-                "shapes": [[80, 1, 5, 7], [80, 1, 5, 13]],
-                "axis": -1
-            },
-            {
-                "shapes": [[80, 1, 5, 7], [80, 1, 5, 7]],
-                "axis": -2
-            },
-            {
-                "shapes": [[80, 15, 5, 7], [80, 5, 5, 7]],
-                "axis": -3
-            },
-            {
-                "shapes": [[80, 1, 5, 7], [20, 1, 5, 7]],
-                "axis": -4
-            },
+            {"shapes": [[80, 1, 5, 7], [80, 1, 5, 7]], "axis": 0},
+            {"shapes": [[80, 1, 5, 7], [80, 79, 5, 7]], "axis": 1},
+            {"shapes": [[80, 1, 5, 7], [80, 1, 10, 7]], "axis": 2},
+            {"shapes": [[80, 1, 5, 7], [80, 1, 5, 7]], "axis": 3},
+            {"shapes": [[80, 1, 5, 7], [80, 1, 5, 13]], "axis": -1},
+            {"shapes": [[80, 1, 5, 7], [80, 1, 5, 7]], "axis": -2},
+            {"shapes": [[80, 15, 5, 7], [80, 5, 5, 7]], "axis": -3},
+            {"shapes": [[80, 1, 5, 7], [20, 1, 5, 7]], "axis": -4},
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 

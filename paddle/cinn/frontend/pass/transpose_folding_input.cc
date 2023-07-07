@@ -24,25 +24,31 @@
 
 namespace cinn::frontend::pass {
 
-// Pass `TransposeFoldingInput` folds transpose into dot, then both of them can be implemented by a
-// GEMM kernel. For each dot operator, try folding every input that belong output of transpose.
-// If output of tranpose in `fetch_ids`, keep the operator.
+// Pass `TransposeFoldingInput` folds transpose into dot, then both of them can
+// be implemented by a GEMM kernel. For each dot operator, try folding every
+// input that belong output of transpose. If output of tranpose in `fetch_ids`,
+// keep the operator.
 class TransposeFoldingInputPass : public TransposeFoldingBase {
  public:
   using TransposeFoldingBase::TransposeFoldingBase;
 
  protected:
-  void set_target_instrs() override { TransposeFoldingBase::target_instrs_ = {"matmul"}; }
+  void set_target_instrs() override {
+    TransposeFoldingBase::target_instrs_ = {"matmul"};
+  }
 
-  bool IsValidBroadCast(const Instruction& broadcast, const Instruction& dot, const int input_id) const {
+  bool IsValidBroadCast(const Instruction& broadcast,
+                        const Instruction& dot,
+                        const int input_id) const {
     if ("broadcast_to" != broadcast->op_type) {
       return false;
     }
 
-    // check whether the output shape can infer from another input, if not, cannot remove this broadcast
-    int next_id            = (input_id + 1) % dot->inputs.size();
+    // check whether the output shape can infer from another input, if not,
+    // cannot remove this broadcast
+    int next_id = (input_id + 1) % dot->inputs.size();
     const auto& next_shape = dot->inputs[next_id]->shape;
-    const auto& out_shape  = dot->outputs[0]->shape;
+    const auto& out_shape = dot->outputs[0]->shape;
 
     if (next_shape.size() != out_shape.size()) {
       return false;
@@ -56,12 +62,14 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
     return true;
   }
 
-  void DoMatmulFoldOptimize(Instruction* dot,
-                            const Out2InstrType& out2instr,
-                            const In2InstrType& in2instr,
-                            const std::unordered_set<std::string>& fetch_ids,
-                            absl::flat_hash_set<Instruction*>* remove_instrs) const override {
-    CHECK_EQ((*dot)->inputs.size(), 2UL) << "The matmul should only have two inputs.";
+  void DoMatmulFoldOptimize(
+      Instruction* dot,
+      const Out2InstrType& out2instr,
+      const In2InstrType& in2instr,
+      const std::unordered_set<std::string>& fetch_ids,
+      absl::flat_hash_set<Instruction*>* remove_instrs) const override {
+    CHECK_EQ((*dot)->inputs.size(), 2UL)
+        << "The matmul should only have two inputs.";
 
     auto debug_info = [](const std::vector<Instruction*>& instrs) {
       std::stringstream ss;
@@ -76,7 +84,8 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
       if (iter != out2instr.end()) {
         // for example: x -> scale -> y -> transpose -> z -> dot
         // fold_instrs = {"transpose", "scale"}
-        const auto& fold_instrs = GetFoldInstruction(iter->second, out2instr, in2instr, true);
+        const auto& fold_instrs =
+            GetFoldInstruction(iter->second, out2instr, in2instr, true);
 
         if (fold_instrs.empty()) {
           continue;
@@ -92,10 +101,14 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
           if (IsValidTranspose(*instr)) {
             // fold transpose into trans_a/trans_b
             if (i == 0) {
-              bool trans_a = (*dot)->attrs.count("trans_a") ? absl::get<bool>((*dot)->attrs.at("trans_a")) : false;
+              bool trans_a = (*dot)->attrs.count("trans_a")
+                                 ? absl::get<bool>((*dot)->attrs.at("trans_a"))
+                                 : false;
               dot->SetAttr("trans_a", static_cast<bool>(trans_a ^ true));
             } else if (i == 1) {
-              bool trans_b = (*dot)->attrs.count("trans_b") ? absl::get<bool>((*dot)->attrs.at("trans_b")) : false;
+              bool trans_b = (*dot)->attrs.count("trans_b")
+                                 ? absl::get<bool>((*dot)->attrs.at("trans_b"))
+                                 : false;
               dot->SetAttr("trans_b", static_cast<bool>(trans_b ^ true));
             } else {
               LOG(FATAL) << "The matmul should only have two inputs.";
@@ -106,9 +119,13 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
           } else if (IsValidScale(*instr)) {
             // assume C = alpha * A * B + beta * C
             // fold scale into alpha
-            float scale = (*instr)->attrs.count("scale") ? absl::get<float>((*instr)->attrs.at("scale")) : 1.0f;
+            float scale = (*instr)->attrs.count("scale")
+                              ? absl::get<float>((*instr)->attrs.at("scale"))
+                              : 1.0f;
 
-            float alpha = (*dot)->attrs.count("alpha") ? absl::get<float>((*dot)->attrs.at("alpha")) : 1.0f;
+            float alpha = (*dot)->attrs.count("alpha")
+                              ? absl::get<float>((*dot)->attrs.at("alpha"))
+                              : 1.0f;
             dot->SetAttr("alpha", alpha * scale);
           } else if (IsValidBroadCast(*instr, *dot, i)) {
             // nothin to do, can fold directly
@@ -134,16 +151,21 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
           }
 
           // check whether the instruction can be removed
-          const auto& out_name   = (*instr)->outputs[0]->id;
+          const auto& out_name = (*instr)->outputs[0]->id;
           const auto& out_instrs = in2instr.at(out_name);
 
-          bool can_remove = std::all_of(out_instrs.begin(), out_instrs.end(), [&](Instruction* out_instr) {
-            // the transpose had linked to not matmul op, cannot remove
-            return target_instrs_.count((*out_instr)->op_type) || (out_instr == next_instr);
-          });
+          bool can_remove = std::all_of(
+              out_instrs.begin(),
+              out_instrs.end(),
+              [&](Instruction* out_instr) {
+                // the transpose had linked to not matmul op, cannot remove
+                return target_instrs_.count((*out_instr)->op_type) ||
+                       (out_instr == next_instr);
+              });
 
           if (can_remove && !fetch_ids.count(out_name)) {
-            // the transpose is only link to matmul and its output is not in fetch_ids, should remove
+            // the transpose is only link to matmul and its output is not in
+            // fetch_ids, should remove
             remove_instrs->insert(instr);
           }
         }
@@ -155,7 +177,8 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
 }  // namespace cinn::frontend::pass
 
 CINN_REGISTER_HELPER(TransposeFoldingInput) {
-  CINN_REGISTER_PROGRAM_PASS(TransposeFoldingInput, ::cinn::frontend::pass::TransposeFoldingInputPass);
+  CINN_REGISTER_PROGRAM_PASS(TransposeFoldingInput,
+                             ::cinn::frontend::pass::TransposeFoldingInputPass);
 
   return true;
 }

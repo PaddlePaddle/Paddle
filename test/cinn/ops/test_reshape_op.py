@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestReshapeOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -44,12 +46,13 @@ class TestReshapeOp(OpTest):
         builder = NetBuilder("reshape_test")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.reshape(x, self.target_shape)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -62,119 +65,39 @@ class TestReshapeOpShape(TestCaseHelper):
         self.cls = TestReshapeOp
         self.inputs = [
             # 1D -> [1-5]D
-            {
-                "shape": [100],
-                "target_shape": [100]
-            },
-            {
-                "shape": [100],
-                "target_shape": [10, 10]
-            },
-            {
-                "shape": [125],
-                "target_shape": [5, 5, 5]
-            },
-            {
-                "shape": [256],
-                "target_shape": [4, 4, 4, 4]
-            },
-            {
-                "shape": [1024],
-                "target_shape": [8, 8, 4, 4]
-            },
+            {"shape": [100], "target_shape": [100]},
+            {"shape": [100], "target_shape": [10, 10]},
+            {"shape": [125], "target_shape": [5, 5, 5]},
+            {"shape": [256], "target_shape": [4, 4, 4, 4]},
+            {"shape": [1024], "target_shape": [8, 8, 4, 4]},
             # 2D -> [1-5]D
-            {
-                "shape": [5, 5],
-                "target_shape": [25]
-            },
-            {
-                "shape": [6, 8],
-                "target_shape": [4, 12]
-            },
-            {
-                "shape": [10, 20],
-                "target_shape": [5, 10, 4]
-            },
-            {
-                "shape": [4, 8],
-                "target_shape": [2, 2, 2, 4]
-            },
-            {
-                "shape": [16, 16],
-                "target_shape": [4, 2, 2, 1, 16]
-            },
+            {"shape": [5, 5], "target_shape": [25]},
+            {"shape": [6, 8], "target_shape": [4, 12]},
+            {"shape": [10, 20], "target_shape": [5, 10, 4]},
+            {"shape": [4, 8], "target_shape": [2, 2, 2, 4]},
+            {"shape": [16, 16], "target_shape": [4, 2, 2, 1, 16]},
             # 3D -> [1-5]D
-            {
-                "shape": [1, 1, 1],
-                "target_shape": [1]
-            },
-            {
-                "shape": [1, 2, 3],
-                "target_shape": [6, 1]
-            },
-            {
-                "shape": [4, 8, 16],
-                "target_shape": [16, 8, 4]
-            },
-            {
-                "shape": [6, 6, 6],
-                "target_shape": [4, 9, 2, 3]
-            },
-            {
-                "shape": [8, 1, 8],
-                "target_shape": [2, 2, 2, 2, 4]
-            },
+            {"shape": [1, 1, 1], "target_shape": [1]},
+            {"shape": [1, 2, 3], "target_shape": [6, 1]},
+            {"shape": [4, 8, 16], "target_shape": [16, 8, 4]},
+            {"shape": [6, 6, 6], "target_shape": [4, 9, 2, 3]},
+            {"shape": [8, 1, 8], "target_shape": [2, 2, 2, 2, 4]},
             # 4D -> [1-5]D
-            {
-                "shape": [4, 1, 2, 1],
-                "target_shape": [8]
-            },
-            {
-                "shape": [2, 2, 4, 8],
-                "target_shape": [4, 32]
-            },
-            {
-                "shape": [6, 7, 8, 9],
-                "target_shape": [42, 36, 2]
-            },
-            {
-                "shape": [1024, 1, 1, 1],
-                "target_shape": [4, 4, 8, 8]
-            },
-            {
-                "shape": [10, 20, 30, 40],
-                "target_shape": [8, 6, 4, 2, 625]
-            },
+            {"shape": [4, 1, 2, 1], "target_shape": [8]},
+            {"shape": [2, 2, 4, 8], "target_shape": [4, 32]},
+            {"shape": [6, 7, 8, 9], "target_shape": [42, 36, 2]},
+            {"shape": [1024, 1, 1, 1], "target_shape": [4, 4, 8, 8]},
+            {"shape": [10, 20, 30, 40], "target_shape": [8, 6, 4, 2, 625]},
             # special
-            {
-                "shape": [1, 1024, 4],
-                "target_shape": [1, 2048, 2]
-            },
-            {
-                "shape": [2048, 2, 2],
-                "target_shape": [256, 8, 4]
-            },
-            {
-                "shape": [1, 1, 256],
-                "target_shape": [16, 1, 16]
-            },
-            {
-                "shape": [1, 1, 1, 1],
-                "target_shape": [1, 1]
-            },
-            {
-                "shape": [1, 1, 1],
-                "target_shape": [1]
-            },
-            {
-                "shape": [1],
-                "target_shape": [1, 1, 1, 1]
-            },
+            {"shape": [1, 1024, 4], "target_shape": [1, 2048, 2]},
+            {"shape": [2048, 2, 2], "target_shape": [256, 8, 4]},
+            {"shape": [1, 1, 256], "target_shape": [16, 1, 16]},
+            {"shape": [1, 1, 1, 1], "target_shape": [1, 1]},
+            {"shape": [1, 1, 1], "target_shape": [1]},
+            {"shape": [1], "target_shape": [1, 1, 1, 1]},
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -184,36 +107,17 @@ class TestReshapeOpDtype(TestCaseHelper):
         self.class_name = "TestReshapeOpDtype"
         self.cls = TestReshapeOp
         self.inputs = [
-            {
-                "shape": [2, 3, 4],
-                "target_shape": [4, 6]
-            },
+            {"shape": [2, 3, 4], "target_shape": [4, 6]},
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "uint8"
-            },
-            {
-                "dtype": "int8"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "bool"},
+            {"dtype": "uint8"},
+            {"dtype": "int8"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = []
 

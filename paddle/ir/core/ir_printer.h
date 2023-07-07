@@ -34,7 +34,7 @@ class BasicIrPrinter {
 
   void PrintType(Type type);
 
-  void PrintAttribute(const Attribute& attr);
+  void PrintAttribute(Attribute attr);
 
  public:
   std::ostream& os;
