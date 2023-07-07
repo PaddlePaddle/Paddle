@@ -240,12 +240,14 @@ void HandleForInplaceOp(ir::Operation* op,
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value value = op->result(i);
-    std::string value_name = yaml_parser.InputNames()[i];
+    std::string value_name = yaml_parser.OutputNames()[i];
     if (yaml_parser.HasInplace(value_name)) {
       std::string inplace_name = yaml_parser.InplaceName(value_name);
       ir::Value inplace_value =
           op->operand(yaml_parser.InputName2Id().at(inplace_name));
       std::string var_name = name_map->at(inplace_value);
+      VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+              << " (var: " << var_name << ")";
       name_map->emplace(value, var_name);
     } else {
       BuildValue(value, scope, local_scope, name_map, count);
