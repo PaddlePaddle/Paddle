@@ -134,7 +134,8 @@ ExternalProject_Add(
     ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_depence.sh ${XPU_XRE_URL}
     ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
     ${XPU_XCCL_DIR_NAME} && wget ${XPU_XFT_GET_DEPENCE_URL} && bash
-    get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
+    get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} &&
+    WITH_XPTI=${WITH_XPTI} bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
     ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
@@ -168,6 +169,12 @@ if(WITH_XPTI)
   message(STATUS "Compile with XPU XPTI!")
   add_definitions(-DPADDLE_WITH_XPTI)
   set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
+endif()
+
+if(WITH_XPU_PLUGIN)
+  message(STATUS "Compile with XPU PLUGIN!")
+  add_definitions(-DPADDLE_WITH_XPU_PLUGIN)
+  include_directories(${CMAKE_SOURCE_DIR}/paddle/phi/kernels/xpu/plugin/include)
 endif()
 
 if(WITH_XPU_BKCL AND WITH_XPU_XFT)

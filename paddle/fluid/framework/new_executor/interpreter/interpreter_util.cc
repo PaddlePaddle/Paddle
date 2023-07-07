@@ -940,6 +940,7 @@ void BuildOpFuncList(
     ::ir::Block* block,
     std::vector<OpFuncNode>* vec_func_list,
     framework::Scope* scope,
+    framework::Scope* local_scope,
     const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config) {
   vec_func_list->reserve(block->size());
@@ -954,7 +955,9 @@ void BuildOpFuncList(
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed") {
+    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
+        op_name == "builtin.set_parameter" ||
+        op_name == "builtin.get_parameter") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -977,6 +980,7 @@ void BuildOpFuncList(
         false>((*it),
                value_2_name_map,
                scope,
+               local_scope,
                op_yaml_info_parser,
                &(op_func_node.infer_meta_context_));
 
@@ -1002,6 +1006,7 @@ void BuildOpFuncList(
                           true>((*it),
                                 value_2_name_map,
                                 scope,
+                                local_scope,
                                 op_yaml_info_parser,
                                 &(op_func_node.kernel_context_),
                                 &(op_func_node.input_index),
