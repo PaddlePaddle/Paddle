@@ -105,6 +105,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "constant_folding_pass",                        //
       "trt_flash_multihead_matmul_fuse_pass",         //
       "trt_cross_multihead_matmul_fuse_pass",         //
+      "bev_cross_attention_fuse_pass",                //
       "vit_attention_fuse_pass",                      //
       "trt_qk_multihead_matmul_fuse_pass",            //
       "layernorm_shift_partition_fuse_pass",          //
