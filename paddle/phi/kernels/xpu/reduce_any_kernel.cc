@@ -48,4 +48,4 @@ void AnyRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(any_raw, XPU, ALL_LAYOUT, phi::AnyRawKernel, bool, float) {}
+PD_REGISTER_KERNEL(any_raw, XPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
