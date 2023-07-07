@@ -57,3 +57,4 @@ test_triangular_solve_op
 test_trunc_op
 test_unfold_op
 test_unpool3d_op
+test_warprnnt_op
