@@ -25,7 +25,7 @@ from cinn.framework import *
 from cinn.frontend import *
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 assert len(sys.argv) == 2
 enable_gpu = sys.argv.pop()
@@ -74,7 +74,7 @@ class TestBenchmark(unittest.TestCase):
                     ". Diff is: ",
                     output[i] - result[len(result) - 1][i],
                 )
-        self.assertTrue(np.allclose(result[len(result) - 1], output, atol=1e-4))
+        np.testing.assert_allclose(result[len(result) - 1], output, atol=1e-4)
 
     def atest_conv2d_cinn(self):
         prog = Program()
@@ -414,10 +414,8 @@ typedef char int8_t;
             "TESTING [elementwise_add] time cost with shape [64, 64]...",
         )
         result = result.numpy(self.target).reshape(-1)
-        self.assertTrue(
-            np.allclose(
-                (tensor_data[0] + tensor_data[1]).reshape(-1), result, atol=1e-4
-            )
+        np.testing.assert_allclose(
+            (tensor_data[0] + tensor_data[1]).reshape(-1), result, atol=1e-4
         )
 
     def atest_elementwise2(self):
@@ -438,10 +436,8 @@ typedef char int8_t;
             "TESTING [elementwise_add] time cost with shape [2, 512, 112, 112]...",
         )
         result = result.numpy(self.target).reshape(-1)
-        self.assertTrue(
-            np.allclose(
-                (tensor_data[0] + tensor_data[1]).reshape(-1), result, atol=1e-4
-            )
+        np.testing.assert_allclose(
+            (tensor_data[0] + tensor_data[1]).reshape(-1), result, atol=1e-4
         )
 
     def atest_elementwise2(self):

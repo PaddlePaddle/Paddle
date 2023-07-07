@@ -39,7 +39,25 @@ class DenseTensorType : public ir::Type {
   const size_t &offset() const;
 };
 
+class SelectedRowsType : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(SelectedRowsType, SelectedRowsTypeStorage);
+
+  const ir::Type &dtype() const;
+
+  const phi::DDim &dims() const;
+
+  const phi::DataLayout &data_layout() const;
+
+  const phi::LoD &lod() const;
+
+  const size_t &offset() const;
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
