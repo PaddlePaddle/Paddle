@@ -104,8 +104,6 @@ void HandleForSpecialOp(ir::Operation* op,
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
     auto feed_list = feed_var->Get<paddle::framework::FeedList>();
     auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
-    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~ share here  " << in_tensor.dims()
-              << std::endl;
     out_tensor->ShareDataWith(in_tensor);
   }
 
@@ -150,9 +148,9 @@ void HandleForSpecialOp(ir::Operation* op,
 
     auto orig_name = name_map->at(in_ptr);
     if (scope->FindVar(param_name) == nullptr) {
-      (*name_map)[in_ptr] = param_name;
       scope->Rename(orig_name, param_name);
     }
+    (*name_map)[in_ptr] = param_name;
   }
 
   if (op_name == "builtin.get_parameter") {

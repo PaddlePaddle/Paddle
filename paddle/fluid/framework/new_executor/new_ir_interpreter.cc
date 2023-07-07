@@ -64,8 +64,8 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
-  // if (execution_config_.create_local_scope) {
-  if (true) {
+  if (execution_config_.create_local_scope) {
+    // if (true) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
     VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
@@ -185,7 +185,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    std::cerr << "build scope" << std::endl;
     ::ir::BuildScope(
         *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
 
@@ -199,13 +198,9 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                  execution_config_);
     // SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
-    std::cerr << "befre convert" << std::endl;
     Convert(&op_func_nodes);
-    std::cerr << "after convert" << std::endl;
     UpdateSyncOpNum();
-    std::cerr << "after sync" << std::endl;
     if (static_build_) {
-      std::cerr << "here" << std::endl;
       VLOG(4) << "RUN impl";
       RunImpl();
     }

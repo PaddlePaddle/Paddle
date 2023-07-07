@@ -96,25 +96,6 @@ void BuildPhiContext(
       continue;
     }
 
-    // // get define op
-    // auto define_op = ptr.GetDefiningOp();
-    // if(
-    // define_op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data()
-    // == "pd.feed" )
-    // {
-    //   std::cerr << "process feed output here" << std::endl;
-    //   auto feed_var = inner_scope->Var("feed");
-    //   VLOG(6) << "Create var: feed in scope " << scope;
-    //   int index =
-    //       define_op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    //   auto feed_list = feed_var->Get<paddle::framework::FeedList>();
-    //   auto* in_tensor = &(PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
-
-    //   std::cerr << "!!!!!!!!!!!!! fin " << index << std::endl;
-    //   ctx->EmplaceBackInput( InType(in_tensor ) );
-    //   continue;
-    // }
-
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
@@ -165,17 +146,11 @@ void BuildPhiContext(
               &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
           ctx->EmplaceBackAttr(r1);
         } else if (ptr.type().isa<ir::VectorType>()) {
-          std::cerr << "process vector" << std::endl;
-
           auto& tensor_array = inner_scope->FindVar(in_var_name)
                                    ->Get<paddle::framework::TensorRefArray>();
           if (tensor_array.size() == 1) {
-            std::cerr << "only one elem " << tensor_array[0]->dims()
-                      << std::endl;
             ctx->EmplaceBackAttr(phi::TensorRef(tensor_array[0]));
           } else {
-            std::cerr << "not one element  " << tensor_array.size()
-                      << std::endl;
             std::vector<phi::TensorRef> vec_ref;
             for (size_t i = 0; i < tensor_array.size(); ++i) {
               vec_ref.emplace_back(phi::TensorRef(tensor_array[i]));

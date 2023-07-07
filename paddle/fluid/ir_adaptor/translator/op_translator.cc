@@ -428,9 +428,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     // if src type is Tensor
     if (!is_vector) {
-      std::cerr << "not is vector " << legacy_input_vars.size() << std::endl;
       auto defining_info = (*param_map)[legacy_input_vars[0]];
-      std::cerr << "get defin info" << std::endl;
       op_inputs.push_back(defining_info.value);
 
       // if src type is Vector<Tesnor> , need an additional `CombineOp` to
@@ -456,11 +454,6 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
   auto& op_normalizer = OpNameNormalizer::instance();
 
   const BlockDesc* block = op_desc.Block();
-
-  auto output_map = op_desc.Outputs();
-  for (auto& t : output_map) {
-    std::cerr << "output name " << t.first << std::endl;
-  }
 
   for (const auto& info : output_infos) {
     size_t cur_output_idx = op_output_types.size();
@@ -622,7 +615,7 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
           generated_by_vector = false;
         }
       }
-      std::cerr << "insert var name " << arg_name << std::endl;
+
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
       idx_in_vector++;
