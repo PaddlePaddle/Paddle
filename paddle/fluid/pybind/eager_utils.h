@@ -37,6 +37,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+#include "paddle/fluid/eager/grad_node_info.h"
 namespace paddle {
 class CustomOpKernelContext;
 namespace framework {
@@ -114,6 +115,8 @@ PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
+
+PyObject* ToPyObject(egr::GradNodeBase* grad_node);
 
 class PyTensorHook : public egr::TensorHook {
  public:
