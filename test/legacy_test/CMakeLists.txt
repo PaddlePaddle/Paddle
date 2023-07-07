@@ -1398,4 +1398,6 @@ set_tests_properties(test_imperative_ocr_attention_model_with_stride
 set_tests_properties(test_imperative_ptb_rnn_with_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient_with_stride
                      PROPERTIES TIMEOUT 120)
+set_tests_properties(test_initializer_with_stride PROPERTIES TIMEOUT 100)
+set_tests_properties(test_unsqueeze2_op_with_stride PROPERTIES TIMEOUT 100)
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)

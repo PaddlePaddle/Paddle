@@ -23,10 +23,19 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims, meta.layout);
   meta.offset = 0;
   out->set_meta(meta);
+
+  if (input.numel() == 1) {
+    auto input_data = reinterpret_cast<const XPUType*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::copy<XPUTypeT>(dev_ctx.x_context(), input_data, output_data, 1);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+  }
 
   int r = 0;
   if (std::is_same<T, float>::value) {
