@@ -40,7 +40,7 @@ const std::map<std::tuple<int, int, int>, CublasLtAlgoParam> AlgoParamCache{};
 class CublasLtHelper {
  public:
   CublasLtHelper(int m, int k, int n, cublasLtHandle_t handle)
-      : alpha_(1), beta_(0), m_(m), k_(k), n_(n), handle_(handle) {
+      : handle_(handle), alpha_(1), beta_(0), m_(m), k_(k), n_(n) {
     cublasStatus_t status;
     // handle and matmul desc
 #if CUBLAS_VER_MAJOR < 11
