@@ -46,13 +46,7 @@ PD_REGISTER_KERNEL(all_raw,
                    double,
                    int,
                    int64_t,
-                   int16_t,
-                   bool,
-                   int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   bool) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #endif

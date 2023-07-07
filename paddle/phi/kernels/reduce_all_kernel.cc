@@ -38,38 +38,16 @@ void AllKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(all,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::AllKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(
+    all, CPU, ALL_LAYOUT, phi::AllKernel, float, double, int, int64_t, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(all,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AllKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(
+    all, GPU, ALL_LAYOUT, phi::AllKernel, float, double, int, int64_t, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP)
