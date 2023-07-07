@@ -217,14 +217,14 @@ class CublasLtHelper {
 
   cublasLtMatmulAlgo_t algo_;
 
-  int32_t alpha_;
-  int32_t beta_;
+  int32_t alpha_ = 1;
+  int32_t beta_ = 0;
 
-  int m_;
-  int k_;
-  int n_;
+  int m_ = 0;
+  int k_ = 0;
+  int n_ = 0;
 
-  size_t workspace_size_;
+  size_t workspace_size_ = 0;
 };
 
 }  // namespace phi
