@@ -56,7 +56,7 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ] = paddle.fluid.io.load_inference_model(model_path, exe)
+            ] = paddle.static.io.load_inference_model(model_path, exe)
         else:
             [
                 inference_program,

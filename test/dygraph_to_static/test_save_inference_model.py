@@ -130,7 +130,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             dirname=model_path,
             executor=exe,
             model_filename=model_filename,

@@ -29,7 +29,8 @@ from paddle.distributed.io import (
 from paddle.fluid import core, executor, optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.io import load_inference_model, save_inference_model
+from paddle.fluid.io import save_inference_model
+from paddle.static.io import load_inference_model
 
 paddle.enable_static()
 
@@ -134,7 +135,7 @@ class TestBook(unittest.TestCase):
 
         self.assertRaises(
             ValueError,
-            fluid.io.load_inference_model,
+            paddle.static.io.load_inference_model,
             None,
             exe,
             model_str,
