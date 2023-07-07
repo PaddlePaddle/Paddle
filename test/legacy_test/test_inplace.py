@@ -612,13 +612,6 @@ class TestDygraphInplaceCosh(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceAcos(TestDygraphInplaceWithContinuous):
-    # acos calculation will appear some nan
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.array_equal, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.acos(var)
 
@@ -627,13 +620,6 @@ class TestDygraphInplaceAcos(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceAcosh(TestDygraphInplaceWithContinuous):
-    # acosh calculation will appear some nan
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.array_equal, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.acosh(var)
 
@@ -650,13 +636,6 @@ class TestDygraphInplaceTan(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceATan(TestDygraphInplaceWithContinuous):
-    # atan calculation will appear some nan
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.allclose, atol=1e-6, rtol=1e-6, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.atan(var)
 
@@ -665,13 +644,6 @@ class TestDygraphInplaceATan(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceATanh(TestDygraphInplaceWithContinuous):
-    # atanh calculation will appear some nan
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.array_equal, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.atanh(var)
 
