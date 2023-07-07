@@ -65,6 +65,8 @@ class InterpreterCore {
 
   void reset_scope(Scope* new_scope);
 
+  const Scope* local_scope() const;
+
   const platform::Place& GetPlace() const;
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
