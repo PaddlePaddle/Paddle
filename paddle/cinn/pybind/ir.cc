@@ -108,7 +108,7 @@ void BindNode(py::module *m) {
 #undef DECLARE_IR_NODE_TY
 
   // class IrNode
-  py::class_<ir::IrNode, IrNodeWrapper /*, ObjectWrapper*/> ir_node(
+  py::class_<ir::IrNode, IrNodeWrapper> ir_node(
       *m, "IrNode", py::module_local());
   ir_node.def(py::init<>())
       .def(py::init<ir::Type>())
@@ -539,14 +539,13 @@ void BindIrIr(py::module *m) {
 }
 
 void BindOperation(py::module *m) {
-  py::class_<ir::PlaceholderOp /*, _Operation_Wrapper*/> placeholder_op(
-      *m, "PlaceholderOp");
+  py::class_<ir::PlaceholderOp> placeholder_op(*m, "PlaceholderOp");
   placeholder_op.def_readwrite("shape", &ir::PlaceholderOp::shape)
       .def_readwrite("dtype", &ir::PlaceholderOp::dtype)
       .def_static("make", &ir::PlaceholderOp::Make)
       .def("func_type", &ir::PlaceholderOp::func_type);
 
-  py::class_<ir::CallOp /*, _Operation_Wrapper*/> call_op(*m, "CallOp");
+  py::class_<ir::CallOp> call_op(*m, "CallOp");
   call_op.def("target", &ir::CallOp::target)
       .def_readwrite("call_expr", &ir::CallOp::call_expr)
       .def("read_args_mutable", py::overload_cast<>(&ir::CallOp::read_args))
@@ -564,8 +563,7 @@ void BindOperation(py::module *m) {
       .def_static("make", &ir::CallOp::Make)
       .def("func_type", &ir::CallOp::func_type);
 
-  py::class_<ir::ComputeOp /*, _Operation_Wrapper*/> compute_op(*m,
-                                                                "ComputeOp");
+  py::class_<ir::ComputeOp> compute_op(*m, "ComputeOp");
   compute_op.def_readwrite("reduce_axis", &ir::ComputeOp::reduce_axis)
       .def_readwrite("shape", &ir::ComputeOp::shape)
       .def_readwrite("body", &ir::ComputeOp::body)
