@@ -68,6 +68,14 @@ class IR_API alignas(8) Operation final {
     attributes_[key] = value;
   }
 
+  Attribute GetAttribute(const std::string &key) const {
+    return attributes_.at(key);
+  }
+
+  bool HasAttribute(const std::string &key) const {
+    return attributes_.find(key) != attributes_.end();
+  }
+
   ir::OpInfo info() const { return info_; }
 
   uint32_t num_results() const { return num_results_; }
