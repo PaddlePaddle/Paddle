@@ -138,6 +138,7 @@ test_trunc_op
 test_unfold_op
 test_unpool3d_op
 test_viterbi_decode_op
+test_warprnnt_op
 test_where_op
 test_yolo_box_op
 test_yolov3_loss_op

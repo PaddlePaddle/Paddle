@@ -80,6 +80,7 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
       cfg.xpu_quant_post_static_gelu_out_threshold;
   lite_xpu_config.quant_post_dynamic_activation_method =
       cfg.xpu_quant_post_dynamic_activation_method;
+  lite_cxx_config.set_xpu_config(lite_xpu_config);
   if (cfg.xpu_enable_multi_stream) {
     lite_cxx_config.enable_xpu_multi_stream();
   }
