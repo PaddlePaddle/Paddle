@@ -28,15 +28,18 @@ namespace framework_proto = ::cinn::frontend::paddle::proto;
 
 // convert between std::vector and protobuf repeated.
 template <typename T>
-inline std::vector<T> RepeatedToVector(const google::protobuf::RepeatedField<T> &repeated_field) {
+inline std::vector<T> RepeatedToVector(
+    const google::protobuf::RepeatedField<T> &repeated_field) {
   std::vector<T> ret;
   ret.reserve(repeated_field.size());
-  std::copy(repeated_field.begin(), repeated_field.end(), std::back_inserter(ret));
+  std::copy(
+      repeated_field.begin(), repeated_field.end(), std::back_inserter(ret));
   return ret;
 }
 
 template <typename T, typename RepeatedField>
-inline void VectorToRepeated(const std::vector<T> &vec, RepeatedField *repeated_field) {
+inline void VectorToRepeated(const std::vector<T> &vec,
+                             RepeatedField *repeated_field) {
   repeated_field->Clear();
   repeated_field->Reserve(vec.size());
   for (const auto &elem : vec) {
@@ -46,7 +49,8 @@ inline void VectorToRepeated(const std::vector<T> &vec, RepeatedField *repeated_
 
 // Specialize vector<bool>.
 template <typename RepeatedField>
-inline void VectorToRepeated(const std::vector<bool> &vec, RepeatedField *repeated_field) {
+inline void VectorToRepeated(const std::vector<bool> &vec,
+                             RepeatedField *repeated_field) {
   repeated_field->Clear();
   repeated_field->Reserve(vec.size());
   for (auto elem : vec) {
@@ -58,7 +62,9 @@ class VarDesc : public cpp::VarDescAPI {
  public:
   VarDesc() = delete;
 
-  explicit VarDesc(framework_proto::VarDesc *desc) : desc_(desc) { CHECK(desc_); }
+  explicit VarDesc(framework_proto::VarDesc *desc) : desc_(desc) {
+    CHECK(desc_);
+  }
 
   ::cinn::frontend::paddle::proto::VarDesc *Proto() { return desc_; }
   const framework_proto::VarDesc &ReadonlyProto() const { return *desc_; }
@@ -81,7 +87,8 @@ class VarDesc : public cpp::VarDescAPI {
 
   void SetDataType(VarDescAPI::VarDataType data_type);
 
-  void SetDataTypes(const std::vector<framework_proto::VarType::Type> &multiple_data_type);
+  void SetDataTypes(
+      const std::vector<framework_proto::VarType::Type> &multiple_data_type);
 
   VarDescAPI::VarDataType GetDataType() const;
 
@@ -101,7 +108,9 @@ class VarDesc : public cpp::VarDescAPI {
 
   bool Persistable() const override { return desc_->persistable(); }
 
-  void SetPersistable(bool persistable) override { desc_->set_persistable(persistable); }
+  void SetPersistable(bool persistable) override {
+    desc_->set_persistable(persistable);
+  }
 
  private:
   const framework_proto::VarType::TensorDesc &tensor_desc() const;

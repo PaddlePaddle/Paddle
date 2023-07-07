@@ -1278,17 +1278,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
   }}
 """
 
-    def gen_dist_tensor_code(self):
-        # define the DistTensorSpec vector for input and output tensors
-        api_code = "  \n  std::vector<paddle::distributed::auto_parallel::DistTensorSpec> input_specs;\n"
-
-        # get DistTensorSpec for each input tensor
-        for tensor_name in self.inputs['names']:
-            api_code += f"  input_specs.emplace_back(paddle::distributed::auto_parallel::DistTensorSpec({tensor_name}));\n"
-        api_code += "\n"
-
-        return api_code
-
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
@@ -1297,8 +1286,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
 {self.gene_kernel_select()}
 """
-        # if api_func_name == 'matmul':
-        #     api_code += self.gen_dist_tensor_code()
 
         if len(self.kernel['func']) > 1:
             kernel_dispatch_code = ''

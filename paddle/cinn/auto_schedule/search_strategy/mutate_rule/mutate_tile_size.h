@@ -20,13 +20,16 @@ namespace cinn {
 namespace auto_schedule {
 
 /**
- * The rule to mutate tile size, witch will modify the factors of the Split primitive.
+ * The rule to mutate tile size, witch will modify the factors of the Split
+ * primitive.
  */
 class MutateTileSize : public MutateRule {
  public:
   MutateTileSize() = default;
 
-  ir::ScheduleDesc Apply(const ir::ScheduleDesc& trace, utils::LinearRandomEngine::StateType* rand_seed) override;
+  ir::ScheduleDesc Apply(
+      const ir::ScheduleDesc& trace,
+      utils::LinearRandomEngine::StateType* rand_seed) override;
 };
 
 }  // namespace auto_schedule

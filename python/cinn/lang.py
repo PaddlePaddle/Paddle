@@ -12,7 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.lang import Buffer
-from .core_api.lang import lower
-from .core_api.lang import compute
 from .core_api.lang import *
+from .core_api.lang import Buffer, compute, lower

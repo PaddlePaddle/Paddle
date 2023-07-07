@@ -102,7 +102,8 @@ void IRMutator<T>::Visit(const IfThenElse *expr, T op) {
   auto *node = op->template As<IfThenElse>();
   IRVisitorBase<void, T>::Visit(&node->condition, &node->condition);
   IRVisitorBase<void, T>::Visit(&node->true_case, &node->true_case);
-  if (node->false_case.defined()) IRVisitorBase<void, T>::Visit(&node->false_case, &node->false_case);
+  if (node->false_case.defined())
+    IRVisitorBase<void, T>::Visit(&node->false_case, &node->false_case);
 }
 template <typename T>
 void IRMutator<T>::Visit(const Block *expr, T op) {
@@ -164,7 +165,8 @@ void IRMutator<T>::Visit(const Alloc *expr, T op) {
     IRVisitorBase<void, T>::Visit(&e, &e);
   }
 
-  if (node->condition.defined()) IRVisitorBase<void, T>::Visit(&node->condition, &node->condition);
+  if (node->condition.defined())
+    IRVisitorBase<void, T>::Visit(&node->condition, &node->condition);
   if (node->body.defined()) {
     Expr body(node->body);
     IRVisitorBase<void, T>::Visit(&node->body, &body);
@@ -204,12 +206,14 @@ template <typename T>
 void IRMutator<T>::Visit(const Let *expr, T op) {
   auto *node = op->template As<Let>();
   IRVisitorBase<void, T>::Visit(&node->symbol, &node->symbol);
-  if (node->body.defined()) IRVisitorBase<void, T>::Visit(&node->body, &node->body);
+  if (node->body.defined())
+    IRVisitorBase<void, T>::Visit(&node->body, &node->body);
 }
 template <typename T>
 void IRMutator<T>::Visit(const Reduce *expr, T op) {
   auto *node = op->template As<Reduce>();
-  if (node->init.defined()) IRVisitorBase<void, T>::Visit(&node->init, &node->init);
+  if (node->init.defined())
+    IRVisitorBase<void, T>::Visit(&node->init, &node->init);
   CHECK(node->body.defined());
   IRVisitorBase<void, T>::Visit(&node->body, &node->body);
 }

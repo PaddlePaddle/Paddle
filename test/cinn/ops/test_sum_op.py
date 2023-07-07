@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSumOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -48,13 +50,16 @@ class TestSumOp(OpTest):
         cinn_inputs = []
         for id, input in enumerate(self.inputs):
             cinn_input = builder.create_input(
-                self.nptype2cinntype(input.dtype), input.shape,
-                "input_" + str(id))
+                self.nptype2cinntype(input.dtype),
+                input.shape,
+                "input_" + str(id),
+            )
             cinn_inputs.append(cinn_input)
         out = builder.sum(cinn_inputs)
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, cinn_inputs, self.inputs,
-                                   [out])
+        res = self.get_cinn_output(
+            prog, target, cinn_inputs, self.inputs, [out]
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -138,21 +143,11 @@ class TestSumOpDtypeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [{"axes": []}]
         self.attrs = []

@@ -85,9 +85,12 @@ struct _CINNValuePack_ : public common::Object {
 
 struct CINNValuePack : public Shared<_CINNValuePack_> {
   explicit CINNValuePack(_CINNValuePack_* ptr) : Shared<_CINNValuePack_>(ptr) {}
-  explicit CINNValuePack(const std::vector<CINNValue>& array) : Shared<_CINNValuePack_>(_CINNValuePack_::Make(array)) {}
+  explicit CINNValuePack(const std::vector<CINNValue>& array)
+      : Shared<_CINNValuePack_>(_CINNValuePack_::Make(array)) {}
   CINNValue& operator[](int offset) { return (*operator->())[offset]; }
-  const CINNValue& operator[](int offset) const { return (*operator->())[offset]; }
+  const CINNValue& operator[](int offset) const {
+    return (*operator->())[offset];
+  }
 
   size_t size() const { return (*operator->()).size(); }
 
@@ -108,22 +111,38 @@ struct CINNValuePack : public Shared<_CINNValuePack_> {
 };
 
 /**
- * Handler for value types in CINN system. It supports two kinds of values: the POD and Shared.
+ * Handler for value types in CINN system. It supports two kinds of values: the
+ * POD and Shared.
  */
 class CINNValue : public cinn_pod_value_t {
  public:
   static constexpr int kNull = -1;
 
   CINNValue() : cinn_pod_value_t(cinn_value_t(), kNull) {}
-  CINNValue(cinn_value_t value, int type_code) : cinn_pod_value_t(value, type_code) {}
+  CINNValue(cinn_value_t value, int type_code)
+      : cinn_pod_value_t(value, type_code) {}
 
-  explicit CINNValue(bool value) : cinn_pod_value_t(value) { type_code_ = ::cinn_type_code<bool>(); }
-  explicit CINNValue(int32_t value) : cinn_pod_value_t(value) { type_code_ = ::cinn_type_code<int32_t>(); }
-  explicit CINNValue(int64_t value) : cinn_pod_value_t(value) { type_code_ = ::cinn_type_code<int64_t>(); }
-  explicit CINNValue(float value) : cinn_pod_value_t(value) { type_code_ = ::cinn_type_code<float>(); }
-  explicit CINNValue(bfloat16 value) : cinn_pod_value_t(value) { type_code_ = ::cinn_type_code<bfloat16>(); }
-  explicit CINNValue(float16 value) : cinn_pod_value_t(value) { type_code_ = ::cinn_type_code<float16>(); }
-  explicit CINNValue(double value) : cinn_pod_value_t(value) { type_code_ = ::cinn_type_code<double>(); }
+  explicit CINNValue(bool value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<bool>();
+  }
+  explicit CINNValue(int32_t value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<int32_t>();
+  }
+  explicit CINNValue(int64_t value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<int64_t>();
+  }
+  explicit CINNValue(float value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<float>();
+  }
+  explicit CINNValue(bfloat16 value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<bfloat16>();
+  }
+  explicit CINNValue(float16 value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<float16>();
+  }
+  explicit CINNValue(double value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<double>();
+  }
   explicit CINNValue(char* value);
   explicit CINNValue(cinn_buffer_t* value) : cinn_pod_value_t(value) {}
   explicit CINNValue(void* value) : cinn_pod_value_t(value) {}

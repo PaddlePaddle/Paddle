@@ -22,17 +22,23 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-std::tuple<common::GraphEdge*, common::GraphEdge*> Node::LinkTo(NodeData* other) {
+std::tuple<common::GraphEdge*, common::GraphEdge*> Node::LinkTo(
+    NodeData* other) {
   return this->common::GraphNode::LinkTo(other->as<common::GraphNode>());
 }
 
-std::tuple<common::GraphEdge*, common::GraphEdge*> NodeData::LinkTo(Node* other) {
+std::tuple<common::GraphEdge*, common::GraphEdge*> NodeData::LinkTo(
+    Node* other) {
   return this->common::GraphNode::LinkTo(other->as<common::GraphNode>());
 }
 
-void Node::Controls(NodeData* other) { return this->common::GraphNode::Controls(other->as<common::GraphNode>()); }
+void Node::Controls(NodeData* other) {
+  return this->common::GraphNode::Controls(other->as<common::GraphNode>());
+}
 
-void NodeData::Controls(Node* other) { return this->common::GraphNode::Controls(other->as<common::GraphNode>()); }
+void NodeData::Controls(Node* other) {
+  return this->common::GraphNode::Controls(other->as<common::GraphNode>());
+}
 
 namespace {
 
@@ -76,7 +82,8 @@ std::ostream& operator<<(std::ostream& os, const NodeAttr& node_attr) {
 }
 
 //! Using index to sort the input/output tensors
-bool edge_index_compare(const common::Shared<common::GraphEdge>& a, const common::Shared<common::GraphEdge>& b) {
+bool edge_index_compare(const common::Shared<common::GraphEdge>& a,
+                        const common::Shared<common::GraphEdge>& b) {
   CHECK_NOTNULL(a.get());
   CHECK_NOTNULL(b.get());
   return a->index() < b->index();
@@ -86,8 +93,9 @@ std::vector<common::Shared<common::GraphEdge>> Node::inlinks_in_order() const {
   std::vector<common::Shared<common::GraphEdge>> ordered_links;
   for (auto& in_edge : this->inlinks()) {
     ordered_links.push_back(in_edge);
-    CHECK_GE(in_edge->index(), 0) << "The index of a node's inlinks should be >= 0! Now index is: " << in_edge->index()
-                                  << ". Please check.";
+    CHECK_GE(in_edge->index(), 0)
+        << "The index of a node's inlinks should be >= 0! Now index is: "
+        << in_edge->index() << ". Please check.";
   }
   std::sort(ordered_links.begin(), ordered_links.end(), edge_index_compare);
   return ordered_links;
@@ -97,21 +105,26 @@ std::vector<common::Shared<common::GraphEdge>> Node::outlinks_in_order() const {
   std::vector<common::Shared<common::GraphEdge>> ordered_links;
   for (auto& out_edge : this->outlinks()) {
     ordered_links.push_back(out_edge);
-    CHECK_GE(out_edge->index(), 0) << "The index of a node's outlinks should be >= 0! Now index is: "
-                                   << out_edge->index() << ". Please check.";
+    CHECK_GE(out_edge->index(), 0)
+        << "The index of a node's outlinks should be >= 0! Now index is: "
+        << out_edge->index() << ". Please check.";
   }
   std::sort(ordered_links.begin(), ordered_links.end(), edge_index_compare);
   return ordered_links;
 }
 
-NodeData* InsertGraphOpNodeAfter(
-    common::Graph* graph, Node* insert_node, NodeData* input_nodedata, Node* out_node, int pos) {
+NodeData* InsertGraphOpNodeAfter(common::Graph* graph,
+                                 Node* insert_node,
+                                 NodeData* input_nodedata,
+                                 Node* out_node,
+                                 int pos) {
   CHECK(graph);
   CHECK(insert_node);
   CHECK(input_nodedata);
   input_nodedata->Controls(insert_node);
   common::Shared<Node> node_ptr(insert_node);
-  auto* out_nodedata = new NodeData(node_ptr, 0, 0, common::UniqName(insert_node->id() + "_out"));
+  auto* out_nodedata = new NodeData(
+      node_ptr, 0, 0, common::UniqName(insert_node->id() + "_out"));
   insert_node->Controls(out_nodedata);
   std::vector<common::GraphNode*> old_sources;
   auto input_links = out_node->inlinks_in_order();
@@ -138,14 +151,18 @@ NodeData* InsertGraphOpNodeAfter(
   return out_nodedata;
 }
 
-NodeData* InsertGraphOpNodeBefore(
-    common::Graph* graph, Node* insert_node, Node* input_node, NodeData* dst_data, int pos) {
+NodeData* InsertGraphOpNodeBefore(common::Graph* graph,
+                                  Node* insert_node,
+                                  Node* input_node,
+                                  NodeData* dst_data,
+                                  int pos) {
   CHECK(graph);
   CHECK(insert_node);
   CHECK(input_node);
   CHECK(dst_data);
-  auto node_ptr        = dst_data->source_node;
-  auto* input_node_out = new NodeData(node_ptr, 0, 0, common::UniqName(input_node->id() + "_out"));
+  auto node_ptr = dst_data->source_node;
+  auto* input_node_out =
+      new NodeData(node_ptr, 0, 0, common::UniqName(input_node->id() + "_out"));
   std::vector<common::GraphNode*> old_sinks;
   const auto& old_outlinks = input_node->outlinks_in_order();
   for (auto& link : old_outlinks) {

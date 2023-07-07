@@ -39,7 +39,9 @@ class Graph : public cinn::common::Graph {
     std::unordered_set<std::string> fetch_var_ids;
     Initialize(prog, fetch_var_ids, target);
   }
-  Graph(const frontend::Program& prog, const std::unordered_set<std::string>& fetch_var_ids, const Target& target) {
+  Graph(const frontend::Program& prog,
+        const std::unordered_set<std::string>& fetch_var_ids,
+        const Target& target) {
     Initialize(prog, fetch_var_ids, target);
   }
 
@@ -85,18 +87,28 @@ class Graph : public cinn::common::Graph {
       }
     };
     struct SharedGroupComparator {
-      bool operator()(const std::shared_ptr<Group>& first, const std::shared_ptr<Group>& second) const noexcept {
+      bool operator()(const std::shared_ptr<Group>& first,
+                      const std::shared_ptr<Group>& second) const noexcept {
         return first.get() == second.get();
       }
     };
     // input groups
-    std::unordered_set<std::shared_ptr<Group>, SharedGroupHasher, SharedGroupComparator> producer_groups;
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>
+        producer_groups;
     // output grous
-    std::unordered_set<std::shared_ptr<Group>, SharedGroupHasher, SharedGroupComparator> consumer_groups;
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>
+        consumer_groups;
     // fused sub-groups, used for fusion merge pass
     std::vector<std::shared_ptr<Group>> fused_sub_groups;
     // if as sub-group, used for belong groups.
-    std::unordered_set<std::shared_ptr<Group>, SharedGroupHasher, SharedGroupComparator> belong_groups;
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>
+        belong_groups;
 
     // for op lowering.
     std::vector<std::string> input_names;
@@ -106,7 +118,8 @@ class Graph : public cinn::common::Graph {
       if (fused_sub_groups.size()) {
         std::vector<Node*> tmp_nodes;
         for (auto& group : fused_sub_groups) {
-          tmp_nodes.insert(tmp_nodes.end(), group->nodes.begin(), group->nodes.end());
+          tmp_nodes.insert(
+              tmp_nodes.end(), group->nodes.begin(), group->nodes.end());
         }
         return tmp_nodes;
       } else {
@@ -129,7 +142,9 @@ class Graph : public cinn::common::Graph {
   };
   std::vector<std::shared_ptr<Group>> fusion_groups;
 
-  void RegisterNode(size_t key, Node* node) { this->common::Graph::RegisterNode(key, node->as<common::GraphNode>()); }
+  void RegisterNode(size_t key, Node* node) {
+    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+  }
   void RegisterNode(size_t key, NodeData* node) {
     this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
   }
@@ -149,7 +164,8 @@ class Graph : public cinn::common::Graph {
   template <typename T>
   inline const T& GetAttrs(const std::string& attr_name) const {
     auto it = attrs.find(attr_name);
-    CHECK(it != attrs.end()) << "Cannot find attribute [" << attr_name << "] in the graph";
+    CHECK(it != attrs.end())
+        << "Cannot find attribute [" << attr_name << "] in the graph";
     return absl::any_cast<const T&>(*it->second);
   }
 
@@ -162,7 +178,8 @@ class Graph : public cinn::common::Graph {
   template <typename T>
   inline T& GetMutableAttrs(const std::string& attr_name) {
     auto it = attrs.find(attr_name);
-    CHECK(it != attrs.end()) << "Cannot find attribute [" << attr_name << "] in the graph";
+    CHECK(it != attrs.end())
+        << "Cannot find attribute [" << attr_name << "] in the graph";
     return absl::any_cast<T&>(*it->second);
   }
 
@@ -179,45 +196,56 @@ class Graph : public cinn::common::Graph {
   /**
    * \brief Debug the grouped graph according to fusion_groups.
    */
-  std::string DebugGroupedGraph(const std::unordered_set<std::string>& fetch_var_ids = {});
-  std::string DebugGroupedGraph(const std::vector<Node*>& group,
-                                const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string DebugGroupedGraph(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string DebugGroupedGraph(
+      const std::vector<Node*>& group,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
-   * \brief Debug the grouped graph with GraphViz dot format according to fusion_groups.
+   * \brief Debug the grouped graph with GraphViz dot format according to
+   * fusion_groups.
    */
-  std::string VisualizeGraph(const std::unordered_set<std::string>& fetch_var_ids = {});
-  std::vector<std::string> VisualizeGroups(const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string VisualizeGraph(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::vector<std::string> VisualizeGroups(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
    * \brief Genereate the python test code for group test
    */
-  std::string GenerateGroupPythonCode(const std::vector<Node*>& group,
-                                      const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string GenerateGroupPythonCode(
+      const std::vector<Node*>& group,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
    * \brief Visualize the grouped graph according to fusion_groups.
    */
-  void VisualizeGroupedGraph(const std::unordered_set<std::string>& fetch_var_ids = {});
+  void VisualizeGroupedGraph(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
    * \brief Visualize the grouped graph according to user specified groups.
    */
-  void VisualizeGroupedGraph(const std::vector<std::vector<Node*>>& groups,
-                             const std::unordered_set<std::string>& fetch_var_ids = {});
+  void VisualizeGroupedGraph(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   void SaveSourceCode(const std::string& code);
   void SavePTXCode(const std::string& ptx);
 
  private:
-  std::string DebugGroupedGraph(const std::vector<std::vector<Node*>>& groups,
-                                const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string DebugGroupedGraph(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
-  std::string VisualizeGraph(const std::vector<std::vector<Node*>>& groups,
-                             const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string VisualizeGraph(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
-  std::vector<std::string> VisualizeGroups(const std::vector<std::vector<Node*>>& groups,
-                                           const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::vector<std::string> VisualizeGroups(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   std::vector<std::vector<Node*>> FusionGroupsToGroups();
 

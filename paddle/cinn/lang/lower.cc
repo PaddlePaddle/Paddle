@@ -33,12 +33,14 @@ namespace lang {
 using ir::Tensor;
 using poly::Stage;
 
-std::vector<ir::Argument> GetArgs(const Expr& func_body, const std::vector<std::string>& input_output_nodes) {
+std::vector<ir::Argument> GetArgs(
+    const Expr& func_body, const std::vector<std::string>& input_output_nodes) {
   std::vector<ir::Argument> res;
   std::map<std::string, std::set<const ir::Load*>> name2loads;
   std::map<std::string, std::set<const ir::Store*>> name2stores;
   auto load_or_store_nodes = ir::CollectIRNodesWithoutTensor(
-      func_body, [&](const Expr* x) { return x->As<ir::Store>() || x->As<ir::Load>(); });
+      func_body,
+      [&](const Expr* x) { return x->As<ir::Store>() || x->As<ir::Load>(); });
 
   for (auto&& e : load_or_store_nodes) {
     if (e.As<ir::Load>()) {
@@ -51,9 +53,10 @@ std::vector<ir::Argument> GetArgs(const Expr& func_body, const std::vector<std::
   }
 
   for (auto&& node_name : input_output_nodes) {
-    auto load_it  = name2loads.find(node_name);
+    auto load_it = name2loads.find(node_name);
     auto store_it = name2stores.find(node_name);
-    // if a node is ir::Load and also ir::Store, then process it as a ir::Store in priority.
+    // if a node is ir::Load and also ir::Store, then process it as a ir::Store
+    // in priority.
     if (store_it != name2stores.end()) {  //
       for (auto&& node : store_it->second) {
         const auto* tensor = node->tensor.as_tensor();
@@ -74,7 +77,8 @@ std::vector<ir::Argument> GetArgs(const Expr& func_body, const std::vector<std::
   }
 
   if (VLOG_IS_ON(3)) {
-    for (auto& i : input_output_nodes) VLOG(3) << "In input_output_nodes, arg has : " << i;
+    for (auto& i : input_output_nodes)
+      VLOG(3) << "In input_output_nodes, arg has : " << i;
     for (auto& i : res) VLOG(3) << "In res, arg has : " << i.name();
   }
   return res;
@@ -92,20 +96,25 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
       buffer_arg_names.insert(tensor->buffer->name);
     }
   }
-  std::map<std::string, ir::Buffer> name_to_buffer;  // used to avoid duplication.
+  std::map<std::string, ir::Buffer>
+      name_to_buffer;  // used to avoid duplication.
 
-  auto all_temp_tensors = ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
-    return x->as_tensor() && x->as_tensor()->buffer.defined() &&
-           (!stage_map->Lookup(x->as_tensor()->name) || !stage_map[x->as_tensor()]->inlined()) &&
-           ((!buffer_arg_names.count(x->as_tensor()->buffer->name) && !tensor_arg_names.count(x->as_tensor()->name)) ||
-            utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
-  });
+  auto all_temp_tensors =
+      ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
+        return x->as_tensor() && x->as_tensor()->buffer.defined() &&
+               (!stage_map->Lookup(x->as_tensor()->name) ||
+                !stage_map[x->as_tensor()]->inlined()) &&
+               ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
+                 !tensor_arg_names.count(x->as_tensor()->name)) ||
+                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+      });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
     if (!name_to_buffer.count(buffer_name)) {
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {
-      if (e.as_tensor()->buffer->numel() < name_to_buffer[buffer_name]->numel()) {
+      if (e.as_tensor()->buffer->numel() <
+          name_to_buffer[buffer_name]->numel()) {
         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
       }
     }
@@ -114,7 +123,9 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
   auto update_map = ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
     if (x->as_tensor() && x->as_tensor()->buffer.defined()) {
       auto buffer_name = x->as_tensor()->buffer->name;
-      if (name_to_buffer.count(buffer_name) && x->as_tensor()->buffer->numel() < name_to_buffer[buffer_name]->numel()) {
+      if (name_to_buffer.count(buffer_name) &&
+          x->as_tensor()->buffer->numel() <
+              name_to_buffer[buffer_name]->numel()) {
         name_to_buffer[buffer_name] = x->as_tensor()->buffer;
       }
     }
@@ -127,26 +138,30 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
 }
 
 //! Collect the temporary tensors from a computational graph.
-std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args, Expr body) {
+std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args,
+                                       Expr body) {
   std::unordered_set<std::string> buffer_arg_names;
   for (auto& a : args) {
     if (a.is_buffer()) {
       buffer_arg_names.insert(a.name());
     }
   }
-  std::map<std::string, ir::Buffer> name_to_buffer;  // used to avoid duplication.
+  std::map<std::string, ir::Buffer>
+      name_to_buffer;  // used to avoid duplication.
 
-  auto all_temp_tensors = ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
-    return x->as_tensor() && x->as_tensor()->buffer.defined() &&
-           (!buffer_arg_names.count(x->as_tensor()->buffer->name) ||
-            utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
-  });
+  auto all_temp_tensors =
+      ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
+        return x->as_tensor() && x->as_tensor()->buffer.defined() &&
+               (!buffer_arg_names.count(x->as_tensor()->buffer->name) ||
+                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+      });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
     if (!name_to_buffer.count(buffer_name)) {
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {
-      if (e.as_tensor()->buffer->numel() < name_to_buffer[buffer_name]->numel()) {
+      if (e.as_tensor()->buffer->numel() <
+          name_to_buffer[buffer_name]->numel()) {
         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
       }
     }
@@ -155,7 +170,9 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args, Ex
   auto update_map = ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
     if (x->as_tensor() && x->as_tensor()->buffer.defined()) {
       auto buffer_name = x->as_tensor()->buffer->name;
-      if (name_to_buffer.count(buffer_name) && x->as_tensor()->buffer->numel() < name_to_buffer[buffer_name]->numel()) {
+      if (name_to_buffer.count(buffer_name) &&
+          x->as_tensor()->buffer->numel() <
+              name_to_buffer[buffer_name]->numel()) {
         name_to_buffer[buffer_name] = x->as_tensor()->buffer;
       }
     }
@@ -167,11 +184,13 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args, Ex
   return temp_buffers;
 }
 
-std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(StageMap stages, const std::vector<Tensor>& tensor_args) {
+std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
+    StageMap stages, const std::vector<Tensor>& tensor_args) {
   std::set<ir::Tensor> res;
   for (auto& stage : stages) {
     res.emplace(ir::Tensor(stage.second->tensor()));
-    res.insert(stage.second->ctrl_depends().begin(), stage.second->ctrl_depends().end());
+    res.insert(stage.second->ctrl_depends().begin(),
+               stage.second->ctrl_depends().end());
   }
   for (auto& t : tensor_args) {
     if (res.count(t)) res.erase(t);
@@ -179,14 +198,18 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(StageMap stages, const st
   return res;
 }
 
-void InitReduceTensor(StageMap stages, const Tensor& tensor, const Target& target) {
+void InitReduceTensor(StageMap stages,
+                      const Tensor& tensor,
+                      const Target& target) {
   if (tensor->is_reduce_tensor() && !tensor->IsReduceInited(stages)) {
     tensor->InitReduction(stages, target);
   }
-  auto uninited_reduce_tensors = ir::CollectIRNodes(tensor->body(), [&](const Expr* x) {
-    return x && x->defined() && x->as_tensor() && x->as_tensor()->is_reduce_tensor() &&
-           !x->as_tensor()->IsReduceInited(stages);
-  });
+  auto uninited_reduce_tensors =
+      ir::CollectIRNodes(tensor->body(), [&](const Expr* x) {
+        return x && x->defined() && x->as_tensor() &&
+               x->as_tensor()->is_reduce_tensor() &&
+               !x->as_tensor()->IsReduceInited(stages);
+      });
   for (auto& t : uninited_reduce_tensors) {
     VLOG(3) << "Init reduce tensor: " << t.as_tensor()->name;
     t.as_tensor()->InitReduction(stages, target);
@@ -207,14 +230,15 @@ ir::LoweredFunc Lower(const std::string& name,
   // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
   auto ctrl_deps = CollectTempTensorsFromCtrlDepends(stages, tensor_args);
   ctrl_deps.insert(temp_tensors.begin(), temp_tensors.end());
-  auto lower_impl_instance = detail::LowerImpl(name,
-                                               stages,
-                                               tensor_args,
-                                               scalar_args,
-                                               std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
-                                               target,
-                                               support_ir_schedule);
-  auto result              = lower_impl_instance();
+  auto lower_impl_instance =
+      detail::LowerImpl(name,
+                        stages,
+                        tensor_args,
+                        scalar_args,
+                        std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
+                        target,
+                        support_ir_schedule);
+  auto result = lower_impl_instance();
   std::vector<ir::LoweredFunc> return_value;
   for (auto& res : result) {
     auto temp_buffers = GetTempBuffers(tensor_args, stages, res->body);
@@ -257,13 +281,14 @@ std::vector<ir::LoweredFunc> LowerVec(const std::string& name,
   // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
   auto ctrl_deps = CollectTempTensorsFromCtrlDepends(stages, tensor_args);
   ctrl_deps.insert(temp_tensors.begin(), temp_tensors.end());
-  auto lower_impl_instance = detail::LowerImpl(name,
-                                               stages,
-                                               tensor_args,
-                                               scalar_args,
-                                               std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
-                                               target,
-                                               support_ir_schedule);
+  auto lower_impl_instance =
+      detail::LowerImpl(name,
+                        stages,
+                        tensor_args,
+                        scalar_args,
+                        std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
+                        target,
+                        support_ir_schedule);
   // return vectorof ir::LoweredFunc.
   auto result = lower_impl_instance();
   std::vector<ir::LoweredFunc> return_value;

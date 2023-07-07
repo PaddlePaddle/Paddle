@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 
@@ -59,14 +59,10 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
-    // TODO(Ruibiao): hack skip gc all vars for multiple jobs, improve it later
-    if (jobs.size() > 1) {
-      for (VarDesc* var : program->Block(0).AllVars()) {
-        execution_config.skip_gc_vars.insert(var->Name());
-      }
-    }
+    execution_config.skip_gc_vars = job->SkipGcVars();
 
-    if (FLAGS_enable_new_ir_in_executor) {
+    // TODO(phlrain) we only support cpu for now
+    if (FLAGS_enable_new_ir_in_executor && platform::is_cpu_place(place)) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
       auto kernel_program =

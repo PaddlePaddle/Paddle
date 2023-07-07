@@ -31,26 +31,33 @@
 #include "test/cpp/cinn/test02_matmul_vectorize.h"
 
 TEST(test02, basic) {
-  const int M  = 1024;
-  const int N  = 1024;
-  const int K  = 1024;
+  const int M = 1024;
+  const int N = 1024;
+  const int K = 1024;
   const int bn = 32;
 
-  auto* A        = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {M, K}, 32);
-  auto* B        = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {K, N}, 32);
-  auto* C        = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {M, N}, 32);
-  auto* C_target = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {M, N});
-  auto* packedB  = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {N / bn, K, bn}, 32);
+  auto* A = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {M, K}, 32);
+  auto* B = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {K, N}, 32);
+  auto* C = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {M, N}, 32);
+  auto* C_target = cinn_buffer_t::new_(
+      cinn_device_kind_t::cinn_x86_device, cinn_float32_t(), {M, N});
+  auto* packedB = cinn_buffer_t::new_(cinn_device_kind_t::cinn_x86_device,
+                                      cinn_float32_t(),
+                                      {N / bn, K, bn},
+                                      32);
   cinn_buffer_malloc(nullptr, A);
   cinn_buffer_malloc(nullptr, B);
   cinn_buffer_malloc(nullptr, C_target);
   cinn_buffer_malloc(nullptr, C);
   cinn_buffer_malloc(nullptr, packedB);
 
-  float* Ad        = reinterpret_cast<float*>(A->memory);
-  float* Bd        = reinterpret_cast<float*>(B->memory);
+  float* Ad = reinterpret_cast<float*>(A->memory);
+  float* Bd = reinterpret_cast<float*>(B->memory);
   float* Cd_target = reinterpret_cast<float*>(C_target->memory);
-  float* Cd        = reinterpret_cast<float*>(C->memory);
+  float* Cd = reinterpret_cast<float*>(C->memory);
 
   for (int i = 0; i < M; i++) {
     for (int k = 0; k < K; k++) {
@@ -106,7 +113,7 @@ TEST(test02, basic) {
   cinn_pod_value_t packedB_arg(packedB);
   cinn_pod_value_t M_arg(M);
 
-  cinn_pod_value_t args[]  = {A_arg, B_arg, C_arg};
+  cinn_pod_value_t args[] = {A_arg, B_arg, C_arg};
   cinn_pod_value_t args1[] = {A_arg, B_arg, C_arg, packedB_arg};
   cinn_pod_value_t args2[] = {M_arg, A_arg, B_arg, C_arg};
   cinn_pod_value_t args3[] = {M_arg, A_arg, B_arg, C_arg};
@@ -163,31 +170,35 @@ TEST(test02, basic) {
 
   TEST_FUNC3(matmul_array_packing_dynamic_shape, 1e-5);
 
-  // Currently, the execution of a LoweredFunc is scheduled by the outer framework, so no need to Call inside another
-  // LoweredFunc.
+  // Currently, the execution of a LoweredFunc is scheduled by the outer
+  // framework, so no need to Call inside another LoweredFunc.
   // TODO(Superjomn) Fixit latter.
   // TEST_FUNC(matmul_main);
 
-#define TEST_LLVM_MATMUL(test_name, TARGET)                                                                      \
-  do {                                                                                                           \
-    auto module             = cinn::tests::CreateCinnMatmulModule(#test_name, TARGET, 1024, 1024, 1024);         \
-    auto engine             = cinn::tests::CreateExecutionEngine(module);                                        \
-    auto matmul_##test_name = reinterpret_cast<void (*)(void**, int32_t)>(engine->Lookup("matmul_" #test_name)); \
-    TEST_FUNC(matmul_##test_name);                                                                               \
+#define TEST_LLVM_MATMUL(test_name, TARGET)                                \
+  do {                                                                     \
+    auto module = cinn::tests::CreateCinnMatmulModule(                     \
+        #test_name, TARGET, 1024, 1024, 1024);                             \
+    auto engine = cinn::tests::CreateExecutionEngine(module);              \
+    auto matmul_##test_name = reinterpret_cast<void (*)(void**, int32_t)>( \
+        engine->Lookup("matmul_" #test_name));                             \
+    TEST_FUNC(matmul_##test_name);                                         \
   } while (false)
 
-#define TEST_LLVM_MATMUL1(test_name, TARGET)                                                                     \
-  do {                                                                                                           \
-    auto module             = cinn::tests::CreateCinnMatmulModule(#test_name, TARGET, 1024, 1024, 1024);         \
-    auto engine             = cinn::tests::CreateExecutionEngine(module);                                        \
-    auto matmul_##test_name = reinterpret_cast<void (*)(void**, int32_t)>(engine->Lookup("matmul_" #test_name)); \
-    TEST_FUNC1(matmul_##test_name, 1e-5);                                                                        \
+#define TEST_LLVM_MATMUL1(test_name, TARGET)                               \
+  do {                                                                     \
+    auto module = cinn::tests::CreateCinnMatmulModule(                     \
+        #test_name, TARGET, 1024, 1024, 1024);                             \
+    auto engine = cinn::tests::CreateExecutionEngine(module);              \
+    auto matmul_##test_name = reinterpret_cast<void (*)(void**, int32_t)>( \
+        engine->Lookup("matmul_" #test_name));                             \
+    TEST_FUNC1(matmul_##test_name, 1e-5);                                  \
   } while (false)
 
   cinn::Target target;
   target.arch = cinn::Target::Arch::X86;
   target.bits = cinn::Target::Bit::k32;
-  target.os   = cinn::Target::OS::Linux;
+  target.os = cinn::Target::OS::Linux;
 
   TEST_LLVM_MATMUL(basic, target);
   TEST_LLVM_MATMUL(tile, target);
@@ -197,9 +208,11 @@ TEST(test02, basic) {
   TEST_LLVM_MATMUL1(array_packing, target);
 
   {
-    auto module    = cinn::tests::CreateMatmulBasicModule(target, 1024, 1024, 1024);
-    auto jit       = cinn::tests::CreateSimpleJit(module);
-    auto matmul_fn = reinterpret_cast<void (*)(void**, int32_t)>(jit->Lookup("matmul_basic"));
+    auto module =
+        cinn::tests::CreateMatmulBasicModule(target, 1024, 1024, 1024);
+    auto jit = cinn::tests::CreateSimpleJit(module);
+    auto matmul_fn = reinterpret_cast<void (*)(void**, int32_t)>(
+        jit->Lookup("matmul_basic"));
     TEST_FUNC(matmul_fn);
   }
 

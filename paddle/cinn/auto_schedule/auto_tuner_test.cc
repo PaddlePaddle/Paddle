@@ -73,14 +73,16 @@ class TestAutoTuner : public ::testing::Test {
     // AutoTuner is combined with new IR Schedule
     FLAGS_cinn_ir_schedule = true;
     std::unordered_set<std::string> fetch_ids;
-    auto program   = CreateAddReluProgram();
-    auto graph     = cinn::frontend::Optimize(&program, fetch_ids, target);
+    auto program = CreateAddReluProgram();
+    auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
     compiled_scope = BuildScope(target, graph);
-    graph_compiler = std::make_unique<GraphCompiler>(target, compiled_scope, graph);
-    tuner          = std::make_unique<AutoTuner>(target, graph.get());
+    graph_compiler =
+        std::make_unique<GraphCompiler>(target, compiled_scope, graph);
+    tuner = std::make_unique<AutoTuner>(target, graph.get());
   }
 
-  TuningResult InitializeAndTune(const AutoTuner::Config& config, const TuningOptions& options) {
+  TuningResult InitializeAndTune(const AutoTuner::Config& config,
+                                 const TuningOptions& options) {
     tuner->Initialize(config, graph_compiler.get());
     return tuner->Tune(options);
   }
@@ -108,7 +110,8 @@ class TestAutoTuner : public ::testing::Test {
     VLOG(6) << "Print lowered_funcs before building";
     VLOG(6) << compile_options.lowered_funcs[0][0];
     VLOG(6) << compile_options.lowered_funcs[1][0];
-    auto runtime_program = graph_compiler->Build(compile_options).runtime_program;
+    auto runtime_program =
+        graph_compiler->Build(compile_options).runtime_program;
     ASSERT_EQ(1, runtime_program->size());
     runtime_program->Execute();
   }
@@ -120,7 +123,7 @@ class TestAutoTuner : public ::testing::Test {
 
     TuningOptions tuning_options;
     tuning_options.num_measure_trials = 0;
-    auto result                       = InitializeAndTune(tuning_config, tuning_options);
+    auto result = InitializeAndTune(tuning_config, tuning_options);
     BasicCheckResult(result);
     ApplyTunedAndRun(result);
   }
@@ -131,7 +134,7 @@ class TestAutoTuner : public ::testing::Test {
     tuning_config.task_schedule_strategy = "round_robin";
 
     TuningOptions tuning_options;
-    tuning_options.num_measure_trials        = 4;
+    tuning_options.num_measure_trials = 4;
     tuning_options.num_samples_per_iteration = 2;
 
     auto result = InitializeAndTune(tuning_config, tuning_options);

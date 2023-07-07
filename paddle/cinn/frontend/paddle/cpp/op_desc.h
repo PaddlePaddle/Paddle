@@ -35,7 +35,7 @@ namespace cpp {
  */
 class OpDesc : public OpDescAPI {
  public:
-  using attrs_t      = std::map<std::string, absl::any>;
+  using attrs_t = std::map<std::string, absl::any>;
   using attr_types_t = std::map<std::string, AttrType>;
 
  protected:
@@ -51,10 +51,18 @@ class OpDesc : public OpDescAPI {
   std::string Type() const override { return type_; }
   void SetType(const std::string& x) override { type_ = x; }
 
-  const std::map<std::string, std::vector<std::string>>& inputs() const { return inputs_; }
-  const std::map<std::string, std::vector<std::string>>& outputs() const { return outputs_; }
-  std::map<std::string, std::vector<std::string>>* mutable_inputs() { return &inputs_; }
-  std::map<std::string, std::vector<std::string>>* mutable_outputs() { return &outputs_; }
+  const std::map<std::string, std::vector<std::string>>& inputs() const {
+    return inputs_;
+  }
+  const std::map<std::string, std::vector<std::string>>& outputs() const {
+    return outputs_;
+  }
+  std::map<std::string, std::vector<std::string>>* mutable_inputs() {
+    return &inputs_;
+  }
+  std::map<std::string, std::vector<std::string>>* mutable_outputs() {
+    return &outputs_;
+  }
 
   bool HasInput(const std::string& param) const {
     auto it = inputs_.find(param);
@@ -74,11 +82,19 @@ class OpDesc : public OpDescAPI {
 
   std::vector<std::string> Output(const std::string& param) const override;
 
-  void SetInput(const std::string& param, const std::vector<std::string>& args) override { inputs_[param] = args; }
+  void SetInput(const std::string& param,
+                const std::vector<std::string>& args) override {
+    inputs_[param] = args;
+  }
 
-  void SetOutput(const std::string& param, const std::vector<std::string>& args) override { outputs_[param] = args; }
+  void SetOutput(const std::string& param,
+                 const std::vector<std::string>& args) override {
+    outputs_[param] = args;
+  }
 
-  bool HasAttr(const std::string& name) const override { return attrs_.count(name); }
+  bool HasAttr(const std::string& name) const override {
+    return attrs_.count(name);
+  }
 
   AttrType GetAttrType(const std::string& name) const override {
     auto it = attr_types_.find(name);
@@ -101,7 +117,9 @@ class OpDesc : public OpDescAPI {
   T GetAttr(const std::string& name) const;
 
   const std::map<std::string, absl::any>& attrs() const { return attrs_; }
-  const std::map<std::string, AttrType>& attr_types() const { return attr_types_; }
+  const std::map<std::string, AttrType>& attr_types() const {
+    return attr_types_;
+  }
 };
 
 }  // namespace cpp

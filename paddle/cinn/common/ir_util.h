@@ -27,10 +27,13 @@
 namespace cinn {
 namespace common {
 
-Expr IndiceToAbsOffset(const std::vector<Expr> &shape, const std::vector<Expr> &indices);
-Expr IndiceToAbsOffset(const std::vector<int> &shape, const std::vector<Expr> &indices);
+Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
+                       const std::vector<Expr> &indices);
+Expr IndiceToAbsOffset(const std::vector<int> &shape,
+                       const std::vector<Expr> &indices);
 
-Expr PrecedingAxisToAbsOffset(const std::vector<Expr> &shape, int preceding_n_axis);
+Expr PrecedingAxisToAbsOffset(const std::vector<Expr> &shape,
+                              int preceding_n_axis);
 
 Expr CastIfNeeded(Expr body, Type type);
 
@@ -39,8 +42,10 @@ Expr CastIfNeeded(Expr body, Type type);
 //! @param var_map The map from variables to the target expressions.
 void Substitute(Expr *expr, const std::map<const ir::_Var_ *, Expr> &var_map);
 
-//! Get a stack of forloops(For and PolyFor nodes) to a Store node target to \p tensor_name
-std::vector<Expr *> GetForloopStackToStore(Expr *expr, const std::string &tensor_name);
+//! Get a stack of forloops(For and PolyFor nodes) to a Store node target to \p
+//! tensor_name
+std::vector<Expr *> GetForloopStackToStore(Expr *expr,
+                                           const std::string &tensor_name);
 
 // make const
 // @{
@@ -63,8 +68,12 @@ template <typename T = int32_t>
 inline Expr make_one() {
   return make_const(static_cast<T>(1));
 }
-inline Expr make_bool(bool x) { return common::make_shared<ir::UIntImm>(Bool(), x); }
-inline Expr make_bool(bool x, int lanes) { return common::make_shared<ir::UIntImm>(Bool(lanes), x); }
+inline Expr make_bool(bool x) {
+  return common::make_shared<ir::UIntImm>(Bool(), x);
+}
+inline Expr make_bool(bool x, int lanes) {
+  return common::make_shared<ir::UIntImm>(Bool(lanes), x);
+}
 // @}
 
 /**
@@ -77,7 +86,8 @@ void CheckTensorUniqueInExpr(Expr expr);
  */
 void CheckBufferUniqueInExpr(Expr expr);
 
-std::vector<std::string> GatherItersToTensorProducer(const std::string &target_tensor_name, Expr *expr);
+std::vector<std::string> GatherItersToTensorProducer(
+    const std::string &target_tensor_name, Expr *expr);
 
 bool is_zero(Expr v);
 
@@ -103,13 +113,21 @@ template <typename T>
 Expr make_const(Type t, T v) {
   if (t.is_vector()) {
     if (t.is_int()) {
-      return ir::Broadcast::Make(make_shared<ir::IntImm>(t.ElementOf(), static_cast<int64_t>(v)), t.lanes());
+      return ir::Broadcast::Make(
+          make_shared<ir::IntImm>(t.ElementOf(), static_cast<int64_t>(v)),
+          t.lanes());
     } else if (t.is_uint()) {
-      return ir::Broadcast::Make(make_shared<ir::UIntImm>(t.ElementOf(), static_cast<uint64_t>(v)), t.lanes());
+      return ir::Broadcast::Make(
+          make_shared<ir::UIntImm>(t.ElementOf(), static_cast<uint64_t>(v)),
+          t.lanes());
     } else if (t.is_float()) {
-      return ir::Broadcast::Make(make_shared<ir::FloatImm>(t.ElementOf(), static_cast<double>(v)), t.lanes());
+      return ir::Broadcast::Make(
+          make_shared<ir::FloatImm>(t.ElementOf(), static_cast<double>(v)),
+          t.lanes());
     } else if (t.is_bool()) {
-      return ir::Broadcast::Make(make_shared<ir::UIntImm>(t.ElementOf(), static_cast<bool>(v)), t.lanes());
+      return ir::Broadcast::Make(
+          make_shared<ir::UIntImm>(t.ElementOf(), static_cast<bool>(v)),
+          t.lanes());
     } else {
       CINN_NOT_IMPLEMENTED
     }

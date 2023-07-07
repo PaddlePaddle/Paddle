@@ -105,7 +105,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NoamDecay(
+            decay = paddle.optimizer.lr.NoamDecay(
                 d_model, warmup_steps, learning_rate=learning_rate
             )
             return decay
@@ -343,7 +343,7 @@ def polynomial_decay(
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.PolynomialDecay(
+            decay = paddle.optimizer.lr.PolynomialDecay(
                 learning_rate, decay_steps, end_learning_rate, power, cycle
             )
             return decay
@@ -410,10 +410,10 @@ def piecewise_decay(boundaries, values):
               paddle.enable_static()
               boundaries = [10000, 20000]
               values = [1.0, 0.5, 0.1]
-              optimizer = fluid.optimizer.Momentum(
+              optimizer = paddle.optimizer.Momentum(
                   momentum=0.9,
-                  learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
-                  regularization=paddle.regularizer.L2Decay(1e-4))
+                  learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
+                  weight_decay=paddle.regularizer.L2Decay(1e-4))
 
 
     """
@@ -422,7 +422,7 @@ def piecewise_decay(boundaries, values):
             raise ValueError("len(values) - len(boundaries) should be 1")
 
         if in_dygraph_mode():
-            decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
+            decay = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
             return decay
         else:
             global_step = _decay_step_counter()
@@ -575,7 +575,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            lr = imperate_lr.LinearLrWarmup(
+            lr = paddle.optimizer.lr.LinearWarmup(
                 learning_rate, warmup_steps, start_lr, end_lr
             )
             return lr

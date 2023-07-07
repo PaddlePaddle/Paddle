@@ -21,7 +21,7 @@ class CostModelType(enum.Enum):
     XGB = 1
 
 
-class CostModel(object):
+class CostModel:
     """
     A base class to call different cost model algorithm.
     """

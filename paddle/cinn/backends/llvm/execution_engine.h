@@ -52,7 +52,8 @@ namespace cinn::backends {
 
 class NaiveObjectCache : public llvm::ObjectCache {
  public:
-  void notifyObjectCompiled(const llvm::Module *, llvm::MemoryBufferRef) override;
+  void notifyObjectCompiled(const llvm::Module *,
+                            llvm::MemoryBufferRef) override;
   std::unique_ptr<llvm::MemoryBuffer> getObject(const llvm::Module *) override;
 
  private:
@@ -69,9 +70,11 @@ struct ExecutionOptions {
 
 class ExecutionEngine {
  public:
-  static std::unique_ptr<ExecutionEngine> Create(const ExecutionOptions &config);
+  static std::unique_ptr<ExecutionEngine> Create(
+      const ExecutionOptions &config);
 
-  static std::unique_ptr<ExecutionEngine> Create(const ExecutionOptions &config, RuntimeSymbols &&module_symbols);
+  static std::unique_ptr<ExecutionEngine> Create(
+      const ExecutionOptions &config, RuntimeSymbols &&module_symbols);
 
   void *Lookup(absl::string_view name);
 
@@ -80,18 +83,22 @@ class ExecutionEngine {
 
   void ExportObject(const std::string &path);
 
-  bool AddModule(std::unique_ptr<llvm::Module> module, std::unique_ptr<llvm::LLVMContext> context);
+  bool AddModule(std::unique_ptr<llvm::Module> module,
+                 std::unique_ptr<llvm::LLVMContext> context);
 
  protected:
-  explicit ExecutionEngine(bool enable_object_cache, RuntimeSymbols &&module_symbols)
-      : cache_(std::make_unique<NaiveObjectCache>()), module_symbols_(std::move(module_symbols)) {}
+  explicit ExecutionEngine(bool enable_object_cache,
+                           RuntimeSymbols &&module_symbols)
+      : cache_(std::make_unique<NaiveObjectCache>()),
+        module_symbols_(std::move(module_symbols)) {}
 
   void RegisterRuntimeSymbols();
 
   bool SetupTargetTriple(llvm::Module *module);
 
   // This may not be a compatible implementation.
-  friend std::unique_ptr<ExecutionEngine> std::make_unique<ExecutionEngine>(bool &&, cinn::backends::RuntimeSymbols &&);
+  friend std::unique_ptr<ExecutionEngine> std::make_unique<ExecutionEngine>(
+      bool &&, cinn::backends::RuntimeSymbols &&);
 
  private:
   mutable std::mutex mu_;

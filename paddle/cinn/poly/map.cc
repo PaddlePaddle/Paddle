@@ -25,16 +25,21 @@ std::string Map::__str__() const {
 
   auto get_ids_repr = [](const std::vector<Iterator>& ids) {
     std::vector<std::string> fields;
-    std::transform(ids.begin(), ids.end(), std::back_inserter(fields), [](const Iterator& x) { return x.id; });
+    std::transform(ids.begin(),
+                   ids.end(),
+                   std::back_inserter(fields),
+                   [](const Iterator& x) { return x.id; });
     return utils::Join(fields, ", ");
   };
 
   auto domain_iterators_repr = get_ids_repr(domain_iterators_);
-  auto range_iterators_repr  = get_ids_repr(range_iterators_);
+  auto range_iterators_repr = get_ids_repr(range_iterators_);
 
   std::vector<std::string> conds_fields;
-  std::transform(
-      conds_.begin(), conds_.end(), std::back_inserter(conds_fields), [](const Condition& x) { return x.__str__(); });
+  std::transform(conds_.begin(),
+                 conds_.end(),
+                 std::back_inserter(conds_fields),
+                 [](const Condition& x) { return x.__str__(); });
   auto conds_repr = utils::Join(conds_fields, " and ");
 
   if (!conds_.empty()) {
@@ -69,9 +74,11 @@ Map::Map(isl::ctx ctx,
 isl::map Map::to_isl() const {
   auto map = isl::map(ctx_, __str__());
   // set dimension names
-  auto handler          = [](const Iterator& x) { return x.id; };
-  auto domain_dim_names = utils::Map<std::vector<Iterator>, std::string>(domain_iterators_, handler);
-  auto range_dim_names  = utils::Map<std::vector<Iterator>, std::string>(range_iterators_, handler);
+  auto handler = [](const Iterator& x) { return x.id; };
+  auto domain_dim_names = utils::Map<std::vector<Iterator>, std::string>(
+      domain_iterators_, handler);
+  auto range_dim_names =
+      utils::Map<std::vector<Iterator>, std::string>(range_iterators_, handler);
   isl_set_dim_names(&map, isl_dim_in, domain_dim_names);
   isl_set_dim_names(&map, isl_dim_out, range_dim_names);
   return map;

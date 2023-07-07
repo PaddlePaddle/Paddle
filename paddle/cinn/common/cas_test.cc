@@ -34,7 +34,8 @@ using namespace ir;  // NOLINT
 
 TEST(CAS, number_cal) {
   // 1 * 100 * -1 + 0 + 1001
-  auto u1 = Sum::Make({Product::Make({Expr(1), Expr(100), Expr(-1)}), Expr(0), Expr(1001)});
+  auto u1 = Sum::Make(
+      {Product::Make({Expr(1), Expr(100), Expr(-1)}), Expr(0), Expr(1001)});
   LOG(INFO) << u1;
 }
 
@@ -49,11 +50,16 @@ TEST(CAS, cmp) {
   EXPECT_EQ(cmp(Expr(1), x), true);
 
   // x * y * z > x * y
-  EXPECT_EQ(cmp(ir::Product::Make({x, y, z}), ir::Product::Make({x, y})), false);
+  EXPECT_EQ(cmp(ir::Product::Make({x, y, z}), ir::Product::Make({x, y})),
+            false);
   // x * y * z > 10 * y * z
-  EXPECT_EQ(cmp(ir::Product::Make({x, y, z}), ir::Product::Make({Expr(10), y, z})), false);
+  EXPECT_EQ(
+      cmp(ir::Product::Make({x, y, z}), ir::Product::Make({Expr(10), y, z})),
+      false);
   // 1 * y * z < 10 * y * z
-  EXPECT_EQ(cmp(ir::Product::Make({Expr(1), y, z}), ir::Product::Make({Expr(10), y, z})), true);
+  EXPECT_EQ(cmp(ir::Product::Make({Expr(1), y, z}),
+                ir::Product::Make({Expr(10), y, z})),
+            true);
 }
 
 TEST(CAS, SimplifySum) {
@@ -67,7 +73,8 @@ TEST(CAS, SimplifySum) {
   // z + 1 + y + x + zx
   auto u3 = CasSimplify(Sum::Make({z, Expr(1), y, x, Product::Make({z, x})}));
   // z + 1 + y + 3 + x + 0 + zx
-  auto u4 = CasSimplify(Sum::Make({z, Expr(1), y, Expr(3), x, Expr(0), Product::Make({z, x})}));
+  auto u4 = CasSimplify(
+      Sum::Make({z, Expr(1), y, Expr(3), x, Expr(0), Product::Make({z, x})}));
   // x2 + 3zy + -3*yz + -2x + 1
   auto u5 = CasSimplify(Sum::Make({Product::Make({x, Expr(2)}),
                                    Product::Make({z, y, Expr(3)}),
@@ -103,7 +110,9 @@ TEST(CAS, SimplifyMod) {
   // (x+y+z) % 2 = x%2 + y%2 + z%2
   auto u2 = CasSimplify(Mod::Make(Sum::Make({x, y, z}), Expr(2)));
   // x%2 + 1%2 + x%2
-  auto u3 = CasSimplify(Sum::Make({Mod::Make(x, Expr(2)), Mod::Make(Expr(1), Expr(2)), Mod::Make(x, Expr(2))}));
+  auto u3 = CasSimplify(Sum::Make({Mod::Make(x, Expr(2)),
+                                   Mod::Make(Expr(1), Expr(2)),
+                                   Mod::Make(x, Expr(2))}));
 
   EXPECT_EQ(GetStreamCnt(u1), "0");
   EXPECT_EQ(GetStreamCnt(u2), "((x + y + z) % 2)");
@@ -122,10 +131,12 @@ TEST(CAS, SimplifyModForVectorize) {
   // = (8*x) - (x//8)*(8*8)
   // = 8*(x-(x//8)*8)               // since mod definition
   // = 8*(x%8)
-  auto u1 = CasSimplify(Mod::Make(
-      Mod::Make(Mod::Make(Sum::Make({Product::Make({x, Expr(8)}), Product::Make({y, Expr(1024)})}), Expr(802816)),
-                Expr(7168)),
-      Expr(64)));
+  auto u1 = CasSimplify(
+      Mod::Make(Mod::Make(Mod::Make(Sum::Make({Product::Make({x, Expr(8)}),
+                                               Product::Make({y, Expr(1024)})}),
+                                    Expr(802816)),
+                          Expr(7168)),
+                Expr(64)));
   std::cout << GetStreamCnt(u1);
   EXPECT_EQ(GetStreamCnt(u1), "((x % 8) * 8)");
 }
@@ -136,7 +147,9 @@ TEST(CAS, ConvertCinnToCAS) {
 
   auto C = Compute(
       {Expr(10), Expr(10)},
-      [&](Expr i, Expr j) { return A(i, j) + 0.f + 1.f + 2.f * B(i, j) + 0.f * B(i, j) * A(i, j); },
+      [&](Expr i, Expr j) {
+        return A(i, j) + 0.f + 1.f + 2.f * B(i, j) + 0.f * B(i, j) * A(i, j);
+      },
       "C");
 
   Expr body = C->body();
@@ -144,9 +157,11 @@ TEST(CAS, ConvertCinnToCAS) {
 
   body = detail::ConvertCinnToCAS(body);
   body = CasSimplify(body);
-  EXPECT_EQ(GetStreamCnt(body), "(1.00000000f + A[i, j] + (2.00000000f * B[i, j]))");
+  EXPECT_EQ(GetStreamCnt(body),
+            "(1.00000000f + A[i, j] + (2.00000000f * B[i, j]))");
   body = detail::ConvertCasToCinn(body);
-  EXPECT_EQ(GetStreamCnt(body), "(1.00000000f + (A[i, j] + (2.00000000f * B[i, j])))");
+  EXPECT_EQ(GetStreamCnt(body),
+            "(1.00000000f + (A[i, j] + (2.00000000f * B[i, j])))");
 }
 
 TEST(CAS, FracOp) {
@@ -212,10 +227,15 @@ TEST(CAS, Mod) {
   // u = AutoSimplify((x + 20 * y + 5) % 5, var_intervals0);
   // OUTPUT_EQUAL("x")
 
-  u = AutoSimplify((x % 32) + ((32768 * (x / 32)) + ((32768 * y) + ((32 * z) + (128 * k)))));
-  OUTPUT_EQUAL("((32768 * (x / 32)) + ((x % 32) + ((128 * k) + ((32768 * y) + (32 * z)))))");
+  u = AutoSimplify(
+      (x % 32) + ((32768 * (x / 32)) + ((32768 * y) + ((32 * z) + (128 * k)))));
+  OUTPUT_EQUAL(
+      "((32768 * (x / 32)) + ((x % 32) + ((128 * k) + ((32768 * y) + (32 * "
+      "z)))))");
 
-  u = AutoSimplify((x % 32) + ((32768 * (x / 32)) + ((32768 * y) + ((32 * z) + (128 * k)))), var_intervals0);
+  u = AutoSimplify(
+      (x % 32) + ((32768 * (x / 32)) + ((32768 * y) + ((32 * z) + (128 * k)))),
+      var_intervals0);
   OUTPUT_EQUAL("((128 * k) + (x + ((32768 * y) + (32 * z))))")
 
   // (2x+y+z) % 2 = (y+z) % 2
@@ -289,18 +309,21 @@ TEST(SolveInequality, basic) {
   Var x("x", Int(32));
   Var y("y", Int(32));
 
-#define TEST_SOLVE(expr__, str__) EXPECT_EQ(GetStreamCnt(SolveInequality(expr__, x)), str__);
+#define TEST_SOLVE(expr__, str__) \
+  EXPECT_EQ(GetStreamCnt(SolveInequality(expr__, x)), str__);
   TEST_SOLVE(x * -1 + 20 < 0, "(x > 20)");
   TEST_SOLVE(x * 2 + 3 < x * 10 - 20, "(x > 2)");
   TEST_SOLVE(x * -1 < -1, "(x > 1)");
   TEST_SOLVE(Expr(2) * x * -1 - x < x + 200, "(x > -50)");
-  TEST_SOLVE(Expr(2) * x + 30 - x * 3 + y * 23 < 2, "(x > int32((28 + (23 * y))))");
-  TEST_SOLVE(x + ir::Min::Make(Expr(2), Expr(3) * y) < 100, "(x < int32(cinn_max((100 + (-3 * y)), 98)))");
+  TEST_SOLVE(Expr(2) * x + 30 - x * 3 + y * 23 < 2,
+             "(x > int32((28 + (23 * y))))");
+  TEST_SOLVE(x + ir::Min::Make(Expr(2), Expr(3) * y) < 100,
+             "(x < int32(cinn_max((100 + (-3 * y)), 98)))");
 }
 
 TEST(CAS, SimplifyCompoundMod) {
   {  // (-a % 4) * (-1)
-    Var x   = ir::_Var_::Make("x", Int(32));
+    Var x = ir::_Var_::Make("x", Int(32));
     auto p0 = ir::Product::Make({ir::Mod::Make(-x, Expr(4)), Expr(-1)});
     LOG(INFO) << "p0 " << p0;
     auto p2 = AutoSimplify(p0);
@@ -308,8 +331,9 @@ TEST(CAS, SimplifyCompoundMod) {
     EXPECT_EQ(GetStreamCnt(p2), "(-1 * ((-1 * x) % 4))");
   }
   {  // (33 + x % 34) + -33
-    Var x   = ir::_Var_::Make("x", Int(32));
-    auto p0 = ir::Sum::Make({Expr(33), ir::Sum::Make({ir::Mod::Make(x, Expr(4)), Expr(-33)})});
+    Var x = ir::_Var_::Make("x", Int(32));
+    auto p0 = ir::Sum::Make(
+        {Expr(33), ir::Sum::Make({ir::Mod::Make(x, Expr(4)), Expr(-33)})});
     LOG(INFO) << "p0 " << p0;
     auto p2 = AutoSimplify(p0);
     LOG(INFO) << "simplified " << p2;
@@ -317,17 +341,20 @@ TEST(CAS, SimplifyCompoundMod) {
   }
   {  // 33 + (x % 2 + (-16))
     Var x = ir::_Var_::Make("x", Int(32));
-    auto p0 =
-        ir::Sum::Make({Expr(33), ir::Sum::Make({ir::Mod::Make(x, Expr(2)), ir::Product::Make({Expr(-1), Expr(16)})})});
+    auto p0 = ir::Sum::Make(
+        {Expr(33),
+         ir::Sum::Make({ir::Mod::Make(x, Expr(2)),
+                        ir::Product::Make({Expr(-1), Expr(16)})})});
     LOG(INFO) << "p0 " << p0;
     auto p2 = AutoSimplify(p0);
     LOG(INFO) << "simplified " << p2;
     EXPECT_EQ(GetStreamCnt(p2), "(17 + (x % 2))");
   }
   {  // (32- x1 - 16 * x2) % 33
-    Var x1  = ir::_Var_::Make("x1", Int(32));
-    Var x2  = ir::_Var_::Make("x2", Int(32));
-    auto p0 = ir::Mod::Make(ir::Sum::Make({Expr(32), -x1, Expr(16) * -x2}), Expr(33));
+    Var x1 = ir::_Var_::Make("x1", Int(32));
+    Var x2 = ir::_Var_::Make("x2", Int(32));
+    auto p0 =
+        ir::Mod::Make(ir::Sum::Make({Expr(32), -x1, Expr(16) * -x2}), Expr(33));
     LOG(INFO) << "p0 " << p0;
     absl::flat_hash_map<std::string, CasInterval> var_intervals;
     var_intervals.emplace("x1", CasInterval{0, 15});
@@ -343,7 +370,7 @@ TEST(CAS, SimplifyCompoundMod) {
 }
 TEST(CAS, SimplifyNegtive) {
   {  // (-1*x) /2
-    Var x   = ir::_Var_::Make("x", Int(32));
+    Var x = ir::_Var_::Make("x", Int(32));
     auto p0 = ir::FracOp::Make(-x, Expr(2));
     LOG(INFO) << "p0 " << p0;
     auto p2 = AutoSimplify(p0);
@@ -361,7 +388,7 @@ TEST(CAS, SimplifyNegtive) {
 
 TEST(CAS, SimplifyMinMax) {
   {  // 1+cinn_min(15, x)
-    Var x   = ir::_Var_::Make("x", Int(32));
+    Var x = ir::_Var_::Make("x", Int(32));
     auto p0 = ir::Sum::Make({Expr(1), ir::Min::Make(Expr(15), x)});
     LOG(INFO) << "p0 " << p0;
     auto p2 = CasSimplify(p0);
@@ -369,7 +396,7 @@ TEST(CAS, SimplifyMinMax) {
     EXPECT_EQ(GetStreamCnt(p2), "cinn_min(16, (1 + x))");
   }
   {  // 2*cinn_min(15, x)
-    Var x   = ir::_Var_::Make("x", Int(32));
+    Var x = ir::_Var_::Make("x", Int(32));
     auto p0 = ir::Product::Make({Expr(2), ir::Min::Make(Expr(15), x)});
     LOG(INFO) << "p0 " << p0;
     auto p2 = CasSimplify(p0);
@@ -377,7 +404,7 @@ TEST(CAS, SimplifyMinMax) {
     EXPECT_EQ(GetStreamCnt(p2), "cinn_min(30, (2 * x))");
   }
   {  // cinn_min(15, x)/2
-    Var x   = ir::_Var_::Make("x", Int(32));
+    Var x = ir::_Var_::Make("x", Int(32));
     auto p0 = ir::FracOp::Make(ir::Min::Make(Expr(15), x), Expr(2));
     LOG(INFO) << "p0 " << p0;
     auto p2 = CasSimplify(p0);
@@ -385,17 +412,22 @@ TEST(CAS, SimplifyMinMax) {
     EXPECT_EQ(GetStreamCnt(p2), "cinn_min(7, (x / 2))");
   }
   {  // -(cinn_min(16, 3400-x-1)-1)/2 + x
-    Var x   = ir::_Var_::Make("x", Int(32));
-    auto p0 = ir::FracOp::Make(ir::Min::Make(Expr(16), 3400 - x - 1) - 1, Expr(2));
-    p0      = -p0 + x;
+    Var x = ir::_Var_::Make("x", Int(32));
+    auto p0 =
+        ir::FracOp::Make(ir::Min::Make(Expr(16), 3400 - x - 1) - 1, Expr(2));
+    p0 = -p0 + x;
     LOG(INFO) << "p0 " << p0;
     auto p2 = AutoSimplify(p0);
     LOG(INFO) << "simplified " << p2;
-    EXPECT_EQ(GetStreamCnt(p2), "cinn_max((-1699 + ((-1 * ((-1 * x) / 2)) + x)), (-7 + x))");
+    EXPECT_EQ(GetStreamCnt(p2),
+              "cinn_max((-1699 + ((-1 * ((-1 * x) / 2)) + x)), (-7 + x))");
   }
   {  // cinn_max((-1 * (3399 + (-16 * i_j_fused_outer))), -15)
-    Var x   = ir::_Var_::Make("x", Int(32));
-    auto p0 = ir::Max::Make(ir::Product::Make({Expr(-1), ir::Sum::Make({Expr(3399), Expr(-16) * x})}), Expr(-15));
+    Var x = ir::_Var_::Make("x", Int(32));
+    auto p0 = ir::Max::Make(
+        ir::Product::Make(
+            {Expr(-1), ir::Sum::Make({Expr(3399), Expr(-16) * x})}),
+        Expr(-15));
     LOG(INFO) << "p0 " << p0;
     auto p2 = AutoSimplify(p0);
     LOG(INFO) << "simplified " << p2;

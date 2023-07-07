@@ -33,7 +33,8 @@ using common::bfloat16;
 using common::float16;
 
 void IrPrinter::Print(Expr e) { IRVisitor::Visit(&e); }
-void IrPrinter::Print(const std::vector<Expr> &exprs, const std::string &splitter) {
+void IrPrinter::Print(const std::vector<Expr> &exprs,
+                      const std::string &splitter) {
   for (std::size_t i = 0; !exprs.empty() && i + 1 < exprs.size(); i++) {
     Print(exprs[i]);
     os_ << splitter;
@@ -80,7 +81,8 @@ void IrPrinter::Visit(const FloatImm *x) {
     } else if (std::isnan(x->value)) {
       os_ << "cinn::common::raw_uint16_to_float16(0x7e00)";
     } else {
-      os_ << "(float16)" << std::setprecision(std::numeric_limits<float16>::max_digits10)
+      os_ << "(float16)"
+          << std::setprecision(std::numeric_limits<float16>::max_digits10)
           << static_cast<float16>(x->value) << "f";
     }
   } else if (x->type().is_bfloat16()) {
@@ -89,16 +91,19 @@ void IrPrinter::Visit(const FloatImm *x) {
     } else if (std::isnan(x->value)) {
       os_ << "cinn::common::raw_uint16_to_bfloat16(0x7FC0)";
     } else {
-      os_ << "(bfloat16)" << std::setprecision(std::numeric_limits<bfloat16>::max_digits10)
+      os_ << "(bfloat16)"
+          << std::setprecision(std::numeric_limits<bfloat16>::max_digits10)
           << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
-    os_ << std::setprecision(std::numeric_limits<float>::max_digits10) << std::showpoint << x->value;
+    os_ << std::setprecision(std::numeric_limits<float>::max_digits10)
+        << std::showpoint << x->value;
     if (std::isfinite(x->value)) {
       os_ << "f";
     }
   } else if (x->type().is_float(64)) {
-    os_ << std::setprecision(std::numeric_limits<double>::max_digits10) << std::showpoint << x->value;
+    os_ << std::setprecision(std::numeric_limits<double>::max_digits10)
+        << std::showpoint << x->value;
   } else {
     LOG(FATAL) << "Not support float type: " << x->type();
   }
@@ -151,9 +156,10 @@ void IrPrinter::Visit(const For *x) {
   } else if (x->is_binded()) {
     auto &bind_info = x->bind_info();
     if (bind_info.valid()) {
-      char axis_name     = 'x' + bind_info.offset;
-      auto for_type      = bind_info.for_type;
-      std::string prefix = for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
+      char axis_name = 'x' + bind_info.offset;
+      auto for_type = bind_info.for_type;
+      std::string prefix =
+          for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
       os() << "thread_bind[" << prefix << axis_name << "] for (";
     } else {
       os() << "thread_bind[invalid info] for (";
@@ -334,11 +340,13 @@ void IrPrinter::DecIndent() { indent_ -= indent_unit; }
 
 void IrPrinter::Visit(const _Buffer_ *x) {
   std::vector<std::string> dim_names;
-  std::transform(x->shape.begin(), x->shape.end(), std::back_inserter(dim_names), [&](const Expr &x) {
-    return utils::GetStreamCnt(x);
-  });
+  std::transform(x->shape.begin(),
+                 x->shape.end(),
+                 std::back_inserter(dim_names),
+                 [&](const Expr &x) { return utils::GetStreamCnt(x); });
 
-  os_ << "_Buffer_<" << x->type() << ": " << utils::Join(dim_names, ",") << ">(" << x->name << ")";
+  os_ << "_Buffer_<" << x->type() << ": " << utils::Join(dim_names, ",") << ">("
+      << x->name << ")";
 }
 void IrPrinter::Visit(const _Tensor_ *x) {
   os_ << "Tensor(";
@@ -502,7 +510,7 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
   DoIndent();
   os() << "{\n";
   // print block vars and bindings
-  auto iter_vars   = schedule_block->iter_vars;
+  auto iter_vars = schedule_block->iter_vars;
   auto iter_values = x->iter_values;
   CHECK_EQ(iter_vars.size(), iter_values.size());
   IncIndent();

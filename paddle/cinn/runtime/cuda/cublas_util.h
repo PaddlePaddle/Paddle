@@ -15,8 +15,8 @@
 
 #include <cublas_v2.h>
 
-#include "paddle/cinn/common/type.h"
 #include "glog/logging.h"
+#include "paddle/cinn/common/type.h"
 
 namespace cinn {
 namespace runtime {
@@ -54,7 +54,7 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        ldc);
   } else if (dtype == CUDA_R_64F) {
     const double alpha_fp64 = static_cast<double>(alpha);
-    const double beta_fp64  = static_cast<double>(beta);
+    const double beta_fp64 = static_cast<double>(beta);
     return cublasDgemm(handle,
                        transa,
                        transb,
@@ -124,14 +124,14 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                                float alpha,
                                                const void *A,
                                                int lda,
-                                               long long int strideA,
+                                               int64_t strideA,
                                                const void *B,
                                                int ldb,
-                                               long long int strideB,
+                                               int64_t strideB,
                                                float beta,
                                                void *C,
                                                int ldc,
-                                               long long int strideC,
+                                               int64_t strideC,
                                                int batchCount) {
   if (dtype == CUDA_R_32F) {
     return cublasSgemmStridedBatched(handle,
@@ -154,7 +154,7 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                      batchCount);
   } else if (dtype == CUDA_R_64F) {
     const double alpha_fp64 = static_cast<double>(alpha);
-    const double beta_fp64  = static_cast<double>(beta);
+    const double beta_fp64 = static_cast<double>(beta);
     return cublasDgemmStridedBatched(handle,
                                      transa,
                                      transb,
@@ -176,24 +176,25 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
   } else if (dtype == CUDA_R_16F) {
     common::float16 alpha_fp16{alpha};
     common::float16 beta_fp16{beta};
-    return cublasHgemmStridedBatched(handle,
-                                     transa,
-                                     transb,
-                                     m,
-                                     n,
-                                     k,
-                                     reinterpret_cast<const __half *>(&alpha_fp16),
-                                     reinterpret_cast<const __half *>(A),
-                                     lda,
-                                     strideA,
-                                     reinterpret_cast<const __half *>(B),
-                                     ldb,
-                                     strideB,
-                                     reinterpret_cast<const __half *>(&beta_fp16),
-                                     reinterpret_cast<__half *>(C),
-                                     ldc,
-                                     strideC,
-                                     batchCount);
+    return cublasHgemmStridedBatched(
+        handle,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        reinterpret_cast<const __half *>(&alpha_fp16),
+        reinterpret_cast<const __half *>(A),
+        lda,
+        strideA,
+        reinterpret_cast<const __half *>(B),
+        ldb,
+        strideB,
+        reinterpret_cast<const __half *>(&beta_fp16),
+        reinterpret_cast<__half *>(C),
+        ldc,
+        strideC,
+        batchCount);
   } else if (dtype == CUDA_R_16BF) {
 #if CUDA_VERSION >= 11000
     return cublasGemmStridedBatchedEx(handle,
@@ -220,7 +221,8 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                       CUBLAS_COMPUTE_32F,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
-    LOG(FATAL) << "cublasGemmStridedBatched with bfloat16 is not supported on cuda <= 11";
+    LOG(FATAL) << "cublasGemmStridedBatched with bfloat16 is not supported on "
+                  "cuda <= 11";
 #endif
   }
   LOG(FATAL) << "Unsupported cublasGemmStridedBatched precision.";
@@ -260,7 +262,7 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                               batchCount);
   } else if (dtype == CUDA_R_64F) {
     const double alpha_fp64 = static_cast<double>(alpha);
-    const double beta_fp64  = static_cast<double>(beta);
+    const double beta_fp64 = static_cast<double>(beta);
     return cublasDgemmBatched(handle,
                               transa,
                               transb,
@@ -317,7 +319,8 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                                CUBLAS_COMPUTE_32F,
                                CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
-    LOG(FATAL) << "cublasGemmBatched with bfloat16 is not supported on cuda <= 11";
+    LOG(FATAL)
+        << "cublasGemmBatched with bfloat16 is not supported on cuda <= 11";
 #endif
   }
   LOG(FATAL) << "Unsupported cublasGemmBatched precision.";

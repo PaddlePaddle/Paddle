@@ -118,7 +118,7 @@ void TransDataBackend(const phi::SelectedRows* tensor,
                       Backend target_backend,
                       phi::SelectedRows* out);
 
-inline bool NeedTransformPlace(const phi::Place& input,
+inline bool NeedTransformPlace(const phi::Place& src_place,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
   // NOTE(dev): The default value of TransformFlag is True, if it is set with
@@ -128,9 +128,9 @@ inline bool NeedTransformPlace(const phi::Place& input,
   if (!transform_flag.need_trans_backend()) {
     return false;
   }
-  bool ret = input.GetType() == AllocationType::GPUPINNED ||
+  bool ret = src_place.GetType() == AllocationType::GPUPINNED ||
              (target != Backend::ALL_BACKEND &&
-              phi::TransToPhiBackend(input) !=
+              phi::TransToPhiBackend(src_place) !=
                   (target != Backend::GPUDNN ? target : Backend::GPU));
   return ret;
 }
