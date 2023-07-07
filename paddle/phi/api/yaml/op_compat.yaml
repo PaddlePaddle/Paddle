@@ -634,6 +634,18 @@
   outputs :
     {softmax : Softmax, loss : Loss}
 
+- op : cummax
+  inputs :
+    { x : x }
+  outputs :
+    { out : out, indices : indices }
+
+- op : cummin
+  inputs :
+    { x : x }
+  outputs :
+    { out : out, indices : indices }
+
 - op : cumprod
   backward : cumprod_grad
   inputs :
