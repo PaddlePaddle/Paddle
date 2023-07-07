@@ -26,7 +26,7 @@ void AllRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  auto out_dtype = x.dtype();
+  auto out_dtype = phi::DataType::BOOL;
   phi::Reduce<T, kps::LogicalAndFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -38,7 +38,21 @@ PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #else
-PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {
+PD_REGISTER_KERNEL(all_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AllRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   int16_t,
+                   bool,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #endif

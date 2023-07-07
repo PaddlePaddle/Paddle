@@ -52,6 +52,7 @@ void Reduce(const DeviceContext& dev_ctx,
           phi::funcs::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, x, out, dims, keep_dim, reduce_all);
         }));
+
   } else {
     // cast x tensor to out_dtype
     auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
@@ -86,9 +87,15 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
     }
   }
   reduce_all = (reduce_all || full_dim);
-
-  funcs::ReduceKernelImpl<DeviceContext, bool, OutT, Functor>(
-      dev_ctx, input, output, dims, keep_dim, reduce_all);
+  DenseTensor tmp_tensor;
+  if (input.dtype() != phi::DataType::BOOL) {
+    tmp_tensor =
+        phi::Cast<OutT, DeviceContext>(dev_ctx, input, phi::DataType::BOOL);
+  } else {
+    tmp_tensor = input;
+  }
+  funcs::ReduceKernelImpl<DeviceContext, bool, bool, Functor>(
+      dev_ctx, tmp_tensor, output, dims, keep_dim, reduce_all);
 }
 
 }  // namespace phi

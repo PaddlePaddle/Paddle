@@ -923,6 +923,30 @@ class TestAnyOp(OpTest):
         self.check_output()
 
 
+class TestAnyFloatOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_any"
+        self.python_api = reduce_any_wrapper
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("float")}
+        self.outputs = {'Out': self.inputs['X'].any()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAnyIntOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_any"
+        self.python_api = reduce_any_wrapper
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("int")}
+        self.outputs = {'Out': self.inputs['X'].any()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestAnyOp_ZeroDim(OpTest):
     def setUp(self):
         self.python_api = paddle.any
@@ -1021,11 +1045,6 @@ class TestAnyOpError(unittest.TestCase):
             # The input type of reduce_any_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.any, input1)
-            # The input dtype of reduce_any_op must be bool.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            self.assertRaises(TypeError, paddle.any, input2)
 
 
 class Test1DReduce(OpTest):
@@ -1735,6 +1754,21 @@ class TestAnyAPI(unittest.TestCase):
                 np_out4 = out4.numpy()
                 expect_res4 = np.any(np_x, axis=1, keepdims=True)
                 self.assertTrue((np_out4 == expect_res4).all())
+
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.float32)
+                x = paddle.assign(np_x)
+                x = paddle.cast(x, 'float32')
+
+                out5 = paddle.any(x)
+                np_out5 = out5.numpy()
+                expect_res5 = np.any(np_x)
+                self.assertTrue((np_out5 == expect_res5).all())
+
+                x = paddle.cast(x, 'int')
+                out6 = paddle.any(x)
+                np_out6 = out6.numpy()
+                expect_res6 = np.any(np_x)
+                self.assertTrue((np_out6 == expect_res6).all())
 
         paddle.enable_static()
 
