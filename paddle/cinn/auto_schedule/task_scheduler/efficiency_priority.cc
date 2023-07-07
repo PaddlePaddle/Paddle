@@ -27,7 +27,9 @@ int EfficiencyPriority::NextTaskId() {
   return -1;
 }
 
-bool EfficiencyPriority::IsTaskToTune(const TuneTask* task) { return config_.minimum_gain_threshold > 0.0; }
+bool EfficiencyPriority::IsTaskToTune(const TuneTask* task) {
+  return config_.minimum_gain_threshold > 0.0;
+}
 
 }  // namespace auto_schedule
 }  // namespace cinn

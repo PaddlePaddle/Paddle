@@ -26,7 +26,9 @@ class BlockDesc : public cpp::BlockDescAPI {
  public:
   BlockDesc() = delete;
 
-  explicit BlockDesc(framework_proto::BlockDesc* desc) : desc_(desc) { CHECK(desc_); }
+  explicit BlockDesc(framework_proto::BlockDesc* desc) : desc_(desc) {
+    CHECK(desc_);
+  }
 
   framework_proto::BlockDesc* Proto() { return desc_; }
 
@@ -60,9 +62,13 @@ class BlockDesc : public cpp::BlockDescAPI {
   template <typename T>
   T* AddOp();
 
-  int32_t ForwardBlockIdx() const override { return desc_->forward_block_idx(); }
+  int32_t ForwardBlockIdx() const override {
+    return desc_->forward_block_idx();
+  }
 
-  void SetForwardBlockIdx(int32_t idx) override { desc_->set_forward_block_idx(idx); }
+  void SetForwardBlockIdx(int32_t idx) override {
+    desc_->set_forward_block_idx(idx);
+  }
 
  private:
   framework_proto::BlockDesc* desc_;  // not_own

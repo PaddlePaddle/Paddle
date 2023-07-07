@@ -52,12 +52,20 @@ CustomDeviceStreamResourcePool::CustomDeviceStreamResourcePool(
   }
 }
 
-CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
-    const paddle::Place& place) {
+std::unordered_map<
+    std::string,
+    std::vector<std::shared_ptr<CustomDeviceStreamResourcePool>>>&
+CustomDeviceStreamResourcePool::GetMap() {
   static std::unordered_map<
       std::string,
       std::vector<std::shared_ptr<CustomDeviceStreamResourcePool>>>
       pool;
+  return pool;
+}
+
+CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
+    const paddle::Place& place) {
+  auto& pool = GetMap();
   PADDLE_ENFORCE_EQ(
       platform::is_custom_place(place),
       true,
@@ -132,6 +140,16 @@ CustomDeviceEventResourcePool::CustomDeviceEventResourcePool(
     pool_.emplace_back(
         ResourcePool<CustomDeviceEventObject>::Create(creator, deleter));
   }
+}
+
+std::unordered_map<std::string,
+                   std::vector<std::shared_ptr<CustomDeviceEventResourcePool>>>&
+CustomDeviceEventResourcePool::GetMap() {
+  static std::unordered_map<
+      std::string,
+      std::vector<std::shared_ptr<CustomDeviceEventResourcePool>>>
+      pool;
+  return pool;
 }
 
 CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(

@@ -19,9 +19,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "glog/logging.h"
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/program_pass.h"
-#include "glog/logging.h"
 
 namespace cinn {
 namespace frontend {
@@ -51,83 +51,96 @@ namespace pass {
      } \
   }
 
-static std::unordered_map<std::string, std::function<void(const Instruction&, Instruction*)>> rewriter_ops = {
-    {"reshape",
-     [](const Instruction& fill_constant, Instruction* instr) -> void {
-       (*instr)->op_type = "fill_constant";
-       (*instr)->inputs.clear();
-       // the outputs keep same
+static std::unordered_map<std::string,
+                          std::function<void(const Instruction&, Instruction*)>>
+    rewriter_ops = {
+        {"reshape",
+         [](const Instruction& fill_constant, Instruction* instr) -> void {
+           (*instr)->op_type = "fill_constant";
+           (*instr)->inputs.clear();
+           // the outputs keep same
 
-       CHECK((*instr)->attrs.count("shape")) << "The reshape op should has attribute [shape]!";
-       auto new_shape           = (*instr)->attrs.at("shape");
-       (*instr)->attrs          = fill_constant->attrs;
-       (*instr)->attrs["shape"] = new_shape;
-     }},
-    {"scale",
-     [](const Instruction& fill_constant, Instruction* instr) -> void {
-       (*instr)->op_type = "fill_constant";
-       (*instr)->inputs.clear();
-       // the outputs keep same
+           CHECK((*instr)->attrs.count("shape"))
+               << "The reshape op should has attribute [shape]!";
+           auto new_shape = (*instr)->attrs.at("shape");
+           (*instr)->attrs = fill_constant->attrs;
+           (*instr)->attrs["shape"] = new_shape;
+         }},
+        {"scale",
+         [](const Instruction& fill_constant, Instruction* instr) -> void {
+           (*instr)->op_type = "fill_constant";
+           (*instr)->inputs.clear();
+           // the outputs keep same
 
-       auto scale = (*instr)->attrs.count("scale") ? instr->GetAttrs<float>("scale") : 1.0f;
-       auto bias  = (*instr)->attrs.count("bias") ? instr->GetAttrs<float>("bias") : 0.0f;
-       auto bias_after_scale =
-           (*instr)->attrs.count("bias_after_scale") ? instr->GetAttrs<bool>("bias_after_scale") : true;
+           auto scale = (*instr)->attrs.count("scale")
+                            ? instr->GetAttrs<float>("scale")
+                            : 1.0f;
+           auto bias = (*instr)->attrs.count("bias")
+                           ? instr->GetAttrs<float>("bias")
+                           : 0.0f;
+           auto bias_after_scale =
+               (*instr)->attrs.count("bias_after_scale")
+                   ? instr->GetAttrs<bool>("bias_after_scale")
+                   : true;
 
-       (*instr)->attrs = fill_constant->attrs;
+           (*instr)->attrs = fill_constant->attrs;
 
-       const auto& old_attr = fill_constant->attrs.at("value");
-       auto& new_attr       = (*instr)->attrs.at("value");
-       if (bias_after_scale) {
-         auto scale_func = [&](const auto& value) -> decltype(auto) {
-           return value * static_cast<decltype(value)>(scale) + static_cast<decltype(value)>(bias);
-         };
-         FILL_CONSTANT_VALUE_REWRITE(old_attr, scale_func, new_attr)
-       } else {
-         auto scale_func = [&](const auto& value) -> decltype(auto) {
-           return (value + static_cast<decltype(value)>(bias)) * static_cast<decltype(value)>(scale);
-         };
-         FILL_CONSTANT_VALUE_REWRITE(old_attr, scale_func, new_attr)
-       }
-     }},
-    {"cast",
-     [](const Instruction& fill_constant, Instruction* instr) -> void {
-       (*instr)->op_type = "fill_constant";
-       (*instr)->inputs.clear();
-       // the outputs keep same
+           const auto& old_attr = fill_constant->attrs.at("value");
+           auto& new_attr = (*instr)->attrs.at("value");
+           if (bias_after_scale) {
+             auto scale_func = [&](const auto& value) -> decltype(auto) {
+               return value * static_cast<decltype(value)>(scale) +
+                      static_cast<decltype(value)>(bias);
+             };
+             FILL_CONSTANT_VALUE_REWRITE(old_attr, scale_func, new_attr)
+           } else {
+             auto scale_func = [&](const auto& value) -> decltype(auto) {
+               return (value + static_cast<decltype(value)>(bias)) *
+                      static_cast<decltype(value)>(scale);
+             };
+             FILL_CONSTANT_VALUE_REWRITE(old_attr, scale_func, new_attr)
+           }
+         }},
+        {"cast",
+         [](const Instruction& fill_constant, Instruction* instr) -> void {
+           (*instr)->op_type = "fill_constant";
+           (*instr)->inputs.clear();
+           // the outputs keep same
 
-       CHECK((*instr)->attrs.count("dtype")) << "The cast op should has attribute [dtype]!";
-       auto cast_dtype = instr->GetAttrs<std::string>("dtype");
+           CHECK((*instr)->attrs.count("dtype"))
+               << "The cast op should has attribute [dtype]!";
+           auto cast_dtype = instr->GetAttrs<std::string>("dtype");
 
-       (*instr)->attrs          = fill_constant->attrs;
-       (*instr)->attrs["dtype"] = cast_dtype;
-     }},
-    {"broadcast_to",
-     [](const Instruction& fill_constant, Instruction* instr) -> void {
-       (*instr)->op_type = "fill_constant";
-       (*instr)->inputs.clear();
-       // the outputs keep same
+           (*instr)->attrs = fill_constant->attrs;
+           (*instr)->attrs["dtype"] = cast_dtype;
+         }},
+        {"broadcast_to",
+         [](const Instruction& fill_constant, Instruction* instr) -> void {
+           (*instr)->op_type = "fill_constant";
+           (*instr)->inputs.clear();
+           // the outputs keep same
 
-       CHECK((*instr)->attrs.count("out_shape")) << "The cast op should has attribute [out_shape]!";
-       auto out_shape = instr->GetAttrs<std::vector<int>>("out_shape");
+           CHECK((*instr)->attrs.count("out_shape"))
+               << "The cast op should has attribute [out_shape]!";
+           auto out_shape = instr->GetAttrs<std::vector<int>>("out_shape");
 
-       (*instr)->attrs          = fill_constant->attrs;
-       (*instr)->attrs["shape"] = out_shape;
-     }},
-    {"slice",
-     [](const Instruction& fill_constant, Instruction* instr) -> void {
-       (*instr)->op_type = "fill_constant";
-       (*instr)->inputs.clear();
-       // the outputs keep same
+           (*instr)->attrs = fill_constant->attrs;
+           (*instr)->attrs["shape"] = out_shape;
+         }},
+        {"slice",
+         [](const Instruction& fill_constant, Instruction* instr) -> void {
+           (*instr)->op_type = "fill_constant";
+           (*instr)->inputs.clear();
+           // the outputs keep same
 
-       (*instr)->attrs          = fill_constant->attrs;
-       (*instr)->attrs["shape"] = (*instr)->outputs[0]->shape;
-     }},
-    MATH_FUNC_REWRITER(abs),
-    MATH_FUNC_REWRITER(log),
-    MATH_FUNC_REWRITER(log2),
-    MATH_FUNC_REWRITER(log10),
-    MATH_FUNC_REWRITER(tanh)};
+           (*instr)->attrs = fill_constant->attrs;
+           (*instr)->attrs["shape"] = (*instr)->outputs[0]->shape;
+         }},
+        MATH_FUNC_REWRITER(abs),
+        MATH_FUNC_REWRITER(log),
+        MATH_FUNC_REWRITER(log2),
+        MATH_FUNC_REWRITER(log10),
+        MATH_FUNC_REWRITER(tanh)};
 
 #undef FILL_CONSTANT_VALUE_REWRITE
 #undef MATH_FUNC_REWRITER
@@ -152,7 +165,8 @@ class FillConstantRewriterPass : public ProgramPass {
         RewriteFillConstant(instr, input2instr, fetch_ids, &remove_instr);
       }
     }
-    VLOG(3) << "FillConstantRewriterPass Remove " << remove_instr.size() << " instruction";
+    VLOG(3) << "FillConstantRewriterPass Remove " << remove_instr.size()
+            << " instruction";
 
     NetBuilder builder("reshape_rewritter_builder");
     for (auto& var : program->GetInputs()) {
@@ -170,7 +184,8 @@ class FillConstantRewriterPass : public ProgramPass {
   }
 
  private:
-  using Input2Instr = std::unordered_map<std::string, std::unordered_set<Instruction*>>;
+  using Input2Instr =
+      std::unordered_map<std::string, std::unordered_set<Instruction*>>;
 
   Input2Instr GetInput2Instr(Program* program) {
     Input2Instr input2instr;
@@ -185,12 +200,14 @@ class FillConstantRewriterPass : public ProgramPass {
     return input2instr;
   }
 
-  void RewriteFillConstant(const Instruction& fill_constant,
-                           const Input2Instr& input2instr,
-                           const std::unordered_set<std::string>& fetch_ids,
-                           std::unordered_set<const Instruction*>* remove_instr) {
+  void RewriteFillConstant(
+      const Instruction& fill_constant,
+      const Input2Instr& input2instr,
+      const std::unordered_set<std::string>& fetch_ids,
+      std::unordered_set<const Instruction*>* remove_instr) {
     CHECK_EQ(fill_constant->op_type, std::string("fill_constant"));
-    CHECK_EQ(fill_constant->outputs.size(), 1UL) << "The fill_constant op should just has one output! Please check.";
+    CHECK_EQ(fill_constant->outputs.size(), 1UL)
+        << "The fill_constant op should just has one output! Please check.";
     const auto& out = fill_constant->outputs[0];
 
     if (!input2instr.count(out->id)) {
@@ -220,7 +237,8 @@ class FillConstantRewriterPass : public ProgramPass {
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(FillConstantRewriter) {
-  CINN_REGISTER_PROGRAM_PASS(FillConstantRewriter, cinn::frontend::pass::FillConstantRewriterPass);
+  CINN_REGISTER_PROGRAM_PASS(FillConstantRewriter,
+                             cinn::frontend::pass::FillConstantRewriterPass);
 
   return true;
 }

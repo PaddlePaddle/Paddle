@@ -1,4 +1,4 @@
-if(CINN_ONLY)
+if(WITH_CINN)
   file(GLOB_RECURSE CINN_PY_FILES ${PROJECT_SOURCE_DIR}/python/cinn/*.py)
   set(CINN_PYTHON_DIR ${PROJECT_SOURCE_DIR}/python/cinn)
   set(CINN_CORE_API ${CMAKE_BINARY_DIR}/python/cinn/core_api.so)
@@ -24,8 +24,8 @@ if(CINN_ONLY)
   # then core_api.so.
   add_custom_command(
     OUTPUT ${CINN_CORE_API} POST_BUILD
-    COMMAND cp -rf --remove-destination ${CINN_PYTHON_DIR}
-            ${CMAKE_BINARY_DIR}/python/cinn
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CINN_PYTHON_DIR}
+            ${PADDLE_BINARY_DIR}/python/cinn
     COMMAND cp --remove-destination
             ${CMAKE_BINARY_DIR}/paddle/cinn/pybind/core_api.so ${CINN_CORE_API}
     COMMAND cd ${CMAKE_CURRENT_BINARY_DIR} && ${PYTHON_EXECUTABLE} setup_cinn.py
@@ -35,7 +35,9 @@ if(CINN_ONLY)
   add_custom_target(COPY_CINN_CORE_API ALL DEPENDS ${CINN_CORE_API}
                                                    ${CINN_PY_FILES})
 
-  return()
+  if(CINN_ONLY)
+    return()
+  endif()
 endif()
 
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)

@@ -46,7 +46,7 @@ struct Dim {
   value_t upper_bound;
 
   //! Construct a parameter.
-  Dim(std::string id) : id(std::move(id)) {}
+  explicit Dim(std::string id) : id(std::move(id)) {}
 
   //! Construct a dimension with integer range.
   Dim(std::string id, uint32_t lower_bound, uint32_t upper_bound)
@@ -58,7 +58,9 @@ struct Dim {
   //! Return the range composed of (lower_bound, upper_bound).
   range_t range() const { return std::make_pair(lower_bound, upper_bound); }
 
-  bool is_param() const { return !lower_bound.defined() && !lower_bound.defined(); }
+  bool is_param() const {
+    return !lower_bound.defined() && !lower_bound.defined();
+  }
 
   //! Return the ISL style range representation, such as '0 <= i <= 20'.
   std::string range_repr() const;

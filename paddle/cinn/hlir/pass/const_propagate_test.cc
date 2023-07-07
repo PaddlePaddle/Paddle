@@ -39,13 +39,13 @@ TEST(const_conv, const_conv) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({2, 2});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({3, 3});
+  attrs["stride"] = std::vector<int>({2, 2});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({3, 3});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
-  auto c        = program.conv2d(A, B, attrs);
+  auto c = program.conv2d(A, B, attrs);
   Target target = common::DefaultTarget();
   program.SetInputs({A, B});
   program.Validate();
@@ -59,8 +59,8 @@ TEST(const_conv, const_conv) {
 
   hlir::framework::GraphCompiler gc(target, scope, graph);
   auto runtime_program = gc.Build();
-  auto& prerun_instrs  = runtime_program->GetPreRunInstructions();
-  auto& run_instrs     = runtime_program->GetRunInstructions();
+  auto& prerun_instrs = runtime_program->GetPreRunInstructions();
+  auto& run_instrs = runtime_program->GetRunInstructions();
   ASSERT_EQ(prerun_instrs.size(), 0);
   ASSERT_EQ(run_instrs.size(), 1);
 
@@ -87,7 +87,8 @@ TEST(const_bn, const_bn) {
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
   attrs["epsilon"] = static_cast<float>(0.001);
-  auto a           = program.fused_batchnorm_inference(A, Scale, Bias, Mean, Variance, attrs);
+  auto a =
+      program.fused_batchnorm_inference(A, Scale, Bias, Mean, Variance, attrs);
 
   Target target = common::DefaultTarget();
   program.SetInputs({A, Scale, Bias, Mean, Variance});
@@ -102,8 +103,8 @@ TEST(const_bn, const_bn) {
 
   hlir::framework::GraphCompiler gc(target, scope, graph);
   auto runtime_program = gc.Build();
-  auto& prerun_instrs  = runtime_program->GetPreRunInstructions();
-  auto& run_instrs     = runtime_program->GetRunInstructions();
+  auto& prerun_instrs = runtime_program->GetPreRunInstructions();
+  auto& run_instrs = runtime_program->GetRunInstructions();
   // Revert changes in PR #990 to pass the model unittests
   ASSERT_EQ(run_instrs.size(), 1);
 
@@ -113,10 +114,10 @@ TEST(const_bn, const_bn) {
   scope->Var<hlir::framework::Tensor>("Mean");
   scope->Var<hlir::framework::Tensor>("Variance");
 
-  auto A1        = scope->GetTensor("A");
-  auto Scale1    = scope->GetTensor("Scale");
-  auto Bias1     = scope->GetTensor("Bias");
-  auto Mean1     = scope->GetTensor("Mean");
+  auto A1 = scope->GetTensor("A");
+  auto Scale1 = scope->GetTensor("Scale");
+  auto Bias1 = scope->GetTensor("Bias");
+  auto Mean1 = scope->GetTensor("Mean");
   auto Variance1 = scope->GetTensor("Variance");
   SetRandData<float>(A1, target);
   SetRandData<float>(Scale1, target);

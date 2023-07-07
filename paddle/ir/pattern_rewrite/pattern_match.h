@@ -274,7 +274,7 @@ class RewriterBase : public Builder {
 
   virtual void EraseOp(Operation* op);
 
-  void ReplaceAllUsesWith(Value from, Value to);
+  IR_API void ReplaceAllUsesWith(Value from, Value to);
 
   void ReplaceUseIf(Value from,
                     Value to,

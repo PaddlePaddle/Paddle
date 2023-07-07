@@ -19,17 +19,18 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void TopKOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void TopKOpMapper(const paddle::cpp::OpDesc& op_desc,
+                  const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
   CHECK_EQ(op_desc.Output("Indices").size(), 1UL);
   auto indices_name = op_desc.Output("Indices").front();
-  auto x            = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
 
   CHECK(op_desc.HasAttr("k"));
-  auto k    = utils::GetAttrOrDefault<int>(op_desc, "k");
+  auto k = utils::GetAttrOrDefault<int>(op_desc, "k");
   auto outs = ctx.Builder()->TopK(x, k, -1, true);
 
   ctx.AddVar(out_name, outs[0]);

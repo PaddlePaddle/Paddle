@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -34,14 +36,15 @@ class TestScaleOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
         return {
             "scale": self.scale,
             "bias": self.bias,
-            "bias_after_scale": self.bias_after_scale
+            "bias_after_scale": self.bias_after_scale,
         }
 
     def set_op_outputs(self):
@@ -71,7 +74,7 @@ class TestScaleWithScaleTensor(TestScaleOp):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([32, 64], "float32"),
-            "scale": self.random([1], "float32", 2.0, 10.0)
+            "scale": self.random([1], "float32", 2.0, 10.0),
         }
         self.bias = 2.0
         self.bias_after_scale = True
@@ -80,11 +83,13 @@ class TestScaleWithScaleTensor(TestScaleOp):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         scale = paddle.static.data(
             name='scale',
             shape=self.feed_data['scale'].shape,
-            dtype=self.feed_data['scale'].dtype)
+            dtype=self.feed_data['scale'].dtype,
+        )
         return {'X': [x], "ScaleTensor": [scale]}
 
     def set_op_attrs(self):
@@ -95,7 +100,7 @@ class TestScaleWithScaleTensorCase1(TestScaleWithScaleTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([32, 64], "float32"),
-            "scale": self.random([1], "float32", 2.0, 10.0)
+            "scale": self.random([1], "float32", 2.0, 10.0),
         }
         self.bias = 0.0
         self.bias_after_scale = True
@@ -105,7 +110,7 @@ class TestScaleWithScaleTensorCase2(TestScaleWithScaleTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([32, 64], "int32"),
-            "scale": self.random([1], "float32", 2.0, 10.0)
+            "scale": self.random([1], "float32", 2.0, 10.0),
         }
         self.bias = 0.0
         self.bias_after_scale = True

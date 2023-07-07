@@ -29,11 +29,13 @@ struct DefinitionContents;
 struct FunctionContents;
 
 /**
- * A Function definition which can either represent a init or an update definition.
+ * A Function definition which can either represent a init or an update
+ * definition.
  */
 class Definition {
  public:
-  explicit Definition(const std::shared_ptr<DefinitionContents>& contents) : contents_(contents) {}
+  explicit Definition(const std::shared_ptr<DefinitionContents>& contents)
+      : contents_(contents) {}
 
  private:
   std::shared_ptr<DefinitionContents> contents_;

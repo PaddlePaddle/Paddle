@@ -30,20 +30,25 @@ class SearchState;
 class RuleSampler {
  public:
   /**
-   * @brief Create a RuleSampler with the specific strategy name and necessary construct parameters.
+   * @brief Create a RuleSampler with the specific strategy name and necessary
+   * construct parameters.
    * @param potential_rules All possible rules to be sampled.
-   * @param default_remove_policy The default option to determine whether to delete the next block after selecting it.
+   * @param default_remove_policy The default option to determine whether to
+   * delete the next block after selecting it.
    * @param strategy The rule sampling strategy.
-   *                 Currently, the available strategies are "traversal" and "probabilistic",
-   *                 where "traversal" means to select rules one by one until all rules are traversed,
-   *                 and "probabilistic" means randomly picking rules according to the given distribution.
-   * @param weights Used for the probabilistic policy, giving each candidate a weight.
+   *                 Currently, the available strategies are "traversal" and
+   * "probabilistic", where "traversal" means to select rules one by one until
+   * all rules are traversed, and "probabilistic" means randomly picking rules
+   * according to the given distribution.
+   * @param weights Used for the probabilistic policy, giving each candidate a
+   * weight.
    */
-  static std::unique_ptr<RuleSampler> Make(const std::vector<AutoGenRule*>& potential_rules,
-                                           bool default_remove_policy                     = true,
-                                           const std::string& strategy                    = "traversal",
-                                           utils::LinearRandomEngine::StateType rand_seed = 0,
-                                           const std::vector<int>& weights                = {});
+  static std::unique_ptr<RuleSampler> Make(
+      const std::vector<AutoGenRule*>& potential_rules,
+      bool default_remove_policy = true,
+      const std::string& strategy = "traversal",
+      utils::LinearRandomEngine::StateType rand_seed = 0,
+      const std::vector<int>& weights = {});
   // Return the name of sample strategy
   virtual const char* Name() const = 0;
 
@@ -55,18 +60,21 @@ class RuleSampler {
 
  protected:
   // A RuleSampler object should be created with the static function Make()
-  RuleSampler(const std::vector<AutoGenRule*>& potential_rules, bool default_remove_policy)
-      : potential_rules_(&potential_rules), default_remove_policy_(default_remove_policy) {}
+  RuleSampler(const std::vector<AutoGenRule*>& potential_rules,
+              bool default_remove_policy)
+      : potential_rules_(&potential_rules),
+        default_remove_policy_(default_remove_policy) {}
 
   // Select a rule to apply.
-  // The param remove is used to determine whether to delete the next rule after selecting it,
-  // If remove == true, it will not be sampled in the future.
+  // The param remove is used to determine whether to delete the next rule after
+  // selecting it, If remove == true, it will not be sampled in the future.
   virtual AutoGenRule* NextRule(bool remove) = 0;
 
   // The pointer refers to all potential rules
   const std::vector<AutoGenRule*>* potential_rules_;
 
-  // The default policy to determine whether to delete the next rule after selecting it.
+  // The default policy to determine whether to delete the next rule after
+  // selecting it.
   bool default_remove_policy_;
 };
 
@@ -74,7 +82,8 @@ class RuleSampler {
 // witch means to select rules one by one until all rules are traversed.
 class TraversalRuleSampler : public RuleSampler {
  public:
-  TraversalRuleSampler(const std::vector<AutoGenRule*>& potential_rules, bool default_remove_policy)
+  TraversalRuleSampler(const std::vector<AutoGenRule*>& potential_rules,
+                       bool default_remove_policy)
       : RuleSampler(potential_rules, default_remove_policy), cur_idx_(0) {}
 
   const char* Name() const override { return "traversal"; }
@@ -95,7 +104,7 @@ class ProbabilisticRuleSampler : public RuleSampler {
   ProbabilisticRuleSampler(const std::vector<AutoGenRule*>& potential_rules,
                            bool default_remove_policy,
                            utils::LinearRandomEngine::StateType rand_seed = 0,
-                           const std::vector<int>& weights                = {});
+                           const std::vector<int>& weights = {});
 
   const char* Name() const override { return "probabilistic"; }
 

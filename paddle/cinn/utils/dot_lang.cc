@@ -25,7 +25,7 @@ size_t dot_node_counter{0};
 size_t dot_cluster_counter{0};
 
 void ResetDotCounters() {
-  dot_node_counter    = 0;
+  dot_node_counter = 0;
   dot_cluster_counter = 0;
 }
 
@@ -35,7 +35,9 @@ std::string DotAttr::repr() const {
   return ss.str();
 }
 
-DotNode::DotNode(const std::string& name, const std::vector<DotAttr>& attrs, const std::string& cluster_id)
+DotNode::DotNode(const std::string& name,
+                 const std::vector<DotAttr>& attrs,
+                 const std::string& cluster_id)
     : name(name), attrs(attrs), cluster_id_(cluster_id) {
   std::stringstream ss;
   ss << "node_" << dot_node_counter++;
@@ -60,7 +62,9 @@ std::string DotNode::repr() const {
   return ss.str();
 }
 
-DotCluster::DotCluster(const std::string& name, const std::vector<DotAttr>& attrs) : name(name), attrs(attrs) {
+DotCluster::DotCluster(const std::string& name,
+                       const std::vector<DotAttr>& attrs)
+    : name(name), attrs(attrs) {
   std::stringstream ss;
   ss << "cluster_" << dot_cluster_counter++;
   id_ = ss.str();
@@ -102,16 +106,21 @@ void DotLang::AddNode(const std::string& id,
   }
 }
 
-void DotLang::AddCluster(const std::string& id, const std::vector<DotAttr>& attrs) {
+void DotLang::AddCluster(const std::string& id,
+                         const std::vector<DotAttr>& attrs) {
   CHECK(!clusters_.count(id)) << "duplicate Cluster '" << id << "'";
   clusters_.emplace(id, DotCluster{id, attrs});
 }
 
-void DotLang::AddEdge(const std::string& source, const std::string& target, const std::vector<DotAttr>& attrs) {
+void DotLang::AddEdge(const std::string& source,
+                      const std::string& target,
+                      const std::vector<DotAttr>& attrs) {
   CHECK(!source.empty());
   CHECK(!target.empty());
-  CHECK(nodes_.find(source) != nodes_.end()) << "Call AddNode to add " << source << " to dot first";
-  CHECK(nodes_.find(target) != nodes_.end()) << "Call AddNode to add " << target << " to dot first";
+  CHECK(nodes_.find(source) != nodes_.end())
+      << "Call AddNode to add " << source << " to dot first";
+  CHECK(nodes_.find(target) != nodes_.end())
+      << "Call AddNode to add " << target << " to dot first";
   auto sid = nodes_.at(source).id();
   auto tid = nodes_.at(target).id();
   edges_.emplace_back(sid, tid, attrs);

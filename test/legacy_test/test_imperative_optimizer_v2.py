@@ -656,6 +656,38 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 )
                 adam.set_lr(0.01)
 
+    def test_set_lr_scheduler(self):
+        with fluid.dygraph.guard():
+            a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            linear = paddle.nn.Linear(10, 10)
+
+            a = fluid.dygraph.to_variable(a)
+
+            b = linear(a)
+
+            loss = paddle.mean(b)
+
+            adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+
+            # float to LRScheduler
+            scheduler = paddle.optimizer.lr.StepDecay(
+                learning_rate=0.2, step_size=5, gamma=0.6
+            )
+            adam.set_lr_scheduler(scheduler)
+            adam.minimize(loss)
+            lr = adam.get_lr()
+            np.testing.assert_allclose(lr, 0.2, rtol=1e-06, atol=0.0)
+
+            # LRScheduler to another LRScheduler
+            scheduler = paddle.optimizer.lr.MultiStepDecay(
+                learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8
+            )
+            adam.set_lr_scheduler(scheduler)
+            adam.minimize(loss)
+            lr = adam.get_lr()
+            np.testing.assert_allclose(lr, 0.5, rtol=1e-06, atol=0.0)
+
 
 class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):

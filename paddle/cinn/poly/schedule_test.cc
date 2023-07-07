@@ -65,7 +65,8 @@ TEST(CreateStages, buffer_bind_to_multiple_tensors_schedule) {
   Expr N(100);
   lang::Placeholder<float> A("A", {N, N});
   /*
-   * We create three tensors all binded to the same buffer, but has no depend in computation.
+   * We create three tensors all binded to the same buffer, but has no depend in
+   * computation.
    */
 
   auto B = lang::Compute(

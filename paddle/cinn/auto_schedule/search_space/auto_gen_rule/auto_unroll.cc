@@ -33,11 +33,13 @@ bool AutoUnroll::MeetCondition(const ir::ScheduleBlock* schedule_block) const {
   auto has_reduce_iter = [](const Expr* x) {
     auto* block_realize = x->As<ir::ScheduleBlockRealize>();
     if (block_realize) {
-      auto* schedule_block = block_realize->schedule_block.As<ir::ScheduleBlock>();
+      auto* schedule_block =
+          block_realize->schedule_block.As<ir::ScheduleBlock>();
       CHECK(schedule_block) << "schedule_block field is not a ScheduleBlock";
       for (auto&& var : schedule_block->iter_vars) {
         if (var->is_reduce_axis) {
-          VLOG(6) << "find ScheduleBlockRealize:" << *x << " has reduce_axis:" << var;
+          VLOG(6) << "find ScheduleBlockRealize:" << *x
+                  << " has reduce_axis:" << var;
           return true;
         }
       }
@@ -46,7 +48,8 @@ bool AutoUnroll::MeetCondition(const ir::ScheduleBlock* schedule_block) const {
   };
   // whether has any for-loop with non-serial type
   auto has_nonserial_loop = [](const Expr* x) {
-    if (x->As<ir::For>() && x->As<ir::For>()->for_type() != ir::ForType::Serial) {
+    if (x->As<ir::For>() &&
+        x->As<ir::For>()->for_type() != ir::ForType::Serial) {
       VLOG(6) << "find non-serial loop:" << *x;
       return true;
     }
@@ -55,13 +58,15 @@ bool AutoUnroll::MeetCondition(const ir::ScheduleBlock* schedule_block) const {
 
   auto find_target_exprs = ir::CollectIRNodesWithoutTensor(
       schedule_block->body,
-      [&has_reduce_iter, &has_nonserial_loop](const Expr* x) { return has_reduce_iter(x) || has_nonserial_loop(x); });
+      [&has_reduce_iter, &has_nonserial_loop](const Expr* x) {
+        return has_reduce_iter(x) || has_nonserial_loop(x);
+      });
 
   return !find_target_exprs.empty();
 }
 
 RuleApplyType AutoUnroll::Init(ir::IRSchedule* ir_schedule) {
-  ir_schedule_        = ir_schedule;
+  ir_schedule_ = ir_schedule;
   auto block_realizes = ir_schedule_->GetAllBlocks();
 
   // A schedule block can perform `auto_unroll` rule should meet two conditions:
@@ -71,47 +76,58 @@ RuleApplyType AutoUnroll::Init(ir::IRSchedule* ir_schedule) {
   std::set<Expr> deduplicate_results;
   for (size_t i = 0; i < block_realizes.size(); ++i) {
     // find root block
-    Expr root_block     = ir_schedule_->GetRootBlock(block_realizes[i]);
+    Expr root_block = ir_schedule_->GetRootBlock(block_realizes[i]);
     auto* block_realize = root_block.As<ir::ScheduleBlockRealize>();
     CHECK(block_realize) << "stmt is not a ScheduleBlockRealize:" << root_block;
-    auto* schedule_block = block_realize->schedule_block.As<ir::ScheduleBlock>();
-    CHECK(schedule_block) << "schedule_block field is not a ScheduleBlock:" << Expr(block_realize);
+    auto* schedule_block =
+        block_realize->schedule_block.As<ir::ScheduleBlock>();
+    CHECK(schedule_block) << "schedule_block field is not a ScheduleBlock:"
+                          << Expr(block_realize);
     if (MeetCondition(schedule_block)) {
       deduplicate_results.emplace(root_block);
     }
   }
-  applicable_schedule_blocks_ = {deduplicate_results.begin(), deduplicate_results.end()};
-  num_applicable_             = applicable_schedule_blocks_.size();
+  applicable_schedule_blocks_ = {deduplicate_results.begin(),
+                                 deduplicate_results.end()};
+  num_applicable_ = applicable_schedule_blocks_.size();
   VLOG(6) << "Collect applicable_schedule_blocks_:" << num_applicable_;
 
-  return num_applicable_ > 0 ? RuleApplyType::kApplyAndPruneOtherRules : RuleApplyType::kCannotApply;
+  return num_applicable_ > 0 ? RuleApplyType::kApplyAndPruneOtherRules
+                             : RuleApplyType::kCannotApply;
 }
 
 void AutoUnroll::Apply(int index) {
-  CHECK_LT(index, applicable_schedule_blocks_.size()) << "invalid apply index:" << index;
+  CHECK_LT(index, applicable_schedule_blocks_.size())
+      << "invalid apply index:" << index;
   auto applied_block = applicable_schedule_blocks_.at(index);
-  int max_step       = auto_unroll_options[std::rand() % auto_unroll_options.size()];
-  ir_schedule_->Annotate(applied_block, ir::attr::auto_unroll_max_step, max_step);
+  int max_step = auto_unroll_options[std::rand() % auto_unroll_options.size()];
+  ir_schedule_->Annotate(
+      applied_block, ir::attr::auto_unroll_max_step, max_step);
   return;
 }
 
-RuleApplyType AutoUnroll::AnalyseApplyType(SearchState state, const std::string& block_name) const {
-  Expr block_expr     = state->ir_schedule.GetBlock(block_name);
-  Expr root_block     = state->ir_schedule.GetRootBlock(block_expr);
+RuleApplyType AutoUnroll::AnalyseApplyType(
+    SearchState state, const std::string& block_name) const {
+  Expr block_expr = state->ir_schedule.GetBlock(block_name);
+  Expr root_block = state->ir_schedule.GetRootBlock(block_expr);
   auto* block_realize = root_block.As<ir::ScheduleBlockRealize>();
   CHECK(block_realize) << "stmt is not a ScheduleBlockRealize:" << root_block;
   auto* schedule_block = block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK(schedule_block) << "schedule_block field is not a ScheduleBlock:" << Expr(block_realize);
+  CHECK(schedule_block) << "schedule_block field is not a ScheduleBlock:"
+                        << Expr(block_realize);
 
-  return MeetCondition(schedule_block) ? RuleApplyType::kApplyAndPruneOtherRules : RuleApplyType::kCannotApply;
+  return MeetCondition(schedule_block) ? RuleApplyType::kApplyAndPruneOtherRules
+                                       : RuleApplyType::kCannotApply;
 }
 
-std::vector<SearchState> AutoUnroll::ApplyOnBlock(SearchState state, const std::string& block_name) {
+std::vector<SearchState> AutoUnroll::ApplyOnBlock(
+    SearchState state, const std::string& block_name) {
   SearchState new_state = state.Copy();
-  Expr block_expr       = new_state->ir_schedule.GetBlock(block_name);
-  Expr applied_block    = new_state->ir_schedule.GetRootBlock(block_expr);
-  int max_step          = auto_unroll_options[std::rand() % auto_unroll_options.size()];
-  new_state->ir_schedule.Annotate(applied_block, ir::attr::auto_unroll_max_step, max_step);
+  Expr block_expr = new_state->ir_schedule.GetBlock(block_name);
+  Expr applied_block = new_state->ir_schedule.GetRootBlock(block_expr);
+  int max_step = auto_unroll_options[std::rand() % auto_unroll_options.size()];
+  new_state->ir_schedule.Annotate(
+      applied_block, ir::attr::auto_unroll_max_step, max_step);
 
   return {new_state};
 }

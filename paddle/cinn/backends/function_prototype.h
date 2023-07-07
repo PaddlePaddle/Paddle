@@ -28,8 +28,8 @@ namespace cinn {
 namespace backends {
 
 struct FunctionProto {
-  using shape_inference_t =
-      std::function<std::vector<Expr> /*shape*/ (const std::vector<Expr>& /*arguments*/, int /*value_offset*/)>;
+  using shape_inference_t = std::function<std::vector<Expr> /*shape*/ (
+      const std::vector<Expr>& /*arguments*/, int /*value_offset*/)>;
 
   std::string name;
   std::vector<Type> readonly_arg_types;
@@ -50,7 +50,7 @@ struct FunctionProto {
   FunctionProto(const std::string& name,
                 const std::vector<Type>& readonly_arg_types,
                 const std::vector<Type>& mutable_arg_types,
-                Type ret_type                     = Void(),
+                Type ret_type = Void(),
                 shape_inference_t shape_inference = shape_inference_t());
 
   /**
@@ -59,7 +59,9 @@ struct FunctionProto {
    * @param input_types The input types.
    * @param ret_type The return type.
    */
-  FunctionProto(const std::string& name, const std::vector<Type>& input_types, Type ret_type)
+  FunctionProto(const std::string& name,
+                const std::vector<Type>& input_types,
+                Type ret_type)
       : name(name), readonly_arg_types(input_types), ret_type(ret_type) {}
 
   /**

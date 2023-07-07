@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.common import make_const
-from .core_api.common import Target
-from .core_api.common import Type
-from .core_api.common import CINNValue
-from .core_api.common import Void, Int, UInt, Float, Bool, String
 from .core_api.common import *
+from .core_api.common import (
+    Bool,
+    CINNValue,
+    Float,
+    Int,
+    String,
+    Target,
+    Type,
+    UInt,
+    Void,
+    make_const,
+)

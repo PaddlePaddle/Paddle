@@ -49,8 +49,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_SimpleAssign) {
   ir::Tensor B = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  poly::StageMap stages              = poly::CreateStages({A, B});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
+  poly::StageMap stages = poly::CreateStages({A, B});
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
 
   ASSERT_FALSE(funcs.empty());
   ir::Expr ast_expr = funcs[0]->body;
@@ -65,8 +66,10 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_SimpleAssign) {
   std::vector<ir::Expr> all_block_realizes = ir_sch.GetAllBlocks();
   ASSERT_EQ(all_block_realizes.size(), 1UL);
 
-  ir::ScheduleBlockRealize* sche_block_realize = all_block_realizes[0].As<ir::ScheduleBlockRealize>();
-  ir::ScheduleBlock* sche_block                = sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  ir::ScheduleBlockRealize* sche_block_realize =
+      all_block_realizes[0].As<ir::ScheduleBlockRealize>();
+  ir::ScheduleBlock* sche_block =
+      sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
   AnalyzeScheduleBlockReadWriteBuffer(sche_block);
 
   /*
@@ -112,8 +115,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_AddDiffShape) {
   ir::Tensor C = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i) + B(j); }, "C");
 
-  poly::StageMap stages              = poly::CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("AddDiffShape", stages, {C}, {}, {}, nullptr, target, true);
+  poly::StageMap stages = poly::CreateStages({C});
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "AddDiffShape", stages, {C}, {}, {}, nullptr, target, true);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before MultiLevelTiling: ";
@@ -126,8 +130,10 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_AddDiffShape) {
   std::vector<ir::Expr> all_block_realizes = ir_sch.GetAllBlocks();
   ASSERT_EQ(all_block_realizes.size(), 1UL);
 
-  ir::ScheduleBlockRealize* sche_block_realize = all_block_realizes[0].As<ir::ScheduleBlockRealize>();
-  ir::ScheduleBlock* sche_block                = sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  ir::ScheduleBlockRealize* sche_block_realize =
+      all_block_realizes[0].As<ir::ScheduleBlockRealize>();
+  ir::ScheduleBlock* sche_block =
+      sche_block_realize->schedule_block.As<ir::ScheduleBlock>();
   AnalyzeScheduleBlockReadWriteBuffer(sche_block);
 
   VLOG(6) << "ScheduleBlockRealize: ";
@@ -163,8 +169,9 @@ TEST(AnalyzeIr, ContainsNodeType) {
   ir::Tensor B = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  poly::StageMap stages              = poly::CreateStages({A, B});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
+  poly::StageMap stages = poly::CreateStages({A, B});
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
 
   ASSERT_FALSE(funcs.empty());
   ir::Expr ast_expr = funcs[0]->body;
@@ -172,9 +179,12 @@ TEST(AnalyzeIr, ContainsNodeType) {
   VLOG(6) << "Analyzing for Expr:";
   VLOG(6) << ast_expr;
 
-  ASSERT_TRUE(ContainsNodeType(ast_expr, {ir::IrNodeTy::Load, ir::IrNodeTy::Store}));
-  ASSERT_TRUE(ContainsNodeType(ast_expr, {ir::IrNodeTy::Load, ir::IrNodeTy::IfThenElse}));
-  ASSERT_FALSE(ContainsNodeType(ast_expr, {ir::IrNodeTy::IfThenElse, ir::IrNodeTy::Sum}));
+  ASSERT_TRUE(
+      ContainsNodeType(ast_expr, {ir::IrNodeTy::Load, ir::IrNodeTy::Store}));
+  ASSERT_TRUE(ContainsNodeType(ast_expr,
+                               {ir::IrNodeTy::Load, ir::IrNodeTy::IfThenElse}));
+  ASSERT_FALSE(ContainsNodeType(ast_expr,
+                                {ir::IrNodeTy::IfThenElse, ir::IrNodeTy::Sum}));
 }
 
 }  // namespace auto_schedule

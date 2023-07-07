@@ -27,7 +27,7 @@ namespace auto_schedule {
 SkipRule::SkipRule(const common::Target& target) : AutoGenRule(target) {}
 
 RuleApplyType SkipRule::Init(ir::IRSchedule* ir_schedule) {
-  ir_schedule_    = ir_schedule;
+  ir_schedule_ = ir_schedule;
   num_applicable_ = 1;
   return RuleApplyType::kApply;
 }

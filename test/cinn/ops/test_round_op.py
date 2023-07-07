@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestRoundOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -29,7 +31,8 @@ class TestRoundOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=False)
@@ -39,7 +42,8 @@ class TestRoundOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("add")
         x = builder.create_input(
-            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x")
+            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x"
+        )
         out = builder.round(x)
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.x_np], [out])

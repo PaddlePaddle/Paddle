@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 
-#include <paddle/cinn/utils/string.h>
 #include <glog/logging.h>
+#include <paddle/cinn/utils/string.h>
 
 #include <fstream>
 #include <set>
@@ -29,7 +29,7 @@
 namespace cinn {
 namespace backends {
 
-const std::string CodeGenCUDA_Dev::source_header_ =
+const std::string CodeGenCUDA_Dev::source_header_ =  // NOLINT
     R"(#include <cstdint>
 
 #define CINN_WITH_CUDA
@@ -49,13 +49,14 @@ const std::string &CodeGenCUDA_Dev::GetSourceHeader() { return source_header_; }
 CodeGenCUDA_Dev::CodeGenCUDA_Dev(Target target) : CodeGenC(target) {}
 
 std::string CodeGenCUDA_Dev::Compile(const ir::Module &module, bool for_nvrtc) {
-  for_nvrtc_  = for_nvrtc;
+  for_nvrtc_ = for_nvrtc;
   auto source = Compile(module, OutputKind::CImpl);
 
   return source;
 }
 
-void CodeGenCUDA_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
+void CodeGenCUDA_Dev::Compile(const ir::Module &module,
+                              const Outputs &outputs) {
   ir::IrVerify(Expr(module));
 
   CodeGenC::inline_builtin_codes_ = false;
@@ -83,13 +84,15 @@ std::string CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
   return ss_.str();
 }
 
-std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(const ir::_LoweredFunc_ *op,
-                                                            const std::vector<ir::Buffer> &temp_buffers) {
-  std::set<ir::Buffer> temp_buffer_set(temp_buffers.begin(), temp_buffers.end());
+std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(
+    const ir::_LoweredFunc_ *op, const std::vector<ir::Buffer> &temp_buffers) {
+  std::set<ir::Buffer> temp_buffer_set(temp_buffers.begin(),
+                                       temp_buffers.end());
   // prepare temp buffer alias
   std::vector<Expr> buffer_alias;
   auto tensors = ir::CollectIRNodes(op->body, [&](const Expr *x) {
-    return x->as_tensor() && x->as_tensor()->buffer.defined() && temp_buffer_set.count(x->as_tensor()->buffer);
+    return x->as_tensor() && x->as_tensor()->buffer.defined() &&
+           temp_buffer_set.count(x->as_tensor()->buffer);
   });
 
   // unique tensors
@@ -99,7 +102,7 @@ std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(const ir::_LoweredFu
   }
 
   for (auto &t : unique_tensors) {
-    auto data_type     = t->type();
+    auto data_type = t->type();
     auto data_ptr_type = data_type;
     data_ptr_type.set_cpp_handle();
 
@@ -124,10 +127,11 @@ void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
   std::vector<Expr> new_body;
 
   auto alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
-  auto temp_buffer_alias   = GenerateBufferAliasExprs(op, op->temp_bufs);
-  auto alis_var_exprs      = op->CudaAliasVarExprs();
+  auto temp_buffer_alias = GenerateBufferAliasExprs(op, op->temp_bufs);
+  auto alis_var_exprs = op->CudaAliasVarExprs();
 
-#define APPEND_TO_NEW_BODY(field__) new_body.insert(std::end(new_body), std::begin(field__), std::end(field__));
+#define APPEND_TO_NEW_BODY(field__) \
+  new_body.insert(std::end(new_body), std::begin(field__), std::end(field__));
   APPEND_TO_NEW_BODY(alloca_temp_buffers)
   APPEND_TO_NEW_BODY(temp_buffer_alias)
   APPEND_TO_NEW_BODY(alis_var_exprs)
@@ -145,7 +149,8 @@ void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::_Var_ *op) {
-  if (utils::Startswith(op->name, "threadIdx") || utils::Startswith(op->name, "blockIdx")) {
+  if (utils::Startswith(op->name, "threadIdx") ||
+      utils::Startswith(op->name, "blockIdx")) {
     os() << "(int)" + op->name;
   } else {
     os() << op->name;
@@ -197,7 +202,8 @@ void CodeGenCUDA_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
 
 void CodeGenCUDA_Dev::PrintFuncArg(const ir::Argument &arg) {
   if (arg.is_buffer()) {
-    // In CUDA kernel, only primitive type is supported, so we replace the buffer with T*j
+    // In CUDA kernel, only primitive type is supported, so we replace the
+    // buffer with T*j
     if (arg.is_input()) os() << "const ";
     os() << GetTypeRepr(arg.buffer_arg()->dtype);
     os() << "* ";
@@ -216,7 +222,8 @@ void CodeGenCUDA_Dev::PrintFuncArg(const ir::Argument &arg) {
 
 void CodeGenCUDA_Dev::PrintBuiltinCodes() {}
 
-std::string CodeGenCUDA_Dev::Compile(const ir::Module &module, CodeGenC::OutputKind output_kind) {
+std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
+                                     CodeGenC::OutputKind output_kind) {
   if (output_kind == OutputKind::CHeader) {
     GenerateHeaderFile(module);
   } else if (output_kind == OutputKind::CImpl) {
@@ -268,7 +275,8 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
       break;
 
     default:
-      LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name << ", type " << buffer->memory_type;
+      LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
+                 << ", type " << buffer->memory_type;
   }
 }
 
@@ -321,7 +329,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
-      utils::Startswith(op->type().customized_type(), common::customized_type::kcuda_builtin_vector_t)) {
+      utils::Startswith(op->type().customized_type(),
+                        common::customized_type::kcuda_builtin_vector_t)) {
     os() << GetTypeRepr(op->type());
     if (op->type().is_cpp_handle()) {
       os() << " " << kCKeywordRestrict;
@@ -329,7 +338,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
     os() << " ";
     Print(op->symbol);
     vectorized_tensor_names_.insert(utils::GetStreamCnt(op->symbol));
-    // skip "=0" in "half8 temp = 0;" sincethe operator= of half8 may not overloaded.
+    // skip "=0" in "half8 temp = 0;" sincethe operator= of half8 may not
+    // overloaded.
     if (op->body.As<ir::IntImm>() && op->body.As<ir::IntImm>()->value == 0) {
       return;
     }
@@ -340,8 +350,11 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
   }
 }
 
-bool CodeGenCUDA_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op, ir::Expr index_expr, bool is_store) {
-  static constexpr char index2suffix[8] = {'x', 'y', 'z', 'w', 'v', 'u', 't', 's'};
+bool CodeGenCUDA_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
+                                               ir::Expr index_expr,
+                                               bool is_store) {
+  static constexpr char index2suffix[8] = {
+      'x', 'y', 'z', 'w', 'v', 'u', 't', 's'};
 
   // addr of op should be a place of tensor and the index is simple int number
   if (!op->is_addr_tensor() || !index_expr.As<ir::IntImm>()) {
@@ -363,22 +376,25 @@ bool CodeGenCUDA_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
   if (is_store && tensor->type().is_cpp_handle()) {
     os() << tensor->name << "[" << index << "]";
   } else {
-    os() << tensor->name << (tensor->type().is_cpp_handle() ? "->" : ".") << index2suffix[index];
+    os() << tensor->name << (tensor->type().is_cpp_handle() ? "->" : ".")
+         << index2suffix[index];
   }
   return true;
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::Load *op) {
-  // overload this visit function to especially deal with the case when it accesses
-  // element at a cuda built-in vector, others still resolve to CodeGenC
+  // overload this visit function to especially deal with the case when it
+  // accesses element at a cuda built-in vector, others still resolve to
+  // CodeGenC
   if (!PrintBuiltinVectorAccess(op, op->index(), false)) {
     CodeGenC::Visit(op);
   }
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
-  // overload this visit function to especially deal with the case when it accesses
-  // element at a cuda built-in vector, others still resolve to CodeGenC
+  // overload this visit function to especially deal with the case when it
+  // accesses element at a cuda built-in vector, others still resolve to
+  // CodeGenC
   if (PrintBuiltinVectorAccess(op, op->index(), true)) {
     os() << " = ";
     Print(op->value);

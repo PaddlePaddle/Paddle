@@ -14,16 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-from cinn.frontend import *
-from cinn.common import *
 from paddle import _C_ops
 
 
-@OpTestTool.skip_if(not is_compiled_with_cudnn(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cudnn(), "x86 test will be skipped due to timeout."
+)
 class TestPool2dOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -31,7 +33,8 @@ class TestPool2dOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=False)
@@ -53,7 +56,8 @@ class TestPool2dOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("pool2d")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x")
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x"
+        )
         out = builder.pool2d(
             x,
             pooling_type=self.case["pooling_type"],
@@ -69,7 +73,8 @@ class TestPool2dOp(OpTest):
         )
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x], [self.x_np], [out], passes=[])
+            prog, target, [x], [self.x_np], [out], passes=[]
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -179,8 +184,9 @@ class TestPool2dOpAll(TestCaseHelper):
         ]
 
 
-@OpTestTool.skip_if(not is_compiled_with_cudnn(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cudnn(), "x86 test will be skipped due to timeout."
+)
 class TestPool2dBackwardOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -188,9 +194,11 @@ class TestPool2dBackwardOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
         self.dy_np = self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=False)
@@ -209,14 +217,16 @@ class TestPool2dBackwardOp(OpTest):
             True,  # Need in paddlepaddle-2.4.2, will be removed in paddlepaddle-2.5
         )
         self.paddle_outputs = [forward_out]
-        self.paddle_grads = self.get_paddle_grads([forward_out], [x],
-                                                  [self.dy_np])
+        self.paddle_grads = self.get_paddle_grads(
+            [forward_out], [x], [self.dy_np]
+        )
 
     def build_cinn_program(self, target):
         builder = NetBuilder("pool2d")
         # forward
         x = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x")
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x"
+        )
         y = builder.pool2d(
             x,
             kernel_size=self.case["kernel_size"],
@@ -232,7 +242,8 @@ class TestPool2dBackwardOp(OpTest):
         )
         # backward
         dy = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "dy")
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "dy"
+        )
         dx = builder.pool2d_grad(
             x,
             y,
@@ -250,13 +261,17 @@ class TestPool2dBackwardOp(OpTest):
         )
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x, dy], [self.x_np, self.dy_np], [y, dx], passes=[])
+            prog, target, [x, dy], [self.x_np, self.dy_np], [y, dx], passes=[]
+        )
         self.cinn_outputs = [res[0]]
         self.cinn_grads = [res[1]]
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 

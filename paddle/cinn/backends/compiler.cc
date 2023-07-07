@@ -38,8 +38,9 @@ static constexpr int DebugLogMaxLen = 30000;
 
 SourceCodePrint::SourceCodePrint() {
   if (!FLAGS_cinn_source_code_save_path.empty()) {
-    LOG(INFO) << "The CINN auto generated source code will writing into file: \"" << FLAGS_cinn_source_code_save_path
-              << "\"";
+    LOG(INFO)
+        << "The CINN auto generated source code will writing into file: \""
+        << FLAGS_cinn_source_code_save_path << "\"";
     of.open(FLAGS_cinn_source_code_save_path, std::ios_base::out);
   }
 }
@@ -55,11 +56,14 @@ void SourceCodePrint::write(const std::string& source_code) {
   if (of.is_open()) {
     of << source_code << std::endl;
   } else if (!FLAGS_cinn_source_code_save_path.empty()) {
-    LOG(WARNING) << "Failed to open \"" << FLAGS_cinn_source_code_save_path << "\", source code will print.";
+    LOG(WARNING) << "Failed to open \"" << FLAGS_cinn_source_code_save_path
+                 << "\", source code will print.";
     if (source_code.size() > DebugLogMaxLen) {
-      LOG(INFO) << "[CUDA] source code-0:\n" << source_code.substr(0, DebugLogMaxLen);
+      LOG(INFO) << "[CUDA] source code-0:\n"
+                << source_code.substr(0, DebugLogMaxLen);
       for (int i = 1; i * DebugLogMaxLen < source_code.size(); ++i) {
-        LOG(INFO) << "[CUDA] source code-" << i << ":\n" << source_code.substr(DebugLogMaxLen * i, DebugLogMaxLen);
+        LOG(INFO) << "[CUDA] source code-" << i << ":\n"
+                  << source_code.substr(DebugLogMaxLen * i, DebugLogMaxLen);
       }
     } else {
       LOG(INFO) << "[CUDA] source code:\n" << source_code;
@@ -80,9 +84,10 @@ void Compiler::Build(const Module& module, const std::string& code) {
 std::string Compiler::GetSourceCode(const ir::Module& module) {
   if (target_.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
-    auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
-    auto& host_module                = std::get<0>(_host_module_device_module_);
-    auto& device_module              = std::get<1>(_host_module_device_module_);
+    auto _host_module_device_module_ =
+        SplitCudaAndHostModule(module);  // NOLINT
+    auto& host_module = std::get<0>(_host_module_device_module_);
+    auto& device_module = std::get<1>(_host_module_device_module_);
     CodeGenCUDA_Dev codegen(target_);
     auto source_code = codegen.Compile(device_module);
     return source_code;
@@ -104,11 +109,12 @@ void Compiler::BuildDefault(const Module& module) {
   }
 }
 
-void Compiler::CompileCudaModule(const Module& module, const std::string& code) {
+void Compiler::CompileCudaModule(const Module& module,
+                                 const std::string& code) {
 #ifdef CINN_WITH_CUDA
   auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
-  auto& host_module                = std::get<0>(_host_module_device_module_);
-  auto& device_module              = std::get<1>(_host_module_device_module_);
+  auto& host_module = std::get<0>(_host_module_device_module_);
+  auto& device_module = std::get<1>(_host_module_device_module_);
   VLOG(3) << "[CUDA] host module:\n" << host_module;
 
   VLOG(3) << "[CUDA] device module:\n" << device_module;
@@ -119,24 +125,30 @@ void Compiler::CompileCudaModule(const Module& module, const std::string& code) 
   } else {
     source_code = code;
   }
-  CHECK(!source_code.empty()) << "Compile CUDA C code failed from device module:\n" << device_module;
+  CHECK(!source_code.empty())
+      << "Compile CUDA C code failed from device module:\n"
+      << device_module;
   VLOG(3) << "[CUDA] C:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
   using runtime::cuda::CUDAModule;
 
   nvrtc::Compiler compiler;
   auto ptx = compiler(source_code);
-  CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << source_code;
-  cuda_module_.reset(
-      new CUDAModule(ptx, compiler.compile_to_cubin() ? CUDAModule::Kind::CUBIN : CUDAModule::Kind::PTX));
+  CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n"
+                      << source_code;
+  cuda_module_.reset(new CUDAModule(ptx,
+                                    compiler.compile_to_cubin()
+                                        ? CUDAModule::Kind::CUBIN
+                                        : CUDAModule::Kind::PTX));
 
   RuntimeSymbols symbols;
   for (auto& fn : device_module.functions()) {
     std::string kernel_fn_name = fn->name;
-    auto fn_kernel             = cuda_module_->GetFunction(0, kernel_fn_name);
+    auto fn_kernel = cuda_module_->GetFunction(0, kernel_fn_name);
     CHECK(fn_kernel);
 
-    symbols.RegisterVar(kernel_fn_name + "_ptr_", reinterpret_cast<void*>(fn_kernel));
+    symbols.RegisterVar(kernel_fn_name + "_ptr_",
+                        reinterpret_cast<void*>(fn_kernel));
   }
 
   engine_ = ExecutionEngine::Create(ExecutionOptions(), std::move(symbols));
@@ -147,9 +159,13 @@ void Compiler::CompileCudaModule(const Module& module, const std::string& code) 
 #endif
 }
 
-void Compiler::CompileX86Module(const Module& module) { engine_->Link<CodeGenX86>(module); }
+void Compiler::CompileX86Module(const Module& module) {
+  engine_->Link<CodeGenX86>(module);
+}
 
-void Compiler::ExportObject(const std::string& path) { engine_->ExportObject(path); }
+void Compiler::ExportObject(const std::string& path) {
+  engine_->ExportObject(path);
+}
 
 void* Compiler::Lookup(absl::string_view fn_name) {
   CHECK(engine_);

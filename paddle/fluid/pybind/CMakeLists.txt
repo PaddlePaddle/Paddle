@@ -125,6 +125,7 @@ set(PYBIND_SRCS
     imperative.cc
     inference_api.cc
     ir.cc
+    graph.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
