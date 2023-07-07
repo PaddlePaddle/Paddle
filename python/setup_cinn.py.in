@@ -127,6 +127,7 @@ else:
         yield
 
 libs_path = '${CMAKE_BINARY_DIR}/python/cinn/libs'
+os.makedirs(libs_path, exist_ok=True)
 
 cinnlibs = []
 package_data = {'cinn': ['core_api.so'], 'cinn.libs': []}
