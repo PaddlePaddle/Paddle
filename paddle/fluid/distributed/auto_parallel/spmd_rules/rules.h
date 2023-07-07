@@ -29,9 +29,6 @@ namespace auto_parallel {
 // matmul rule
 REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
 
-// replicated rule
-REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
-
 // embedding rule
 REGISTER_SPMD_RULE(embedding, EmbeddingSPMDRule);
 REGISTER_SPMD_RULE(lookup_table_v2, EmbeddingSPMDRule);
