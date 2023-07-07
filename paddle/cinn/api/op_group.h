@@ -24,15 +24,15 @@
 namespace cinn {
 namespace api {
 
-using Comparator = hlir::framework::Graph::Group::SharedGroupComparator;
-using Hasher = hlir::framework::Graph::Group::SharedGroupHasher;
-
 class OpGroup {
  public:
   explicit OpGroup(const std::shared_ptr<hlir::framework::Graph::Group>& group)
       : group_(group) {}
 
   OpGroup(const OpGroup& other) = default;
+
+  using Comparator = hlir::framework::Graph::Group::SharedGroupComparator;
+  using Hasher = hlir::framework::Graph::Group::SharedGroupHasher;
 
   class OpGroupListIterator {
    public:
@@ -83,13 +83,18 @@ class OpGroup {
 
     using const_iterator = OpGroupListIterator;
 
-    size_t size() const { return group_.lock()->producer_groups().size(); }
+    size_t size() const {
+      CHECK(group_.lock());
+      return group_.lock()->producer_groups().size();
+    }
 
     const_iterator begin() const {
+      CHECK(group_.lock());
       return const_iterator(group_.lock()->producer_groups().begin());
     }
 
     const_iterator end() const {
+      CHECK(group_.lock());
       return const_iterator(group_.lock()->producer_groups().end());
     }
 
@@ -111,13 +116,18 @@ class OpGroup {
 
     using const_iterator = OpGroupListIterator;
 
-    size_t size() const { return group_.lock()->consumer_groups().size(); }
+    size_t size() const {
+      CHECK(group_.lock());
+      return group_.lock()->consumer_groups().size();
+    }
 
     const_iterator begin() const {
+      CHECK(group_.lock());
       return const_iterator(group_.lock()->consumer_groups().begin());
     }
 
     const_iterator end() const {
+      CHECK(group_.lock());
       return const_iterator(group_.lock()->consumer_groups().end());
     }
 
@@ -185,8 +195,7 @@ namespace std {
 template <>
 struct hash<cinn::api::OpGroup> {
   size_t operator()(const cinn::api::OpGroup& obj) const {
-    return std::hash<int64_t>()(
-        reinterpret_cast<uint64_t>(obj.GetGroup().get()));
+    return std::hash<size_t>()(reinterpret_cast<size_t>(obj.GetGroup().get()));
   }
 };
 

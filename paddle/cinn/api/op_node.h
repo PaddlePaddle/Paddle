@@ -23,9 +23,6 @@
 namespace cinn {
 namespace api {
 
-using OpPatternKind = cinn::hlir::framework::OpPatternKind;
-using Attribute = cinn::utils::Attribute;
-
 class OpNode {
  public:
   OpNode(const hlir::framework::Node* node, const hlir::framework::Graph* graph)
@@ -39,6 +36,8 @@ class OpNode {
         graph_(other.graph_),
         input_tensors_(node_->inlinks_in_order(), graph_),
         output_tensors_(node_->outlinks_in_order(), graph_) {}
+
+  using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
   OpPatternKind kind() const {
     static const hlir::framework::OpValueType<OpPatternKind>& op_pattern_dict =
@@ -55,6 +54,47 @@ class OpNode {
     return kind;
   }
 
+  class TensorListIterator {
+   public:
+    TensorListIterator(
+        std::vector<common::Shared<common::GraphEdge>>::const_iterator it,
+        const hlir::framework::Graph* graph,
+        std::function<hlir::framework::NodeData*(
+            common::Shared<common::GraphEdge>)> get_tensor_from_edge)
+        : iter_(it),
+          graph_(graph),
+          get_tensor_from_edge_(get_tensor_from_edge) {}
+
+    TensorListIterator& operator++() {
+      ++iter_;
+      return *this;
+    }
+
+    TensorListIterator operator++(int) {
+      TensorListIterator tmp = *this;
+      ++iter_;
+      return tmp;
+    }
+
+    bool operator==(const TensorListIterator& other) const {
+      return iter_ == other.iter_;
+    }
+
+    bool operator!=(const TensorListIterator& other) const {
+      return !(*this == other);
+    }
+
+    TensorNode operator*() const;
+
+   private:
+    std::vector<common::Shared<common::GraphEdge>>::const_iterator iter_;
+    const hlir::framework::Graph* graph_;
+    std::function<hlir::framework::NodeData*(common::Shared<common::GraphEdge>)>
+        get_tensor_from_edge_;
+  };
+
+  using const_iterator = TensorListIterator;
+
   class InputTensorListView {
    public:
     InputTensorListView(
@@ -70,6 +110,20 @@ class OpNode {
     size_t size() const { return edges_.size(); }
 
     TensorNode operator[](size_t index) const;
+
+    const_iterator begin() const {
+      return const_iterator(
+          edges_.begin(), graph_, [](common::Shared<common::GraphEdge> edge) {
+            return edge->source()->safe_as<hlir::framework::NodeData>();
+          });
+    }
+
+    const_iterator end() const {
+      return const_iterator(
+          edges_.end(), graph_, [](common::Shared<common::GraphEdge> edge) {
+            return edge->source()->safe_as<hlir::framework::NodeData>();
+          });
+    }
 
    private:
     std::vector<common::Shared<common::GraphEdge>> edges_;
@@ -92,6 +146,20 @@ class OpNode {
 
     TensorNode operator[](size_t index) const;
 
+    const_iterator begin() const {
+      return const_iterator(
+          edges_.begin(), graph_, [](common::Shared<common::GraphEdge> edge) {
+            return edge->sink()->safe_as<hlir::framework::NodeData>();
+          });
+    }
+
+    const_iterator end() const {
+      return const_iterator(
+          edges_.end(), graph_, [](common::Shared<common::GraphEdge> edge) {
+            return edge->sink()->safe_as<hlir::framework::NodeData>();
+          });
+    }
+
    private:
     std::vector<common::Shared<common::GraphEdge>> edges_;
     const hlir::framework::Graph* graph_;
@@ -111,6 +179,7 @@ class OpNode {
   }
 
  private:
+  using Attribute = cinn::utils::Attribute;
   const Attribute& GetAttr(const std::string& attr_name) const {
     return node_->attrs.attr_store.at(attr_name);
   }
@@ -132,7 +201,7 @@ namespace std {
 template <>
 struct hash<cinn::api::OpNode> {
   size_t operator()(const cinn::api::OpNode& obj) const {
-    return std::hash<int64_t>()(reinterpret_cast<uint64_t>(obj.node_));
+    return std::hash<size_t>()(reinterpret_cast<size_t>(obj.node_));
   }
 };
 

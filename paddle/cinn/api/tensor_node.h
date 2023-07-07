@@ -64,7 +64,7 @@ class TensorNode final {
 
     ConsumerOpListView& operator=(const ConsumerOpListView& other) = delete;
 
-    class Iterator {
+    class oterator {
      public:
       Iterator(std::set<common::Shared<common::GraphEdge>,
                         common::GraphEdgeCompare>::const_iterator it,

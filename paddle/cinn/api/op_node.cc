@@ -17,6 +17,10 @@
 namespace cinn {
 namespace api {
 
+TensorNode OpNode::TensorListIterator::operator*() const {
+  return TensorNode(get_tensor_from_edge_(*iter_), graph_);
+}
+
 TensorNode OpNode::InputTensorListView::operator[](size_t index) const {
   return TensorNode(
       edges_[index]->source()->safe_as<hlir::framework::NodeData>(), graph_);

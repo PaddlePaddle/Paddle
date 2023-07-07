@@ -34,16 +34,11 @@ class Shape final {
 
   Shape& operator=(const Shape& other) = delete;
 
-  bool operator==(const Shape& other) const {
-    if (shape_.size() != other.shape_.size()) {
-      return false;
-    }
-    return std::equal(shape_.begin(), shape_.end(), other.shape_.begin());
-  }
+  bool operator==(const Shape& other) const { return shape_ == other.shape_; }
 
   size_t operator[](size_t index) const { return shape_[index]; }
 
-  size_t at(size_t index) const { return shape_[index]; }
+  size_t at(size_t index) const { return shape_.at(index); }
 
   size_t size() const { return shape_.size(); }
 
