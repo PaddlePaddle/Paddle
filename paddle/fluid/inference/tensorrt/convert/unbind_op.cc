@@ -15,7 +15,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-
 /*
  * Unbind Op
  */
@@ -23,7 +22,7 @@ class UnbindOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
-                  bool test_mode) override{
+                  bool test_mode) override {
     VLOG(3) << "convert a unbind op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     std::string input_x_name = op_desc.Input("X").front();
@@ -39,14 +38,12 @@ class UnbindOpConverter : public OpConverter {
         axis += rank;
       }
     }
-    
 
     std::vector<nvinfer1::ITensor*> in_shape_tensors;
-    std::vector<nvinfer1::ITensor*> newDims_tensors; 
+    std::vector<nvinfer1::ITensor*> newDims_tensors;
     for (int32_t i = 0; i < rank; ++i) {
       in_shape_tensors.push_back(GetEleTensorOfShape(in_shape_tensor, i));
-      if (i != axis)
-      {
+      if (i != axis) {
         newDims_tensors.push_back(GetEleTensorOfShape(in_shape_tensor, i));
       }
     }
@@ -57,35 +54,32 @@ class UnbindOpConverter : public OpConverter {
 
     nvinfer1::Dims stride;
     stride.nbDims = rank;
-    for(int i = 0; i < rank; ++i){
-        if(axis == i){
-            size_tensors[i] = Add1DConstantLayer(1);
-        }
-        start_tensors.push_back(Add1DConstantLayer(0));
-        stride.d[i] = 1;
+    for (int i = 0; i < rank; ++i) {
+      if (axis == i) {
+        size_tensors[i] = Add1DConstantLayer(1);
+      }
+      start_tensors.push_back(Add1DConstantLayer(0));
+      stride.d[i] = 1;
     }
     int ii = 0;
-    for(auto& output_name : op_desc.Output("Out")){
+    for (auto& output_name : op_desc.Output("Out")) {
+      start_tensors[axis] = Add1DConstantLayer(ii++);
+      // 1 slice
+      auto inputSliced = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input_x_tensor, stride, stride, stride);
+      inputSliced->setInput(1, *Concat(start_tensors));
+      inputSliced->setInput(2, *Concat(size_tensors));
 
-        start_tensors[axis] = Add1DConstantLayer(ii++);
-        // 1 slice
-        auto inputSliced = TRT_ENGINE_ADD_LAYER(
-        engine_, Slice, *input_x_tensor, stride, stride, stride);
-        inputSliced->setInput(1, *Concat(start_tensors));
-        inputSliced->setInput(2, *Concat(size_tensors));
-
-
-        auto inputSliced_out = inputSliced->getOutput(0);
-        // 2 reshape
-        auto inputReshaped = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputSliced_out);
-        inputReshaped->setInput(1, *newDims_tensor);
-        RreplenishLayerAndOutput(inputReshaped, "unbind", {output_name}, test_mode);
+      auto inputSliced_out = inputSliced->getOutput(0);
+      // 2 reshape
+      auto inputReshaped =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputSliced_out);
+      inputReshaped->setInput(1, *newDims_tensor);
+      RreplenishLayerAndOutput(
+          inputReshaped, "unbind", {output_name}, test_mode);
     }
-
   }
 };
-
-
 
 }  // namespace tensorrt
 }  // namespace inference
