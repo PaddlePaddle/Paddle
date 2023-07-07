@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 
 import paddle
 from paddle.framework import core
@@ -59,6 +60,8 @@ class CollectiveHelper:
         self.nrings = nrings
         self.wait_port = wait_port
         self.role_maker = role_maker
+        self.global_env = paddle.distributed.ParallelEnv()
+        self.store = paddle.distributed.collective.StaticTCPStore()
 
     def update_startup_program(self, startup_program=None):
         self.startup_program = startup_program
@@ -119,20 +122,14 @@ class CollectiveHelper:
                 },
             )
             block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': [sync_var]},
-                outputs={'Out': [sync_var]},
+                type='all_reduce',
+                inputs={'x': [sync_var]},
+                outputs={'out': [sync_var]},
                 attrs={
                     'ring_id': global_ring_id,
-                    'use_calc_stream': True,
+                    'reduce_type': 0,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
-            )
-            block.append_op(
-                type='c_sync_calc_stream',
-                inputs={'X': sync_var},
-                outputs={'Out': sync_var},
-                attrs={OP_ROLE_KEY: OpRole.Forward},
             )
 
         block = program.global_block()
@@ -148,28 +145,28 @@ class CollectiveHelper:
             type=core.VarDesc.VarType.RAW,
         )
         if core.is_compiled_with_cuda():
-            block.append_op(
-                type='c_gen_nccl_id',
-                inputs={},
-                outputs={'Out': comm_id_var},
-                attrs={
-                    'rank': rank,
-                    'endpoint': current_endpoint,
-                    'other_endpoints': other_endpoints,
-                    'ring_id': ring_id,
-                    OP_ROLE_KEY: OpRole.Forward,
-                },
+            # In static mode, global_ring_id = 3
+            print(
+                "python create_nccl_comm_context device_id: {}, ring_id: {}, rank: {}, nranks: {}".format(
+                    self.global_env.device_id, ring_id, rank, nranks
+                )
             )
-            block.append_op(
-                type='c_comm_init',
-                inputs={'X': comm_id_var},
-                outputs={},
-                attrs={
-                    'nranks': nranks,
-                    'rank': rank,
-                    'ring_id': ring_id,
-                    OP_ROLE_KEY: OpRole.Forward,
-                },
+            peer_str = ""
+            for endpoint in endpoints:
+                peer_str += endpoint
+            print(peer_str)
+            # peer_devices_hash = str(hash(peer_str))
+            peer_devices_hash = hashlib.md5(
+                peer_str.encode(encoding='UTF-8')
+            ).hexdigest()
+            print(peer_devices_hash)
+            core.CommContextManager.create_nccl_comm_context(
+                self.store,
+                self.global_env.device_id,
+                ring_id,
+                rank,
+                nranks,
+                peer_devices_hash,
             )
         elif core.is_compiled_with_xpu():
             block.append_op(
