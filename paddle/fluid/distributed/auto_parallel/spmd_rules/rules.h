@@ -18,6 +18,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/elementwise_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 
 // TODO(ljz) Automatic this process in cmake file.
@@ -27,6 +28,18 @@ namespace auto_parallel {
 
 // matmul rule
 REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
+
+// reduction rules
+REGISTER_SPMD_RULE(all, ReductionSPMDRule);
+REGISTER_SPMD_RULE(amax, ReductionSPMDRule);
+REGISTER_SPMD_RULE(amin, ReductionSPMDRule);
+REGISTER_SPMD_RULE(any, ReductionSPMDRule);
+REGISTER_SPMD_RULE(frobenius_norm, ReductionSPMDRule);
+REGISTER_SPMD_RULE(max, ReductionSPMDRule);
+REGISTER_SPMD_RULE(mean, ReductionSPMDRule);
+REGISTER_SPMD_RULE(min, ReductionSPMDRule);
+REGISTER_SPMD_RULE(prod, ReductionSPMDRule);
+REGISTER_SPMD_RULE(sum, ReductionSPMDRule);
 
 // elementwise rule
 REGISTER_SPMD_RULE(add, ElementwiseSPMDRule);
