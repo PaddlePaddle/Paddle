@@ -256,6 +256,7 @@ void BindNode(py::module *m) {
       });
 }
 
+// empty visitor
 void BindIrVisitor(py::module *m) {
   py::class_<ir::IRVisitor> ir_visitor(*m, "IRVisitor");
   ir_visitor.def(py::init<>())
