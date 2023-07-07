@@ -2815,7 +2815,6 @@ class OpTest(unittest.TestCase):
         set_flags({"FLAGS_enable_new_ir_in_executor": True})
 
         executor = Executor(place)
-        print("program", program)
         new_gradients = list(
             map(
                 np.array,
@@ -2955,7 +2954,6 @@ class OpTest(unittest.TestCase):
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
-            print("prog", prog)
             res = list(
                 map(
                     np.array,

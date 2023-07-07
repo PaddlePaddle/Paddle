@@ -622,10 +622,10 @@
 - op : cross
   inputs :
     {x : X, y : Y}
-  outputs :
-    out : Out
   attrs :
     axis : dim
+  outputs :
+    out : Out
 
 - op : cross_entropy_with_softmax (softmax_with_cross_entropy)
   backward : cross_entropy_with_softmax_grad (softmax_with_cross_entropy_grad)
