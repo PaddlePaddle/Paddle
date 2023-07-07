@@ -1096,6 +1096,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_config_.l3_size;
   ss << xpu_config_.l3_ptr;
   ss << xpu_config_.l3_autotune_size;
+  ss << xpu_config_.context_gm_size;
   ss << xpu_config_.context;
   ss << xpu_config_.stream;
   ss << xpu_config_.conv_autotune_level;
@@ -1347,6 +1348,8 @@ std::string AnalysisConfig::Summary() {
          std::to_string(reinterpret_cast<int64_t>(xpu_config_.l3_ptr))});
     os.InsertRow(
         {"xpu_l3_autotune_size", std::to_string(xpu_config_.l3_autotune_size)});
+    os.InsertRow(
+        {"xpu_context_gm_size", std::to_string(xpu_config_.context_gm_size)});
     os.InsertRow(
         {"xpu_context",
          std::to_string(reinterpret_cast<int64_t>(xpu_config_.context))});

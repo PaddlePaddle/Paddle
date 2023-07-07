@@ -34,13 +34,13 @@ class BasicIrPrinter {
 
   void PrintType(Type type);
 
-  void PrintAttribute(const Attribute& attr);
+  void PrintAttribute(Attribute attr);
 
  public:
   std::ostream& os;
 };
 
-class IrPrinter : public BasicIrPrinter {
+class IR_API IrPrinter : public BasicIrPrinter {
  public:
   explicit IrPrinter(std::ostream& os) : BasicIrPrinter(os) {}
 

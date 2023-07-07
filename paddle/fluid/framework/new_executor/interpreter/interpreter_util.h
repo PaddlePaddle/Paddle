@@ -65,7 +65,7 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
-bool IsCommunicationOp(const std::string& op_name);
+bool IsCommunicationOp(const OperatorBase* op);
 
 bool IsCommunicationOp(const Instruction& instr);
 
@@ -92,6 +92,15 @@ void BuildOpFuncList(const platform::Place& place,
                      const ExecutionConfig& execution_config,
                      bool use_local_scope = true,
                      bool static_build = false);
+
+void BuildOpFuncList(
+    const platform::Place& place,
+    ::ir::Block* block,
+    std::vector<OpFuncNode>* vec_func_list,
+    framework::Scope* scope,
+    framework::Scope* local_scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const ExecutionConfig& execution_config);
 
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
