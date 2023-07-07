@@ -27,8 +27,8 @@ template <typename T, typename Context>
 void EigvalshGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_v,
                         const DenseTensor& out_w_grad,
-                        const std::string& uplo,
-                        bool is_test,
+                        const std::string& uplo UNUSED,
+                        bool is_test UNUSED,
                         DenseTensor* x_grad) {
   auto tV = phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
 

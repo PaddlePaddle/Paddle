@@ -31,7 +31,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
-                  DenseTensor* index,
+                  DenseTensor* index UNUSED,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto curent_id = segment_ids[0];
@@ -90,7 +90,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  const paddle::optional<DenseTensor>& index,
+                  const paddle::optional<DenseTensor>& index UNUSED,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto& place = *dev_ctx.eigen_device();

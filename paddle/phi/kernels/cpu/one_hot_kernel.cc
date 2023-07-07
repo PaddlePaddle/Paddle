@@ -63,12 +63,10 @@ struct OneHotV2OpFunctor {
 };
 
 template <typename T, typename Context>
-void OneHotRawKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const Scalar& depth,
-                     DataType dtype,
-                     bool allow_out_of_range,
-                     DenseTensor* out) {
+void OneHotKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const Scalar& depth,
+                  DenseTensor* out) {
   auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
@@ -76,13 +74,34 @@ void OneHotRawKernel(const Context& dev_ctx,
     out->Resize(out_dims);
   }
 
-  phi::VisitDataType(dtype,
-                     OneHotV2OpFunctor<Context, T>(&x, out, depth_v, dev_ctx));
+  auto* p_in_data = x.data<T>();
+  auto numel = x.numel();
+  auto* p_out_data = dev_ctx.template Alloc<float>(out);
+  funcs::set_constant(dev_ctx, out, 0.0);
+
+  for (int i = 0; i < numel; ++i) {
+    PADDLE_ENFORCE_GE(
+        p_in_data[i],
+        0,
+        phi::errors::InvalidArgument(
+            "Illegal index value, Input(input) value should be at least 0, "
+            "but received input (%d) less than 0",
+            p_in_data[i]));
+    PADDLE_ENFORCE_LT(
+        p_in_data[i],
+        depth_v,
+        phi::errors::InvalidArgument(
+            "Illegal index value, Input(input) value should be less than "
+            "Input(depth), "
+            "but received input (%d) not less than depth (%d)",
+            p_in_data[i],
+            depth_v));
+    *(p_out_data + i * depth_v + p_in_data[i]) = 1.0;
+  }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    one_hot_raw, CPU, ALL_LAYOUT, phi::OneHotRawKernel, int, int64_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+PD_REGISTER_KERNEL(one_hot, CPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
 }

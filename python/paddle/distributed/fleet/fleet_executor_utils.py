@@ -33,6 +33,8 @@ class TaskNode:
         program=None,
         lazy_initialize=False,
         cond_var_name=None,
+        vars_to_dtype=None,
+        vars_to_shape=None,
     ):
         """
         :param rank (int): Current rank of the task node.
@@ -58,6 +60,8 @@ class TaskNode:
         self.program = program
         self.lazy_initialize = lazy_initialize
         self.cond_var_name = cond_var_name
+        self.vars_to_dtype = vars_to_dtype
+        self.vars_to_shape = vars_to_shape
         self.run_pre_steps = None
         self.run_at_offset = None
         self.node = None
@@ -101,6 +105,10 @@ class TaskNode:
                 self.node.set_run_at_offset(self.run_at_offset)
             if self.cond_var_name:
                 self.node.set_cond_var_name(self.cond_var_name)
+            if self.vars_to_shape:
+                self.node.set_vars_to_shape(self.vars_to_shape)
+            if self.vars_to_dtype:
+                self.node.set_vars_to_dtype(self.vars_to_dtype)
             for up in self.upstreams:
                 self.node.add_upstream_task(up[0], up[1], up[2])
             for down in self.downstreams:

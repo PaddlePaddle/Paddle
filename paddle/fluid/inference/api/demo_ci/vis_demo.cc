@@ -21,9 +21,6 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_double(fraction_of_gpu_memory_to_use);
-#endif
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(refer, "", "path to reference result for comparison.");
 DEFINE_string(data,

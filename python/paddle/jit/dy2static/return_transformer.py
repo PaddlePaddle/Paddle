@@ -130,9 +130,8 @@ class ReturnTransformer(BaseTransformer):
     SingleReturnTransformer don't care the nested function def.
     """
 
-    def __init__(self, wrapper_root):
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         pre_transformer = ReplaceReturnNoneTransformer(self.root)
         pre_transformer.transform()
 

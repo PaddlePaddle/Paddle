@@ -155,7 +155,7 @@ class GatherCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
           "We don't support dynamic index from tensor for gather composite "
           "grad for now. "));
     } else {
-      prim::gather_grad<prim::DescTensor>(x, index, dout, axis, false, dx_ptr);
+      prim::gather_grad<prim::DescTensor>(x, index, dout, axis, dx_ptr);
     }
     this->RecoverOutputName(dx, dx_name);
   }

@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature FillAnyLikeOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("full_like", {"X"}, {"value", "dtype"}, {"Out"});
 }
 

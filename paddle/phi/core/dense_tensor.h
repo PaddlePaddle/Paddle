@@ -268,8 +268,8 @@ class DenseTensor : public TensorBase,
   };
 
  protected:
-  std::shared_ptr<InplaceVersion> inplace_version_counter_{
-      std::make_shared<InplaceVersion>()};
+  std::shared_ptr<InplaceVersion> inplace_version_counter_ =
+      std::make_shared<InplaceVersion>();
 
 /* @jim19930609: This is a hack
 In general, it is badly designed to fuse MKLDNN-specific objects into a

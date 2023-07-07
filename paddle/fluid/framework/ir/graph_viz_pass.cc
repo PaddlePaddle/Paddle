@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
+#include <fstream>
+#include <ostream>
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"

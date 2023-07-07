@@ -19,7 +19,7 @@ namespace inference {
 namespace tensorrt {
 
 /*
- * ConcatOp
+ * Scale Op
  */
 class ScaleOpConverter : public OpConverter {
  public:

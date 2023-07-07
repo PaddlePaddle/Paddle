@@ -17,6 +17,8 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace phi {
@@ -50,7 +52,7 @@ class ConvOneDNNHandlerT
                      const std::string& padding_algorithm,
                      const std::vector<int>& dilations_in,
                      int groups,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      bool is_test,
                      bool is_BFLOAT16,
                      const std::string& fuse_activation,
@@ -240,10 +242,10 @@ class ConvOneDNNHandlerT
                      const std::string& padding_algorithm,
                      const std::vector<int>& dilations_in,
                      int groups,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      bool is_test,
-                     phi::DenseTensor* filter_grad,
-                     phi::DenseTensor* in_x_grad,
+                     phi::DenseTensor* filter_grad UNUSED,
+                     phi::DenseTensor* in_x_grad UNUSED,
                      const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
                               dnnl::convolution_forward,
@@ -743,17 +745,9 @@ class ConvOneDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireDstMemoryWithResidual(
       phi::DenseTensor* output, const phi::DenseTensor* residual_param) {
     std::shared_ptr<dnnl::memory> dst_memory_p;
-    if (residual_param->mem_desc() != this->fwd_pd_->dst_desc()) {
-      auto residual_memory_p = this->AcquireResidualMemory(residual_param);
-      dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-      this->AcquireReorder(residual_memory_p, dst_memory_p);
-    } else {
-      // Changing ShareDataWith to TensorCopy results in performance drop
-      // on ResNet architectures
-      // (https://github.com/PaddlePaddle/Paddle/issues/22964)
-      output->ShareDataWith(*residual_param);
-      dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-    }
+    auto residual_memory_p = this->AcquireResidualMemory(residual_param);
+    dst_memory_p = this->template AcquireDstMemory<T_out>(output);
+    this->AcquireReorder(residual_memory_p, dst_memory_p);
     return dst_memory_p;
   }
 };

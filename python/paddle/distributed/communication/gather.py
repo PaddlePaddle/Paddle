@@ -55,6 +55,6 @@ def gather(tensor, gather_list=None, dst=0, group=None, sync_op=True):
             # [] (2 GPUs, out for rank 1)
     """
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "gather doesn't support static graph mode yet."
     return stream.gather(tensor, gather_list, dst, group, sync_op)

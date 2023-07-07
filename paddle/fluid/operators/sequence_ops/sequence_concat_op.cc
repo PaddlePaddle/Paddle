@@ -146,17 +146,23 @@ REGISTER_OPERATOR(sequence_concat,
                   op::SeqConcatOpMaker,
                   op::SeqConcatGradOpMaker<paddle::framework::OpDesc>,
                   op::SeqConcatGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(sequence_concat,
-                       op::SeqConcatKernel<phi::CPUContext, float>,
-                       op::SeqConcatKernel<phi::CPUContext, double>,
-                       op::SeqConcatKernel<phi::CPUContext, int>,
-                       op::SeqConcatKernel<phi::CPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_concat,
+                          CPU,
+                          ALL_LAYOUT,
+                          op::SeqConcatKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 
 REGISTER_OPERATOR(sequence_concat_grad,
                   op::SeqConcatGradOp,
                   op::SeqConcatGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(sequence_concat_grad,
-                       op::SeqConcatGradKernel<phi::CPUContext, float>,
-                       op::SeqConcatGradKernel<phi::CPUContext, double>,
-                       op::SeqConcatGradKernel<phi::CPUContext, int>,
-                       op::SeqConcatGradKernel<phi::CPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_concat_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          op::SeqConcatGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

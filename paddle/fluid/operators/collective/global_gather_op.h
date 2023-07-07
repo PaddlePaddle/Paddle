@@ -28,7 +28,7 @@ namespace operators {
 template <typename T, typename DeviceContext>
 class GlobalGatherOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx UNUSED) const override {
     PADDLE_THROW(platform::errors::Unavailable(
         "Do not support global gather op for cpu kernel now."));
   }

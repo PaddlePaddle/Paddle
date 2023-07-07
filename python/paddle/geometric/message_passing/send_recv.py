@@ -20,8 +20,9 @@ from paddle.fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid.framework import Variable, in_dygraph_mode
+from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 from .utils import (
     convert_out_size_to_list,
@@ -118,7 +119,7 @@ def send_u_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
@@ -295,7 +296,7 @@ def send_ue_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_ue_recv(
             x,
@@ -451,7 +452,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         message_op = 'mul'
         y = 1.0 / (y + 1e-12)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
 

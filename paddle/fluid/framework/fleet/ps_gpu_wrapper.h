@@ -66,7 +66,9 @@ limitations under the License. */
 #include "downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
-DECLARE_int32(gpugraph_storage_mode);
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_int32(gpugraph_storage_mode);
 
 namespace paddle {
 namespace framework {

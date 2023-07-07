@@ -29,7 +29,9 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
-            if dims == 1:
+            if dims == 0:
+                return np.ones([]).astype(np.float32)
+            elif dims == 1:
                 return np.ones([32]).astype(np.float32)
             elif dims == 2:
                 return np.ones([3, 32]).astype(np.float32)
@@ -44,7 +46,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: List[Dict[str, Any]]):
             return np.array([np.random.uniform(10, 20)]).astype("float32")
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 4]:
                 for op_inputs in [
                     {"X": ["input_data"]},
@@ -93,7 +95,11 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
                 self.dynamic_shape.max_input_shape = {"input_data": [64]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [32]}
@@ -125,7 +131,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
             if self.input_num == 3:
                 return 0, 3
             else:
-                if not dynamic_shape and self.dims == 1:
+                if not dynamic_shape and (self.dims == 1 or self.dims == 0):
                     return 0, 3
                 else:
                     return 1, 2

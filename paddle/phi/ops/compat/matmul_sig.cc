@@ -31,7 +31,7 @@ KernelSignature MatmulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature MatmulDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("matmul_double_grad",
                          {"X", "Y", "DOut", "DDX", "DDY"},
                          {"trans_x", "trans_y"},
@@ -39,7 +39,7 @@ KernelSignature MatmulDoubleGradOpArgumentMapping(
 }
 
 KernelSignature MatmulTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "matmul_triple_grad",
       {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},

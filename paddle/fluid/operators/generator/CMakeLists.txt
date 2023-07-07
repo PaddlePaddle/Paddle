@@ -289,7 +289,7 @@ file(APPEND ${op_utils_header}
 # Automatically generate the registration code of all arg map functions
 # and compile the corresponding target to avoid frequent code conflicts
 # when writing to same file
-register_op_utils(op_compat_infos DEPS op_utils)
+register_op_utils(op_compat_infos DEPS phi)
 
 copy_if_different(${op_utils_header} ${op_utils_header_final})
 

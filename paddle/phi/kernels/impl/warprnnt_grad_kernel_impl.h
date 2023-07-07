@@ -25,12 +25,12 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarprnntGradKernel(const Context& dev_ctx,
-                        const DenseTensor& input,
-                        const DenseTensor& input_lengths,
+                        const DenseTensor& input UNUSED,
+                        const DenseTensor& input_lengths UNUSED,
                         const DenseTensor& warprnntgrad,
                         const DenseTensor& loss_grad,
-                        int blank,
-                        float fastemit_lambda,
+                        int blank UNUSED,
+                        float fastemit_lambda UNUSED,
                         DenseTensor* input_grad) {
   dev_ctx.template Alloc<T>(input_grad);
 

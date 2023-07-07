@@ -70,7 +70,7 @@ class Allocation {
   //    the AlignedAllocator will always allocate memory as size + kAlignment.
   //    The raw pointer might not aligned, so an offset might be added to raw
   //    the pointer. The size of this allocation will be
-  //    `size + kAlignemnt - offset`.
+  //    `size + kAlignment - offset`.
   size_t size() const noexcept { return size_; }
 
   void* operator->() const noexcept { return ptr_; }

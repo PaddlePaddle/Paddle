@@ -15,13 +15,9 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, skip_check_grad_ci
 
 import paddle
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    skip_check_grad_ci,
-)
 
 
 class TestReduceSumDefaultOneDNNOp(OpTest):

@@ -53,10 +53,11 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
-DECLARE_int32(paddle_num_threads);
+PHI_DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
     multiple_of_cupti_buffer_size,
     1,
@@ -303,9 +304,9 @@ void SignalHandle(const char *data, int size) {
       signal_info.replace(start_pos, useless_substr.length(), "");
       *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
 
-      // NOTE3: Final singal error message print.
+      // NOTE3: Final signal error message print.
       // Here does not throw an exception,
-      // otherwise it will casue "terminate called recursively"
+      // otherwise it will cause "terminate called recursively"
       std::ostringstream sout;
       sout << "\n\n--------------------------------------\n";
       sout << "C++ Traceback (most recent call last):";

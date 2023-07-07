@@ -153,12 +153,8 @@ void SetValueCompute(const Context& dev_ctx,
   slice_tensor.Resize(slice_dims_for_assign);
   if (value_tensor != nullptr) {
     CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(dev_ctx,
-                                                        slice_tensor,
-                                                        *value_tensor,
-                                                        -1,
-                                                        SubFunctor<T>(),
-                                                        &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+        dev_ctx, slice_tensor, *value_tensor, SubFunctor<T>(), &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
     auto value_dims = phi::make_ddim(shape);
@@ -166,8 +162,8 @@ void SetValueCompute(const Context& dev_ctx,
 
     value_t.Resize(value_dims);
     dev_ctx.template Alloc<T>(&value_t);
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(
-        dev_ctx, slice_tensor, value_t, -1, SubFunctor<T>(), &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+        dev_ctx, slice_tensor, value_t, SubFunctor<T>(), &slice_tensor);
   }
   slice_tensor.Resize(slice_dims);
 
@@ -241,7 +237,7 @@ void Tensor_Add(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::AddRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
+  phi::AddKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T>
@@ -252,7 +248,7 @@ void Tensor_Sub(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
+  phi::SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T, size_t D>
@@ -478,7 +474,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   const DenseTensor& Pivot,
                   DenseTensor* P,
                   int h,
-                  int w) {
+                  int w UNUSED) {
   auto dims = Pivot.dims();
   auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();

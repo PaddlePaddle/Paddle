@@ -789,7 +789,7 @@ class ReduceLROnPlateau(LearningRateDecay):
     Reduce learning rate when ``loss`` has stopped descending. Models often benefit from reducing the learning rate
     by 2 to 10 times once model performance has no longer improvement.
 
-    The ``loss`` is the one which has been pass into ``step`` , it must be 1-D Tensor with shape [1]. When ``loss``
+    The ``loss`` is the one which has been pass into ``step`` , it must be 0-D Tensor with shape []. When ``loss``
     stop descending for a ``patience`` number of epochs, the learning rate will be reduced to ``learning_rate * decay_rate`` .
     (Specially, ``mode`` can also be set to ``'max`` , in this case, when ``loss`` stop ascending for a ``patience`` number
     of epochs, the learning rate will be reduced.)
@@ -943,7 +943,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         Args:
             loss (Variable): A ``Variable`` that will be monitored to determine whether the learning rate will reduce.
                 If it stop descending for a ``patience`` number of epochs, the learning rate will reduce. It should
-                be 1-D Tensor with shape [1].
+                be 0-D Tensor with shape [].
                 Specially, if ``mode`` has been set to ``'max'`` ,  the learning rate will reduce when it stops ascending.
         Returns:
             None
@@ -952,7 +952,7 @@ class ReduceLROnPlateau(LearningRateDecay):
             Please refer to the example of current LearningRateDecay.
         """
 
-        # loss must be 1-D Tensor with shape [1]
+        # loss.size must be 1
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
         assert np.prod(loss.shape) == 1, (
             "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
@@ -1234,7 +1234,7 @@ class LambdaDecay(_LearningRateEpochDecay):
     :api_attr: imperative
 
     Sets the learning rate of ``optimizer`` to the initial lr times a multiplicative factor, and this multiplicative
-    factor is computed by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+    factor is computed by function ``lr_lambda`` . ``lr_lambda`` is function which receives ``epoch`` .
 
     The algorithm can be described as the code below.
 

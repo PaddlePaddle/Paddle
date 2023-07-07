@@ -14,8 +14,8 @@
 
 import paddle
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.regularizer import L2Decay
 from paddle.nn import BatchNorm
+from paddle.regularizer import L2Decay
 
 
 class ConvBNLayer(paddle.nn.Layer):

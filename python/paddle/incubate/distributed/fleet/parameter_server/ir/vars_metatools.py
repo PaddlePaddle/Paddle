@@ -65,7 +65,7 @@ class VarStruct:
         self.lod_level = lod_level
         self.persistable = persistable
         self.m_size = 1
-        self.m_size = reduce(lambda x, y: x * y, shape)
+        self.m_size = reduce(lambda x, y: x * y, shape, 1)
         self.m_size *= dtype_to_size[dtype]
 
     def __str__(self):

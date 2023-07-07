@@ -813,6 +813,8 @@ PD_REGISTER_KERNEL(fused_attention,
                    phi::dtype::float16,
                    double,
                    float) {
+  kernel->OutputAt(9).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(14).SetDataType(phi::DataType::UINT8);
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);

@@ -97,7 +97,7 @@ int64_t Tensor::size() const { return impl_->numel(); }
 const phi::DDim &Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  auto dims = impl_->dims();
+  const auto &dims = impl_->dims();
   return phi::vectorize<int64_t>(dims);
 }
 
@@ -357,6 +357,10 @@ gpuStream_t Tensor::stream() const {
   return gpu_context->stream();
 }
 #endif
+
+const std::string &Tensor::name() const { return name_; }
+
+void Tensor::set_name(const std::string &name) { name_ = name; }
 
 /* Part 5: Status utils methods */
 

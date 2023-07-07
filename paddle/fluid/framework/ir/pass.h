@@ -169,7 +169,7 @@ class Pass {
   virtual bool SupportApplyProgramViaGraph() const { return true; }
 
  protected:
-  virtual void ApplyImpl(Graph *graph) const {
+  virtual void ApplyImpl(Graph *graph UNUSED) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "The virtual pass called is not implemented."));
   }
@@ -184,6 +184,9 @@ class Pass {
   // Some Pass must be placed before this Pass, and some
   // Pass must be placed after this Pass.
   virtual void CheckPrevPass() const {}
+
+ protected:
+  void RegisterType(const std::string &type) { type_ = type; }
 
  private:
   template <typename PassType>
@@ -206,8 +209,6 @@ class Pass {
     }
     attrs_.insert(default_attr_values.begin(), default_attr_values.end());
   }
-
-  void RegisterType(const std::string &type) { type_ = type; }
 
   mutable bool applied_{false};
   std::string type_;

@@ -16,7 +16,7 @@
 
 #include <queue>
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     add_dependency_for_communication_op,
     true,

@@ -21,8 +21,7 @@ from paddle import _legacy_C_ops
 from paddle.common_ops_import import Variable
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.framework import LayerHelper
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 __all__ = []
 
@@ -52,10 +51,10 @@ class RNGStatesTracker:
         self.seeds_.add(seed)
         if name in self.states_:
             raise ValueError(f'state {name} already exists')
-        orig_rng_state = paddle.get_cuda_rng_state()
+        orig_rng_state = paddle.get_rng_state()
         paddle.seed(seed)
-        self.states_[name] = paddle.get_cuda_rng_state()
-        paddle.set_cuda_rng_state(orig_rng_state)
+        self.states_[name] = paddle.get_rng_state()
+        paddle.set_rng_state(orig_rng_state)
 
     def get_states_tracker(self):
         states = {}
@@ -70,13 +69,13 @@ class RNGStatesTracker:
     def rng_state(self, name=MODEL_PARALLEL_RNG):
         if name not in self.states_:
             raise ValueError(f'state {name} does not exist')
-        orig_cuda_rng_state = paddle.get_cuda_rng_state()
-        paddle.set_cuda_rng_state(self.states_[name])
+        orig_rng_state = paddle.get_rng_state()
+        paddle.set_rng_state(self.states_[name])
         try:
             yield
         finally:
-            self.states_[name] = paddle.get_cuda_rng_state()
-            paddle.set_cuda_rng_state(orig_cuda_rng_state)
+            self.states_[name] = paddle.get_rng_state()
+            paddle.set_rng_state(orig_rng_state)
 
 
 RNG_STATE_TRACKER = RNGStatesTracker()
@@ -218,7 +217,7 @@ def dropout(
     )  # semantic transfer
 
     # dygraph using tracker, doesn't need determinate seed
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, mask = _legacy_C_ops.dropout(
             x,
             'dropout_prob',

@@ -104,7 +104,7 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
             "use_calc_stream can only be True in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         dst_rank_in_group = _get_or_throw_group_rank(dst, group)
 

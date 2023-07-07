@@ -121,7 +121,9 @@ static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
 NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
 
 
-FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place)) {{
+FUNCTION_SET_DEVICE_TEMPLATE = """{}
+    SetPythonStack();
+    if (paddle::platform::is_gpu_place(place)) {{
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
@@ -170,7 +172,6 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
-
 namespace paddle {{
 namespace pybind {{
 

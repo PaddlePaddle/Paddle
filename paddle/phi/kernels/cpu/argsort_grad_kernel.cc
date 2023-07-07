@@ -55,7 +55,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const DenseTensor& out_grad,
                        int axis,
-                       bool descending,
+                       bool descending UNUSED,
                        DenseTensor* in_grad) {
   auto in_dims = indices.dims();
   auto rank = input.dims().size();

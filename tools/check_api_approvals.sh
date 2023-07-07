@@ -104,8 +104,8 @@ if [ "$slim_approve" != "" ]; then
 fi
 
 if [ "$inference_approve" != "" ]; then
-    echo_line="You must have one RD (Superjomn(Recommend), Shixiaowei02, cyj1986) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
-    check_approval 1 39645414 328693 39303645
+    echo_line="You must have one RD (qingqing01(Recommend), jiweibo, Shixiaowei02) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
+    check_approval 1 7845005 26377421 39303645
 fi
 
 DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec
@@ -116,6 +116,28 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 6888866 7913861
 fi
 
+OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
+if [ "$OUTPUT_LOG" != "" ];then
+    git diff -U0 upstream/$BRANCH |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
+    samplecode=`find tools/samplecode_temp -type f || true`
+    sample_status=0
+    if [ "$samplecode" != "" ];then
+        cat `find tools/samplecode_temp -type f` >/tmp/samplecode.txt
+        sed -i s#\"#\'#g /tmp/samplecode.txt 
+        while read line
+        do
+            code_in=`grep "$line" /tmp/samplecode.txt || true`
+            if [ "$code_in" == "" ];then
+                sample_status=1
+            fi
+        done</tmp/print.txt
+    fi
+
+    if [ "$sample_status" == 1 ] || [ "$samplecode" == "" ] ;then
+        echo_line="print or std::cout is not recommended for direct use, please use logging or VLOG. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 review and approve.\n"
+        check_approval 1 tianshuo78520a zhangbo9674
+    fi
+fi
 
 if [ -n "${echo_list}" ];then
   echo "**************************************************************"

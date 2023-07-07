@@ -86,9 +86,12 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(send_v2, ops::SendOpV2, ops::SendOpV2Maker);
 
-REGISTER_OP_CPU_KERNEL(send_v2,
-                       ops::SendOpV2CPUKernel<float>,
-                       ops::SendOpV2CPUKernel<double>,
-                       ops::SendOpV2CPUKernel<int>,
-                       ops::SendOpV2CPUKernel<int64_t>,
-                       ops::SendOpV2CPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(send_v2,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SendOpV2CPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

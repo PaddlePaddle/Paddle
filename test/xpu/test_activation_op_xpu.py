@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import unittest
 
-sys.path.append('../../python/paddle/fluid/tests/unittests')
+import os
+import unittest
 
 import numpy as np
 from eager_op_test import OpTest
@@ -105,15 +104,37 @@ class XPUTestSiluOP(XPUOpTestWrapper):
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
+        def test_check_output(self):
+            self.set_env()
+            self.check_output_with_place(self.place)
+            self.delete_env()
+
         def test_check_grad(self):
+            self.set_env()
             self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.delete_env()
 
         def init_shape(self):
             self.shape = [11, 17]
 
+        def set_env(self):
+            pass
+
+        def delete_env(self):
+            pass
+
     class TestSilu_ZeroDim(XPUTestSilu):
         def init_shape(self):
             self.shape = []
+
+    class TestSilu_LUT(XPUTestSilu):
+        def set_env(self):
+            # set "XPU_PADDLE_ACT_LUT" env to enable lut
+            os.environ['XPU_PADDLE_ACT_LUT'] = "1"
+
+        def delete_env(self):
+            if os.getenv('XPU_PADDLE_ACT_LUT'):
+                del os.environ['XPU_PADDLE_ACT_LUT']
 
 
 class TestSiluAPI(unittest.TestCase):
@@ -349,6 +370,19 @@ class XPUTestGeluOP(XPUOpTestWrapper):
             self.dtype = self.in_type
 
             approximate = False
+            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            out = gelu(x, approximate)
+
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out}
+            self.attrs = {"approximate": approximate, 'use_xpu': True}
+
+    class XPUTestGeluApproximate(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "gelu"
+            self.dtype = self.in_type
+
+            approximate = True
             x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
             out = gelu(x, approximate)
 

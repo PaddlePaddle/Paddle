@@ -21,19 +21,19 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MarginCrossEntropyKernel(const Context& dev_ctx,
-                              const DenseTensor& logits,
-                              const DenseTensor& labels,
-                              bool return_softmax,
-                              int ring_id,
-                              int rank,
-                              int nranks,
-                              float margin1,
-                              float margin2,
-                              float margin3,
-                              float scale,
-                              DenseTensor* softmax,
-                              DenseTensor* loss) {
+void MarginCrossEntropyKernel(const Context& dev_ctx UNUSED,
+                              const DenseTensor& logits UNUSED,
+                              const DenseTensor& labels UNUSED,
+                              bool return_softmax UNUSED,
+                              int ring_id UNUSED,
+                              int rank UNUSED,
+                              int nranks UNUSED,
+                              float margin1 UNUSED,
+                              float margin2 UNUSED,
+                              float margin3 UNUSED,
+                              float scale UNUSED,
+                              DenseTensor* softmax UNUSED,
+                              DenseTensor* loss UNUSED) {
   PADDLE_THROW(
       errors::Unavailable("Do not support margin_cross_entropy for cpu kernel "
                           "now."));

@@ -65,7 +65,7 @@ class TestAsyncRead(unittest.TestCase):
             )
         # index data
         index_array1 = paddle.gather(self.src, self.index)
-        count_numel = paddle.sum(count).numpy()[0]
+        count_numel = paddle.sum(count).item()
         index_array2 = self.dst[count_numel : count_numel + len(self.index)]
         np.testing.assert_allclose(
             index_array1.numpy(), index_array2.numpy(), rtol=1e-05

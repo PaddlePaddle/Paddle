@@ -1138,7 +1138,7 @@ class StepDecay(LRScheduler):
 
 class LambdaDecay(LRScheduler):
     """
-    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is function which receives ``epoch`` .
 
     The algorithm can be described as the code below.
 

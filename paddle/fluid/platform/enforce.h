@@ -107,7 +107,7 @@ namespace phi {
 class ErrorSummary;
 }  // namespace phi
 
-DECLARE_int32(call_stack_level);
+PHI_DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {

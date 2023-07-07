@@ -22,7 +22,9 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/core/enforce.h"
-DECLARE_bool(gpugraph_load_node_list_into_hbm);
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(gpugraph_load_node_list_into_hbm);
 namespace paddle {
 namespace framework {
 struct GpuPsNodeInfo {

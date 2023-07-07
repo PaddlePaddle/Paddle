@@ -14,13 +14,13 @@
 
 #pragma once
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_grad_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context, size_t D>
@@ -30,7 +30,7 @@ void LaunchEigenPadding(
     const DDim& in_dims,
     const DenseTensor* d_out,
     const DDim& out_dims,
-    const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) {
+    const std::array<std::pair<int64_t, int64_t>, D>& paddings) {
   auto& place = *context.eigen_device();
   auto d_in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *d_input, in_dims);
@@ -40,7 +40,7 @@ void LaunchEigenPadding(
   if (d_input->numel() <= Eigen::NumTraits<int>::highest()) {
     // similar to tf.pad:
     // if element number less than INT_MAX, change the type of index to int
-    Eigen::array<std::pair<int, int>, D> paddings_32bit;
+    std::array<std::pair<int, int>, D> paddings_32bit;
     for (size_t i = 0; i < D; i++) {
       paddings_32bit[i] = std::make_pair(paddings[i].first, paddings[i].second);
     }
@@ -63,7 +63,7 @@ void EigenPaddingCompute(
     const DDim& in_dims,
     const DenseTensor* d_out,
     const DDim& out_dims,
-    const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) {
+    const std::array<std::pair<int64_t, int64_t>, D>& paddings) {
   if (D <= 3) {
     // if dimension less than 3, cannot reduce dimension
     LaunchEigenPadding<T, Context, D>(
@@ -97,7 +97,7 @@ void EigenPaddingCompute(
         // only last dimension need padding,
         // reshape the dimension of tensor in 2: [preceding, padding]
         std::vector<int64_t> in_tore_shape(2, 1), out_tore_shape(2, 1);
-        Eigen::array<std::pair<int64_t, int64_t>, 2> reshaped_padding;
+        std::array<std::pair<int64_t, int64_t>, 2> reshaped_padding;
 
         // first dimension is the accumulate of preceding dimension
         for (int i = 0; i < pad_dim; i++) {
@@ -119,18 +119,18 @@ void EigenPaddingCompute(
         reshaped_padding[1].first = paddings[pad_dim].first;
         reshaped_padding[1].second = paddings[pad_dim].second;
 
-        LaunchEigenPadding<T, Context>(context,
-                                       d_input,
-                                       reshaped_in_dims,
-                                       d_out,
-                                       reshaped_out_dims,
-                                       reshaped_padding);
+        LaunchEigenPadding<T, Context, 2>(context,
+                                          d_input,
+                                          reshaped_in_dims,
+                                          d_out,
+                                          reshaped_out_dims,
+                                          reshaped_padding);
       } else if (pad_dim == 0) {
         // only first dimension need padding,
         // reshape the dimension of tensor in 2: [padding, succeeding]
         // similar to (D - 1)
         std::vector<int64_t> in_tore_shape(2, 1), out_tore_shape(2, 1);
-        Eigen::array<std::pair<int64_t, int64_t>, 2> reshaped_padding;
+        std::array<std::pair<int64_t, int64_t>, 2> reshaped_padding;
 
         // first dimension is the padding dimension
         in_tore_shape[0] = in_dims[pad_dim];
@@ -163,7 +163,7 @@ void EigenPaddingCompute(
         // reshape the dimension of tensor in 3:
         // [preceding, padding, succeeding]
         std::vector<int64_t> in_tore_shape(3, 1), out_tore_shape(3, 1);
-        Eigen::array<std::pair<int64_t, int64_t>, 3> reshaped_padding;
+        std::array<std::pair<int64_t, int64_t>, 3> reshaped_padding;
 
         // first dimension is the accumulate of preceding dimension
         for (int i = 0; i < pad_dim; i++) {
@@ -212,8 +212,8 @@ void SliceGradCompute(const Context& ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
-                      const std::vector<int64_t>& ends,
-                      const std::vector<int64_t>& infer_flags,
+                      const std::vector<int64_t>& ends UNUSED,
+                      const std::vector<int64_t>& infer_flags UNUSED,
                       const std::vector<int64_t>& decrease_axis,
                       DenseTensor* input_grad) {
   auto* d_out = &out_grad;
@@ -261,7 +261,7 @@ void SliceGradCompute(const Context& ctx,
     offsets[axis] = start;
   }
 
-  Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
+  std::array<std::pair<int64_t, int64_t>, D> paddings;
   for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = offsets[i];
     paddings[i].second = (in_dims[i] - out_dims[i]) - offsets[i];
@@ -357,7 +357,7 @@ void SliceArrayGradKernel(const Context& dev_ctx,
                           const TensorArray& input,
                           const TensorArray& out_grad,
                           const IntArray& starts,
-                          const IntArray& ends,
+                          const IntArray& ends UNUSED,
                           TensorArray* input_grad) {
   int64_t d_in_size = input.size();
   input_grad->resize(d_in_size);

@@ -70,6 +70,39 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
   }
 }
 
+void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out) {
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+
+  phi::DenseTensor int32_tensor;
+  phi::DenseTensor* out_ptr = out == nullptr ? &int32_tensor : out;
+  out_ptr->Resize(in->dims());
+  out_ptr->set_type(phi::DataType::INT32);
+  out_ptr->set_layout(in->layout());
+
+  switch (in->dtype()) {
+    case phi::DataType::INT64:
+      phi::CastKernel<int64_t>(*cpu_ctx, *in, phi::DataType::INT32, out_ptr);
+      break;
+    case phi::DataType::INT32:
+      if (out == nullptr) {
+        return;
+      } else {
+        phi::AssignKernel(*cpu_ctx, *in, out_ptr);
+      }
+      break;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support int64 and int32, but received dtype is %s.",
+          phi::DataTypeToString(in->dtype())));
+      break;
+  }
+
+  if (out == nullptr) {
+    Assign(*out_ptr, in);
+  }
+}
+
 void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
@@ -207,6 +240,16 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
   }
 }
 
+template <>
+void QuantFP32ToIntX<int8_t>(const float* src_ptr,
+                             int8_t* dst_ptr,
+                             float max_val,
+                             int numel) {
+  for (int i = 0; i < numel; i++) {
+    dst_ptr[i] = Fp32ToIntx<int8_t, 127>(src_ptr[i], max_val);
+  }
+}
+
 template <typename T>
 void PrepareWeight(phi::DenseTensor* weight,
                    phi::DenseTensor* weight_max,
@@ -253,6 +296,9 @@ void PrepareWeight(phi::DenseTensor* weight,
 template void PrepareWeight<int16_t>(phi::DenseTensor* weight,
                                      phi::DenseTensor* weight_max,
                                      bool transpose);
+template void PrepareWeight<int8_t>(phi::DenseTensor* weight,
+                                    phi::DenseTensor* weight_max,
+                                    bool transpose);
 
 }  // namespace ir
 }  // namespace framework

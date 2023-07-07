@@ -21,8 +21,8 @@ namespace phi {
 
 template <typename Context, typename T, size_t D>
 static void LerpGradFunction(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
+                             const DenseTensor& x UNUSED,
+                             const DenseTensor& y UNUSED,
                              const DenseTensor& weight,
                              const DenseTensor& out,
                              const DenseTensor& out_grad,
@@ -98,10 +98,10 @@ static void LerpGradFunction(const Context& ctx,
 
 template <typename Context, typename T>
 static void LerpGradFunctionZero(const Context& ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& y,
+                                 const DenseTensor& x UNUSED,
+                                 const DenseTensor& y UNUSED,
                                  const DenseTensor& weight,
-                                 const DenseTensor& out,
+                                 const DenseTensor& out UNUSED,
                                  const DenseTensor& out_grad,
                                  DenseTensor* x_grad,
                                  DenseTensor* y_grad) {

@@ -261,7 +261,7 @@ def train_dygraph(args, batch_generator):
                 transformer.clear_gradients()
                 if step_idx % args.print_step == 0:
                     total_avg_cost = avg_cost.numpy() * trainer_count
-                    avg_loss.append(total_avg_cost[0])
+                    avg_loss.append(float(total_avg_cost))
                     if step_idx == 0:
                         logging.info(
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "

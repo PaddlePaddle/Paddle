@@ -1,12 +1,9 @@
 set(prim_eager_deps
-    phi_api
-    phi_dygraph_api
+    phi
     hook_utils
-    tensor_utils
     utils
     global_utils
     backward
-    phi_tensor
     tracer
     layer
     autograd_meta
@@ -33,20 +30,16 @@ cc_test_old(
   elementwise_pow_op
   fill_constant_op
   activation_op
-  phi_api
-  phi_dygraph_api
+  phi
   static_global_utils
   static_tensor_operants
-  tensor_api
-  operants_manager
   generated_static_op)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     init_env_utils
     SRCS init_env_utils.cc
-    DEPS operants_manager tensor_api eager_tensor_operants
-         static_tensor_operants)
+    DEPS phi eager_tensor_operants static_tensor_operants)
 
   cc_test_old(
     test_comp_eager

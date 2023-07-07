@@ -15,10 +15,6 @@
 #include "paddle/phi/kernels/scale_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -39,6 +35,9 @@ void ScaleKernel(const Context& dev_ctx,
                                    " expected %s, but got %s.",
                                    x.dims().to_str().c_str(),
                                    out->dims().to_str().c_str()));
+  if (x.numel() == 0 || !x.IsInitialized()) {
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   int r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(x.data<T>()),

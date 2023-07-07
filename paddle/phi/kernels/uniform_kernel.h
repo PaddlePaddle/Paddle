@@ -22,18 +22,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UniformRawKernel(const Context& dev_ctx,
-                      const IntArray& shape,
-                      DataType dtype,
-                      const Scalar& min,
-                      const Scalar& max,
-                      int seed,
-                      int diag_num,
-                      int diag_step,
-                      float diag_val,
-                      DenseTensor* out);
-
-template <typename T, typename Context>
 void UniformKernel(const Context& dev_ctx,
                    const IntArray& shape,
                    DataType dtype,

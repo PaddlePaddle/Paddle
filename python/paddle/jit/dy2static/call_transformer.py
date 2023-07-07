@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.jit.dy2static.static_analysis import AstNodeWrapper
 from paddle.jit.dy2static.utils import ast_to_source_code, is_paddle_api
 from paddle.utils import gast
 
@@ -29,12 +28,8 @@ class CallTransformer(BaseTransformer):
     This class transforms function calls into Static Graph Ast.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of CallTransformer."
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def _no_need_convert_call(self, node):
         """

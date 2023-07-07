@@ -21,6 +21,10 @@ py_test_modules(
   FLAGS_new_executor_serial_run=true)
 
 py_test_modules(
+  test_standalone_executor_log_deps MODULES test_standalone_executor ENVS
+  GLOG_v=1 FLAGS_executor_log_deps_every_microseconds=1000)
+
+py_test_modules(
   test_standalone_executor_stats MODULES test_standalone_executor ENVS
   FLAGS_host_trace_level=10 FLAGS_static_executor_perfstat_filepath=./perfstat)
 

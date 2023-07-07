@@ -13,8 +13,14 @@
 # limitations under the License.
 
 import copy
+import logging
 
 import paddle
+from paddle.fluid.log_helper import get_logger
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 class OperatorStatsUnit:
@@ -76,7 +82,7 @@ def _get_var_dtype_from_block(block, op, arg_name, is_input):
         var = block._var_recursive(var_name)
         return var.dtype
     except:
-        print(
+        _logger.warning(
             "Operator < {} > gets {} < {} : {} > error!".format(
                 op.type, "input" if is_input else "output", arg_name, var_name
             )
@@ -99,7 +105,7 @@ def _extract_compute_dtype(op, block):
                 if _is_floating_point(compute_dtype) and _is_floating_point(
                     var_dtype
                 ):
-                    print(
+                    _logger.warning(
                         "Operator < {} > has different input data types, input_names = {}, output_names = {}.".format(
                             op.type, op.input_names, op.output_names
                         )
@@ -125,7 +131,7 @@ def _extract_compute_dtype(op, block):
                 if _is_floating_point(compute_dtype) and _is_floating_point(
                     var_dtype
                 ):
-                    print(
+                    _logger.warning(
                         "Operator < {} > has different input / output data types, input_names = {}, output_names = {}.".format(
                             op.type, op.input_names, op.output_names
                         )
@@ -145,6 +151,15 @@ def _merge_op_stats(op_stats_list):
 
 
 def _get_op_stats_list(program):
+    def _is_special_ops_with_input_x(op_type):
+        # operators have input X and have inputs different dtypes.
+        special_op_list = ['cast', 'batch_norm', 'instance_norm', 'layer_norm']
+        if op_type in special_op_list:
+            return True
+        if op_type.replace("_grad", "") in special_op_list:
+            return True
+        return False
+
     op_stats_list = []
     for block in program.blocks:
         block_op_stats_dict = {}
@@ -161,13 +176,7 @@ def _get_op_stats_list(program):
                 'create_double_buffer_reader',
             ]:
                 compute_dtype = None
-            elif op.type in [
-                'cast',
-                'layer_norm',
-                'layer_norm_grad',
-                'batch_norm',
-                'batch_norm_grad',
-            ]:
+            elif _is_special_ops_with_input_x(op.type):
                 # Not check the input and output dtype difference for this operators.
                 compute_dtype = _get_var_dtype_from_block(block, op, 'X', True)
             elif "Param" in op.input_names:
@@ -183,6 +192,78 @@ def _get_op_stats_list(program):
 
 
 def collect_operator_stats(program=None, print_subblocks=False):
+    """
+    Collect the number of operators for different data types through parsing
+    the program. The statistical data are categorized according to four data
+    types, namely float32, float16, bfloat16 and others.
+
+    Args:
+        program(Program, optional): The program to parse. Default None, and the default main_program will be parsed.
+        print_subblocks(bool, optional): Whether to print the operator stats for each subblock. Default False.
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+
+        paddle.enable_static()
+
+        class SimpleConvNet(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+                self.linear = paddle.nn.Linear(in_features=26, out_features=10)
+
+            def forward(self, x):
+                out = self.conv(x)
+                out = paddle.nn.functional.relu(out)
+                out = self.linear(out)
+                out = paddle.nn.functional.softmax(out)
+                return out
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.utils.unique_name.guard():
+            with paddle.static.program_guard(main_program, startup_program):
+                model = SimpleConvNet()
+                x = paddle.static.data(
+                    name='input', shape=[None, 1, 28, 28], dtype='float32'
+                )
+                out = model(x)
+                loss = paddle.mean(out)
+                optimizer = paddle.optimizer.AdamW()
+                optimizer = paddle.static.amp.decorate(optimizer)
+                optimizer.minimize(loss)
+        paddle.static.amp.debugging.collect_operator_stats(main_program)
+        # <------------------------------------------------ op list of all blocks ------------------------------------------------->
+        # <------------------------------------------------------- op list -------------------------------------------------------->
+        # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+        #   adamw                                   |  0                |  0                |  4                |  0
+        #   cast                                    |  5                |  0                |  6                |  0
+        #   check_finite_and_unscale                |  0                |  0                |  1                |  0
+        #   conv2d                                  |  1                |  0                |  0                |  0
+        #   conv2d_grad                             |  1                |  0                |  0                |  0
+        #   elementwise_add                         |  2                |  0                |  0                |  0
+        #   elementwise_add_grad                    |  2                |  0                |  0                |  0
+        #   elementwise_mul                         |  0                |  0                |  1                |  0
+        #   elementwise_mul_grad                    |  0                |  0                |  1                |  0
+        #   fill_constant                           |  0                |  0                |  1                |  0
+        #   matmul_v2                               |  1                |  0                |  0                |  0
+        #   matmul_v2_grad                          |  1                |  0                |  0                |  0
+        #   memcpy                                  |  0                |  0                |  0                |  1
+        #   reduce_mean                             |  0                |  0                |  1                |  0
+        #   reduce_mean_grad                        |  0                |  0                |  1                |  0
+        #   relu                                    |  1                |  0                |  0                |  0
+        #   relu_grad                               |  1                |  0                |  0                |  0
+        #   reshape2                                |  0                |  0                |  1                |  0
+        #   reshape2_grad                           |  0                |  0                |  1                |  0
+        #   softmax                                 |  0                |  0                |  1                |  0
+        #   softmax_grad                            |  0                |  0                |  1                |  0
+        #   update_loss_scaling                     |  0                |  0                |  1                |  0
+        # <----------------------------------------------------- op count: 22 ----------------------------------------------------->
+    """
+
     def _convert_to_list(op_stats_unit_dict):
         for key, value in op_stats_unit_dict.items():
             op_stats_unit_dict[key] = value.convert_to_list()

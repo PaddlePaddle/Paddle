@@ -23,7 +23,7 @@ import sys
 import time
 import urllib.request
 
-import requests
+import httpx
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
@@ -217,7 +217,7 @@ class PRChecker:
 
     def get_pr_diff_lines(self):
         file_to_diff_lines = {}
-        r = requests.get(self.pr.diff_url)
+        r = httpx.get(self.pr.diff_url, timeout=None, follow_redirects=True)
         data = r.text
         data = data.split('\n')
         ix = 0
@@ -340,11 +340,8 @@ class PRChecker:
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
-                elif (
-                    ('/xpu/' in filename.lower())
-                    or ('/npu/' in filename.lower())
-                    or ('/mlu/' in filename.lower())
-                    or ('/ipu/' in filename.lower())
+                elif ('/xpu/' in filename.lower()) or (
+                    '/ipu/' in filename.lower()
                 ):
                     filterFiles.append(filename)
                 else:
@@ -405,11 +402,7 @@ class PRChecker:
                     if f_judge.endswith('.md'):
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
-                    elif (
-                        'test/xpu' in f_judge
-                        or 'tests/unittests/npu' in f_judge
-                        or 'op_npu.cc' in f_judge
-                    ):
+                    elif 'test/xpu' in f_judge:
                         ut_list.append('xpu_npu_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):

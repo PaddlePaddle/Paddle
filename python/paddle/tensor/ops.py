@@ -14,8 +14,7 @@
 
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
-from ..framework import LayerHelper
+from ..framework import LayerHelper, in_dynamic_mode
 from .layer_function_generator import (
     add_sample_code,
     generate_activation_fn,
@@ -217,11 +216,11 @@ def acos(x, name=None):
             # [1.98231317 1.77215425 1.47062891 1.26610367]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.acos(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'acos'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'acos'
         )
         helper = LayerHelper('acos', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -254,11 +253,11 @@ def acosh(x, name=None):
             # [0.        , 1.76274729, 2.06343699, 2.29243159]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.acosh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'acosh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'acosh'
         )
         helper = LayerHelper('acosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -291,11 +290,11 @@ def asin(x, name=None):
             # [-0.41151685 -0.20135792  0.10016742  0.30469265]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.asin(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'asin'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'asin'
         )
         helper = LayerHelper('asin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -328,11 +327,11 @@ def asinh(x, name=None):
             # [-0.39003533, -0.19869010,  0.09983408,  0.29567307]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.asinh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'asinh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'asinh'
         )
         helper = LayerHelper('asinh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -365,11 +364,11 @@ def atan(x, name=None):
             # [-0.38050638 -0.19739556  0.09966865  0.29145679]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.atan(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'atan'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'atan'
         )
         helper = LayerHelper('atan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -402,11 +401,11 @@ def atanh(x, name=None):
             # [-0.42364895, -0.20273256,  0.10033535,  0.30951962]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.atanh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'atanh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'atanh'
         )
         helper = LayerHelper('atanh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -440,11 +439,11 @@ def ceil(x, name=None):
             # [-0. -0.  1.  1.]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.ceil(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'ceil'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'ceil'
         )
         helper = LayerHelper('ceil', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -479,7 +478,7 @@ def cos(x, name=None):
             # [0.92106099 0.98006658 0.99500417 0.95533649]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.cos(x)
     else:
         check_variable_and_dtype(
@@ -518,11 +517,11 @@ def cosh(x, name=None):
             # [1.08107237 1.02006676 1.00500417 1.04533851]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.cosh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'cosh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'cosh'
         )
         helper = LayerHelper('cosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -556,7 +555,7 @@ def exp(x, name=None):
             # [0.67032005 0.81873075 1.10517092 1.34985881]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.exp(x)
     else:
         check_variable_and_dtype(
@@ -607,11 +606,11 @@ def expm1(x, name=None):
             # [-0.32967997, -0.18126924,  0.10517092,  0.34985882]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.expm1(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'expm1'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'expm1'
         )
         helper = LayerHelper('expm1', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -645,11 +644,11 @@ def floor(x, name=None):
             # [-1. -1.  0.  0.]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.floor(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'floor'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'floor'
         )
         helper = LayerHelper('floor', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -683,11 +682,11 @@ def reciprocal(x, name=None):
             # [-2.5        -5.         10.          3.33333333]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.reciprocal(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'reciprocal'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'reciprocal'
         )
         helper = LayerHelper('reciprocal', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -730,11 +729,11 @@ def round(x, name=None):
             # [-1. -0.  1.  2.]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.round(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'round'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
         )
         helper = LayerHelper('round', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -769,11 +768,11 @@ def rsqrt(x, name=None):
             # [3.16227766 2.23606798 1.82574186 1.58113883]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.rsqrt(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'rsqrt'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'rsqrt'
         )
         helper = LayerHelper('rsqrt', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -807,7 +806,7 @@ def sigmoid(x, name=None):
             # [0.40131234 0.450166   0.52497919 0.57444252]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.sigmoid(x)
     else:
         check_variable_and_dtype(
@@ -844,11 +843,11 @@ def sin(x, name=None):
             # [-0.38941834 -0.19866933  0.09983342  0.29552021]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.sin(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sin'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sin'
         )
         helper = LayerHelper('sin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -881,11 +880,11 @@ def sinh(x, name=None):
             # [-0.41075233 -0.201336    0.10016675  0.30452029]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.sinh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sinh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sinh'
         )
         helper = LayerHelper('sinh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -917,7 +916,7 @@ def sqrt(x, name=None):
             print(out)
             # [0.31622777 0.4472136  0.54772256 0.63245553]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.sqrt(x)
     else:
         check_variable_and_dtype(
@@ -956,7 +955,7 @@ def square(x, name=None):
             print(out)
             # [0.16 0.04 0.01 0.09]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.square(x)
     else:
         check_variable_and_dtype(
@@ -1006,11 +1005,11 @@ def tan(x, name=None):
             # [-0.42279324, -0.20271005, 0.10033467, 0.30933627]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.tan(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'tan'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'tan'
         )
         helper = LayerHelper('tan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1022,7 +1021,7 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.erf(x)
 
     locals_var = locals().copy()

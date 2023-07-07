@@ -211,7 +211,7 @@ if "%WITH_SCCACHE%"=="ON" (
 :install_sccache
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
-%PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
+python -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
 xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
@@ -429,7 +429,7 @@ if not exist %THIRD_PARTY_PATH% (
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd /d %THIRD_PARTY_HOME%
     echo Getting third party: downloading ...
-    %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
+    python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
     if !ERRORLEVEL! EQU 0 (
         echo Getting third party: extracting ...
         tar -xf %md5%.tar.gz
@@ -572,17 +572,15 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 if "%UPLOAD_TP_FILE%"=="ON" (
-    set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
+    set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading third_party: checking bce ...
-    if not exist %cache_dir%\bce-python-sdk-0.8.33 (
+    if not exist %cache_dir%\bce-python-sdk-new (
         echo There is no bce in this PC, will install bce.
         cd /d %cache_dir%
-        echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
-        %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
-        %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
-        cd /d %cache_dir%\bce-python-sdk-0.8.33
-        %PYTHON_ROOT%\python.exe setup.py install 1>nul
-        del %cache_dir%\bce-python-sdk-0.8.33.tar.gz
+        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+        python -m pip install bce-python-sdk
     )
     if !errorlevel! EQU 0 (
         cd /d %THIRD_PARTY_HOME%
@@ -590,7 +588,7 @@ if "%UPLOAD_TP_FILE%"=="ON" (
         tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
             echo Uploading third_party: uploading ...
-            %PYTHON_ROOT%\python.exe !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
+            python !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
                 echo Upload third party %md5% to bos paddle-windows/third_party/%sub_dir% successfully.
             ) else (

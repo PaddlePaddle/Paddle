@@ -21,7 +21,6 @@
 #include <unordered_set>
 
 #include "cinn/common/target.h"
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -29,9 +28,10 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(enable_pe_launch_cinn);
-DECLARE_bool(enable_interpretercore_launch_cinn);
+PHI_DECLARE_bool(enable_pe_launch_cinn);
+PHI_DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
 
@@ -57,6 +57,9 @@ void SetCinnRuntimeFlags();
 // set CINN global random seed
 template <typename DeviceContext>
 void SetCinnRandomSeed();
+
+// set CINN compile target
+void SetCinnTarget(const ::cinn::common::Target& target);
 
 }  // namespace details
 
@@ -115,6 +118,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         "Step 2. Get compilation result of the graph");
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
+    details::SetCinnTarget(target);
     using ClockType = std::chrono::steady_clock;
     std::chrono::time_point<ClockType> start_t, end_t;
     if (VLOG_IS_ON(1)) {

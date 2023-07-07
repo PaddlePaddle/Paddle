@@ -111,7 +111,7 @@ struct SequenceReverseFunctor {
   size_t row_numel_;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceReverseOpKernel : public framework::OpKernel<T> {
   using LoDTensor = phi::DenseTensor;
 

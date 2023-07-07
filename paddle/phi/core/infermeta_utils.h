@@ -254,7 +254,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   template <typename T>
   struct InferMetaFnCallHelper<InferMetaTypeTag<T>> {
     template <int in_idx, int attr_idx, int out_idx>
-    static void Call(InferMetaContext* ctx, Args&... args) {
+    static void Call(InferMetaContext* ctx UNUSED, Args&... args) {
       return infer_meta_fn(args...);
     }
   };

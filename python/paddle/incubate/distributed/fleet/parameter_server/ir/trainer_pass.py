@@ -1484,7 +1484,7 @@ def get_communicate_var_info(
         #     raise ValueError(
         #         "Variable {} not support heter training. its shape is {}".
         #         format(name, shape))
-        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
+        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape, 1)
         input_var_reshape_dim.append(recv_var_dim)
         input_var_reshape_name.append(f"{name}.input_reshape@Heter")
 
@@ -1497,7 +1497,7 @@ def get_communicate_var_info(
     #    #     raise ValueError(
     #    #         "Variable {} not support heter training. its shape is {}".
     #    #         format(var_name, shape))
-    #    send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
+    #    send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape, 1)
     #    output_var_reshape_dim.append(send_reshape_dim)
     #    output_var_reshape_name.append("{}.output_reshape@Heter".format(
     #        var_name))

@@ -245,7 +245,7 @@ class CompiledProgram:
             )
             self._exec_strategy.num_threads = 1
 
-        # TODO(wuyi): trainer endpoings should be passed in through
+        # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
         if (

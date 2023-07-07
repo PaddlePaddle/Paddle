@@ -292,15 +292,6 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T, typename DeviceContext>
-class NotImpleKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "CPU is not support for this kernel now. Will be add in the future"));
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -311,9 +302,6 @@ REGISTER_OPERATOR(cudnn_lstm,
                   ops::CudnnLSTMGradOpMaker<paddle::framework::OpDesc>,
                   ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
-
-PD_REGISTER_STRUCT_KERNEL(
-    cudnn_lstm, CPU, ALL_LAYOUT, ops::NotImpleKernel, float) {}
 
 // TODO(Shixiaowei02) Add ModifyInput support
 REGISTER_OP_VERSION(cudnn_lstm)
