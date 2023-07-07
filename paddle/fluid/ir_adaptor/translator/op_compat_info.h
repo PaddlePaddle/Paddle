@@ -116,6 +116,13 @@ class OpNameNormalizer {
 
   std::string GetLegacyAttrName(const std::string& op_type,
                                 const std::string& arg_name) {
+    size_t type_pos = op_type.find(kPhiGradSuffix);
+    if (type_pos != std::string::npos) {
+      std::string legacy_name =
+          this->GetLegacyAttrName(op_type.substr(0, type_pos), arg_name);
+      return legacy_name;
+    }
+
     if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
       VLOG(10) << "[" << op_type << "] not found";
       return arg_name;
