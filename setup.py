@@ -755,7 +755,6 @@ def cmake_run(build_path):
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
-                "CINN_GIT_TAG",
             )
         }
     )
