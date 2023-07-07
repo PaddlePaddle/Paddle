@@ -1610,7 +1610,7 @@ class TracedLayer:
                 TracedLayer object.
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import paddle
 
@@ -1660,7 +1660,7 @@ class TracedLayer:
             None
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import paddle
 
@@ -1763,7 +1763,7 @@ class TracedLayer:
             None
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import numpy as np
                 import paddle
