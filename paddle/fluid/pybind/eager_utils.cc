@@ -1006,7 +1006,6 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
   }
 }
 
-
 PyObject* ToPyObject(egr::GradNodeBase* grad_node) {
   py::object py_obj = py::cast(grad_node, py::return_value_policy::reference);
   py::handle py_handle = py::handle(py_obj);

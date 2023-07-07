@@ -21,6 +21,7 @@ typedef SSIZE_T ssize_t;
 #undef copysign
 #endif
 
+#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -37,7 +38,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-#include "paddle/fluid/eager/grad_node_info.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
