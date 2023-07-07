@@ -166,9 +166,35 @@ class OpConverter {
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
-    it->SetEngine(engine);
-    engine->SetScope(scope);
-    it->SetBlockDesc(block);
+  it->SetEngine(engine);
+  engine->SetScope(scope);
+  it->SetBlockDesc(block);
+
+ std::cout << op_desc.Type() << " is to be converted" << std::endl;
+ for(auto it1 : op_desc.InputNames())
+ {
+  std::cout << it1 << std::endl;
+   for (auto it2 : op_desc.Input(it1))
+   {
+     auto input_name = it2;
+     std::cout << engine->GetITensor(input_name) << "engine->GetITensor(input_name)" << std::endl;
+      nvinfer1::Dims tmp_dims = engine->GetITensor(input_name)->getDimensions();
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+      PADDLE_ENFORCE_GE(
+          engine->GetITensor(input_name)->getDimensions().nbDims,
+          0,
+          platform::errors::InvalidArgument(
+              "Error occures in Paddle-TRT layer with output name: %s",
+              input_name.c_str()));
+
+      std::cout << input_name << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]" << "is int: " 
+              << (int)(engine->GetITensor(input_name)->getType() == nvinfer1::DataType::kINT32) <<  std::endl;
+   }
+ }
+
     (*it)(op, scope, test_mode);
 
     size_t output_num = op_desc.OutputNames().size();
@@ -751,8 +777,8 @@ class OpConverter {
               "Error occures in Paddle-TRT layer with output name: %s",
               output_tensor_names[i].c_str()));
 
-      VLOG(3) << output_tensor_names[i] << "'s dimension :["
-              << string::join_strings(tmp_vec, ',') << "]" << std::endl;
+      std::cout << output_tensor_names[i] << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]" << "is int: " << (int)(layer->getOutput(i)->getType() == nvinfer1::DataType::kINT32) <<  std::endl;
     }
 
     layer->setName((layer_name + ")").c_str());
