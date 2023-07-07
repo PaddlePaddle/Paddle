@@ -417,16 +417,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     bool use_calc_stream) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(in_wrapper, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All inputs should be in CustomPlace(%s).", device_type_));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(out_wrapper, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All outputs should be in CustomPlace(%s).", device_type_));
   return Collective(
       in_wrapper,
       out_wrapper,
@@ -436,6 +426,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
           const phi::stream::Stream& stream) {
         int root = opts.source_rank * in_wrapper.size() + opts.source_root;
         if (rank_ == root) {
+          if (input.place().GetType() == phi::AllocationType::CPU) {
+            platform::CustomPlace place(device_type_, rank_);
+            auto allocator = std::unique_ptr<phi::Allocator>(
+                new paddle::experimental::DefaultAllocator(place));
+            phi::DenseTensorMeta meta(input.dtype(), input.dims());
+            phi::DenseTensor input_tmp{allocator.get(), meta};
+
+            int64_t numel = input.numel() / size_;
+            phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
+                ->MemoryCopyH2D(input_tmp.data(),
+                                input.data(),
+                                numel * phi::SizeOf(input.dtype()),
+                                &stream);
+            return phi::DeviceManager::CCLBroadcast(
+                device_type_,
+                input_tmp.data(),
+                input_tmp.numel(),
+                phi::ccl::ToCCLDataType(input_tmp.dtype()),
+                root,
+                comm,
+                stream);
+          }
           return phi::DeviceManager::CCLBroadcast(
               device_type_,
               input.data(),
@@ -445,6 +457,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
               comm,
               stream);
         } else {
+          // if(output.place().GetType() == phi::AllocationType::CPU) {
+          //   phi::DenseTensor output_tmp;
+          //   int64_t numel = output.numel() / size_;
+          //   phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
+          //       ->MemoryCopyH2D(output_tmp->data(),
+          //                       output.data(),
+          //                       numel * phi::SizeOf(output.dtype()),
+          //                       &stream);
+          //   return phi::DeviceManager::CCLBroadcast(
+          //     device_type_,
+          //     output_tmp.data(),
+          //     output_tmp.numel(),
+          //     phi::ccl::ToCCLDataType(output_tmp.dtype()),
+          //     root,
+          //     comm,
+          //     stream);
+          // }
           return phi::DeviceManager::CCLBroadcast(
               device_type_,
               output.data(),
