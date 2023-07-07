@@ -411,4 +411,5 @@ def scaled_dot_product_attention(
     query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False
 ):
     assert attn_mask is None, "attn_mask is not supported yet"
-    return flash_attention(query, key, value, dropout_p, is_causal)
+    out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    return out
