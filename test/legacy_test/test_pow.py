@@ -215,9 +215,6 @@ class TestPowerError(unittest.TestCase):
 
 
 class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
-    def set_np_compare_func(self):
-        self.np_compare = np.allclose
-
     def inplace_api_processing(self, var):
         return paddle.pow_(var, 2)
 
@@ -230,9 +227,6 @@ class TestDygraphInplacePowerTensor(TestDygraphInplaceWithContinuous):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
         self.dtype = "float32"
         self.y = paddle.ones([10, 20, 1], dtype="float32") * 2
-
-    def set_np_compare_func(self):
-        self.np_compare = np.allclose
 
     def inplace_api_processing(self, var):
         return paddle.pow_(var, self.y)

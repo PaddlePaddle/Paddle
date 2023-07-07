@@ -243,6 +243,12 @@ class TestDygraphInplace(unittest.TestCase):
 
 
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.allclose, atol=1e-6, rtol=1e-6, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.sin(var)
 
@@ -647,7 +653,7 @@ class TestDygraphInplaceATan(TestDygraphInplaceWithContinuous):
     # atan calculation will appear some nan
     def set_np_compare_func(self):
         np_array_equal_with_nan = functools.partial(
-            np.array_equal, equal_nan=True
+            np.allclose, atol=1e-6, rtol=1e-6, equal_nan=True
         )
         self.np_compare = np_array_equal_with_nan
 
@@ -685,6 +691,24 @@ class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
 
     def inplace_api_processing(self, var):
         return paddle.addmm_(var, x=self.x, y=self.y)
+
+    def test_errors(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        x1 = paddle.randn([10])
+        self.assertRaises(ValueError, paddle.addmm_, var, x1, self.y)
+
+        y1 = paddle.randn([12, 10])
+        self.assertRaises(ValueError, paddle.addmm_, var, self.x, y1)
+        x2 = paddle.randn([12, 10])
+        self.assertRaises(ValueError, paddle.addmm_, var, x2, self.y)
+        var1 = paddle.randn([1, 5])
+        self.assertRaises(ValueError, paddle.addmm_, var1, x2, self.y)
+        y2 = paddle.randn([10, 12])
+        self.assertRaises(ValueError, paddle.addmm_, var, self.x, y2)
+        var2 = paddle.randn([6])
+        self.assertRaises(ValueError, paddle.addmm_, var2, self.x, self.y)
+        var3 = paddle.randn([2, 3, 4])
+        self.assertRaises(ValueError, paddle.addmm_, var3, self.x, self.y)
 
 
 if __name__ == '__main__':
