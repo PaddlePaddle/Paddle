@@ -65,7 +65,6 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
     execution_config_.create_local_scope = false;
   }
   if (execution_config_.create_local_scope) {
-    // if (true) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
     VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
