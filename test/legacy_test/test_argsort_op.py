@@ -548,10 +548,10 @@ class TestArgsortFP16Op(OpTest):
         self.descending = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Indices'])
+        self.check_output(no_check_set=['Indices', 'Loss'])
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', no_grad_set=['Indices'])
+        self.check_grad(['X'], 'Out', no_grad_set=['Indices', 'Loss'])
 
 
 class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
