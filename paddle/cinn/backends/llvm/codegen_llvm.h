@@ -39,11 +39,11 @@
 namespace cinn {
 namespace backends {
 
-class LLVMIRVisitor : public ir::IRVisitorRequireReImplVisitor<llvm::Value *> {
+class LLVMIRVisitor : public ir::IRVisitorRequireReImpl<llvm::Value *> {
  public:
   LLVMIRVisitor() = default;
 
-  using ir::IRVisitorRequireReImplVisitor<llvm::Value *>::Visit;
+  using ir::IRVisitorRequireReImpl<llvm::Value *>::Visit;
 #define __m(t__) virtual llvm::Value *Visit(const ir::t__ *x) = 0;
   NODETY_FORALL(__m)
 #undef __m

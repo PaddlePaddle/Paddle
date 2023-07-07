@@ -30,13 +30,13 @@ namespace cinn {
 namespace optim {
 using namespace ir;  // NOLINT
 
-struct IRCopyVisitor : public ir::IRVisitorRequireReImplVisitor<Expr> {
+struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   // Use maps to unify all the copied tensors and buffers.
   std::map<std::string, ir::_Tensor_*> tensor_map;
   std::map<std::string, ir::_Buffer_*> buffer_map;
 
   Expr Visit(const Expr* op) override {
-    return IRVisitorRequireReImplVisitor::Visit(op);
+    return IRVisitorRequireReImpl::Visit(op);
   }
 
  protected:
@@ -421,19 +421,19 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImplVisitor<Expr> {
     }
   }
 
-#define OP_BINARY_HANDLE(op__)                               \
-  Expr Visit(const ir::op__* op) override {                  \
-    auto a = IRVisitorRequireReImplVisitor::Visit(&op->a()); \
-    auto b = IRVisitorRequireReImplVisitor::Visit(&op->b()); \
-    return op__::Make(a, b);                                 \
+#define OP_BINARY_HANDLE(op__)                        \
+  Expr Visit(const ir::op__* op) override {           \
+    auto a = IRVisitorRequireReImpl::Visit(&op->a()); \
+    auto b = IRVisitorRequireReImpl::Visit(&op->b()); \
+    return op__::Make(a, b);                          \
   }
   NODETY_BINARY_OP_FOR_EACH(OP_BINARY_HANDLE)
 #undef OP_BINARY_HANDLE
 
-#define OP_UNARY_HANDLE(op__)                                \
-  Expr Visit(const op__* op) override {                      \
-    auto v = IRVisitorRequireReImplVisitor::Visit(&op->v()); \
-    return op__::Make(v);                                    \
+#define OP_UNARY_HANDLE(op__)                         \
+  Expr Visit(const op__* op) override {               \
+    auto v = IRVisitorRequireReImpl::Visit(&op->v()); \
+    return op__::Make(v);                             \
   }
   NODETY_UNARY_OP_FOR_EACH(OP_UNARY_HANDLE)
 #undef OP_UNARY_HANDLE

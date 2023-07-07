@@ -19,14 +19,13 @@
 namespace cinn {
 namespace backends {
 
-class ModularEvaluator
-    : public ir::IRVisitorRequireReImplVisitor<ModularEntry> {
+class ModularEvaluator : public ir::IRVisitorRequireReImpl<ModularEntry> {
  public:
   explicit ModularEvaluator(const std::map<Var, ModularEntry>& mod_map)
       : mod_map_(mod_map) {}
 
   ModularEntry Eval(const Expr& e) {
-    return ir::IRVisitorRequireReImplVisitor<ModularEntry>::Visit(&e);
+    return ir::IRVisitorRequireReImpl<ModularEntry>::Visit(&e);
   }
 
   ModularEntry Visit(const ir::IntImm* op) {

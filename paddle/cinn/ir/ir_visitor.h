@@ -34,7 +34,7 @@ struct _Tensor_;
  * @param Args type of the extra arguments passed to the all the methods.
  */
 template <typename RetTy = void, typename... Args>
-class IRVisitorRequireReImplVisitor {
+class IRVisitorRequireReImpl {
  public:
   //! Visit a expression.
   // @{
@@ -63,10 +63,10 @@ class IRVisitorRequireReImplVisitor {
 /**
  * Base of all the Ir readonly visitor.
  */
-struct IRVisitor : public IRVisitorRequireReImplVisitor<void> {
+struct IRVisitor : public IRVisitorRequireReImpl<void> {
   IRVisitor() = default;
 
-  void Visit(const Expr* x) { IRVisitorRequireReImplVisitor::Visit(x); }
+  void Visit(const Expr* x) { IRVisitorRequireReImpl::Visit(x); }
 #define __m(t__) \
   virtual void Visit(const t__* x) { return VisitDefault(x); }
   NODETY_FORALL(__m)
