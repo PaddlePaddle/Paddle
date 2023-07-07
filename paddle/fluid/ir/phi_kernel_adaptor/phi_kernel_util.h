@@ -139,18 +139,14 @@ void BuildPhiContext(
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
       if (tensor_attr_type == "paddle::dialect::IntArrayAttribute") {
-        phi::Attribute r1 = phi::TensorRef(
+        phi::Attribute attr = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
-        ctx->EmplaceBackAttr(r1);
+        ctx->EmplaceBackAttr(attr);
       } else if (tensor_attr_type == "paddle::dialect::ScalarAttribute") {
-        phi::Attribute r1 = phi::TensorRef(
+        phi::Attribute attr = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
 
-        std::cerr << "!!" << std::endl;
-        auto t1 = inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>();
-        std::cerr << "sclar " << t1.dims() << "\t" << t1.dtype() << std::endl;
-        ctx->EmplaceBackAttr(r1);
-
+        ctx->EmplaceBackAttr(attr);
       } else {
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 tensor_attr_type));

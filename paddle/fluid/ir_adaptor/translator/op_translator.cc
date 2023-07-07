@@ -224,10 +224,8 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
   paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
   VLOG(10) << "[" << op_desc.Type() << "][attribute]"
            << " name: " << legacy_attr_name << " " << legacy_attr.index();
-  std::cerr << "attribute type " << input_info.type_name << std::endl;
   ir::Attribute new_attr =
       attribute_translator(input_info.type_name, legacy_attr);
-  std::cerr << "here" << std::endl;
 
   ir::Operation* defining_op = nullptr;
   bool is_int_array = (input_info.type_name.find("IntArrayAttribute") !=

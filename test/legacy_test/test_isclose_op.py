@@ -55,6 +55,37 @@ class TestIscloseOp(OpTest):
         self.check_output()
 
 
+class TestIscloseOpException(TestIscloseOp):
+    def test_check_output(self):
+        def test_rtol_num():
+            self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
+            self.inputs['Atol'] = np.array([1e-08]).astype("float64")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_rtol_num)
+
+        def test_rtol_type():
+            self.inputs['Rtol'] = np.array([5]).astype("int32")
+            self.inputs['Atol'] = np.array([1e-08]).astype("float64")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_rtol_type)
+
+        def test_atol_num():
+            self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
+            self.inputs['Atol'] = np.array([1e-08, 1e-08]).astype("float64")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_atol_num)
+
+        def test_atol_type():
+            self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
+            self.inputs['Atol'] = np.array([8]).astype("int32")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_atol_type)
+
+
 class TestIscloseOpSmallNum(TestIscloseOp):
     def set_args(self):
         self.input = np.array([10000.0, 1e-08]).astype("float32")
@@ -102,7 +133,6 @@ class TestIscloseStatic(unittest.TestCase):
                 )
                 result = paddle.isclose(x, y)
                 exe = paddle.fluid.Executor(place)
-                print(paddle.fluid.default_main_program())
                 fetches = exe.run(
                     paddle.fluid.default_main_program(),
                     feed={"x": x_data, "y": y_data},

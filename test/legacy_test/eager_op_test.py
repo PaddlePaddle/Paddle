@@ -1243,7 +1243,6 @@ class OpTest(unittest.TestCase):
                 program = compiled_prog
 
             executor = Executor(place)
-            print("program", program)
             outs = executor.run(
                 program,
                 feed=feed_map,
