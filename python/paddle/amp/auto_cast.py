@@ -370,6 +370,7 @@ def amp_guard(
                 "For float16, amp only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
                 % (paddle.device.cuda.get_device_name(), prop[0], prop[1])
             )
+            enable = False
         elif (dtype == 'bfloat16') and not _is_gpu_bfloat16_supported():
             prop = paddle.device.cuda.get_device_capability()
             cuda_version = paddle.version.cuda()
@@ -382,6 +383,7 @@ def amp_guard(
                     cuda_version,
                 )
             )
+            enable = False
 
     amp_dtype = dtype
     amp_global_state().amp_dtype = amp_dtype
@@ -402,6 +404,7 @@ def amp_guard(
     if not enable:
         amp_level = AMP_LEVEL.O0
         amp_dtype = "float32"
+        amp_global_state().amp_dtype = amp_dtype
 
     # master_grad_hook will run at the end of backward.
     # Since backward_final_hook will be cleared once they have been
@@ -567,6 +570,14 @@ def amp_decorate(
         raise ValueError("dtype only support float16 or bfloat16.")
 
     if level == 'O1':
+        if optimizers is None:
+            return models
+        else:
+            return models, optimizers
+
+    if (dtype == 'float16' and not _is_gpu_float16_supported()) or (
+        dtype == 'bfloat16' and not _is_gpu_bfloat16_supported()
+    ):
         if optimizers is None:
             return models
         else:
