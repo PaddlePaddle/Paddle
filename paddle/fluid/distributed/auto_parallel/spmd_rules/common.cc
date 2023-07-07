@@ -43,7 +43,8 @@ SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& output_specs,
 
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        tensor_axes_to_dim_pairs) {
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts) {
   std::unordered_map<std::string, int64_t> axis_to_dim_map;
   std::unordered_map<int64_t, std::string> dim_to_axis_map;
   int64_t merge_dim;
