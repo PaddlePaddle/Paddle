@@ -37,7 +37,12 @@ namespace pybind {
 void BindProgram(py::module *m) {
   py::class_<Program> program(*m, "Program");
   program.def("parameters_num", &Program::parameters_num)
-      .def("block", &Program::block, return_value_policy::reference)
+      .def("block",
+           py::overload_cast<>(&Program::block),
+           return_value_policy::reference)
+      .def("block",
+           py::overload_cast<>(&Program::block, py::const_),
+           return_value_policy::reference)
       .def("print", [](Program &self) {
         std::ostringstream print_stream;
         self.Print(print_stream);
