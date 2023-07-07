@@ -1071,8 +1071,8 @@ void MatMulInt8Function(const Context& ctx,
                        workspace->ptr());
 
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Int8 Matmul need cuda version >= 11.2", ));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "MatmulInt8 op needs paddle with cuda and cuda version >= 11.2"));
 #endif
 }
 
