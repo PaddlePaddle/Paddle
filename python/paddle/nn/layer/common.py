@@ -780,7 +780,7 @@ class Bilinear(Layer):
        out_features (int): The dimension of output of this layer.
        weight_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of
        this layer. The default value is None.
-       bias_attr (ParamAttr, optional): The parameter attribute for the bias
+       bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
            If it is set to None, the bias is initialized zero. The default value is None.
        name (str, optional): The default value is None. Normally there is no need for user

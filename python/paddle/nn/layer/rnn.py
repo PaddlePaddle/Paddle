@@ -847,10 +847,10 @@ class LSTMCell(RNNCellBase):
             `weight_ih`. Default: None.
         weight_hh_attr(ParamAttr, optional): The parameter attribute for
             `weight_hh`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
-            `bias_ih`. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
-            `bias_hh`. Default: None.
+        bias_ih_attr (ParamAttr|bool, optional): The parameter attribute for the
+            `bias_ih`. Default: None. If it is set to False, the weight is not learnable.
+        bias_hh_attr (ParamAttr|bool, optional): The parameter attribute for the
+            `bias_hh`. Default: None. If it is set to False, the weight is not learnable.
         name (str, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1782,10 +1782,10 @@ class LSTM(RNNBase):
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for
             `weight_hh` of each cell. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
-            `bias_ih` of each cells. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
-            `bias_hh` of each cells. Default: None.
+        bias_ih_attr (ParamAttr|bool, optional): The parameter attribute for the
+            `bias_ih` of each cells. Default: None. If it is set to False, the weight is not learnable.
+        bias_hh_attr (ParamAttr|bool, optional): The parameter attribute for the
+            `bias_hh` of each cells. Default: None. If it is set to False, the weight is not learnable.
         name (str, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1904,10 +1904,10 @@ class GRU(RNNBase):
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for
             `weight_hh` of each cell. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the
-            `bias_ih` of each cells. Default: None.
-        bias_hh_attr (ParamAttr, optional): The parameter attribute for the
-            `bias_hh` of each cells. Default: None.
+        bias_ih_attr (ParamAttr|bool, optional): The parameter attribute for the
+            `bias_ih` of each cells. Default: None. If it is set to False, the weight is not learnable.
+        bias_hh_attr (ParamAttr|bool, optional): The parameter attribute for the
+            `bias_hh` of each cells. Default: None. If it is set to False, the weight is not learnable.
         name (str, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
