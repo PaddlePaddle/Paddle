@@ -22,7 +22,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/funcs/cublaslt.h"
+#endif
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #endif
@@ -950,7 +952,6 @@ struct MatMulDispatcher<phi::GPUContext, T> {
 #endif
   }
 };
-#endif  // PADDLE_WITH_CUDA
 
 static phi::Allocator::AllocationPtr GetWorkspace(const phi::GPUContext& ctx,
                                                   size_t workspace_size) {
@@ -959,6 +960,8 @@ static phi::Allocator::AllocationPtr GetWorkspace(const phi::GPUContext& ctx,
       workspace_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 }
+
+#endif  // PADDLE_WITH_CUDA
 
 template <typename Context, typename T>
 void MatMulFunction(const Context& ctx,
@@ -1001,7 +1004,7 @@ void MatMulInt8Function(const Context& ctx,
           "type of data (%s) currently contained in the container.",
           phi::CppTypeToDataType<int8_t>::Type(),
           x.dtype()));
-#if CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
   PADDLE_ENFORCE_EQ(
