@@ -97,8 +97,8 @@ OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
   }}"""
 OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """
-  if (auto output_{index} = (*this)->result({index})) {{
-    PADDLE_ENFORCE(output_{index}.type().isa<{standard}>(),
+  if (auto output_{index}_type = (*this)->result({index}).type()) {{
+    PADDLE_ENFORCE(output_{index}_type.isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
   }}"""
 OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """

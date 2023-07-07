@@ -967,16 +967,19 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
 
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
-    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_
+                 << " raises an EnforceNotMet exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
-    LOG(WARNING) << op->Type() << " raises an exception "
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_ << " raises an exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
-    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_
+                 << " raises an unknown exception";
     exception_holder_.Catch(std::current_exception());
   }
 }
@@ -1150,7 +1153,8 @@ void NewIRInterpreter::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
-  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+  if (instr.DeviceContext().GetPlace().GetType() ==
+      phi::AllocationType::CUSTOM) {
     return;
   }
   platform::RecordEvent record(
