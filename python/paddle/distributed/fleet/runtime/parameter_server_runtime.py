@@ -714,7 +714,7 @@ class ParameterServerRuntime(RuntimeBase):
         self,
         executor,
         dirname,
-        feeded_var_names,
+        feeded_vars,
         target_vars,
         main_program=None,
         export_for_deployment=True,
@@ -735,28 +735,21 @@ class ParameterServerRuntime(RuntimeBase):
                 raise TypeError(
                     "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
                 )
-            paddle.fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 dirname,
-                feeded_var_names,
+                feeded_vars,
                 target_vars,
                 executor,
-                main_program,
-                None,
-                None,
-                export_for_deployment,
+                program=main_program,
                 legacy_format=legacy_format,
             )
         else:
-            paddle.fluid.io.save_inference_model(
+            paddle.static.save_inference_model(
                 dirname,
-                feeded_var_names,
+                feeded_vars,
                 target_vars,
                 executor,
-                self.origin_main_program,
-                None,
-                None,
-                export_for_deployment,
-                True,
+                program=self.origin_main_program,
                 legacy_format=legacy_format,
             )
 

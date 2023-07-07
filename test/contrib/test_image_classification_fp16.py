@@ -217,12 +217,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     )
 
                     if acc_value > 0.08:  # Low threshold for speeding up CI
-                        fluid.io.save_inference_model(
+                        paddle.static.io.save_inference_model(
                             save_dirname,
-                            ["pixel"],
+                            images,
                             [predict],
                             exe,
-                            main_program=train_program,
+                            program=train_program,
                             clip_extra=True,
                         )
                         return
@@ -287,12 +287,12 @@ def infer(use_cuda, save_dirname=None):
 
         print("infer results: ", results[0])
 
-        fluid.io.save_inference_model(
+        paddle.static.save_inference_model(
             save_dirname,
             feed_target_names,
             fetch_targets,
             exe,
-            inference_program,
+            parogram=inference_program,
             clip_extra=True,
         )
 

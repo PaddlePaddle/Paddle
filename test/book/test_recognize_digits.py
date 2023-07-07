@@ -137,23 +137,18 @@ def train(
                     if float(acc_val) > 0.2 or pass_id == (PASS_NUM - 1):
                         # Smaller value to increase CI speed
                         if save_dirname is not None:
-                            fluid.io.save_inference_model(
+                            paddle.static.io.save_inference_model(
                                 save_dirname,
-                                ["img"],
+                                img,
                                 [prediction],
                                 exe,
-                                model_filename=model_filename,
-                                params_filename=params_filename,
                             )
                         if save_full_dirname is not None:
-                            fluid.io.save_inference_model(
+                            paddle.static.save_inference_model(
                                 save_full_dirname,
                                 [],
                                 [],
                                 exe,
-                                model_filename=model_filename,
-                                params_filename=params_filename,
-                                export_for_deployment=False,
                             )
                         return
                     else:
@@ -215,7 +210,10 @@ def infer(
             feed_target_names,
             fetch_targets,
         ] = paddle.static.io.load_inference_model(
-            save_dirname, exe, model_filename, params_filename
+            save_dirname,
+            exe,
+            model_filename=model_filename,
+            params_filename=params_filename,
         )
 
         # The input's dimension of conv should be 4-D or 5-D.

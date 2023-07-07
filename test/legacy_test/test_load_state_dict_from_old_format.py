@@ -125,13 +125,11 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                     param.name
                 )
 
-            fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 self.save_dirname,
-                ["img"],
+                [img],
                 [prediction],
                 exe,
-                model_filename=self.model_filename,
-                params_filename=self.params_filename,
             )
 
         return static_param_dict
