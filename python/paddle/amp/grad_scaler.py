@@ -19,10 +19,11 @@ from enum import Enum
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import core, in_dygraph_mode
+from paddle.fluid import core
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
+from paddle.framework import in_dynamic_mode
 
 from .auto_cast import amp_global_state
 
@@ -97,7 +98,6 @@ class AmpScaler:
         decr_every_n_nan_or_inf=1,
         use_dynamic_loss_scaling=True,
     ):
-
         tracer = _dygraph_tracer()
         if not tracer:
             raise ValueError(
@@ -307,7 +307,7 @@ class AmpScaler:
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 # It is very time-consuming to call c++ functions in a loop on the python side.
                 # We put this part of the code on the c++ side to improve the speed in eager mode.
                 (
@@ -591,15 +591,15 @@ class GradScaler(AmpScaler):
 
     Args:
         enable(bool, optional): Enable loss scaling or not. Default is True.
-        init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
+        init_loss_scaling (float, optional): The initial loss scaling factor. Default is 65536.0.
         incr_ratio(float, optional): The multiplier to use when increasing the loss
                         scaling. Default is 2.0.
         decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing
                         the loss scaling. Default is 0.5.
         incr_every_n_steps(int, optional): Increases loss scaling every n consecutive
-                                steps with finite gradients. Default is 1000.
+                                steps with finite gradients. Default is 2000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
-                                    accumulated steps with nan or inf gradients. Default is 2.
+                                    accumulated steps with nan or inf gradients. Default is 1.
         use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
     Returns:
         An GradScaler object.
@@ -628,11 +628,11 @@ class GradScaler(AmpScaler):
     def __init__(
         self,
         enable=True,
-        init_loss_scaling=2.0**15,
+        init_loss_scaling=2.0**16,
         incr_ratio=2.0,
         decr_ratio=0.5,
-        incr_every_n_steps=1000,
-        decr_every_n_nan_or_inf=2,
+        incr_every_n_steps=2000,
+        decr_every_n_nan_or_inf=1,
         use_dynamic_loss_scaling=True,
     ):
         super().__init__(

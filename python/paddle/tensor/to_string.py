@@ -181,8 +181,7 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
     linewidth = DEFAULT_PRINT_OPTIONS.linewidth
 
     if len(var.shape) == 0:
-        # currently, shape = [], i.e., scaler tensor is not supported.
-        # If it is supported, it should be formatted like this.
+        # 0-D Tensor, whose shape = [], should be formatted like this.
         return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
         item_length = max_width + 2
@@ -291,7 +290,7 @@ def _format_dense_tensor(tensor, indent):
     if tensor.dtype == core.VarDesc.VarType.BF16:
         tensor = tensor.astype('float32')
 
-    # TODO(zhouwei): will remove 0D Tensor.numpy() hack
+    # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
     np_tensor = tensor.numpy(False)
 
     if len(tensor.shape) == 0:
@@ -363,6 +362,27 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         )
 
 
+def dist_tensor_to_string(tensor, prefix='Tensor'):
+    # TODO(dev): Complete tensor will be printed after reshard
+    # is ready.
+    indent = len(prefix) + 1
+    dtype = convert_dtype(tensor.dtype)
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, dist_attr={dist_attr},\n{indent}{data})"
+    return _template.format(
+        prefix=prefix,
+        shape=tensor.shape,
+        dtype=dtype,
+        place=tensor._place_str,
+        stop_gradient=tensor.stop_gradient,
+        dist_attr=tensor.dist_attr,
+        indent=' ' * indent,
+        data=None,
+    )
+
+
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
@@ -374,6 +394,9 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
+
+    if tensor.is_dist():
+        return dist_tensor_to_string(tensor, prefix)
 
     if not tensor._is_dense_tensor_hold_allocation():
         return "Tensor(Not initialized)"

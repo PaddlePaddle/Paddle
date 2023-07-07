@@ -595,9 +595,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         # amp inf_var & clip global_norm_var
 
         rings = [self.mp_ring_id, self.pp_ring_id]
-        # FIXME(wangxi): some problem with NPU found_finite, need sync with DP
-        if core.is_compiled_with_custom_device('npu'):
-            rings += [self.dp_ring_id]
         FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
         gradientclip_helper = GradientClipHelper(None)
@@ -719,10 +716,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._recreate_not_persist_param_as_var()
 
         self._dump_program_for_debug()
-
-        # GPU need to wait server ready, GPU and NPU is Layered connection
-        if not core.is_compiled_with_custom_device('npu'):
-            self._wait()
+        self._wait()
         return optimize_ops, params_grads
 
     def _init_pair_comm(self, pair, ring_id):
@@ -854,7 +848,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             elif self._sharding_segment_strategy == "segment_anchors":
                 if int(op.attr('op_role')) == int(OpRole.Backward):
                     for input_name in op.desc.input_arg_names():
-
                         # NOTE (JZ-LIANG) naive rule to support amp, if amp change, should modify here accordingly
                         if self.user_defined_strategy.amp:
                             if ".cast_fp16@GRAD" not in input_name:
@@ -1046,6 +1039,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 "c_calc_comm_stream",
                 "c_gen_nccl_id",
                 "c_gen_bkcl_id",
+                "c_gen_xccl_id",
                 "c_comm_init",
                 'send_v2',
                 'recv_v2',
@@ -1771,7 +1765,6 @@ class ShardingOptimizer(MetaOptimizerBase):
     def create_persistable_gradients_and_insert_merge_ops(
         self, main_block, startup_block, insert_idx, grad_names, shard
     ):
-
         for grad_name in grad_names:
             assert (
                 get_grad_device(grad_name, shard) == shard.worker_idx

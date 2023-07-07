@@ -126,6 +126,7 @@ from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
+from .tensor.linalg import cdist  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
@@ -198,6 +199,9 @@ from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.manipulation import index_add  # noqa: F401
 from .tensor.manipulation import index_add_  # noqa: F401
+from .tensor.manipulation import index_put  # noqa: F401
+from .tensor.manipulation import index_put_  # noqa: F401
+from .tensor.manipulation import unflatten  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -208,6 +212,8 @@ from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
+from .tensor.math import cummax  # noqa: F401
+from .tensor.math import cummin  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
 from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
@@ -220,6 +226,7 @@ from .tensor.math import log2  # noqa: F401
 from .tensor.math import log10  # noqa: F401
 from .tensor.math import multiplex  # noqa: F401
 from .tensor.math import pow  # noqa: F401
+from .tensor.math import pow_  # noqa: F401
 from .tensor.math import reciprocal  # noqa: F401
 from .tensor.math import all  # noqa: F401
 from .tensor.math import any  # noqa: F401
@@ -258,6 +265,7 @@ from .tensor.math import renorm  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
+from .tensor.math import logaddexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
 from .tensor.math import erf  # noqa: F401
@@ -296,10 +304,16 @@ from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
+from .tensor.math import ldexp  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
 from .tensor.math import nextafter  # noqa: F401
+from .tensor.math import i0  # noqa: F401
+from .tensor.math import i0e  # noqa: F401
+from .tensor.math import i1  # noqa: F401
+from .tensor.math import i1e  # noqa: F401
+from .tensor.math import polygamma  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -341,6 +355,7 @@ from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
 from .framework import CustomPlace  # noqa: F401
+from .framework import XPUPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
@@ -372,7 +387,6 @@ from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
 from .device import is_compiled_with_custom_device  # noqa: F401
-from .device import XPUPlace  # noqa: F401
 
 # high-level api
 from .hapi import Model  # noqa: F401
@@ -436,7 +450,10 @@ __all__ = [  # noqa
     'empty_like',
     'eye',
     'cumsum',
+    'cummax',
+    'cummin',
     'cumprod',
+    'logaddexp',
     'logcumsumexp',
     'logit',
     'LazyGuard',
@@ -527,6 +544,7 @@ __all__ = [  # noqa
     'triu',
     'sin',
     'dist',
+    'cdist',
     'unbind',
     'meshgrid',
     'arange',
@@ -544,6 +562,7 @@ __all__ = [  # noqa
     'abs',
     'tril',
     'pow',
+    'pow_',
     'zeros_like',
     'maximum',
     'topk',
@@ -681,13 +700,22 @@ __all__ = [  # noqa
     'tril_indices',
     'index_add',
     "index_add_",
+    "index_put",
+    "index_put_",
     'sgn',
     'triu_indices',
     'take',
     'frexp',
+    'ldexp',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
     'vander',
+    'unflatten',
     'nextafter',
+    'i0',
+    'i0e',
+    'i1',
+    'i1e',
+    'polygamma',
 ]

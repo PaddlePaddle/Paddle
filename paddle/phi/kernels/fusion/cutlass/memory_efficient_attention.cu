@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/errors.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
+#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/gemm_kernel_utils.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
+
+using gemm_kernel_utils::getMaximumSharedMemoryPerBlockKb;
 
 template <typename T, typename Context>
 void MemoryEfficientAttentionForwardKernel(
@@ -124,9 +128,9 @@ void MemoryEfficientAttentionForwardKernel(
     VLOG(3) << "kAlignLSE" << kAlignLSE;
 
     typename KernelType::Params p;
-    p.query_ptr = SafeGetTensorPtr<scalar_t>(query);
-    p.key_ptr = SafeGetTensorPtr<scalar_t>(key);
-    p.value_ptr = SafeGetTensorPtr<scalar_t>(value);
+    p.query_ptr = phi::SafeGetTensorPtr<scalar_t>(query);
+    p.key_ptr = phi::SafeGetTensorPtr<scalar_t>(key);
+    p.value_ptr = phi::SafeGetTensorPtr<scalar_t>(value);
     p.logsumexp_ptr = is_test ? nullptr : logsumexp->data<float>();
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
 
@@ -134,19 +138,19 @@ void MemoryEfficientAttentionForwardKernel(
     if (KernelType::kNeedsOutputAccumulatorBuffer) {
       out_accum.Resize(output->dims());
       p.output_accum_ptr =
-          SafeAllocTensor<typename KernelType::output_accum_t, Context>(
+          phi::SafeAllocTensor<typename KernelType::output_accum_t, Context>(
               ctx, &out_accum);
       VLOG(3) << "output_accum_ptr " << p.output_accum_ptr;
     } else {
       p.output_accum_ptr = nullptr;
     }
-    p.output_ptr =
-        SafeAllocTensor<typename KernelType::output_t, Context>(ctx, output);
+    p.output_ptr = phi::SafeAllocTensor<typename KernelType::output_t, Context>(
+        ctx, output);
     VLOG(3) << "output_ptr " << p.output_ptr;
 
     if (cu_seqlens_q) {
-      p.seqstart_q_ptr = SafeGetTensorPtr<int32_t>(cu_seqlens_q);
-      p.seqstart_k_ptr = SafeGetTensorPtr<int32_t>(cu_seqlens_k);
+      p.seqstart_q_ptr = phi::SafeGetTensorPtr<int32_t>(cu_seqlens_q);
+      p.seqstart_k_ptr = phi::SafeGetTensorPtr<int32_t>(cu_seqlens_k);
       VLOG(3) << "seqstart_q_ptr " << p.seqstart_q_ptr;
     } else {
       p.seqstart_q_ptr = nullptr;
@@ -164,7 +168,7 @@ void MemoryEfficientAttentionForwardKernel(
         cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0]);
     p.causal = causal;
     if (causal_diagonal) {
-      p.causal_diagonal_ptr = SafeGetTensorPtr<int32_t>(causal_diagonal);
+      p.causal_diagonal_ptr = phi::SafeGetTensorPtr<int32_t>(causal_diagonal);
     } else {
       p.causal_diagonal_ptr = nullptr;
     }
@@ -172,7 +176,7 @@ void MemoryEfficientAttentionForwardKernel(
 
     p.seqlen_k_ptr = nullptr;
     if (seqlen_k) {
-      p.seqlen_k_ptr = SafeGetTensorPtr<int32_t>(seqlen_k);
+      p.seqlen_k_ptr = phi::SafeGetTensorPtr<int32_t>(seqlen_k);
     } else {
       p.seqlen_k_ptr = nullptr;
     }
@@ -197,7 +201,7 @@ void MemoryEfficientAttentionForwardKernel(
     PD_MEA_CHECK_OVERFLOW(p.o_strideM, DimStride(output->dims(), 1));
 
     if (bias) {
-      p.attn_bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
+      p.attn_bias_ptr = phi::SafeGetTensorPtr<scalar_t>(bias);
       PD_MEA_CHECK_OVERFLOW(
           p.bias_strideB,
           GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims));
@@ -215,7 +219,8 @@ void MemoryEfficientAttentionForwardKernel(
     seed_dims[0] = 2;
     seed_and_offset->Resize(seed_dims);
     ctx.template HostAlloc<int64_t>(seed_and_offset);
-    int64_t* seed_and_offset_ptr = SafeGetTensorPtr<int64_t>(seed_and_offset);
+    int64_t* seed_and_offset_ptr =
+        phi::SafeGetTensorPtr<int64_t>(seed_and_offset);
 
     auto gen = ctx.GetGenerator();
     uint64_t inc = query.dims()[0] * query.dims()[2] * 32;
@@ -254,10 +259,10 @@ void MemoryEfficientAttentionForwardKernel(
                 ctx.stream()>>>(p);
   };
   dispatch_cutlass_forward<T>(ctx, launchKernel);
-  PADDLE_ENFORCE_EQ(kernel_launched,
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "the kernel should not be launched"));
+  PADDLE_ENFORCE_EQ(
+      kernel_launched,
+      true,
+      phi::errors::InvalidArgument("the kernel should not be launched"));
 }
 
 }  // namespace cutlass_internal

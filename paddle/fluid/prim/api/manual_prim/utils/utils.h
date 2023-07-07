@@ -115,17 +115,24 @@ static std::vector<DST_T> unsafe_vector_cast(const std::vector<SRC_T>& src) {
 }
 
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
-static std::vector<int> get_unsqueeze_dims(const Tensor& origin,
-                                           const IntArray& axis) {
+static std::vector<int64_t> get_unsqueeze_dims(
+    const Tensor& origin, const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
   auto total_shape_size = origin_dims.size() + axis.size();
-  std::vector<int> result;
-  int j = 0, k = 0;
+  std::vector<int64_t> result;
+  size_t j = 0, k = 0;
   for (size_t i = 0; i < total_shape_size; ++i) {
-    if (axis[j] == int64_t(i)) {
+    if (j < axis.size() && axis[j] == int64_t(i)) {
       result.push_back(1);
       j++;
     } else {
+      PADDLE_ENFORCE_LT(
+          k,
+          origin_dims.size(),
+          platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                       "elements in origin_dims[%lu].",
+                                       k,
+                                       origin_dims.size()));
       result.push_back(origin_dims[k]);
       k++;
     }

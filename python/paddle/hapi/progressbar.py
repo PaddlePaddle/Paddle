@@ -83,8 +83,6 @@ class ProgressBar:
             if k == "loss":
                 if isinstance(val, list):
                     scalar_val = val[0]
-                elif isinstance(val, np.ndarray):
-                    scalar_val = val.item()
                 else:
                     scalar_val = val
                 if isinstance(scalar_val, np.uint16):

@@ -102,8 +102,6 @@ Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
     return platform::CPUPlace();
   } else if (dev_type == "gpu") {
     return platform::CUDAPlace(dev_id);
-  } else if (dev_type == "npu") {
-    return platform::NPUPlace(dev_id);
   } else if (dev_type == "xpu") {
     return platform::XPUPlace(dev_id);
   } else {

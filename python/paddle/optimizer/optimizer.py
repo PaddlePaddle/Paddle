@@ -24,12 +24,12 @@ from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
-    _in_eager_without_dygraph_check,
     default_main_program,
     device_guard,
     in_dygraph_mode,
     name_scope,
 )
+from paddle.regularizer import L2Decay
 
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
@@ -171,7 +171,6 @@ class Optimizer:
         grad_clip=None,
         name=None,
     ):
-
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
@@ -194,7 +193,7 @@ class Optimizer:
             self._parameter_list = None
 
         self._name = name
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
@@ -224,8 +223,6 @@ class Optimizer:
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
         if isinstance(weight_decay, float):
-            from ..fluid.regularizer import L2Decay
-
             self.regularization = L2Decay(weight_decay)
         else:
             self.regularization = weight_decay
@@ -276,6 +273,14 @@ class Optimizer:
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
+
+        # create master gradients' states
+        self._create_master_grad_states()
+
+    def _create_master_grad_states(self):
+        # master gradients states
+        self._master_grads = {}
+        self._master_grad = False
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -548,6 +553,52 @@ class Optimizer:
                     stop_gradient=True,
                 )
 
+    @framework.dygraph_only
+    def set_lr_scheduler(self, scheduler):
+        """
+        :api_attr: imperative
+
+        Set the LRScheduler of the learning rate manually in the optimizer. If the optimizer already used LRScheduler previously,
+        this API will set it be the new one.
+
+        Args:
+            scheduler (LRScheduler): the LRScheduler of learning rate
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                linear = paddle.nn.Linear(10, 10)
+
+                adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+
+                # set learning rate manually by class LRScheduler
+                scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2,4,6], gamma=0.8)
+                adam.set_lr_scheduler(scheduler)
+                lr = adam.get_lr()
+                print("current lr is {}".format(lr))
+                #    current lr is 0.5
+
+                # set learning rate manually by another LRScheduler
+                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.1, step_size=5, gamma=0.6)
+                adam.set_lr_scheduler(scheduler)
+                lr = adam.get_lr()
+                print("current lr is {}".format(lr))
+                #    current lr is 0.1
+
+        """
+        from paddle.optimizer.lr import LRScheduler
+
+        if not isinstance(scheduler, LRScheduler):
+            raise TypeError(
+                "The type of 'scheduler' in optimizer.set_lr_schduler must be LRScheduler, but received %s."
+                % (type(scheduler))
+            )
+        self._learning_rate = scheduler
+
     def get_lr(self):
         """
         Get current learning rate of optimizer.
@@ -671,6 +722,25 @@ class Optimizer:
             self._master_weights[param.name] = var
         return var
 
+    def _create_master_grad(self, grad):
+        assert self._is_dtype_fp16_or_bf16(grad.dtype)
+        if grad.name in self._master_grads:
+            var = self._master_grads[grad.name]
+        else:
+            var_name = grad.name + "_fp32_master"
+            var_name = unique_name.generate(var_name)
+            var = grad.block.create_var(
+                name=var_name,
+                shape=grad.shape,
+                value=0,
+                dtype='float32',
+                lod_level=grad.lod_level,
+                persistable=grad.persistable,
+                is_data=grad.is_data,
+            )
+            self._master_grads[grad.name] = var
+        return var
+
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
 
@@ -718,7 +788,7 @@ class Optimizer:
             name in self._accumulators
             and param.name in self._accumulators[name]
         ):
-            if framework._non_static_mode():
+            if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception(
                 "Accumulator {} already exists for parameter {}".format(
@@ -737,9 +807,7 @@ class Optimizer:
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR
-            if framework._in_eager_without_dygraph_check()
-            else (param.type if type is None else type),
+            type=core.VarDesc.VarType.LOD_TENSOR,
             shape=shape,
             belong_to_optimizer=True,
         )
@@ -767,7 +835,7 @@ class Optimizer:
                     ),
                 )
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
@@ -926,7 +994,7 @@ class Optimizer:
                         ],
                         param_group_idx,
                     )
-            if framework._non_static_mode():
+            if framework.in_dygraph_mode():
                 self._append_optimize_multi_tensor_op(
                     target_block,
                     parameters_and_grads,
@@ -957,7 +1025,7 @@ class Optimizer:
                             param_group_idx=param_group_idx,
                         )
         else:
-            if not framework._non_static_mode():
+            if not framework.in_dygraph_mode():
                 params_grads_device_map = (
                     parameters_and_grads['params']
                     if isinstance(parameters_and_grads, dict)
@@ -987,7 +1055,7 @@ class Optimizer:
                 with paddle.fluid.framework.dygraph_guard_if_declarative():
                     self._create_accumulators(target_block, params_acc_dict)
 
-            if framework._non_static_mode():
+            if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
                 if found_inf:
                     if isinstance(found_inf, core.eager.Tensor):
@@ -1091,7 +1159,7 @@ class Optimizer:
                 adam.clear_grad()
         """
         act_no_grad_set = None
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             pass
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
@@ -1172,7 +1240,6 @@ class Optimizer:
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
-
             params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
@@ -1197,7 +1264,7 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             with program_guard(
                 framework.default_main_program(),
                 framework.default_startup_program(),
@@ -1243,6 +1310,23 @@ class Optimizer:
         ):
             return grad
         regularization_term = None
+
+        # when master_grad is true in amp training, grad will be fp32, but param maybe fp16.
+        # we get master weight when master_grad is true to avoid type mismatch error.
+        def get_target_param(param, grad):
+            target_param = param
+            if param.dtype != grad.dtype:
+                find_master = (
+                    self._multi_precision
+                    and self._is_dtype_fp16_or_bf16(param.dtype)
+                )
+                if find_master and len(self._master_weights) != 0:
+                    target_param = self._master_weights[param.name]
+                else:
+                    target_param = param.astype(grad.dtype)
+            return target_param
+
+        param = get_target_param(param, grad)
         if hasattr(param, 'regularizer') and param.regularizer is not None:
             # Add variable for regularization term in grad block
             regularization_term = param.regularizer(param, grad, grad.block)
@@ -1298,7 +1382,7 @@ class Optimizer:
             Exception: Unknown regularization type
         """
         params_and_grads = []
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             for param, grad in parameters_and_grads:
                 new_grad = self._create_regularization_of_grad(
                     param, grad, regularization
@@ -1381,11 +1465,8 @@ class Optimizer:
                     if not p.stop_gradient:
                         param_list.append(p)
 
-        if _in_eager_without_dygraph_check():
-            for p in param_list:
-                p.clear_gradient(set_to_zero)
-        else:
-            core.clear_gradients(param_list, set_to_zero)
+        for p in param_list:
+            p.clear_gradient(set_to_zero)
 
     @imperative_base.no_grad()
     def minimize(
@@ -1571,8 +1652,6 @@ class Optimizer:
         for param in param_group['params']:
             weight_decay = param_group['weight_decay']
             if isinstance(weight_decay, float):
-                from ..fluid.regularizer import L2Decay
-
                 regularization = L2Decay(weight_decay)
             else:
                 regularization = weight_decay

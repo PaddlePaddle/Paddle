@@ -98,7 +98,6 @@ BufferedReader::BufferedReader(
 
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
-  npu_buffer_.resize(buffer_size);
   xpu_buffer_.resize(buffer_size);
   custom_device_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
@@ -303,6 +302,8 @@ void BufferedReader::ReadAsync(size_t i) {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (platform::is_custom_place(place_)) {
+      phi::DeviceManager::SetDevice(place_);
+
       TensorVec &custom_device = custom_device_buffer_[i];
       if (custom_device.empty()) {
         custom_device.resize(cpu.size());
@@ -326,7 +327,6 @@ void BufferedReader::ReadAsync(size_t i) {
             custom_device[i].mutable_data(place_, cpu[i].type()));
       }
 
-      phi::DeviceManager::SetDevice(place_);
       phi::DeviceManager::GetDeviceWithPlace(place_)->RecordEvent(
           custom_device_events_[i].get(), custom_device_compute_stream_.get());
       phi::DeviceManager::GetDeviceWithPlace(place_)->StreamWaitEvent(

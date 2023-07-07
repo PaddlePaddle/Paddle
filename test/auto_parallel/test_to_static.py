@@ -19,9 +19,12 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import LazyGuard, nn
-from paddle.distributed.auto_parallel.helper import ProgramHelper, ProxyLayer
+from paddle.distributed.auto_parallel.static.helper import (
+    ProgramHelper,
+    ProxyLayer,
+)
 from paddle.distributed.fleet import auto
-from paddle.fluid.framework import _non_static_mode
+from paddle.framework import in_dynamic_mode
 from paddle.io import Dataset
 from paddle.jit.dy2static.utils import is_paddle_func
 from paddle.nn import Sequential
@@ -127,7 +130,6 @@ class TestWholeProgram(unittest.TestCase):
 
 class TestToStatic(unittest.TestCase):
     def test_to_static(self):
-
         mlp = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
@@ -144,7 +146,7 @@ class TestToStatic(unittest.TestCase):
         # inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
         # labels = InputSpec([batch_size], 'int64', 'label')
 
-        assert _non_static_mode()
+        assert in_dynamic_mode()
         engine = auto.Engine(
             model=mlp,
             loss=loss,
@@ -155,12 +157,11 @@ class TestToStatic(unittest.TestCase):
         engine.fit(dataset, batch_size=batch_size)
         engine.evaluate(dataset, batch_size=batch_size)
         engine.predict(dataset, batch_size=batch_size)
-        assert not _non_static_mode()
+        assert not in_dynamic_mode()
 
 
 class TestLazyInit(unittest.TestCase):
     def test_lazy_init(self):
-
         with LazyGuard():
             mlp = MLPLayer(
                 hidden_size=hidden_size,

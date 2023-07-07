@@ -15,10 +15,12 @@
 include(ExternalProject)
 
 set(PYBIND_PREFIX_DIR ${THIRD_PARTY_PATH}/pybind)
-set(PYBIND_REPOSITORY ${GIT_URL}/pybind/pybind11.git)
+set(PYBIND_SOURCE_DIR ${PYBIND_PREFIX_DIR}/src/extern_pybind)
+set(PYBIND_INCLUDE_DIR ${PYBIND_SOURCE_DIR}/include)
 set(PYBIND_TAG v2.10.3)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/pybind)
+set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 
-set(PYBIND_INCLUDE_DIR ${THIRD_PARTY_PATH}/pybind/src/extern_pybind/include)
 include_directories(${PYBIND_INCLUDE_DIR})
 
 set(PYBIND_PATCH_COMMAND "")
@@ -31,14 +33,13 @@ if(NOT WIN32)
   # 2. Patch twice: the tag version of cache == PYBIND_TAG, but patch has already applied to cache.
   set(PYBIND_PATCH_COMMAND
       git checkout -- . && git checkout ${PYBIND_TAG} && patch -Nd
-      ${PYBIND_INCLUDE_DIR}/pybind11 < ${native_dst})
+      ${SOURCE_INCLUDE_DIR}/pybind11 < ${native_dst})
 endif()
 
 ExternalProject_Add(
   extern_pybind
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${PYBIND_REPOSITORY}
-  GIT_TAG ${PYBIND_TAG}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${PYBIND_PREFIX_DIR}
   # If we explicitly leave the `UPDATE_COMMAND` of the ExternalProject_Add
   # function in CMakeLists blank, it will cause another parameter GIT_TAG
@@ -48,7 +49,14 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   PATCH_COMMAND ${PYBIND_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
+  # I intentionally preserved an extern_pybind/include/pybind11 directory
+  # to site-packages, so that you could discern that you intended to
+  # employ not only python, but also CPP and were ready to incorporate header files.
+  BUILD_COMMAND
+  COMMAND ${CMAKE_COMMAND} -E remove_directory ${PYBIND_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${PYBIND_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${SOURCE_INCLUDE_DIR}
+          ${PYBIND_INCLUDE_DIR}
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 

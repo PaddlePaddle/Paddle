@@ -60,8 +60,9 @@ class SkipLayernormFusePassTest0(InferencePassTest):
         return paddle.add(data1, data2)
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=0.01, rtol=0.00001)
@@ -107,8 +108,9 @@ class SkipLayernormFusePassTest1(InferencePassTest):
         return paddle.add(data1, data2)
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=0.01, rtol=0.00001)
@@ -154,8 +156,9 @@ class SkipLayernormFusePassTest2(InferencePassTest):
         return paddle.add(data1, data2)
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=0.1, rtol=0.00001)
@@ -201,8 +204,9 @@ class SkipLayernormFusePassTest3(InferencePassTest):
         return paddle.add(data1, data2)
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=0.1, rtol=0.00001)

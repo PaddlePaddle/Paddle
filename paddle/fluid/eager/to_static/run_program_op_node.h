@@ -17,10 +17,13 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -443,11 +446,11 @@ inline void RunProgramAPI(
       VLOG(4) << "don't require any grad, set this scope can reused";
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
-      global_inner_scope->SetCanReuesd(true);
+      global_inner_scope->SetCanReused(true);
       details::GcScope(global_inner_scope);
     } else {
       VLOG(4) << "not test, set this scope can not reused";
-      global_inner_scope->SetCanReuesd(false);
+      global_inner_scope->SetCanReused(false);
     }
   }
 
@@ -582,7 +585,7 @@ inline void RunProgramGradAPI(
                                                    *backward_global_block,
                                                    global_inner_scope);
     VLOG(4) << "after backward gc all vars";
-    global_inner_scope->SetCanReuesd(true);
+    global_inner_scope->SetCanReused(true);
     details::GcScope(global_inner_scope);
   }
 }
@@ -599,9 +602,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
-        global_inner_scope->SetCanReuesd(true);
+        global_inner_scope->SetCanReused(true);
         details::GcScope(global_inner_scope);
-        VLOG(4) << "global_inner_scope SetCanReuesd";
+        VLOG(4) << "global_inner_scope SetCanReused";
       }
     }
   }

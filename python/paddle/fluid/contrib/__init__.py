@@ -14,21 +14,13 @@
 # limitations under the License.
 
 
-from . import memory_usage_calc
-from .memory_usage_calc import *
-from . import op_frequence
-from .op_frequence import *
 from . import extend_optimizer
 from .extend_optimizer import *
-from . import model_stat
-from .model_stat import *
 
 from . import optimizer
 from .optimizer import *
 
 __all__ = []
 
-__all__ += memory_usage_calc.__all__
-__all__ += op_frequence.__all__
 __all__ += extend_optimizer.__all__
 __all__ += optimizer.__all__

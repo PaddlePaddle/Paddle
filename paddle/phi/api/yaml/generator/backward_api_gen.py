@@ -112,7 +112,7 @@ class BackwardAPI(BaseAPI):
         return ""
 
     def gene_api_declaration(self):
-        if not self.is_base_api:
+        if not self.is_base_api and not self.is_only_composite_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
                 not invoke_func_name.endswith('_impl')
@@ -316,7 +316,6 @@ def generate_backward_api(
     header_file_path,
     source_file_path,
 ):
-
     bw_apis = []
     for each_api_yaml in backward_yaml_path:
         with open(each_api_yaml, 'r') as f:

@@ -54,11 +54,9 @@ from .initializer import set_global_initializer
 from . import layers
 from . import dygraph
 from . import contrib
-from . import nets
 from . import optimizer
 from . import backward
 from .backward import gradients
-from . import regularizer
 from . import incubate
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
@@ -113,10 +111,8 @@ __all__ = (
         'disable_dygraph',
         'enable_imperative',
         'disable_imperative',
-        'nets',
         'optimizer',
         'backward',
-        'regularizer',
         'LoDTensor',
         'LoDTensorArray',
         'CPUPlace',

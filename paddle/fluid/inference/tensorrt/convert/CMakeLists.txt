@@ -99,13 +99,14 @@ list(
   merge_layernorm_op.cc
   skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
-  fused_lookup_tables_op.cc
+  lookup_table_op.cc
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
   cumsum_op.cc
-  temporal_shift_op.cc)
+  temporal_shift_op.cc
+  einsum_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
@@ -137,12 +138,35 @@ nv_test(
   SRCS test_op_converter.cc
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
        tensorrt_converter)
-
-nv_test(
-  test_custom_plugin_creater
-  SRCS test_custom_plugin_creater.cc
-  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator
-       init_phi)
+if(WIN32)
+  nv_test(
+    test_custom_plugin_creater
+    SRCS test_custom_plugin_creater.cc
+    DEPS paddle_framework tensorrt_converter phi custom_operator init_phi)
+elseif(WITH_CINN)
+  nv_test(
+    test_custom_plugin_creater
+    SRCS test_custom_plugin_creater.cc
+    DEPS paddle_framework
+         tensorrt_converter
+         phi
+         custom_operator
+         init_phi
+         fleet_executor
+         cinn_compiler
+         python)
+else()
+  nv_test(
+    test_custom_plugin_creater
+    SRCS test_custom_plugin_creater.cc
+    DEPS paddle_framework
+         tensorrt_converter
+         phi
+         custom_operator
+         init_phi
+         fleet_executor
+         python)
+endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

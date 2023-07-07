@@ -110,7 +110,8 @@ def nce(
                                     param_attr='embed', is_sparse=True)
                 embs.append(emb)
 
-            embs = paddle.concat(x=embs, axis=1)
+            embs = paddle.concat(x=embs, axis=1)                # concat from 4 * [(-1, 1, 32)] to (-1, 4, 32)
+            embs = paddle.reshape(x=embs, shape=(-1, 4 * 32))   # reshape to (batch_size = -1, dim = 4*32)
             loss = paddle.static.nn.nce(input=embs, label=words[label_word],
                         num_total_classes=dict_size, param_attr='nce.w_0',
                         bias_attr='nce.b_0')

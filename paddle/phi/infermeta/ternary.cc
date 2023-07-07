@@ -529,6 +529,12 @@ void LayerNormInferMeta(const MetaTensor& x,
                         MetaTensor* variance,
                         MetaConfig config) {
   auto x_dim = x.dims();
+  PADDLE_ENFORCE_GT(begin_norm_axis,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "'begin_norm_axis' in Op(LayerNorm) should be"
+                        "greater than zero. But received [%d].",
+                        begin_norm_axis));
   PADDLE_ENFORCE_LT(
       begin_norm_axis,
       x_dim.size(),
@@ -587,6 +593,13 @@ void LayerNormInferMeta(const MetaTensor& x,
             bias.dims()[0],
             right));
   }
+
+  PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' in Op(LayerNorm) should be between"
+                        "0.0 and 0.001, But received [%s].",
+                        epsilon));
 
   phi::DataType x_dtype = x.dtype();
   out->set_dims(x_dim);
@@ -818,7 +831,7 @@ void NllLossRawInferMeta(const MetaTensor& input,
     if (reduction == "none") {
       out->set_dims({x_dims[0]});
     } else {
-      out->set_dims({1});
+      out->set_dims(phi::make_ddim({}));
     }
   } else if (x_dims.size() == 4) {
     PADDLE_ENFORCE_EQ(label_dims.size(),
@@ -841,10 +854,10 @@ void NllLossRawInferMeta(const MetaTensor& input,
     if (reduction == "none") {
       out->set_dims({x_dims[0], x_dims[2], x_dims[3]});
     } else {
-      out->set_dims({1});
+      out->set_dims(phi::make_ddim({}));
     }
   }
-  total_weight->set_dims({1});
+  total_weight->set_dims(phi::make_ddim({}));
   out->set_dtype(input.dtype());
   total_weight->set_dtype(input.dtype());
 }

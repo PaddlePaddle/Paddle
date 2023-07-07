@@ -136,7 +136,7 @@ class dcgmFileReader(FileReader):
                 ) and not line.strip().startswith("# Entity"):
                     continue
 
-                # skip non-needed headers (only the header in 1th line was needed)
+                # skip non-needed headers (only the header in 1st line was needed)
                 if line.strip().startswith("# Entity"):
                     line = line.strip()[2:]
 

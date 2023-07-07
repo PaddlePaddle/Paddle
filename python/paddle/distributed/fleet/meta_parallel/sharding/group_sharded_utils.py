@@ -162,8 +162,14 @@ class GroupShardedClipGrad:
 
         # add all reduce to get global norm of distributed params_and_grads
         dev_id = int(self._device.split(":")[1])
+        dev_type = self._device.split(':')[0]
         if paddle.device.get_device() == "cpu":
-            global_norm_var = global_norm_var.cuda(dev_id)
+            if dev_type in paddle.device.get_all_custom_device_type():
+                global_norm_var = global_norm_var._copy_to(
+                    paddle.CustomPlace(dev_type, dev_id), True
+                )
+            else:
+                global_norm_var = global_norm_var.cuda(dev_id)
 
         with device_guard(dev_id, self._device.split(":")[0]):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
@@ -207,6 +213,8 @@ def device_guard(dev_id=0, device="cpu"):
         paddle.set_device(device)
     elif device in ["gpu", "xpu"]:
         paddle.set_device(f"{device}:{dev_id}")
+    elif device in paddle.device.get_all_custom_device_type():
+        paddle.set_device(f"{device}:{dev_id}")
 
     try:
         yield
@@ -230,7 +238,6 @@ def GroupShardedScaler(scaler):
         if getattr(optimizer._optim, '_param_groups', None) and isinstance(
             optimizer._optim._param_groups[0], dict
         ):
-
             for group in optimizer._optim._param_groups:
                 for param in group['params']:
                     if param.grad is not None:
@@ -323,6 +330,6 @@ def cvt_to_device(x, dev_id, blocking=True):
         place = paddle.XPUPlace(dev_id)
     else:
         raise OSError(
-            "Only supported compiled paddle with gpu/rocm, npu and xpu , but current verison is compiled with cpu."
+            "Only supported compiled paddle with gpu/rocm and xpu , but current verison is compiled with cpu."
         )
     return x._copy_to(place, blocking)

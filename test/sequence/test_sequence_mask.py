@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid.framework import (
@@ -24,13 +25,19 @@ from paddle.fluid.framework import (
     program_guard,
 )
 
-sys.path.append("../../python/paddle/fluid/tests/unittests")
-from eager_op_test import OpTest
+
+def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
+    if maxlen_tensor is not None:
+        maxlen = maxlen_tensor
+    return paddle.nn.functional.sequence_mask(
+        x, maxlen=maxlen, dtype=mask_dtype
+    )
 
 
 class SequenceMaskTestBase(OpTest):
     def initDefaultParameters(self):
         self.op_type = 'sequence_mask'
+        self.python_api = sequence_mask_wraper
         self.maxlen = 10
         self.mask_dtype = 'int64'
         self.x = [[0, 3, 4], [5, 7, 9]]
@@ -100,6 +107,7 @@ class SequenceMaskTest6(SequenceMaskTestBase):
 class SequenceMaskTestBase_tensor_attr(OpTest):
     def initDefaultParameters(self):
         self.op_type = 'sequence_mask'
+        self.python_api = sequence_mask_wraper
         self.maxlen = 10
         self.maxlen_tensor = np.ones((1), 'int32') * 10
         self.mask_dtype = 'int64'

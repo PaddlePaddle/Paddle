@@ -364,20 +364,7 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      # Only deps libmklml.so, not link
-      if("${cc_library_DEPS};" MATCHES "mklml;")
-        list(REMOVE_ITEM cc_library_DEPS mklml)
-        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
-          list(APPEND cc_library_DEPS dynload_mklml)
-        endif()
-        add_dependencies(${TARGET_NAME} mklml)
-        if(WIN32)
-          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
-        else()
-          target_link_libraries(${TARGET_NAME}
-                                "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
-        endif()
-      endif()
+
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
       if("${cc_library_DEPS};" MATCHES "python;")
@@ -457,25 +444,10 @@ function(cc_test_build TARGET_NAME)
       endif()
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      ${os_dependency_modules}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
-    add_dependencies(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main gtest glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main gtest
+                     glog)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
@@ -575,17 +547,7 @@ function(cc_test_old TARGET_NAME)
     cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
     # we dont test hcom op, because it need complex configuration
     # with more than one machine
-    if(NOT
-       ("${TARGET_NAME}" STREQUAL "c_broadcast_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_max_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reducescatter_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allgather_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "send_v2_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "recv_v2_op_npu_test"))
-      cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
-    endif()
+    cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
     add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${TARGET_NAME}.)
@@ -680,7 +642,7 @@ function(nv_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
-                          ${os_dependency_modules} paddle_gtest_main)
+                          ${os_dependency_modules} paddle_gtest_main phi)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -784,8 +746,8 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
       glog
+      phi
       ${os_dependency_modules})
     add_dependencies(
       ${TARGET_NAME}
@@ -794,7 +756,7 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -891,7 +853,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog
       ${os_dependency_modules})
     add_dependencies(
@@ -901,7 +863,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})

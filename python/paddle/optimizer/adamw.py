@@ -181,9 +181,7 @@ class AdamW(Optimizer):
                 not core.is_compiled_with_cuda()
                 and not core.is_compiled_with_xpu()
             ):
-                raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, and NPU"
-                )
+                raise NotImplementedError("'lr_ratio' is unimplemented in CPU.")
 
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
@@ -207,7 +205,7 @@ class AdamW(Optimizer):
             self._parameter_list = None
 
         self._name = name
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
@@ -284,6 +282,8 @@ class AdamW(Optimizer):
         self.regularization = None
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
+
+        self._create_master_grad_states()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val

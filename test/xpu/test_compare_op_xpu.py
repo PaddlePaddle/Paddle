@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -414,6 +414,33 @@ class XPUTestEqualOp(XPUOpTestWrapper):
             self.hbound = 100
             self.x_shape = [11, 17]
             self.y_shape = []
+
+    class EqualOpTestCaseBoolBase(TestCompareOpBase):
+        def config(self):
+            self.dtype = np.bool_
+            self.op_type = 'equal'
+            self.compute = np.equal
+            self.choices = [True, False]
+            self.set_shape()
+
+        def set_shape(self):
+            self.x_shape = [11, 17]
+            self.y_shape = [11, 17]
+
+        def set_case(self):
+            self.x = np.random.choice(self.choices, self.x_shape)
+            self.y = np.random.choice(self.choices, self.y_shape)
+            self.result = self.compute(self.x, self.y)
+
+    class EqualOpTestCaseBool1(EqualOpTestCaseBoolBase):
+        def set_shape(self):
+            self.x_shape = [11, 17]
+            self.y_shape = [1]
+
+    class EqualOpTestCaseBool2(EqualOpTestCaseBoolBase):
+        def set_shape(self):
+            self.x_shape = [1]
+            self.y_shape = [11, 17]
 
 
 support_types = get_xpu_op_support_types('equal')

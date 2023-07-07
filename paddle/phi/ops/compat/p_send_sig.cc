@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature PSendOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature PSendOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("p_send", {"x"}, {"peer", "dynamic_shape"}, {});
 }
 

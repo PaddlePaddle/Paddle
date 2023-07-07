@@ -29,7 +29,6 @@ __all__ = []
 
 
 def _split_activation(tensor, mp_group):
-
     mp_degree = mp_group.nranks
     mp_rank = mp_group.rank
     if mp_degree < 2:
@@ -87,7 +86,6 @@ class _HPRecomputeFunction(PyLayer):
         *args,
         **kwargs,
     ):
-
         # store for recomputing
         ctx.run_function = run_function
 
@@ -110,7 +108,10 @@ class _HPRecomputeFunction(PyLayer):
 
         cur_device = paddle.get_device()
         assert (
-            'gpu:' in paddle.get_device() or 'xpu:' in paddle.get_device()
+            'gpu:' in paddle.get_device()
+            or 'xpu:' in paddle.get_device()
+            or cur_device.split(':')[0]
+            in paddle.device.get_all_custom_device_type()
         ), "Recompute with RNG is not support current device: {}.".format(
             cur_device
         )
@@ -158,7 +159,7 @@ class _HPRecomputeFunction(PyLayer):
                 #  If not marked non_differentiable, all output tensors' attr `stop gradient`
                 #  will be reset to `False` in c++ backend.
                 #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
-                if framework.in_dygraph_mode() and state:
+                if framework.in_dynamic_mode() and state:
                     ctx.mark_non_differentiable(arg)
             else:
                 ctx.inputs.append(arg)

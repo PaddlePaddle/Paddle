@@ -225,7 +225,7 @@ class NCCLOpHandleBase : public OpHandleBase {
                    void* recvbuff,
                    size_t count,
                    ncclDataType_t datatype,
-                   ncclRedOp_t op) {
+                   ncclRedOp_t op UNUSED) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
@@ -297,7 +297,7 @@ class NCCLOpHandleBase : public OpHandleBase {
                       void* sendbuff,
                       size_t count,
                       ncclDataType_t datatype,
-                      ncclRedOp_t op) {
+                      ncclRedOp_t op UNUSED) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);

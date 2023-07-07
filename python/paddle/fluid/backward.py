@@ -28,6 +28,8 @@ import warnings
 
 from collections.abc import Sequence
 
+import re
+
 __all__ = [
     'append_backward',
     'gradients',
@@ -366,7 +368,6 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
                 )
             ),
         )
-
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
@@ -385,7 +386,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
 
 def _create_loss_op_desc_(loss):
-    # 0D Tensor or 0-Size Tensor
+    # 0-D Tensor or 0-Size Tensor
     if len(loss.shape) == 0 or 0 in loss.shape:
         create_shape = loss.shape
     else:
@@ -459,10 +460,15 @@ def _strip_grad_suffix_(name):
     """
     Strip the grad suffix from the given variable name
     e.g. x@GRAD ==> x
+         x@GRAD@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
+         z@GRAD_slice_0@GRAD ==> z@GRAD_slice_0
+         grad/grad/z@GRAD@RENAME@block0@1@GRAD ==> z
     """
-    pos = name.find(core.grad_var_suffix())
-    new_name = name[:pos] if pos != -1 else name
+    pos = re.search(f'{core.grad_var_suffix()}+@', name) or re.search(
+        f'{core.grad_var_suffix()}$', name
+    )
+    new_name = name[: pos.start()] if pos is not None else name
     new_pos = name.rfind('grad/')
     return new_name[new_pos + 5 :] if new_pos != -1 else new_name
 
@@ -682,7 +688,6 @@ def _addup_repetitive_outputs_(
     for key, value in collections.OrderedDict(
         reversed(list(pending_sum_ops.items()))
     ).items():
-
         # NOTE(zhiqiu): Since reversed, the idx of op_descs to be inserted will remains correct.
         # For example, [0, 1, 2], and we want to insert 'a' at idx 1, 'b' at idx 2, and the expected result is [0, 1, 'a', 2, 'b'].
         # If reversed, we first insert 'b' at idx 2, it becomes [0, 1, 2, 'b'], and then insert 'a' at idx 1, it becomes [0, 1, 'a', 2, 'b'].
@@ -744,29 +749,32 @@ def _remove_no_grad_branch_(
     ]
     # Insert fill_any_like_op with value 0
     to_insert = []
-    for idx, op_desc in enumerate(op_descs):
-        for arg in op_desc.input_arg_names():
-            # arg is a gradient var name and arg should not have gradient
-            if core.grad_var_suffix() in arg and arg in no_grad_set:
-                x_in = _strip_grad_suffix_(arg)
-                # the reason should be: arg can be input of another grad op
-                # and the op is a not-to-remove op
-                new_op_desc = _create_op_desc_(
-                    "fill_any_like",
-                    {"X": [x_in]},
-                    {"Out": [arg]},
-                    {'value': 0, 'dtype': -1},
-                )
-                # update the mapping between fwd and bwd
-                if (
-                    grad_op_id_to_fwd_op is not None
-                    and grad_op_id_to_fwd_op.get(op_desc.original_id(), None)
-                    is not None
-                ):
-                    grad_op_id_to_fwd_op[
-                        new_op_desc.original_id()
-                    ] = grad_op_id_to_fwd_op[op_desc.original_id()]
-                to_insert.append((new_op_desc, idx))
+    if not core._is_bwd_prim_enabled():
+        for idx, op_desc in enumerate(op_descs):
+            for arg in op_desc.input_arg_names():
+                # arg is a gradient var name and arg should not have gradient
+                if core.grad_var_suffix() in arg and arg in no_grad_set:
+                    x_in = _strip_grad_suffix_(arg)
+                    # the reason should be: arg can be input of another grad op
+                    # and the op is a not-to-remove op
+                    new_op_desc = _create_op_desc_(
+                        "fill_any_like",
+                        {"X": [x_in]},
+                        {"Out": [arg]},
+                        {'value': 0, 'dtype': -1},
+                    )
+                    # update the mapping between fwd and bwd
+                    if (
+                        grad_op_id_to_fwd_op is not None
+                        and grad_op_id_to_fwd_op.get(
+                            op_desc.original_id(), None
+                        )
+                        is not None
+                    ):
+                        grad_op_id_to_fwd_op[
+                            new_op_desc.original_id()
+                        ] = grad_op_id_to_fwd_op[op_desc.original_id()]
+                    to_insert.append((new_op_desc, idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
@@ -1343,15 +1351,17 @@ def _append_backward_ops_(
 
     if core._is_bwd_prim_enabled():
         composite_block = program.clone().current_block()
-        # Infer shape for operators whose output haven't been created.
+        # Create output and infer shape for operators whose output haven't
+        # been created.
         for op in composite_block.ops:
-            if not all(
-                tuple(
-                    composite_block._find_var_recursive(arg)
-                    for arg in op.output_arg_names
-                )
-            ):
-                infershape_for_composite(composite_block, op.desc)
+            for name in op.output_arg_names:
+                if not (
+                    composite_block.desc.has_var_recursive(name.encode())
+                    or name == core.empty_var_name()
+                ):
+                    composite_block.create_var(name=name)
+            op.desc.infer_var_type(composite_block.desc)
+            op.desc.infer_shape(composite_block.desc)
 
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
@@ -1430,7 +1440,7 @@ def _append_backward_ops_(
             )
         else:
             default_ctx = getattr(
-                paddle.distributed.auto_parallel.dist_context,
+                paddle.distributed.auto_parallel.static.dist_context,
                 '_g_default_distributed_context',
                 None,
             )
@@ -1492,6 +1502,15 @@ def _append_backward_ops_(
                 or name in input_grad_names_set
             )
             is_append_grad = False
+
+            # NOTE: In primitive mode, the intermediate variable generated by
+            # decompositing raw grad op are not satisfied the rule of 'XX@GRAD',
+            # which will cause it be pruned according to current pruning logic.
+            # For simplicity, we treate all prmitive operators as one raw
+            # operator, and keep the pruning logic consistent with currently
+            # logic. The drawback of this solution is may lead to some primitive
+            # operators are not pruned, which is needed to fixed.
+            # FIXME: Optimize pruning logic from the perspective of whole graph.
             input_grad_names = []
             for op_desc in grad_op_desc:
                 input_grad_names += [
@@ -1499,20 +1518,20 @@ def _append_backward_ops_(
                     for name in op_desc.input_arg_names()
                     if is_grad_name(name)
                 ]
+
+            # some code of gradient ops, like increment, are not very
+            # standard, there is no @GRAD in these ops' inputs.
             if len(input_grad_names) == 0:
                 is_append_grad = True
-                break
+                continue
 
-            for op_desc in grad_op_desc:
-
-                # some code of gradient ops, like increment, are not very
-                # standard, there is no @GRAD in these ops' inputs.
-
-                if _some_in_set_(input_grad_names, input_grad_names_set):
+            if _some_in_set_(input_grad_names, input_grad_names_set):
+                is_append_grad = True
+                for op_desc in grad_op_desc:
                     grad_op_descs.append(op_desc)
-                    is_append_grad = True
                     for name in op_desc.output_arg_names():
                         input_grad_names_set.add(name)
+
             if is_append_grad:
                 grad_to_var.update(op_grad_to_var)
         else:
@@ -1774,17 +1793,19 @@ def infershape_for_composite(block, grad_op_desc):
         op_desc.check_attrs()
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
-        for arg in op_desc.output_arg_names():
-            if arg in new_vars:
-                _infer_var_data_type_shape_(arg, block)
-
         grad_op_desc.copy_from(op_desc)
 
-    # NOTE: Some operator doesn't infer dtype correctly, this patch set the
-    # grad_var dtype same with corresponding forward variable.
-    for arg in grad_op_desc.output_arg_names():
-        if arg in new_vars:
-            _infer_var_data_type_shape_(arg, block)
+    if not framework.OpProtoHolder.instance().has_op_proto(grad_op_desc.type()):
+        # NOTE: Some raw fluid grad operators which hadn't been decomposed may not
+        # implement InferVarType method, such as elementwise_xx_grad, and it will
+        # cause the dtype or shape of corresponding cotangent incorrect. This
+        # patch set the cotangent dtype and shape same with corresponding
+        # forward variable. For primitive operators, we have ensure all
+        # InferVarType method to be executed correctly in PR#52818, we skip
+        # this patch for primitive operators.
+        for arg in grad_op_desc.output_arg_names():
+            if arg in new_vars:
+                _infer_var_data_type_shape_(arg, block)
 
 
 def _rename_grad_(
@@ -1828,7 +1849,6 @@ def _get_stop_gradients_(program):
 
 
 def _get_son_parent_block_idx_dict(program, current_block_idx):
-
     son_parent_block_idx_dict = collections.OrderedDict()
     while current_block_idx >= 0:
         parent_block_idx = program.block(current_block_idx).parent_idx
@@ -2328,7 +2348,7 @@ def _find_op_path_(
         for i, op in enumerate(block.ops):
             if _some_in_set_(
                 op.desc.input_arg_names(), input_names
-            ) and core.has_non_empty_grad_op_maker(op.type):
+            ) and not core.has_empty_grad_op_maker(op.type):
                 for name in op.desc.output_arg_names():
                     if name not in no_grad_set:
                         input_names.add(name)
@@ -2347,7 +2367,7 @@ def _find_op_path_(
 
         if _some_in_set_(
             op.desc.output_arg_names(), output_names
-        ) and core.has_non_empty_grad_op_maker(op.type):
+        ) and not core.has_empty_grad_op_maker(op.type):
             for name in op.desc.input_arg_names():
                 if name not in no_grad_set:
                     output_names.add(name)
@@ -2362,7 +2382,7 @@ def _find_op_path_(
                 op.desc.output_arg_names(), output_names
             ):
                 relevant_op_flags[i] = True
-                if core.has_non_empty_grad_op_maker(op.type):
+                if not core.has_empty_grad_op_maker(op.type):
                     for name in op.desc.input_arg_names():
                         if name not in no_grad_set:
                             output_names.add(name)
@@ -2418,6 +2438,7 @@ def calc_gradient_helper(
     target_grad_map = {}
     rename_var_map = {}
     skip_rename_var_list = []
+    grad_name_set = set()
     for i, grad in enumerate(target_gradients):
         target = targets[i]
         grad_name = _append_grad_suffix_(target.name)
@@ -2447,9 +2468,10 @@ def calc_gradient_helper(
             input_grad_names_set.add(grad.name)
             rename_var_map[grad_name] = grad.name
 
+        grad_name_set.add(grad_name)
+
     if core._is_bwd_prim_enabled():
         core._set_prim_target_grad_name(target_grad_map)
-
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to
     # associate target_grad var name with first grad_op input name.
@@ -2460,7 +2482,6 @@ def calc_gradient_helper(
     for input in inputs:
         if input.block.program != prog:
             raise "input must be in the same program as targets"
-
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
     op_path_dict = dict()
@@ -2468,9 +2489,48 @@ def calc_gradient_helper(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
 
+    # only for composite to add grad_var of the last forward op
+    # who has more than one output, but targets only has one,
+    # so targets_gradients only add one grad_var,
+    # eg: op1 -> op2 -> var1 / var2 targets = var1,
+    # targets_gradients = var1_grad, need to add var2_grad here.
+    tmp_targets = targets
+
+    if core._is_bwd_prim_enabled():
+        for op in reversed(block.ops):
+            if op.type == "fill_any_like":
+                continue
+            # Some outputs of composite op are not needed and will be removed.
+            # Thus, those vars should not be added with another op.
+            keep_var_list = []
+            if op.type in core.ops_contain_none.keys():
+                values = core.ops_contain_none[op.type]
+                if isinstance(values, list):
+                    none_vars = values
+                else:
+                    none_vars = values(op)
+                for none_var_name in none_vars:
+                    keep_var_list.append(op.output(none_var_name)[0])
+
+            for var_name in op.desc.output_arg_names():
+                if keep_var_list and (var_name in keep_var_list):
+                    continue
+                grad_var_name = _append_grad_suffix_(var_name)
+                if grad_var_name not in grad_name_set:
+                    op_desc = _create_op_desc_(
+                        "fill_any_like",
+                        {"X": [var_name]},
+                        {"Out": [grad_var_name]},
+                        {'value': 0, 'dtype': targets[0].dtype},
+                    )
+                    block.desc.append_op().copy_from(op_desc)
+                    tmp_targets.append(block.var(var_name))
+            break
+        block.program._sync_with_cpp()
+
     # find no grad var by op_path
     no_grad_vars = _find_no_grad_vars(
-        block, op_path, targets, block_no_grad_set
+        block, op_path, tmp_targets, block_no_grad_set
     )
     block_no_grad_set.update(no_grad_vars)
 

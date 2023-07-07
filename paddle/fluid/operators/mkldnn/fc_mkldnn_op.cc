@@ -403,7 +403,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                              }));
   }
 
-  void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p,
+  void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p
+                         UNUSED,
                      const std::shared_ptr<dnnl::memory>& src_mem,
                      const phi::DenseTensor* x,
                      const dnnl::engine& engine) const {

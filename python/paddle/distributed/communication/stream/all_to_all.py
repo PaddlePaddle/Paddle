@@ -78,7 +78,7 @@ def _all_to_all_in_static_mode(
     if isinstance(in_tensor_or_tensor_list, list):
         if len(in_tensor_or_tensor_list) == 0:
             raise RuntimeError("The input tensor_list should not be empty.")
-        # 0D use stack/unstack while others use concat/split
+        # 0-D use stack/unstack while others use concat/split
         if len(in_tensor_or_tensor_list[0].shape) == 0:
             in_tensor = paddle.stack(in_tensor_or_tensor_list, axis=0)
         else:
@@ -115,7 +115,7 @@ def _all_to_all_in_static_mode(
     if isinstance(out_tensor_or_tensor_list, list):
         if not sync_op:
             dist.wait(out_tensor, use_calc_stream=False)
-        # 0D use stack/unstack while others use concat/split
+        # 0-D use stack/unstack while others use concat/split
         if len(in_tensor_or_tensor_list[0].shape) == 0:
             out_tensor_or_tensor_list.extend(paddle.unstack(out_tensor, 0))
         else:
@@ -185,7 +185,7 @@ def alltoall(
     if in_tensor_or_tensor_list is None:
         raise RuntimeError("The input should be specified.")
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         out_is_tensor = paddle.is_tensor(out_tensor_or_tensor_list)
         in_is_tensor = paddle.is_tensor(in_tensor_or_tensor_list)
@@ -335,7 +335,7 @@ def alltoall_single(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         return _alltoall_single_in_dygraph(
             out_tensor,

@@ -20,9 +20,8 @@ from .framework import (
     Variable,
     default_main_program,
     default_startup_program,
-    _non_static_mode,
+    in_dygraph_mode,
     _current_expected_place,
-    _in_eager_without_dygraph_check,
 )
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
@@ -382,6 +381,7 @@ class LayerHelperBase:
                     and dtype != core.VarDesc.VarType.FP64
                     and dtype != core.VarDesc.VarType.FP16
                     and dtype != core.VarDesc.VarType.BF16
+                    and dtype != core.VarDesc.VarType.INT8
                 ):
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16'] type. Set default_initializer to fit the parameter dtype!"
@@ -393,6 +393,7 @@ class LayerHelperBase:
                     'float64',
                     'bfloat16',
                     'float',
+                    'int8',
                 ]:
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16', 'float'] type. Set default_initializer to fit the parameter dtype!"
@@ -410,7 +411,7 @@ class LayerHelperBase:
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-        if _non_static_mode():
+        if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
             # check parameter name
@@ -528,7 +529,7 @@ class LayerHelperBase:
             initializer: initializer to use
         """
         assert isinstance(var, Variable)
-        if _non_static_mode():
+        if in_dygraph_mode():
             initializer(var, self.main_program.global_block())
         else:
             self.startup_program.global_block().create_var(

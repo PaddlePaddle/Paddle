@@ -25,6 +25,7 @@ from .grad_scaler import AmpScaler  # noqa: F401
 from .grad_scaler import OptimizerState  # noqa: F401
 
 from . import debugging  # noqa: F401
+from . import accuracy_compare  # noqa: F401
 
 from paddle.fluid import core
 from paddle.fluid.framework import (

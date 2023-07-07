@@ -154,7 +154,6 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
     class TestBatchNormOp(unittest.TestCase):
         def setUp(self):
             self.op_type = "batch_norm"
-            self.dtype = np.float32
             self.shape = [2, 3, 4, 5]
             self.data_layout = "NCHW"
             self.epsilon = 1e-05
@@ -162,6 +161,9 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             self.init_dtype()
             self.set_xpu()
             self.set_attrs()
+            self.rtol = 1e-5
+            if self.dtype == np.float16:
+                self.rtol = 1e-2
 
             if self.data_layout == "NHWC":
                 channel_size = self.shape[3]
@@ -175,15 +177,15 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             np.random.seed(1024)
             self.x_np = np.random.random_sample(self.shape).astype(self.dtype)
             self.scale_np = np.random.random_sample([channel_size]).astype(
-                self.dtype
+                np.float32
             )
             self.bias_np = np.random.random_sample([channel_size]).astype(
-                self.dtype
+                np.float32
             )
-            self.mean_np = np.zeros([channel_size]).astype(self.dtype)
-            self.variance_np = np.ones([channel_size]).astype(self.dtype)
-            self.saved_mean_np = np.zeros([channel_size]).astype(self.dtype)
-            self.saved_variance_np = np.ones([channel_size]).astype(self.dtype)
+            self.mean_np = np.zeros([channel_size]).astype(np.float32)
+            self.variance_np = np.ones([channel_size]).astype(np.float32)
+            self.saved_mean_np = np.zeros([channel_size]).astype(np.float32)
+            self.saved_variance_np = np.ones([channel_size]).astype(np.float32)
 
         def set_attrs(self):
             pass
@@ -244,7 +246,115 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                 self.epsilon,
                 self.data_layout,
             )
-            np.testing.assert_allclose(y_np_ref, y_np, rtol=1e-05)
+            np.testing.assert_allclose(y_np_ref, y_np, rtol=self.rtol)
+
+    class TestBatchNormOpUseGlobalStats(unittest.TestCase):
+        def setUp(self):
+            self.places = [paddle.XPUPlace(0)]
+            self.init_test()
+
+        # train mode
+        def init_test(self):
+            self.use_global_stats = True
+            self.trainable_statistics = False
+
+        def test_global_stats(self):
+            for p in self.places:
+                with fluid.dygraph.guard(p):
+                    x = paddle.randn([2, 6, 6, 4])
+                    net1 = paddle.nn.BatchNorm(
+                        6,
+                        param_attr=fluid.ParamAttr(
+                            initializer=paddle.nn.initializer.Constant(1.0)
+                        ),
+                        use_global_stats=self.use_global_stats,
+                        trainable_statistics=self.trainable_statistics,
+                    )
+                    net2 = paddle.nn.BatchNorm2D(
+                        6, use_global_stats=self.use_global_stats
+                    )
+                    net2.weight = net1.weight
+                    net2.bias = net1.bias
+                    if self.trainable_statistics:
+                        net1.training = False
+                        net2.training = False
+                    y1 = net1(x)
+                    y2 = net2(x)
+                    np.testing.assert_allclose(
+                        y1.numpy(), y2.numpy(), rtol=1e-5
+                    )
+
+    class TestBatchNormOpUseGlobalStats1(TestBatchNormOpUseGlobalStats):
+        # test mode
+        def init_test(self):
+            self.use_global_stats = True
+            self.trainable_statistics = True
+
+    class TestBatchNormUseGlobalStats2(TestBatchNormOpUseGlobalStats):
+        # train mode
+        def init_test(self):
+            self.use_global_stats = True
+            self.trainable_statistics = False
+
+
+support_types = get_xpu_op_support_types('batch_norm')
+for stype in support_types:
+    create_test_class(globals(), XPUTestBatchNormOp, stype)
+
+
+class XPUTestBatchNormGradOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'batch_norm'
+        self.use_dynamic_create_class = False
+
+    class TestBatchNormGradOp(unittest.TestCase):
+        def setUp(self):
+            self.op_type = "batch_norm"
+            self.shape = [2, 3, 4, 5]
+            self.data_layout = "NCHW"
+            self.epsilon = 1e-05
+            self.momentum = 0.9
+            self.init_dtype()
+            self.set_xpu()
+            self.set_attrs()
+            self.rtol = 1e-5
+            self.atol = 1e-4
+            if self.dtype == np.float16:
+                self.rtol = 1e-2
+                self.atol = 1e-3
+
+            if self.data_layout == "NHWC":
+                channel_size = self.shape[3]
+            elif self.data_layout == "NCHW":
+                channel_size = self.shape[1]
+            else:
+                raise ValueError(
+                    "Unsupported data layout! Only NCHW and NHWC is supported, but received "
+                    + self.data_layout
+                )
+            np.random.seed(1024)
+            self.x_np = np.random.random_sample(self.shape).astype(self.dtype)
+            self.scale_np = np.random.random_sample([channel_size]).astype(
+                np.float32
+            )
+            self.bias_np = np.random.random_sample([channel_size]).astype(
+                np.float32
+            )
+            self.mean_np = np.zeros([channel_size]).astype(np.float32)
+            self.variance_np = np.ones([channel_size]).astype(np.float32)
+            self.saved_mean_np = np.zeros([channel_size]).astype(np.float32)
+            self.saved_variance_np = np.ones([channel_size]).astype(np.float32)
+
+        def set_attrs(self):
+            pass
+
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.op_type = self.in_type
+            self.place = paddle.XPUPlace(0)
 
         def test_train(self):
             y_grad_np = np.random.random_sample(self.shape).astype(self.dtype)
@@ -346,61 +456,13 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                 outs = exe.run(program, feed=inputs, fetch_list=fetch_list)
                 for id, name in enumerate(fetch_list):
                     np.testing.assert_allclose(
-                        outputs[name], outs[id], rtol=1e-05, atol=1e-4
+                        outputs[name], outs[id], rtol=self.rtol, atol=self.atol
                     )
 
-    class TestBatchNormOpUseGlobalStats(unittest.TestCase):
-        def setUp(self):
-            self.places = [paddle.XPUPlace(0)]
-            self.init_test()
 
-        # train mode
-        def init_test(self):
-            self.use_global_stats = True
-            self.trainable_statistics = False
-
-        def test_global_stats(self):
-            for p in self.places:
-                with fluid.dygraph.guard(p):
-                    x = paddle.randn([2, 6, 6, 4])
-                    net1 = paddle.nn.BatchNorm(
-                        6,
-                        param_attr=fluid.ParamAttr(
-                            initializer=paddle.nn.initializer.Constant(1.0)
-                        ),
-                        use_global_stats=self.use_global_stats,
-                        trainable_statistics=self.trainable_statistics,
-                    )
-                    net2 = paddle.nn.BatchNorm2D(
-                        6, use_global_stats=self.use_global_stats
-                    )
-                    net2.weight = net1.weight
-                    net2.bias = net1.bias
-                    if self.trainable_statistics:
-                        net1.training = False
-                        net2.training = False
-                    y1 = net1(x)
-                    y2 = net2(x)
-                    np.testing.assert_allclose(
-                        y1.numpy(), y2.numpy(), rtol=1e-05
-                    )
-
-    class TestBatchNormOpUseGlobalStats1(TestBatchNormOpUseGlobalStats):
-        # test mode
-        def init_test(self):
-            self.use_global_stats = True
-            self.trainable_statistics = True
-
-    class TestBatchNormUseGlobalStats2(TestBatchNormOpUseGlobalStats):
-        # train mode
-        def init_test(self):
-            self.use_global_stats = True
-            self.trainable_statistics = False
-
-
-support_types = get_xpu_op_support_types('batch_norm')
-for stype in support_types:
-    create_test_class(globals(), XPUTestBatchNormOp, stype)
+support_types_grad = get_xpu_op_support_types('batch_norm_grad')
+for stype_grad in support_types_grad:
+    create_test_class(globals(), XPUTestBatchNormGradOp, stype_grad)
 
 if __name__ == '__main__':
     unittest.main()

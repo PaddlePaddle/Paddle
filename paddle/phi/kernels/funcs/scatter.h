@@ -72,7 +72,7 @@ elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void ScatterAssign(const phi::CPUContext& ctx,
+void ScatterAssign(const phi::CPUContext& ctx UNUSED,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output) {
@@ -241,7 +241,7 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void CPUScatterGradForX(const phi::CPUContext& ctx,
+void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
                         const DenseTensor& index,
                         DenseTensor* output) {
   int64_t index_size = index.dims()[0];

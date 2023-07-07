@@ -32,6 +32,19 @@ class Scope;
 namespace paddle {
 namespace framework {
 namespace ir {
+
+bool HasOutVarName(Node* op_node, std::string name) {
+  auto* op_desc = op_node->Op();
+  auto outputs = op_desc->Outputs();
+  for (auto iter : outputs) {
+    auto out_names = iter.second;
+    if (std::count(out_names.begin(), out_names.end(), name) > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 namespace patterns {
 
 struct VarWithRepeatedOpsPattern : public PatternBase {
@@ -88,63 +101,85 @@ class DeleteRepeatedOpsPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  int DeleteShapePass(ir::Graph* graph) const;
-
-  int DeleteSlicePass(ir::Graph* graph) const;
+  void DeleteRepeatedOps(
+      ir::Graph* graph,
+      const std::string& op_type,
+      std::function<std::string(OpDesc*)> gen_op_key_fn) const;
 
   const std::string name_scope_{"delete_repeated_ops_pass"};
 };
 
-int DeleteRepeatedOpsPass::DeleteShapePass(ir::Graph* graph) const {
+void DeleteRepeatedOpsPass::DeleteRepeatedOps(
+    ir::Graph* graph,
+    const std::string& op_type,
+    std::function<std::string(OpDesc*)> gen_op_key_fn) const {
   GraphPatternDetector gpd;
   patterns::VarWithRepeatedOpsPattern pattern(
-      gpd.mutable_pattern(), name_scope_, "shape");
+      gpd.mutable_pattern(), name_scope_, op_type);
 
   int delete_counts = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle DeleteShapePass";
+    VLOG(4) << "handle DeleteRepeatedOps";
     GET_IR_NODE_FROM_SUBGRAPH(in_var, in_var, pattern);
 
-    std::vector<Node*> shapes;
+    std::vector<std::string> invalid_out_ops{
+        "while", "conditional_block", "fetch"};
+    std::map<std::string, std::vector<Node*>> ops_map;
     for (auto* next_op : in_var->outputs) {
-      if (next_op->Name() != "shape") continue;
-      bool shape_out_has_control_flow_ops = false;
-      for (auto* shape_out_op : next_op->outputs[0]->outputs) {
-        if (shape_out_op->Name() == "while" ||
-            shape_out_op->Name() == "conditional_block") {
-          shape_out_has_control_flow_ops = true;
+      if (next_op->Name() != op_type) continue;
+      auto* op = next_op;
+      bool out_op_is_invalid = false;
+      for (auto* out_op : op->outputs[0]->outputs) {
+        if (std::count(invalid_out_ops.begin(),
+                       invalid_out_ops.end(),
+                       out_op->Name()) > 0 ||
+            HasOutVarName(out_op, op->outputs[0]->Name())) {
+          out_op_is_invalid = true;
           break;
         }
       }
-      if (!shape_out_has_control_flow_ops) {
-        shapes.push_back(next_op);
+      if (out_op_is_invalid) continue;
+      auto attr_key = gen_op_key_fn(op->Op());
+      ops_map[attr_key].push_back(op);
+    }
+    for (auto iter = ops_map.begin(); iter != ops_map.end();) {
+      if (iter->second.size() <= 1) {
+        iter = ops_map.erase(iter);
+      } else {
+        iter++;
       }
     }
-    if (shapes.size() <= 1) return;
 
-    auto* first_shape_out = shapes[0]->outputs[0];
-    auto first_shape_out_name = first_shape_out->Name();
-    std::unordered_set<const Node*> delete_nodes;
-    for (size_t i = 1; i < shapes.size(); i++) {
-      auto* cur_shape = shapes[i];
-      auto* cur_shape_out = cur_shape->outputs[0];
-      auto cur_shape_out_name = cur_shape_out->Name();
-      for (auto* shape_out_op : cur_shape_out->outputs) {
-        shape_out_op->Op()->Rename(cur_shape_out_name, first_shape_out_name);
-        IR_NODE_LINK_TO(first_shape_out, shape_out_op);
+    for (auto iter : ops_map) {
+      auto ops = iter.second;
+      auto* first_op_out = ops[0]->outputs[0];
+      auto first_op_out_name = first_op_out->Name();
+      std::unordered_set<const Node*> delete_nodes;
+      for (size_t i = 1; i < ops.size(); i++) {
+        auto* cur_op = ops[i];
+        auto* cur_op_out = cur_op->outputs[0];
+        auto cur_op_out_name = cur_op_out->Name();
+        for (auto* out_op : cur_op_out->outputs) {
+          out_op->Op()->RenameInput(cur_op_out_name, first_op_out_name);
+          IR_NODE_LINK_TO(first_op_out, out_op);
+        }
+        delete_nodes.insert(cur_op);
+        delete_nodes.insert(cur_op_out);
+        delete_counts++;
       }
-      delete_nodes.insert(cur_shape);
-      delete_nodes.insert(cur_shape_out);
-      delete_counts++;
+      GraphSafeRemoveNodes(graph, delete_nodes);
     }
-
-    GraphSafeRemoveNodes(graph, delete_nodes);
   };
 
   gpd(graph, handler);
-  return delete_counts;
+  if (delete_counts > 0) {
+    LOG(INFO) << "--- delete " << delete_counts << " repeated " << op_type
+              << " ops";
+  }
 }
+
+std::string GenShapeAttrKey(OpDesc* slice_op_desc) { return ""; }
 
 std::string GenSliceAttrKey(OpDesc* slice_op_desc) {
   std::string attr_key;
@@ -172,64 +207,27 @@ std::string GenSliceAttrKey(OpDesc* slice_op_desc) {
   return attr_key;
 }
 
-int DeleteRepeatedOpsPass::DeleteSlicePass(ir::Graph* graph) const {
-  GraphPatternDetector gpd;
-  patterns::VarWithRepeatedOpsPattern pattern(
-      gpd.mutable_pattern(), name_scope_, "slice");
+std::string GenCastAttrKey(OpDesc* cast_op_desc) {
+  auto in_dtype = cast_op_desc->GetAttrIfExists<int>("in_dtype");
+  auto out_dtype = cast_op_desc->GetAttrIfExists<int>("out_dtype");
+  return "in_dtype_" + std::to_string(in_dtype) + "_out_dtype_" +
+         std::to_string(out_dtype);
+}
 
-  int delete_counts = 0;
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* graph) {
-    VLOG(4) << "handle DeleteSlicePass";
-    GET_IR_NODE_FROM_SUBGRAPH(in_var, in_var, pattern);
+std::string GenAddAttrKey(OpDesc* add_op_desc) {
+  std::string x_name = add_op_desc->Input("X")[0];
+  std::string y_name = add_op_desc->Input("Y")[0];
+  auto axis = add_op_desc->GetAttrIfExists<int>("axis");
+  return x_name + "_" + y_name + "_axis_" + std::to_string(axis);
+}
 
-    std::map<std::string, std::vector<Node*>> slice_ops;
-    for (auto* next_op : in_var->outputs) {
-      if (next_op->Name() != "slice") continue;
-      auto* slice = next_op;
-      bool slice_out_has_control_flow_ops = false;
-      for (auto* slice_out_op : slice->outputs[0]->outputs) {
-        if (slice_out_op->Name() == "while" ||
-            slice_out_op->Name() == "conditional_block") {
-          slice_out_has_control_flow_ops = true;
-          break;
-        }
-      }
-      if (slice_out_has_control_flow_ops) continue;
-      auto attr_key = GenSliceAttrKey(slice->Op());
-      slice_ops[attr_key].push_back(slice);
-    }
-    for (auto iter = slice_ops.begin(); iter != slice_ops.end();) {
-      if (iter->second.size() <= 1) {
-        iter = slice_ops.erase(iter);
-      } else {
-        iter++;
-      }
-    }
-
-    for (auto iter : slice_ops) {
-      auto slices = iter.second;
-      auto* first_slice_out = slices[0]->outputs[0];
-      auto first_slice_out_name = first_slice_out->Name();
-      std::unordered_set<const Node*> delete_nodes;
-      for (size_t i = 1; i < slices.size(); i++) {
-        auto* cur_slice = slices[i];
-        auto* cur_slice_out = cur_slice->outputs[0];
-        auto cur_slice_out_name = cur_slice_out->Name();
-        for (auto* slice_out_op : cur_slice_out->outputs) {
-          slice_out_op->Op()->Rename(cur_slice_out_name, first_slice_out_name);
-          IR_NODE_LINK_TO(first_slice_out, slice_out_op);
-        }
-        delete_nodes.insert(cur_slice);
-        delete_nodes.insert(cur_slice_out);
-        delete_counts++;
-      }
-      GraphSafeRemoveNodes(graph, delete_nodes);
-    }
-  };
-
-  gpd(graph, handler);
-  return delete_counts;
+std::string GenScaleAttrKey(OpDesc* scale_op_desc) {
+  auto scale = scale_op_desc->GetAttrIfExists<float>("scale");
+  auto bias = scale_op_desc->GetAttrIfExists<float>("bias");
+  auto bias_after_scale =
+      scale_op_desc->GetAttrIfExists<bool>("bias_after_scale");
+  return "scale_" + std::to_string(scale) + "_bias_" + std::to_string(bias) +
+         "_bias_after_scale_" + std::to_string(bias_after_scale);
 }
 
 void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph) const {
@@ -237,15 +235,12 @@ void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
-  int delete_counts = DeleteShapePass(graph);
-  if (delete_counts > 0) {
-    LOG(INFO) << "--- delete " << delete_counts << " repeated shape ops";
-  }
-
-  delete_counts = DeleteSlicePass(graph);
-  if (delete_counts > 0) {
-    LOG(INFO) << "--- delete " << delete_counts << " repeated slice ops";
-  }
+  DeleteRepeatedOps(graph, "shape", GenShapeAttrKey);
+  DeleteRepeatedOps(graph, "slice", GenSliceAttrKey);
+  DeleteRepeatedOps(graph, "cast", GenCastAttrKey);
+  DeleteRepeatedOps(graph, "elementwise_add", GenAddAttrKey);
+  DeleteRepeatedOps(graph, "scale", GenScaleAttrKey);
+  DeleteRepeatedOps(graph, "cast", GenCastAttrKey);
 }
 
 }  // namespace ir

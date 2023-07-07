@@ -72,7 +72,7 @@
 #endif
 
 #ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -93,7 +93,66 @@
 #include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#endif
+
 namespace paddle {
+namespace {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
+                                GPUContextResource *gpu_resource,
+                                Place place_) {
+  gpu_context->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                                .GetAllocator(place_, gpu_resource->GetStream())
+                                .get());
+  gpu_context->SetPinnedAllocator(
+      memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
+  gpu_context->SetHostAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetAllocator(platform::CPUPlace())
+                                    .get());
+  gpu_context->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetZeroAllocator(place_)
+                                    .get());
+  gpu_context->SetHostZeroAllocator(
+      memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(platform::CPUPlace())
+          .get());
+  gpu_context->SetGenerator(
+      phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
+  gpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
+
+  gpu_context->SetStream(gpu_resource->GetStream());
+  gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
+  gpu_context->SetBlasTensorCoreHandle(
+      gpu_resource->GetBlasTensorCoreHandleCreator());
+  gpu_context->SetBlasTF32Handle(
+      gpu_resource->GetBlasTF32TensorCoreHandleCreator());
+  gpu_context->SetDnnHandle(gpu_resource->GetDnnHandleCreator());
+  gpu_context->SetSolverHandle(gpu_resource->GetSolverDnHandleCreator());
+  gpu_context->SetSparseHandle(gpu_resource->GetSparseHandleCreator());
+  gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDevice());
+
+  gpu_context->SetComputeCapability(gpu_resource->GetGpuComputeCapability());
+  gpu_context->SetMaxThreadsPerBlock(gpu_resource->GetGpuMaxThreadsPerBlock());
+  gpu_context->SetMaxThreadsPerMultiProcessor(
+      gpu_resource->GetGpuMaxThreadsPerMp());
+  gpu_context->SetMaxGridDimSize(gpu_resource->GetGpuMaxGridDimSize());
+  gpu_context->SetMultiProcessors(gpu_resource->GetGPUMultiProcessors());
+  gpu_context->SetDriverVersion(gpu_resource->GetGpuDriverVersion());
+  gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
+  VLOG(1) << "thread id is " << std::this_thread::get_id() << ", stream id is "
+          << reinterpret_cast<void *>(gpu_resource->GetStream())
+          << ", allotor ptr is "
+          << reinterpret_cast<void *>(
+                 memory::allocation::AllocatorFacade::Instance()
+                     .GetAllocator(place_, gpu_resource->GetStream())
+                     .get());
+}
+#endif
+}  // namespace
 
 using inference::Singleton;
 #ifdef PADDLE_WITH_TENSORRT
@@ -138,8 +197,6 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
     case paddle_infer::PlaceType::kGPU:
       // NOTE: phi also support phi::Backend::GPUDNN.
       return phi::Backend::GPU;
-    case paddle_infer::PlaceType::kNPU:
-      return phi::Backend::NPU;
     case paddle_infer::PlaceType::kXPU:
       return phi::Backend::XPU;
     case paddle_infer::PlaceType::kCPU:
@@ -150,8 +207,8 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CUSTOM;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Paddle Inference not support backend, we now only support GPU, XPU, "
-          "NPU and CPU."));
+          "Paddle Inference not support backend, we now only support GPU, XPU "
+          "and CPU."));
       return phi::Backend::CPU;
   }
 }
@@ -336,25 +393,20 @@ bool AnalysisPredictor::Init(
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  if (config_.use_xpu_ && config_.use_external_stream_) {
+  if (config_.use_xpu_ && !config_.use_lite_) {
     private_context_ = true;
-  }
-  if (private_context_) {
-    if (!status_is_cloned_) {
+    if (!status_is_cloned_ && config_.external_stream_enabled()) {
       predictor_stream_ = config_.GetExecStream();
     }
-    // NOTE: If the external_stream equals to global_device_contexts's stream,
-    // then fallback.
-    auto global_stream =
-        static_cast<phi::XPUContext *>(
-            platform::DeviceContextPool::Instance().Get(place_))
-            ->stream();
-    if (predictor_stream_ != global_stream) {
-      InitResourceManager(predictor_stream_);
-      InitDeviceContexts();
+    if (predictor_stream_ == nullptr) {
+      auto *global_context = static_cast<phi::XPUContext *>(
+          platform::DeviceContextPool::Instance().Get(place_));
+      predictor_stream_ = global_context->stream();
     }
+    InitDeviceContexts();
   }
 #endif
+
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
@@ -388,6 +440,7 @@ void AnalysisPredictor::InitPlace() {
 #endif  // LITE_SUBGRAPH_WITH_XPU
     } else {
 #ifdef PADDLE_WITH_XPU
+      phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
       place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
@@ -422,7 +475,8 @@ void AnalysisPredictor::InitPlace() {
 #endif
   } else if (config_.use_custom_device()) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    place_ = paddle::platform::CustomPlace(config_.custom_device_type());
+    place_ = paddle::platform::CustomPlace(config_.custom_device_type(),
+                                           config_.custom_device_id());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use CustomDevice forward propagation, but Paddle was not "
@@ -438,87 +492,30 @@ void AnalysisPredictor::InitResourceManager(void *stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   predictor_stream_ =
       ResourceManager::Instance().InitGPUResource(place_, stream);
-#elif defined(PADDLE_WITH_XPU)
-  predictor_stream_ =
-      ResourceManager::Instance().InitXPUResource(place_, stream);
 #endif
 }
 
 void AnalysisPredictor::InitDeviceContexts() {
-// Init GPUContext.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Init GPUContext.
   if (place_.GetType() == phi::AllocationType::GPU) {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
           auto *gpu_resource =
               ResourceManager::Instance().GetGPUResource(predictor_stream_);
           auto *gpu_context = new InferGPUContext(place_);
-          gpu_context->SetAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(place_, gpu_resource->GetStream())
-                  .get());
-          gpu_context->SetPinnedAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
-                  .get());
-          gpu_context->SetHostAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(platform::CPUPlace())
-                  .get());
-          gpu_context->SetZeroAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetZeroAllocator(place_)
-                  .get());
-          gpu_context->SetHostZeroAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetZeroAllocator(platform::CPUPlace())
-                  .get());
-          gpu_context->SetGenerator(
-              phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
-          gpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
-
-          gpu_context->SetStream(gpu_resource->GetStream());
-          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
-          gpu_context->SetBlasTensorCoreHandle(
-              gpu_resource->GetBlasTensorCoreHandleCreator());
-          gpu_context->SetBlasTF32Handle(
-              gpu_resource->GetBlasTF32TensorCoreHandleCreator());
-          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandleCreator());
-          gpu_context->SetSolverHandle(
-              gpu_resource->GetSolverDnHandleCreator());
-          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandleCreator());
-          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDeviceCreator());
-          gpu_context->SetComputeCapability(
-              gpu_resource->GetGpuComputeCapability());
-          gpu_context->SetMaxThreadsPerBlock(
-              gpu_resource->GetGpuMaxThreadsPerBlock());
-          gpu_context->SetMaxThreadsPerMultiProcessor(
-              gpu_resource->GetGpuMaxThreadsPerMp());
-          gpu_context->SetMaxGridDimSize(gpu_resource->GetGpuMaxGridDimSize());
-          gpu_context->SetMultiProcessors(
-              gpu_resource->GetGPUMultiProcessors());
-          gpu_context->SetDriverVersion(gpu_resource->GetGpuDriverVersion());
-          gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
-          VLOG(1) << "thread id is " << std::this_thread::get_id()
-                  << ", stream id is "
-                  << reinterpret_cast<void *>(gpu_resource->GetStream())
-                  << ", allotor ptr is "
-                  << reinterpret_cast<void *>(
-                         memory::allocation::AllocatorFacade::Instance()
-                             .GetAllocator(place_, gpu_resource->GetStream())
-                             .get());
+          UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
   }
 #endif
-#if defined(PADDLE_WITH_XPU)
+#ifdef PADDLE_WITH_XPU
   if (place_.GetType() == phi::AllocationType::XPU) {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
-          auto *xpu_resource =
-              ResourceManager::Instance().GetXPUResource(predictor_stream_);
           auto &instance = memory::allocation::AllocatorFacade::Instance();
-          auto *xpu_context = new InferXPUContext(place_);
+          auto *xpu_context =
+              new InferXPUContext(place_, config_.xpu_config().context_gm_size);
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
@@ -529,15 +526,11 @@ void AnalysisPredictor::InitDeviceContexts() {
               instance.GetZeroAllocator(place_).get());
           xpu_context->SetHostZeroAllocator(
               instance.GetZeroAllocator(platform::CPUPlace()).get());
-          xpu_context->SetStream(xpu_resource->GetStream());
-          xpu_context->SetDriverVersion(xpu_resource->GetDriverVersion());
-          xpu_context->SetRuntimeVersion(xpu_resource->GetRuntimeVersion());
-          xpu_context->SetXpuVersion(xpu_resource->GetXpuVersion());
+          xpu_context->SetStream(predictor_stream_);
           return std::unique_ptr<phi::DeviceContext>(xpu_context);
         }));
   }
 #endif
-  // TODO(Inference): Support other backends.
 }
 
 void *AnalysisPredictor::GetExecStream() const {
@@ -565,6 +558,14 @@ void *AnalysisPredictor::GetExecStream() const {
     }
   }
 #endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (place_.GetType() == phi::AllocationType::CUSTOM) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    return reinterpret_cast<const phi::CustomContext *>(pool.Get(place_))
+        ->stream();
+  }
+#endif
   // TODO(inference): Support other backends.
   return nullptr;
 }
@@ -582,6 +583,11 @@ const void *AnalysisPredictor::GetDeviceContexts() const {
 
 bool AnalysisPredictor::PrepareScope(
     const std::shared_ptr<framework::Scope> &parent_scope) {
+#ifdef PADDLE_WITH_XPU
+  // Set "XPU_PADDLE_L3_SIZE" to "0" to avoid malloc l3 cache when xpu_context
+  // init.
+  setenv("XPU_PADDLE_L3_SIZE", "0", 0);
+#endif
   if (parent_scope) {
     PADDLE_ENFORCE_NOT_NULL(
         parent_scope,
@@ -679,12 +685,16 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
     return PrepareFleetExecutor();
-  }
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use FleetExecutor since it's not compiled with PSCORE,"
+        "Please recompile or reinstall Paddle with PSCORE support."));
 #endif
+  }
   DisablePrepareDataOpt(inference_program_, 0, false);
 
   executor_->Prepare(
@@ -857,6 +867,30 @@ void AnalysisPredictor::InsertCommOp(
     new_var->SetPersistable(true);
     framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
     gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint",
+                            config_.dist_config().current_endpoint());
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else if (config_.use_custom_device()) {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_xccl_id");
     gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
     gen_bkcl_id_op->SetAttr("rank", rank);
     gen_bkcl_id_op->SetAttr("endpoint",
@@ -1092,7 +1126,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -1156,7 +1190,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -1318,6 +1352,7 @@ void AnalysisPredictor::PrepareArgument() {
   // Analyze inference_program
   argument_->SetPredictorID(predictor_id_);
   argument_->SetRootPredictorID(root_predictor_id_);
+  argument_->SetSaveOptimizedModel(config_.save_optimized_model_);
   argument_->SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_->SetModelDir(config_.model_dir());
@@ -1333,7 +1368,8 @@ void AnalysisPredictor::PrepareArgument() {
   // For JITLayer
   argument_->SetSkipLoadParams(config_.skip_load_params_);
 
-  argument_->SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+  argument_->SetTensorRtPrecisionMode(static_cast<int>(
+      paddle::ConvertPrecision(config_.tensorrt_precision_mode_)));
   argument_->SetTensorRtUseOSS(config_.trt_use_varseqlen_);
   argument_->SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
   argument_->SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
@@ -1354,6 +1390,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
     argument_->SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_->SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_->SetTensorRtUseCudaGraph(config_.trt_use_cuda_graph_);
     argument_->SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_->SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
     argument_->SetTensorRtAllowBuildAtRuntime(
@@ -1373,25 +1410,21 @@ void AnalysisPredictor::PrepareArgument() {
         config_.dlnne_disable_nodes_by_outputs_);
     argument_->SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
     argument_->SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
-    argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
+    argument_->SetDlnnePrecisionMode(static_cast<int>(
+        paddle::ConvertPrecision(config_.dlnne_precision_mode_)));
   }
 
   argument_->SetUseXpu(config_.use_xpu_);
   if (config_.lite_engine_enabled()) {
     argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
-    argument_->SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_->SetLitePrecisionMode(static_cast<int>(
+        paddle::ConvertPrecision(config_.lite_precision_mode_)));
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-    argument_->SetXpuLocked(config_.xpu_locked_);
-    argument_->SetXpuAutotune(config_.xpu_autotune_);
-    argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-    argument_->SetXpuPrecision(config_.xpu_precision_);
-    argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-    argument_->SetXpuDeviceId(config_.xpu_device_id_);
-    argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_->SetXpuLocked(config_.xpu_lite_l3_locked_);
+    argument_->SetXpuEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
     argument_->SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
     argument_->SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
@@ -1433,9 +1466,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
-  argument_->SetUseNpu(config_.use_npu_);
-  argument_->SetNPUDeviceId(config_.npu_device_id());
-
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
@@ -1474,21 +1504,39 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+
   argument_->SetUseXpu(config_.use_xpu_);
-  argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-  argument_->SetXpuLocked(config_.xpu_locked_);
-  argument_->SetXpuAutotune(config_.xpu_autotune_);
-  argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-  argument_->SetXpuPrecision(config_.xpu_precision_);
-  argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-  argument_->SetXpuDeviceId(config_.xpu_device_id_);
-  argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
-  argument_->SetXpuQuantPostDynamicWeightBits(
-      config_.xpu_quant_post_dynamic_weight_bits_);
-  argument_->SetXpuQuantPostDynamicOpTypss(
-      config_.xpu_quant_post_dynamic_op_types_);
-#endif
+  argument_->SetXpuDeviceId(config_.xpu_config_.device_id);
+  argument_->SetXpuL3Size(config_.xpu_config_.l3_size);
+  argument_->SetXpuL3Ptr(config_.xpu_config_.l3_ptr);
+  argument_->SetXpuL3AutotuneSize(config_.xpu_config_.l3_autotune_size);
+  argument_->SetXpuContextGmSize(config_.xpu_config_.context_gm_size);
+  argument_->SetXpuContext(config_.xpu_config_.context);
+  argument_->SetXpuStream(config_.xpu_config_.stream);
+  argument_->SetXpuConvAutotuneLevel(config_.xpu_config_.conv_autotune_level);
+  argument_->SetXpuConvAutotuneFile(config_.xpu_config_.conv_autotune_file);
+  argument_->SetXpuConvAutotuneFileWriteback(
+      config_.xpu_config_.conv_autotune_file_writeback);
+  argument_->SetXpuFcAutotuneLevel(config_.xpu_config_.fc_autotune_level);
+  argument_->SetXpuFcAutotuneFile(config_.xpu_config_.fc_autotune_file);
+  argument_->SetXpuFcAutotuneFileWriteback(
+      config_.xpu_config_.fc_autotune_file_writeback);
+  argument_->SetXpuGemmComputePrecision(
+      config_.xpu_config_.gemm_compute_precision);
+  argument_->SetXpuTransformerSoftmaxOptimizeLevel(
+      config_.xpu_config_.transformer_softmax_optimize_level);
+  argument_->SetXpuTransformerEncoderAdaptiveSeqlen(
+      config_.xpu_config_.transformer_encoder_adaptive_seqlen);
+  argument_->SetXpuQuantPostStaticGeluOutThreshold(
+      config_.xpu_config_.quant_post_static_gelu_out_threshold);
+  argument_->SetXpuQuantPostDynamicActivationMethod(
+      config_.xpu_config_.quant_post_dynamic_activation_method);
+  argument_->SetXpuQuantPostDynamicWeightPrecision(
+      config_.xpu_config_.quant_post_dynamic_weight_precision);
+  argument_->SetXpuQuantPostDynamicOpTypes(
+      config_.xpu_config_.quant_post_dynamic_op_types);
+  argument_->SetXpuLiteL3Locked(config_.xpu_lite_l3_locked_);
+  argument_->SetXpuLiteEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
 
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
@@ -1525,18 +1573,18 @@ void AnalysisPredictor::PrepareArgument() {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
-      LOG(INFO)
-          << "This model run in Paddle-GPU mixed precision mode with no ir "
-             "optimization.";
+      LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
+                   "optimization.";
     } else {
-      LOG(INFO) << "ir_optim is turned off, no IR pass will be executed.";
+      LOG(INFO)
+          << "Ir optimization is turned off, no ir pass will be executed.";
     }
   } else {
     if (config_.ir_debug_) {
       pass_builder->TurnOnDebug();
     }
     if (config_.enable_gpu_mixed_) {
-      LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
+      LOG(INFO) << "This model run in GPU mixed precision mode.";
     }
   }
 
@@ -1559,6 +1607,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+  argument_->SetEnableLowPrecisionIO(config_.enable_low_precision_io_);
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
@@ -2043,12 +2092,42 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+#ifdef PADDLE_WITH_XPU
+  InferXPUContext *infer_xpu_ctx = nullptr;
+  if (config_.use_xpu_ && !config_.use_lite_) {
+    PADDLE_ENFORCE(
+        private_context_,
+        paddle::platform::errors::Fatal(
+            "Must use private context if run predictor on xpu place."));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    infer_xpu_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    auto *x_context = static_cast<xpu::Context *>(config_.xpu_config_.context);
+    if (x_context != nullptr) {
+      infer_xpu_ctx->SetXContext(x_context);
+    }
+    infer_xpu_ctx->SetStream(predictor_stream_);
+    infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
+                             config_.xpu_config_.l3_ptr,
+                             config_.xpu_config_.l3_autotune_size,
+                             place_);
+  }
+#endif
+
   executor_->Run();
   inference::DisplayMemoryInfo(place_, "after run");
 
-  if (config_.shape_range_info_collected()) {
-    CollectShapeRangeInfo();
+#ifdef PADDLE_WITH_XPU
+  if (config_.use_xpu_ && !config_.use_lite_ && infer_xpu_ctx != nullptr) {
+    infer_xpu_ctx->L3CacheAutotune();
   }
+#endif
 
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -2067,7 +2146,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -2086,78 +2165,73 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 #else
     cudaStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
 #endif
-    ResourceManager::Instance().GpuResourceReBindStream(predictor_stream_,
+    ResourceManager::Instance().GpuResourceSwitchStream(predictor_stream_,
                                                         stream);
     predictor_stream_ = stream;
 
-    auto *dev_ctxs = reinterpret_cast<const std::map<
-        phi::Place,
-        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        this->GetDeviceContexts());
-    auto *dev_ctx =
-        static_cast<InferGPUContext *>(dev_ctxs->at(place_).get().get());
-    dev_ctx->SetStream(stream);
+    auto *dev_ctxs = const_cast<
+        std::map<phi::Place,
+                 std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        reinterpret_cast<const std::map<
+            phi::Place,
+            std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+            this->GetDeviceContexts()));
+
+    dev_ctxs->erase(place_);
+    dev_ctxs->emplace(
+        place_, std::async(std::launch::deferred, [=] {
+          auto *gpu_resource =
+              ResourceManager::Instance().GetGPUResource(predictor_stream_);
+          auto *gpu_context = new InferGPUContext(place_);
+          UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
+          return std::unique_ptr<phi::DeviceContext>(gpu_context);
+        }));
   }
 
   return ZeroCopyRun();
 }
 #endif
 
-bool AnalysisPredictor::ExpRunWithExternalStream(void *stream) {
-#if defined(PADDLE_WITH_XPU)
-  if (!private_context_) {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Please use config.SetExecStream to init resources, and then we "
-        "will bind resources to execution stream."));
-  }
-  if (stream != predictor_stream_) {
-    paddle::platform::XPUStreamSync(
-        static_cast<paddle::xpuStream>(predictor_stream_));
-    ResourceManager::Instance().XpuResourceReBindStream(predictor_stream_,
-                                                        stream);
-    predictor_stream_ = stream;
-
-    auto *dev_ctxs = reinterpret_cast<const std::map<
-        phi::Place,
-        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        this->GetDeviceContexts());
-    auto *dev_ctx =
-        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
-    dev_ctx->SetStream(stream);
-  }
-  return ZeroCopyRun();
-#endif
-  return false;
-}
-
-void AnalysisPredictor::CollectShapeRangeInfo() {
-  // if use gpu, sync first.
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
-  if (config_.use_gpu()) {
+void AnalysisPredictor::HookCollectShapeRangeInfo() {
+  auto hook = [&](const std::string &op_type,
+                  const std::string &input_name,
+                  const paddle::Tensor &var) -> void {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto *dev_ctx = pool.Get(place_);
-    auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+      auto *dev_ctx = pool.Get(place_);
+      auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(stream);
+      hipStreamSynchronize(stream);
 #else
-    cudaStreamSynchronize(stream);
+      cudaStreamSynchronize(stream);
 #endif
 #endif
-  }
-
-  std::vector<std::string> var_names = sub_scope_->LocalVarNames();
-  for (const auto &name : var_names) {
-    auto *var = sub_scope_->GetVar(name);
-    if (!var->IsType<phi::DenseTensor>()) {
-      continue;
     }
-    auto tensor = var->Get<phi::DenseTensor>();
-    if (!tensor.initialized()) continue;
+
+    auto *new_var = sub_scope_->GetVar(input_name);
+    if (!new_var) return;
+    if (!new_var->IsType<phi::DenseTensor>()) {
+      return;
+    }
+    auto tensor = new_var->Get<phi::DenseTensor>();
+    if (!tensor.initialized()) return;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
-    shape_info_[name].emplace_back(shape);
+    if (shape.size() >= 1) {
+      shape_info_[input_name].emplace_back(shape);
+    } else if (tensor.numel() > 0) {
+      // This must be a zero dimension tensor.
+      PADDLE_ENFORCE_EQ(tensor.numel(),
+                        1UL,
+                        platform::errors::PreconditionNotMet(
+                            "This tensor must have one element, but got %ld.",
+                            tensor.numel()));
+      std::vector<int32_t> zero_shape(1, 1);
+      shape_info_[input_name].emplace_back(zero_shape);
+    }
 
     // We need collect value range for shape tensor for Paddle-TRT's use.
     // To be noticed, this method to identify all shape tensors is based on
@@ -2202,9 +2276,41 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
                              nullptr);
 #endif
       }
-      shape_tensor_value_[name].emplace_back(int32_host);
+      shape_tensor_value_[input_name].emplace_back(int32_host);
     }
+  };
+  RegisterInputHook(hook);
+}
+
+bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
+#ifdef PADDLE_WITH_XPU
+  auto xpu_runtime_config =
+      reinterpret_cast<paddle_infer::experimental::XpuRuntimeConfig *>(config);
+
+  config_.xpu_config_.context = xpu_runtime_config->context;
+  auto *stream = xpu_runtime_config->stream;
+  if (stream != nullptr && stream != predictor_stream_) {
+    paddle::platform::XPUStreamSync(
+        static_cast<paddle::xpuStream>(predictor_stream_));
+    predictor_stream_ = stream;
   }
+
+  auto l3_size = xpu_runtime_config->l3_size;
+  auto l3_autotune_size = xpu_runtime_config->l3_autotune_size;
+  PADDLE_ENFORCE_LE(
+      l3_autotune_size,
+      l3_size,
+      phi::errors::InvalidArgument(
+          "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
+          l3_autotune_size,
+          l3_size));
+  config_.xpu_config_.l3_size = l3_size;
+  config_.xpu_config_.l3_ptr = xpu_runtime_config->l3_ptr;
+  config_.xpu_config_.l3_autotune_size = l3_autotune_size;
+
+  return ZeroCopyRun();
+#endif
+  return false;
 }
 
 void AnalysisPredictor::StatisticShapeRangeInfo() {
@@ -2493,10 +2599,6 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (predictor_stream_ != nullptr) {
     ResourceManager::Instance().DestroyGPUResource(predictor_stream_);
   }
-#elif defined(PADDLE_WITH_XPU)
-  if (predictor_stream_ != nullptr) {
-    ResourceManager::Instance().DestroyXPUResource(predictor_stream_);
-  }
 #endif
 
   if (place_.GetType() != phi::AllocationType::UNDEFINED) {
@@ -2532,6 +2634,14 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   x->Init(scope_, inference_program_);
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
+#endif
+#ifdef PADDLE_WITH_LITE
+#ifdef LITE_SUBGRAPH_WITH_XPU
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_,
+                                config_.xpu_config_.stream);
+#else
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_, nullptr);
+#endif
 #endif
   return std::unique_ptr<PaddlePredictor>(x);
 }
@@ -2579,25 +2689,51 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
-  static std::once_flag register_hook_flag;
-  std::call_once(register_hook_flag, [this] {
-    executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
-      for (auto &output : op->Outputs()) {
-        for (auto &var_name : output.second) {
-          auto *var = this->sub_scope_->FindVar(var_name);
-          if (!var || !var->IsType<phi::DenseTensor>()) continue;
-          auto dense_tensor = var->Get<phi::DenseTensor>();
-          if (!dense_tensor.initialized()) continue;
-          auto tensor = this->GetOutputTensor(var_name);
-          for (auto &hookfunc : this->hookfuncs_) {
-            hookfunc(op->Type(), var_name, *tensor);
+void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
+  static std::once_flag register_input_hook_flag;
+  std::call_once(register_input_hook_flag, [this] {
+    executor_->RegisterInputHook(
+        [this](framework::OperatorBase *op, framework::Scope *scope) {
+          for (auto &input : op->Inputs()) {
+            for (auto &var_name : input.second) {
+              auto *var = scope->FindVar(var_name);
+              if (!var || !var->IsType<phi::DenseTensor>()) continue;
+              auto dense_tensor = var->Get<phi::DenseTensor>();
+              if (!dense_tensor.initialized()) continue;
+              auto tensor = paddle::Tensor(
+                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+              for (auto &hookfunc : this->input_hookfuncs_) {
+                hookfunc(op->Type(), var_name, tensor);
+              }
+            }
           }
-        }
-      }
-    });
+        });
   });
-  hookfuncs_.push_back(hookfunc);
+  input_hookfuncs_.push_back(hookfunc);
+}
+
+void AnalysisPredictor::RegisterOutputHook(
+    const OutputTensorHookFunc &hookfunc) {
+  static std::once_flag register_output_hook_flag;
+  std::call_once(register_output_hook_flag, [this] {
+    executor_->RegisterOutputHook(
+        [this](framework::OperatorBase *op, framework::Scope *scope) {
+          for (auto &output : op->Outputs()) {
+            for (auto &var_name : output.second) {
+              auto *var = scope->FindVar(var_name);
+              if (!var || !var->IsType<phi::DenseTensor>()) continue;
+              auto dense_tensor = var->Get<phi::DenseTensor>();
+              if (!dense_tensor.initialized()) continue;
+              auto tensor = paddle::Tensor(
+                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+              for (auto &hookfunc : this->output_hookfuncs_) {
+                hookfunc(op->Type(), var_name, tensor);
+              }
+            }
+          }
+        });
+  });
+  output_hookfuncs_.push_back(hookfunc);
 }
 
 template <>
@@ -2653,6 +2789,7 @@ USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
+USE_TRT_CONVERTER(einsum)
 #endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
@@ -2771,6 +2908,7 @@ USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
+USE_TRT_CONVERTER(lookup_table_v2)
 USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(expand_as_v2)
 USE_TRT_CONVERTER(take_along_axis)
@@ -2808,7 +2946,7 @@ Predictor::Predictor(const Config &config) {
                       "and it falls back to use Paddle Inference.";
     } else if (!paddle::CheckConvertToONNX(config)) {
       LOG(WARNING)
-          << "Paddle2ONNX do't support convert the Model， fall back to using "
+          << "Paddle2ONNX do't support convert the Model, fall back to using "
              "Paddle Inference.";
     } else {
       predictor_ =
@@ -2881,8 +3019,11 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
-void Predictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+void Predictor::RegisterOutputHook(const OutputTensorHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
+}
+void Predictor::RegisterInputHook(const OutputTensorHookFunc &hookfunc) {
+  predictor_->RegisterInputHook(hookfunc);
 }
 
 void *Predictor::GetExecStream() const { return predictor_->GetExecStream(); }
@@ -3007,10 +3148,11 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
 #endif
   return false;
 }
-bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
-                                          void *stream) {
+
+bool InternalUtils::RunWithRuntimeConfig(paddle_infer::Predictor *p,
+                                         void *config) {
   auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  return pred->ExpRunWithExternalStream(stream);
+  return pred->ExpRunWithRuntimeConfig(config);
 }
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,

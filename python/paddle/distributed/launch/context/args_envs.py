@@ -14,6 +14,7 @@
 
 import os
 from argparse import REMAINDER, ArgumentParser
+from distutils.util import strtobool
 
 env_args_mapping = {
     'POD_IP': 'host',
@@ -22,6 +23,8 @@ env_args_mapping = {
     'PADDLE_NNODES': 'nnodes',
     'PADDLE_RUN_MODE': 'run_mode',
     'PADDLE_LOG_LEVEL': 'log_level',
+    'PADDLE_LOG_OVERWRITE': 'log_overwrite',
+    'PADDLE_SORT_IP': 'sort_ip',
     'PADDLE_NPROC_PER_NODE': 'nproc_per_node',
     'PADDLE_JOB_ID': 'job_id',
     'PADDLE_RANK': 'rank',
@@ -61,7 +64,7 @@ def parse_args():
     )
 
     base_group.add_argument(
-        "--legacy", type=bool, default=False, help="use legacy launch"
+        "--legacy", type=strtobool, default=False, help="use legacy launch"
     )
 
     base_group.add_argument(
@@ -70,6 +73,27 @@ def parse_args():
 
     base_group.add_argument(
         "--log_level", type=str, default="INFO", help="log level. Default INFO"
+    )
+
+    base_group.add_argument(
+        "--log_overwrite",
+        type=strtobool,
+        default=False,
+        help="overwrite exits logfiles. Default False",
+    )
+
+    base_group.add_argument(
+        "--sort_ip",
+        type=strtobool,
+        default=False,
+        help="rank node by ip. Default False",
+    )
+
+    base_group.add_argument(
+        "--enable_gpu_log",
+        type=strtobool,
+        default=True,
+        help="enable capture gpu log while running. Default True",
     )
 
     base_group.add_argument(
@@ -144,6 +168,13 @@ def parse_args():
         "training script",
     )
 
+    base_group.add_argument(
+        "--auto_tuner_json",
+        type=str,
+        default=None,
+        help="auto tuner json file path",
+    )
+
     base_group.add_argument('training_script_args', nargs=REMAINDER)
 
     ps_group = parser.add_argument_group("Parameter-Server Parameters")
@@ -191,4 +222,9 @@ def parse_args():
         help="seconds to wait before elastic job begin to train",
     )
 
-    return parser.parse_known_args()
+    args = parser.parse_known_args()
+    env_rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
+    if env_rank >= 0:
+        assert hasattr(args[0], "rank")
+        args[0].rank = env_rank
+    return args

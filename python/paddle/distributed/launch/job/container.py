@@ -25,7 +25,7 @@ class Container:
     TODO(kuizhiqing) A container can be run by process/thread or just a callable function
     '''
 
-    def __init__(self, entrypoint=[], rank=-1, env={}):
+    def __init__(self, entrypoint=[], rank=-1, env={}, overwrite_log=False):
         self._entrypoint = entrypoint
         self._rank = rank
         self._out = None
@@ -38,6 +38,8 @@ class Container:
 
         self._log_handler = None
         self._shell = False
+
+        self.log_mode = 'w' if overwrite_log else 'a'
 
     @property
     def env(self):
@@ -104,7 +106,7 @@ class Container:
             d = os.path.dirname(pth)
             if not os.path.isdir(d):
                 os.makedirs(d, exist_ok=True)
-            return open(pth, 'a')
+            return open(pth, self.log_mode)
         except:
             return None
 
@@ -120,7 +122,7 @@ class Container:
         elif self._err:
             self._stderr = self._get_fd(self._err) or sys.stderr
 
-        if not self._log_handler:
+        if self._out and not self._log_handler:
             self._log_handler = open(self._out)
             self._log_handler.seek(0, 2)
             self._log_start_offset = self._log_handler.tell()
@@ -179,7 +181,7 @@ class Container:
 
     def logs(self, fn=None, offset=0, whence=1, limit=1000):
         if not self._log_handler:
-            self._log_handler = open(self._out)
+            return
 
         if fn is None:
             fn = sys.stdout
@@ -201,7 +203,7 @@ class Container:
 
     def tail(self, length=3000):
         if not self._log_handler:
-            self._log_handler = open(self._out)
+            return
 
         try:
             self._log_handler.seek(0, 2)

@@ -359,7 +359,6 @@ class LBFGS(Optimizer):
 
             import paddle
             import numpy as np
-            from paddle.incubate.optimizer import LBFGS
 
             paddle.disable_static()
             np.random.seed(0)
@@ -380,7 +379,7 @@ class LBFGS(Optimizer):
                     return self.w * x
 
             net = Net()
-            opt = LBFGS(learning_rate=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
+            opt = paddle.optimizer.LBFGS(learning_rate=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
             def train_step(inputs, targets):
                 def closure():
                     outputs = net(inputs)
@@ -453,7 +452,46 @@ class LBFGS(Optimizer):
 
         Return:
             state, a dict holding current optimization state. Its content
-                differs between optimizer classes.
+            differs between optimizer classes.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.disable_static()
+
+                net = paddle.nn.Linear(10, 10)
+                opt = paddle.optimizer.LBFGS(
+                    learning_rate=1,
+                    max_iter=1,
+                    max_eval=None,
+                    tolerance_grad=1e-07,
+                    tolerance_change=1e-09,
+                    history_size=100,
+                    line_search_fn='strong_wolfe',
+                    parameters=net.parameters(),
+                )
+
+                def train_step(inputs, targets):
+                    def closure():
+                        outputs = net(inputs)
+                        loss = paddle.nn.functional.mse_loss(outputs, targets)
+                        opt.clear_grad()
+                        loss.backward()
+                        return loss
+
+                    opt.step(closure)
+
+                inputs = paddle.rand([10, 10], dtype="float32")
+                targets = paddle.to_tensor([2 * x for x in inputs])
+
+                n_iter = 0
+                while n_iter < 20:
+                    loss = train_step(inputs, targets)
+                    n_iter = opt.state_dict()["state"]["func_evals"]
+                    print("n_iter:", n_iter)
+
         """
 
         packed_state = {}
@@ -512,9 +550,42 @@ class LBFGS(Optimizer):
     @framework.non_static_only
     def step(self, closure):
         """Performs a single optimization step.
+
         Args:
             closure (callable): A closure that reevaluates the model
-                and returns the loss.
+            and returns the loss.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.disable_static()
+
+                inputs = paddle.rand([10, 10], dtype="float32")
+                targets = paddle.to_tensor([2 * x for x in inputs])
+
+                net = paddle.nn.Linear(10, 10)
+                opt = paddle.optimizer.LBFGS(
+                    learning_rate=1,
+                    max_iter=1,
+                    max_eval=None,
+                    tolerance_grad=1e-07,
+                    tolerance_change=1e-09,
+                    history_size=100,
+                    line_search_fn='strong_wolfe',
+                    parameters=net.parameters(),
+                )
+
+                def closure():
+                    outputs = net(inputs)
+                    loss = paddle.nn.functional.mse_loss(outputs, targets)
+                    print("loss:", loss.item())
+                    opt.clear_grad()
+                    loss.backward()
+                    return loss
+
+                opt.step(closure)
         """
 
         with paddle.no_grad():
@@ -699,3 +770,11 @@ class LBFGS(Optimizer):
             state['prev_loss'] = prev_loss
 
         return orig_loss
+
+    def minimize(
+        self, loss, startup_program=None, parameters=None, no_grad_set=None
+    ):
+        """Empty method. LBFGS optimizer does not use this way to minimize ``loss``. Please refer 'Examples' of LBFGS() above for usage."""
+        raise NotImplementedError(
+            "LBFGS optimizer does not use this way to minimize loss. Please refer 'Examples' of LBFGS() for usage."
+        )

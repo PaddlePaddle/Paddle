@@ -15,7 +15,7 @@
 import numpy
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.framework import core, in_dynamic_mode
@@ -26,7 +26,6 @@ from ...fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ...fluid.framework import in_dygraph_mode
 from ...tensor import clip, concat, sqrt, sum
 from ...tensor.creation import zeros
 
@@ -147,7 +146,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -605,95 +604,80 @@ def interpolate(
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            if in_dygraph_mode():
-                out = _C_ops.linear_interp(
-                    x,
-                    inputs['OutSize'] if 'OutSize' in inputs else None,
-                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
-                    inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'],
-                    attrs['out_d'],
-                    attrs['out_h'],
-                    attrs['out_w'],
-                    attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'],
-                    attrs['align_corners'],
-                    attrs['align_mode'],
-                )
-            else:
-                out = _legacy_C_ops.linear_interp_v2(x, *dy_attr)
+            out = _C_ops.linear_interp(
+                x,
+                inputs['OutSize'] if 'OutSize' in inputs else None,
+                inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                inputs['Scale'] if 'Scale' in inputs else None,
+                attrs['data_layout'],
+                attrs['out_d'],
+                attrs['out_h'],
+                attrs['out_w'],
+                attrs['scale'] if 'scale' in attrs else [],
+                attrs['interp_method'],
+                attrs['align_corners'],
+                attrs['align_mode'],
+            )
         elif resample_type == "bilinear":
-            if in_dygraph_mode():
-                out = _C_ops.bilinear_interp(
-                    x,
-                    inputs['OutSize'] if 'OutSize' in inputs else None,
-                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
-                    inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'],
-                    attrs['out_d'],
-                    attrs['out_h'],
-                    attrs['out_w'],
-                    attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'],
-                    attrs['align_corners'],
-                    attrs['align_mode'],
-                )
-            else:
-                out = _legacy_C_ops.bilinear_interp_v2(x, *dy_attr)
+            out = _C_ops.bilinear_interp(
+                x,
+                inputs['OutSize'] if 'OutSize' in inputs else None,
+                inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                inputs['Scale'] if 'Scale' in inputs else None,
+                attrs['data_layout'],
+                attrs['out_d'],
+                attrs['out_h'],
+                attrs['out_w'],
+                attrs['scale'] if 'scale' in attrs else [],
+                attrs['interp_method'],
+                attrs['align_corners'],
+                attrs['align_mode'],
+            )
         elif resample_type == "trilinear":
-            if in_dygraph_mode():
-                out = _C_ops.trilinear_interp(
-                    x,
-                    inputs['OutSize'] if 'OutSize' in inputs else None,
-                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
-                    inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'],
-                    attrs['out_d'],
-                    attrs['out_h'],
-                    attrs['out_w'],
-                    attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'],
-                    attrs['align_corners'],
-                    attrs['align_mode'],
-                )
-            else:
-                out = _legacy_C_ops.trilinear_interp_v2(x, *dy_attr)
+            out = _C_ops.trilinear_interp(
+                x,
+                inputs['OutSize'] if 'OutSize' in inputs else None,
+                inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                inputs['Scale'] if 'Scale' in inputs else None,
+                attrs['data_layout'],
+                attrs['out_d'],
+                attrs['out_h'],
+                attrs['out_w'],
+                attrs['scale'] if 'scale' in attrs else [],
+                attrs['interp_method'],
+                attrs['align_corners'],
+                attrs['align_mode'],
+            )
         elif resample_type == "nearest":
-            if in_dygraph_mode():
-                out = _C_ops.nearest_interp(
-                    x,
-                    inputs['OutSize'] if 'OutSize' in inputs else None,
-                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
-                    inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'],
-                    attrs['out_d'],
-                    attrs['out_h'],
-                    attrs['out_w'],
-                    attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'],
-                    attrs['align_corners'],
-                    attrs['align_mode'],
-                )
-            else:
-                out = _legacy_C_ops.nearest_interp_v2(x, *dy_attr)
+            out = _C_ops.nearest_interp(
+                x,
+                inputs['OutSize'] if 'OutSize' in inputs else None,
+                inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                inputs['Scale'] if 'Scale' in inputs else None,
+                attrs['data_layout'],
+                attrs['out_d'],
+                attrs['out_h'],
+                attrs['out_w'],
+                attrs['scale'] if 'scale' in attrs else [],
+                attrs['interp_method'],
+                attrs['align_corners'],
+                attrs['align_mode'],
+            )
         elif resample_type == "bicubic":
-            if in_dygraph_mode():
-                out = _C_ops.bicubic_interp(
-                    x,
-                    inputs['OutSize'] if 'OutSize' in inputs else None,
-                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
-                    inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'],
-                    attrs['out_d'],
-                    attrs['out_h'],
-                    attrs['out_w'],
-                    attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'],
-                    attrs['align_corners'],
-                    attrs['align_mode'],
-                )
-            else:
-                out = _legacy_C_ops.bicubic_interp_v2(x, *dy_attr)
+            out = _C_ops.bicubic_interp(
+                x,
+                inputs['OutSize'] if 'OutSize' in inputs else None,
+                inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                inputs['Scale'] if 'Scale' in inputs else None,
+                attrs['data_layout'],
+                attrs['out_d'],
+                attrs['out_h'],
+                attrs['out_w'],
+                attrs['scale'] if 'scale' in attrs else [],
+                attrs['interp_method'],
+                attrs['align_corners'],
+                attrs['align_mode'],
+            )
         return out
 
     dtype = helper.input_dtype(input_param_name='x')
@@ -941,7 +925,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
             # [5, 1000]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
@@ -1132,7 +1116,7 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
@@ -1583,7 +1567,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         paddings = pad
         pad_value = value
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
@@ -1681,7 +1665,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(pad, Variable):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
@@ -1853,7 +1837,7 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
     else:
@@ -1875,6 +1859,78 @@ def linear(x, weight, bias=None, name=None):
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type='matmul_v2',
+            inputs=inputs,
+            outputs={'Out': tmp},
+            attrs=attrs,
+        )
+        if bias is not None:
+            res = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [tmp], 'Y': [bias]},
+                outputs={'Out': [res]},
+                attrs={'axis': -1},
+            )
+        else:
+            res = tmp
+        return res
+
+
+def quant_for_compress(x, bits=8, layout="weight_only"):
+    return _C_ops.quant_for_compress(x, bits, layout)
+
+
+def linear_compress(
+    x,
+    weight,
+    weight_scale,
+    bias=None,
+    bits=8,
+    algo="llm.int8",
+    name=None,
+    config=None,
+):
+    if in_dynamic_mode():
+        if algo == "llm.int8":
+            y = _C_ops.llm_int8_mat_mul(
+                x, weight, weight_scale, config['threshold']
+            )
+        elif algo == "weight_only":
+            y = _C_ops.weight_only_mat_mul(x, weight, weight_scale)
+        else:
+            raise ValueError(
+                "Unknown algo: '{}'. It can only be 'llm.int8' or 'weight_only'.".format(
+                    algo
+                )
+            )
+        if bias is not None:
+            y = paddle.add(y, bias)
+        return y
+    else:
+        helper = LayerHelper('linear_compress', **locals())
+        dtype = x.dtype
+
+        check_variable_and_dtype(x, 'x', ['float16'], 'linear_compress')
+        check_dtype(dtype, 'dtype', ['float16'], 'linear_compress')
+
+        if algo == "llm.int8":
+            type = "llm_int8_matmul"
+            inputs = {'X': [x], 'Y': [weight], 'weight_scale': [weight_scale]}
+            attrs = {'algo': algo, 'threshold': config['threshold']}
+        elif algo == "weight_only":
+            type = "weight_only_matmul"
+            inputs = {'X': [x], 'Y': [weight], 'weight_scale': [weight_scale]}
+            attrs = {}
+        else:
+            raise ValueError(
+                "Unknown algo: '{}'. It can only be 'llm.int8' or 'weight_only'.".format(
+                    algo
+                )
+            )
+        tmp = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=type,
             inputs=inputs,
             outputs={'Out': tmp},
             attrs=attrs,
@@ -1951,13 +2007,8 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, float(epsilon))
-
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.label_smooth(
-            label, prior_dist, 'epsilon', float(epsilon)
-        )
 
     check_variable_and_dtype(
         label,
@@ -2141,7 +2192,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.class_center_sample(
             label,
             num_classes,
@@ -2152,28 +2203,6 @@ def class_center_sample(label, num_classes, num_samples, group=None):
             seed is not None,
             seed if seed is not None else 0,
         )
-    elif paddle.in_dynamic_mode():
-        (
-            remapped_label,
-            sampled_class_center,
-        ) = _legacy_C_ops.class_center_sample(
-            label,
-            'num_classes',
-            num_classes,
-            'num_samples',
-            num_samples,
-            'ring_id',
-            ring_id,
-            'nranks',
-            nranks,
-            'rank',
-            rank,
-            'fix_seed',
-            seed is not None,
-            'seed',
-            seed if seed is not None else 0,
-        )
-        return remapped_label, sampled_class_center
 
     check_variable_and_dtype(
         label, 'label', ['int64', 'int32'], 'class_center_sample'
@@ -2321,23 +2350,9 @@ def fold(
             "of 2 or 4 integers"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.fold(
             x, output_sizes, kernel_sizes, strides, paddings, dilations
-        )
-    elif in_dynamic_mode():
-        out = _legacy_C_ops.fold(
-            x,
-            "output_sizes",
-            output_sizes,
-            "kernel_sizes",
-            kernel_sizes,
-            "strides",
-            strides,
-            "paddings",
-            paddings,
-            "dilations",
-            dilations,
         )
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

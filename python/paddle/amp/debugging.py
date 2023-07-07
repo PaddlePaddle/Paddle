@@ -19,17 +19,22 @@ from enum import Enum
 import numpy as np
 
 import paddle
+from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import dygraph_only
+
+from ..framework import LayerHelper, in_dynamic_mode
 
 __all__ = [
     "DebugMode",
     "TensorCheckerConfig",
+    "check_numerics",
     "enable_operator_stats_collection",
     "disable_operator_stats_collection",
     "collect_operator_stats",
     "enable_tensor_checker",
     "disable_tensor_checker",
+    "compare_accuracy",
 ]
 
 
@@ -132,7 +137,6 @@ class TensorCheckerConfig:
         debug_step=None,
         stack_height_limit=1,
     ):
-
         self.enable = enable
         self.debug_mode = debug_mode
         self.output_dir = output_dir
@@ -258,6 +262,74 @@ class TensorCheckerConfig:
         self._set_env(False)
 
 
+def check_numerics(
+    tensor, op_type, var_name, debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT
+):
+    """
+    This function is used to debugging a tensor, finding the number of NaNs, Infs and zeros in the tensor.
+
+    Args:
+        tensor(Tensor): The target tensor to check.
+        op_type(str): The OP or API name which produce the target tensor.
+        var_name(str): The name of target tensor.
+        debug_mode(paddle.amp.debugging.DebugMode, optional): The mode of debugging to be used. Default is DebugMode.CHECK_NAN_INF_AND_ABORT.
+
+    Returns:
+        (Tensor, Tensor): A tuple of tensors containing
+
+        - **stats** (Tensor): Returns the number of NaNs, Infs and zeros of input tensor. The shape is [3] and dtype is int64.
+        - **values** (Tensor): Returns the maximum, minimum and mean value of input tensor. The shape is [3] and dtype is float.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            checker_config = paddle.amp.debugging.TensorCheckerConfig(
+                enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+
+            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32')
+            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            res = paddle.pow(x, y)
+            paddle.amp.debugging.check_numerics(res, "pow", "res")
+
+    """
+    stack_height_limit = -1
+    output_dir = ""
+
+    if in_dynamic_mode():
+        return _C_ops.check_numerics(
+            tensor,
+            op_type,
+            var_name,
+            debug_mode.value,
+            stack_height_limit,
+            output_dir,
+        )
+
+    helper = LayerHelper("check_numerics", **locals())
+
+    stats = helper.create_variable_for_type_inference(dtype="int64")
+    values = helper.create_variable_for_type_inference(dtype="float")
+
+    helper.append_op(
+        type='check_numerics',
+        inputs={
+            'tensor': tensor,
+        },
+        attrs={
+            'op_type': op_type,
+            'var_name': var_name,
+            'check_nan_inf_level': debug_mode.value,
+            'stack_height_limit': stack_height_limit,
+            'output_dir': output_dir,
+        },
+        outputs={'stats': [stats], 'values': [values]},
+    )
+    return stats, values
+
+
 def _get_operator_stats_flag():
     flags = paddle.get_flags(["FLAGS_low_precision_op_list"])
     return flags["FLAGS_low_precision_op_list"]
@@ -314,7 +386,7 @@ def enable_operator_stats_collection():
     """
     Enable to collect the number of operators for different data types.
     The statistical data are categorized according to four data types, namely
-    float32, float16, bfloat16 and others. This funciton is used in pair with
+    float32, float16, bfloat16 and others. This function is used in pair with
     the corresponding disable function.
 
     Examples:
@@ -350,7 +422,7 @@ def enable_operator_stats_collection():
 def disable_operator_stats_collection():
     """
     Disable the collection the number of operators for different data types.
-    This funciton is used in pair with the corresponding enable function.
+    This function is used in pair with the corresponding enable function.
     The statistical data are categorized according to four data types, namely
     float32, float16, bfloat16 and others, and will be printed after the
     function call.
@@ -422,6 +494,67 @@ def collect_operator_stats():
     enable_operator_stats_collection()
     yield
     disable_operator_stats_collection()
+
+
+def compare_accuracy(
+    dump_path,
+    another_dump_path,
+    output_filename,
+    loss_scale=1,
+    dump_all_tensors=False,
+):
+    r"""
+    This is a precision comparison tool that can be used to compare log data of float16 and float32.
+
+    Args:
+        dump_path(str): The path of the running log, such as the log for execution using the float32 data type.
+        another_dump_path(str): the path of another running log ,such as the log for execution using the float16 data type.
+        output_filename(str): the excel file nmae of compare output.
+        loss_scale(float, optional): the loss_scale during the training phase. Default is 1.
+        dump_all_tensors(bool, optional): dump all tensor, It is currently not support. Default is False.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            from paddle.fluid import core
+            try:
+                import xlsxwriter as xlw
+            except ImportError:
+                import subprocess
+
+                subprocess.check_call(
+                    ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
+                )
+                import xlsxwriter as xlw
+
+            if core.is_compiled_with_cuda():
+                paddle.set_flags(
+                    {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+                )
+                path = "workerlog_log_dir"
+                paddle.fluid.core.set_nan_inf_debug_path(path)
+                x = paddle.to_tensor(
+                    [2, 3, 4, 0], dtype="float32"
+                )
+                y = paddle.to_tensor(
+                    [1, 5, 2, 0], dtype="float32"
+                )
+                z1 = x + y
+                out_excel = "compary_accuracy_out_excel.csv"
+                paddle.amp.debugging.compare_accuracy(
+                    path, path, out_excel, loss_scale=1, dump_all_tensors=False
+                )
+    """
+    assert dump_all_tensors is False, "It is currently not supported."
+    paddle.amp.accuracy_compare.compare_accuracy(
+        dump_path,
+        another_dump_path,
+        output_filename,
+        loss_scale,
+        dump_all_tensors=False,
+    )
 
 
 def enable_tensor_checker(checker_config):

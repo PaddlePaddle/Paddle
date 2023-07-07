@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/gelu_kernel.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/float16.h"
@@ -28,11 +29,24 @@ void GeluKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
-  int r = xpu::gelu<XPUType>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x.data<T>()),
-                             reinterpret_cast<XPUType*>(out->data<T>()),
-                             out->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
+  if (approximate) {
+    // int approximate_gelu(Context* ctx, const T* x, T* y, int64_t len, const
+    // float* max_x = nullptr, float* max_y = nullptr);
+    int r = xpu::approximate_gelu<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "approximate_gelu");
+  } else {
+    // int gelu(Context* ctx, const T* x, T* y, int64_t len, const float* max_x
+    // = nullptr, float* max_y = nullptr);
+    int r = xpu::gelu<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
+  }
 }
 }  // namespace phi
 

@@ -23,7 +23,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertCeluTest(TrtLayerAutoScanTest):
+class TrtConvertPNormTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input1(dims, attrs: List[Dict[str, Any]]):
             if dims == 1:

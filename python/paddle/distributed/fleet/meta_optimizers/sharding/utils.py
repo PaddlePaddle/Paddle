@@ -834,7 +834,6 @@ def get_grad_device(grad_name, shard):
 
 
 def get_first_check_finite_and_unscale_op_idx(block, raise_error=True):
-
     for idx, op in enumerate(block.ops):
         if op.type == "check_finite_and_unscale":
             return idx

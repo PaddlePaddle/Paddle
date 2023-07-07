@@ -131,13 +131,6 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
       };
       phi::XPUElementwise<T, XPUType>(
           dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
-      ret = xpu::clip<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               N * D,
-                               -64.,
-                               0.);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
     }
 
     // step 3, obtain predict target
@@ -335,13 +328,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       };
       phi::XPUElementwise<T, XPUType>(
           dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
-      ret = xpu::clip<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               N * D,
-                               -64.,
-                               0.);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
     }
 
     // step 3, obtain predict target

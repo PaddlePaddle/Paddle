@@ -133,7 +133,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         # each xpu uses own half of logits
         np.random.seed(os.getpid())
         logits = np.random.uniform(
-            low=-10.0, high=10.0, size=(self.batch_size, self.local_elements)
+            low=-40.0, high=40.0, size=(self.batch_size, self.local_elements)
         ).astype(np_data_type)
         out = exe.run(
             train_prog,

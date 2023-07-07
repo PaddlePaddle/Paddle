@@ -87,4 +87,5 @@ PD_REGISTER_KERNEL(expand_as,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::bfloat16) {}

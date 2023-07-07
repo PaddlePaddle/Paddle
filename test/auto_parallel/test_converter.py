@@ -18,7 +18,7 @@ import sys
 import tempfile
 import unittest
 
-from paddle.distributed.auto_parallel.converter import Converter
+from paddle.distributed.auto_parallel.static.converter import Converter
 
 
 class TestConverter(unittest.TestCase):

@@ -13,16 +13,6 @@ def {
     name: "axis"
     type: INT
   }
-}
-extra {
-  attrs {
-    name: "x_data_format"
-    type: STRING
-  }
-  attrs {
-    name: "y_data_format"
-    type: STRING
-  }
   attrs {
     name: "Scale_x"
     type: FLOAT

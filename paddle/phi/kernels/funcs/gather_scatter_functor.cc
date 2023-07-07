@@ -181,11 +181,11 @@ void cpu_scatter_mul_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
+void cpu_scatter_input_grad_kernel(phi::DenseTensor self UNUSED,
                                    int dim,
                                    const phi::DenseTensor& index,
                                    phi::DenseTensor output,
-                                   const phi::DeviceContext& ctx) {
+                                   const phi::DeviceContext& ctx UNUSED) {
   auto* index_data = index.data<index_t>();
   auto* output_data = output.data<tensor_t>();
 

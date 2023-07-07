@@ -100,7 +100,7 @@ void ConvertToMixedPrecisionPass::Run() {
   }
   pass.Set("mixed_black_list",
            new std::unordered_set<std::string>{black_list_});
-  pass.Set("keep_io_types", new bool{keep_io_types_});
+  pass.Set("enable_low_precision_io", new bool{!keep_io_types_});
   pass.Apply(main_graph_.get());
 
   SaveMixedModel();

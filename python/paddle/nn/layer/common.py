@@ -183,6 +183,167 @@ class Linear(Layer):
         )
 
 
+class LinearCompress(Layer):
+    r"""
+
+    Fully-connected linear transformation layer. For each input :math:`X` ,
+    the equation is:
+
+    .. math::
+
+        Out = XW + b
+
+    where :math:`W` is the weight and :math:`b` is the bias.
+
+    Linear layer takes only one multi-dimensional tensor as input with the
+    shape :math:`[batch\_size, *, in\_features]` , where :math:`*` means any
+    number of additional dimensions. It multiplies input tensor with the weight
+    (a 2-D tensor of shape :math:`[in\_features, out\_features]` ) and produces
+    an output tensor of shape :math:`[batch\_size, *, out\_features]` .
+    If :math:`bias\_attr` is not False, the bias (a 1-D tensor of
+    shape :math:`[out\_features]` ) will be created and added to the output.
+
+    Parameters:
+        in_features (int): The number of input units.
+        out_features (int): The number of output units.
+        weight_attr (ParamAttr, optional): The attribute for the weight of this layer.
+            The default value is None. If the Initializer of the
+            param_attr is not set, the parameter is initialized with Xavier.
+            For detailed information, please refer to paddle.ParamAttr.
+        bias_attr (ParamAttr|bool, optional): The attribute for the bias of this layer.
+            If it is set to False, no bias will be added to the output.
+            If it is set to None or one kind of ParamAttr, a bias parameter will
+            be created according to ParamAttr. For detailed information, please refer
+            to paddle.ParamAttr. The default value is None and the bias will be
+            initialized to zero.
+        name (str, optional): Normally there is no need for user to set this parameter.
+            For detailed information, please refer to :ref:`api_guide_Name` .
+        bits (int, optional): The attribute to set num of bits in quant during weight_only,
+            it must be set as 8, default: 8.
+        algo (str, optional): The  attribute to set algorithm of cpmoress, it must be set as 'weight_only'
+            or 'llm.int8', default: weight_only.
+        config (dict, optional): The parameter config for algorithm of cpmoress.
+            For llm.int8, it should be set as {'threshold': 6.0}, default: {'threshold': 6.0}.
+
+    Attribute:
+        **weight** (Parameter): the learnable weight of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
+
+    Shape:
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16.
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          # Define the linear layer.
+          paddle.set_default_dtype('float16')
+          weight_attr = paddle.ParamAttr(
+              name="weight",
+              initializer=paddle.nn.initializer.Constant(value=0.5))
+          bias_attr = paddle.ParamAttr(
+              name="bias",
+              initializer=paddle.nn.initializer.Constant(value=1.0))
+          linear = paddle.nn.LinearCompress(128, 64, weight_attr=weight_attr, bias_attr=bias_attr, bits=8, algo='weight_only')
+          x = paddle.randn((3, 128), dtype="float16")
+          y = linear(x)
+    """
+
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        weight_attr=None,
+        bias_attr=None,
+        name=None,
+        bits=8,
+        algo="weight_only",
+        config={'threshold': 6.0},
+    ):
+        super().__init__()
+        self._dtype = self._helper.get_default_dtype()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self.weight = self.create_parameter(
+            shape=[in_features, out_features],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False,
+        )
+        self.bias = self.create_parameter(
+            shape=[out_features],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True,
+        )
+        self.weight_scale = self.create_parameter(
+            shape=[out_features],
+            attr=None,
+            dtype=self._dtype,
+            is_bias=False,
+        )
+        self.is_weight_quanted = False
+        self.name = (name,)
+        self.bits = bits
+        self.layout = algo
+        self.algo = algo
+        self.config = config
+
+    def forward(self, input):
+        if in_dynamic_mode():
+            if not self.is_weight_quanted:
+                weight_tensor, weight_scale_tensor = F.quant_for_compress(
+                    self.weight, self.bits, self.layout
+                )
+                weight_attr = paddle.framework.ParamAttr(
+                    initializer=paddle.nn.initializer.Assign(weight_tensor)
+                )
+                self.weight = self.create_parameter(
+                    shape=self.weight.shape
+                    if self.layout == 0
+                    else [self.weight.shape[1], self.weight.shape[0]],
+                    attr=weight_attr,
+                    dtype="int8",
+                    is_bias=False,
+                )
+                weight_scale_attr = paddle.framework.ParamAttr(
+                    initializer=paddle.nn.initializer.Assign(
+                        weight_scale_tensor
+                    )
+                )
+                self.weight_scale = self.create_parameter(
+                    shape=self.weight_scale.shape,
+                    attr=weight_scale_attr,
+                    dtype="float32",
+                    is_bias=False,
+                )
+                self.is_weight_quanted = True
+            out = F.linear_compress(
+                x=input,
+                weight=self.weight,
+                weight_scale=self.weight_scale,
+                bias=self.bias,
+                bits=self.bits,
+                algo=self.algo,
+                name=self.name,
+                config=self.config,
+            )
+            return out
+
+    def extra_repr(self):
+        name_str = f', name={self.name}' if self.name else ''
+        return 'in_features={}, out_features={}, dtype={}{}, algo={}'.format(
+            self.weight.shape[0],
+            self.weight.shape[1],
+            self._dtype,
+            name_str,
+            self.algo,
+        )
+
+
 class Upsample(Layer):
     """
     This op resizes a batch of images.
@@ -1741,3 +1902,53 @@ class Flatten(Layer):
             input, start_axis=self.start_axis, stop_axis=self.stop_axis
         )
         return out
+
+
+class Unflatten(Layer):
+    """
+    This interface is used to construct a callable object of the ``Unflatten`` class.
+    For more details, refer to code examples.
+    It a certain dimension of the input x Tensor into a desired shape.
+
+    Parameters:
+        axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
+        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
+            If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
+            The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
+            If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = [2, 3]
+            axis = 1
+            unflatten = paddle.nn.Unflatten(axis, shape)
+            res = unflatten(x)
+            print(res.shape)
+            # [4, 2, 3, 8]
+
+    """
+
+    def __init__(self, axis, shape, name=None):
+        super().__init__()
+        self.axis = axis
+        self.shape = shape
+        self.name = name
+
+    def forward(self, input):
+        out = paddle.unflatten(
+            input, axis=self.axis, shape=self.shape, name=self.name
+        )
+        return out
+
+    def extra_repr(self):
+        name_str = f', name={self.name}' if self.name else ''
+        return f'axis={self.axis}, shape={self.shape}{name_str}'

@@ -89,6 +89,8 @@ class Scope {
 
   const Scope* parent() const { return parent_; }
 
+  const Scope* root() const;
+
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
@@ -122,9 +124,9 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
   // only for dygraph_to_static
-  bool CanReuesd() const { return can_reused_; }
+  bool CanReused() const { return can_reused_; }
 
-  void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
+  void SetCanReused(bool can_reused) { can_reused_ = can_reused; }
 
  protected:
   struct KeyHasher {

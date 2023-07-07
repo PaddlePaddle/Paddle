@@ -14,10 +14,10 @@
 
 import unittest
 
-import config
 import numpy as np
 import parameterize
 import scipy.stats
+from distribution import config
 
 import paddle
 from paddle.distribution.gumbel import Gumbel

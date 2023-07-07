@@ -98,7 +98,7 @@ PD_REGISTER_STRUCT_KERNEL(alltoall,
                           ops::AllToAllOpCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           int,

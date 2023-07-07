@@ -118,7 +118,7 @@ void ReduceGradKernel(const Context& dev_ctx,
                       bool reduce_all,
                       DenseTensor* x_grad,
                       dnnl::algorithm binary_type,
-                      dnnl::algorithm reduction_type,
+                      dnnl::algorithm reduction_type UNUSED,
                       float scale_x,
                       float scale_y) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);

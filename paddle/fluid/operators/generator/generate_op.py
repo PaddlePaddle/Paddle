@@ -41,6 +41,7 @@ from tests_utils import (
     is_base_op,
     is_composite_op,
     is_initializer_list,
+    is_only_composite_op,
     is_scalar,
     is_vec,
     supports_inplace,
@@ -72,6 +73,7 @@ env.filters["assert_dense_or_sr"] = assert_dense_or_sr
 env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
+env.tests["only_composite_op"] = is_only_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
@@ -165,6 +167,16 @@ def add_composite_info(ops, backward_ops, backward_op_dict):
         else:
             op["backward_composite"] = None
 
+        # add whether only composite
+        if (
+            op["backward_composite"] is not None
+            and "invoke" not in backward_op_dict[op["backward"]]
+            and "kernel" not in backward_op_dict[op["backward"]]
+        ):
+            op["only_backward_composite"] = True
+        else:
+            op["only_backward_composite"] = False
+
 
 # add fluid name in ops and backward ops info
 def add_fluid_name(dict_list):
@@ -248,6 +260,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                 for param in op_item['invoke']['args'].split(',')
             ]
             return
+        elif 'composite' in op_item and 'kernel' not in op_item:
+            return
+
         op_item['infer_meta']['param'] = get_param_list_alias(
             op_item['infer_meta']['param'], args_name_map
         )
@@ -303,6 +318,10 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
             for out_item in forward_op_item['outputs']:
                 if out_item['name'] in op_args['extra']['outputs']:
                     out_item['is_extra'] = True
+        if 'extra' in op_args and 'inputs' in op_args['extra']:
+            for input_item in forward_op_item['inputs']:
+                if input_item['name'] in op_args['extra']['inputs']:
+                    input_item['is_extra'] = True
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}
@@ -460,17 +479,22 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                 bw_name.split('(')[0].strip()
                 for bw_name in op_comp_map['backward'].split(',')
             ]
-            for bw_name in bw_names:
-                # static_ops.yaml and ops.yaml use the common op_compat.yaml
-                if bw_name in bw_op_dict:
+            new_bw_names = [
+                bw_name for bw_name in bw_names if bw_name in bw_op_dict
+            ]
+            if len(new_bw_names) != 0:
+                bws_has_out_grad = False
+                for bw_name in bw_names:
+                    # static_ops.yaml and ops.yaml use the common op_compat.yaml
                     for out_grad in op_comp_map['drop_empty_grad']:
-                        assert (
-                            out_grad in bw_op_dict[bw_name]['output_dict']
-                        ), f'''
-                            {bw_name} with {out_grad} is not existed in output_dict '''
-                        bw_op_dict[bw_name]['output_dict'][out_grad][
-                            'drop_empty_grad'
-                        ] = False
+                        if out_grad in bw_op_dict[bw_name]['output_dict']:
+                            bw_op_dict[bw_name]['output_dict'][out_grad][
+                                'drop_empty_grad'
+                            ] = False
+                            bws_has_out_grad = True
+                assert (
+                    bws_has_out_grad
+                ), f'''{bw_names} with {op_comp_map['drop_empty_grad']} is not existed in output_dict '''
 
 
 def parse_get_expected_kerneltype(
@@ -481,7 +505,7 @@ def parse_get_expected_kerneltype(
             fw_name = op_comp_map['op'].split('(')[0].strip()
             # deal the last underline of function name in op_comp_map['get_expected_kernel_type']
             new_get_expected_kernel_type_func_map = {}
-            for (key, value) in op_comp_map['get_expected_kernel_type'].items():
+            for key, value in op_comp_map['get_expected_kernel_type'].items():
                 new_get_expected_kernel_type_func_map[
                     delete_last_underline(key)
                 ] = value

@@ -222,14 +222,6 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseXpu(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief A boolean state telling whether the NPU is turned on.
-///
-/// \param[in] pd_onfig config
-/// \return Whether the NPU is turned on.
-///
-PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseNpu(
-    __pd_keep PD_Config* pd_config);
-///
 /// \brief Get the GPU device id.
 ///
 /// \param[in] pd_onfig config
@@ -244,14 +236,6 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGpuDeviceId(
 /// \return The XPU device id.
 ///
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
-    __pd_keep PD_Config* pd_config);
-///
-/// \brief Get the NPU device id.
-///
-/// \param[in] pd_onfig config
-/// \return The NPU device id.
-///
-PADDLE_CAPI_EXPORT extern int32_t PD_ConfigNpuDeviceId(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Turn on custome device.

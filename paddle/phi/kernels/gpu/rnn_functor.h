@@ -277,7 +277,7 @@ bool IsContinuous(const Type &weight_list) {
 }
 
 template <typename T>
-void WeightToTensor(const Place &place,
+void WeightToTensor(const Place &place UNUSED,
                     gpuStream_t stream,
                     const std::vector<const DenseTensor *> &weight_list,
                     DenseTensor *weight) {

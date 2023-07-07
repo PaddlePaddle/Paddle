@@ -23,10 +23,15 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#endif
 
 namespace phi {
 namespace detail {
@@ -129,7 +134,7 @@ void KLDivInferMeta(const MetaTensor& x,
   if ("none" == reduction) {
     out->set_dims(dim_x);
   } else {
-    out->set_dims({1});
+    out->set_dims(phi::make_ddim({}));
   }
   out->set_dtype(x.dtype());
 }
@@ -1169,7 +1174,8 @@ void ElementwiseInferMeta(const MetaTensor& x,
 void ElementwiseRawInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              int axis,
-                             MetaTensor* out) {
+                             MetaTensor* out,
+                             MetaConfig config) {
   if (x.dims() != y.dims()) {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
@@ -1198,6 +1204,25 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
+#ifdef PADDLE_WITH_MKLDNN
+    bool should_rotate =
+        config.is_run_mkldnn_kernel &&
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+         phi::DataLayout::kNHWC) &&
+        (x_dims.size() >= 3 || y_dims.size() >= 3);
+    if (should_rotate) {
+      // Pick bigger shape and rotate this one
+      bool x_over_y = (x_dims.size() > y_dims.size());
+      auto vdims =
+          x_over_y ? phi::vectorize<int>(x_dims) : phi::vectorize<int>(y_dims);
+      std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
+      if (x_over_y) {
+        x_dims = phi::make_ddim(vdims);
+      } else {
+        y_dims = phi::make_ddim(vdims);
+      }
+    }
+#endif
     funcs::GetBroadcastDimsArrays(x_dims,
                                   y_dims,
                                   x_dims_array.data(),
@@ -1205,6 +1230,13 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
+#ifdef PADDLE_WITH_MKLDNN
+    if (should_rotate) {
+      std::rotate(out_dims_array.begin() + 1,
+                  out_dims_array.end() - 1,
+                  out_dims_array.end());
+    }
+#endif
     auto out_dims = phi::make_ddim(out_dims_array);
     out->set_dims(out_dims);
   } else {
@@ -2056,9 +2088,6 @@ void MatmulInferMeta(const MetaTensor& x,
   if (!y_broadcasted) {
     new_dims.push_back(N);
   }
-  if (x_broadcasted && y_broadcasted) {
-    new_dims.push_back(1);
-  }
 
   auto ddim_out = phi::make_ddim(new_dims);
 
@@ -2340,7 +2369,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'element', rank of input X must be "
-                          "equal or larger than 2. But recevied X's "
+                          "equal or larger than 1. But recevied X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(
@@ -2584,6 +2613,24 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 }
 
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y) {
+  auto dim = phi::vectorize<int>(x.dims());
+
+  if (max_len_tensor) {
+    dim.push_back(-1);
+  } else {
+    dim.push_back(maxlen > 0 ? maxlen : -1);
+  }
+
+  y->set_dims(phi::make_ddim(dim));
+  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
+  y->set_dtype(out_phi_dtype);
+}
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out) {
@@ -2623,47 +2670,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
   }
-}
-
-void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
-                                            const MetaTensor& label,
-                                            bool normalize,
-                                            int ignore_index,
-                                            MetaTensor* out,
-                                            MetaConfig config) {
-  auto x_dims = x.dims();
-  auto labels_dims = label.dims();
-  int rank = x_dims.size();
-  PADDLE_ENFORCE_EQ(rank,
-                    labels_dims.size(),
-                    phi::errors::InvalidArgument(
-                        "Input(X) and Input(Label) shall have the same rank."
-                        "But received: the rank of Input(X) is [%d], "
-                        "the rank of Input(Label) is [%d].",
-                        rank,
-                        labels_dims.size()));
-
-  bool check = true;
-  if ((!config.is_runtime) &&
-      (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
-    check = false;
-  }
-
-  if (check) {
-    PADDLE_ENFORCE_EQ(
-        phi::slice_ddim(x_dims, 0, rank),
-        phi::slice_ddim(labels_dims, 0, rank),
-        phi::errors::InvalidArgument(
-            "Input(X) and Input(Label) shall have the same shape "
-            "except the last dimension. But received: the shape of "
-            "Input(X) is [%s], the shape of Input(Label) is [%s].",
-            x_dims,
-            labels_dims));
-  }
-
-  out->set_dims(x_dims);
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
 }
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,

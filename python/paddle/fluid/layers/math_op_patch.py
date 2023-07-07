@@ -323,6 +323,48 @@ def monkey_patch_variable():
         """
         return len(self.shape)
 
+    def ndimension(self):
+        """
+        Returns the dimension of current Variable
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # print the dimension of the Variable
+                print(x.ndimension)
+        """
+        return len(self.shape)
+
+    def dim(self):
+        """
+        Returns the dimension of current Variable
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # print the dimension of the Variable
+                print(x.dim)
+        """
+        return len(self.shape)
+
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)
 
@@ -409,11 +451,19 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
+            if (
+                op_type == "divide" or op_type == "elementwise_div"
+            ) and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             # NOTE(zhiqiu): the output of compare operator should be bool.
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
             else:
-                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+                out = create_new_tmp_var(
+                    current_block(self), dtype=safe_get_dtype(self)
+                )
 
             axis = -1
             if other_var.ndim > 0 and other_var.shape[0] == -1:
@@ -501,8 +551,8 @@ def monkey_patch_variable():
         ('append', append),
         ('item', _item),
         ('pop', pop),
-        ('dim', lambda x: len(x.shape)),
-        ('ndimension', lambda x: len(x.shape)),
+        ('dim', dim),
+        ('ndimension', ndimension),
         ('ndim', _ndim_),
         (
             '__add__',

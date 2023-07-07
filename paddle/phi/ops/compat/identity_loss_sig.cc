@@ -17,12 +17,12 @@
 namespace phi {
 
 KernelSignature IdentityLossOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("identity_loss", {"X"}, {"reduction"}, {"Out"});
 }
 
 KernelSignature IdentityLossGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "identity_loss_grad", {"X", "Out@GRAD"}, {"reduction"}, {"X@GRAD"});
 }

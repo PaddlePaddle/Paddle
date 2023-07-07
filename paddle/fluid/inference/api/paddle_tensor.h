@@ -36,9 +36,9 @@ namespace paddle_infer {
 /// Strings for text data.
 using Strings = std::vector<std::string>;
 
-class Tensor;
-using Exp_OutputHookFunc =
-    std::function<void(const std::string&, const std::string&, const Tensor&)>;
+using OutputTensorHookFunc = std::function<void(
+    const std::string&, const std::string&, const paddle::Tensor&)>;
+using InputTensorHookFunc = OutputTensorHookFunc;
 
 typedef void (*CallbackFunc)(void*);
 
@@ -67,7 +67,7 @@ enum DataType {
   // TODO(Inference): support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU, kCUSTOM };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kIPU, kCUSTOM };
 
 enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 

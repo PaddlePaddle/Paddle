@@ -66,7 +66,6 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
     phi::XpuFcInfo fc_info;
 
     phi::GetFCInfo(x_mat_dims, y->dims(), trans_x, trans_y, &fc_info);
-    VLOG(0) << "FusedGemmEpilogueXPUKernel 000";
     xpu::Context* xpu_ctx = dev_ctx.x_context();
 
     const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());

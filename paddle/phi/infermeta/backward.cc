@@ -822,11 +822,11 @@ void NllLossGradInferMeta(const MetaTensor& x,
   if (check) {
     auto batch_size = x_dims[0];
     if (x_dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(dout_dims.size(),
-                        1,
-                        phi::errors::InvalidArgument(
-                            "The dimensions of Input(Out@Grad) must be 1"));
       if (reduction == "none") {
+        PADDLE_ENFORCE_EQ(dout_dims.size(),
+                          1,
+                          phi::errors::InvalidArgument(
+                              "The dimensions of Input(Out@Grad) must be 1"));
         PADDLE_ENFORCE_EQ(
             dout_dims[0],
             batch_size,
@@ -834,10 +834,10 @@ void NllLossGradInferMeta(const MetaTensor& x,
                 "The unreduced size ofInput(Out@Grad) must be the "
                 "same as batch_size."));
       } else {
-        PADDLE_ENFORCE_EQ(dout_dims[0],
-                          1,
+        PADDLE_ENFORCE_EQ(dout_dims.size(),
+                          0,
                           phi::errors::InvalidArgument(
-                              "The reduced size of Input(Out@Grad) must be 1"));
+                              "The dimensions of Input(Out@Grad) must be 0"));
       }
     } else if (x_dims.size() == 4) {
       if (reduction == "none") {
@@ -855,10 +855,10 @@ void NllLossGradInferMeta(const MetaTensor& x,
                               "The dimensions of Input(Out@Grad) must be match "
                               "to Input(Label) dimensions."));
       } else {
-        PADDLE_ENFORCE_EQ(dout_dims[0],
-                          1,
+        PADDLE_ENFORCE_EQ(dout_dims.size(),
+                          0,
                           phi::errors::InvalidArgument(
-                              "The reduced size of Input(Out@Grad) must be 1"));
+                              "The dimensions of Input(Out@Grad) must be 0"));
       }
     }
   }
@@ -1069,6 +1069,33 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void TransposeGradInferMeta(const MetaTensor& x,
+                            const std::vector<int>& axis,
+                            MetaTensor* out) {
+  size_t x_rank = x.dims().size();
+  std::vector<int> formated_axis = axis;
+  for (size_t i = 0; i < axis.size(); i++) {
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
+  }
+
+  std::vector<int> reversed_axis(axis);
+  for (size_t i = 0; i < formated_axis.size(); i++) {
+    reversed_axis[formated_axis[i]] = i;
+  }
+
+  TransposeInferMeta(x, reversed_axis, out);
+}
+
+void TransLayoutGradInferMeta(const MetaTensor& x,
+                              const MetaTensor& out_grad,
+                              const std::vector<int>& axis,
+                              MetaTensor* x_grad) {
+  TransposeGradInferMeta(out_grad, axis, x_grad);
+  x_grad->set_layout(static_cast<DataLayout>(x.layout()));
+}
+
 void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                        float min,
                                        float max,
@@ -1172,6 +1199,34 @@ void IndexAddGradInferMeta(const MetaTensor& index,
     add_value_grad->set_dtype(add_value.dtype());
     add_value_grad->set_layout(add_value.layout());
     add_value_grad->share_lod(add_value);
+  }
+}
+
+void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+                            const MetaTensor& dout_k,
+                            const MetaTensor& dout_v,
+                            MetaTensor* dq,
+                            MetaTensor* dk,
+                            MetaTensor* dv) {
+  auto input_dims = dout_q.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input should be a 4-D tensor of format "
+                                   "[batch_size, seq_len, num_heads, head_dim],"
+                                   "but got %u.",
+                                   input_dims.size()));
+  if (dout_q) {
+    dq->set_dims(dout_q.dims());
+    dq->set_dtype(dout_q.dtype());
+  }
+  if (dout_k) {
+    dk->set_dims(dout_k.dims());
+    dk->set_dtype(dout_k.dtype());
+  }
+  if (dout_v) {
+    dv->set_dims(dout_v.dims());
+    dv->set_dtype(dout_v.dtype());
   }
 }
 
