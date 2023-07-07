@@ -161,8 +161,8 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         )
         allreduce_op = main_block.append_op(
             type='all_reduce',
-            inputs={'X': inf_var_int32},
-            outputs={'Out': inf_var_int32},
+            inputs={'x': inf_var_int32},
+            outputs={'out': inf_var_int32},
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
