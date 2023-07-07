@@ -205,6 +205,15 @@ std::string Operation::name() const {
   return p_name ? p_name : "";
 }
 
+Attribute Operation::attribute(const std::string &key) const {
+  IR_ENFORCE(HasAttribute(key),
+             "operation(%s)%x: no attribute %s",
+             name(),
+             static_cast<void *>(this),
+             key);
+  return attributes_.at(key);
+}
+
 Region *Operation::GetParentRegion() const {
   return parent_ ? parent_->GetParent() : nullptr;
 }

@@ -222,7 +222,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
             << " from: " << defining_op->name();
     std::vector<ir::Attribute> stop_gradients;
     if (defining_op->HasAttribute(kAttrStopGradients)) {
-      stop_gradients = defining_op->GetAttribute(kAttrStopGradients)
+      stop_gradients = defining_op->attribute(kAttrStopGradients)
                            .dyn_cast<ir::ArrayAttribute>()
                            .data();
     } else {
@@ -231,11 +231,9 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
     stop_gradients[value.GetResultIndex()] =
         ir::BoolAttribute::get(ctx_, var->StopGradient());
-    defining_op->SetAttribute(kAttrStopGradients,
-                              ir::ArrayAttribute::get(ctx_, stop_gradients));
+    defining_op->set_attribute(kAttrStopGradients,
+                               ir::ArrayAttribute::get(ctx_, stop_gradients));
   }
-
-  // Note(lyk): Do we need to set `stop gradient` for every operation?
 }
 
 }  // namespace translator
