@@ -612,39 +612,6 @@ class Inserter:
         group = new_process_group(ranks)
         idx_offset = 0
 
-        # instant process group before insert allgather op.
-        if not group.is_instantiate():
-            # insert fill_constant op
-            fill_constant_out = Inserter.insert_fill_constant_op(
-                block, idx, op_role
-            )
-            fill_constant_out.stop_gradient = True
-
-            # insert all_reduce sum op
-            allreduce_op = block._insert_op(
-                idx + 1,
-                type="all_reduce",
-                inputs={'x': [fill_constant_out]},
-                outputs={'out': [fill_constant_out]},
-                attrs={
-                    'ring_id': 0,
-                    'use_calc_stream': True,
-                    'op_role': op_role,
-                    'reduce_type': dist.ReduceOp.SUM,
-                },
-            )
-            allreduce_op._set_attr('op_namescope', "/auto_parallel/reshard")
-            # insert c_sync_calc_stream op
-            sync_calc_op = block._insert_op(
-                idx + 2,
-                type="c_sync_calc_stream",
-                inputs={'X': [fill_constant_out]},
-                outputs={'Out': [fill_constant_out]},
-                attrs={'op_role': op_role},
-            )
-            sync_calc_op._set_attr('op_namescope', "/auto_parallel/reshard")
-            idx_offset = 3
-
         # insert all_gather op
         op_type = 'all_gather'
         # to avoid name conflict with framework
@@ -691,7 +658,7 @@ class Inserter:
         idx_offset = 0
 
         # insert c_concat op
-        op_type = 'c_concat'
+        op_type = 'dist_concat'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         with paddle.static.program_guard(block.program):
@@ -710,8 +677,8 @@ class Inserter:
         c_concat_op = block._insert_op(
             idx + idx_offset,
             type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [c_concat_out]},
+            inputs={'x': [tensor]},
+            outputs={'out': [c_concat_out]},
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
