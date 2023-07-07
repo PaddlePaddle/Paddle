@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/topo_visitor.h"
+#include "paddle/cinn/common/topo_walker.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -20,10 +20,10 @@
 namespace cinn {
 namespace common {
 
-TEST(TopoVisitor, simple) {
+TEST(TopoWalker, simple) {
   std::vector<std::pair<int, int>> edges{
       {0, 3}, {1, 2}, {1, 3}, {2, 3}, {3, 4}};
-  TopoVisitor<int> visitor(
+  TopoWalker<int> visitor(
       [&](int node, const std::function<void(int)>& NodeHandler) {
         for (const auto& pair : edges) {
           if (pair.second == node) {

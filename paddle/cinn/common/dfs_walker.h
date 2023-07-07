@@ -14,33 +14,32 @@
 
 #pragma once
 
+#include <array>
 #include <functional>
 #include <iostream>
 #include <queue>
 #include <stack>
 #include <unordered_set>
 
-#include "llvm/ADT/SmallVector.h"
-
 namespace cinn {
 namespace common {
 
 // depth-first search visitor
 template <typename NodeType>
-class DfsVisitor final {
+class DfsWalker final {
  public:
-  DfsVisitor(const DfsVisitor&) = delete;
-  DfsVisitor(DfsVisitor&&) = delete;
+  DfsWalker(const DfsWalker&) = delete;
+  DfsWalker(DfsWalker&&) = delete;
 
   using NodeHandlerType = std::function<void(NodeType)>;
   using NodesVisitorType =
       std::function<void(NodeType, const NodeHandlerType&)>;
 
-  DfsVisitor(const NodesVisitorType& VisitNextNodes)
+  DfsWalker(const NodesVisitorType& VisitNextNodes)
       : VisitNextNodes_(VisitNextNodes) {}
 
   void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
-    llvm::SmallVector<NodeType, 1> nodes{node};
+    std::array<NodeType, 1> nodes{node};
     (*this)(nodes.begin(), nodes.end(), NodeHandler, [&](NodeType) {});
   }
 

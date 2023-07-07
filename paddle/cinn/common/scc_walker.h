@@ -23,24 +23,24 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/cinn/common/dfs_visitor.h"
+#include "paddle/cinn/common/dfs_walker.h"
 
 namespace cinn {
 namespace common {
 
 // strong connnected components visitor
 template <typename NodeType>
-class SccVisitor final {
+class SccWalker final {
  public:
-  SccVisitor(const SccVisitor&) = delete;
-  SccVisitor(SccVisitor&&) = delete;
+  SccWalker(const SccWalker&) = delete;
+  SccWalker(SccWalker&&) = delete;
 
   using NodeHandlerType = std::function<void(NodeType)>;
   using NodesVisitorType =
       std::function<void(NodeType, const NodeHandlerType&)>;
 
-  SccVisitor(const NodesVisitorType& VisitPrevNodes,
-             const NodesVisitorType& VisitNextNodes)
+  SccWalker(const NodesVisitorType& VisitPrevNodes,
+            const NodesVisitorType& VisitNextNodes)
       : VisitPrevNodes_(VisitPrevNodes), VisitNextNodes_(VisitNextNodes) {}
 
   using SccHandlerType = std::function<void(const std::vector<NodeType>&)>;

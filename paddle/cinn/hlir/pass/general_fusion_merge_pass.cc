@@ -208,8 +208,8 @@ class FusePassCtx {
 
   virtual const FuseHelper& fuse_helper() const = 0;
 
-  virtual void EnableFuse(const OpGroupPtr& first,
-                          const OpGroupPtr& second) = 0;
+  virtual void MarkFusible(const OpGroupPtr& first,
+                           const OpGroupPtr& second) = 0;
 
  protected:
   FusePassCtx() = default;
@@ -223,10 +223,10 @@ class LightwareFusePassCtx : public FusePassCtx {
 
   virtual const FuseHelper& fuse_helper() const = 0;
 
-  virtual void EnableFuse(const OpGroupPtr& first,
-                          const OpGroupPtr& second) = 0;
+  virtual void MarkFusible(const OpGroupPtr& first,
+                           const OpGroupPtr& second) = 0;
 
-  virtual void EnableFuse(const OpGroupList& candidates) = 0;
+  virtual void MarkFusible(const OpGroupList& candidates) = 0;
 
  protected:
   LightwareFusePassCtx() = default;
@@ -238,20 +238,21 @@ class GraphGroupLightwareFusePassCtx final : public LightwareFusePassCtx {
       const FusionHelperBase* graph_group_fusion_helper,
       const OpGroupPtr& group,
       const std::function<void(const OpGroupPtr& first,
-                               const OpGroupPtr& second)>& EnableFuse)
+                               const OpGroupPtr& second)>& MarkFusible)
       : graph_group_fusion_helper_(graph_group_fusion_helper),
         group_(group),
-        EnableFuse_(EnableFuse),
+        MarkFusible_(MarkFusible),
         fuse_helper_(
             new GraphGroupFuseHelper<GraphGroupLightwareFusePassCtx>(this)) {}
 
   GraphGroupLightwareFusePassCtx(
       const FusionHelperBase* graph_group_fusion_helper,
       const OpGroupPtr& group,
-      const std::function<void(const OpGroupList& candidates)>& EnableFuseList)
+      const std::function<void(const OpGroupList& candidates)>&
+          MarkGroupListFusible)
       : graph_group_fusion_helper_(graph_group_fusion_helper),
         group_(group),
-        EnableFuseList_(EnableFuseList),
+        MarkGroupListFusible_(MarkGroupListFusible),
         fuse_helper_(
             new GraphGroupFuseHelper<GraphGroupLightwareFusePassCtx>(this)) {}
 
@@ -259,12 +260,12 @@ class GraphGroupLightwareFusePassCtx final : public LightwareFusePassCtx {
 
   const FuseHelper& fuse_helper() const override { return *fuse_helper_; }
 
-  void EnableFuse(const OpGroupPtr& first, const OpGroupPtr& second) override {
-    EnableFuse_(first, second);
+  void MarkFusible(const OpGroupPtr& first, const OpGroupPtr& second) override {
+    MarkFusible_(first, second);
   }
 
-  void EnableFuse(const OpGroupList& candidates) override {
-    EnableFuseList_(candidates);
+  void MarkFusible(const OpGroupList& candidates) override {
+    MarkGroupListFusible_(candidates);
   }
 
   const FusionHelperBase& graph_group_fusion_helper() const {
@@ -275,8 +276,9 @@ class GraphGroupLightwareFusePassCtx final : public LightwareFusePassCtx {
   const FusionHelperBase* graph_group_fusion_helper_;
   const OpGroupPtr& group_;
   const std::function<void(const OpGroupPtr& first, const OpGroupPtr& second)>
-      EnableFuse_;
-  const std::function<void(const OpGroupList& candidates)> EnableFuseList_;
+      MarkFusible_;
+  const std::function<void(const OpGroupList& candidates)>
+      MarkGroupListFusible_;
   const std::unique_ptr<const FuseHelper> fuse_helper_;
 };
 
@@ -288,10 +290,10 @@ class InputFusePassCtx : public FusePassCtx {
 
   virtual const FuseHelper& fuse_helper() const = 0;
 
-  virtual void EnableFuse(const OpGroupPtr& first,
-                          const OpGroupPtr& second) = 0;
+  virtual void MarkFusible(const OpGroupPtr& first,
+                           const OpGroupPtr& second) = 0;
 
-  virtual void EnableFuse(const OpGroupList& candidates) = 0;
+  virtual void MarkFusible(const OpGroupList& candidates) = 0;
 
  protected:
   InputFusePassCtx() = default;
@@ -303,20 +305,21 @@ class GraphGroupInputFusePassCtx final : public InputFusePassCtx {
       const FusionHelperBase* graph_group_fusion_helper,
       const OpGroupList& groups,
       const std::function<void(const OpGroupPtr& first,
-                               const OpGroupPtr& second)>& EnableFuse)
+                               const OpGroupPtr& second)>& MarkFusible)
       : graph_group_fusion_helper_(graph_group_fusion_helper),
         groups_(groups),
-        EnableFuse_(EnableFuse),
+        MarkFusible_(MarkFusible),
         fuse_helper_(
             new GraphGroupFuseHelper<GraphGroupInputFusePassCtx>(this)) {}
 
   GraphGroupInputFusePassCtx(
       const FusionHelperBase* graph_group_fusion_helper,
       const OpGroupList& groups,
-      const std::function<void(const OpGroupList& candidates)>& EnableFuseList)
+      const std::function<void(const OpGroupList& candidates)>&
+          MarkGroupListFusible)
       : graph_group_fusion_helper_(graph_group_fusion_helper),
         groups_(groups),
-        EnableFuseList_(EnableFuseList),
+        MarkGroupListFusible_(MarkGroupListFusible),
         fuse_helper_(
             new GraphGroupFuseHelper<GraphGroupInputFusePassCtx>(this)) {}
 
@@ -326,12 +329,12 @@ class GraphGroupInputFusePassCtx final : public InputFusePassCtx {
 
   const FuseHelper& fuse_helper() const override { return *fuse_helper_; }
 
-  void EnableFuse(const OpGroupPtr& first, const OpGroupPtr& second) override {
-    EnableFuse_(first, second);
+  void MarkFusible(const OpGroupPtr& first, const OpGroupPtr& second) override {
+    MarkFusible_(first, second);
   }
 
-  void EnableFuse(const OpGroupList& candidates) override {
-    EnableFuseList_(candidates);
+  void MarkFusible(const OpGroupList& candidates) override {
+    MarkGroupListFusible_(candidates);
   }
 
   const FusionHelperBase& graph_group_fusion_helper() const {
@@ -342,8 +345,9 @@ class GraphGroupInputFusePassCtx final : public InputFusePassCtx {
   const FusionHelperBase* graph_group_fusion_helper_;
   const OpGroupList& groups_;
   const std::function<void(const OpGroupPtr& first, const OpGroupPtr& second)>
-      EnableFuse_;
-  const std::function<void(const OpGroupList& candidates)> EnableFuseList_;
+      MarkFusible_;
+  const std::function<void(const OpGroupList& candidates)>
+      MarkGroupListFusible_;
   const std::unique_ptr<const FuseHelper> fuse_helper_;
 };
 
@@ -599,7 +603,7 @@ class DefaultInputFusePass final : public InputFusePass {
 
     for (const auto& groups : fusionable_consumers) {
       if (groups.size() > 1) {
-        ctx->EnableFuse(groups);
+        ctx->MarkFusible(groups);
       }
     }
     VLOG(1) << "DefaultInputFusePass Finish";
@@ -698,11 +702,11 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
               groups[0].group_id() == "reshape_split") {
             fuse_group.push_back(groups[1]);
             fuse_group.push_back(groups[0]);
-            ctx->EnableFuse(fuse_group);
+            ctx->MarkFusible(fuse_group);
             continue;
           }
         }
-        ctx->EnableFuse(groups);
+        ctx->MarkFusible(groups);
       }
     }
   }
@@ -763,7 +767,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
         VLOG(4) << "Can't fuse because detect cycle";
         continue;
       }
-      ctx->EnableFuse(producer, consumer);
+      ctx->MarkFusible(producer, consumer);
     }
   }
 
@@ -932,7 +936,7 @@ class DefaultRecomputeFusePass final : public RecomputeFusePass {
     if (!candidates.empty() && unsafe_candidates.size() == consumers.size() &&
         producer.kind() == framework::kElementWise) {
       for (const auto& consumer : consumers) {
-        ctx->EnableFuse(producer, consumer);
+        ctx->MarkFusible(producer, consumer);
       }
     }
   }
@@ -1246,11 +1250,11 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
     const auto& GetFusableConsumerGroupLists =
         [&]() -> std::vector<OpGroupList> {
       std::vector<OpGroupList> tagged_lists;
-      const auto& EnableFuse = [&](const OpGroupList& candidates) {
+      const auto& MarkFusible = [&](const OpGroupList& candidates) {
         tagged_lists.push_back(candidates);
       };
       GraphGroupLightwareFusePassCtx fuse_ctx(
-          this, api::OpGroup(producer), EnableFuse);
+          this, api::OpGroup(producer), MarkFusible);
       EnableFusedHorizontalGroups(&fuse_ctx);
       return tagged_lists;
     };
@@ -1305,7 +1309,7 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
     const auto& GetFusableConsumerGroupLists =
         [&]() -> std::vector<OpGroupList> {
       std::vector<OpGroupList> tagged_lists;
-      const auto& EnableFuse = [&](const OpGroupList& candidates) {
+      const auto& MarkFusible = [&](const OpGroupList& candidates) {
         tagged_lists.push_back(candidates);
       };
       OpGroupList consumer_groups;
@@ -1313,7 +1317,7 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
       for (auto& consumer : consumers) {
         consumer_groups.push_back(api::OpGroup(consumer));
       }
-      GraphGroupInputFusePassCtx fuse_ctx(this, consumer_groups, EnableFuse);
+      GraphGroupInputFusePassCtx fuse_ctx(this, consumer_groups, MarkFusible);
       EnableFusedInputGroups(&fuse_ctx);
       return tagged_lists;
     };
@@ -1523,12 +1527,12 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
     using GroupSets = std::vector<std::pair<OpGroupPtr, OpGroupPtr>>;
     const auto& GetFusableConsumerOpGroupSets = [&]() -> GroupSets {
       GroupSets tagged_sets;
-      const auto& EnableFuse = [&](const OpGroupPtr& first,
-                                   const OpGroupPtr& second) {
+      const auto& MarkFusible = [&](const OpGroupPtr& first,
+                                    const OpGroupPtr& second) {
         tagged_sets.push_back(std::make_pair(first, second));
       };
       GraphGroupLightwareFusePassCtx fuse_ctx(
-          this, api::OpGroup(producer), EnableFuse);
+          this, api::OpGroup(producer), MarkFusible);
       TagVerticalGroups(&fuse_ctx);
       return tagged_sets;
     };
@@ -1772,12 +1776,12 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
     using GroupSets = std::set<std::pair<OpGroupPtr, OpGroupPtr>>;
     const auto& GetFusableConsumerOpGroupSets = [&]() -> GroupSets {
       GroupSets tagged_sets;
-      const auto& EnableFuse = [&](const OpGroupPtr& first,
-                                   const OpGroupPtr& second) {
+      const auto& MarkFusible = [&](const OpGroupPtr& first,
+                                    const OpGroupPtr& second) {
         tagged_sets.insert(std::make_pair(first, second));
       };
       GraphGroupLightwareFusePassCtx fuse_ctx(
-          this, api::OpGroup(producer), EnableFuse);
+          this, api::OpGroup(producer), MarkFusible);
       TagRecomputeGroups(&fuse_ctx);
       return tagged_sets;
     };

@@ -38,7 +38,7 @@ class Shape final {
 
   size_t operator[](size_t index) const { return shape_[index]; }
 
-  size_t at(size_t index) const { return shape_.at(index); }
+  size_t at(size_t index) const { return shape_[index]; }
 
   size_t size() const { return shape_.size(); }
 

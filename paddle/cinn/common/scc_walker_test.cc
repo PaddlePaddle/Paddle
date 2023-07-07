@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/scc_visitor.h"
+#include "paddle/cinn/common/scc_walker.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -20,10 +20,10 @@
 namespace cinn {
 namespace common {
 
-TEST(SccVisitor, trivial) {
+TEST(SccWalker, trivial) {
   std::list<std::pair<int, int>> edges{{0, 3}, {1, 2}, {1, 3}, {2, 4}, {3, 4}};
 
-  SccVisitor<int> visitor(
+  SccWalker<int> visitor(
       [&](int node, const std::function<void(int)>& NodeHandler) {
         for (const auto& pair : edges) {
           if (pair.second == node) {
@@ -47,7 +47,7 @@ TEST(SccVisitor, trivial) {
   EXPECT_TRUE((outputs == expected));
 }
 
-TEST(SccVisitor, circle) {
+TEST(SccWalker, circle) {
   std::list<std::pair<int, int>> edges{
       {0, 1},
       {1, 2},
@@ -56,7 +56,7 @@ TEST(SccVisitor, circle) {
       {4, 0},
   };
 
-  SccVisitor<int> visitor(
+  SccWalker<int> visitor(
       [&](int node, const std::function<void(int)>& NodeHandler) {
         for (const auto& pair : edges) {
           if (pair.second == node) {
@@ -80,7 +80,7 @@ TEST(SccVisitor, circle) {
   EXPECT_TRUE((outputs == expected));
 }
 
-TEST(SccVisitor, double_circle) {
+TEST(SccWalker, double_circle) {
   std::list<std::pair<int, int>> edges{
       {0, 1},
       {1, 0},
@@ -89,7 +89,7 @@ TEST(SccVisitor, double_circle) {
       {3, 2},
   };
 
-  SccVisitor<int> visitor(
+  SccWalker<int> visitor(
       [&](int node, const std::function<void(int)>& NodeHandler) {
         for (const auto& pair : edges) {
           if (pair.second == node) {

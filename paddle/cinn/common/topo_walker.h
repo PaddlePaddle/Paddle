@@ -14,31 +14,31 @@
 
 #pragma once
 
+#include <array>
 #include <functional>
 #include <queue>
 #include <unordered_set>
 
-#include "llvm/ADT/SmallVector.h"
-
 namespace cinn {
 namespace common {
 
-// breadth-first search visitor
+// Topological order visitor
 template <typename NodeType>
-class BfsVisitor final {
+class TopoWalker final {
  public:
-  BfsVisitor(const BfsVisitor&) = delete;
-  BfsVisitor(BfsVisitor&&) = delete;
+  TopoWalker(const TopoWalker&) = delete;
+  TopoWalker(TopoWalker&&) = delete;
 
   using NodeHandlerType = std::function<void(NodeType)>;
   using NodesVisitorType =
       std::function<void(NodeType, const NodeHandlerType&)>;
 
-  BfsVisitor(const NodesVisitorType& VisitNextNodes)
-      : VisitNextNodes_(VisitNextNodes) {}
+  TopoWalker(const NodesVisitorType& VisitPrevNodes,
+             const NodesVisitorType& VisitNextNodes)
+      : VisitPrevNodes_(VisitPrevNodes), VisitNextNodes_(VisitNextNodes) {}
 
   void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
-    llvm::SmallVector<NodeType, 1> nodes{node};
+    std::array<NodeType, 1> nodes{node};
     (*this)(nodes.begin(), nodes.end(), NodeHandler);
   }
 
@@ -61,11 +61,20 @@ class BfsVisitor final {
       NodeType node = node_queue.front();
       node_queue.pop();
       NodeHandler(node);
-      VisitNextNodes_(node, TryEnqueueNode);
+      VisitNextNodes_(node, [&](NodeType node) {
+        size_t num_unfinished_inputs = 0;
+        VisitPrevNodes_(node, [&](NodeType in_node) {
+          num_unfinished_inputs += (queued_nodes.count(in_node) > 0 ? 0 : 1);
+        });
+        if (num_unfinished_inputs == 0) {
+          TryEnqueueNode(node);
+        }
+      });
     }
   }
 
  private:
+  NodesVisitorType VisitPrevNodes_;
   NodesVisitorType VisitNextNodes_;
 };
 

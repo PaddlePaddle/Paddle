@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/dfs_visitor.h"
+#include "paddle/cinn/common/dfs_walker.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -20,8 +20,8 @@
 namespace cinn {
 namespace common {
 
-TEST(BfsVisitor, simple_on_push) {
-  DfsVisitor<int> visitor(
+TEST(DfsWalker, simple_on_push) {
+  DfsWalker<int> visitor(
       [](int node, const std::function<void(int)>& NodeHandler) {
         if (node == 0) {
           NodeHandler(3);
@@ -42,8 +42,8 @@ TEST(BfsVisitor, simple_on_push) {
   EXPECT_TRUE((outputs == expected));
 }
 
-TEST(BfsVisitor, simple_on_pop) {
-  DfsVisitor<int> visitor(
+TEST(DfsWalker, simple_on_pop) {
+  DfsWalker<int> visitor(
       [](int node, const std::function<void(int)>& NodeHandler) {
         if (node == 0) {
           NodeHandler(3);

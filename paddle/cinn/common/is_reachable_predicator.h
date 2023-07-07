@@ -17,7 +17,7 @@
 #include <array>
 #include <functional>
 
-#include "paddle/cinn/common/bfs_visitor.h"
+#include "paddle/cinn/common/bfs_walker.h"
 
 namespace cinn {
 namespace common {
@@ -45,7 +45,7 @@ class IsReachablePredicator final {
                   const NodeHandlerType& HandleVisited) const {
     const size_t dst_max_depth = MaxDepth4Node_(dst);
     bool detect_reachable = false;
-    BfsVisitor<NodeType> bfs_visitor(
+    BfsWalker<NodeType> bfs_walker(
         [&](NodeType node, const NodeHandlerType& Handler) {
           VisitNextNodes_(node, [&](NodeType out_node) {
             if (dst_max_depth < MinDepth4Node_(out_node)) {
@@ -60,7 +60,7 @@ class IsReachablePredicator final {
           });
         });
     std::array<NodeType, 1> starts{src};
-    bfs_visitor(starts.begin(), starts.end(), [&](NodeType node) {
+    bfs_walker(starts.begin(), starts.end(), [&](NodeType node) {
       HandleVisited(node);
       if (node == dst) {
         detect_reachable = true;
