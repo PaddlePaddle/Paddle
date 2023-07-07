@@ -417,6 +417,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     bool use_calc_stream) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_wrapper, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
   return Collective(
       in_wrapper,
       out_wrapper,
