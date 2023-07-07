@@ -32,7 +32,6 @@ from .common import (  # noqa: F401
     Float,
     Float16,
     Int,
-    Object,
     RefCount,
     Shared_CINNValuePack_,
     String,
