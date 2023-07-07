@@ -16,10 +16,8 @@ import logging
 import os
 import struct
 import unittest
-from contextlib import contextmanager
 
 import numpy as np
-from cinn import Target
 from cinn.common import *
 from cinn.frontend import *
 from cinn.runtime import seed as cinn_seed
@@ -58,7 +56,7 @@ def convert_uint16_to_float(data):
 
 class OpTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(OpTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._init_target()
         self._init_results()
         self._init_seed()
@@ -304,7 +302,7 @@ class OpTest(unittest.TestCase):
 
             error_message = "[Check " + name + "] " + error_message
 
-            logger.debug("{} {}".format(is_allclose, error_message))
+            logger.debug(f"{is_allclose} {error_message}")
             self.assertTrue(is_allclose, msg=error_message)
 
     @staticmethod

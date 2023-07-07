@@ -15,7 +15,6 @@
 import unittest
 from struct import pack, unpack
 
-import cinn
 import numpy as np
 from cinn.common import *
 from cinn.frontend import *
@@ -70,7 +69,7 @@ class TestBitcastConvertCase1(TestBitcastConvertOp):
         packed = pack(data.size * 'h', *data.flatten())
         self.inputs = {"x": data}
         self.outputs = {
-            "y": np.array(unpack('4i', packed), dtype='int32').reshape((4)),
+            "y": np.array(unpack('4i', packed), dtype='int32').reshape(4),
             "output_type": "int32",
         }
 

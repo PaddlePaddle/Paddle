@@ -92,6 +92,7 @@ PaddleDialect::PaddleDialect(ir::IrContext *context)
 
 void PaddleDialect::initialize() {
   RegisterTypes<paddle::dialect::DenseTensorType>();
+  RegisterTypes<paddle::dialect::SelectedRowsType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
                      paddle::dialect::DataTypeAttribute,

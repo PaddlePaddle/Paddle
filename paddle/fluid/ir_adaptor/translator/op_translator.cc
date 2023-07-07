@@ -69,15 +69,25 @@ using InputHandleFn = std::function<ir::OpResult(ir::IrContext*,
 constexpr char kTargetDialectPrefix[] = "pd.";
 constexpr char kEmptyVarName[] = "@EMPTY@";
 
-static const std::unordered_set<std::string> special_inplace_ops = {
+static const std::unordered_set<std::string> special_non_inplace_ops = {
     "batch_norm",
 };
 
+static const std::unordered_set<std::string> special_inplace_ops = {
+    "adagrad",
+    "adam",
+    "adamax",
+    "adamw",
+};
+
 inline bool IsInplace(const OpDesc& op_desc) {
-  bool inplace = false;
-  if (special_inplace_ops.count(op_desc.Type())) {
-    return inplace;
+  if (special_non_inplace_ops.count(op_desc.Type())) {
+    return false;
   }
+  if (special_inplace_ops.count(op_desc.Type())) {
+    return true;
+  }
+  bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
   if (input_names.size() == 0 || output_names.size() == 0) {
@@ -314,6 +324,21 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     ir::Program* program) {
   VLOG(10) << "[op:" << op_desc.Type() << "][input] entrance";
 
+  auto& op_normalizer = OpNameNormalizer::instance();
+  const auto* mutable_attributes =
+      op_normalizer.GetMutableAttributes(op_desc.Type());
+
+  std::set<std::string> yaml_input_set;
+  for (const auto& info : input_infos) {
+    if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
+      continue;
+    }
+
+    std::string legacy_input_name =
+        op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
+
+    yaml_input_set.insert(legacy_input_name);
+  }
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
@@ -321,7 +346,9 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     auto& args = n.second;
 
     for (const auto& arg_name : args) {
-      IR_ENFORCE(param_map->count(arg_name) != 0,
+      bool check =
+          param_map->count(arg_name) != 0 || !yaml_input_set.count(arg_name);
+      IR_ENFORCE(check,
                  "arg %s.%s as input should be exists before prasing %s",
                  name,
                  arg_name,
@@ -337,9 +364,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   VLOG(10) << "[op:" << op_desc.Type() << "][input] start";
 
   std::vector<ir::OpResult> op_inputs;
-  auto& op_normalizer = OpNameNormalizer::instance();
-  const auto* mutable_attributes =
-      op_normalizer.GetMutableAttributes(op_desc.Type());
 
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
@@ -358,7 +382,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     std::vector<std::string> legacy_input_vars;
     // return empty OpResult if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasInput doesnot consider variadic attribute
-    if (op_desc.HasInput(legacy_input_name)) {
+    if (op_desc.HasInput(legacy_input_name, true)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
@@ -368,7 +392,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         continue;
       }
     }
-
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << legacy_input_name << " " << legacy_input_vars.size();
 
@@ -400,7 +423,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         (info.type_name.find("IntArrayAttribute") != std::string::npos);
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
-
     // Specially process TensorArray, this because we cannot distinguish it with
     // Vector<DenseTensor> by other conditions but we cannot support it like
     // Vector<DenseTensor>
@@ -765,18 +787,21 @@ struct AssignValueOpTranscriber : public OpTranscriber {
         dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
     attribute_map["place"] = attr_place;
 
-    if (op_desc.HasAttr("bool_values")) {
+    int dtype = paddle::get<int>(op_desc.GetAttr("dtype"));
+
+    if (dtype == /*BOOL*/ 0) {
       legacy_attr = op_desc.GetAttr("bool_values");
-    } else if (op_desc.HasAttr("fp32_values")) {
-      legacy_attr = op_desc.GetAttr("fp32_values");
-    } else if (op_desc.HasAttr("int32_values")) {
+    } else if (dtype == /*INT32*/ 2) {
       legacy_attr = op_desc.GetAttr("int32_values");
-    } else if (op_desc.HasAttr("int64_values")) {
+    } else if (dtype == /*FP32*/ 5) {
+      legacy_attr = op_desc.GetAttr("fp32_values");
+    } else if (dtype == /*INT64*/ 3) {
       legacy_attr = op_desc.GetAttr("int64_values");
     } else {
       IR_THROW(
           "Op assign_value should have attribute `**_values` but not find");
     }
+
     ir::Attribute attr_values = attribute_translator(
         attr_info_maps.at("values").type_name, legacy_attr);
     attribute_map["values"] = attr_values;

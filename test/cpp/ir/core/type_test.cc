@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <unordered_map>
 
+#include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
@@ -227,6 +228,23 @@ TEST(type_test, custom_type_dialect) {
   ir::Dialect *dialect_integer1 = ctx->GetRegisteredDialect("integer");
   ir::Dialect *dialect_integer2 = ctx->GetRegisteredDialect<IntegerDialect>();
   EXPECT_EQ(dialect_integer1, dialect_integer2);
+}
+
+TEST(type_test, pd_dialect) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  paddle::dialect::SelectedRowsType select_rows_dtype =
+      paddle::dialect::SelectedRowsType::get(
+          ctx, fp32_dtype, dims, data_layout, lod, offset);
+  EXPECT_EQ(select_rows_dtype.dtype().isa<ir::Float32Type>(), true);
+  EXPECT_EQ(select_rows_dtype.dims(), dims);
+  EXPECT_EQ(select_rows_dtype.data_layout(), data_layout);
+  EXPECT_EQ(select_rows_dtype.lod(), lod);
+  EXPECT_EQ(select_rows_dtype.offset(), offset);
 }
 
 namespace TestNamespace {

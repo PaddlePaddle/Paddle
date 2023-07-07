@@ -351,7 +351,7 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname, 0)
 
-    def print_table_stat(self, table_id):
+    def print_table_stat(self, table_id, pass_id, threshold):
         """
         print stat info of table_id,
         format: tableid, feasign size, mf size
@@ -363,7 +363,7 @@ class PSLib(Fleet):
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.print_table_stat(table_id)
+            self._fleet_ptr.print_table_stat(table_id, pass_id, threshold)
         self._role_maker._barrier_worker()
 
     def set_file_num_one_shard(self, table_id, file_num):

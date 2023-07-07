@@ -24,7 +24,7 @@ namespace ir {
 
 namespace {
 
-struct IrNodesCollector : public IRVisitor {
+struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
   using teller_t = std::function<bool(const Expr*)>;
   using handler_t = std::function<void(const Expr*)>;
 
@@ -151,7 +151,7 @@ std::set<Expr> CollectLoadTensors(Expr x,
   struct Mutator : public ir::IRMutator<const Expr*> {
     std::function<bool(const Expr*)> teller;
     std::set<Expr> exprs;
-    Mutator(std::function<bool(const Expr*)>&& teller)
+    explicit Mutator(std::function<bool(const Expr*)>&& teller)
         : teller(std::move(teller)) {}
 
     void operator()(const Expr* expr) {
@@ -175,7 +175,7 @@ std::set<Expr> CollectStoreTensors(Expr x,
   struct Mutator : public ir::IRMutator<const Expr*> {
     std::function<bool(const Expr*)> teller;
     std::set<Expr> exprs;
-    Mutator(std::function<bool(const Expr*)>&& teller)
+    explicit Mutator(std::function<bool(const Expr*)>&& teller)
         : teller(std::move(teller)) {}
 
     void operator()(const Expr* expr) {

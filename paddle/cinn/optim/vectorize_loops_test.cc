@@ -274,7 +274,7 @@ TEST(Vectorize, cuda_vectorize_with_constant) {
   Expr M(100);
   Expr N(500);
   Placeholder<float> A("A", {M, N});
-  Expr const_value(float(2.11));
+  Expr const_value(2.11f);
 
   Tensor C = Compute(
       {M, N}, [&](Var i, Var j) { return const_value * A(i, j); }, "C");

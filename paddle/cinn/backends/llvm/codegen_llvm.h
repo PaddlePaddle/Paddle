@@ -39,11 +39,11 @@
 namespace cinn {
 namespace backends {
 
-class LLVMIRVisitor : public ir::IRVisitorBase<llvm::Value *> {
+class LLVMIRVisitor : public ir::IRVisitorRequireReImpl<llvm::Value *> {
  public:
   LLVMIRVisitor() = default;
 
-  using ir::IRVisitorBase<llvm::Value *>::Visit;
+  using ir::IRVisitorRequireReImpl<llvm::Value *>::Visit;
 #define __m(t__) virtual llvm::Value *Visit(const ir::t__ *x) = 0;
   NODETY_FORALL(__m)
 #undef __m
@@ -98,7 +98,7 @@ class SymbolTable {
 };
 
 struct SymbolTableGuard {
-  explicit SymbolTableGuard(SymbolTable &symbol_table)
+  explicit SymbolTableGuard(SymbolTable &symbol_table)  // NOLINT
       : symbol_table_(symbol_table) {
     symbol_table.PushScope();
   }

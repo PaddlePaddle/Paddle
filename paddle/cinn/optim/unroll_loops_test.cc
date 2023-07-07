@@ -69,7 +69,7 @@ TEST(UnrollLoops, auto_unroll) {
   Expr M(100);
   Expr N(4);
   Expr O(5);
-  Expr const_value(float(2.11));
+  Expr const_value(2.11f);
 
   Placeholder<float> A("A", {M, N, O});
 

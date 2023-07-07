@@ -116,7 +116,7 @@ void ReplaceVarWithExpr(Expr* source,
 }
 
 struct CollectTensorIndexMutator : public ir::IRMutator<> {
-  CollectTensorIndexMutator(const std::string& tensor_name)
+  explicit CollectTensorIndexMutator(const std::string& tensor_name)
       : tensor_name_(tensor_name) {}
 
   std::vector<std::vector<Expr>> operator()(Expr* expr) {

@@ -35,7 +35,7 @@ def main():
     srcs.append(')ROC"')
     srcs.append(');\n')
 
-    cmd = "{} --version".format(llvm_config)
+    cmd = f"{llvm_config} --version"
     version = (
         subprocess.check_output(cmd, shell=True)
         .decode('utf-8')
