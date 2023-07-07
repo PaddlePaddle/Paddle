@@ -12,19 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/ir/trait/inplace.h"
 
-#include "paddle/ir/core/op_base.h"
-
-namespace paddle {
-namespace dialect {
-class InplaceTrait : public ir::OpTraitBase<InplaceTrait> {
- public:
-  explicit InplaceTrait(ir::Operation *op)
-      : ir::OpTraitBase<InplaceTrait>(op) {}
-};
-
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::InplaceTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InplaceTrait)

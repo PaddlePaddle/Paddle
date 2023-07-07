@@ -37,7 +37,6 @@
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
-#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/phi/core/enforce.h"
 
 #include "glog/logging.h"
@@ -227,8 +226,18 @@ void HandleForInplaceOp(ir::Operation* op,
                         std::unordered_map<ir::Value, std::string>* name_map,
                         int& count) {  // NOLINT
   if (op->num_results() < 1) return;
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
+  }
+  VLOG(4) << "HandleForInplaceOp: " << op_name;
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   paddle::dialect::OpYamlInfoParser yaml_parser(
-      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo());
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_());
+
   for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value value = op->result(i);
     std::string value_name = yaml_parser.InputNames()[i];
@@ -262,25 +271,30 @@ void BuildScope(const ir::Block& block,
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
-    if (op->num_results() < 1) continue;
-
     std::string op_name = op->name();
     if (op->attributes().count("op_name")) {
       op_name =
           op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
 
+    VLOG(4) << "BuildScope for :" << op_name;
+
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter") {
-      VLOG(6) << "HandleForSpecialOp: " << op_name;
+      VLOG(4) << "HandleForSpecialOp: " << op_name;
       HandleForSpecialOp(op, scope, inner_local_scope, name_map, count);
       continue;
     }
 
     CheckInputVars(op, op_name, *name_map);
 
-    if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
+    if (op->num_results() < 1) continue;
+    if (op->attributes().count("is_inplace") != 0 &&
+        op->attributes()
+            .at("is_inplace")
+            .dyn_cast<ir::BoolAttribute>()
+            .data()) {
       HandleForInplaceOp(op, scope, inner_local_scope, name_map, count);
       continue;
     } else {

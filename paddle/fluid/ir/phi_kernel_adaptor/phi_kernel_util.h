@@ -112,7 +112,7 @@ void BuildPhiContext(
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
-    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindLocalVar(in_var_name),
+    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
