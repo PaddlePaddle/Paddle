@@ -225,6 +225,7 @@ __global__ void ReduceAbsMaxKernel(const T* x,
                                    const int32_t cols,
                                    float* row_ranges,
                                    int32_t* outlier_idx) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   using InVec = phi::AlignedVector<T, VecSize>;
   using ComputeVec = phi::AlignedVector<ComputeType, VecSize>;
 
@@ -263,6 +264,7 @@ __global__ void ReduceAbsMaxKernel(const T* x,
       row_ranges[row_idx] = tmp_max_val;
     }
   }
+#endif
 }
 
 template <typename T, int VecSize>
@@ -272,6 +274,7 @@ __global__ void QuantActKernel(const T* x,
                                const float* row_ranges,
                                const int32_t* outlier_idx,
                                int8_t* quant_x) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   using InVec = phi::AlignedVector<T, VecSize>;
   using OutVec = phi::AlignedVector<int8_t, VecSize>;
 
@@ -298,21 +301,7 @@ __global__ void QuantActKernel(const T* x,
     }
     phi::Store(out_vec, quant_x + linear_index);
   }
-}
-
-template <typename T, int VecSize>
-__global__ void Fill(T* input, T value, int64_t num) {
-  phi::AlignedVector<T, VecSize> in_vec;
-  int stride = blockDim.x * gridDim.x * VecSize;
-  int base_idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-
-  for (int idx = base_idx; idx < num; idx += stride) {
-#pragma unroll
-    for (int j = 0; j < VecSize; ++j) {
-      in_vec[j] = value;
-    }
-    phi::Store(in_vec, input + idx);
-  }
+#endif
 }
 
 template <typename T>
@@ -330,6 +319,7 @@ __global__ void SplitKernel(const T* x,
                             int sub_x_elem_cnt,
                             int sub_w_elem_cnt,
                             int elem_cnt) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   extern __shared__ int32_t k_ids_shm[];
   int32_t cnt = 0;
 
@@ -379,9 +369,11 @@ __global__ void SplitKernel(const T* x,
           DequantFunc<T>()(shifted_weight, weight_scale[row_idx]);
     }
   }
+#endif
 }
 
 __global__ static void UpdateOutlier(int32_t* outlier_idx, int32_t* total_num) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   constexpr int IntSize = 32;
 
   int32_t outlier_val = outlier_idx[threadIdx.x];
@@ -393,6 +385,7 @@ __global__ static void UpdateOutlier(int32_t* outlier_idx, int32_t* total_num) {
       atomicAdd(total_num, 1);
     }
   }
+#endif
 }
 
 // Input: x:dequantized_fp16:[m, n], x_fp16:T:[m, n], input_range:T:[m],
@@ -402,6 +395,7 @@ __global__ void DequantActivationMergeKernel(const T* x,
                                              const T* x_fp,
                                              T* y,
                                              const int32_t elem_cnt) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   using FpVec = phi::AlignedVector<T, VecSize>;
 
   FpVec x_fp_vec;
@@ -420,6 +414,7 @@ __global__ void DequantActivationMergeKernel(const T* x,
     }
     phi::Store(out_vec, y + linear_idx);
   }
+#endif
 }
 
 // Input: x:int32:[m, n], x_fp16:T:[m, n], input_range:T:[m], weight_scale:T:[n]
@@ -433,6 +428,7 @@ __global__ void DequantMergeKernel(const int32_t* x,
                                    T* y,
                                    int m,
                                    int n) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   using FpVec = phi::AlignedVector<T, VecSize>;
   using IntVec = phi::AlignedVector<int32_t, VecSize>;
 
@@ -455,18 +451,7 @@ __global__ void DequantMergeKernel(const int32_t* x,
       phi::Store(out_vec, y + linear_idx);
     }
   }
-}
-
-template <typename T>
-void LaunchFillKernel(T* input,
-                      T value,
-                      int64_t num,
-                      backends::gpu::GpuLaunchConfig* gpu_config,
-                      gpuStream_t stream) {
-  constexpr int VecSize = 16 / sizeof(T);
-  Fill<T, VecSize>
-      <<<gpu_config->block_per_grid, gpu_config->thread_per_block, 0, stream>>>(
-          input, value, num);
+#endif
 }
 
 template <typename T>
