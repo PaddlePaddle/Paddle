@@ -12,4 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.backends import ExecutionEngine, ExecutionOptions  # noqa: F401
+from .core_api.backends import (  # noqa: F401
+    Compiler,
+    ExecutionEngine,
+    ExecutionOptions,
+)
