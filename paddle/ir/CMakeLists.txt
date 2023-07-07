@@ -1,3 +1,4 @@
+add_definitions(-DIR_LIBRARY)
 set_property(GLOBAL PROPERTY IR_TARGETS "")
 set_property(GLOBAL PROPERTY IR_MODULES "")
 function(ir_library TARGET_NAME)
@@ -32,14 +33,6 @@ function(ir_library TARGET_NAME)
 
   endif()
 endfunction()
-
-if(WITH_SHARED_IR)
-  add_definitions(-DIR_DLL_EXPORT)
-else()
-  if(WIN32)
-    add_definitions(-DIR_API)
-  endif()
-endif()
 
 add_subdirectory(core)
 add_subdirectory(pass)
