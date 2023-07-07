@@ -206,11 +206,7 @@ std::string Operation::name() const {
 }
 
 Attribute Operation::attribute(const std::string &key) const {
-  IR_ENFORCE(HasAttribute(key),
-             "operation(%s)%x: no attribute %s",
-             name(),
-             static_cast<void *>(this),
-             key);
+  IR_ENFORCE(HasAttribute(key), "operation(%s): no attribute %s", name(), key);
   return attributes_.at(key);
 }
 
