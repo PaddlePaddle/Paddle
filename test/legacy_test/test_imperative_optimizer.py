@@ -34,7 +34,6 @@ from paddle.fluid.optimizer import (
     LambOptimizer,
     LarsMomentumOptimizer,
     LookaheadOptimizer,
-    ModelAverage,
     MomentumOptimizer,
     PipelineOptimizer,
     RecomputeOptimizer,
@@ -43,7 +42,7 @@ from paddle.fluid.optimizer import (
 )
 
 # Note(wangzhongpu)
-# In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
+# In dygraph, don't support DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
 
 class MLP(paddle.nn.Layer):
@@ -731,18 +730,6 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
     # should fix: may fail in CI-windows
     def _test_lamb(self):
         self._check_mlp()
-
-
-class TestImperativeModelAverage(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ModelAverage(
-            0.15, min_average_window=10000, max_average_window=12500
-        )
-        return optimizer
-
-    def test_modelaverage(self):
-        exception_message = "In dygraph, don't support ModelAverage."
-        self._check_exception(exception_message)
 
 
 class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
