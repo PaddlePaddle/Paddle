@@ -441,7 +441,7 @@ def lm_model(
     paddle.assign(last_cell, output=init_cell)
     paddle.assign(last_hidden, output=init_hidden)
 
-    feeding_list = ['x', 'y', 'init_hidden', 'init_cell']
+    feeding_list = [x, y, init_hidden, init_cell]
     return loss, last_hidden, last_cell, feeding_list
 
 
@@ -492,7 +492,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                     self.loss,
                     self.last_hidden,
                     self.last_cell,
-                    self.feed_order,
+                    self.feed_list,
                 ) = res_vars
 
                 paddle.nn.clip.set_gradient_clip(

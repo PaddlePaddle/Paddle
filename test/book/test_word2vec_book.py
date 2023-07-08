@@ -209,6 +209,8 @@ def infer(target, save_dirname=None):
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
+        print("for debug in ci, remove it later")
+        print(save_dirname)
         [
             inference_program,
             feed_target_names,
