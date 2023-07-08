@@ -42,13 +42,13 @@ class CublasLtHelper {
   CublasLtHelper(int m, int k, int n, cublasLtHandle_t handle)
       : handle_(handle), alpha_(1), beta_(0), m_(m), k_(k), n_(n) {
     cublasStatus_t status;
-    // handle and matmul desc
 #if CUBLAS_VER_MAJOR < 11
     cudaDataType_t cudaComputeType = CUDA_R_32I;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
 #endif
 
+    // matmul desc
 #if CUBLAS_VER_MAJOR < 11
     status = dyl::cublasLtMatmulDescCreate(&matmul_desc_, cudaComputeType);
 #else
