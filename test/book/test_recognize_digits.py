@@ -212,8 +212,6 @@ def infer(
         ] = paddle.static.io.load_inference_model(
             save_dirname,
             exe,
-            model_filename=model_filename,
-            params_filename=params_filename,
         )
 
         # The input's dimension of conv should be 4-D or 5-D.
@@ -239,11 +237,13 @@ def main(use_cuda, parallel, nn_type, combine):
     model_filename = None
     params_filename = None
     if not use_cuda and not parallel:
-        save_dirname = "recognize_digits_" + nn_type + ".inference.model"
-        save_full_dirname = "recognize_digits_" + nn_type + ".train.model"
+        save_dirname = "recognize_digits_" + nn_type + "_inference_model"
+        save_full_dirname = "recognize_digits_" + nn_type + "_train_model"
         if combine:
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
+            save_dirname = save_dirname + model_filename
+            save_full_dirname = params_filename + params_filename
 
     # call train() with is_local argument to run distributed train
     train(
