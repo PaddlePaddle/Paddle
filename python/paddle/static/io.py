@@ -867,6 +867,10 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     model_path, params_path
                 )
             )
+
+        if not os.path.isdir(model_path):
+            raise ValueError("There is no directory named '%s'", model_path)
+
         program_bytes = load_from_file(model_path)
 
         # deserialize bytes to program

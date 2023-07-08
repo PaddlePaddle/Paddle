@@ -104,7 +104,7 @@ class TestBook(unittest.TestCase):
         importlib.reload(executor)  # reload to build a new scope
 
         model_0 = InferModel(load_inference_model(MODEL_DIR, exe))
-        with open(os.path.join(UNI_MODEL_DIR, '.pdmodel'), "rb") as f:
+        with open((UNI_MODEL_DIR + '.pdmodel'), "rb") as f:
             model_str = f.read()
         model_1 = InferModel(load_inference_model(UNI_MODEL_DIR, exe))
 
