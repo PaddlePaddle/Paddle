@@ -46,7 +46,7 @@ class TestFillConstantOp(OpTest):
                         self.value = eval(f"{dtype}(0)")
 
     def build_paddle_program(self, target):
-        if self.dtype == None:
+        if self.dtype is None:
             x = np.full(self.shape, self.value)
             x = paddle.to_tensor(x)
         else:
@@ -56,7 +56,7 @@ class TestFillConstantOp(OpTest):
 
     def build_cinn_program(self, target):
         builder = NetBuilder("fill_constant")
-        if self.dtype == None:
+        if self.dtype is None:
             x = builder.fill_constant(self.shape, self.value, "out")
         else:
             x = builder.fill_constant(self.shape, self.value, "out", self.dtype)

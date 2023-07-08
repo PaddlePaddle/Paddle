@@ -64,7 +64,8 @@ std::vector<TuneTask> CreateTasks(const frontend::Program& program,
  */
 class MockSearchSpace : public SearchSpace {
  public:
-  MockSearchSpace(const TuneTask& tune_task) : SearchSpace(tune_task) {}
+  explicit MockSearchSpace(const TuneTask& tune_task)
+      : SearchSpace(tune_task) {}
 
   int GetMinExprValue() const { return min_expr_value_; }
 

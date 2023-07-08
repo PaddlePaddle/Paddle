@@ -19,8 +19,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include "type.h"
-
 namespace cinn {
 namespace common {
 

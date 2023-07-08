@@ -67,20 +67,20 @@ struct HostEvent {
 
 class Summary {
  public:
-  struct Raito {
+  struct Ratio {
     double value;
-    Raito(double val) : value(val){};
+    Ratio(double val) : value(val) {}  // NOLINT
     std::string ToStr() const { return std::to_string(value); }
   };
 
   struct Item {
     HostEvent info;
-    Raito sub_raito{0.0};    // percentage of EventType
-    Raito total_raito{0.0};  // precentage of total process
+    Ratio sub_ratio{0.0};    // percentage of EventType
+    Ratio total_ratio{0.0};  // precentage of total process
 
-    Item(const HostEvent& e) : info(e) {}
+    explicit Item(const HostEvent& e) : info(e) {}
     bool operator<(const Item& other) const {
-      return total_raito.value > other.total_raito.value;
+      return total_ratio.value > other.total_ratio.value;
     }
   };
 
