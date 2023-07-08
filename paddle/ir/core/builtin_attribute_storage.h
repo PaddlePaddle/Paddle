@@ -74,7 +74,7 @@ struct StrAttributeStorage : public AttributeStorage {
     return std::equal(data_, data_ + size_, key.c_str());
   }
 
-  const ParamKey GetAsKey() const { return DataString; }
+  const ParamKey &GetAsKey() const { return DataString; }
 
  private:
   char *data_;
