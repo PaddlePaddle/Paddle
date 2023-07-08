@@ -16,7 +16,7 @@
 
 
 import numpy as np
-from cinn.common import *
+from cinn.common import is_compiled_with_cuda
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper

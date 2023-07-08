@@ -18,7 +18,7 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
 from cinn.framework import *
 from cinn.frontend import *
 

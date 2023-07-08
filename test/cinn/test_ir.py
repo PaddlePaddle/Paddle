@@ -16,7 +16,6 @@
 
 import unittest
 
-from cinn.common import *
 from cinn.ir import *
 from cinn.optim import *
 

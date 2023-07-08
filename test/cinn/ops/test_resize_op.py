@@ -15,7 +15,6 @@
 # limitations under the License.
 
 
-from cinn.common import *
 from cinn.frontend import *
 
 # paddle resize is based on cv2 module
