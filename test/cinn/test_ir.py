@@ -17,7 +17,7 @@
 import unittest
 
 from cinn.ir import Expr, Var
-from cinn.optim import *
+from cinn.optim import simplify
 
 
 class TestIR(unittest.TestCase):
