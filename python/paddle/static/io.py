@@ -838,6 +838,8 @@ def load_inference_model(path_prefix, executor, **kwargs):
     else:
         # check and norm path_prefix
         path_prefix = _normalize_path_prefix(path_prefix)
+        if not os.path.isdir(path_prefix):
+            raise ValueError("There is no directory named '%s'", path_prefix)
 
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
@@ -873,9 +875,6 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     model_path, params_path
                 )
             )
-
-        if not os.path.isdir(model_path):
-            raise ValueError("There is no directory named '%s'", model_path)
 
         program_bytes = load_from_file(model_path)
 
