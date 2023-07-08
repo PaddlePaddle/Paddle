@@ -27,14 +27,77 @@
 #include <memory>
 #include <string>
 #include <vector>
-
+#include <paddle/Tensor.h>
+#include <vector>
+#include <paddle/extension.h>
 #include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
 #include "paddle_tensor.h"         // NOLINT
                                    /*! \namespace paddle
                                     */
 namespace paddle {
+void affine_grid(Tensor& output, const Tensor& theta, const std::vector<int>& target_shape) {
+    // Validate the input tensor shapes
+    if (theta.shape()[0] != 2 || theta.shape()[1] != 3) {
+        throw std::invalid_argument("Theta tensor must be of shape (2, 3).");
+    }
+    if (target_shape.size() != 4) {
+        throw std::invalid_argument("target_shape must be of size 4.");
+    }
 
+    // Get sizes from target_shape
+    int batch_size = target_shape[0];
+    int num_channels = theta.shape()[0];
+    int height = target_shape[2];
+    int width = target_shape[3];
+
+    // Assuming 'output' tensor is pre-allocated with the correct shape and type
+    // and you can access the data as 'output.data<float>()'
+    
+    // Iterate over each element in the output tensor
+    for (int b = 0; b < batch_size; b++) {
+        for (int h = 0; h < height; h++) {
+            for (int w = 0; w < width; w++) {
+                // Compute the grid values for each spatial dimension
+                float grid_x = theta.data<float>()[0][0] * h + theta.data<float>()[0][1] * w + theta.data<float>()[0][2];
+                float grid_y = theta.data<float>()[1][0] * h + theta.data<float>()[1][1] * w + theta.data<float>()[1][2];
+
+                // Set the grid values in the output tensor
+                output.data<float>()[b][0][h][w] = grid_x;
+                output.data<float>()[b][1][h][w] = grid_y;
+            }
+        }
+    }
+  }
+
+
+  void grid_sample(const paddle::Tensor& input,
+                  const paddle::Tensor& grid,
+                  paddle::Tensor& output,
+                  const std::string& mode = "bilinear",
+                  const std::string& padding_mode = "zeros") {
+    std::vector<int64_t> size = {input.size(2), input.size(3)};
+    paddle::Tensor out = paddle::extension::grid_sample(input, grid, size, mode, padding_mode);
+    output.CopyFrom(out);
+  }
+  
+
+  void pixel_shuffle(const paddle::Tensor& input, int upscale_factor, paddle::Tensor& output) {
+    paddle::Tensor out = paddle::extension::pixel_shuffle(input, upscale_factor);
+    output.CopyFrom(out);
+  }
+
+  void pixel_unshuffle(const paddle::Tensor& input, int downscale_factor, paddle::Tensor& output) {
+    paddle::Tensor out = paddle::extension::pixel_unshuffle(input, downscale_factor);
+    output.CopyFrom(out);
+  }
+
+  void channel_shuffle(const paddle::Tensor& input, int groups, paddle::Tensor& output) {
+    paddle::Tensor out = paddle::extension::channel_shuffle(input, groups);
+    output.CopyFrom(out);
+  }
+
+} 
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
 using PaddleDataLayout = paddle_infer::DataLayout;
