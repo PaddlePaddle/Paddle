@@ -29,7 +29,6 @@ from cinn.common import (
     UInt,
     is_compiled_with_cuda,
 )
-from cinn.frontend import *
 from cinn.runtime import seed as cinn_seed
 
 import paddle

@@ -19,7 +19,7 @@ import os
 
 import numpy as np
 from cinn.common import Int, is_compiled_with_cuda
-from cinn.frontend import *
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 

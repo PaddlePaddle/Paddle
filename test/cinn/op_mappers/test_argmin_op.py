@@ -16,7 +16,6 @@
 
 import unittest
 
-from cinn.frontend import *
 from op_mapper_test import OpMapperTest
 
 import paddle

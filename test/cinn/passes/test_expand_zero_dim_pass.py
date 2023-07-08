@@ -17,7 +17,6 @@
 import unittest
 
 import numpy as np
-from cinn.frontend import *
 from pass_test import PassTest
 
 

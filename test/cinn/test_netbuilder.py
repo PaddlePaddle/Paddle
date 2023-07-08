@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
 from cinn.framework import *
-from cinn.frontend import *
+from cinn.frontend import NetBuilder
 
 import paddle
 from paddle import static
