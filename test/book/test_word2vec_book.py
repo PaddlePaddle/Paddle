@@ -275,6 +275,7 @@ def infer(target, save_dirname=None):
 
         infer_config = fluid.core.NativeConfig()
         infer_config.model_dir = save_dirname
+        print("now infer_config.model_dir:", infer_config.model_dir)
         if target == "cuda":
             infer_config.use_gpu = True
             infer_config.device = 0
@@ -282,6 +283,7 @@ def infer(target, save_dirname=None):
         elif target == "xpu":
             infer_config.use_xpu = True
         compiled_program = fluid.compiler.CompiledProgram(inference_program)
+        print("after infer_config.model_dir:", infer_config.model_dir)
         compiled_program._with_inference_optimize(infer_config)
         assert compiled_program._is_inference is True
         infer_outputs = exe.run(compiled_program, feed=infer_inputs)
