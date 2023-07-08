@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper, run_test
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "triangular solve op support GPU only now.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "triangular solve op support GPU only now."
+)
 class TestTriangularSolveOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -32,7 +34,7 @@ class TestTriangularSolveOp(OpTest):
     def prepare_inputs(self):
         self.inputs = {
             "input1": self.random(self.case["shape1"], self.case["dtype"]),
-            "input2": self.random(self.case["shape2"], self.case["dtype"])
+            "input2": self.random(self.case["shape2"], self.case["dtype"]),
         }
         self.left_side = self.case["left_side"]
         self.upper = self.case["upper"]
@@ -45,24 +47,30 @@ class TestTriangularSolveOp(OpTest):
             last_dim_idx = len(shape) - 1
             second_last_dim_idx = len(shape) - 2
             perm = list(range(len(shape)))
-            perm[last_dim_idx], perm[second_last_dim_idx] = perm[
-                second_last_dim_idx], perm[last_dim_idx]
+            perm[last_dim_idx], perm[second_last_dim_idx] = (
+                perm[second_last_dim_idx],
+                perm[last_dim_idx],
+            )
             x_transposed = paddle.transpose(x, perm=perm)
             return x_transposed
 
         input1 = paddle.to_tensor(self.inputs["input1"], stop_gradient=True)
         input2 = paddle.to_tensor(self.inputs["input2"], stop_gradient=True)
         if self.left_side:
-            out = paddle.linalg.triangular_solve(input1, input2, self.upper,
-                                                 self.transpose_a,
-                                                 self.unit_diagonal)
+            out = paddle.linalg.triangular_solve(
+                input1, input2, self.upper, self.transpose_a, self.unit_diagonal
+            )
             self.paddle_outputs = [out]
         else:
             input1 = transpose_last_two_dims(input1)
             input2 = transpose_last_two_dims(input2)
             out = paddle.linalg.triangular_solve(
-                input1, input2, not self.upper, self.transpose_a,
-                self.unit_diagonal)
+                input1,
+                input2,
+                not self.upper,
+                self.transpose_a,
+                self.unit_diagonal,
+            )
             out = transpose_last_two_dims(out)
             self.paddle_outputs = [out]
 
@@ -120,16 +128,14 @@ class TestTriangularSolveOpShapeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
             {
                 "left_side": True,
                 "upper": True,
                 "transpose_a": False,
-                "unit_diagonal": False
+                "unit_diagonal": False,
             },
         ]
 
@@ -145,19 +151,15 @@ class TestTriangularSolveOpDtypeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = [
             {
                 "left_side": True,
                 "upper": True,
                 "transpose_a": False,
-                "unit_diagonal": False
+                "unit_diagonal": False,
             },
         ]
 
@@ -185,16 +187,14 @@ class TestTriangularSolveOpBatchDimTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
             {
                 "left_side": True,
                 "upper": True,
                 "transpose_a": False,
-                "unit_diagonal": False
+                "unit_diagonal": False,
             },
         ]
 
@@ -222,16 +222,14 @@ class TestTriangularSolveOpBroadcastTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
             {
                 "left_side": True,
                 "upper": True,
                 "transpose_a": False,
-                "unit_diagonal": False
+                "unit_diagonal": False,
             },
         ]
 
@@ -251,34 +249,33 @@ class TestTriangularSolveOpAttributeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
             {
                 "left_side": True,
                 "upper": True,
                 "transpose_a": False,
-                "unit_diagonal": False
+                "unit_diagonal": False,
             },
             {
                 "left_side": True,
                 "upper": True,
                 "transpose_a": False,
-                "unit_diagonal": True
+                "unit_diagonal": True,
             },
             {
                 "left_side": True,
                 "upper": True,
                 "transpose_a": True,
-                "unit_diagonal": False
+                "unit_diagonal": False,
             },
         ]
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "triangular solve op support GPU only now.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "triangular solve op support GPU only now."
+)
 class TestTriangularSolveOpRightSide(TestTriangularSolveOp):
     def setUp(self):
         self.inputs = {}
@@ -287,7 +284,7 @@ class TestTriangularSolveOpRightSide(TestTriangularSolveOp):
     def prepare_inputs(self):
         self.inputs = {
             "input1": self.random([2, 3, 3], "float32"),
-            "input2": self.random([2, 1, 3], "float32")
+            "input2": self.random([2, 1, 3], "float32"),
         }
         self.left_side = False
         self.upper = True
@@ -299,7 +296,7 @@ class TestTriangularSolveOpRightSide1(TestTriangularSolveOpRightSide):
     def prepare_inputs(self):
         self.inputs = {
             "input1": self.random([1, 3, 2, 3, 3], "float32"),
-            "input2": self.random([2, 1, 2, 1, 3], "float32")
+            "input2": self.random([2, 1, 2, 1, 3], "float32"),
         }
         self.left_side = False
         self.upper = True
@@ -307,8 +304,9 @@ class TestTriangularSolveOpRightSide1(TestTriangularSolveOpRightSide):
         self.unit_diagonal = False
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "triangular solve op support GPU only now.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "triangular solve op support GPU only now."
+)
 class TestTriangularSolveOpSingular(TestTriangularSolveOp):
     def setUp(self):
         self.inputs = {}
@@ -317,7 +315,7 @@ class TestTriangularSolveOpSingular(TestTriangularSolveOp):
     def prepare_inputs(self):
         self.inputs = {
             "input1": self.random([1, 3, 3], "float32"),
-            "input2": self.random([1, 3, 1], "float32")
+            "input2": self.random([1, 3, 1], "float32"),
         }
         # set one dim to zeros to make a singular matrix
         self.inputs["input1"][0][0] = 0
@@ -334,7 +332,7 @@ class TestTriangularSolveOpSingular1(TestTriangularSolveOpSingular):
     def prepare_inputs(self):
         self.inputs = {
             "input1": self.random([1, 3, 3], "float32"),
-            "input2": self.random([1, 3, 1], "float32")
+            "input2": self.random([1, 3, 1], "float32"),
         }
         # set one dim to zeros to make a singular matrix
         self.inputs["input1"][0][2] = 0
@@ -344,8 +342,9 @@ class TestTriangularSolveOpSingular1(TestTriangularSolveOpSingular):
         self.unit_diagonal = False
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "triangular solve op support GPU only now.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "triangular solve op support GPU only now."
+)
 class TestTriangularSolveOpLarge(TestTriangularSolveOp):
     def setUp(self):
         self.inputs = {}
@@ -354,7 +353,7 @@ class TestTriangularSolveOpLarge(TestTriangularSolveOp):
     def prepare_inputs(self):
         self.inputs = {
             "input1": self.random([1, 1024, 1024], "float64", -0.01, 0.01),
-            "input2": self.random([1, 1024, 512], "float64", -0.01, 0.01)
+            "input2": self.random([1, 1024, 512], "float64", -0.01, 0.01),
         }
         self.left_side = True
         self.upper = True
@@ -369,7 +368,7 @@ class TestTriangularSolveOpLarge1(TestTriangularSolveOpLarge):
     def prepare_inputs(self):
         self.inputs = {
             "input1": self.random([1, 2048, 2048], "float64", -0.01, 0.01),
-            "input2": self.random([1, 2048, 512], "float64", -0.01, 0.01)
+            "input2": self.random([1, 2048, 512], "float64", -0.01, 0.01),
         }
         self.left_side = True
         self.upper = True

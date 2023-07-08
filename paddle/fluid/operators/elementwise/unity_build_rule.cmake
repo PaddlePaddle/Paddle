@@ -5,15 +5,8 @@
 # If there are some redefined error in compiling with the source file which
 # in combination rule, you can remove the source file from the following rules.
 register_unity_group(
-  cc
-  elementwise_add_op.cc
-  elementwise_div_op.cc
-  elementwise_floordiv_op.cc
-  elementwise_min_op.cc
-  elementwise_mod_op.cc
-  elementwise_mul_op.cc
-  elementwise_pow_op.cc
-  elementwise_sub_op.cc)
+  cc elementwise_add_op.cc elementwise_div_op.cc elementwise_min_op.cc
+  elementwise_mul_op.cc elementwise_sub_op.cc)
 register_unity_group(
   cu
   elementwise_add_op.cu

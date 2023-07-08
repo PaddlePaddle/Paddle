@@ -20,8 +20,10 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/utils/registry.h"
 
-#define CINN_REGISTER_PASS(name) \
-  CINN_REGISTRY_REGISTER(::cinn::hlir::framework::PassFunctionRegister, PassFunctionRegister, name)
+#define CINN_REGISTER_PASS(name)                                        \
+  CINN_REGISTRY_REGISTER(::cinn::hlir::framework::PassFunctionRegister, \
+                         PassFunctionRegister,                          \
+                         name)
 
 namespace cinn {
 namespace hlir {
@@ -31,13 +33,15 @@ class PassFunctionRegister;
 typedef std::function<void(Graph* g)> PassFunction;
 
 /**
- * \brief Given an attribute of graph, find the pass that generates this attribute.
+ * \brief Given an attribute of graph, find the pass that generates this
+ * attribute.
  * @param attr_name Name of the graph attribute.
  * @return The pass that generates it.
  */
 const PassFunctionRegister* FindPassDep(const std::string& attr_name);
 
-class PassFunctionRegister : public FunctionRegEntryBase<PassFunctionRegister, PassFunction> {
+class PassFunctionRegister
+    : public FunctionRegEntryBase<PassFunctionRegister, PassFunction> {
  public:
   bool change_structure{false};
   //! dependencies on operator attributes
@@ -49,7 +53,8 @@ class PassFunctionRegister : public FunctionRegEntryBase<PassFunctionRegister, P
 
   /**
    * \brief Imply whether this pass will change the Graph's structure.
-   * @param in A bool variable implying whether this pass will change the Graph's structure.
+   * @param in A bool variable implying whether this pass will change the
+   * Graph's structure.
    * @return Reference to self.
    */
   PassFunctionRegister& set_change_structure(bool in) {
@@ -102,7 +107,9 @@ const PassFunctionRegister* FindPassDep(const std::string& attr_name);
 void ApplyPasses(Graph* g, const std::vector<std::string>& passes);
 
 // Apply a single pass on a graph.
-inline void ApplyPass(Graph* g, const std::string& pass) { return ApplyPasses(g, {pass}); }
+inline void ApplyPass(Graph* g, const std::string& pass) {
+  return ApplyPasses(g, {pass});
+}
 
 }  // namespace framework
 }  // namespace hlir

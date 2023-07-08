@@ -17,16 +17,17 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "glog/logging.h"
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/program_pass.h"
-#include "glog/logging.h"
 
 namespace cinn {
 namespace frontend {
 namespace pass {
 
 namespace {
-using CastImplFunc = std::function<void(NetBuilder* builder, const Instruction&)>;
+using CastImplFunc =
+    std::function<void(NetBuilder* builder, const Instruction&)>;
 
 bool IsInputHasFP16OrBF16(const std::vector<Variable>& inputs) {
   return std::find_if(inputs.begin(), inputs.end(), [](const Variable& var) {
@@ -34,15 +35,17 @@ bool IsInputHasFP16OrBF16(const std::vector<Variable>& inputs) {
          }) != inputs.end();
 }
 
-Instruction CreateNewCastInstruction(const Variable& input, const Variable& output) {
+Instruction CreateNewCastInstruction(const Variable& input,
+                                     const Variable& output) {
   Instruction new_cast_instr("cast", {input});
-  new_cast_instr->outputs       = {output};
-  new_cast_instr->attrs         = {{"dtype", common::Type2Str(output->type)}};
+  new_cast_instr->outputs = {output};
+  new_cast_instr->attrs = {{"dtype", common::Type2Str(output->type)}};
   new_cast_instr->attrs_ordered = {{"dtype", common::Type2Str(output->type)}};
   return new_cast_instr;
 }
 
-Instruction CreateNewIdentityInstruction(const Variable& input, const Variable& output) {
+Instruction CreateNewIdentityInstruction(const Variable& input,
+                                         const Variable& output) {
   Instruction new_identity_instr("identity", {input});
   new_identity_instr->outputs = {output};
   return new_identity_instr;
@@ -65,11 +68,13 @@ void CommonCastImpl(NetBuilder* builder, const Instruction& instr) {
     casted_inputs.emplace_back(casted_var);
   }
   // Run fp32 op
-  const auto& outputs = builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
+  const auto& outputs =
+      builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
   // Cast all fp32 outputs to fp16/bf16
   for (int i = 0; i < outputs.size(); ++i) {
     if (outputs[i]->type.is_float(32)) {
-      builder->AppendInstruction(CreateNewCastInstruction(outputs[i], instr->outputs[i]));
+      builder->AppendInstruction(
+          CreateNewCastInstruction(outputs[i], instr->outputs[i]));
     }
   }
 }
@@ -115,26 +120,36 @@ static std::unordered_map<std::string, CastImplFunc> need_cast_list = {
 
        // Except input [X], BatchNormTrain's Input should all be fp32
        CHECK_EQ(instr->inputs.size(), 5UL)
-           << "The number of the given inputs is not equal to the required for op " << instr->op_type;
+           << "The number of the given inputs is not equal to the required for "
+              "op "
+           << instr->op_type;
        CHECK(instr->inputs[1]->type.is_float(32))
-           << instr->op_type << "'s input [scale] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type << "'s input [scale] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[2]->type.is_float(32))
-           << instr->op_type << "'s input [bias] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type << "'s input [bias] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[3]->type.is_float(32))
-           << instr->op_type << "'s input [moving_mean] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type
+           << "'s input [moving_mean] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[4]->type.is_float(32))
-           << instr->op_type << "'s input [moving_variance] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type
+           << "'s input [moving_variance] should be float32, but here "
+           << instr->inputs[1]->type;
 
        // Cast input [X] from fp16/bf16 to fp32
-       const auto& x        = instr->inputs[0];
+       const auto& x = instr->inputs[0];
        const auto& x_casted = builder->Cast(x, "float32");
 
        auto casted_inputs = instr->inputs;
-       casted_inputs[0]   = x_casted;
+       casted_inputs[0] = x_casted;
        // Run fp32 function
-       const auto& outputs = builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
+       const auto& outputs =
+           builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
        // Cast output [Y] to fp16/bf16, no other output
-       builder->AppendInstruction(CreateNewCastInstruction(outputs[0], instr->outputs[0]));
+       builder->AppendInstruction(
+           CreateNewCastInstruction(outputs[0], instr->outputs[0]));
      }},
     {"batch_norm_train",
      [](NetBuilder* builder, const Instruction& instr) {
@@ -146,29 +161,40 @@ static std::unordered_map<std::string, CastImplFunc> need_cast_list = {
 
        // Except input [X], BatchNormTrain's Input should all be fp32
        CHECK_EQ(instr->inputs.size(), 5UL)
-           << "The number of the given inputs is not equal to the required for op " << instr->op_type;
+           << "The number of the given inputs is not equal to the required for "
+              "op "
+           << instr->op_type;
        CHECK(instr->inputs[1]->type.is_float(32))
-           << instr->op_type << "'s input [scale] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type << "'s input [scale] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[2]->type.is_float(32))
-           << instr->op_type << "'s input [bias] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type << "'s input [bias] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[3]->type.is_float(32))
-           << instr->op_type << "'s input [moving_mean] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type
+           << "'s input [moving_mean] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[4]->type.is_float(32))
-           << instr->op_type << "'s input [moving_variance] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type
+           << "'s input [moving_variance] should be float32, but here "
+           << instr->inputs[1]->type;
 
        // Cast input [X] from fp16/bf16 to fp32
-       const auto& x        = instr->inputs[0];
+       const auto& x = instr->inputs[0];
        const auto& x_casted = builder->Cast(x, "float32");
 
        auto casted_inputs = instr->inputs;
-       casted_inputs[0]   = x_casted;
+       casted_inputs[0] = x_casted;
        // Run fp32 function
-       const auto& outputs = builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
+       const auto& outputs =
+           builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
        // Cast output [Y] to fp16/bf16
-       builder->AppendInstruction(CreateNewCastInstruction(outputs[0], instr->outputs[0]));
+       builder->AppendInstruction(
+           CreateNewCastInstruction(outputs[0], instr->outputs[0]));
        // Identity other output
        for (int i = 1; i < outputs.size(); ++i) {
-         builder->AppendInstruction(CreateNewIdentityInstruction(outputs[i], instr->outputs[i]));
+         builder->AppendInstruction(
+             CreateNewIdentityInstruction(outputs[i], instr->outputs[i]));
        }
      }},
     {"batch_norm_grad", [](NetBuilder* builder, const Instruction& instr) {
@@ -180,34 +206,45 @@ static std::unordered_map<std::string, CastImplFunc> need_cast_list = {
 
        // Except input [X], BatchNormTrain's Input should all be fp32
        CHECK_EQ(instr->inputs.size(), 5UL)
-           << "The number of the given inputs is not equal to the required for op " << instr->op_type;
+           << "The number of the given inputs is not equal to the required for "
+              "op "
+           << instr->op_type;
        CHECK_EQ(instr->inputs[0]->type, instr->inputs[1]->type)
-           << instr->op_type << "'s input [Y@GRAD] and input [X] 's type should be the same";
+           << instr->op_type
+           << "'s input [Y@GRAD] and input [X] 's type should be the same";
        CHECK(instr->inputs[2]->type.is_float(32))
-           << instr->op_type << "'s input [scale] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type << "'s input [scale] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[3]->type.is_float(32))
-           << instr->op_type << "'s input [save_mean] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type
+           << "'s input [save_mean] should be float32, but here "
+           << instr->inputs[1]->type;
        CHECK(instr->inputs[4]->type.is_float(32))
-           << instr->op_type << "'s input [save_variance] should be float32, but here " << instr->inputs[1]->type;
+           << instr->op_type
+           << "'s input [save_variance] should be float32, but here "
+           << instr->inputs[1]->type;
 
        // Cast input [Y@GRAD] from fp16/bf16 to fp32
-       const auto& y_grad        = instr->inputs[0];
+       const auto& y_grad = instr->inputs[0];
        const auto& y_grad_casted = builder->Cast(y_grad, "float32");
 
        // Cast input [X] from fp16/bf16 to fp32
-       const auto& x        = instr->inputs[1];
+       const auto& x = instr->inputs[1];
        const auto& x_casted = builder->Cast(x, "float32");
 
        auto casted_inputs = instr->inputs;
-       casted_inputs[0]   = y_grad_casted;
-       casted_inputs[1]   = x_casted;
+       casted_inputs[0] = y_grad_casted;
+       casted_inputs[1] = x_casted;
        // Run fp32 function
-       const auto& outputs = builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
+       const auto& outputs =
+           builder->CustomInstr(instr->op_type, casted_inputs, instr->attrs);
        // Cast output [X@GRAD] to fp16/bf16
-       builder->AppendInstruction(CreateNewCastInstruction(outputs[0], instr->outputs[0]));
+       builder->AppendInstruction(
+           CreateNewCastInstruction(outputs[0], instr->outputs[0]));
        // Identity other output
        for (int i = 1; i < outputs.size(); ++i) {
-         builder->AppendInstruction(CreateNewIdentityInstruction(outputs[i], instr->outputs[i]));
+         builder->AppendInstruction(
+             CreateNewIdentityInstruction(outputs[i], instr->outputs[i]));
        }
      }}};
 }  // namespace

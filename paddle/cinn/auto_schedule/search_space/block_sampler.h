@@ -26,24 +26,30 @@ namespace auto_schedule {
 
 class SearchState;
 
-// Select the next block to be operated for SearchState during the search process
+// Select the next block to be operated for SearchState during the search
+// process
 class BlockSampler {
  public:
   /**
-   * @brief Create a BlockSampler with the specific strategy name and necessary construct parameters.
+   * @brief Create a BlockSampler with the specific strategy name and necessary
+   * construct parameters.
    * @param all_blocks All possible blocks to be sampled.
-   * @param default_remove_policy The default option to determine whether to delete the next block after selecting it.
+   * @param default_remove_policy The default option to determine whether to
+   * delete the next block after selecting it.
    * @param strategy The block sampling strategy.
-   *                 Currently, the available strategies are "traversal" and "probabilistic",
-   *                 where "traversal" means to select blocks one by one until all blocks are traversed,
-   *                 and "probabilistic" means randomly picking blocks according to the given distribution.
-   * @param weights Used for the probabilistic policy, giving each candidate a weight.
+   *                 Currently, the available strategies are "traversal" and
+   * "probabilistic", where "traversal" means to select blocks one by one until
+   * all blocks are traversed, and "probabilistic" means randomly picking blocks
+   * according to the given distribution.
+   * @param weights Used for the probabilistic policy, giving each candidate a
+   * weight.
    */
-  static std::unique_ptr<BlockSampler> Make(const std::vector<ir::Expr>& all_blocks,
-                                            bool default_remove_policy                     = true,
-                                            const std::string& strategy                    = "traversal",
-                                            utils::LinearRandomEngine::StateType rand_seed = 0,
-                                            const std::vector<int>& weights                = {});
+  static std::unique_ptr<BlockSampler> Make(
+      const std::vector<ir::Expr>& all_blocks,
+      bool default_remove_policy = true,
+      const std::string& strategy = "traversal",
+      utils::LinearRandomEngine::StateType rand_seed = 0,
+      const std::vector<int>& weights = {});
 
   // Return the name of sample strategy
   virtual const char* Name() const = 0;
@@ -56,18 +62,22 @@ class BlockSampler {
 
  protected:
   // A BlockSampler object should be created with the static function Make()
-  BlockSampler(const std::vector<ir::Expr>& all_blocks, bool default_remove_policy);
+  BlockSampler(const std::vector<ir::Expr>& all_blocks,
+               bool default_remove_policy);
 
   // Select a block to apply rule
-  // The param remove is used to determine whether to delete the next block after selecting it,
-  // If remove == true, it will not be sampled in the future.
+  // The param remove is used to determine whether to delete the next block
+  // after selecting it, If remove == true, it will not be sampled in the
+  // future.
   virtual std::string NextBlock(bool remove) = 0;
 
   // The names of all blocks
-  // Because the Block Expr will be changed in the search process, the name is saved for indexing
+  // Because the Block Expr will be changed in the search process, the name is
+  // saved for indexing
   std::vector<std::string> all_blocks_;
 
-  // The default policy to determine whether to delete the next block after selecting it.
+  // The default policy to determine whether to delete the next block after
+  // selecting it.
   bool default_remove_policy_;
 };
 
@@ -75,7 +85,8 @@ class BlockSampler {
 // witch means to select blocks one by one until all blocks are traversed.
 class TraversalBlockSampler : public BlockSampler {
  public:
-  TraversalBlockSampler(const std::vector<ir::Expr>& all_blocks, bool default_remove_policy)
+  TraversalBlockSampler(const std::vector<ir::Expr>& all_blocks,
+                        bool default_remove_policy)
       : BlockSampler(all_blocks, default_remove_policy), cur_idx_(0) {}
 
   const char* Name() const override { return "traversal"; }
@@ -96,7 +107,7 @@ class ProbabilisticBlockSampler : public BlockSampler {
   ProbabilisticBlockSampler(const std::vector<ir::Expr>& all_blocks,
                             bool default_remove_policy,
                             utils::LinearRandomEngine::StateType rand_seed = 0,
-                            const std::vector<int>& weights                = {});
+                            const std::vector<int>& weights = {});
 
   const char* Name() const override { return "probabilistic"; }
 

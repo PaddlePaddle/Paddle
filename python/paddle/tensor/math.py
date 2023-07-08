@@ -474,6 +474,22 @@ def pow(x, y, name=None):
             )
 
 
+@inplace_apis_in_dygraph_only
+def pow_(x, y, name=None):
+    """
+    Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_pow`.
+    """
+    if isinstance(y, (int, float)):
+        return _C_ops.pow_(x, y)
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        return _C_ops.elementwise_pow_(x, y)
+    else:
+        raise TypeError(
+            'y must be scalar or tensor type, but received: %s ' % (type(y))
+        )
+
+
 OP_NAMEMAPPING = {
     'elementwise_max': 'maximum',
     'elementwise_min': 'minimum',
@@ -4496,9 +4512,9 @@ def lerp(x, y, weight, name=None):
             lerp(x, y, weight) = x + weight * (y - x).
 
     Args:
-        x (Tensor): An N-D Tensor with starting points, the data type is float16, float32, float64.
-        y (Tensor): An N-D Tensor with ending points, the data type is float16, float32, float64.
-        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float16, float32, float64.
+        x (Tensor): An N-D Tensor with starting points, the data type is bfloat16, float16, float32, float64.
+        y (Tensor): An N-D Tensor with ending points, the data type is bfloat16, float16, float32, float64.
+        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is bfloat16, float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4523,13 +4539,16 @@ def lerp(x, y, weight, name=None):
         return _C_ops.lerp(x, y, weight)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'lerp'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
         )
         check_variable_and_dtype(
-            y, 'y', ['float16', 'float32', 'float64'], 'lerp'
+            y, 'y', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
         )
         check_variable_and_dtype(
-            weight, 'weight', ['float16', 'float32', 'float64'], 'lerp'
+            weight,
+            'weight',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'lerp',
         )
 
         helper = LayerHelper('lerp', **locals())

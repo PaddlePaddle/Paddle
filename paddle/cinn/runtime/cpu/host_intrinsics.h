@@ -14,7 +14,8 @@
 
 #pragma once
 /**
- * \file This file implements some intrinsic functions for math operation in host device.
+ * \file This file implements some intrinsic functions for math operation in
+ * host device.
  */
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
@@ -29,13 +30,18 @@ inline int cinn_host_find_int(const cinn_buffer_t* buf, int size, int num);
 
 inline int cinn_host_find_float(const cinn_buffer_t* buf, int size, float num);
 
-inline int cinn_host_find_int_nd(const cinn_buffer_t* buf, int size, int num, int begin, int stride);
+inline int cinn_host_find_int_nd(
+    const cinn_buffer_t* buf, int size, int num, int begin, int stride);
 
-inline int cinn_host_find_float_nd(const cinn_buffer_t* buf, int size, float num, int begin, int stride);
+inline int cinn_host_find_float_nd(
+    const cinn_buffer_t* buf, int size, float num, int begin, int stride);
 
-#define CINN_HOST_LT_NUM(TYPE_SUFFIX, TYPE)  \
-  inline int cinn_host_lt_num_##TYPE_SUFFIX( \
-      const cinn_buffer_t* buf, const int size, const TYPE num, const int offset, const int stride);
+#define CINN_HOST_LT_NUM(TYPE_SUFFIX, TYPE)                           \
+  inline int cinn_host_lt_num_##TYPE_SUFFIX(const cinn_buffer_t* buf, \
+                                            const int size,           \
+                                            const TYPE num,           \
+                                            const int offset,         \
+                                            const int stride);
 
 CINN_HOST_LT_NUM(fp32, float)
 CINN_HOST_LT_NUM(fp64, double)
@@ -44,9 +50,12 @@ CINN_HOST_LT_NUM(int64, int64_t)
 
 #undef CINN_HOST_LT_NUM
 
-#define CINN_HOST_GT_NUM(TYPE_SUFFIX, TYPE)  \
-  inline int cinn_host_gt_num_##TYPE_SUFFIX( \
-      const cinn_buffer_t* buf, const int size, const TYPE num, const int offset, const int stride);
+#define CINN_HOST_GT_NUM(TYPE_SUFFIX, TYPE)                           \
+  inline int cinn_host_gt_num_##TYPE_SUFFIX(const cinn_buffer_t* buf, \
+                                            const int size,           \
+                                            const TYPE num,           \
+                                            const int offset,         \
+                                            const int stride);
 
 CINN_HOST_GT_NUM(fp32, float)
 CINN_HOST_GT_NUM(fp64, double)
@@ -117,6 +126,9 @@ inline double FN_FP64(cbrt)(double x);
 namespace cinn {
 namespace runtime {
 
-void cinn_assert_true_host(void* v_args, int num_args, int msg, bool only_warning);
+void cinn_assert_true_host(void* v_args,
+                           int num_args,
+                           int msg,
+                           bool only_warning);
 }  // namespace runtime
 }  // namespace cinn

@@ -29,8 +29,10 @@ namespace framework {
 class MemoryInterface {
  public:
   virtual void* malloc(size_t nbytes) = 0;
-  virtual void free(void* data)       = 0;
-  virtual void* aligned_alloc(size_t alignment, size_t nbytes) { return nullptr; }
+  virtual void free(void* data) = 0;
+  virtual void* aligned_alloc(size_t alignment, size_t nbytes) {
+    return nullptr;
+  }
   virtual ~MemoryInterface() {}
 };
 
@@ -67,7 +69,8 @@ class MemoryManager final {
  private:
   MemoryManager();
 
-  absl::flat_hash_map<common::Target::Arch, std::unique_ptr<MemoryInterface>> memory_mngs_;
+  absl::flat_hash_map<common::Target::Arch, std::unique_ptr<MemoryInterface>>
+      memory_mngs_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(MemoryManager);
 };

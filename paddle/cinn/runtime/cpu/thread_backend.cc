@@ -28,7 +28,7 @@
 
 int max_concurrency() {
   int max_concurrency = 1;
-  const char* val     = getenv("CINN_NUM_THREADS");
+  const char* val = getenv("CINN_NUM_THREADS");
   if (val == nullptr) {
     val = getenv("OMP_NUM_THREADS");
   }
@@ -43,7 +43,9 @@ int max_concurrency() {
   return std::max(max_concurrency, 1);
 }
 
-int cinn_backend_parallel_launch(FCINNParallelLambda flambda, void* datas, int num_task) {
+int cinn_backend_parallel_launch(FCINNParallelLambda flambda,
+                                 void* datas,
+                                 int num_task) {
   int num_workers = max_concurrency();
   if (num_task == 0) num_task = num_workers;
 #ifdef CINN_USE_OPENMP
@@ -63,7 +65,8 @@ CINN_REGISTER_HELPER(cinn_backend_parallel) {
   using namespace cinn;  // NOLINT
   using backends::FunctionProto;
   auto host_target = common::DefaultHostTarget();
-  backends::GlobalSymbolRegistry::Global().RegisterFn(runtime::intrinsic::parallel_launch,
-                                                      reinterpret_cast<void*>(&cinn_backend_parallel_launch));
+  backends::GlobalSymbolRegistry::Global().RegisterFn(
+      runtime::intrinsic::parallel_launch,
+      reinterpret_cast<void*>(&cinn_backend_parallel_launch));
   return true;
 }

@@ -38,13 +38,6 @@ namespace ir {
 // NOTE(dev): Currently Int8 are not considered as a cached member
 // in IrContextImpl because it is not widely used.
 
-class IR_API Int8Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int8Type, TypeStorage);
-};
-
 class IR_API VectorType : public Type {
  public:
   using Type::Type;
@@ -75,10 +68,14 @@ class IR_API VectorType : public Type {
   __macro(Float16Type);               \
   __macro(Float32Type);               \
   __macro(Float64Type);               \
+  __macro(Int8Type);                  \
+  __macro(UInt8Type);                 \
   __macro(Int16Type);                 \
   __macro(Int32Type);                 \
   __macro(Int64Type);                 \
-  __macro(BoolType);
+  __macro(BoolType);                  \
+  __macro(Complex64Type);             \
+  __macro(Complex128Type);
 
 FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 
@@ -87,6 +84,7 @@ FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 
 }  // namespace ir
 
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::UInt8Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int8Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::VectorType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BFloat16Type)
@@ -97,3 +95,5 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int16Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BoolType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex64Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex128Type)
