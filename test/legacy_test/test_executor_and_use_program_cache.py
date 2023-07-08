@@ -90,7 +90,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
             self.train(config, use_program_cache)
             paddle.static.io.save_inference_model(
                 path_prefix="padding_rnn." + rnn_model + ".inference_model",
-                feed_vars=self.feed_order,
+                feed_vars=self.feed_list,
                 fetch_vars=[self.loss, self.last_hidden, self.last_cell],
                 executor=self.exe,
                 program=self.main_program,
