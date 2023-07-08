@@ -530,6 +530,12 @@ def save_inference_model(
     save_to_file(model_path, program_bytes)
 
     vars = list(filter(is_persistable, program.list_vars()))
+
+    if len(list(vars)) == 0:
+        warnings.warn(
+            "no variable in your model, please ensure there are any variables in your model to save"
+        )
+
     if len(vars) > 0:
         save_dirname = os.path.dirname(params_path)
         params_filename = os.path.basename(params_path)
