@@ -134,7 +134,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
                         feed_target_names,
                         fetch_targets,
                     ] = paddle.static.io.load_inference_model(
-                        save_dirname, self.exe, params_filename="__params__"
+                        save_dirname, self.exe
                     )
 
                     results = self.exe.run(
