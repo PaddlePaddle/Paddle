@@ -16,7 +16,7 @@
 
 from cinn.common import is_compiled_with_cuda
 from cinn.frontend import NetBuilder
-from cinn.runtime import *
+from cinn.runtime import set_cinn_cudnn_deterministic
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
