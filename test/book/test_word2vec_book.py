@@ -300,7 +300,7 @@ def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):
 
     temp_dir = tempfile.TemporaryDirectory()
     if not is_parallel:
-        save_dirname = os.path.join(temp_dir.name, "word2vec.inference.model")
+        save_dirname = os.path.join(temp_dir.name, "word2vec_inference_model")
     else:
         save_dirname = None
 

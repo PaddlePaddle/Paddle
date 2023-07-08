@@ -253,13 +253,13 @@ def infer(use_cuda, save_dirname=None):
 
         print("infer results: ", results[0])
 
-        paddle.static.save_inference_model(
-            save_dirname,
-            feed_target_names,
-            fetch_targets,
-            exe,
-            program=inference_program,
-        )
+        # paddle.static.io.save_inference_model(
+        #     save_dirname,
+        #     feed_target_names,
+        #     fetch_targets,
+        #     exe,
+        #     program=inference_program,
+        # )
 
 
 def main(net_type, use_cuda, is_local=True):
@@ -269,7 +269,7 @@ def main(net_type, use_cuda, is_local=True):
     # Directory for saving the trained model
     temp_dir = tempfile.TemporaryDirectory()
     save_dirname = os.path.join(
-        temp_dir.name, "image_classification_" + net_type + ".inference.model"
+        temp_dir.name, "image_classification_" + net_type + "_inference_model"
     )
 
     train(net_type, use_cuda, save_dirname, is_local)

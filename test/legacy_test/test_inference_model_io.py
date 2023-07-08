@@ -29,8 +29,7 @@ from paddle.distributed.io import (
 from paddle.fluid import core, executor, optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.io import save_inference_model
-from paddle.static.io import load_inference_model
+from paddle.static.io import load_inference_model, save_inference_model
 
 paddle.enable_static()
 
