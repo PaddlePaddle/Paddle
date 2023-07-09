@@ -91,9 +91,6 @@ def _normalize_path_prefix(path_prefix):
         raise ValueError("'path_prefix' should not be a directory")
     path_prefix = os.path.normpath(path_prefix)
     path_prefix = os.path.abspath(path_prefix)
-    dir_path = os.path.dirname(path_prefix)
-    if not os.path.isdir(dir_path):
-        raise ValueError(f"There is no directory named {dir_path}")
     return path_prefix
 
 
@@ -524,6 +521,19 @@ def save_inference_model(
     program = _get_valid_program(kwargs.get('program', None))
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(program, feed_vars, fetch_vars)
+
+    # remind user to set auc_states to zeros if the program contains auc op
+    all_ops = program.global_block().ops
+    for op in all_ops:
+        # clear device of Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        op._set_attr(device_attr_name, "")
+        if op.type == 'auc':
+            warnings.warn(
+                "please ensure that you have set the auc states to zeros before saving inference model"
+            )
+            break
+
     # serialize and save program
     legacy_format = kwargs.get('legacy_format', False)
     program_bytes = _serialize_program(
@@ -841,7 +851,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
     else:
         # check and norm path_prefix
         path_prefix = _normalize_path_prefix(path_prefix)
-
+        dir_path = os.path.dirname(path_prefix)
+        if not os.path.isdir(dir_path):
+            raise ValueError(f"There is no directory named {dir_path}")
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
         if not kwargs:

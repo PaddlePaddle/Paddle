@@ -147,8 +147,8 @@ class TestBook(unittest.TestCase):
             paddle.static.io.load_inference_model,
             None,
             exe,
-            model_str,
-            None,
+            model_filename=model_str,
+            params_filename=None,
         )
         self.assertRaises(
             ValueError,
