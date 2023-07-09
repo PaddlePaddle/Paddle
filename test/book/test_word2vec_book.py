@@ -274,7 +274,8 @@ def infer(target, save_dirname=None):
         infer_inputs = [to_infer_tensor(t) for t in infer_inputs]
 
         infer_config = fluid.core.NativeConfig()
-        infer_config.model_dir = save_dirname + ".pdmodel"
+        infer_config.prog_file = save_dirname + ".pdmodel"
+        infer_config.param_file = save_dirname + ".pdiparams"
         if target == "cuda":
             infer_config.use_gpu = True
             infer_config.device = 0
