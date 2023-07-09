@@ -31,7 +31,6 @@ from paddle.fluid.optimizer import (
     ExponentialMovingAverage,
     FtrlOptimizer,
     LarsMomentumOptimizer,
-    LookaheadOptimizer,
     MomentumOptimizer,
     PipelineOptimizer,
     RecomputeOptimizer,
@@ -862,7 +861,7 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeModelAverage(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.optimizer.ModelAverage(
+        optimizer = paddle.incubate.optimizer.ModelAverage(
             0.15, min_average_window=10000, max_average_window=12500
         )
         return optimizer
@@ -918,7 +917,9 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = LookaheadOptimizer(optimizer, alpha=0.5, k=5)
+        optimizer = paddle.incubate.optimizer.LookAhead(
+            optimizer, alpha=0.5, k=5
+        )
         return optimizer
 
     def test_lookahead(self):

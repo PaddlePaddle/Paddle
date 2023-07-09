@@ -680,8 +680,8 @@ class TestLookaheadOptimizer(unittest.TestCase):
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
 
-        sgd = optimizer.SGD(learning_rate=0.01)
-        lookahead = optimizer.LookaheadOptimizer(sgd, alpha=0.5, k=5)
+        sgd = paddle.optimizer.SGD(learning_rate=0.01)
+        lookahead = paddle.incubate.optimizer.LookAhead(sgd, alpha=0.5, k=5)
         with framework.program_guard(program, init_program):
             opts, _ = lookahead.minimize(mean_out)
         self.assertEqual(len(opts), 2)
