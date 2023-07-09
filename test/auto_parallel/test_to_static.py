@@ -130,7 +130,6 @@ class TestWholeProgram(unittest.TestCase):
 
 class TestToStatic(unittest.TestCase):
     def test_to_static(self):
-
         mlp = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
@@ -163,7 +162,6 @@ class TestToStatic(unittest.TestCase):
 
 class TestLazyInit(unittest.TestCase):
     def test_lazy_init(self):
-
         with LazyGuard():
             mlp = MLPLayer(
                 hidden_size=hidden_size,

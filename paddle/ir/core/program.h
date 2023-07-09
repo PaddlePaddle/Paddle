@@ -15,6 +15,7 @@
 #pragma once
 
 #include <list>
+#include <ostream>
 #include <unordered_map>
 
 #include "paddle/ir/core/attribute.h"
@@ -35,7 +36,7 @@ class IrContext;
 /// concepts such as basic blocks, closures, and functions will be introduced to
 /// continuously improve Program's ability to represent computational graphs.
 ///
-class Program {
+class IR_API Program {
  public:
   using ParameterMap =
       std::unordered_map<std::string, std::unique_ptr<Parameter>>;
@@ -49,10 +50,13 @@ class Program {
 
   ModuleOp module_op() { return module_; }
 
+  void Print(std::ostream& os);
+
   Block* block() { return module_.block(); }
 
-  Parameter* GetParameter(std::string name) const;
-  void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
+  Parameter* GetParameter(const std::string& name) const;
+  void SetParameter(const std::string& name,
+                    std::unique_ptr<Parameter>&& parameter);
 
   ParameterMap& parameters() { return parameters_; }
   void set_parameters(ParameterMap&& parameters) {
@@ -65,7 +69,5 @@ class Program {
   // weight
   ParameterMap parameters_;
 };
-
-std::ostream& operator<<(std::ostream& os, Program& program);
 
 }  // namespace ir

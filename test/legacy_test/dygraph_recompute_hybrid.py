@@ -135,7 +135,6 @@ def run_model(
     param_ = []
     grad_ = []
     for step in range(10):
-
         x_data = np.random.randn(batch_size, input_size).astype(np.float32)
         x = paddle.to_tensor(x_data)
         # x.stop_gradient = False

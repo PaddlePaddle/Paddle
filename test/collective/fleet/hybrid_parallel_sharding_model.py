@@ -127,7 +127,6 @@ class SimpleDPNet(paddle.nn.Layer):
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
-
         super().__init__()
         self.linear1 = paddle.nn.Linear(
             hidden_size,
@@ -204,7 +203,6 @@ class TestDistMPTraning(unittest.TestCase):
         ]
 
     def train_batch(self, batch, model, optimizer):
-
         output = model(batch)
         loss = output.mean()
         loss.backward()  # do backward
@@ -296,7 +294,6 @@ class TestDistMPTraning(unittest.TestCase):
         )
 
         for idx in range(STEPS):
-
             if idx == 2 and paddle.distributed.get_rank() == 0:
                 self.assertTrue(
                     set(

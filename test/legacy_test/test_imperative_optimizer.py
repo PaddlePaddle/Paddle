@@ -258,7 +258,7 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
     def get_optimizer(self):
         bd = [3, 6, 9]
         optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.piecewise_decay(
+            learning_rate=paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd,
                 values=[0.1 * (0.1**i) for i in range(len(bd) + 1)],
             )
@@ -351,17 +351,17 @@ class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
 
 class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.polynomial_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=0.1, decay_steps=5, cycle=self.cycle
             ),
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.polynomial_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=0.1, decay_steps=5, cycle=self.cycle
             )
         )
@@ -400,17 +400,17 @@ class TestImperativeOptimizerCosineDecay(TestImperativeOptimizerBase):
 
 class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.noam_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.NoamDecay(
                 d_model=512, warmup_steps=8000
             ),
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.noam_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.NoamDecay(
                 d_model=512, warmup_steps=8000
             )
         )
@@ -474,7 +474,6 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 lr = adam.get_lr()
                 adam.step()
                 scheduler.step()
-
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_lr_decay_natural_exp(self):
@@ -510,7 +509,6 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 if counter % 3 == 0:
                     adam.step()
                     scheduler.step()
-
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_set_lr(self):

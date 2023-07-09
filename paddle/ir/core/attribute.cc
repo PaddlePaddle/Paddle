@@ -13,8 +13,20 @@
 // limitations under the License.
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/dialect.h"
 
 namespace ir {
 IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
+
+TypeId Attribute::type_id() { return storage_->abstract_attribute().type_id(); }
+
+const AbstractAttribute &Attribute::abstract_attribute() {
+  return storage_->abstract_attribute();
+}
+
+const Dialect &Attribute::dialect() const {
+  return storage_->abstract_attribute().dialect();
+}
+
 }  // namespace ir

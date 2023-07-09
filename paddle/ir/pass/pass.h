@@ -15,11 +15,12 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pass/analysis_manager.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/optional.h"
 
 namespace ir {
 
@@ -33,11 +34,11 @@ class PassAdaptor;
 namespace detail {
 
 struct PassExecutionState {
-  explicit PassExecutionState(ir::Operation* ir, const AnalysisManager& am)
+  explicit PassExecutionState(Operation* ir, const AnalysisManager& am)
       : ir(ir), pass_failed(false), am(am) {}
 
   // The IR currently being processed by pass.
-  ir::Operation* ir;
+  Operation* ir;
 
   bool pass_failed;
   AnalysisManager am;
@@ -45,13 +46,13 @@ struct PassExecutionState {
 };
 
 struct PassInfo {
-  PassInfo(const char* name,
+  PassInfo(const std::string& name,
            uint8_t opt_level,
-           const std::vector<const char* /* pass name */>& dependents = {})
+           const std::vector<std::string /* pass name */>& dependents = {})
       : name(name), opt_level(opt_level), dependents(dependents) {}
 
   // Pass name.
-  const char* name;
+  std::string name;
 
   // opt_level=0: the basic pass which framework need.
   // opt_level=1: the fusion logical pass.
@@ -61,37 +62,36 @@ struct PassInfo {
 
   // The list which pass depends on.
   // PassManager will check the constraint(TODO).
-  std::vector<const char*> dependents;
+  std::vector<std::string> dependents;
 };
 
 }  // namespace detail
 
 /// We can access pass only from PassManager.
-class Pass {
+class IR_API Pass {
  public:
-  explicit Pass(const char* name,
+  explicit Pass(const std::string& name,
                 uint8_t opt_level,
-                const std::vector<const char*>& dependents = {})
+                const std::vector<std::string>& dependents = {})
       : pass_info_(name, opt_level, dependents) {}
 
-  virtual ~Pass() = default;
+  virtual ~Pass();
+
+  std::string name() const { return pass_info().name; }
 
   const detail::PassInfo& pass_info() const { return pass_info_; }
 
  protected:
-  virtual void Run(ir::Operation* op) = 0;
+  virtual void Run(Operation* op) = 0;
 
-  // TODO(liuyuanle): Add block/region judgement.
-  virtual inline bool CanScheduleOn(ir::Operation* op) const { return true; }
+  virtual inline bool CanApplyOn(Operation* op) const;
 
-  virtual bool Initialize(ir::IrContext* context) { return true; }
+  virtual bool Initialize(IrContext* context) { return true; }
 
   AnalysisManager analysis_manager() { return pass_state().am; }
 
   detail::PassExecutionState& pass_state() {
-    PADDLE_ENFORCE_EQ(pass_state_.is_initialized(),
-                      true,
-                      phi::errors::Fatal("pass state was never initialized"));
+    IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
     return *pass_state_;
   }
 
@@ -100,7 +100,7 @@ class Pass {
  private:
   detail::PassInfo pass_info_;
 
-  paddle::optional<detail::PassExecutionState> pass_state_;
+  std::optional<detail::PassExecutionState> pass_state_;
 
   friend class PassManager;
   friend class detail::PassAdaptor;

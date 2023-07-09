@@ -22,22 +22,23 @@
 #include <string>
 #include <unordered_map>
 
-#include "cinn/auto_schedule/auto_tuner.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/visualize_helper.h"
 #include "gflags/gflags.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
@@ -47,6 +48,8 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
@@ -109,6 +112,7 @@ const CinnCompiledObject &CinnCompiler::Compile(
 
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
+
       std::unique_lock<std::mutex> guard(lock_);
       // double check cache_by_struct_
       if (!cache_by_struct_.count(cur_key_by_struct)) {

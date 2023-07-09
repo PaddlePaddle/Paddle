@@ -583,7 +583,11 @@ bool OpDesc::HasOutput(const std::string &name) const {
   return outputs_.find(name) != outputs_.end();
 }
 
-bool OpDesc::HasInput(const std::string &name) const {
+bool OpDesc::HasInput(const std::string &name, bool with_attr_var) const {
+  if (with_attr_var) {
+    auto it = attrs_.find(name);
+    if (it != attrs_.end() && HasAttrVar(it->second)) return true;
+  }
   return inputs_.find(name) != inputs_.end();
 }
 
@@ -1002,7 +1006,7 @@ struct SetAttrDescVisitor {
   void operator()(paddle::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported calling method of SetAttrDescVisitor object for "
-        "`boosst::blank` type."));
+        "`boost::blank` type."));
   }
 };
 

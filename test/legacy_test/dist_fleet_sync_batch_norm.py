@@ -69,7 +69,6 @@ def get_program(args):
 
 
 def train(args):
-
     build_strategy = fluid.BuildStrategy()
     build_strategy.sync_batch_norm = True
     build_strategy.enable_inplace = False
@@ -119,7 +118,6 @@ def train(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, required=True)
     parser.add_argument('--dshape', type=str, required=True)

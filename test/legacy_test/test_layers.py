@@ -16,6 +16,7 @@ import contextlib
 import inspect
 import unittest
 
+import nets
 import numpy as np
 from decorator_helper import prog_scope
 from test_imperative_base import new_program_scope
@@ -23,7 +24,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid
-from paddle.fluid import core, layers, nets
+from paddle.fluid import core, layers
 from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import Program, default_main_program, program_guard
 from paddle.incubate.layers.nn import (
@@ -164,7 +165,6 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_ret, dy_ret_value)
 
         with self.static_graph():
-
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
@@ -250,7 +250,6 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_ret, dy_ret_value)
 
         with self.static_graph():
-
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
@@ -479,7 +478,6 @@ class TestLayer(LayerTest):
             )
 
         with self.static_graph():
-
             # the input of Conv2DTranspose must be Variable.
             def test_Variable():
                 images = np.ones([2, 3, 5, 5], dtype='float32')
@@ -633,7 +631,6 @@ class TestLayer(LayerTest):
                 feed={'word': inp_word}, fetch_list=[emb_rlt]
             )[0]
         with self.dynamic_graph():
-
             emb2 = paddle.nn.Embedding(
                 dict_size, 32, weight_attr='emb.w', sparse=False
             )

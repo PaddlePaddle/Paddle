@@ -171,7 +171,6 @@ class TestParallelExecutorBase(unittest.TestCase):
         use_fast_executor=True,
         enable_sequential_execution=False,
     ):
-
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):

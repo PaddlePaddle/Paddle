@@ -41,7 +41,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(check_nan_inf);
-
+PHI_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace pybind {
 
@@ -59,6 +59,9 @@ extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_jit_function_pytype;
+#ifdef PADDLE_WITH_DISTRIBUTE
+extern PyTypeObject* g_tensor_dist_attr_pytype;
+#endif
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -218,7 +221,7 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 }
 
 void SetPythonStack() {
-  if (FLAGS_check_nan_inf) {
+  if (FLAGS_check_nan_inf && FLAGS_check_nan_inf_level == 0) {
     VLOG(4) << "this is SetPythonStack";
     pybind11::gil_scoped_acquire gil;
     PyObject* mod = PyImport_ImportModule("traceback");
@@ -540,6 +543,23 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+using phi::distributed::auto_parallel::TensorDistAttr;
+std::shared_ptr<TensorDistAttr> CastPyArg2DistAttr(PyObject* obj,
+                                                   ssize_t arg_pos) {
+  if (PyObject_IsInstance(
+          obj, reinterpret_cast<PyObject*>(g_tensor_dist_attr_pytype))) {
+    return ::pybind11::handle(obj).cast<std::shared_ptr<TensorDistAttr>>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "TensorDistAttr, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+}
+#endif
+
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
     return ::pybind11::handle(obj).cast<phi::DenseTensor>();
@@ -837,6 +857,21 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   obj.inc_ref();
   return obj.ptr();
 }
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(
+    const phi::distributed::auto_parallel::TensorDistAttr* value) {
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+#endif
 
 PyObject* ToPyObject(const phi::SelectedRows* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);

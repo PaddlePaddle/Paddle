@@ -124,7 +124,6 @@ class Engine:
         cluster=None,
         strategy=None,
     ):
-
         if (
             model
             and not isinstance(model, paddle.nn.Layer)
@@ -401,8 +400,11 @@ class Engine:
         dist_main_block._sync_with_cpp()
         self._has_prepared_reader[self._mode] = True
 
-        # Insert read op to forward TaskNode if 1F1B pass is setted
-        if self.main_program._pipeline_opt:
+        # Insert read op to forward TaskNode for fleet executor if 1F1B pass is setted
+        if (
+            self.main_program._pipeline_opt
+            and not auto_utils.use_new_executor()
+        ):
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
             fwd_task = None
@@ -472,8 +474,6 @@ class Engine:
                     if var_name not in fetch_names:
                         fetch_names.append(var_name)
                     group_indices.append(fetch_names.index(var_name))
-            if not group_indices:
-                fetch_names.append([])
             fetch_indices.append(group_indices)
 
         dist_context = self._dist_contexts[mode]
@@ -1411,7 +1411,6 @@ class Engine:
         epochs=1,
         steps_per_epoch=None,
     ):
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1472,7 +1471,6 @@ class Engine:
         steps_per_epoch=None,
         collate_fn=None,
     ):
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]

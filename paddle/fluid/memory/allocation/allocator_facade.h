@@ -19,6 +19,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/stream.h"
 
