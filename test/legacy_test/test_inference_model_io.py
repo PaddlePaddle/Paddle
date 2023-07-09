@@ -549,7 +549,7 @@ class TestLoadInferenceModelError(unittest.TestCase):
         place = core.CPUPlace()
         exe = executor.Executor(place)
         self.assertRaises(
-            ValueError, load_inference_model, './test_not_exist_dir', exe
+            ValueError, load_inference_model, './test_not_exist_dir/model', exe
         )
         self.assertRaises(
             ValueError,

@@ -91,6 +91,9 @@ def _normalize_path_prefix(path_prefix):
         raise ValueError("'path_prefix' should not be a directory")
     path_prefix = os.path.normpath(path_prefix)
     path_prefix = os.path.abspath(path_prefix)
+    dir_path = os.path.dirname(path_prefix)
+    if not os.path.isdir(dir_path):
+        raise ValueError(f"There is no directory named {dir_path}")
     return path_prefix
 
 
@@ -838,8 +841,6 @@ def load_inference_model(path_prefix, executor, **kwargs):
     else:
         # check and norm path_prefix
         path_prefix = _normalize_path_prefix(path_prefix)
-        if not os.path.isdir(path_prefix):
-            raise ValueError("There is no directory named '%s'", path_prefix)
 
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
