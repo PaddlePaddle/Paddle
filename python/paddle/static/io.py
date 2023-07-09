@@ -200,8 +200,7 @@ def normalize_program(program, feed_vars, fetch_vars):
         op._set_attr(device_attr_name, "")
         if op.type == 'auc':
             warnings.warn(
-                "Be sure that you have set auc states to 0 "
-                "before saving inference model."
+                "Be sure that you have set auc states to 0 before saving inference model."
             )
             break
 
@@ -522,24 +521,13 @@ def save_inference_model(
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(program, feed_vars, fetch_vars)
 
-    # remind user to set auc_states to zeros if the program contains auc op
-    all_ops = program.global_block().ops
-    for op in all_ops:
-        # clear device of Op
-        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
-        op._set_attr(device_attr_name, "")
-        if op.type == 'auc':
-            warnings.warn(
-                "please ensure that you have set the auc states to zeros before saving inference model"
-            )
-            break
-
     # serialize and save program
     legacy_format = kwargs.get('legacy_format', False)
     program_bytes = _serialize_program(
         program._remove_training_info(clip_extra=clip_extra),
         legacy_format=legacy_format,
     )
+
     save_to_file(model_path, program_bytes)
 
     vars = list(filter(is_persistable, program.list_vars()))

@@ -217,7 +217,7 @@ class TestSaveInferenceModel(unittest.TestCase):
                 MODEL_DIR, [x, y], [avg_cost], exe, program=program
             )
             root_path.cleanup()
-            expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
+            expected_warn = "Be sure that you have set auc states to 0 before saving inference model."
             self.assertTrue(len(w) > 0)
             self.assertTrue(expected_warn == str(w[0].message))
 
