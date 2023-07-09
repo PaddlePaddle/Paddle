@@ -283,9 +283,9 @@ def infer(target, save_dirname=None):
         elif target == "xpu":
             infer_config.use_xpu = True
         compiled_program = fluid.compiler.CompiledProgram(inference_program)
-        print("after infer_config.model_dir:", infer_config.model_dir)
         compiled_program._with_inference_optimize(infer_config)
         assert compiled_program._is_inference is True
+        print("after infer_config.model_dir:", infer_config.model_dir)
         infer_outputs = exe.run(compiled_program, feed=infer_inputs)
         np_data = np.array(results[0])
         infer_out = infer_outputs[0].data.float_data()
