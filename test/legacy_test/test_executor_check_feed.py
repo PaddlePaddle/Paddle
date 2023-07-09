@@ -20,7 +20,7 @@ from paddle import fluid
 
 class TestExecutor(unittest.TestCase):
     def net(self):
-        lr = paddle.static.data(name="lr", shape=[1], dtype='float32')
+        lr = 0.0
         x = paddle.static.data(name="x", shape=[None, 1], dtype='float32')
         y = paddle.static.data(name="y", shape=[None, 1], dtype='float32')
         y_predict = paddle.static.nn.fc(x, size=1)
@@ -31,7 +31,7 @@ class TestExecutor(unittest.TestCase):
         opt = paddle.optimizer.Adam(learning_rate=lr)
         opt.minimize(avg_cost)
 
-        return lr, avg_cost
+        return paddle.to_tensor(lr), avg_cost
 
     def test_program_check_feed(self):
         main_program = fluid.Program()

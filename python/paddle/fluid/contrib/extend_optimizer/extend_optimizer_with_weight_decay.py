@@ -86,7 +86,7 @@ class DecoupledWeightDecay:
         params_grads = self.backward(
             loss=loss,
             startup_program=startup_program,
-            parameter_list=parameter_list,
+            parameters=parameter_list,
             no_grad_set=no_grad_set,
         )
         scaled_params = self._scale_parameters(params_grads)
@@ -135,7 +135,7 @@ def extend_with_decoupled_weight_decay(base_optimizer):
 
         optimizer.minimize(cost)
     """
-    if not issubclass(base_optimizer, paddle.fluid.optimizer.Optimizer):
+    if not issubclass(base_optimizer, paddle.optimizer.Optimizer):
         raise TypeError(
             "The input(base_optimizer) should be a derived class of Optimizer."
         )

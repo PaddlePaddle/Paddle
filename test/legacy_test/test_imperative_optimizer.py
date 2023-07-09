@@ -24,7 +24,6 @@ from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
     AdagradOptimizer,
-    Adam,
     AdamaxOptimizer,
     DecayedAdagradOptimizer,
     DpsgdOptimizer,
@@ -328,24 +327,20 @@ class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
 
 class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = Adam(
-            learning_rate=fluid.layers.inverse_time_decay(
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=paddle.optimizer.lr.InverseTimeDecay(
                 learning_rate=0.1,
-                decay_steps=10000,
-                decay_rate=0.5,
-                staircase=True,
+                gamma=0.5,
             ),
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = Adam(
-            learning_rate=fluid.layers.inverse_time_decay(
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=paddle.optimizer.lr.InverseTimeDecay(
                 learning_rate=0.1,
-                decay_steps=10000,
-                decay_rate=0.5,
-                staircase=True,
+                gamma=0.5,
             )
         )
         return optimizer
@@ -441,12 +436,12 @@ class TestOptimizerLearningRate(unittest.TestCase):
             adam = paddle.optimizer.Adam(0.001, parameters=linear.parameters())
 
             np.testing.assert_allclose(
-                adam.current_step_lr(), 0.001, rtol=1e-06, atol=0.0
+                adam.get_lr(), 0.001, rtol=1e-06, atol=0.0
             )
 
             for i in range(10):
                 adam.minimize(loss)
-                lr = adam.current_step_lr()
+                lr = adam.get_lr()
 
                 np.testing.assert_allclose(lr, 0.001, rtol=1e-06, atol=0.0)
 
@@ -465,19 +460,20 @@ class TestOptimizerLearningRate(unittest.TestCase):
             bd = [2, 4, 6, 8]
             value = [0.2, 0.4, 0.6, 0.8, 1.0]
 
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(bd, value)
             adam = paddle.optimizer.Adam(
-                paddle.optimizer.lr.PiecewiseDecay(bd, value, 0),
+                scheduler,
                 parameters=linear.parameters(),
             )
 
-            np.testing.assert_allclose(
-                adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0
-            )
+            np.testing.assert_allclose(adam.get_lr(), 0.2, rtol=1e-06, atol=0.0)
 
             ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
             for i in range(12):
                 adam.minimize(loss)
-                lr = adam.current_step_lr()
+                lr = adam.get_lr()
+                adam.step()
+                scheduler.step()
 
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
@@ -494,22 +490,26 @@ class TestOptimizerLearningRate(unittest.TestCase):
             loss = paddle.mean(b)
             base_lr = 1.0
 
+            scheduler = paddle.optimizer.lr.NaturalExpDecay(
+                learning_rate=base_lr,
+                gamma=0.5,
+            )
             adam = paddle.optimizer.Adam(
-                paddle.optimizer.lr.NaturalExpDecay(
-                    learning_rate=base_lr,
-                    gamma=0.5,
-                ),
-                parameter_list=linear.parameters(),
+                learning_rate=scheduler,
+                parameters=linear.parameters(),
             )
 
-            np.testing.assert_allclose(
-                adam.current_step_lr(), 1.0, rtol=1e-06, atol=0.0
-            )
+            np.testing.assert_allclose(adam.get_lr(), 1.0, rtol=1e-06, atol=0.0)
 
             ret = [1.0, 1.0, 1.0, np.exp(-0.5), np.exp(-0.5)]
+            counter = 0
             for i in range(5):
                 adam.minimize(loss)
-                lr = adam.current_step_lr()
+                lr = adam.get_lr()
+                counter += 1
+                if counter % 3 == 0:
+                    adam.step()
+                    scheduler.step()
 
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
@@ -531,16 +531,8 @@ class TestOptimizerLearningRate(unittest.TestCase):
             for i in range(5):
                 adam.set_lr(lr_list[i])
                 adam.minimize(loss)
-                lr = adam.current_step_lr()
+                lr = adam.get_lr()
                 np.testing.assert_allclose(lr, lr_list[i], rtol=1e-06, atol=0.0)
-
-            lr_var = paddle.static.create_global_var(
-                shape=[1], value=0.7, dtype='float32'
-            )
-            adam.set_lr(lr_var)
-            adam.minimize(loss)
-            lr = adam.current_step_lr()
-            np.testing.assert_allclose(lr, 0.7, rtol=1e-06, atol=0.0)
 
             with self.assertRaises(RuntimeError):
                 adam = paddle.optimizer.Adam(

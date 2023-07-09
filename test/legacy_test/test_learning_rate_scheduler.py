@@ -123,15 +123,13 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
-            Exponential_scheduler = fluid.dygraph.ExponentialDecay(
+            Exponential_scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.1,
-                decay_steps=10000,
-                decay_rate=0.5,
-                staircase=True,
+                gamma=0.5,
             )
-            Step_scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
-            Reducelr_scheduler = fluid.dygraph.ReduceLROnPlateau(
-                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
+            Step_scheduler = paddle.optimier.lr.StepDecay(0.5, step_size=3)
+            Reducelr_scheduler = paddle.optimizer.lr.ReduceOnPlateau(
+                learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
             adam1 = paddle.optimizer.Adam(
@@ -293,7 +291,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             decay_rate = 0.2
             linear = paddle.nn.Linear(10, 10)
 
-            scheduler = fluid.dygraph.MultiStepDecay(
+            scheduler = paddle.optimizer.lr.MultiStepDecay(
                 learning_rate, milestones, decay_rate
             )
 
@@ -373,7 +371,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             for epoch in range(30):
                 right_result = lambda_decay(epoch, learning_rate, lr_lambda)
-                fluid_result = scheduler().numpy().item()
+                fluid_result = scheduler()
                 scheduler.epoch()
                 self.assertAlmostEqual(
                     right_result,

@@ -95,7 +95,7 @@ def train_static(args, batch_generator):
                 logits, lbl_word, lbl_weight
             )
             # define optimizer
-            learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
+            learning_rate = paddle.optimizer.lr.NoamDecay(
                 args.d_model, args.warmup_steps, args.learning_rate
             )
             optimizer = paddle.optimizer.Adam(
@@ -208,7 +208,7 @@ def train_dygraph(args, batch_generator):
         # define loss
         criterion = CrossEntropyCriterion(args.label_smooth_eps)
         # define optimizer
-        learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
+        learning_rate = paddle.optimizer.lr.NoamDecay(
             args.d_model, args.warmup_steps, args.learning_rate
         )
         # define optimizer

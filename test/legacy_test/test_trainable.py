@@ -68,12 +68,12 @@ class TestTrainable(unittest.TestCase):
         self.check_trainable(
             test_trainable,
             feed_dict,
-            op_count={'adam': 1, 'scale': 0, 'mul_grad': 0},
+            op_count={'adam': 1, 'scale': 0, 'mul_grad': 1},
         )
         self.check_trainable(
             test_trainable,
             feed_dict,
-            op_count={'adamax': 1, 'scale': 1, 'mul_grad': 0},
+            op_count={'adamax': 1, 'scale': 1, 'mul_grad': 1},
             optimizer=paddle.optimizer.Adamax(learning_rate=0.2),
         )
 

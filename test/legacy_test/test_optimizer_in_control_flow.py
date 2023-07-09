@@ -92,7 +92,7 @@ def static(
         label = paddle.static.data('label', [BATCH_SIZE, 1], 'int64')
         hidden, prediction = double_fc_net(image)
 
-        adam = optimizer.Adam(learning_rate=LR)
+        adam = paddle.optimizer.Adam(learning_rate=LR)
         sgd = optimizer.SGD(learning_rate=LR)
 
         id = paddle.static.data('id', [1], 'int32')

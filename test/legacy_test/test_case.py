@@ -613,7 +613,7 @@ class TestMutiTask(unittest.TestCase):
         )
 
         one = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1)
-        adam = optimizer.Adam(learning_rate=0.001)
+        adam = paddle.optimizer.Adam(learning_rate=0.001)
         adagrad = optimizer.Adagrad(learning_rate=0.001)
 
         def fn_1():
