@@ -147,9 +147,9 @@ class InstructionBase {
   //   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
  private:
+  size_t id_;
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.
-  size_t id_;
 
   //   std::vector<size_t> next_instrs_in_different_thread;
   //   std::vector<size_t> next_instrs_in_same_thread;
