@@ -34,7 +34,6 @@ void SetOutDataLayout(std::shared_ptr<VarType> var,
       auto meta = phi::DenseTensorUtils::GetMutableMeta(
           static_cast<phi::DenseTensor*>(out));
       meta->layout = layout;
-      meta->strides = meta->calc_strides(meta->dims, meta->layout);
     }
   }
 }

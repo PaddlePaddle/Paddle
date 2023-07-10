@@ -415,7 +415,7 @@ void Tracer::TraceOp(const std::string& type,
         auto var = inputs_iter->second[i]->MutableVar();
         if (var->IsType<phi::DenseTensor>()) {
           auto dense_tensor = var->GetMutable<phi::DenseTensor>();
-          if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
+          if (!dense_tensor->meta().is_contiguous()) {
             NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
             auto outputs_iter = tmp_out->find(iter.second);
             outputs_iter->second[i] = std::make_shared<egr::EagerVariable>(
@@ -481,7 +481,7 @@ void Tracer::TraceOp(const std::string& type,
         auto var = inputs_iter->second[i]->MutableVar();
         if (var->IsType<phi::DenseTensor>()) {
           auto dense_tensor = var->GetMutable<phi::DenseTensor>();
-          if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
+          if (!dense_tensor->meta().is_contiguous()) {
             NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
             auto outputs_iter = tmp_out->find(iter.second);
             outputs_iter->second[i] = std::make_shared<egr::EagerVariable>(

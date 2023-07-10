@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace phi {
 
-DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
+DDim DenseTensorMeta::calc_strides(const DDim& dims) {
   if (dims.size() == -1 || product(dims) <= 0) {
     return dims;
   }
@@ -70,7 +70,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  DataLayout layout,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), offset(offset) {
-  strides = calc_strides(dims, layout);
+  strides = calc_strides(dims);
   use_gpudnn = true;
 }
 
@@ -80,7 +80,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const LoD& lod,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
-  strides = calc_strides(dims, layout);
+  strides = calc_strides(dims);
   use_gpudnn = true;
 }
 
@@ -93,7 +93,7 @@ DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
   lod = other.lod;
   offset = other.offset;
   if (other.strides.size() == -1) {
-    strides == calc_strides(dims, layout);
+    strides == calc_strides(dims);
   } else {
     strides = other.strides;
   }
@@ -108,7 +108,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   lod = other.lod;
   offset = other.offset;
   if (other.strides.size() == -1) {
-    strides == calc_strides(dims, layout);
+    strides == calc_strides(dims);
   } else {
     strides = other.strides;
   }
@@ -124,7 +124,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
   lod = std::move(other.lod);
   offset = other.offset;
   if (other.strides.size() == -1) {
-    strides == calc_strides(dims, layout);
+    strides == calc_strides(dims);
   } else {
     strides = std::move(other.strides);
   }
@@ -140,8 +140,8 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-bool DenseTensorMeta::is_contiguous(DataLayout exp_layout) const noexcept {
-  return strides == calc_strides(dims, exp_layout);
+bool DenseTensorMeta::is_contiguous() const noexcept {
+  return strides == calc_strides(dims);
 }
 
 StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}

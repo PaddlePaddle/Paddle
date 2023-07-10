@@ -37,7 +37,7 @@ class TestStride(unittest.TestCase):
         x_transposed1 = paddle.transpose(x, perm=[1, 0, 2])
         x_np_transposed1 = x_np.transpose(1, 0, 2)
         self.assertTrue(np.allclose(x_transposed1.numpy(), x_np_transposed1))
-        self.assertFalse(x_transposed1.is_contiguous("NCHW"))
+        self.assertFalse(x_transposed1.is_contiguous())
         self.assertTrue(x._is_shared_buffer_with(x_transposed1))
 
         x_c = x_transposed1.contiguous()
@@ -76,10 +76,10 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out3.numpy(), np_out3))
         self.assertTrue(np.allclose(out4.numpy(), np_out4))
 
-        self.assertFalse(out.is_contiguous("NCHW"))
-        self.assertFalse(out2.is_contiguous("NCHW"))
-        self.assertFalse(out3.is_contiguous("NCHW"))
-        self.assertFalse(out4.is_contiguous("NCHW"))
+        self.assertFalse(out.is_contiguous())
+        self.assertFalse(out2.is_contiguous())
+        self.assertFalse(out3.is_contiguous())
+        self.assertFalse(out4.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
         self.assertTrue(x._is_shared_buffer_with(out2))
@@ -112,7 +112,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -133,7 +133,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertFalse(out.is_contiguous("NCHW"))
+        self.assertFalse(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -153,7 +153,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertFalse(out.is_contiguous("NCHW"))
+        self.assertFalse(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -173,7 +173,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -193,7 +193,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertFalse(out.is_contiguous("NCHW"))
+        self.assertFalse(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -213,7 +213,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertFalse(out.is_contiguous("NCHW"))
+        self.assertFalse(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -233,7 +233,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -253,7 +253,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -273,7 +273,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -293,7 +293,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -313,7 +313,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -335,9 +335,9 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out1.numpy(), np_out1))
         self.assertTrue(np.allclose(out2.numpy(), np_out2))
 
-        self.assertFalse(out0.is_contiguous("NCHW"))
-        self.assertFalse(out1.is_contiguous("NCHW"))
-        self.assertFalse(out2.is_contiguous("NCHW"))
+        self.assertFalse(out0.is_contiguous())
+        self.assertFalse(out1.is_contiguous())
+        self.assertFalse(out2.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out0))
         self.assertTrue(x._is_shared_buffer_with(out1))
@@ -370,9 +370,9 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out1.numpy(), np_out1))
         self.assertTrue(np.allclose(out2.numpy(), np_out2))
 
-        self.assertFalse(out0.is_contiguous("NCHW"))
-        self.assertFalse(out1.is_contiguous("NCHW"))
-        self.assertFalse(out2.is_contiguous("NCHW"))
+        self.assertFalse(out0.is_contiguous())
+        self.assertFalse(out1.is_contiguous())
+        self.assertFalse(out2.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out0))
         self.assertTrue(x._is_shared_buffer_with(out1))
@@ -402,9 +402,9 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out1.numpy(), np_out1))
         self.assertTrue(np.allclose(out2.numpy(), np_out2))
 
-        self.assertTrue(out0.is_contiguous("NCHW"))
-        self.assertTrue(out1.is_contiguous("NCHW"))
-        self.assertTrue(out2.is_contiguous("NCHW"))
+        self.assertTrue(out0.is_contiguous())
+        self.assertTrue(out1.is_contiguous())
+        self.assertTrue(out2.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out0))
         self.assertTrue(x._is_shared_buffer_with(out1))
@@ -437,9 +437,9 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out1.numpy(), np_out1))
         self.assertTrue(np.allclose(out2.numpy(), np_out2))
 
-        self.assertTrue(out0.is_contiguous("NCHW"))
-        self.assertTrue(out1.is_contiguous("NCHW"))
-        self.assertTrue(out2.is_contiguous("NCHW"))
+        self.assertTrue(out0.is_contiguous())
+        self.assertTrue(out1.is_contiguous())
+        self.assertTrue(out2.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out0))
         self.assertTrue(x._is_shared_buffer_with(out1))
@@ -469,9 +469,9 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out1.numpy(), np_out1))
         self.assertTrue(np.allclose(out2.numpy(), np_out2))
 
-        self.assertFalse(out0.is_contiguous("NCHW"))
-        self.assertFalse(out1.is_contiguous("NCHW"))
-        self.assertFalse(out2.is_contiguous("NCHW"))
+        self.assertFalse(out0.is_contiguous())
+        self.assertFalse(out1.is_contiguous())
+        self.assertFalse(out2.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out0))
         self.assertTrue(x._is_shared_buffer_with(out1))
@@ -503,9 +503,9 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out1.numpy(), np_out1))
         self.assertTrue(np.allclose(out2.numpy(), np_out2))
 
-        self.assertTrue(out0.is_contiguous("NCHW"))
-        self.assertTrue(out1.is_contiguous("NCHW"))
-        self.assertTrue(out2.is_contiguous("NCHW"))
+        self.assertTrue(out0.is_contiguous())
+        self.assertTrue(out1.is_contiguous())
+        self.assertTrue(out2.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out0))
         self.assertTrue(x._is_shared_buffer_with(out1))
@@ -533,7 +533,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -553,7 +553,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -573,7 +573,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -594,7 +594,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertTrue(out.is_contiguous("NCHW"))
+        self.assertTrue(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 
@@ -614,7 +614,7 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
-        self.assertFalse(out.is_contiguous("NCHW"))
+        self.assertFalse(out.is_contiguous())
 
         self.assertTrue(x._is_shared_buffer_with(out))
 

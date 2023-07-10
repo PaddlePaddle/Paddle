@@ -65,8 +65,8 @@ const Place& DenseTensor::place() const {
 phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const DataLayout layout) {
-  if (meta_.strides.size() == -1 || meta_.layout != layout) {
-    meta_.strides = meta_.calc_strides(meta_.dims, layout);
+  if (meta_.strides.size() == -1) {
+    meta_.strides = meta_.calc_strides(meta_.dims);
   }
   meta_.layout = layout;
 }
@@ -162,7 +162,7 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   if (meta_.dims.size() != -1 && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
                       true,
                       phi::errors::InvalidArgument(
                           "Right now Resize is only supported for contiguous "
@@ -174,7 +174,7 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                           dims));
   }
   meta_.dims = dims;
-  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  meta_.strides = meta_.calc_strides(meta_.dims);
   return mutable_data<T>(place, requested_size);
 }
 
@@ -269,7 +269,7 @@ size_t DenseTensor::NumElements(size_t level) const {
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
   if (meta_.dims.size() != -1 && meta_.dims != dims) {
-    PADDLE_ENFORCE_EQ(meta_.is_contiguous(meta_.layout),
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
                       true,
                       phi::errors::InvalidArgument(
                           "Right now Resize is only supported for contiguous "
@@ -281,7 +281,7 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
                           dims));
   }
   meta_.dims = dims;
-  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  meta_.strides = meta_.calc_strides(meta_.dims);
   return *this;
 }
 
