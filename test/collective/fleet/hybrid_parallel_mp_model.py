@@ -89,6 +89,7 @@ class SimpleMPNet(paddle.nn.Layer):
             ),
             gather_output=False,
             has_bias=True,
+            async_allreduce=True,
         )
 
         self.linear2 = fleet.meta_parallel.RowParallelLinear(

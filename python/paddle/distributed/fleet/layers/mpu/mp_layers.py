@@ -170,6 +170,65 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         return output
 
 
+class ColumnParallelLinearWithAsyncAllReduceForBackward(PyLayer):
+    @staticmethod
+    def forward(
+        ctx,
+        x,
+        weight,
+        bias,
+        group,
+        is_mp,
+        gather_output,
+        async_ar,
+        linear_fn,
+        name,
+    ):
+        ctx.save_for_backward(x, weight)
+        ctx.use_bias = bias is not None
+        ctx.group = group
+        ctx.is_mp = is_mp
+        ctx.gather_output = gather_output
+        ctx.async_ar = async_ar
+        ctx.name = name
+
+        input_parallel = x
+        output_parallel = linear_fn(input_parallel, weight, bias, name=name)
+
+        if gather_output and is_mp:
+            output = mp_ops._c_concat(output_parallel, group=group)
+        else:
+            output = output_parallel
+
+        return output
+
+    @staticmethod
+    def backward(ctx, dout):
+        x, weight = ctx.saved_tensor()
+        use_bias = ctx.use_bias
+
+        if ctx.gather_output and ctx.is_mp:
+            dout = mp_ops._c_split(dout, group=ctx.group)
+
+        if x.stop_gradient:
+            dx = None
+        else:
+            dx = paddle.matmul(dout, weight, transpose_y=True)
+            if ctx.is_mp:
+                handle = paddle.distributed.all_reduce(
+                    dx, group=ctx.group, sync_op=not ctx.async_ar
+                )
+        dw = paddle.matmul(x, dout, transpose_x=True)
+        if not x.stop_gradient and ctx.is_mp:
+            handle.wait()
+
+        if use_bias:
+            db = paddle.sum(dout, axis=0) if use_bias else None
+            return dx, dw, db
+        else:
+            return dx, dw
+
+
 class ColumnParallelLinear(paddle.nn.Layer):
     """Linear layer with mp parallelized(column).
     this class is used for splitting Linear Layer in mp group, column split the weight of the Linear layer.
@@ -229,6 +288,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
         gather_output=True,
         fuse_matmul_bias=False,
         mp_group=None,
+        async_allreduce=False,
         name=None,
     ):
         super().__init__()
@@ -294,6 +354,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
             self.bias = None
 
         self.linear = F.linear
+        self.async_allreduce = async_allreduce
 
         if fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
@@ -308,25 +369,17 @@ class ColumnParallelLinear(paddle.nn.Layer):
             self.linear = fused_linear
 
     def forward(self, x):
-        # use inner api to process identity
-        if self.is_mp:
-            input_parallel = mp_ops._c_identity(
-                x, group=self.model_parallel_group
-            )
-        else:
-            input_parallel = x
-
-        output_parallel = self.linear(
-            input_parallel, self.weight, self.bias, name=self._name
+        return ColumnParallelLinearWithAsyncAllReduceForBackward.apply(
+            x,
+            self.weight,
+            self.bias,
+            self.model_parallel_group,
+            self.is_mp,
+            self.gather_output,
+            self.async_allreduce,
+            self.linear,
+            self._name,
         )
-
-        if self.gather_output and self.is_mp:
-            output = mp_ops._c_concat(
-                output_parallel, group=self.model_parallel_group
-            )
-        else:
-            output = output_parallel
-        return output
 
 
 class MPScale(PyLayer):
