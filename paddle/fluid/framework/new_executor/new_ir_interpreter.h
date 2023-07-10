@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
 namespace ir {
@@ -178,9 +179,14 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
+  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
+
+  // For new ir
+  void BuildInstruction();
+
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
+  std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 };
 
 }  // namespace framework

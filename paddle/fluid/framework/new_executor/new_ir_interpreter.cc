@@ -1479,5 +1479,9 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
   trace_execute_order_ = trace_order;
 }
 
+// For new ir
+
+void BuildInstruction() { VLOG(4) << "Build Instructions for new ir ... "; }
+
 }  // namespace framework
 }  // namespace paddle
