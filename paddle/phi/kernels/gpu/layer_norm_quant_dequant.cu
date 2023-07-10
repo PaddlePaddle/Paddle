@@ -1098,7 +1098,7 @@ void ResidualAddLayerNormQuantDequantKernel(const Context& dev_ctx,
   SkipLoadAndStoreResidual<T> load(
       x_data, bias_data, residual_data, residual_out_data, 0.0f, cols);
 
-  AffineQuantStore<int8_t, U, T, true, true> store(out,
+  AffineQuantStore<int8_t, U, T, true, true> store(out_data,
                                                    cols,
                                                    norm_weight_data,
                                                    norm_bias_data,
