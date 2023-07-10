@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <math.h>
 #include <string>
 
 #include "glog/logging.h"
@@ -29,6 +28,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
+
+// for windows build
+#define M_SQRT1_2 0.70710678118654752440
 
 PHI_DECLARE_bool(use_fast_math);
 
