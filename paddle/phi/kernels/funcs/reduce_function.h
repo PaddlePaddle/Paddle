@@ -288,8 +288,8 @@ struct ReduceConfig {
                      const KPDevice& dev_ctx,
                      phi::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(phi::make_ddim(
-          {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
+      tmp->Resize(
+          phi::make_ddim({static_cast<int64_t>(left_num * grid.z * grid.y)}));
       tmp_data = dev_ctx.Alloc<MPType>(tmp);
     }
   }
