@@ -550,13 +550,6 @@ class TestGetitemBeforeInplace(unittest.TestCase):
 
 
 class TestDygraphInplaceAsin(TestDygraphInplaceWithContinuous):
-    # asin calculation will appear some nan
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.array_equal, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.asin(var)
 
@@ -573,13 +566,6 @@ class TestDygraphInplaceSinh(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceAsinh(TestDygraphInplaceWithContinuous):
-    # asinh calculation will appear some nan
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.array_equal, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.asinh(var)
 
