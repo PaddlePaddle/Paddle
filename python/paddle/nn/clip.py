@@ -600,6 +600,34 @@ class ClipGradByAdaptiveNorm(ClipGradBase):
         self.steps += 1
         return params_and_grads
 
+    @framework.dygraph_only
+    def state_dict(self):
+        state_dict = {k: v for k, v in self.state.items()}
+        state_dict["steps"] = self.steps
+        state_dict["clip_ratio"] = self.clip_ratio
+        state_dict["beta"] = self.beta
+        state_dict["epsilon"] = self.epsilon
+        state_dict["start_clip_steps"] = self.start_clip_steps
+        return state_dict
+
+    @framework.dygraph_only
+    def set_state_dict(self, state_dict):
+        self.steps = state_dict["steps"]
+        self.clip_ratio = state_dict["clip_ratio"]
+        self.beta = state_dict["beta"]
+        self.epsilon = state_dict["epsilon"]
+        self.start_clip_steps = state_dict["start_clip_steps"]
+        for k in state_dict:
+            if k in [
+                "steps",
+                "clip_ratio",
+                "beta",
+                "epsilon",
+                "start_clip_steps",
+            ]:
+                continue
+            self.state[k] = copy.deepcopy(state_dict[k])
+
     def _static_clip(self, params_grads):
         params_and_grads = []
         with framework.name_scope('gradient_clip'):
