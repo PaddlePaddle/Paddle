@@ -266,7 +266,7 @@ class TestAdamOptimizer(TestOptimizer):
     def setUp(self):
         self._init_config()
         beta1, beta2, epsilon = 0.9, 0.999, 1e-8
-        self.optimizer = optimizer.AdamOptimizer(
+        self.optimizer = paddle.optimizer.Adam(
             learning_rate=0.01, beta1=beta1, beta2=beta2, epsilon=epsilon
         )
         self.attr = {

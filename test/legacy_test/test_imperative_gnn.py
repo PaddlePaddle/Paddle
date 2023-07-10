@@ -23,7 +23,7 @@ import paddle.nn.functional as F
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.optimizer import Adam
 
 
 def gen_data():
@@ -92,7 +92,7 @@ class TestDygraphGNN(unittest.TestCase):
             )
             loss = paddle.sum(loss)
 
-            adam = AdamOptimizer(learning_rate=1e-3)
+            adam = Adam(learning_rate=1e-3)
             adam.minimize(loss)
             exe = fluid.Executor(
                 fluid.CPUPlace()
@@ -132,9 +132,7 @@ class TestDygraphGNN(unittest.TestCase):
             )
             loss = paddle.sum(loss)
             loss.backward()
-            adam = AdamOptimizer(
-                learning_rate=1e-3, parameter_list=model.parameters()
-            )
+            adam = Adam(learning_rate=1e-3, parameters=model.parameters())
 
             adam.minimize(loss)
             model.clear_gradients()
@@ -160,9 +158,7 @@ class TestDygraphGNN(unittest.TestCase):
             )
             loss2 = paddle.sum(loss2)
             loss2.backward()
-            adam2 = AdamOptimizer(
-                learning_rate=1e-3, parameter_list=model2.parameters()
-            )
+            adam2 = Adam(learning_rate=1e-3, parameters=model2.parameters())
             adam2.minimize(loss2)
             model2.clear_gradients()
             loss2_value = loss2.numpy()

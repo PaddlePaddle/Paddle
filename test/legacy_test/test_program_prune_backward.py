@@ -221,9 +221,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_transformer(self):
         def optimizer():
-            optimizer = fluid.optimizer.Adam(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 

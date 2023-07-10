@@ -545,9 +545,9 @@ class TestLACModel(unittest.TestCase):
             train_loader = create_dataloader(reader, place)
 
             model = LexNet(args)
-            optimizer = fluid.optimizer.AdamOptimizer(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=args.base_learning_rate,
-                parameter_list=model.parameters(),
+                parameters=model.parameters(),
             )
             chunk_eval = ChunkEval(
                 int(math.ceil((args.num_labels - 1) / 2.0)), "IOB"

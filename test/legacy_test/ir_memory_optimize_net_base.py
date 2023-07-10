@@ -66,7 +66,7 @@ class BuildIrMemOptBase(unittest.TestCase):
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
         cost = network(data, label, len(self.word_dict))
-        optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.001)
         optimizer.minimize(cost)
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = enable_inplace

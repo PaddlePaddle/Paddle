@@ -132,16 +132,16 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
-            adam1 = fluid.optimizer.Adam(
+            adam1 = paddle.optimizer.Adam(
                 learning_rate=Exponential_scheduler,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam2 = fluid.optimizer.Adam(
-                learning_rate=Step_scheduler, parameter_list=linear.parameters()
+            adam2 = paddle.optimizer.Adam(
+                learning_rate=Step_scheduler, parameters=linear.parameters()
             )
-            adam3 = fluid.optimizer.Adam(
+            adam3 = paddle.optimizer.Adam(
                 learning_rate=Reducelr_scheduler,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
             print(adam3.state_dict())
 
@@ -172,9 +172,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             paddle.save(adam1.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Exponential_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
             adam_test.set_dict(opt_state)
             self.assertEqual(
@@ -185,9 +185,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             paddle.save(adam2.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Step_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
             adam_test.set_dict(opt_state)
             self.assertEqual(
@@ -203,9 +203,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             paddle.save(adam3.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Reducelr_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
             adam_test.set_dict(opt_state)
             self.assertEqual(
@@ -368,8 +368,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             )
 
             linear = paddle.nn.Linear(10, 10)
-            adam = fluid.optimizer.Adam(
-                scheduler, parameter_list=linear.parameters()
+            adam = paddle.optimizer.Adam(
+                scheduler, parameters=linear.parameters()
             )
 
             for epoch in range(30):

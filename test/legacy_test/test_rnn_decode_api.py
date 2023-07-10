@@ -59,7 +59,7 @@ class PolicyGradient:
             if length is not None
             else paddle.mean(cost)
         )
-        optimizer = fluid.optimizer.Adam(self.lr)
+        optimizer = paddle.optimizer.Adam(self.lr)
         optimizer.minimize(cost)
         return cost
 
@@ -153,7 +153,7 @@ class MLE:
         loss = loss * mask
         loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
-        optimizer = fluid.optimizer.Adam(self.lr)
+        optimizer = paddle.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
         return loss
 

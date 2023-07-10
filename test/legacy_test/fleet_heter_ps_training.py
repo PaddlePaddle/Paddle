@@ -121,7 +121,7 @@ def net(batch_size=4, lr=0.01):
 
 
 '''
-optimizer = fluid.optimizer.Adam(learning_rate=0.01)
+optimizer = paddle.optimizer.Adam(learning_rate=0.01)
 
 role = role_maker.PaddleCloudRoleMaker()
 fleet.init(role)

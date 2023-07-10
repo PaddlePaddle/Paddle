@@ -404,7 +404,7 @@ class TestAdamaxMultiPrecision1_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.fluid.optimizer.Adamax(
+        optimizer = paddle.optimizer.Adamax(
             learning_rate=0.001, parameter_list=model.parameters()
         )
         optimizer._multi_precision = mp

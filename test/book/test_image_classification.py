@@ -132,7 +132,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     # Test program
     test_program = fluid.default_main_program().clone(for_test=True)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer = paddle.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128

@@ -315,7 +315,7 @@ class TestAdagradOptimizer(unittest.TestCase):
 
 
 class TestAdamOptimizer(unittest.TestCase):
-    class MockAdam(optimizer.AdamOptimizer):
+    class MockAdam(paddle.optimizer.Adam):
         def get_accumulators(self):
             return self._accumulators
 
@@ -382,7 +382,7 @@ class TestAdamOptimizer(unittest.TestCase):
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), 5)
         self.assertEqual(init_ops[-1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[-1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
 
 
 class TestAdamaxOptimizer(unittest.TestCase):
@@ -1187,7 +1187,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
                     name="y", shape=[-1, 1], dtype='int64'
                 )
                 drop_res, prediction, cost = mlp(input_x, input_y)
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([prediction])
                 sgd.minimize(cost)
@@ -1252,7 +1252,7 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
                     name="y", shape=[-1, 1], dtype='int64'
                 )
                 drop_res, prediction, cost = mlp(input_x, input_y)
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([prediction])
                 sgd.minimize(cost)

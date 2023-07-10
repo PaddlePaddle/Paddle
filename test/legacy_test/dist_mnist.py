@@ -95,7 +95,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         inference_program = fluid.default_main_program().clone()
         # Optimization
         # TODO(typhoonzero): fix distributed adam optimizer
-        # opt = fluid.optimizer.AdamOptimizer(
+        # opt = paddle.optimizer.Adam(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
         if not use_dgc:
             opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)

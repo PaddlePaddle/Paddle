@@ -482,14 +482,14 @@ def build_optimizer(layer, cfg, loss=None):
     beta1 = 0.5
     beta2 = 0.999
     if fluid.in_dygraph_mode():
-        return fluid.optimizer.Adam(
+        return paddle.optimizer.Adam(
             learning_rate=learning_rate,
             beta1=beta1,
             beta2=beta2,
-            parameter_list=layer.parameters(),
+            parameters=layer.parameters(),
         )
     else:
-        optimizer = fluid.optimizer.Adam(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=learning_rate, beta1=beta1, beta2=beta2
         )
 

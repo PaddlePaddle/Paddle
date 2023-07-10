@@ -19,7 +19,7 @@ import numpy as np
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.optimizer import Adam
 
 if paddle.fluid.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -56,9 +56,7 @@ class TestAMP(TestMNIST):
             print("Successfully to apply @to_static.")
             mnist = paddle.jit.to_static(mnist)
 
-        adam = AdamOptimizer(
-            learning_rate=0.001, parameter_list=mnist.parameters()
-        )
+        adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 

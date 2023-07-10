@@ -1093,7 +1093,7 @@ class TestTransformer(TestParallelDyGraphRunnerBase):
                 learning_rate=0.001, parameter_list=model.parameters()
             )
         else:
-            optimizer = fluid.optimizer.Adam(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=NoamDecay(
                     ModelHyperParams.d_model,
                     TrainTaskConfig.warmup_steps,
@@ -1102,7 +1102,7 @@ class TestTransformer(TestParallelDyGraphRunnerBase):
                 beta1=TrainTaskConfig.beta1,
                 beta2=TrainTaskConfig.beta2,
                 epsilon=TrainTaskConfig.eps,
-                parameter_list=model.parameters(),
+                parameters=model.parameters(),
             )
 
         return model, train_reader, optimizer

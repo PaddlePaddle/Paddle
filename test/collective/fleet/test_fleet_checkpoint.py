@@ -47,7 +47,7 @@ class FleetTest(unittest.TestCase):
             input=predict, label=label, reduction='none', use_softmax=False
         )
         avg_loss = paddle.mean(loss)
-        optimizer = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.001)
 
         dist_optimizer = fleet.distributed_optimizer(optimizer)
         dist_optimizer.minimize(avg_loss)

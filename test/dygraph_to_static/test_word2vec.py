@@ -291,9 +291,9 @@ def train(to_static):
         skip_gram_model = SkipGram(
             "skip_gram_model", vocab_size, embedding_size
         )
-        adam = fluid.optimizer.AdamOptimizer(
+        adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
-            parameter_list=skip_gram_model.parameters(),
+            parameters=skip_gram_model.parameters(),
         )
 
         step = 0

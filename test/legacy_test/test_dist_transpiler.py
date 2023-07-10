@@ -746,7 +746,7 @@ class TestDistLookupTableBase(TranspilerTest):
             input=predict, label=label, reduction='none', use_softmax=False
         )
         avg_cost = paddle.mean(cost)
-        optimizer = fluid.optimizer.Adam(learning_rate=0.003)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.003)
         optimizer.minimize(avg_cost)
 
 
@@ -1361,7 +1361,7 @@ class TestRemoteNce(TestDistLookupTableBase):
         )
         avg_cost = paddle.mean(cost)
         # optimizer
-        optimizer = fluid.optimizer.Adam(learning_rate=0.003)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.003)
         optimizer.minimize(avg_cost)
 
     def net_conf(self):

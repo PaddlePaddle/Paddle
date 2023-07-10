@@ -1142,12 +1142,12 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 )
                 with fluid.default_main_program()._lr_schedule_guard():
                     learning_rate = lr_decay * TrainTaskConfig.learning_rate
-                optimizer = fluid.optimizer.Adam(
+                optimizer = paddle.optimizer.Adam(
                     learning_rate=learning_rate,
                     beta1=TrainTaskConfig.beta1,
                     beta2=TrainTaskConfig.beta2,
                     epsilon=TrainTaskConfig.eps,
-                    parameter_list=transformer.parameters(),
+                    parameters=transformer.parameters(),
                 )
             else:
                 optimizer = fluid.optimizer.SGD(
