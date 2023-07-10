@@ -13,12 +13,78 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 
-InstructionBase::InstructionBase(size_t id) : is_artificial_(false), id_(id) {
+InstructionBase::InstructionBase(size_t id) : id_(id), is_artificial_(false) {
   VLOG(4) << "Construct InstructionBase";
+}
+
+OpFuncType InstructionBase::KernelType() const { return type_; }
+
+const platform::DeviceContext& InstructionBase::DeviceContext() const {
+  return *dev_ctx_;
+}
+
+void InstructionBase::RecordEvent(const Place& place) const {
+  platform::RecordEvent record(
+      "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+  if (event_to_record_) {
+    VLOG(6) << "Record event at instruction: " << id_;
+    event_to_record_->event_->Record(dev_ctx_);
+  }
+}
+
+void InstructionBase::WaitEvent(const Place& place) const {
+  // If InterpreterCore in on CPUPlace, do nothing.
+  if (platform::is_cpu_place(place)) {
+    return;
+  }
+  for (const EventInter& event_iter : events_to_wait_) {
+    platform::RecordEvent record(
+        "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
+    VLOG(6) << "Wait instruction: " << event_iter.instr_id_
+            << " 's event with waiter_type: " << event_iter.waiter_type_;
+    event_iter.event_->Wait(event_iter.waiter_type_, dev_ctx_);
+  }
+}
+
+void InstructionBase::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
+
+const std::vector<size_t>& InstructionBase::GCCheckVars() const {
+  return gc_check_vars_;
+}
+
+const std::vector<std::pair<Variable*, Variable*>>&
+InstructionBase::InplaceInfo() const {
+  return vec_inplace_in_to_out_;
+}
+
+void InstructionBase::AddInplace(Variable* in, Variable* out) {
+  vec_inplace_in_to_out_.emplace_back(in, out);
+}
+
+void InstructionBase::ClearInplace() { vec_inplace_in_to_out_.clear(); }
+
+const std::map<std::string, std::vector<int>>& InstructionBase::Inputs() const {
+  return input_index_;
+}
+
+void InstructionBase::SetInputs(
+    const std::map<std::string, std::vector<int>>& inputs) {
+  input_index_ = inputs;
+}
+
+const std::map<std::string, std::vector<int>>& InstructionBase::Outputs()
+    const {
+  return output_index_;
+}
+
+void InstructionBase::SetOutputs(
+    const std::map<std::string, std::vector<int>>& outputs) {
+  output_index_ = outputs;
 }
 
 }  // namespace framework

@@ -19,8 +19,53 @@
 namespace paddle {
 namespace framework {
 
+// struct OpFuncNode {
+
+//   // fit for phi kernel
+//   phi::Kernel* phi_kernel_{nullptr};  // not owned
+//   platform::DeviceContext* dev_ctx_;  // not owned
+
+//   // TODO(zhiqiu): Better make it unique_ptr
+//   std::shared_ptr<OperatorBase> operator_base_{nullptr};
+
+//   OpKernelComputeFunc kernel_func_;
+
+//   // the next only for new IR
+//   phi::KernelContext kernel_context_;
+//   phi::InferMetaContext infer_meta_context_;
+//   std::string phi_op_name_;
+//   paddle::dialect::InferMetaInterface::Concept*
+//   infer_meta_interface_{nullptr};
+// };
+
 class PhiKernelInstruction : public InstructionBase {
  public:
+  //   OpKernelComputeFunc KernelFunc() const;
+
+  //   phi::Kernel* PhiKernel() const;
+
+  //   const std::map<int, int>& InplaceBackMap() const;
+
+  //   OperatorBase* OpBase() const;
+
+  //   bool OpBaseValid() const;
+
+  //   void ResetContext(const VariableValueMap& in_vars,
+  //                     const VariableValueMap& out_vars);
+
+  //   void ResetContextWithScope(const VariableValueMap& in_vars,
+  //                              const VariableValueMap& out_vars,
+  //                              const framework::Scope& scope);
+
+  //   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
+
+  //   std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
+
+  //   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
+
+  //   std::shared_ptr<RuntimeContext> runtime_ctx_;
+  //   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
+  //   std::shared_ptr<ExecutionContext> execution_ctx_;
 };
 
 }  // namespace framework
