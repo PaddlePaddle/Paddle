@@ -2918,3 +2918,10 @@
     x : X
   outputs :
     out : Out
+
+- op : polygamma
+  inputs :
+    x : x
+  outputs :
+    out : out
+  
