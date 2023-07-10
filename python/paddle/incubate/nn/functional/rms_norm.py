@@ -19,6 +19,32 @@ from paddle.fluid.layer_helper import LayerHelper
 
 
 def rms_norm(x, weight, bias, epsilon, begin_norm_axis):
+    r"""
+    Apply RMSNorm kernel.
+
+    Args:
+        x (Tensor): the input Tensor..
+        weight (Tensor): the weight Tensor to affine output.
+        bias (Tensor): the bias Tensor to affine output.
+        epsilon (float): a small float number to avoid divide 0.
+        begin_norm_axis (int): the begin axis to normalize.
+
+    Returns:
+        Tensor: the output Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+
+            paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
+            paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
+            paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
+            epsilon = 1e-6
+            paddle_rmsnorm = paddle.incubate.nn.functional.rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
+    """
+
     if in_dygraph_mode():
         return _C_ops.rms_norm(x, weight, bias, epsilon, begin_norm_axis)
 
