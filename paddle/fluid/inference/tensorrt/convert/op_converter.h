@@ -747,7 +747,8 @@ class OpConverter {
       VLOG(3) << output_tensor_names[i] << "'s dimension :["
               << string::join_strings(tmp_vec, ',') << "]";
       // The following check may cause errors in CI, but is necessary in the
-      // latest version. PADDLE_ENFORCE_GE(
+      // latest version.
+      // PADDLE_ENFORCE_GE(
       //     layer->getOutput(i)->getDimensions().nbDims,
       //     0,
       //     platform::errors::InvalidArgument(
