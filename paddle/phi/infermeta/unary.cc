@@ -183,7 +183,6 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
     }
     return;
   }
-
   auto int_axis = axis.to<int64_t>();
   const auto& x_dims = x.dims();
 

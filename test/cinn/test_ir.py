@@ -16,8 +16,6 @@
 
 import unittest
 
-import cinn
-from cinn import Target, ir, lang, runtime
 from cinn.common import *
 from cinn.ir import *
 from cinn.optim import *

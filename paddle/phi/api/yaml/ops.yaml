@@ -100,7 +100,7 @@
 
 - op : affine_grid
   args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
-  output : Tensor
+  output : Tensor(output)
   infer_meta :
     func : AffineGridInferMeta
     param : [input, output_shape, align_corners]
@@ -1080,6 +1080,15 @@
   kernel :
     func : hardtanh
   backward : hardtanh_grad
+
+- op : heaviside
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : heaviside
+  backward : heaviside_grad
 
 - op : histogram
   args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)

@@ -16,12 +16,7 @@ import logging
 import os
 from test.cinn.ops.op_test import OpTest
 
-from cinn.frontend import (
-    NetBuilder,
-    Variable,
-    get_default_graph_pass,
-    get_default_program_pass,
-)
+from cinn.frontend import NetBuilder, Variable
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="pass_test")
@@ -34,7 +29,7 @@ class PassTest(OpTest):
 
     def init_input_data(self) -> dict:
         """Set feed data"""
-        self.feed_data = dict()
+        self.feed_data = {}
         logger.warn("No Input Data")
 
     def build_program(self, builder, target):
@@ -64,7 +59,7 @@ class PassTest(OpTest):
     def get_pass_outputs(self, passes):
         pass_prog, inputs, outputs = self.run_program()
 
-        feed_list = list()
+        feed_list = []
         for var in inputs:
             self.assertIn(
                 var.name(),

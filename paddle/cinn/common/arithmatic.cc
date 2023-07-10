@@ -180,7 +180,8 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
   ir::Expr cur;
 
  public:
-  explicit GiNaCToExprVisitor(std::map<std::string, ir::Expr>& repr_to_expr)
+  explicit GiNaCToExprVisitor(
+      std::map<std::string, ir::Expr>& repr_to_expr)  // NOLINT
       : repr_to_expr(repr_to_expr) {}
 
   Expr operator()(GiNaC::ex ex) {

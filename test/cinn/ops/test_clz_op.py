@@ -60,12 +60,7 @@ class TestClzOp(OpTest):
         low = INT32_MIN if dtype == "int32" else INT64_MIN
         high = INT32_MAX if dtype == "int32" else INT64_MAX
         x = self.random(self.case["shape"], dtype, low=low, high=high)
-        y = list(
-            map(
-                lambda num: count_leading_zeros(num, dtype),
-                x.reshape(-1).tolist(),
-            )
-        )
+        y = [count_leading_zeros(num, dtype) for num in x.reshape(-1).tolist()]
         self.inputs = {"x": x}
         self.outputs = {"y": np.array(y).reshape(x.shape).astype(dtype)}
 
