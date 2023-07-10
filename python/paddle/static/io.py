@@ -886,9 +886,6 @@ def load_inference_model(path_prefix, executor, **kwargs):
         if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
-            print("for debug in ci, remove it later")
-            print("load_dirname:", load_dirname)
-            print("params_filename:", params_filename)
 
             load_vars(
                 executor,
