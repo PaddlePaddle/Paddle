@@ -12,4 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.utils import *
+from .core_api.utils import (  # noqa: F401
+    EventType,
+    HostEvent,
+    HostEventRecorder,
+    ProfilerHelper,
+    kCodeGen,
+    kCompile,
+    kCompute,
+    kFusePass,
+    kGraph,
+    kInstruction,
+    kOptimize,
+    kOrdinary,
+    kProgram,
+    kSchedule,
+)

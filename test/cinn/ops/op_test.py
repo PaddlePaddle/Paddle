@@ -16,10 +16,8 @@ import logging
 import os
 import struct
 import unittest
-from contextlib import contextmanager
 
 import numpy as np
-from cinn import Target
 from cinn.common import *
 from cinn.frontend import *
 from cinn.runtime import seed as cinn_seed

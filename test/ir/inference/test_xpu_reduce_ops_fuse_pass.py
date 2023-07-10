@@ -20,7 +20,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestFcFusePass(PassAutoScanTest):
+class TestReduceMaxFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
         yield config, ["reduce_max"], (1e-3, 1e-3)
@@ -101,7 +101,7 @@ class TestFcFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=25,
-            passes=["reduce_max_fuse_pass"],
+            passes=["reduce_ops_fuse_pass"],
         )
 
 
