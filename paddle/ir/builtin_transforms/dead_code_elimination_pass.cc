@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/transforms/dce.h"
-#include <memory>
+#include "paddle/ir/builtin_transforms/dead_code_elimination_pass.h"
+
 #include "paddle/ir/core/builtin_op.h"
+#include "paddle/ir/core/program.h"
 #include "paddle/ir/pass/pass.h"
 
 namespace {
@@ -22,30 +23,43 @@ namespace {
 // TODO(wilber): After support SideEffectTrait, Only NoSideEffectTrait op can be
 // removed by dce pass.
 // Now just a naive implementation.
-class DcePass : public ir::Pass {
+class DeadCodeEliminationPass : public ir::Pass {
  public:
-  DcePass() : ir::Pass("DcePass", 0) {}
+  DeadCodeEliminationPass() : ir::Pass("DeadCodeEliminationPass", 0) {}
 
   void Run(ir::Operation *op) override {
     auto module_op = op->dyn_cast<ir::ModuleOp>();
     IR_ENFORCE(module_op, "DcePass should run on module op.");
     auto *block = module_op.block();
-    std::vector<ir::Operation> erased_op;
+    std::vector<ir::Operation *> erased_op;
     for (auto it = block->begin(); it != block->end(); ++it) {
+      auto &op = *it;
       // TODO(wilber): Support NoSideEffect trait.
-      // if (!(*it)->HasTrait<NoSideEffect>()) continue;
+      // if (!op->HasTrait<NoSideEffect>()) continue;
 
       bool use_empty = true;
-      for (uint32_t i = 0; i < (*it)->num_results(); ++i) {
-        use_empty &= (*it)->result(i).use_empty();
+      for (uint32_t i = 0; i < op->num_results(); ++i) {
+        use_empty &= op->result(i).use_empty();
       }
       // TODO(wilber): Support Terminator trait.
-      if (use_empty && (*it)->name() != "pd.fetch") {
-        erased_op.push_back(**it);
+      if (use_empty && op->name() != "pd.fetch") {
+        erased_op.push_back(op);
       }
     }
 
-    for (auto ep : erased_op) block->erase(ep);
+    for (auto *op : erased_op) {
+      if (op->dyn_cast<ir::GetParameterOp>()) {
+        // Delete parameter from program.
+        ir::GetParameterOp get_parameter_op =
+            op->dyn_cast<ir::GetParameterOp>();
+        get_parameter_op->GetParentProgram()->parameters().erase(
+            get_parameter_op->attributes()
+                .at(get_parameter_op.attributes_name[0])
+                .dyn_cast<ir::StrAttribute>()
+                .data());
+      }
+      block->erase(*op);
+    }
   }
 
   bool CanApplyOn(ir::Operation *op) const override {
@@ -57,6 +71,8 @@ class DcePass : public ir::Pass {
 
 namespace ir {
 
-std::unique_ptr<Pass> CreateDcePass() { return std::make_unique<DcePass>(); }
+std::unique_ptr<Pass> CreateDeadCodeEliminationPass() {
+  return std::make_unique<DeadCodeEliminationPass>();
+}
 
 }  // namespace ir

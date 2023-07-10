@@ -18,8 +18,9 @@
 #include "paddle/ir/core/dll_decl.h"
 
 namespace ir {
+
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateDcePass();
+IR_API std::unique_ptr<Pass> CreateConstantFoldingPass();
 
 }  // namespace ir

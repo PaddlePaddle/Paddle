@@ -69,7 +69,6 @@ TEST(StandaloneExecutor, run) {
   auto place = platform::CPUPlace();
   Scope scope;
 
-  ProgramDesc prog_desc;
   InterpreterCore test_core(place, std::move(kernel_program), &scope);
 
   test_core.Run({});
@@ -140,8 +139,6 @@ TEST(StandaloneExecutor, run_2) {
 
   auto place = platform::CPUPlace();
   Scope scope;
-
-  ProgramDesc prog_desc;
 
   InterpreterCore test_core(place, std::move(kernel_program), &scope);
 
@@ -215,8 +212,6 @@ TEST(StandaloneExecutor, data_transfer) {
 
   auto place = platform::CPUPlace();
   Scope scope;
-
-  ProgramDesc prog_desc;
 
   InterpreterCore test_core(place, std::move(kernel_program), &scope);
 
