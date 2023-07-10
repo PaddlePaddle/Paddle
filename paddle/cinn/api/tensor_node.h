@@ -25,8 +25,6 @@
 namespace cinn {
 namespace api {
 
-using shape_t = utils::ShapeType;
-
 class OpNode;
 
 class TensorNode final {
@@ -37,7 +35,7 @@ class TensorNode final {
         graph_(graph),
         consumers_(node_data_->outlinks(), graph_) {
     const auto& shape_dict =
-        graph_->GetAttrs<absl::flat_hash_map<std::string, shape_t>>(
+        graph_->GetAttrs<absl::flat_hash_map<std::string, utils::ShapeType>>(
             "infershape");
     CHECK(shape_dict.count(node_data_->id()))
         << "Can't find " << node_data_->id() << " 's shape!";
