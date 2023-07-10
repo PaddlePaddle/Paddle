@@ -863,32 +863,29 @@ TEST_F(TestScheduleDesc, StepKind_Annotate) {
   auto block_b = ir_sch.GetBlock("B");
   trace.Append(ScheduleDesc::Step(
       "GetBlock", {}, {{"block_name", std::string("B")}}, {block_b}));
-  ir_sch.Annotate(block_b, "k1", int(64));
-  trace.Append(
-      ScheduleDesc::Step("AnnotateIntAttr",
-                         {{"block", std::vector<Expr>({block_b})}},
-                         {{"key", std::string("k1")}, {"value", int(64)}},
-                         {}));
+  ir_sch.Annotate(block_b, "k1", 64);
+  trace.Append(ScheduleDesc::Step("AnnotateIntAttr",
+                                  {{"block", std::vector<Expr>({block_b})}},
+                                  {{"key", std::string("k1")}, {"value", 64}},
+                                  {}));
 
   block_b = ir_sch.GetBlock("B");
   trace.Append(ScheduleDesc::Step(
       "GetBlock", {}, {{"block_name", std::string("B")}}, {block_b}));
-  ir_sch.Annotate(block_b, "k2", bool(true));
-  trace.Append(
-      ScheduleDesc::Step("AnnotateBoolAttr",
-                         {{"block", std::vector<Expr>({block_b})}},
-                         {{"key", std::string("k2")}, {"value", bool(true)}},
-                         {}));
+  ir_sch.Annotate(block_b, "k2", true);
+  trace.Append(ScheduleDesc::Step("AnnotateBoolAttr",
+                                  {{"block", std::vector<Expr>({block_b})}},
+                                  {{"key", std::string("k2")}, {"value", true}},
+                                  {}));
 
   block_b = ir_sch.GetBlock("B");
   trace.Append(ScheduleDesc::Step(
       "GetBlock", {}, {{"block_name", std::string("B")}}, {block_b}));
-  ir_sch.Annotate(block_b, "k3", float(2.0));
-  trace.Append(
-      ScheduleDesc::Step("AnnotateFloatAttr",
-                         {{"block", std::vector<Expr>({block_b})}},
-                         {{"key", std::string("k3")}, {"value", float(2.0)}},
-                         {}));
+  ir_sch.Annotate(block_b, "k3", 2.0f);
+  trace.Append(ScheduleDesc::Step("AnnotateFloatAttr",
+                                  {{"block", std::vector<Expr>({block_b})}},
+                                  {{"key", std::string("k3")}, {"value", 2.0f}},
+                                  {}));
 
   block_b = ir_sch.GetBlock("B");
   trace.Append(ScheduleDesc::Step(
@@ -911,22 +908,20 @@ TEST_F(TestScheduleDesc, StepKind_Unannotate) {
   auto block_b = ir_sch.GetBlock("B");
   trace.Append(ScheduleDesc::Step(
       "GetBlock", {}, {{"block_name", std::string("B")}}, {block_b}));
-  ir_sch.Annotate(block_b, "k1", int(64));
-  trace.Append(
-      ScheduleDesc::Step("AnnotateIntAttr",
-                         {{"block", std::vector<Expr>({block_b})}},
-                         {{"key", std::string("k1")}, {"value", int(64)}},
-                         {}));
+  ir_sch.Annotate(block_b, "k1", 64);
+  trace.Append(ScheduleDesc::Step("AnnotateIntAttr",
+                                  {{"block", std::vector<Expr>({block_b})}},
+                                  {{"key", std::string("k1")}, {"value", 64}},
+                                  {}));
 
   block_b = ir_sch.GetBlock("B");
   trace.Append(ScheduleDesc::Step(
       "GetBlock", {}, {{"block_name", std::string("B")}}, {block_b}));
-  ir_sch.Annotate(block_b, "k2", bool(true));
-  trace.Append(
-      ScheduleDesc::Step("AnnotateBoolAttr",
-                         {{"block", std::vector<Expr>({block_b})}},
-                         {{"key", std::string("k2")}, {"value", bool(true)}},
-                         {}));
+  ir_sch.Annotate(block_b, "k2", true);
+  trace.Append(ScheduleDesc::Step("AnnotateBoolAttr",
+                                  {{"block", std::vector<Expr>({block_b})}},
+                                  {{"key", std::string("k2")}, {"value", true}},
+                                  {}));
 
   block_b = ir_sch.GetBlock("B");
   trace.Append(ScheduleDesc::Step(

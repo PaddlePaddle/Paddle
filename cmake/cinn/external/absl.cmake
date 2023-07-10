@@ -1,7 +1,7 @@
 include(ExternalProject)
 
-set(ABSL_SOURCES_DIR ${CINN_THIRD_PARTY_PATH}/absl)
-set(ABSL_INSTALL_DIR ${CINN_THIRD_PARTY_PATH}/install/absl)
+set(ABSL_SOURCES_DIR ${THIRD_PARTY_PATH}/absl)
+set(ABSL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/absl)
 
 set(ABSL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
@@ -12,7 +12,6 @@ set(OPTIONAL_ARGS
     "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
     "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
     "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
-    "-DABSL_CXX_STANDARD=17"
     "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
     "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
     "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
@@ -63,9 +62,6 @@ set(ABSL_LIB_NAMES
     bad_optional_access
     bad_variant_access
     raw_hash_set)
-if(CINN_ONLY)
-  list(APPEND ABSL_LIB_NAMES strings_internal raw_logging_internal)
-endif()
 set(ABSL_LIBS "")
 
 add_library(absl STATIC IMPORTED GLOBAL)

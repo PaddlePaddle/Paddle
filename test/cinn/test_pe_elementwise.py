@@ -22,7 +22,6 @@ import scipy
 from cinn import Target, ir, lang, pe, runtime
 from cinn.common import *
 from cinn.poly import create_stages
-from scipy import special
 
 
 class TestPEElementwise(unittest.TestCase):
@@ -113,13 +112,13 @@ class TestPEElementwise(unittest.TestCase):
         is_round=False,
         is_bool=False,
     ):
-        m, n = [
+        m, n = (
             ir.Expr(_)
             for _ in (
                 self.m,
                 self.n,
             )
-        ]
+        )
 
         x = lang.Placeholder(dtype, "x", [m, n])
         y = cinn_fn(x.to_tensor())

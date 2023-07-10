@@ -45,7 +45,7 @@ class TestDivOp(OpTest):
         )
 
         # paddle.divide does not support zero division
-        if self.case["y_dtype"] is "int32" or self.case["y_dtype"] is "int64":
+        if self.case["y_dtype"] == "int32" or self.case["y_dtype"] == "int64":
             self.y_np[self.y_np == 0] = 1
 
     def build_paddle_program(self, target):

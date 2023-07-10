@@ -63,6 +63,5 @@ SparseCooTensor Conv3dCoo(const Context& dev_ctx,
                               counter);
   return coo;
 }
-
 }  // namespace sparse
 }  // namespace phi

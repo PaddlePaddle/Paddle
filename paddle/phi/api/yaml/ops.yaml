@@ -100,7 +100,7 @@
 
 - op : affine_grid
   args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
-  output : Tensor
+  output : Tensor(output)
   infer_meta :
     func : AffineGridInferMeta
     param : [input, output_shape, align_corners]
@@ -473,6 +473,17 @@
     func : complex
     data_type : real
   backward : complex_grad
+
+- op : concat
+  args : (Tensor[] x, Scalar axis=0)
+  output : Tensor
+  infer_meta :
+    func : ConcatInferMeta
+    param : [x, axis]
+  kernel :
+    func : concat
+    data_type : x
+  backward : concat_grad
 
 - op : conj
   args : (Tensor x)
@@ -1069,6 +1080,15 @@
   kernel :
     func : hardtanh
   backward : hardtanh_grad
+
+- op : heaviside
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : heaviside
+  backward : heaviside_grad
 
 - op : histogram
   args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)
