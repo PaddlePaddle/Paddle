@@ -43,6 +43,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
@@ -708,6 +709,10 @@ def OpGenerator(
             op_interfaces_str = ""
             if len(op_interfaces) > 0:
                 op_interfaces_str = "," + ",".join(op_interfaces)
+
+            if op_name[-1] == "_":
+                op_traits += ["InplaceTrait"]
+
             op_traits_str = ""
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)
