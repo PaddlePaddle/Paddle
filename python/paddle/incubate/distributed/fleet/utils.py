@@ -238,8 +238,7 @@ def try_load_model_vars(
             dump_prog_fn = program_type_trans(
                 dump_dir, dump_prog_fn, is_text_dump_program
             )
-        print("for debug in ci, remove it later")
-        print(dump_dir, dump_prog_fn, save_filename)
+
         [
             inference_program,
             feed_target_names,
