@@ -23,7 +23,7 @@ namespace ir {
 
 namespace {
 
-struct IrNodesCollector : public IRVisitor {
+struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
   using teller_t = std::function<bool(const Expr*)>;
   using handler_t = std::function<void(const Expr*)>;
 

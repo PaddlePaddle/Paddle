@@ -56,7 +56,7 @@ class PhiKernelAdaptor {
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    BuildScope(block, scope_, nullptr, &name_map);
+    BuildScope(*block, scope_, nullptr, &name_map);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();

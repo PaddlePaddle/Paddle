@@ -29,7 +29,7 @@ class LoweredFunc;
 namespace ir {
 class Module;
 
-struct IrPrinter : public IRVisitor {
+struct IrPrinter : public IRVisitorRequireReImpl<void> {
   explicit IrPrinter(std::ostream &os) : os_(os) {}
 
   //! Emit an expression on the output stream.

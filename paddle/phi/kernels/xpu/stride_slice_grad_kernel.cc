@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/xpu/stride_slice_util.h"
 
 namespace phi {
 
@@ -75,6 +76,71 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
 
     ends_in[cur_axe] = end;
     strides_in[cur_axe] = strides_[i];
+  }
+
+  if (is_strided_slice_special_case(xshape, starts_in, ends_in, strides_in)) {
+    PADDLE_ENFORCE_EQ(
+        x.numel(),
+        x_grad->numel(),
+        errors::PreconditionNotMet(
+            "x.numel() should be equal to x_grad->numel() in special case."));
+    PADDLE_ENFORCE_EQ(
+        x.numel(),
+        out_grad.numel() * 2,
+        errors::PreconditionNotMet("x.numel() should be equal to "
+                                   "out_grad->numel() * 2 in special case."));
+
+    /*
+     * sample input: [1 2 3 4 5]
+     * starts = [0/1]
+     * strides = [2]
+     * sample output: [1 0 2 0 3 0 4 0 5 0] (last value in starts is 0)
+     * sample output: [0 1 0 2 0 3 0 4 0 5] (last value in starts is 1)
+     */
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    XPUType* x_transpose = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
+
+    // step 1: set all value to 0
+
+    // int constant(Context* ctx, T* x, int len, T val)
+    int r = xpu::constant(
+        dev_ctx.x_context(), x_transpose, x.numel(), static_cast<XPUType>(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+
+    /*
+     * step 2: copy dy to dx:
+     * if starts from 0: [1 2 3 4 5 0 0 0 0 0]
+     * if starts from 1: [0 0 0 0 0 1 2 3 4 5]
+     */
+    int offset = 0;
+    if (starts_in.back() == 1) {
+      offset = x.numel() / 2;
+    }
+    // int copy(Context* ctx, const T* x, T* y, int64_t len)
+    r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+                           x_transpose + offset,
+                           x.numel() / 2);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    /*
+     * step3: transpose, input shape is (2, x.numel/2):
+     * input:
+     * [1 2 3 4 5
+     *  0 0 0 0 0]
+     * after transpose:
+     * [1 0
+     *  2 0
+     *  3 0
+     *  4 0
+     *  5 0]
+     */
+    r = xpu::transpose<XPUType>(dev_ctx.x_context(),
+                                x_transpose,
+                                reinterpret_cast<XPUType*>(x_grad->data<T>()),
+                                {2, x.numel() / 2},
+                                {1, 0});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+    return;
   }
 
   int r = xpu::strided_slice_grad(

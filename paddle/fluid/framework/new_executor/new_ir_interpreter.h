@@ -116,6 +116,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   // scope
   bool HasLocalScope() const;
 
+  Scope* InnerScope();
+
   // For log and debug
   std::string GetDepsString() const;
 
