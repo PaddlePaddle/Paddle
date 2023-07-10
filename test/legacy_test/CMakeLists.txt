@@ -1388,16 +1388,10 @@ set(STRIED_TESTS
 foreach(STRIED_TEST ${STRIED_TESTS})
   py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
                   FLAGS_use_stride_kernel=true)
+  set_tests_properties(${STRIED_TEST}_with_stride PROPERTIES TIMEOUT 120)
 endforeach()
 
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
-set_tests_properties(test_imperative_ocr_attention_model_with_stride
-                     PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_ptb_rnn_with_stride PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_ptb_rnn_sorted_gradient_with_stride
-                     PROPERTIES TIMEOUT 120)
-set_tests_properties(test_initializer_with_stride PROPERTIES TIMEOUT 100)
-set_tests_properties(test_unsqueeze2_op_with_stride PROPERTIES TIMEOUT 100)
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
