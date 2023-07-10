@@ -39,6 +39,7 @@ PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sqrt, CPU, ALL_LAYOUT);
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -245,6 +246,45 @@ TEST(StandaloneExecutor, data_transfer) {
   EXPECT_EQ(res3, true);
 }
 #endif
+
+TEST(StandaloneExecutor, run_inplace_sqrt) {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ir::Builder builder = ir::Builder(ctx, program.block());
+
+  paddle::dialect::FullOp full = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 4.0, phi::DataType::FLOAT32, phi::CPUPlace());
+
+  builder.Build<paddle::dialect::Sqrt_Op>(full->result(0));
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  kernel_program->Print(std::cout);
+
+  auto place = platform::CPUPlace();
+  Scope scope;
+  InterpreterCore test_core(place, std::move(kernel_program), &scope);
+  test_core.Run({});
+
+  auto out_tensor = test_core.local_scope() == nullptr
+                        ? scope.FindVar("inner_var_0")->Get<phi::DenseTensor>()
+                        : test_core.local_scope()
+                              ->FindVar("inner_var_0")
+                              ->Get<phi::DenseTensor>();
+
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
+
+  EXPECT_EQ(scope.kids().size(), 1u);
+  EXPECT_EQ(scope.kids().front()->Size(), 1u);
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
+}
 
 }  // namespace framework
 }  // namespace paddle

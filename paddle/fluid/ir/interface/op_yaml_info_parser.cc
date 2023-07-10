@@ -84,8 +84,30 @@ const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
   return std::get<3>(op_info_tuple_);
 }
 
-const std::map<std::string, int>& OpYamlInfoParser::Name2Id() const {
-  return name2id_;
+const std::map<std::string, int>& OpYamlInfoParser::InputName2Id() const {
+  return input_name2id_;
+}
+
+bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
+  auto inplace_info = std::get<3>(op_info_tuple_).inplace;
+  for (size_t i = 0; i < inplace_info.size(); i++) {
+    if (out_name == inplace_info[i].first) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const std::string& OpYamlInfoParser::InplaceName(
+    const std::string& out_name) const {
+  auto inplace_info = std::get<3>(op_info_tuple_).inplace;
+  for (size_t i = 0; i < inplace_info.size(); i++) {
+    if (out_name == inplace_info[i].first) {
+      return inplace_info[i].second;
+    }
+  }
+  PADDLE_THROW(phi::errors::PreconditionNotMet(
+      "Can not find inplace input of [%s].", out_name));
 }
 
 void OpYamlInfoParser::parse() {
@@ -94,30 +116,30 @@ void OpYamlInfoParser::parse() {
   int start_index = 0;
 
   for (size_t i = 0; i < input_info.size(); ++i) {
-    name2id_[input_info[i].name] = start_index++;
-
+    input_name2id_[input_info[i].name] = start_index++;
+    input_name_list_.push_back(input_info[i].name);
+    input_info_[input_info[i].name] = input_info[i];
     if (!input_info[i].is_mutable_attribute) {
       input_tensor_number_++;
     }
-
-    input_info_[input_info[i].name] = input_info[i];
   }
 
   auto attribute_info = std::get<1>(op_info_tuple_);
   for (size_t i = 0; i < attribute_info.size(); ++i) {
+    attribute_name_list_.push_back(attribute_info[i].name);
     attr_info_[attribute_info[i].name] = attribute_info[i];
   }
 
   auto output_info = std::get<2>(op_info_tuple_);
-
   for (size_t i = 0; i < output_info.size(); ++i) {
+    output_name_list_.push_back(output_info[i].name);
     output_info_[output_info[i].name] = output_info[i];
   }
 
   auto runtime_info = std::get<3>(op_info_tuple_);
 
   for (auto& name : runtime_info.infer_meta_param) {
-    if (name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
+    if (input_name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
       infer_meta_tensor_params_.push_back(name);
     } else {
       infer_meta_attr_params_.push_back(name);
@@ -125,7 +147,7 @@ void OpYamlInfoParser::parse() {
   }
 
   for (auto& name : runtime_info.kernel_param) {
-    if (name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
+    if (input_name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
       kernel_fn_tensor_params_.push_back(name);
     } else {
       kernel_fn_attr_params_.push_back(name);
