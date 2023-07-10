@@ -20,6 +20,22 @@
 namespace phi {
 
 template <typename T, typename Context>
+void ResidualAddLayerNormQuantDequantKernel(const Context& dev_ctx,
+                                            const DenseTensor& x,
+                                            const DenseTensor& residual,
+                                            const DenseTensor& bias,
+                                            const DenseTensor& norm_weight,
+                                            const DenseTensor& norm_bias,
+                                            float epsilon,
+                                            const float in_scale,
+                                            const int quant_round_type,
+                                            const float quant_max_bound,
+                                            const float quant_min_bound,
+                                            int begin_norm_axis,
+                                            DenseTensor* residual_out,
+                                            DenseTensor* out);
+
+template <typename T, typename Context>
 void ResidualAddLayerNormQuantDequantWrapper(const Context& ctx,
                                              const T* x,
                                              const T* residual,
@@ -33,7 +49,7 @@ void ResidualAddLayerNormQuantDequantWrapper(const Context& ctx,
                                              const int quant_round_type,
                                              const float quant_max_bound,
                                              const float quant_min_bound,
-                                             T* residual_output,
-                                             int8_t* output)
+                                             T* residual_out,
+                                             int8_t* out);
 
 }  // namespace phi

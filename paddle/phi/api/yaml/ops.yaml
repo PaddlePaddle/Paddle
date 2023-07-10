@@ -1325,6 +1325,15 @@
   intermediate : mean, variance
   optional : scale, bias
 
+- op : layer_norm_int8
+  args : (Tensor x, Tensor residual, Tensor bias, Tensor norm_weight, Tensor norm_bias, float epsilon, float in_scale, int quant_round_type, float quant_max_bound, float quant_min_bound, int begin_norm_axis)
+  output : Tensor(residual_out), Tensor(out)
+  infer_meta :
+    func : LayerNormInt8InferMeta
+  kernel :
+    func : layer_norm_int8
+    data_type : x
+
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02f)
   output : Tensor

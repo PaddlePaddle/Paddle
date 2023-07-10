@@ -469,6 +469,20 @@ void UnpoolInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void LayerNormInt8InferMeta(const MetaTensor& x,
+                            const MetaTensor& residual,
+                            const MetaTensor& bias,
+                            const MetaTensor& norm_weight,
+                            const MetaTensor& norm_bias,
+                            const float epsilon,
+                            const float in_scale,
+                            const int quant_round_type,
+                            const float quant_max_bound,
+                            const float quant_min_bound,
+                            const int begin_norm_axis,
+                            MetaTensor* residual_out,
+                            MetaTensor* out);
+
 void Unpool3dInferMeta(const MetaTensor& x,
                        const MetaTensor& indices,
                        const std::vector<int>& ksize,

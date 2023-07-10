@@ -3095,6 +3095,51 @@ void UnpoolInferMeta(const MetaTensor& x,
     out->set_dtype(x.dtype());
   }
 }
+
+void LayerNormInt8InferMeta(const MetaTensor& x,
+                            const MetaTensor& residual,
+                            const MetaTensor& bias,
+                            const MetaTensor& norm_weight,
+                            const MetaTensor& norm_bias,
+                            const float epsilon,
+                            const float in_scale,
+                            const int quant_round_type,
+                            const float quant_max_bound,
+                            const float quant_min_bound,
+                            const int begin_norm_axis,
+                            MetaTensor* residual_out,
+                            MetaTensor* out) {
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  auto x_dims_size = x_dims_vec.size();
+
+  size_t normalized_dims = 1;
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
+    normalized_dims *= x_dims_vec[i];
+  }
+
+  PADDLE_ENFORCE_EQ(normalized_dims,
+                    norm_weight.dims()[0],
+                    phi::errors::InvalidArgument(
+                        "The normalized size of Input(X) must equal to be"
+                        "the size of Weight, but received"
+                        "normalized size of Input(X) is [%d], received size"
+                        "of Weight is [%d]",
+                        normalized_dims,
+                        norm_weight.dims()[0]));
+
+  auto out_dims = phi::make_ddim(x_dims_vec);
+
+  out->set_dims(out_dims);
+  out->set_dtype(DataType::INT8);
+  out->set_layout(x.layout());
+  out->share_lod(x);
+
+  residual_out->set_dims(out_dims);
+  residual_out->set_dtype(x.dtype());
+  residual_out->set_layout(x.layout());
+  residual_out->share_lod(x);
+}
+
 void Unpool3dInferMeta(const MetaTensor& x,
                        const MetaTensor& indices,
                        const std::vector<int>& ksize,

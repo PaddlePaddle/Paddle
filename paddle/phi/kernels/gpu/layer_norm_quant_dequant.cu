@@ -36,6 +36,7 @@ limitations under the License.
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #ifndef PADDLE_WITH_HIP
 #include <math_constants.h>
 #include <cub/cub.cuh>
@@ -1056,6 +1057,67 @@ struct SkipLoadAndStoreResidual {
 }  // namespace
 
 // ===== FP16 in, Int8out LayerNormQuantDequant =====
+
+template <typename T, typename Context>
+void ResidualAddLayerNormQuantDequantKernel(const Context& dev_ctx,
+                                            const DenseTensor& x,
+                                            const DenseTensor& residual,
+                                            const DenseTensor& bias,
+                                            const DenseTensor& norm_weight,
+                                            const DenseTensor& norm_bias,
+                                            float epsilon,
+                                            const float in_scale,
+                                            const int quant_round_type,
+                                            const float quant_max_bound,
+                                            const float quant_min_bound,
+                                            int begin_norm_axis,
+                                            DenseTensor* residual_out,
+                                            DenseTensor* out) {
+#if defined(PADDLE_WITH_HIP)
+  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+#else
+  using U = phi::funcs::LayerNormParamType<T>;
+  const T* x_data = x.data<T>();
+  const T* residual_data = residual.data<T>();
+  const T* bias_data = bias.data<T>();
+  const float* norm_weight_data = norm_weight.data<float>();
+  const float* norm_bias_data = norm_bias.data<float>();
+  int8_t* out_data = dev_ctx.template Alloc<int8_t>(out);
+  T* residual_out_data = dev_ctx.template Alloc<T>(residual_out);
+
+  int32_t rows = 1;
+  int32_t cols = 1;
+  for (int i = 0; i < begin_norm_axis; i++) {
+    rows *= x.dims()[i];
+  }
+
+  for (int i = begin_norm_axis; i < x.dims().size(); i++) {
+    cols *= x.dims()[i];
+  }
+
+  SkipLoadAndStoreResidual<T> load(
+      x_data, bias_data, residual_data, residual_out_data, 0.0f, cols);
+
+  AffineQuantStore<int8_t, U, T, true, true> store(out,
+                                                   cols,
+                                                   norm_weight_data,
+                                                   norm_bias_data,
+                                                   in_scale,
+                                                   quant_round_type,
+                                                   quant_max_bound,
+                                                   quant_min_bound);
+  DispatchLayerNorm<decltype(load), decltype(store), U>(
+      dev_ctx.stream(),
+      load,
+      store,
+      rows,
+      cols,
+      epsilon,
+      nullptr /*ln_mean_data*/,
+      nullptr /*ln_var_data*/);
+#endif
+}
+
 template <typename T, typename Context>
 void ResidualAddLayerNormQuantDequantWrapper(const Context& ctx,
                                              const T* x,
@@ -1070,25 +1132,31 @@ void ResidualAddLayerNormQuantDequantWrapper(const Context& ctx,
                                              const int quant_round_type,
                                              const float quant_max_bound,
                                              const float quant_min_bound,
-                                             T* residual_output,
-                                             int8_t* output) {
+                                             T* residual_out,
+                                             int8_t* out) {
 #if defined(PADDLE_WITH_HIP)
   LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
 #else
-  using U = LayerNormParamType<T>;
-  SkipLoadAndStoreResidual<T> load(
-      x, bias, residual, residual_output, 0.0f, dim_embed);
+  using U = phi::funcs::LayerNormParamType<T>;
+  SkipLoadAndStoreResidual<T> load(x, bias, residual, residual_out, 0.0f, cols);
 
-  AffineQuantStore<int8_t, U, T, true, true> store store(output,
-                                                         cols,
-                                                         norm_weight,
-                                                         norm_bias,
-                                                         in_scale,
-                                                         quant_round_type,
-                                                         quant_max_bound,
-                                                         quant_min_bound);
+  AffineQuantStore<int8_t, U, T, true, true> store(out,
+                                                   cols,
+                                                   norm_weight,
+                                                   norm_bias,
+                                                   in_scale,
+                                                   quant_round_type,
+                                                   quant_max_bound,
+                                                   quant_min_bound);
   DispatchLayerNorm<decltype(load), decltype(store), U>(
-      ctx.stream(), load, store, rows, cols, epsilon);
+      ctx.stream(),
+      load,
+      store,
+      rows,
+      cols,
+      epsilon,
+      nullptr /*ln_mean_data*/,
+      nullptr /*ln_var_data*/);
 #endif
 }
 
@@ -1106,8 +1174,8 @@ template void ResidualAddLayerNormQuantDequantWrapper(
     const int quant_round_type,
     const float quant_max_bound,
     const float quant_min_bound,
-    float* residual_output,
-    int8_t* output);
+    float* residual_out,
+    int8_t* out);
 
 template void ResidualAddLayerNormQuantDequantWrapper(
     const phi::GPUContext& ctx,
@@ -1123,8 +1191,8 @@ template void ResidualAddLayerNormQuantDequantWrapper(
     const int quant_round_type,
     const float quant_max_bound,
     const float quant_min_bound,
-    phi::dtype::float16* residual_output,
-    int8_t* output);
+    phi::dtype::float16* residual_out,
+    int8_t* out);
 
 template void ResidualAddLayerNormQuantDequantWrapper(
     const phi::GPUContext& ctx,
@@ -1140,7 +1208,15 @@ template void ResidualAddLayerNormQuantDequantWrapper(
     const int quant_round_type,
     const float quant_max_bound,
     const float quant_min_bound,
-    phi::dtype::bfloat16* residual_output,
-    int8_t* output);
+    phi::dtype::bfloat16* residual_out,
+    int8_t* out);
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(layer_norm_int8,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ResidualAddLayerNormQuantDequantKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
