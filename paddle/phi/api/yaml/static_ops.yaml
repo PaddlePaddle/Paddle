@@ -157,14 +157,14 @@
   backward : depthwise_conv2d_transpose_grad
 
 - op : dist_concat
-  args : (Tensor x, int nranks = 1, int ring_id = 0)
+  args : (Tensor x, int ring_id = 0, int nranks = 1)
   output : Tensor(out)
   infer_meta :
     func : DistConcatInferMeta
-    param: [x, nranks, ring_id]
+    param: [x, nranks]
   kernel :
     func : dist_concat
-    param: [x, nranks, ring_id]
+    param: [x, nranks]
 
 - op : einsum
   args : (Tensor[] x, str equation)

@@ -27,7 +27,6 @@ template <typename T, typename Context>
 void DistConcatKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int nranks,
-                      int rid,
                       DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   DenseTensor temp_out;
