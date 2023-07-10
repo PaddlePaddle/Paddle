@@ -47,7 +47,6 @@ endif()
 add_definitions(-w)
 
 include(cmake/cinn/version.cmake)
-# include the customized configures
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
   file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake
        DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
@@ -112,14 +111,8 @@ include_directories(${CMAKE_BINARY_DIR})
 include(cmake/generic.cmake)
 include(cmake/cinn/system.cmake)
 include(cmake/cinn/core.cmake)
-include(cmake/cinn/external/absl.cmake)
 include(cmake/cinn/nvrtc.cmake)
 include(cmake/cinn/nvtx.cmake)
-include(cmake/cinn/external/llvm.cmake)
-include(cmake/cinn/external/isl.cmake)
-include(cmake/cinn/external/ginac.cmake)
-include(cmake/cinn/external/openmp.cmake)
-include(cmake/cinn/external/jitify.cmake)
 
 if(CINN_ONLY)
   link_libraries(gflags)
