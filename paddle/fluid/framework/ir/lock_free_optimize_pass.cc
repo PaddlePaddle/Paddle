@@ -372,7 +372,7 @@ ir::Node* LockFreeOptimizePass::FindForwardOpViaBackwardOp(
 
   for (ir::Node* node : graph->Nodes()) {
     if (node->Name() == forward_op_name) {
-      if (node->outputs.size() == 0u) {
+      if (node->outputs.empty()) {
         // if forward_node has no output, then it has NO grad op
         continue;
       }

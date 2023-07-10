@@ -1055,7 +1055,7 @@ void ExpandInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto expand_shape = shape.GetData();
 
-  if (expand_shape.size() == 0) {
+  if (expand_shape.empty()) {
     expand_shape = std::vector<int64_t>(x_dims.size(), -1);
   }
 
@@ -3173,7 +3173,7 @@ void ReduceInferMeta(const MetaTensor& x,
                      bool keep_dim,
                      MetaTensor* out) {
   bool reduce_all = false;
-  if (axis.size() == 0) {
+  if (axis.empty()) {
     reduce_all = true;
   }
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
@@ -3396,7 +3396,7 @@ void RollInferMeta(const MetaTensor& x,
                    MetaTensor* out) {
   auto shifts_data = shifts.GetData();
 
-  if (axis.size() != 0) {
+  if (!axis.empty()) {
     PADDLE_ENFORCE_EQ(
         axis.size(),
         shifts_data.size(),
@@ -3581,7 +3581,7 @@ void SliceRawInferMeta(const MetaTensor& input,
   }
 
   out->set_dims(out_dims);
-  if (new_axes.size() > 0 && new_axes[0] != 0) {
+  if (!new_axes.empty() && new_axes[0] != 0) {
     out->share_lod(input);
   }
 }
@@ -3993,7 +3993,7 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
   }
   DDim out_dims(phi::make_ddim(out_dims_vector));
   // generate new shape
-  if (decrease_axis.size() > 0) {
+  if (!decrease_axis.empty()) {
     std::vector<int64_t> new_out_shape;
     for (size_t i = 0; i < decrease_axis.size(); ++i) {
       if (config.is_runtime && infer_flags[i] != -1) {
@@ -4181,7 +4181,7 @@ void TileInferMeta(const MetaTensor& x,
 
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
-  if (repeat_times_data.size() == 0) {
+  if (repeat_times_data.empty()) {
     repeat_times_data = std::vector<int64_t>(x_dims.size(), 1);
   }
 
