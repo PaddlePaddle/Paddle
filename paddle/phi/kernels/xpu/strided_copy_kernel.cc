@@ -26,7 +26,6 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = phi::make_ddim(out_stride);
   meta.dims = phi::make_ddim(dims);

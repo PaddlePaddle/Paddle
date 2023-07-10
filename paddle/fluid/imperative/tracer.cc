@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
@@ -37,6 +38,7 @@
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_string(tracer_mkldnn_ops_on);
 PHI_DECLARE_string(tracer_mkldnn_ops_off);
+DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -224,12 +226,14 @@ void Tracer::TraceOpImpl(const std::string& type,
       attrs["use_mkldnn"] = !is_off;
     }
   }
+
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
     attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
   }
+
   const auto& extra_attr_checkers =
       operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
   for (const auto& checker : extra_attr_checkers) {
@@ -298,6 +302,7 @@ void Tracer::TraceOpImpl(const std::string& type,
           "CustomPlace."));
 #endif
     }
+
     if (!use_default_attr_map) {
       PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
                               paddle::platform::errors::PermissionDenied(
@@ -403,37 +408,51 @@ void Tracer::TraceOp(const std::string& type,
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
   std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
-  for (auto& iter : inplace_map) {
-    auto inputs_iter = ins.find(iter.first);
-    for (size_t i = 0; i < inputs_iter->second.size(); i++) {
-      auto var = inputs_iter->second[i]->MutableVar();
-      if (var->IsType<phi::DenseTensor>()) {
-        auto dense_tensor = var->GetMutable<phi::DenseTensor>();
-        if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
-          auto outputs_iter = outs.find(iter.first);
-          outputs_iter->second[i]->MutableVar()->Clear();
-          need_backup_inputs2outputs[dense_tensor] =
-              outputs_iter->second[i]
-                  ->MutableVar()
-                  ->GetMutable<phi::DenseTensor>();
+  if (FLAGS_use_stride_kernel) {
+    for (auto& iter : inplace_map) {
+      auto inputs_iter = ins.find(iter.first);
+      for (size_t i = 0; i < inputs_iter->second.size(); i++) {
+        auto var = inputs_iter->second[i]->MutableVar();
+        if (var->IsType<phi::DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+          if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
+            NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
+            auto outputs_iter = tmp_out->find(iter.second);
+            outputs_iter->second[i] = std::make_shared<egr::EagerVariable>(
+                egr::Controller::Instance().GenerateUniqueName());
+            need_backup_inputs2outputs[dense_tensor] =
+                outputs_iter->second[i]
+                    ->MutableVar()
+                    ->GetMutable<phi::DenseTensor>();
+          }
         }
       }
     }
-  }
 
-  TraceOpImpl<egr::EagerVariable>(type,
-                                  ins,
-                                  outs,
-                                  attrs,
-                                  place,
-                                  false,
-                                  inplace_map,
-                                  default_attrs,
-                                  use_default_attr_map);
+    TraceOpImpl<egr::EagerVariable>(type,
+                                    ins,
+                                    outs,
+                                    attrs,
+                                    place,
+                                    false,
+                                    {},
+                                    default_attrs,
+                                    use_default_attr_map);
 
-  auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-  for (auto& iter : need_backup_inputs2outputs) {
-    paddle::experimental::TransStride(dev_ctx, iter.second, iter.first);
+    auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    for (auto& iter : need_backup_inputs2outputs) {
+      paddle::experimental::TransStride(dev_ctx, iter.second, iter.first);
+    }
+  } else {
+    TraceOpImpl<egr::EagerVariable>(type,
+                                    ins,
+                                    outs,
+                                    attrs,
+                                    place,
+                                    false,
+                                    inplace_map,
+                                    default_attrs,
+                                    use_default_attr_map);
   }
 }
 
@@ -454,38 +473,37 @@ void Tracer::TraceOp(const std::string& type,
   VLOG(6) << "Running On Eager TraceOp(less): ";
 
   std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
-  for (auto& iter : inplace_map) {
-    auto inputs_iter = ins.find(iter.first);
-    for (size_t i = 0; i < inputs_iter->second.size(); i++) {
-      auto var = inputs_iter->second[i]->MutableVar();
-      if (var->IsType<phi::DenseTensor>()) {
-        auto dense_tensor = var->GetMutable<phi::DenseTensor>();
-        if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
-          auto outputs_iter = outs.find(iter.first);
-          outputs_iter->second[i]->MutableVar()->Clear();
-          need_backup_inputs2outputs[dense_tensor] =
-              outputs_iter->second[i]
-                  ->MutableVar()
-                  ->GetMutable<phi::DenseTensor>();
+
+  if (FLAGS_use_stride_kernel) {
+    for (auto& iter : inplace_map) {
+      auto inputs_iter = ins.find(iter.first);
+      for (size_t i = 0; i < inputs_iter->second.size(); i++) {
+        auto var = inputs_iter->second[i]->MutableVar();
+        if (var->IsType<phi::DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+          if (!dense_tensor->meta().is_contiguous(dense_tensor->layout())) {
+            NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
+            auto outputs_iter = tmp_out->find(iter.second);
+            outputs_iter->second[i] = std::make_shared<egr::EagerVariable>(
+                egr::Controller::Instance().GenerateUniqueName());
+            need_backup_inputs2outputs[dense_tensor] =
+                outputs_iter->second[i]
+                    ->MutableVar()
+                    ->GetMutable<phi::DenseTensor>();
+          }
         }
       }
     }
-  }
-
-  TraceOpImpl<egr::EagerVariable>(type,
-                                  ins,
-                                  outs,
-                                  attrs,
-                                  expected_place_,
-                                  false,
-                                  inplace_map,
-                                  nullptr,
-                                  true);
-
-  auto dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(expected_place_);
-  for (auto& iter : need_backup_inputs2outputs) {
-    paddle::experimental::TransStride(dev_ctx, iter.second, iter.first);
+  } else {
+    TraceOpImpl<egr::EagerVariable>(type,
+                                    ins,
+                                    outs,
+                                    attrs,
+                                    expected_place_,
+                                    false,
+                                    inplace_map,
+                                    nullptr,
+                                    true);
   }
 }
 
