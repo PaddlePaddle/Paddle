@@ -136,19 +136,10 @@ void LoadPersistables(framework::Executor* executor,
   delete load_program;
 }
 
-// To be compatible with static.io.save_inference_model function
-bool endsWith(const std::string& str, const std::string& suffix) {
-  return str.length() >= suffix.length() &&
-         str.substr(str.length() - suffix.length()) == suffix;
-}
-
 std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              framework::Scope* scope,
                                              const std::string& dirname) {
-  std::string model_filename = dirname;
-  if (!endsWith(dirname, ".pdmodel")) {
-    std::string model_filename = dirname + "/__model__";
-  }
+  std::string model_filename = dirname + "/__model__";
 
   std::string program_desc_str;
   VLOG(3) << "loading model from " << model_filename;
