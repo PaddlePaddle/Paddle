@@ -2925,3 +2925,33 @@
   outputs :
     out : out
   
+- op : nextafter
+  inputs :
+    {x : x, y : y}
+  outputs :
+    out : out
+  
+- op : i0  
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+
+- op : i0e  
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1  
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1e
+  inputs :
+    {x : x}
+  outputs :
+    out : out
