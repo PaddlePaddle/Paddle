@@ -187,6 +187,8 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     ::ir::BuildScope(
         *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
 
+    BuildInstruction();
+
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
                                  ir_program_->block(),
@@ -1479,9 +1481,21 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
   trace_execute_order_ = trace_order;
 }
 
-// For new ir
+/// ======================== ///
+///        For new ir        ///
+/// ======================== ///
 
-void BuildInstruction() { VLOG(4) << "Build Instructions for new ir ... "; }
+void NewIRInterpreter::BuildInstruction() {
+  VLOG(4) << "Build Instructions for new ir ... ";
+  size_t op_idx = 0;
+  for (auto it = ir_program_->block()->begin();
+       it != ir_program_->block()->end();
+       ++it) {
+    VLOG(4) << "Build Instruction for op: " << op_idx;
+    vec_instruction_base_.push_back(
+        std::make_unique<InstructionBase>(op_idx++));
+  }
+}
 
 }  // namespace framework
 }  // namespace paddle

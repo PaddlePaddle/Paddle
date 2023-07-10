@@ -53,11 +53,9 @@ namespace framework {
 
 class InstructionBase {
  public:
-  //   Instruction(size_t id,
-  //               OpFuncNode&& op_func_node,
-  //               const platform::DeviceContext& dev_ctx);
+  explicit InstructionBase(size_t id);
 
-  //   bool IsArtificial() const { return is_artificial_; }
+  bool IsArtificial() const { return is_artificial_; }
 
   //   const std::vector<size_t>& NextInstrsInDifferenceThread() const {
   //     return next_instrs_in_different_thread;
@@ -148,12 +146,10 @@ class InstructionBase {
 
   //   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
-  //  private:
-  //   bool is_artificial_;  // Instruction is artificial means that it is only
-  //   used
-  //                         // to assist scheduling and no need to be executed.
-
-  //   size_t id_;
+ private:
+  bool is_artificial_;  // Instruction is artificial means that it is only used
+                        // to assist scheduling and no need to be executed.
+  size_t id_;
 
   //   std::vector<size_t> next_instrs_in_different_thread;
   //   std::vector<size_t> next_instrs_in_same_thread;
