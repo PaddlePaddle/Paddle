@@ -33,6 +33,7 @@ void CalcMedianFunc(const Context& dev_ctx,
                     int64_t* m_ptr) {
   DenseTensor sort_out;
   DenseTensor sort_indices;
+
   auto sort_dim = x.dims();
   int64_t rank = sort_dim.size();
   sort_dim[rank - 1] = sort_k;
@@ -44,17 +45,24 @@ void CalcMedianFunc(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(&sort_indices);
   int64_t* sort_indices_ptr = sort_indices.data<int64_t>();
 
-  TopkKernel<T, Context>(
-      dev_ctx, x, Scalar(sort_k), -1, false, true, &sort_out, &sort_indices);
+  TopkKernel<T, Context>(dev_ctx,
+                         x,
+                         Scalar(sort_k),
+                         -1,
+                         false /*largets*/,
+                         true /*sorted*/,
+                         &sort_out,
+                         &sort_indices);
 
-  T div_factor = static_cast<T>(2.0);
   int64_t offset = 0;
   int64_t i = 0;
   bool is_ori_odd = stride & 1;
+
   if (ignore_nan) {
     for (i = 0; i < pre_dim; i++) {
       offset = i * sort_k;
       if (nan_counts[i] == stride) {
+        // all nan
         m_ptr[i * 2] = -1;
         m_ptr[i * 2 + 1] = -1;
         o_ptr[i] = sort_out_ptr[offset];
@@ -69,35 +77,52 @@ void CalcMedianFunc(const Context& dev_ctx,
           m_ptr[2 * i + 1] = sort_indices_ptr[pos];
           o_ptr[i] = sort_out_ptr[pos];
         } else {
-          m_ptr[2 * i] =
-              row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          // The median is not unique for input tensors with an even number of
+          // elements. In this case the lower of the two medians is returned.
           T m_val_left =
               row_pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
           T m_val_right = sort_out_ptr[pos];
-          o_ptr[i] = (m_val_left + m_val_right) / div_factor;
+          if (m_val_left < m_val_right) {
+            o_ptr[i] = m_val_left;
+            m_ptr[2 * i] =
+                row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+            m_ptr[2 * i + 1] = m_ptr[2 * i];
+          } else {
+            o_ptr[i] = m_val_right;
+            m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+            m_ptr[2 * i] = m_ptr[2 * i + 1];
+          }
         }
       }
     }
   } else {
+    // not ignore nan
     if (is_ori_odd) {
       for (i = 0; i < pre_dim; i++) {
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
         o_ptr[i] = sort_out_ptr[pos];
-        m_ptr[2 * i] = sort_indices_ptr[pos];
+        m_ptr[2 * i] = sort_indices_ptr[pos];  // [start, end]
         m_ptr[2 * i + 1] = sort_indices_ptr[pos];
       }
     } else {
+      // The median is not unique for input tensors with an even number of
+      // elements. In this case the lower of the two medians is returned.
       for (i = 0; i < pre_dim; i++) {
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
-        m_ptr[2 * i] =
-            sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-        m_ptr[2 * i + 1] = sort_indices_ptr[pos];
         T m_val_left = sort_k > 1 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
         T m_val_right = sort_out_ptr[pos];
-        o_ptr[i] = (m_val_left + m_val_right) / div_factor;
+        if (m_val_left < m_val_right) {
+          o_ptr[i] = m_val_left;
+          m_ptr[2 * i] =
+              sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+          m_ptr[2 * i + 1] = m_ptr[2 * i];
+        } else {
+          o_ptr[i] = m_val_right;
+          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          m_ptr[2 * i] = m_ptr[2 * i + 1];
+        }
       }
     }
   }
@@ -106,6 +131,7 @@ void CalcMedianFunc(const Context& dev_ctx,
 template <typename T, typename Context>
 void ProcessMedianKernel(const Context& dev_ctx,
                          const DenseTensor& x,
+                         bool ignore_nan,
                          DenseTensor* out,
                          DenseTensor* median_index) {
   const T* x_data = x.data<T>();
@@ -115,13 +141,14 @@ void ProcessMedianKernel(const Context& dev_ctx,
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
+
+  // [pre_dim, stride]
   int64_t stride = x_dim[x_rank - 1];
   int64_t pre_dim = numel / stride;
   int64_t i = 0;
 
   int64_t max_valid_num = 0;
   std::vector<int64_t> nan_counts;
-  bool ignore_nan = true;
   if (ignore_nan) {
     int64_t total_nan_num = 0;
     std::vector<T> col_vec;
@@ -176,13 +203,16 @@ void NanmedianKernel(const Context& dev_ctx,
   DenseTensor tmp_x;
   auto rank = x.dims().size();
   if ((axes.size() == 0) || rank <= 1) {
+    // flatten to 1D tensor
     tmp_x = x;
     tmp_x.Resize({x.numel()});
   } else {
+    // reshape to 2D, last dim is to compute median
     funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
   }
 
-  ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, out, median_index);
+  ProcessMedianKernel<T, Context>(
+      dev_ctx, tmp_x, true /*ignore_nan*/, out, median_index);
 }
 
 }  // namespace phi

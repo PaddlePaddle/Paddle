@@ -38,6 +38,7 @@ void CalcMedianGradKernel(const Context& dev_ctx,
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t rank = x_dim.size();
+  // [pre_dim, stride]
   int64_t stride = x_dim[rank - 1];
   int64_t pre_dim = numel / stride;
 
@@ -48,6 +49,7 @@ void CalcMedianGradKernel(const Context& dev_ctx,
       if (m_data[2 * i] == m_data[2 * i + 1]) {
         dx_data[offset + m_data[2 * i]] = dout_data[i];
       } else {
+        assert(false);
         dx_data[offset + m_data[2 * i]] = dout_data[i] / static_cast<T>(2.0);
         dx_data[offset + m_data[2 * i + 1]] =
             dout_data[i] / static_cast<T>(2.0);
