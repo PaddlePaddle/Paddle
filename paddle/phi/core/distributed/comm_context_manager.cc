@@ -88,10 +88,10 @@ void CommContextManager::CreateGlooCommContext(
 
 CommContext* CommContextManager::Emplace(
     int ring_id, std::unique_ptr<CommContext> comm_context) {
-  PADDLE_ENFORCE_EQ(
-      id_to_comm_context_.find(ring_id),
-      id_to_comm_context_.end(),
-      errors::AlreadyExists("Ring id %d already exists in the map.", ring_id));
+  if (Has(ring_id)) {
+      VLOG(3) << "find comm_context for ring_id " << ring_id;
+      return Get(ring_id);
+  }
   id_to_comm_context_.emplace(ring_id, std::move(comm_context));
   return id_to_comm_context_.at(ring_id).get();
 }
