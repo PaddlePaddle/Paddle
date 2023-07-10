@@ -26,17 +26,27 @@
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
-#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-
 namespace paddle {
 namespace dialect {
 
 const int init_on_gpu_threashold = 1000;
+
+std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
+    {"DataType::FLOAT16", phi::DataType::FLOAT16},
+    {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
+    {"DataType::FLOAT32", phi::DataType::FLOAT32},
+    {"DataType::FLOAT64", phi::DataType::FLOAT64},
+    {"DataType::INT16", phi::DataType::INT16},
+    {"DataType::INT32", phi::DataType::INT32},
+    {"DataType::INT64", phi::DataType::INT64},
+    {"DataType::INT8", phi::DataType::INT8},
+    {"DataType::BOOL", phi::DataType::BOOL},
+};
 
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
@@ -65,9 +75,12 @@ phi::KernelKey GetKernelKey(
     if (data_type_info.size() > 0 && data_type_info[0] != "") {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
-      auto& input_map = op_info_parser->InputName2Id();
+      auto& input_map = op_info_parser->Name2Id();
 
-      if (input_map.count(slot_name)) {
+      auto find_it = Str2PhiDataType.find(slot_name);
+      if (find_it != Str2PhiDataType.end()) {
+        kernel_data_type = find_it->second;
+      } else if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
 
@@ -340,10 +353,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     for (auto it1 = op_attr_map.begin(); it1 != op_attr_map.end(); ++it1) {
       op_attribute.emplace(it1->first, it1->second);
-    }
-
-    if ((*it)->HasTrait<paddle::dialect::InplaceTrait>()) {
-      op_attribute.emplace("is_inplace", ir::BoolAttribute::get(ctx, true));
     }
 
     ir::Operation* op = ir::Operation::Create(
