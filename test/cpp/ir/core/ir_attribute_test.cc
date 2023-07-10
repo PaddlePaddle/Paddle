@@ -19,16 +19,23 @@
 #include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
+#include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
 
+class AttributeA {};
+IR_DECLARE_EXPLICIT_TYPE_ID(AttributeA)
+IR_DEFINE_EXPLICIT_TYPE_ID(AttributeA)
+
+struct FakeDialect : ir::Dialect {
+  explicit FakeDialect(ir::IrContext *context)
+      : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
+  static const char *name() { return "fake"; }
+};
+IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
+
 TEST(attribute_test, attribute_base) {
-  class AttributeA {};
-  struct FakeDialect : ir::Dialect {
-    explicit FakeDialect(ir::IrContext *context)
-        : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
-    static const char *name() { return "fake"; }
-  };
   // Test 1: Test the function of IrContext to register Dialect.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
@@ -57,4 +64,10 @@ TEST(attribute_test, built_in_attribute) {
       string_attr_1.dyn_cast<ir::StrAttribute>();
   EXPECT_EQ(string_attr_cast_1.isa<ir::StrAttribute>(), true);
   EXPECT_EQ(string_attr_cast_1.size() == 8, 1);
+
+  ir::Int32Type i32_type = ir::Int32Type::get(ctx);
+  ir::Attribute type_attr = ir::TypeAttribute::get(ctx, i32_type);
+  EXPECT_TRUE(type_attr.isa<ir::TypeAttribute>());
+  EXPECT_EQ(type_attr.dyn_cast<ir::TypeAttribute>().data().type_id(),
+            i32_type.type_id());
 }

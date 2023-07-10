@@ -19,6 +19,8 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
+import os
+
 import numpy as np
 
 import paddle
@@ -352,7 +354,10 @@ class MoELayer(nn.Layer):
         assert experts is not None
         self.experts = experts
 
-        if self.world_size > 1:
+        if (
+            self.world_size > 1
+            and os.getenv("PADDLE_DISTRI_BACKEND", None) != "xccl"
+        ):
             check_nccl_version_for_p2p()
 
         self.mp_group = mp_group

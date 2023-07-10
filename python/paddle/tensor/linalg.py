@@ -2264,6 +2264,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
     P mat can be get by pivots:
 
     .. code-block:: text
+
         ones = eye(rows) #eye matrix of rank rows
         for i in range(cols):
             swap(ones[i], ones[pivots[i]])
@@ -2363,6 +2364,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
     P mat can be get by pivots:
 
     .. code-block:: text
+
         ones = eye(rows) #eye matrix of rank rows
         for i in range(cols):
             swap(ones[i], ones[pivots[i]])

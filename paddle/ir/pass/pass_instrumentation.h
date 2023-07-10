@@ -57,7 +57,7 @@ class PassInstrumentation {
 
 /// This class holds a collection of PassInstrumentation obejcts, and invokes
 /// their respective callbacks.
-class PassInstrumentor {
+class IR_API PassInstrumentor {
  public:
   PassInstrumentor();
   ~PassInstrumentor();

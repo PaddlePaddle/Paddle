@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
+#include "paddle/phi/kernels/xpu/stride_slice_util.h"
 
 namespace phi {
 
@@ -99,6 +100,57 @@ void StridedSliceRawKernel(const Context& dev_ctx,
     strides_in[cur_axe] = strides_[i];
   }
 
+  if (is_strided_slice_special_case(xshape, starts_in, ends_in, strides_in)) {
+    PADDLE_ENFORCE_EQ(
+        x.numel(),
+        out->numel() * 2,
+        errors::PreconditionNotMet(
+            "x.numel() should be equal to out->numel() * 2 in special case."));
+    /*
+     * sample input: [1 2 3 4 5 6 7 8 9 10]
+     * starts = [0/1]
+     * strides = [2]
+     * sample output: [1 3 5 7 9] (last value in starts is 0)
+     * sample output: [2 4 6 8 10] (last value in starts is 1)
+     */
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    XPUType* x_transpose = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
+    /*
+     * step 1: transpose, input shape is (x.numel/2, 2):
+     * input:
+     * [1 2
+     *  3 4
+     *  5 6
+     *  7 8
+     *  9 10]
+     * after transpose:
+     * [1 3 5 7 9
+     *  2 4 6 8 10]
+     */
+    // int transpose(Context* ctx, const T* x, T* y, const std::vector<int>&
+    // xshape, const std::vector<int>& permute)
+    int r =
+        xpu::transpose<XPUType>(dev_ctx.x_context(),
+                                reinterpret_cast<const XPUType*>(x.data<T>()),
+                                x_transpose,
+                                {x.numel() / 2, 2},
+                                {1, 0});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+    // step 2: if starts from 0, use "first half" data as result, otherwise use
+    // "second half".
+    int offset = 0;
+    if (starts_in.back() == 1) {
+      offset = x.numel() / 2;
+    }
+    // int copy(Context* ctx, const T* x, T* y, int64_t len)
+    r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                           x_transpose + offset,
+                           reinterpret_cast<XPUType*>(out->data<T>()),
+                           x.numel() / 2);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
+
   int r = xpu::strided_slice(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x.data<T>()),
                              reinterpret_cast<XPUType*>(out->data<T>()),
@@ -117,5 +169,6 @@ PD_REGISTER_KERNEL(strided_slice_raw,
                    phi::StridedSliceRawKernel,
                    int,
                    int16_t,
+                   int64_t,
                    float,
                    phi::dtype::float16) {}
