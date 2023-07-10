@@ -432,18 +432,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
         int root = opts.source_rank * in_wrapper.size() + opts.source_root;
         if (rank_ == root) {
           if (input.place().GetType() == phi::AllocationType::CPU) {
-            platform::CustomPlace place(device_type_, rank_);
+            platform::CustomPlace place(device_type_,
+                                        stream.GetPlace().GetDeviceId());
             auto allocator = std::unique_ptr<phi::Allocator>(
                 new paddle::experimental::DefaultAllocator(place));
             phi::DenseTensorMeta meta(input.dtype(), input.dims());
             phi::DenseTensor input_tmp{allocator.get(), meta};
 
-            int64_t numel = input.numel() / size_;
             phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
-                ->MemoryCopyH2D(input_tmp.data(),
-                                input.data(),
-                                numel * phi::SizeOf(input.dtype()),
-                                &stream);
+                ->MemoryCopyH2D(
+                    input_tmp.data(),
+                    input.data(),
+                    input_tmp.numel() * phi::SizeOf(input_tmp.dtype()),
+                    &stream);
             return phi::DeviceManager::CCLBroadcast(
                 device_type_,
                 input_tmp.data(),
