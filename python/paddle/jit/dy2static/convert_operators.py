@@ -20,10 +20,9 @@ from paddle.fluid.dygraph.base import (
     _convert_into_variable,
     in_declarative_mode,
 )
-from paddle.fluid.framework import Variable, core
+from paddle.fluid.framework import Variable, core, default_main_program
 from paddle.fluid.layers import control_flow
 from paddle.fluid.layers.control_flow import while_loop
-from paddle.fluid.variable_index import var_dict
 
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
@@ -50,10 +49,18 @@ def convert_load(x):
         """
         return _convert_into_variable(x)
 
-    # map var to the new output
-    if isinstance(x, paddle.fluid.framework.Variable):
-        if x.desc.id() in var_dict.keys():
-            return var_dict[x.desc.id()]
+    # get the new output of the var
+    if isinstance(x, Variable):
+        cur_block = default_main_program().current_block()
+
+        from paddle.jit.dy2static.program_translator import ProgramTranslator
+
+        new_var = ProgramTranslator.get_instance()._params_map.get(
+            cur_block.program, x.desc.id()
+        )
+        if new_var is not None:
+            return new_var
+
     return x
 
 

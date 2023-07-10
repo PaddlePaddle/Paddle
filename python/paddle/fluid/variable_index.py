@@ -21,9 +21,6 @@ import warnings
 
 MAX_INTEGER = 2**31 - 1
 
-# map var to the new output
-var_dict = {}
-
 
 def is_list_tuple(index, contain_type):
     def _is_list_tuple(item):
@@ -825,7 +822,13 @@ def _setitem_impl_(var, item, value):
     )
 
     # map var to the new output
-    var_dict[var.desc.id()] = output
+    from paddle.jit.dy2static.program_translator import (
+        ProgramTranslator,
+    )
+
+    ProgramTranslator.get_instance()._params_map.add(
+        cur_block.program, var.desc.id(), output
+    )
 
     return output
 
