@@ -1009,9 +1009,9 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::XCCLCommContext::Release();
-    platform::CustomTracer::GetMap().clear();
-    platform::CustomDeviceEventResourcePool::GetMap().clear();
-    platform::CustomDeviceStreamResourcePool::GetMap().clear();
+    platform::CustomTracer::Release();
+    platform::CustomDeviceEventResourcePool::Release();
+    platform::CustomDeviceStreamResourcePool::Release();
     phi::DeviceManager::Clear();
 #endif
   });
