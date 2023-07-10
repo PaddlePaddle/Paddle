@@ -69,7 +69,7 @@ class TestCollectiveConcat(TestCollectiveRunnerBase):
             main_prog.global_block().append_op(
                 type="dist_concat",
                 inputs={'x': tindata},
-                attrs={'ring_id': ring_id, 'rank': self.rank, 'nranks': nranks},
+                attrs={'ring_id': ring_id, 'nranks': nranks},
                 outputs={'out': toutdata},
             )
             return toutdata

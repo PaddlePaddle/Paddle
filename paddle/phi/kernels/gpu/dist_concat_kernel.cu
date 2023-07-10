@@ -26,7 +26,6 @@ namespace phi {
 template <typename T, typename Context>
 void DistConcatKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      int rank,
                       int nranks,
                       int rid,
                       DenseTensor* out) {
@@ -85,7 +84,10 @@ PD_REGISTER_KERNEL(dist_concat,
                    float,
                    double,
                    int,
+                   uint8_t,
+                   int8_t,
                    int64_t,
+                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
@@ -96,6 +98,9 @@ PD_REGISTER_KERNEL(dist_concat,
                    float,
                    double,
                    int,
+                   uint8_t,
+                   int8_t,
                    int64_t,
+                   bool,
                    phi::dtype::float16) {}
 #endif

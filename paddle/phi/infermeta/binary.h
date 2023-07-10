@@ -159,6 +159,7 @@ void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
                    MetaTensor* out);
+void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,

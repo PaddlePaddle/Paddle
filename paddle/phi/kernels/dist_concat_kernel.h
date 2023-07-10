@@ -21,7 +21,6 @@ namespace phi {
 template <typename T, typename Context>
 void DistConcatKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      int rank,
                       int nranks,
                       int ring_id,
                       DenseTensor* out);

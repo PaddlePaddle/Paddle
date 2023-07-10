@@ -953,7 +953,13 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   softmax->share_lod(logits);
   loss->share_lod(logits);
 }
-
+void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
+  if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
