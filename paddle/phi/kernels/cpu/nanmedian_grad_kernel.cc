@@ -46,14 +46,7 @@ void CalcMedianGradKernel(const Context& dev_ctx,
   int64_t offset = 0;
   for (i = 0; i < pre_dim; i++) {
     if (m_data[2 * i] >= 0) {
-      if (m_data[2 * i] == m_data[2 * i + 1]) {
-        dx_data[offset + m_data[2 * i]] = dout_data[i];
-      } else {
-        assert(false);
-        dx_data[offset + m_data[2 * i]] = dout_data[i] / static_cast<T>(2.0);
-        dx_data[offset + m_data[2 * i + 1]] =
-            dout_data[i] / static_cast<T>(2.0);
-      }
+      dx_data[offset + m_data[2 * i]] = dout_data[i];
     }
     offset += stride;
   }

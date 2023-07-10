@@ -43,15 +43,7 @@ __global__ void KernelNanmedianGrad(const T* x_data,
     printf("medians_ptr[2 * index+1]: %d\n", medians_ptr[2 * index + 1]);
 
     if (medians_ptr[2 * index] >= 0) {
-      if (medians_ptr[2 * index] == medians_ptr[2 * index + 1]) {
-        dx_data[offset + medians_ptr[2 * index]] = out_grad_ptr[index];
-      } else {
-        assert(false);
-        dx_data[offset + medians_ptr[2 * index]] =
-            out_grad_ptr[index] / static_cast<T>(2.0);
-        dx_data[offset + medians_ptr[2 * index + 1]] =
-            out_grad_ptr[index] / static_cast<T>(2.0);
-      }
+      dx_data[offset + medians_ptr[2 * index]] = out_grad_ptr[index];
     }
   }
 }
