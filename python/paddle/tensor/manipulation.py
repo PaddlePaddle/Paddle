@@ -2851,7 +2851,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
 
     .. code-block:: python
-
+        :name:example1
         import paddle
         #input:
         x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
