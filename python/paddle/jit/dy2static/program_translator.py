@@ -1147,13 +1147,6 @@ class ParametersMap:
             return params[id]
         return None
 
-    def pop(self, program):
-        params = self.params_dict.get(self._program_hash(program))
-        if params is None:
-            return []
-        del self.params_dict[self._program_hash(program)]
-        return list(params)
-
     def _program_hash(self, program):
         """
         because program is not deleted while calling from_func_spec.
