@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from scipy.special import erfinv
 
 import paddle
@@ -25,7 +25,7 @@ paddle.enable_static()
 np.random.seed(0)
 
 
-class TestErfinv(OpTest):
+class TestErfinvOp(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
         self.python_api = paddle.erfinv
@@ -55,12 +55,12 @@ class TestErfinv(OpTest):
         )
 
 
-class TestErfinvFP32(TestErfinv):
+class TestErfinvFP32Op(TestErfinvOp):
     def init_dtype(self):
         self.dtype = np.float32
 
 
-class TestErfinvAPI(unittest.TestCase):
+class TestErfinvAPIOp(unittest.TestCase):
     def init_dtype(self):
         self.dtype = 'float32'
 
@@ -108,6 +108,48 @@ class TestErfinvAPI(unittest.TestCase):
 
         for place in self.place:
             run(place)
+
+
+class TestErfinvFP16Op(TestErfinvOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestErfinvBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "erfinv"
+        self.public_python_api = paddle.erfinv
+        self.python_api = paddle.erfinv
+        self.dtype = np.uint16
+        self.shape = [11, 17]
+        self.datatype = np.float32
+        x = np.random.uniform(-1, 1, size=self.shape).astype(self.datatype)
+        out_ref = erfinv(x).astype(self.datatype)
+        self.grad_out = np.ones(self.shape, self.datatype)
+        self.gradient = (
+            np.sqrt(np.pi) / 2 * np.exp(np.square(out_ref)) * self.grad_out
+        )
+        self.grads = [convert_float_to_uint16(self.gradient)]
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            user_defined_grads=self.grads,
+        )
 
 
 if __name__ == "__main__":
