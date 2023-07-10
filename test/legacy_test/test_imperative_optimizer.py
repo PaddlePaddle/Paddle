@@ -29,7 +29,6 @@ from paddle.fluid.optimizer import (
     AdamaxOptimizer,
     DecayedAdagradOptimizer,
     DpsgdOptimizer,
-    ExponentialMovingAverage,
     FtrlOptimizer,
     LambOptimizer,
     LarsMomentumOptimizer,
@@ -744,18 +743,6 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
 
     def test_dgcmomentum(self):
         exception_message = "In dygraph, don't support DGCMomentumOptimizer."
-        self._check_exception(exception_message)
-
-
-class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ExponentialMovingAverage(0.999)
-        return optimizer
-
-    def test_exponentialmoving(self):
-        exception_message = (
-            "In dygraph, don't support ExponentialMovingAverage."
-        )
         self._check_exception(exception_message)
 
 

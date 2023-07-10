@@ -28,7 +28,6 @@ from paddle.fluid.optimizer import (
     AdamaxOptimizer,
     DecayedAdagradOptimizer,
     DpsgdOptimizer,
-    ExponentialMovingAverage,
     FtrlOptimizer,
     LarsMomentumOptimizer,
     MomentumOptimizer,
@@ -889,7 +888,7 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ExponentialMovingAverage(0.999)
+        optimizer = paddle.incubate.optimizer.ExponentialMovingAverage(0.999)
         return optimizer
 
     def test_exponentialmoving(self):

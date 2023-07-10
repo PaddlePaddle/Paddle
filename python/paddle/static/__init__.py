@@ -69,7 +69,6 @@ from .nn.control_flow import Print  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
 from ..fluid.optimizer import Adam  # noqa: F401
-from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 
 from ..fluid.layers import exponential_decay  # noqa: F401
 from ..fluid.layers import learning_rate_scheduler  # noqa: F401
@@ -95,7 +94,6 @@ __all__ = [  # noqa
     'name_scope',
     'program_guard',
     'WeightNormParamAttr',
-    'ExponentialMovingAverage',
     'default_main_program',
     'default_startup_program',
     'Program',

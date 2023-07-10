@@ -56,7 +56,9 @@ class TestFleetStaticEMA(unittest.TestCase):
                 )
                 optimizer.minimize(cost)
 
-                self._ema = static.ExponentialMovingAverage(self._ema_decay)
+                self._ema = paddle.incubate.optimizer.ExponentialMovingAverage(
+                    self._ema_decay
+                )
                 self._ema.update()
 
     def train(self, place, restore):
