@@ -100,7 +100,6 @@ static std::string GetTraceBackString(const std::string& what,
                                       const char* file,
                                       int line) {
   return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
-  // return GetErrorSumaryString(what, file, line);
 }
 
 struct EnforceNotMet : public std::exception {
@@ -129,9 +128,13 @@ struct EnforceNotMet : public std::exception {
  *  \brief Indicates the level of printing error message in the current Schedule
  */
 enum class ScheduleErrorMessageLevel : int32_t {
-  /** \brief  Print an error message in short mode*/
+  /** \brief  Print an error message in short mode.
+   * Short mode shows which and where the schedule error happens*/
   kGeneral = 0,
-  /** \brief Print an error message in detailed mode*/
+  /** \brief Print an error message in detailed mode.
+   * Detailed mode shows which and where the schedule error happens, and the
+   * schedule input parameters.
+   */
   kDetailed = 1,
 };
 
