@@ -274,6 +274,6 @@ TEST(op_test, module_op_death) {
   EXPECT_EQ(program.module_op().program(), &program);
   EXPECT_EQ(program.module_op().ir_context(), ctx);
 
-  program.module_op()->SetAttribute("program",
-                                    ir::PointerAttribute::get(ctx, &program));
+  program.module_op()->set_attribute("program",
+                                     ir::PointerAttribute::get(ctx, &program));
 }
