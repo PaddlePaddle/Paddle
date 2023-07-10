@@ -243,9 +243,13 @@ class TestDygraphInplace(unittest.TestCase):
 
 
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float64"
+
     def set_np_compare_func(self):
         np_array_equal_with_nan = functools.partial(
-            np.allclose, atol=1e-6, rtol=1e-6, equal_nan=True
+            np.array_equal, equal_nan=True
         )
         self.np_compare = np_array_equal_with_nan
 
@@ -558,12 +562,6 @@ class TestDygraphInplaceAsin(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceSinh(TestDygraphInplaceWithContinuous):
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.sinh(var)
 
@@ -596,12 +594,6 @@ class TestDygraphInplaceCos(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceCosh(TestDygraphInplaceWithContinuous):
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.cosh(var)
 
@@ -626,12 +618,6 @@ class TestDygraphInplaceAcosh(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceTan(TestDygraphInplaceWithContinuous):
-    def set_np_compare_func(self):
-        np_array_equal_with_nan = functools.partial(
-            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
-        )
-        self.np_compare = np_array_equal_with_nan
-
     def non_inplace_api_processing(self, var):
         return paddle.tan(var)
 
@@ -658,9 +644,9 @@ class TestDygraphInplaceATanh(TestDygraphInplaceWithContinuous):
 class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 10])
-        self.dtype = "float32"
-        self.x = paddle.randn([10, 10])
-        self.y = paddle.randn([10, 10])
+        self.dtype = "float64"
+        self.x = paddle.randn([10, 10], dtype="float64")
+        self.y = paddle.randn([10, 10], dtype="float64")
 
     def non_inplace_api_processing(self, var):
         return paddle.addmm(var, x=self.x, y=self.y)
