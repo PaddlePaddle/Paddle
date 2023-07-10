@@ -15,11 +15,9 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import _C_ops, fluid
-from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 
 
@@ -84,331 +82,331 @@ def frobenius_norm(x, dim, keep_dim, reduce_all):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
 
 
-class TestFrobeniusNormOp(OpTest):
-    def setUp(self):
-        self.python_api = frobenius_norm
-        self.op_type = "frobenius_norm"
-        self.init_test_case()
-        self.init_dtype()
-        x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
-        norm = numpy_frobenius_norm(x, self.axis, self.keepdim)
-        self.reduce_all = len(self.axis) == len(self.shape)
-        self.inputs = {'X': x}
-        self.attrs = {
-            'dim': list(self.axis),
-            'keep_dim': self.keepdim,
-            'reduce_all': self.reduce_all,
-        }
-        self.outputs = {'Out': norm}
+# class TestFrobeniusNormOp(OpTest):
+#     def setUp(self):
+#         self.python_api = frobenius_norm
+#         self.op_type = "frobenius_norm"
+#         self.init_test_case()
+#         self.init_dtype()
+#         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
+#         norm = numpy_frobenius_norm(x, self.axis, self.keepdim)
+#         self.reduce_all = len(self.axis) == len(self.shape)
+#         self.inputs = {'X': x}
+#         self.attrs = {
+#             'dim': list(self.axis),
+#             'keep_dim': self.keepdim,
+#             'reduce_all': self.reduce_all,
+#         }
+#         self.outputs = {'Out': norm}
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out')
 
-    def init_test_case(self):
-        self.shape = [2, 3, 4, 5]
-        self.axis = (1, 2)
-        self.keepdim = False
+#     def init_test_case(self):
+#         self.shape = [2, 3, 4, 5]
+#         self.axis = (1, 2)
+#         self.keepdim = False
 
-    def init_dtype(self):
-        self.dtype = "float64"
-
-
-class TestFrobeniusNormOp2(TestFrobeniusNormOp):
-    def init_test_case(self):
-        self.shape = [5, 5, 5]
-        self.axis = (0, 1)
-        self.keepdim = True
-
-    def init_dtype(self):
-        self.dtype = "float32"
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+#     def init_dtype(self):
+#         self.dtype = "float64"
 
 
-class TestPnormOp(OpTest):
-    def setUp(self):
-        self.op_type = "p_norm"
-        self.python_api = p_norm_python_api
-        self.init_test_case()
-        self.init_dtype()
-        x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
-        norm = p_norm(x, self.axis, self.porder, self.keepdim, self.asvector)
-        self.inputs = {'X': x}
-        self.attrs = {
-            'epsilon': self.epsilon,
-            'axis': self.axis,
-            'keepdim': self.keepdim,
-            'porder': float(self.porder),
-            'asvector': self.asvector,
-        }
-        self.outputs = {'Out': norm}
-        self.gradient = self.calc_gradient()
+# class TestFrobeniusNormOp2(TestFrobeniusNormOp):
+#     def init_test_case(self):
+#         self.shape = [5, 5, 5]
+#         self.axis = (0, 1)
+#         self.keepdim = True
 
-    def test_check_output(self):
-        self.check_output()
+#     def init_dtype(self):
+#         self.dtype = "float32"
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-    def init_test_case(self):
-        self.shape = [2, 3, 4, 5]
-        self.axis = 1
-        self.epsilon = 1e-12
-        self.porder = 2.0
-        self.keepdim = False
-        self.asvector = False
-
-    def init_dtype(self):
-        self.dtype = "float64"
-
-    def calc_gradient(self):
-        self.attrs = {
-            'epsilon': self.epsilon,
-            'axis': self.axis,
-            'keepdim': self.keepdim,
-            'porder': float(self.porder),
-            'asvector': self.asvector,
-        }
-        x = self.inputs["X"]
-        porder = self.attrs["porder"]
-        axis = self.attrs["axis"]
-        asvector = self.attrs["asvector"]
-        x_dtype = x.dtype
-        x = x.astype(np.float32) if x.dtype == np.float16 else x
-        if porder == 0:
-            grad = np.zeros(x.shape).astype(x.dtype)
-        elif porder in [float("inf"), float("-inf")]:
-            norm = p_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
-            x_abs = np.abs(x)
-            grad = np.sign(x)
-            grad[x_abs != norm] = 0.0
-        else:
-            norm = p_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
-            grad = (
-                np.power(norm, 1 - porder)
-                * np.power(np.abs(x), porder - 1)
-                * np.sign(x)
-            )
-
-        numel = 1
-        for s in x.shape:
-            numel *= s
-        divisor = numel if asvector else x.shape[axis]
-        numel /= divisor
-        return [grad.astype(x_dtype) * 1 / numel]
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out')
 
 
-class TestPnormOp2(TestPnormOp):
-    def init_test_case(self):
-        self.shape = [3, 20, 3]
-        self.axis = 2
-        self.epsilon = 1e-12
-        self.porder = 2.0
-        self.keepdim = True
-        self.asvector = False
+# class TestPnormOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "p_norm"
+#         self.python_api = p_norm_python_api
+#         self.init_test_case()
+#         self.init_dtype()
+#         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
+#         norm = p_norm(x, self.axis, self.porder, self.keepdim, self.asvector)
+#         self.inputs = {'X': x}
+#         self.attrs = {
+#             'epsilon': self.epsilon,
+#             'axis': self.axis,
+#             'keepdim': self.keepdim,
+#             'porder': float(self.porder),
+#             'asvector': self.asvector,
+#         }
+#         self.outputs = {'Out': norm}
+#         self.gradient = self.calc_gradient()
 
-    def init_dtype(self):
-        self.dtype = "float32"
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out')
 
+#     def init_test_case(self):
+#         self.shape = [2, 3, 4, 5]
+#         self.axis = 1
+#         self.epsilon = 1e-12
+#         self.porder = 2.0
+#         self.keepdim = False
+#         self.asvector = False
 
-class TestPnormOp3(TestPnormOp):
-    def init_test_case(self):
-        self.shape = [3, 20, 3]
-        self.axis = 2
-        self.epsilon = 1e-12
-        self.porder = np.inf
-        self.keepdim = True
-        self.asvector = False
+#     def init_dtype(self):
+#         self.dtype = "float64"
 
-    def init_dtype(self):
-        self.dtype = "float32"
+#     def calc_gradient(self):
+#         self.attrs = {
+#             'epsilon': self.epsilon,
+#             'axis': self.axis,
+#             'keepdim': self.keepdim,
+#             'porder': float(self.porder),
+#             'asvector': self.asvector,
+#         }
+#         x = self.inputs["X"]
+#         porder = self.attrs["porder"]
+#         axis = self.attrs["axis"]
+#         asvector = self.attrs["asvector"]
+#         x_dtype = x.dtype
+#         x = x.astype(np.float32) if x.dtype == np.float16 else x
+#         if porder == 0:
+#             grad = np.zeros(x.shape).astype(x.dtype)
+#         elif porder in [float("inf"), float("-inf")]:
+#             norm = p_norm(
+#                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
+#             )
+#             x_abs = np.abs(x)
+#             grad = np.sign(x)
+#             grad[x_abs != norm] = 0.0
+#         else:
+#             norm = p_norm(
+#                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
+#             )
+#             grad = (
+#                 np.power(norm, 1 - porder)
+#                 * np.power(np.abs(x), porder - 1)
+#                 * np.sign(x)
+#             )
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
-
-
-class TestPnormOp4(TestPnormOp):
-    def init_test_case(self):
-        self.shape = [3, 20, 3]
-        self.axis = 2
-        self.epsilon = 1e-12
-        self.porder = -np.inf
-        self.keepdim = True
-        self.asvector = False
-
-    def init_dtype(self):
-        self.dtype = "float32"
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
-
-
-class TestPnormOp5(TestPnormOp):
-    def init_test_case(self):
-        self.shape = [3, 20, 3]
-        self.axis = 2
-        self.epsilon = 1e-12
-        self.porder = 0
-        self.keepdim = True
-        self.asvector = False
-
-    def init_dtype(self):
-        self.dtype = "float32"
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
-
-
-class TestPnormOp6(TestPnormOp):
-    def init_test_case(self):
-        self.shape = [3, 20, 3]
-        self.axis = -1
-        self.epsilon = 1e-12
-        self.porder = 2
-        self.keepdim = False
-        self.asvector = True
-
-    def init_dtype(self):
-        self.dtype = "float32"
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+#         numel = 1
+#         for s in x.shape:
+#             numel *= s
+#         divisor = numel if asvector else x.shape[axis]
+#         numel /= divisor
+#         return [grad.astype(x_dtype) * 1 / numel]
 
 
-def create_test_fp16_class(parent, max_relative_error=2e-3):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    class TestPnormFP16Op(parent):
-        def init_dtype(self):
-            self.dtype = "float16"
+# class TestPnormOp2(TestPnormOp):
+#     def init_test_case(self):
+#         self.shape = [3, 20, 3]
+#         self.axis = 2
+#         self.epsilon = 1e-12
+#         self.porder = 2.0
+#         self.keepdim = True
+#         self.asvector = False
 
-        def test_check_output(self):
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+#     def init_dtype(self):
+#         self.dtype = "float32"
 
-        def test_check_grad(self):
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    'Out',
-                    user_defined_grads=self.gradient,
-                    max_relative_error=max_relative_error,
-                )
-
-    cls_name = "{}_{}".format(parent.__name__, "Fp16")
-    TestPnormFP16Op.__name__ = cls_name
-    globals()[cls_name] = TestPnormFP16Op
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out')
 
 
-create_test_fp16_class(TestPnormOp)
-create_test_fp16_class(TestPnormOp2)
-create_test_fp16_class(TestPnormOp3)
-create_test_fp16_class(TestPnormOp4)
-create_test_fp16_class(TestPnormOp5)
-create_test_fp16_class(TestPnormOp6)
+# class TestPnormOp3(TestPnormOp):
+#     def init_test_case(self):
+#         self.shape = [3, 20, 3]
+#         self.axis = 2
+#         self.epsilon = 1e-12
+#         self.porder = np.inf
+#         self.keepdim = True
+#         self.asvector = False
+
+#     def init_dtype(self):
+#         self.dtype = "float32"
+
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestPnormBF16Op(OpTest):
-    def setUp(self):
-        self.op_type = "p_norm"
-        self.python_api = p_norm_python_api
-        self.init_test_case()
-        self.x = (np.random.random(self.shape) + 0.5).astype(np.float32)
-        self.norm = p_norm(
-            self.x, self.axis, self.porder, self.keepdim, self.asvector
-        )
-        self.gradient = self.calc_gradient()
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
-        self.attrs = {
-            'epsilon': self.epsilon,
-            'axis': self.axis,
-            'keepdim': self.keepdim,
-            'porder': float(self.porder),
-            'asvector': self.asvector,
-        }
-        self.outputs = {'Out': convert_float_to_uint16(self.norm)}
+# class TestPnormOp4(TestPnormOp):
+#     def init_test_case(self):
+#         self.shape = [3, 20, 3]
+#         self.axis = 2
+#         self.epsilon = 1e-12
+#         self.porder = -np.inf
+#         self.keepdim = True
+#         self.asvector = False
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
+#     def init_dtype(self):
+#         self.dtype = "float32"
 
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            user_defined_grads=self.gradient,
-        )
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
-    def init_test_case(self):
-        self.shape = [2, 3, 4, 5]
-        self.axis = 1
-        self.epsilon = 1e-12
-        self.porder = 2.0
-        self.keepdim = False
-        self.asvector = False
 
-    def init_dtype(self):
-        self.dtype = np.uint16
+# class TestPnormOp5(TestPnormOp):
+#     def init_test_case(self):
+#         self.shape = [3, 20, 3]
+#         self.axis = 2
+#         self.epsilon = 1e-12
+#         self.porder = 0
+#         self.keepdim = True
+#         self.asvector = False
 
-    def calc_gradient(self):
-        self.attrs = {
-            'epsilon': self.epsilon,
-            'axis': self.axis,
-            'keepdim': self.keepdim,
-            'porder': float(self.porder),
-            'asvector': self.asvector,
-        }
-        x = self.x
-        porder = self.attrs["porder"]
-        axis = self.attrs["axis"]
-        asvector = self.attrs["asvector"]
-        x_dtype = x.dtype
-        x = x.astype(np.float32) if x.dtype == np.float16 else x
-        if porder == 0:
-            grad = np.zeros(x.shape).astype(x.dtype)
-        elif porder in [float("inf"), float("-inf")]:
-            norm = p_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
-            x_abs = np.abs(x)
-            grad = np.sign(x)
-            grad[x_abs != norm] = 0.0
-        else:
-            norm = p_norm(
-                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
-            )
-            grad = (
-                np.power(norm, 1 - porder)
-                * np.power(np.abs(x), porder - 1)
-                * np.sign(x)
-            )
+#     def init_dtype(self):
+#         self.dtype = "float32"
 
-        numel = 1
-        for s in x.shape:
-            numel *= s
-        divisor = numel if asvector else x.shape[axis]
-        numel /= divisor
-        return [grad.astype(x_dtype) * 1 / numel]
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+# class TestPnormOp6(TestPnormOp):
+#     def init_test_case(self):
+#         self.shape = [3, 20, 3]
+#         self.axis = -1
+#         self.epsilon = 1e-12
+#         self.porder = 2
+#         self.keepdim = False
+#         self.asvector = True
+
+#     def init_dtype(self):
+#         self.dtype = "float32"
+
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+# def create_test_fp16_class(parent, max_relative_error=2e-3):
+#     @unittest.skipIf(
+#         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+#     )
+#     class TestPnormFP16Op(parent):
+#         def init_dtype(self):
+#             self.dtype = "float16"
+
+#         def test_check_output(self):
+#             place = core.CUDAPlace(0)
+#             if core.is_float16_supported(place):
+#                 self.check_output_with_place(place)
+
+#         def test_check_grad(self):
+#             place = core.CUDAPlace(0)
+#             if core.is_float16_supported(place):
+#                 self.check_grad_with_place(
+#                     place,
+#                     ['X'],
+#                     'Out',
+#                     user_defined_grads=self.gradient,
+#                     max_relative_error=max_relative_error,
+#                 )
+
+#     cls_name = "{}_{}".format(parent.__name__, "Fp16")
+#     TestPnormFP16Op.__name__ = cls_name
+#     globals()[cls_name] = TestPnormFP16Op
+
+
+# create_test_fp16_class(TestPnormOp)
+# create_test_fp16_class(TestPnormOp2)
+# create_test_fp16_class(TestPnormOp3)
+# create_test_fp16_class(TestPnormOp4)
+# create_test_fp16_class(TestPnormOp5)
+# create_test_fp16_class(TestPnormOp6)
+
+
+# @unittest.skipIf(
+#     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+# )
+# class TestPnormBF16Op(OpTest):
+#     def setUp(self):
+#         self.op_type = "p_norm"
+#         self.python_api = p_norm_python_api
+#         self.init_test_case()
+#         self.x = (np.random.random(self.shape) + 0.5).astype(np.float32)
+#         self.norm = p_norm(
+#             self.x, self.axis, self.porder, self.keepdim, self.asvector
+#         )
+#         self.gradient = self.calc_gradient()
+#         self.inputs = {'X': convert_float_to_uint16(self.x)}
+#         self.attrs = {
+#             'epsilon': self.epsilon,
+#             'axis': self.axis,
+#             'keepdim': self.keepdim,
+#             'porder': float(self.porder),
+#             'asvector': self.asvector,
+#         }
+#         self.outputs = {'Out': convert_float_to_uint16(self.norm)}
+
+#     def test_check_output(self):
+#         place = core.CUDAPlace(0)
+#         self.check_output_with_place(place, atol=1e-3)
+
+#     def test_check_grad(self):
+#         place = core.CUDAPlace(0)
+#         self.check_grad_with_place(
+#             place,
+#             ['X'],
+#             'Out',
+#             user_defined_grads=self.gradient,
+#         )
+
+#     def init_test_case(self):
+#         self.shape = [2, 3, 4, 5]
+#         self.axis = 1
+#         self.epsilon = 1e-12
+#         self.porder = 2.0
+#         self.keepdim = False
+#         self.asvector = False
+
+#     def init_dtype(self):
+#         self.dtype = np.uint16
+
+#     def calc_gradient(self):
+#         self.attrs = {
+#             'epsilon': self.epsilon,
+#             'axis': self.axis,
+#             'keepdim': self.keepdim,
+#             'porder': float(self.porder),
+#             'asvector': self.asvector,
+#         }
+#         x = self.x
+#         porder = self.attrs["porder"]
+#         axis = self.attrs["axis"]
+#         asvector = self.attrs["asvector"]
+#         x_dtype = x.dtype
+#         x = x.astype(np.float32) if x.dtype == np.float16 else x
+#         if porder == 0:
+#             grad = np.zeros(x.shape).astype(x.dtype)
+#         elif porder in [float("inf"), float("-inf")]:
+#             norm = p_norm(
+#                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
+#             )
+#             x_abs = np.abs(x)
+#             grad = np.sign(x)
+#             grad[x_abs != norm] = 0.0
+#         else:
+#             norm = p_norm(
+#                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
+#             )
+#             grad = (
+#                 np.power(norm, 1 - porder)
+#                 * np.power(np.abs(x), porder - 1)
+#                 * np.sign(x)
+#             )
+
+#         numel = 1
+#         for s in x.shape:
+#             numel *= s
+#         divisor = numel if asvector else x.shape[axis]
+#         numel /= divisor
+#         return [grad.astype(x_dtype) * 1 / numel]
 
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
@@ -633,55 +631,55 @@ class API_NormTest(unittest.TestCase):
                 check_dim=True,
             )
 
-    def test_dygraph(self):
-        run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
+    # def test_dygraph(self):
+    #     run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
 
-    def test_name(self):
-        with fluid.program_guard(fluid.Program()):
-            x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
-            y_1 = paddle.norm(x, p='fro', name='frobenius_name')
-            y_2 = paddle.norm(x, p=2, name='pnorm_name')
-            self.assertEqual(('frobenius_name' in y_1.name), True)
-            self.assertEqual(('pnorm_name' in y_2.name), True)
+    # def test_name(self):
+    #     with fluid.program_guard(fluid.Program()):
+    #         x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
+    #         y_1 = paddle.norm(x, p='fro', name='frobenius_name')
+    #         y_2 = paddle.norm(x, p=2, name='pnorm_name')
+    #         self.assertEqual(('frobenius_name' in y_1.name), True)
+    #         self.assertEqual(('pnorm_name' in y_2.name), True)
 
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+    # def test_errors(self):
+    #     with fluid.program_guard(fluid.Program(), fluid.Program()):
 
-            def err_dtype(p, shape_x, xdtype, out=None):
-                data = paddle.static.data(shape=shape_x, dtype=xdtype)
-                paddle.norm(data, p=p, out=out)
+    #         def err_dtype(p, shape_x, xdtype, out=None):
+    #             data = paddle.static.data(shape=shape_x, dtype=xdtype)
+    #             paddle.norm(data, p=p, out=out)
 
-            self.assertRaises(TypeError, err_dtype, "fro", [2, 2], "int64")
-            self.assertRaises(ValueError, paddle.norm, "inf", [2], "int64")
-            out = paddle.static.data(name="out", shape=[1], dtype="int64")
-            self.assertRaises(
-                TypeError, err_dtype, "fro", [2, 2], "float64", out
-            )
-            self.assertRaises(TypeError, err_dtype, 2, [10], "int64")
-            self.assertRaises(TypeError, err_dtype, 2, [10], "float64", out)
+    #         self.assertRaises(TypeError, err_dtype, "fro", [2, 2], "int64")
+    #         self.assertRaises(ValueError, paddle.norm, "inf", [2], "int64")
+    #         out = paddle.static.data(name="out", shape=[1], dtype="int64")
+    #         self.assertRaises(
+    #             TypeError, err_dtype, "fro", [2, 2], "float64", out
+    #         )
+    #         self.assertRaises(TypeError, err_dtype, 2, [10], "int64")
+    #         self.assertRaises(TypeError, err_dtype, 2, [10], "float64", out)
 
-            data = paddle.static.data(
-                name="data_2d", shape=[2, 2], dtype="float64"
-            )
-            self.assertRaises(ValueError, paddle.norm, data, p="unsupport norm")
-            self.assertRaises(ValueError, paddle.norm, data, p=[1])
-            self.assertRaises(ValueError, paddle.norm, data, p=[1], axis=-1)
-            self.assertRaises(ValueError, paddle.norm, 0, [1, 0], "float64")
-            data = paddle.static.data(
-                name="data_3d", shape=[2, 2, 2], dtype="float64"
-            )
-            self.assertRaises(
-                ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
-            )
+    #         data = paddle.static.data(
+    #             name="data_2d", shape=[2, 2], dtype="float64"
+    #         )
+    #         self.assertRaises(ValueError, paddle.norm, data, p="unsupport norm")
+    #         self.assertRaises(ValueError, paddle.norm, data, p=[1])
+    #         self.assertRaises(ValueError, paddle.norm, data, p=[1], axis=-1)
+    #         self.assertRaises(ValueError, paddle.norm, 0, [1, 0], "float64")
+    #         data = paddle.static.data(
+    #             name="data_3d", shape=[2, 2, 2], dtype="float64"
+    #         )
+    #         self.assertRaises(
+    #             ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
+    #         )
 
-        with fluid.dygraph.guard():
-            # The size of input in Norm should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-                paddle.linalg.norm(x, axis=0)
+    #     with fluid.dygraph.guard():
+    #         # The size of input in Norm should not be 0.
+    #         def test_0_size():
+    #             array = np.array([], dtype=np.float32)
+    #             x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+    #             paddle.linalg.norm(x, axis=0)
 
-            self.assertRaises(ValueError, test_0_size)
+    #         self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == '__main__':

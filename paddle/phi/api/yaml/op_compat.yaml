@@ -117,7 +117,7 @@
   inputs :
     input : Theta
   outputs :
-    out : Output
+    output : Output
   int_array:
     output_shape :
       data_type : int
@@ -1110,10 +1110,6 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
-  int_array:
-    axis :
-      data_type : int
-      support_tensor : true
   get_expected_kernel_type :
     frobenius_norm : GetReduceExpectedKernelType
     frobenius_norm_grad : GetReduceGradExpectedKernelType
@@ -1989,6 +1985,12 @@
   outputs :
     out : Out
 
+- op : polygamma
+  inputs :
+    x : x
+  outputs :
+    out : out
+
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
   inputs :
@@ -2694,6 +2696,14 @@
   outputs :
     out : Out
 
+- op : tril_indices
+  outputs :
+    out : out
+
+- op : tril_indices
+  outputs :
+    out : out
+
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2709,6 +2719,10 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : triu_indices
+  outputs :
+    out : out
 
 - op : trunc
   inputs :

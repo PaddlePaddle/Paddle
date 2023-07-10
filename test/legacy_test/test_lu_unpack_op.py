@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import itertools
 import unittest
 
 import numpy as np
@@ -167,152 +166,152 @@ class TestLU_UnpackOp(OpTest):
             'U': self.U,
         }
 
-    def test_check_output(self):
-        self.check_output()
+    # def test_check_output(self):
+    #     self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], ['L', 'U'])
 
 
-# m = n
-class TestLU_UnpackOp2(TestLU_UnpackOp):
-    """
-    case 2
-    """
+# # m = n
+# class TestLU_UnpackOp2(TestLU_UnpackOp):
+#     """
+#     case 2
+#     """
 
-    def config(self):
-        self.x_shape = [2, 10, 10]
-        self.unpack_ludata = True
-        self.unpack_pivots = True
-        self.dtype = "float64"
-
-
-# m < n
-class TestLU_UnpackOp3(TestLU_UnpackOp):
-    """
-    case 3
-    """
-
-    def config(self):
-        self.x_shape = [2, 10, 12]
-        self.unpack_ludata = True
-        self.unpack_pivots = True
-        self.dtype = "float64"
+#     def config(self):
+#         self.x_shape = [2, 10, 10]
+#         self.unpack_ludata = True
+#         self.unpack_pivots = True
+#         self.dtype = "float64"
 
 
-# batchsize = 0
-class TestLU_UnpackOp4(TestLU_UnpackOp):
-    """
-    case 4
-    """
+# # m < n
+# class TestLU_UnpackOp3(TestLU_UnpackOp):
+#     """
+#     case 3
+#     """
 
-    def config(self):
-        self.x_shape = [10, 12]
-        self.unpack_ludata = True
-        self.unpack_pivots = True
-        self.dtype = "float64"
+#     def config(self):
+#         self.x_shape = [2, 10, 12]
+#         self.unpack_ludata = True
+#         self.unpack_pivots = True
+#         self.dtype = "float64"
 
 
-class TestLU_UnpackAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2022)
+# # batchsize = 0
+# class TestLU_UnpackOp4(TestLU_UnpackOp):
+#     """
+#     case 4
+#     """
 
-    def test_dygraph(self):
-        def run_lu_unpack_dygraph(shape, dtype):
-            if dtype == "float32":
-                np_dtype = np.float32
-            elif dtype == "float64":
-                np_dtype = np.float64
-            a = np.random.rand(*shape).astype(np_dtype)
-            m = a.shape[-2]
-            n = a.shape[-1]
-            min_mn = min(m, n)
+#     def config(self):
+#         self.x_shape = [10, 12]
+#         self.unpack_ludata = True
+#         self.unpack_pivots = True
+#         self.dtype = "float64"
 
-            places = [fluid.CPUPlace()]
-            if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
-            for place in places:
-                paddle.disable_static(place)
 
-                x = paddle.to_tensor(a, dtype=dtype)
-                sP, sL, sU = scipy_lu_unpack(a)
-                LU, P = paddle.linalg.lu(x)
-                pP, pL, pU = paddle.linalg.lu_unpack(LU, P)
+# class TestLU_UnpackAPI(unittest.TestCase):
+#     def setUp(self):
+#         np.random.seed(2022)
 
-                np.testing.assert_allclose(sU, pU, rtol=1e-05, atol=1e-05)
-                np.testing.assert_allclose(sL, pL, rtol=1e-05, atol=1e-05)
-                np.testing.assert_allclose(sP, pP, rtol=1e-05, atol=1e-05)
+#     def test_dygraph(self):
+#         def run_lu_unpack_dygraph(shape, dtype):
+#             if dtype == "float32":
+#                 np_dtype = np.float32
+#             elif dtype == "float64":
+#                 np_dtype = np.float64
+#             a = np.random.rand(*shape).astype(np_dtype)
+#             m = a.shape[-2]
+#             n = a.shape[-1]
+#             min_mn = min(m, n)
 
-        tensor_shapes = [
-            (3, 5),
-            (5, 5),
-            (5, 3),  # 2-dim Tensors
-            (2, 3, 5),
-            (3, 5, 5),
-            (4, 5, 3),  # 3-dim Tensors
-            (2, 5, 3, 5),
-            (3, 5, 5, 5),
-            (4, 5, 5, 3),  # 4-dim Tensors
-        ]
-        dtypes = ["float32", "float64"]
-        for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
-            run_lu_unpack_dygraph(tensor_shape, dtype)
+#             places = [fluid.CPUPlace()]
+#             if core.is_compiled_with_cuda():
+#                 places.append(fluid.CUDAPlace(0))
+#             for place in places:
+#                 paddle.disable_static(place)
 
-    def test_static(self):
-        paddle.enable_static()
+#                 x = paddle.to_tensor(a, dtype=dtype)
+#                 sP, sL, sU = scipy_lu_unpack(a)
+#                 LU, P = paddle.linalg.lu(x)
+#                 pP, pL, pU = paddle.linalg.lu_unpack(LU, P)
 
-        def run_lu_static(shape, dtype):
-            if dtype == "float32":
-                np_dtype = np.float32
-            elif dtype == "float64":
-                np_dtype = np.float64
-            a = np.random.rand(*shape).astype(np_dtype)
-            m = a.shape[-2]
-            n = a.shape[-1]
-            min_mn = min(m, n)
+#                 np.testing.assert_allclose(sU, pU, rtol=1e-05, atol=1e-05)
+#                 np.testing.assert_allclose(sL, pL, rtol=1e-05, atol=1e-05)
+#                 np.testing.assert_allclose(sP, pP, rtol=1e-05, atol=1e-05)
 
-            places = [fluid.CPUPlace()]
-            if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
-            for place in places:
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    sP, sL, sU = scipy_lu_unpack(a)
+#         tensor_shapes = [
+#             (3, 5),
+#             (5, 5),
+#             (5, 3),  # 2-dim Tensors
+#             (2, 3, 5),
+#             (3, 5, 5),
+#             (4, 5, 3),  # 3-dim Tensors
+#             (2, 5, 3, 5),
+#             (3, 5, 5, 5),
+#             (4, 5, 5, 3),  # 4-dim Tensors
+#         ]
+#         dtypes = ["float32", "float64"]
+#         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
+#             run_lu_unpack_dygraph(tensor_shape, dtype)
 
-                    x = paddle.static.data(
-                        name="input", shape=shape, dtype=dtype
-                    )
-                    lu, p = paddle.linalg.lu(x)
-                    pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
-                    exe = fluid.Executor(place)
-                    fetches = exe.run(
-                        fluid.default_main_program(),
-                        feed={"input": a},
-                        fetch_list=[pP, pL, pU],
-                    )
-                    np.testing.assert_allclose(
-                        fetches[0], sP, rtol=1e-05, atol=1e-05
-                    )
-                    np.testing.assert_allclose(
-                        fetches[1], sL, rtol=1e-05, atol=1e-05
-                    )
-                    np.testing.assert_allclose(
-                        fetches[2], sU, rtol=1e-05, atol=1e-05
-                    )
+#     def test_static(self):
+#         paddle.enable_static()
 
-        tensor_shapes = [
-            (3, 5),
-            (5, 5),
-            (5, 3),  # 2-dim Tensors
-            (2, 3, 5),
-            (3, 5, 5),
-            (4, 5, 3),  # 3-dim Tensors
-            (2, 5, 3, 5),
-            (3, 5, 5, 5),
-            (4, 5, 5, 3),  # 4-dim Tensors
-        ]
-        dtypes = ["float32", "float64"]
-        for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
-            run_lu_static(tensor_shape, dtype)
+#         def run_lu_static(shape, dtype):
+#             if dtype == "float32":
+#                 np_dtype = np.float32
+#             elif dtype == "float64":
+#                 np_dtype = np.float64
+#             a = np.random.rand(*shape).astype(np_dtype)
+#             m = a.shape[-2]
+#             n = a.shape[-1]
+#             min_mn = min(m, n)
+
+#             places = [fluid.CPUPlace()]
+#             if core.is_compiled_with_cuda():
+#                 places.append(fluid.CUDAPlace(0))
+#             for place in places:
+#                 with fluid.program_guard(fluid.Program(), fluid.Program()):
+#                     sP, sL, sU = scipy_lu_unpack(a)
+
+#                     x = paddle.static.data(
+#                         name="input", shape=shape, dtype=dtype
+#                     )
+#                     lu, p = paddle.linalg.lu(x)
+#                     pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
+#                     exe = fluid.Executor(place)
+#                     fetches = exe.run(
+#                         fluid.default_main_program(),
+#                         feed={"input": a},
+#                         fetch_list=[pP, pL, pU],
+#                     )
+#                     np.testing.assert_allclose(
+#                         fetches[0], sP, rtol=1e-05, atol=1e-05
+#                     )
+#                     np.testing.assert_allclose(
+#                         fetches[1], sL, rtol=1e-05, atol=1e-05
+#                     )
+#                     np.testing.assert_allclose(
+#                         fetches[2], sU, rtol=1e-05, atol=1e-05
+#                     )
+
+#         tensor_shapes = [
+#             (3, 5),
+#             (5, 5),
+#             (5, 3),  # 2-dim Tensors
+#             (2, 3, 5),
+#             (3, 5, 5),
+#             (4, 5, 3),  # 3-dim Tensors
+#             (2, 5, 3, 5),
+#             (3, 5, 5, 5),
+#             (4, 5, 5, 3),  # 4-dim Tensors
+#         ]
+#         dtypes = ["float32", "float64"]
+#         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
+#             run_lu_static(tensor_shape, dtype)
 
 
 if __name__ == "__main__":

@@ -1697,6 +1697,7 @@
     param : [arr, indices]
   kernel :
     func : put_along_axis_grad
+  optional : value_grad
 
 - backward_op : qr_grad
   forward : qr (Tensor x, str mode = "reduced") -> Tensor(q), Tensor(r)

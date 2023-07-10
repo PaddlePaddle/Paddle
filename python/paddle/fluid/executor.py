@@ -449,6 +449,8 @@ def _apply_inplace_addto_pass(
 ):
     use_cuda = True if core.is_compiled_with_cuda() else False
 
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", enable_addto)
+
     attrs = {"use_cuda": use_cuda, "mem_opt_skip_vars": skip_var_names}
     attr_types = {"use_cuda": "bool", "mem_opt_skip_vars": "list[str]"}
 

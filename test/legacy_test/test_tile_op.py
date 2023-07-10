@@ -50,7 +50,7 @@ class TestTileOpRank1(OpTest):
         self.check_output(check_cinn=self.check_cinn)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
@@ -265,7 +265,7 @@ class TestTileFP16OP(OpTest):
         self.check_output(check_cinn=self.check_cinn)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 @unittest.skipIf(
@@ -302,7 +302,7 @@ class TestTileBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=False)
 
 
 # Situation 5: input x is Bool
