@@ -89,11 +89,8 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
 };
 
 ///
-/// \brief Define Parametric TypeStorage for AllocatedDenseTensorType.
+/// \brief Define Parametric TypeStorage for AllocatedSelectedRowsTypeStorage.
 ///
-/// NOTE(zhangbo9674): The derived TypeStorage class needs to implement the
-/// following methods: (1)declare ParamKey, (2)define Construction method,
-/// (3)define HashValue method, (4)overload operator==.
 ///
 struct AllocatedSelectedRowsTypeStorage : public ir::TypeStorage {
   using Place = phi::Place;
@@ -146,8 +143,8 @@ struct AllocatedSelectedRowsTypeStorage : public ir::TypeStorage {
   ParamKey GetAsKey() const { return ParamKey(place_, selected_rows_type_); }
 
   ///
-  /// \brief AllocatedDenseTensorTypeStorage include five parameters: place,
-  /// DenseTensorType
+  /// \brief AllocatedSelectedRowsTypeStorage include five parameters: place,
+  /// SelectedRowsType
   ///
   phi::Place place_;
   dialect::SelectedRowsType selected_rows_type_;
