@@ -21,6 +21,9 @@ import warnings
 
 MAX_INTEGER = 2**31 - 1
 
+# map var to the new output
+var_dict = {}
+
 
 def is_list_tuple(index, contain_type):
     def _is_list_tuple(item):
@@ -807,17 +810,24 @@ def _setitem_impl_(var, item, value):
 
     if paddle.in_dynamic_mode():
         var._bump_inplace_version()
+        output = var
+    else:
+        helper = paddle.fluid.layer_helper.LayerHelper('set_value', **locals())
+        output = helper.create_variable_for_type_inference(dtype=var.dtype)
 
     cur_block = default_main_program().current_block()
     cur_block.append_op(
         type="set_value",
         inputs=inputs,
-        outputs={'Out': var},
+        outputs={'Out': output},
         attrs=attrs,
         inplace_map={"Input": "Out"},
     )
 
-    return var
+    # map var to the new output
+    var_dict[var.desc.id()] = output
+
+    return output
 
 
 # the item is a tensor of bool

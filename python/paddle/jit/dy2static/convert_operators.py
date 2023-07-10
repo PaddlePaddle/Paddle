@@ -23,6 +23,7 @@ from paddle.fluid.dygraph.base import (
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import control_flow
 from paddle.fluid.layers.control_flow import while_loop
+from paddle.fluid.variable_index import var_dict
 
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
@@ -48,6 +49,11 @@ def convert_load(x):
         TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
         """
         return _convert_into_variable(x)
+
+    # map var to the new output
+    if isinstance(x, paddle.fluid.framework.Variable):
+        if x.desc.id() in var_dict.keys():
+            return var_dict[x.desc.id()]
     return x
 
 
