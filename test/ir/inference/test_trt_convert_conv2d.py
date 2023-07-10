@@ -23,6 +23,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
 
+
 class TrtConvertConv2dPluginTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
