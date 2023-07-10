@@ -95,6 +95,15 @@ __global__ void AdanKernelREG(MT beta1,
       if (master_param_out) {
         master_param_out[id] = p;
       }
+      printf("p:%f\n", p);
+      printf("g:%f\n", g);
+      printf("pre_g:%f\n", pre_g);
+      printf("update:%f\n", update);
+      printf("mom1:%f\n", mom1);
+      printf("mom2:%f\n", mom2);
+      printf("mom3:%f\n", mom3);
+      printf("denom:%f\n", denom);
+      printf("update:%f\n", update);
     }
   } else {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -124,6 +133,15 @@ __global__ void AdanKernelREG(MT beta1,
       moment1_out[id] = mom1;
       moment3_out[id] = mom3;
       pre_grad_out[id] = grad[id];
+      printf("p:%f\n", p);
+      printf("g:%f\n", g);
+      printf("pre_g:%f\n", pre_g);
+      printf("update:%f\n", update);
+      printf("mom1:%f\n", mom1);
+      printf("mom3:%f\n", mom3);
+      printf("denom:%f\n", denom);
+      printf("update:%f\n", update);
+
       param_out[id] = static_cast<T>(p);
       if (master_param_out) {
         master_param_out[id] = p;
@@ -198,6 +216,15 @@ __global__ void AdanKernelMEM(MT beta1,
       if (master_param_out) {
         master_param_out[id] = p;
       }
+      printf("p:%f\n", p);
+      printf("g:%f\n", g);
+      printf("pre_g:%f\n", pre_g);
+      printf("update:%f\n", update);
+      printf("mom1:%f\n", mom1);
+      printf("mom2:%f\n", mom2);
+      printf("mom3:%f\n", mom3);
+      printf("denom:%f\n", denom);
+      printf("update:%f\n", update);
     }
   } else {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -231,6 +258,14 @@ __global__ void AdanKernelMEM(MT beta1,
       if (master_param_out) {
         master_param_out[id] = p;
       }
+      printf("p:%f\n", p);
+      printf("g:%f\n", g);
+      printf("pre_g:%f\n", pre_g);
+      printf("update:%f\n", update);
+      printf("mom1:%f\n", mom1);
+      printf("mom3:%f\n", mom3);
+      printf("denom:%f\n", denom);
+      printf("update:%f\n", update);
     }
   }
 }

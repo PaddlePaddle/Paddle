@@ -31,7 +31,7 @@ class Adan(Optimizer):
     r"""
     The Adan optimizer is implemented based on the Adan Optimization
     in paper `Adan: Adaptive Nesterov Momentum Algorithm for Faster Optimizing Deep Models <https://arxiv.org/abs/2208.06677>`_.
-    
+
     Adan
     .. math::
 
