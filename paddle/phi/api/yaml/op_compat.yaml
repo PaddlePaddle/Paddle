@@ -117,7 +117,7 @@
   inputs :
     input : Theta
   outputs :
-    out : Output
+    output : Output
   int_array:
     output_shape :
       data_type : int
