@@ -32,7 +32,7 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           DenseTensor* dst) {
-  if (!src.meta().is_contiguous(src.layout())) {
+  if (!src.meta().is_contiguous()) {
     DenseTensor src_copy = paddle::experimental::Trans2Contiguous(src);
     Copy(dev_ctx, src_copy, dst_place, blocking, dst);
     return;

@@ -138,7 +138,7 @@ class FeedOp : public framework::OperatorWithKernel {
         meta.lod = feed_tensor.lod();
         meta.strides = feed_tensor.strides();
         if (meta.strides.size() == -1) {
-          meta.strides = meta.calc_strides(meta.dims, meta.layout);
+          meta.strides = meta.calc_strides(meta.dims);
         }
         out_tensor->set_meta(meta);
       } else if (feed_item.index() == 1) {  // Strings

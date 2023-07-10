@@ -2104,16 +2104,9 @@ static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* kwargs) {
   EAGER_TRY
   if (self->tensor.is_dense_tensor()) {
-    phi::DataLayout layout = phi::DataLayout::NCHW;
-    Py_ssize_t args_num = PyTuple_Size(args);
-    if (args_num == (Py_ssize_t)1) {
-      std::string str_layout =
-          CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
-      layout = phi::StringToDataLayout(str_layout);
-    }
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-    if (dense_tensor->meta().is_contiguous(layout)) {
+    if (dense_tensor->meta().is_contiguous()) {
       Py_INCREF(self);
       return reinterpret_cast<PyObject*>(self);
     } else {
@@ -2135,16 +2128,9 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* kwargs) {
   EAGER_TRY
   if (self->tensor.is_dense_tensor()) {
-    phi::DataLayout layout = phi::DataLayout::NCHW;
-    Py_ssize_t args_num = PyTuple_Size(args);
-    if (args_num == (Py_ssize_t)1) {
-      std::string str_layout =
-          CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
-      layout = phi::StringToDataLayout(str_layout);
-    }
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-    return ToPyObject(dense_tensor->meta().is_contiguous(layout));
+    return ToPyObject(dense_tensor->meta().is_contiguous());
   } else {
     return ToPyObject(true);
   }
