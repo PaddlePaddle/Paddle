@@ -462,23 +462,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
               comm,
               stream);
         } else {
-          // if(output.place().GetType() == phi::AllocationType::CPU) {
-          //   phi::DenseTensor output_tmp;
-          //   int64_t numel = output.numel() / size_;
-          //   phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
-          //       ->MemoryCopyH2D(output_tmp->data(),
-          //                       output.data(),
-          //                       numel * phi::SizeOf(output.dtype()),
-          //                       &stream);
-          //   return phi::DeviceManager::CCLBroadcast(
-          //     device_type_,
-          //     output_tmp.data(),
-          //     output_tmp.numel(),
-          //     phi::ccl::ToCCLDataType(output_tmp.dtype()),
-          //     root,
-          //     comm,
-          //     stream);
-          // }
           return phi::DeviceManager::CCLBroadcast(
               device_type_,
               output.data(),
