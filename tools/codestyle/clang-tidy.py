@@ -225,13 +225,13 @@ def main():
     parser.add_argument(
         '-clang-tidy-binary',
         metavar='PATH',
-        default='clang-tidy',
+        default='clang-tidy-10',
         help='path to clang-tidy binary',
     )
     parser.add_argument(
         '-clang-apply-replacements-binary',
         metavar='PATH',
-        default='clang-apply-replacements',
+        default='clang-apply-replacements-10',
         help='path to clang-apply-replacements binary',
     )
     parser.add_argument(
