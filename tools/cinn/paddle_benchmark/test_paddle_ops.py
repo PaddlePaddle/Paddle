@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import os
-import sys
 import time
 
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 

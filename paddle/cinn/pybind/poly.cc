@@ -69,7 +69,7 @@ void BindStageMap(py::module *m) {
 }
 
 void BindStage(py::module *m) {
-  py::class_<Stage, common::Object> stage(*m, "Stage");
+  py::class_<Stage> stage(*m, "Stage");
   // enum Stage::ComputeAtKind
   py::enum_<Stage::ComputeAtKind> compute_at_kind(stage, "ComputeAtKind");
   compute_at_kind.value("kComputeAtUnk", Stage::ComputeAtKind::kComputeAtAuto)

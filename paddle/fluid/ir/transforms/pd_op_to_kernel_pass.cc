@@ -26,11 +26,13 @@
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+
 namespace paddle {
 namespace dialect {
 
@@ -63,7 +65,7 @@ phi::KernelKey GetKernelKey(
     if (data_type_info.size() > 0 && data_type_info[0] != "") {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
-      auto& input_map = op_info_parser->Name2Id();
+      auto& input_map = op_info_parser->InputName2Id();
 
       if (input_map.count(slot_name)) {
         // parse from input
@@ -132,6 +134,10 @@ phi::KernelKey GetKernelKey(
       }
 
       auto input_tmp = op->operand(i);
+      // NOTE: if not input_tmp, it's an optional input
+      if (!input_tmp) {
+        continue;
+      }
       auto new_input_tmp = map_value_pair.at(input_tmp);
 
       auto input_type = new_input_tmp.type();
@@ -264,6 +270,15 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     if ((*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         auto cur_in = (*it)->operand(i);
+        if (!cur_in) {
+          vec_inputs.push_back(ir::OpResult());
+          continue;
+        }
+        PADDLE_ENFORCE_EQ(
+            map_value_pair.count(cur_in),
+            true,
+            phi::errors::PreconditionNotMet(
+                "[%d]'s input of [%s] op MUST in map pair", i, (*it)->name()));
         auto new_in = map_value_pair.at(cur_in);
 
         auto new_in_type = new_in.type();
@@ -325,6 +340,10 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     for (auto it1 = op_attr_map.begin(); it1 != op_attr_map.end(); ++it1) {
       op_attribute.emplace(it1->first, it1->second);
+    }
+
+    if ((*it)->HasTrait<paddle::dialect::InplaceTrait>()) {
+      op_attribute.emplace("is_inplace", ir::BoolAttribute::get(ctx, true));
     }
 
     ir::Operation* op = ir::Operation::Create(

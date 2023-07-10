@@ -201,7 +201,7 @@ if __name__ == '__main__':
 
     class Content(ContentGenerator):
         def __init__(self):
-            self.lines = [line for line in sys.stdin]
+            self.lines = list(sys.stdin)
             self.cur = 0
 
         def has_next(self):
