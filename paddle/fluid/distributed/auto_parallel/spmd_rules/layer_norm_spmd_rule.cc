@@ -96,8 +96,8 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   std::string mean_axes;
   std::string variance_axes;
   if (begin_norm_axis > 1) {
-    mean_axes = "x";
-    variance_axes = "x";
+    mean_axes = "z";
+    variance_axes = "z";
   } else {
     mean_axes = "j";
     variance_axes = "j";
@@ -109,9 +109,8 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           << x_axes << "," << scale_axes << "," << bias_axes << " --> "
           << out_axes << "," << mean_axes << "," << variance_axes
           << "](begin_norm_axis:" << begin_norm_axis
-          << ",x=" << x_axes.substr(0, begin_norm_axis)
           << ",y=" << x_axes.substr(begin_norm_axis, x_ndim - begin_norm_axis)
-          << ").";
+          << ",z=" << x_axes.substr(0, begin_norm_axis) << ").";
 
   // step2: Sharding Propogation
   TensorDistAttr output_dist_attr_dst =
