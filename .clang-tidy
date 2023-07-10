@@ -203,7 +203,6 @@ Checks: '
 -performance-unnecessary-copy-initialization,
 readability-container-size-empty,
 '
-# HeaderFilterRegex: '^(paddle/(?!cinn)|torch/csrc/(?!deploy/interpreter/cpython)).*$'
 HeaderFilterRegex: '^(paddle/(?!cinn)).*$'
 AnalyzeTemporaryDtors: false
 WarningsAsErrors: '*'

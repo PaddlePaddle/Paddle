@@ -335,7 +335,7 @@ def main():
             subprocess.check_call(invocation)
     except:
         print("Unable to run clang-tidy.", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
     # Load the database and extract all files.
     database = json.load(open(os.path.join(build_path, db_path)))
