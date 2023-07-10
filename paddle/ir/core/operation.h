@@ -64,8 +64,14 @@ class IR_API alignas(8) Operation final {
 
   const AttributeMap &attributes() const { return attributes_; }
 
-  void SetAttribute(const std::string &key, Attribute value) {
+  void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
+  }
+
+  Attribute attribute(const std::string &key) const;
+
+  bool HasAttribute(const std::string &key) const {
+    return attributes_.find(key) != attributes_.end();
   }
 
   ir::OpInfo info() const { return info_; }
