@@ -290,10 +290,10 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             # y1 is 2.
 
             y2 = x.nanmedian(0)
-            # y2 is [0., 1.5, 2.5]
+            # y2 is [0., 1., 2.]
 
             y3 = x.nanmedian(0, keepdim=True)
-            # y3 is [[0.,  1.5, 2.5]]
+            # y3 is [[0.,  1., 2.]]
 
             y4 = x.nanmedian((0, 1))
             # y4 is 2.

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import unittest
 
 import numpy as np
@@ -46,6 +47,67 @@ def np_nanmedain(data):
     return np_res
 
 
+def np_nanmedain_axis(data, axis=None):
+    data = copy.deepcopy(data)
+
+    if axis is None:
+        return np_nanmedain(data)
+
+    if isinstance(axis, list):
+        axis = axis
+    elif isinstance(axis, set):
+        axis = list(axis)
+    else:
+        axis = [axis]
+
+    axis = [a + len(data.shape) if a < 0 else a for a in axis]
+
+    shape = list(range(len(data.shape)))
+
+    trans_shape = []
+    reshape = []
+    for i in range(len(data.shape)):
+        if i not in axis:
+            trans_shape.append(i)
+            reshape.append(data.shape[i])
+    last_shape = 1
+    for i in range(len(data.shape)):
+        if i in axis:
+            trans_shape.append(i)
+            last_shape *= data.shape[i]
+    reshape.append(last_shape)
+
+    data_flat = np.transpose(data, trans_shape)
+    data_shape = data_flat.shape
+
+    data_flat = np.reshape(data_flat, (-1, reshape[-1]))
+
+    data_cnt = data_flat.shape[-1]
+    nan_cnt = np.isnan(data_flat).sum(-1)
+
+    data_flat[np.isnan(data_flat)] = np.inf
+    data_sort = np.sort(data_flat, axis=-1)
+    data_sort[np.isinf(data_sort)] = np.nan
+
+    valid_num = data_cnt - nan_cnt
+    is_odd = valid_num % 2
+
+    np_res = np.zeros(len(is_odd), dtype=data.dtype)
+    for j in range(len(is_odd)):
+        if valid_num[j] == 0:
+            np_res[j] = np.nan
+            continue
+
+        i = int(valid_num[j] / 2)
+        if is_odd[j]:
+            np_res[j] = data_sort[j, i]
+        else:
+            np_res[j] = min(data_sort[j, i - 1], data_sort[j, i])
+
+    np_res = np.reshape(np_res, reshape[:-1])
+    return np_res
+
+
 class TestNanmedian(unittest.TestCase):
     def setUp(self):
         single_axis_shape = 120
@@ -69,20 +131,18 @@ class TestNanmedian(unittest.TestCase):
         self.fake_data["single_axis_partial_nan"] = single_partial_nan
         self.fake_data["multi_axis_partial_nan"] = multi_partial_nan
 
-        row_data = np.random.uniform(-1, 1, multi_axis_shape).astype(np.float32)
+        row_data = np.random.uniform(-10, 10, multi_axis_shape)
         row_data[:, :, :, 0] = np.nan
         row_data[:, :, :2, 1] = np.nan
         row_data[:, :, 2:, 2] = np.nan
-        self.fake_data["row_nan_even"] = row_data
+        self.fake_data["row_nan_even"] = row_data.astype(np.float32)
         self.fake_data["row_nan_float64"] = row_data.astype(np.float64)
-        # self.fake_data["row_nan_int64"] = row_data.astype(np.int64)
-        # self.fake_data["row_nan_int32"] = row_data.astype(np.int32)
 
-        col_data = np.random.uniform(-1, 1, multi_axis_shape).astype(np.float32)
-        col_data[:, :, 0, :] = np.nan
+        col_data = np.random.uniform(-10, 10, multi_axis_shape)
+        col_data[:, :, 0, :] = float('nan')
         col_data[:, :, 1, :3] = np.nan
         col_data[:, :, 2, 3:] = np.nan
-        self.fake_data["col_nan_odd"] = col_data
+        self.fake_data["col_nan_odd"] = col_data.astype(np.float32)
 
         self.place = (
             paddle.CUDAPlace(0)
@@ -105,7 +165,6 @@ class TestNanmedian(unittest.TestCase):
     def test_api_static(self):
         data = self.fake_data["col_nan_odd"]
         paddle.enable_static()
-        # np_res = np.nanmedian(data, keepdims=True)
         np_res = np_nanmedain(data)
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', data.shape)
@@ -146,14 +205,10 @@ class TestNanmedian(unittest.TestCase):
                         )
                         continue
 
-                # np_res = np.nanmedian(data, keepdims=keep_dim)
                 np_res = np_nanmedain(data)
-
                 pd_res = paddle.nanmedian(
                     paddle.to_tensor(data), keepdim=keep_dim
                 )
-                # assert list(np_res.shape) == pd_res.shape
-
                 np.testing.assert_allclose(
                     np_res, pd_res.item(), rtol=1e-05, equal_nan=True
                 )
@@ -163,18 +218,17 @@ class TestNanmedian(unittest.TestCase):
                 paddle.to_tensor(data), axis=axis, keepdim=False
             )
             axis = clean_axis_numpy(axis, len(data.shape))
-            np_res = np.nanmedian(data, axis=axis, keepdims=False)
+            np_res = np_nanmedain_axis(data, axis)
             np.testing.assert_allclose(
                 np_res, pd_res.numpy(), rtol=1e-05, equal_nan=True
             )
 
         for name, data in self.fake_data.items():
-            print("---", name)
             test_data_case(data, name)
 
-        # for axis in self.axis_candiate_list:
-        #     test_axis_case(self.fake_data["row_nan_even"], axis)
-        #     test_axis_case(self.fake_data["col_nan_odd"], axis)
+        for axis in self.axis_candiate_list:
+            test_axis_case(self.fake_data["row_nan_even"], axis)
+            test_axis_case(self.fake_data["col_nan_odd"], axis)
 
         paddle.enable_static()
 
