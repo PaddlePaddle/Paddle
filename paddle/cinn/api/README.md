@@ -1,5 +1,6 @@
 The classes in this directory are the interface of group fusion pass, you can use these apis to build the stragey for group fusion.
 
+
 The Class and APIs are following:
 
 `OpGroup` : A set of op nodes, which will pass to cinn backend for generating kernel code. Two groups can fuse togather according to the rule of merging written in the passes.
