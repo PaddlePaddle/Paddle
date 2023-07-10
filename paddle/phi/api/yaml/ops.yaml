@@ -100,7 +100,7 @@
 
 - op : affine_grid
   args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
-  output : Tensor
+  output : Tensor(output)
   infer_meta :
     func : AffineGridInferMeta
     param : [input, output_shape, align_corners]

@@ -243,6 +243,8 @@ paddle_infer::PlaceType ToPaddleInferPlace(
     return paddle_infer::PlaceType::kCPU;
   } else if (allocation_type == phi::AllocationType::GPU) {
     return paddle_infer::PlaceType::kGPU;
+  } else if (allocation_type == phi::AllocationType::XPU) {
+    return paddle_infer::PlaceType::kXPU;
   } else {
     return paddle_infer::PlaceType::kCPU;
   }
