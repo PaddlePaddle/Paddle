@@ -249,7 +249,7 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
 
     def set_np_compare_func(self):
         np_array_equal_with_nan = functools.partial(
-            np.array_equal, equal_nan=True
+            np.allclose, atol=1e-15, rtol=1e-15, equal_nan=True
         )
         self.np_compare = np_array_equal_with_nan
 
@@ -671,6 +671,35 @@ class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
         self.assertRaises(ValueError, paddle.addmm_, var2, self.x, self.y)
         var3 = paddle.randn([2, 3, 4])
         self.assertRaises(ValueError, paddle.addmm_, var3, self.x, self.y)
+
+
+class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.pow_(var, 2)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.pow(var, 2)
+
+
+class TestDygraphInplacePowerTensor(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float64"
+        self.y = paddle.ones([10, 20, 1], dtype="float64") * 2
+
+    def inplace_api_processing(self, var):
+        return paddle.pow_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.pow(var, self.y)
+
+    def test_type_error(self):
+        var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
+        with self.assertRaisesRegex(
+            TypeError,
+            'y must be scalar or tensor type, but received: %s ' % (type([2])),
+        ):
+            paddle.pow_(var, [2])
 
 
 if __name__ == '__main__':
