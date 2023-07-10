@@ -40,7 +40,8 @@ void BindGenerator(py::module* m_ptr) {
            [](std::shared_ptr<phi::Generator::GeneratorState>& self) {
              return self->current_seed;
            })
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
       // NOTE(shenliang03): Due to the inability to serialize mt19937_64
       // type, resulting in a problem with precision under the cpu.
       .def(py::pickle(
