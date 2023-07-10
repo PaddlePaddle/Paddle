@@ -1353,6 +1353,6 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
       ${IR_OP_TEST} PROPERTIES ENVIRONMENT
                                "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
   else()
-    message(WARNING "not found ${IR_OP_TEST}")
+    message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
   endif()
 endforeach()

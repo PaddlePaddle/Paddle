@@ -39,14 +39,10 @@ class TestUniqueOp(OpTest):
         self.inputs = {
             'X': np.array([2, 3, 3, 1, 5, 3], dtype=self.dtype),
         }
-        self.attrs = {
-            'dtype': int(core.VarDesc.VarType.INT32),
-            'return_inverse': True,
-            'is_sorted': True,
-        }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array([1, 2, 3, 5], dtype=self.dtype),
-            'Index': np.array([1, 2, 2, 0, 3, 2], dtype='int32'),
+            'Out': np.array([2, 3, 1, 5], dtype=self.dtype),
+            'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
         }
 
 
@@ -55,11 +51,7 @@ class TestOne(TestUniqueOp):
         self.inputs = {
             'X': np.array([2], dtype=self.dtype),
         }
-        self.attrs = {
-            'dtype': int(core.VarDesc.VarType.INT32),
-            'return_inverse': True,
-            'is_sorted': True,
-        }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
             'Out': np.array([2], dtype=self.dtype),
             'Index': np.array([0], dtype='int32'),
@@ -69,16 +61,12 @@ class TestOne(TestUniqueOp):
 class TestRandom(TestUniqueOp):
     def init_config(self):
         self.inputs = {'X': np.random.randint(0, 100, (150,), dtype=self.dtype)}
-        self.attrs = {
-            'dtype': int(core.VarDesc.VarType.INT64),
-            'return_inverse': True,
-            'is_sorted': True,
-        }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
         np_unique, np_index, reverse_index = np.unique(
             self.inputs['X'], True, True
         )
         np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
-        np_tuple.sort(key=lambda x: x[0])
+        np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype=self.dtype)
         target_index = np.array(
             [list(target_out).index(i) for i in self.inputs['X']], dtype='int64'
@@ -113,11 +101,7 @@ class TestOneGPU(TestUniqueOp):
         self.inputs = {
             'X': np.array([2], dtype=self.dtype),
         }
-        self.attrs = {
-            'dtype': int(core.VarDesc.VarType.INT32),
-            'return_inverse': True,
-            'is_sorted': True,
-        }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
             'Out': np.array([2], dtype=self.dtype),
             'Index': np.array([0], dtype='int32'),
@@ -475,5 +459,4 @@ class TestUniqueError(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
