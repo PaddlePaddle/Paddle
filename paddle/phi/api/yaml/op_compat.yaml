@@ -1310,6 +1310,30 @@
   outputs :
     {out : Out, residual : Residual}
 
+- op : i0
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i0e
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1e
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
 - op : imag
   backward : imag_grad
   inputs :
@@ -1897,6 +1921,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : nextafter
+  inputs :
+    {x : x, y : y}
+  outputs :
+    out : out
+
 - op : nll_loss
   backward : nll_loss_grad
   inputs :
@@ -2000,6 +2030,12 @@
     x : X
   outputs :
     out : Out
+
+- op : polygamma
+  inputs :
+    x : x
+  outputs :
+    out : out
 
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
