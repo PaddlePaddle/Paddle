@@ -1150,6 +1150,9 @@ def load_vars(
     else:
         vars_from_memory = True
 
+    if filename == '':
+        filename = None
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
