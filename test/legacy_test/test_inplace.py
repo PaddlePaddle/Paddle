@@ -558,6 +558,12 @@ class TestDygraphInplaceAsin(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceSinh(TestDygraphInplaceWithContinuous):
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.sinh(var)
 
@@ -590,6 +596,12 @@ class TestDygraphInplaceCos(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceCosh(TestDygraphInplaceWithContinuous):
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.cosh(var)
 
@@ -614,6 +626,12 @@ class TestDygraphInplaceAcosh(TestDygraphInplaceWithContinuous):
 
 
 class TestDygraphInplaceTan(TestDygraphInplaceWithContinuous):
+    def set_np_compare_func(self):
+        np_array_equal_with_nan = functools.partial(
+            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
+        )
+        self.np_compare = np_array_equal_with_nan
+
     def non_inplace_api_processing(self, var):
         return paddle.tan(var)
 
