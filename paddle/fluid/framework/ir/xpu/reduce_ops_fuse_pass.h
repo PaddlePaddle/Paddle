@@ -30,38 +30,51 @@ class Scope;
 namespace paddle {
 namespace framework {
 namespace ir {
-/*
-fuse series small ops to reduce_max op
-For example:
-graph:
-                      x
-                      |
-                  transpose2
-                      |
-                  unsqueeze2
-                      |
-                    pool2d(pooling_type : max)
-                      |
-                   squeeze2
-                      |
-                  transpose2
-                      |
-------------------------------------------------------
-After the pass is applied:
-                      x
-                      |
-                  reduce_max
-                      |
-*/
 
-class ReduceMaxFusePass : public FusePassBase {
+class ReduceOpsFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
+  /*
+  fuse series small ops to reduce_max op
+  For example:
+  graph:
+                        x
+                        |
+                    transpose2
+                        |
+                    unsqueeze2
+                        |
+                      pool2d(pooling_type : max)
+                        |
+                     squeeze2
+                        |
+                    transpose2
+                        |
+  ------------------------------------------------------
+  After the pass is applied:
+                        x
+                        |
+                    reduce_max
+                        |
+  */
   void FuseReduceMax(ir::Graph* graph) const;
 
-  const std::string name_scope_{"reduce_max_fuse_pass"};
+  /*
+   Origin subgraph:
+              unsqueeze2
+                 |
+               pool2d(avg)
+                 |
+              squeeze2
+
+   Fused subgraph:
+               reduce_mean
+  */
+  void FuseReduceMean(ir::Graph* graph) const;
+
+  const std::string name_scope_{"reduce_ops_fuse_pass"};
 };
 
 }  // namespace ir
