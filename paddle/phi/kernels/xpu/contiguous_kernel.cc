@@ -29,15 +29,16 @@ void ContiguousKernel(const Context& dev_ctx,
   meta.offset = 0;
   out->set_meta(meta);
 
+  int r = 0;
+
   if (input.numel() == 1) {
     auto input_data = reinterpret_cast<const XPUType*>(input.data<T>());
     auto output_data =
         reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
-    r = xpu::copy<XPUTypeT>(dev_ctx.x_context(), input_data, output_data, 1);
+    r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   }
 
-  int r = 0;
   if (std::is_same<T, float>::value) {
     auto input_data = reinterpret_cast<const float*>(input.data<T>());
     auto output_data = reinterpret_cast<float*>(dev_ctx.template Alloc<T>(out));
