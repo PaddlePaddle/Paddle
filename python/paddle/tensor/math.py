@@ -4087,10 +4087,6 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    if not paddle.is_tensor(x):
-        raise TypeError(
-            "The type of 'x'  must be a Tensor, but received %s." % (type(x))
-        )
     if in_dynamic_mode():
         return _C_ops.all(x, axis, keepdim)
     else:
@@ -4166,10 +4162,6 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out4)
 
     """
-    if not paddle.is_tensor(x):
-        raise TypeError(
-            "The type of 'x'  must be a Tensor, but received %s." % (type(x))
-        )
     if in_dynamic_mode():
         return _C_ops.any(x, axis, keepdim)
     else:

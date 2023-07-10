@@ -66,7 +66,7 @@ void Reduce(const DeviceContext& dev_ctx,
   }
 }
 
-template <typename DeviceContext, typename OutT, typename Functor>
+template <typename DeviceContext, typename T, typename Functor>
 void BoolReduceKernel(const DeviceContext& dev_ctx,
                       const phi::DenseTensor& input,
                       const std::vector<int64_t>& dims,
@@ -74,7 +74,7 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
                       bool reduce_all,
                       phi::DenseTensor* output) {
   reduce_all = recompute_reduce_all(input, dims, reduce_all);
-  dev_ctx.template Alloc<OutT>(output);
+  dev_ctx.template Alloc<T>(output);
 
   // The dims has full dim, set the reduce_all is True
   const auto& input_dim_size = input.dims().size();
@@ -90,7 +90,7 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
   DenseTensor tmp_tensor;
   if (input.dtype() != phi::DataType::BOOL) {
     tmp_tensor =
-        phi::Cast<OutT, DeviceContext>(dev_ctx, input, phi::DataType::BOOL);
+        phi::Cast<T, DeviceContext>(dev_ctx, input, phi::DataType::BOOL);
   } else {
     tmp_tensor = input;
   }
