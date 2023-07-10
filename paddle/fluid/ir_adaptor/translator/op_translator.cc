@@ -911,8 +911,6 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
 
     bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
 
-    std::cerr << "is sparse " << is_sparse << std::endl;
-
     if (is_sparse) {
       target_op_name = "pd.embedding_grad_sparse";
     } else {
