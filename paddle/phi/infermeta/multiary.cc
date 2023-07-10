@@ -1408,7 +1408,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   };
 
   // In the case of quantization enabled, the dtype for computation is
-  // determined based on compute_type.
+  // determined based on compute_dtype.
   if (x.dtype() == phi::DataType::INT32) {
     PADDLE_ENFORCE_NE(
         compute_dtype,
@@ -1454,7 +1454,11 @@ void FusedBiasActInferMeta(const MetaTensor& x,
         FBADtypeCheck(x, "x", compute_dtype);
       }
     }
-    out->set_dtype(x.dtype());
+    if (quant_scale > 0) {
+      out->set_dtype(phi::DataType::INT8);
+    } else {
+      out->set_dtype(x.dtype());
+    }
   }
   out->set_layout(x.layout());
 }
