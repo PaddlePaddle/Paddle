@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/cinn/api/op_group.h"
 #include "paddle/cinn/hlir/pass/fusion_merge_pass_util.h"
 
