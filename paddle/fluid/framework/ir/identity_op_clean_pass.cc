@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/identity_op_clean_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -95,7 +96,7 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::FindUselessOpPattern pattern(gpd.mutable_pattern(), name_scope_);
 
-  int found_subgraph_count = 0;
+  int found_count = 0;
   GraphPatternDetector::handle_t handler =
       [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
         GET_IR_NODE_FROM_SUBGRAPH(useless_op_in, useless_op_in, pattern);
@@ -113,11 +114,11 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
         }
 
         GraphSafeRemoveNodes(graph, {useless_op, useless_op_out});
-        found_subgraph_count++;
+        found_count++;
       };
 
   gpd(graph, handler);
-  AddStatis(found_subgraph_count);
+  AddStatis(found_count);
 }
 
 }  // namespace ir
@@ -126,3 +127,8 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(identity_op_clean_pass,
               paddle::framework::ir::IdentityOpCleanPass);
+REGISTER_PASS_CAPABILITY(identity_op_clean_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("scale", 0)
+            .LE("c_identity", 1));
