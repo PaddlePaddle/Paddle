@@ -2456,6 +2456,12 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_custom_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.CustomPlace(
+                p.custom_device_type(), p.custom_device_id()
+            )
         else:
             p = core.Place()
             p.set_place(t._place())
