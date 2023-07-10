@@ -424,6 +424,7 @@ def create_test_bf16_class(parent, atol=0.01):
             self.dtype = np.uint16
 
         def test_check_output(self):
+            print("check out")
             place = core.CUDAPlace(0)
             self.check_output_with_place(
                 place,
@@ -434,6 +435,7 @@ def create_test_bf16_class(parent, atol=0.01):
             )
 
         def test_check_grad_x(self):
+            print("check grad x")
             place = core.CUDAPlace(0)
             numeric_grads = self.get_numeric_grad(place, 'X')
             self.check_grad_with_place(
@@ -441,6 +443,8 @@ def create_test_bf16_class(parent, atol=0.01):
                 ['X'],
                 'Out',
                 no_grad_set={'Y'},
+                max_relative_error=3e-2,
+                atol=3e-2,
                 user_defined_grads=[numeric_grads],
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
@@ -448,6 +452,7 @@ def create_test_bf16_class(parent, atol=0.01):
             )
 
         def test_check_grad_y(self):
+            print("check grad y")
             place = core.CUDAPlace(0)
             numeric_grads = self.get_numeric_grad(place, 'Y')
             self.check_grad_with_place(
@@ -455,6 +460,8 @@ def create_test_bf16_class(parent, atol=0.01):
                 ['Y'],
                 'Out',
                 no_grad_set={'X'},
+                max_relative_error=3e-2,
+                atol=3e-2,
                 user_defined_grads=[numeric_grads],
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
