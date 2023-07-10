@@ -12,72 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-
-#include "glog/logging.h"
-
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/load_store_util.h"
-#include "paddle/phi/kernels/gpu/gelu_funcs.h"
-
-PHI_DECLARE_bool(use_fast_math);
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 
 namespace phi {
 namespace fusion {
-
-using phi::funcs::CudaSwishFunctor;
-using phi::funcs::DequantLoad;
-using phi::funcs::Load;
-using phi::funcs::QuantStore;
-using phi::funcs::Store;
-
-template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
-template <typename T>
-using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
-
-// TODO(lzc): transfer to phi::funcs
-template <typename T>
-struct GeluFunctor {
-  inline __host__ __device__ T operator()(const T x) const {
-    using U = LayerNormParamType<T>;
-    const U casted_x = static_cast<U>(x);
-    const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
-    const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
-    return static_cast<T>(out);
-  }
-};
-
-template <typename T>
-struct FastGeluFunctor {
-  inline __device__ T operator()(const T x) const {
-    return phi::GeluFwd<T, true>(x);
-  }
-};
-
-inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
-  constexpr int kBlockSize = 128;
-  constexpr int kNumWaves = 16;
-
-  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-  const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMultiProcessors(device_id);
-
-  *num_blocks =
-      std::max<int>(1,
-                    std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
-                                      sm_count * max_thread_per_multiprocessor /
-                                          kBlockSize * kNumWaves));
-  return cudaSuccess;
-}
 
 template <typename T,
           typename Functor,
@@ -119,7 +57,6 @@ __global__ void ActFFNGlu(const T *bias,
       src_vec1[j] = act_functor(src_vec1[j]);
       src_vec1[j] *= src_vec2[j];
     }
-    // phi::Store<T, VecSize>(src_vec1, &output_this_thread[idx]);
     store_func.template store<VecSize>(src_vec1, bi * hid_dim + idx);
   }
 }
