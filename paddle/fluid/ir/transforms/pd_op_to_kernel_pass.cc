@@ -75,7 +75,7 @@ phi::KernelKey GetKernelKey(
     if (data_type_info.size() > 0 && data_type_info[0] != "") {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
-      auto& input_map = op_info_parser->Name2Id();
+      auto& input_map = op_info_parser->InputName2Id();
 
       auto find_it = Str2PhiDataType.find(slot_name);
       if (find_it != Str2PhiDataType.end()) {
