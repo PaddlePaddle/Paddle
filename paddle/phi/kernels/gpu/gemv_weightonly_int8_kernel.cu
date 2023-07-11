@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gemv_weightonly_int8_kernel.h"
 
 #include <assert.h>
+#include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <math_constants.h>
 #include <stdint.h>
@@ -22,29 +23,12 @@ limitations under the License. */
 #include <cub/cub.cuh>  //NOLINT
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 namespace {
-
-template <typename T>
-struct PDDataTypeTraits {
-  using DataType = T;
-};
-
-template <>
-struct PDDataTypeTraits<phi::dtype::float16> {
-  // Since LayerNormDirectCUDAFunctor register half type, we need to convert
-  // phi::float16 to half.
-  using DataType = half;
-};
-
-template <>
-class PDDataTypeTraits<phi::dtype::bfloat16> {
- public:
-  using DataType = __nv_bfloat16;
-};
 
 constexpr int kWarpSize = 32;
 constexpr int kPerBlockWarpNum = 16;
@@ -83,6 +67,7 @@ __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
 }
 
 // Specialization for fast cast from BF16 -> int8
+#ifdef PADDLE_CUDA_BF16
 template <>
 __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
     __nv_bfloat16 halves[4], int8_t signed_chars[4]) {
@@ -121,6 +106,7 @@ __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
   assert(false);
 #endif
 }
+#endif
 
 /* Gelu Activation */
 
@@ -169,12 +155,14 @@ struct ConvertFloatFunc<half> {
   }
 };
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 struct ConvertFloatFunc<__nv_bfloat16> {
   static __device__ __forceinline__ float apply(const __nv_bfloat16& val) {
     return __bfloat162float(val);
   }
 };
+#endif
 
 template <typename T>
 struct ConvertDstFunc {
@@ -188,12 +176,14 @@ struct ConvertDstFunc<half> {
   }
 };
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 struct ConvertDstFunc<__nv_bfloat16> {
   static __device__ __forceinline__ __nv_bfloat16 apply(const float& val) {
     return __float2bfloat16_rn(val);
   }
 };
+#endif
 
 template <typename T>
 struct HalfMul {
@@ -202,6 +192,7 @@ struct HalfMul {
   }
 };
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 struct HalfMul<__nv_bfloat16> {
   static __device__ __forceinline__ __nv_bfloat16
@@ -213,6 +204,7 @@ struct HalfMul<__nv_bfloat16> {
 #endif
   }
 };
+#endif
 
 /*
 Int8 Weightonly GEMV.
