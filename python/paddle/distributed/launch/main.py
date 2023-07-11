@@ -348,6 +348,15 @@ def launch():
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
         ctx.max_time_per_task = max_time_per_task
+
+        # warmup
+        warmup_time = (
+            max_time_per_task
+            if "warmup_time" not in tuner_cfg
+            else tuner_cfg.get("warmup_time")
+        )
+
+        is_first_task = True
         # build history recorder
         recorder = History_recorder()
 
@@ -356,6 +365,9 @@ def launch():
         raw_ctx = copy.deepcopy(ctx)
         while cur_cfg:
             ctx = copy.deepcopy(raw_ctx)
+            if is_first_task:
+                ctx.max_time_per_task = warmup_time
+            is_first_task = False
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
                 cur_cfg["dp_degree"],
