@@ -21,7 +21,7 @@ namespace phi {
 
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                          const std::vector<int64_t> &y_dims,
-                         const std::vector<int64_t> &out_dims,
+                         const std::vector<int64_t> &out_dims UNUSED,
                          std::vector<int64_t> *x_bd_dims,
                          std::vector<int64_t> *y_bd_dims,
                          std::vector<int64_t> *out_bd_dims,

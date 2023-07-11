@@ -52,7 +52,7 @@ template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const IntArray& shape,
                 const Scalar& val,
-                DataType dtype,
+                DataType dtype UNUSED,
                 DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 

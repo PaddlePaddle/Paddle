@@ -191,7 +191,7 @@ bool VBroadcastKernel<float>::CanBeUsed(const int64_t& d) const {
 }
 
 template <>
-bool VBroadcastKernel<double>::CanBeUsed(const int64_t& attr) const {
+bool VBroadcastKernel<double>::CanBeUsed(const int64_t& attr UNUSED) const {
   return true;
 }
 
@@ -206,43 +206,45 @@ bool VTanhKernel<float>::CanBeUsed(const int& d) const {
 }
 
 template <>
-bool SeqPoolKernel<float>::CanBeUsed(const seq_pool_attr_t& attr) const {
+bool SeqPoolKernel<float>::CanBeUsed(const seq_pool_attr_t& attr UNUSED) const {
   return true;
 }
 
 template <>
-bool SeqPoolKernel<double>::CanBeUsed(const seq_pool_attr_t& attr) const {
+bool SeqPoolKernel<double>::CanBeUsed(
+    const seq_pool_attr_t& attr UNUSED) const {
   return true;
 }
 
 template <>
-bool EmbSeqPoolKernel<float>::CanBeUsed(const emb_seq_pool_attr_t& attr) const {
+bool EmbSeqPoolKernel<float>::CanBeUsed(
+    const emb_seq_pool_attr_t& attr UNUSED) const {
   return true;
 }
 
 template <>
 bool EmbSeqPoolKernel<double>::CanBeUsed(
-    const emb_seq_pool_attr_t& attr) const {
+    const emb_seq_pool_attr_t& attr UNUSED) const {
   return true;
 }
 
 template <>
-bool SgdKernel<float>::CanBeUsed(const sgd_attr_t& attr) const {
+bool SgdKernel<float>::CanBeUsed(const sgd_attr_t& attr UNUSED) const {
   return true;
 }
 
 template <>
-bool SgdKernel<double>::CanBeUsed(const sgd_attr_t& attr) const {
+bool SgdKernel<double>::CanBeUsed(const sgd_attr_t& attr UNUSED) const {
   return true;
 }
 
 template <>
-bool MatMulKernel<float>::CanBeUsed(const matmul_attr_t& attr) const {
+bool MatMulKernel<float>::CanBeUsed(const matmul_attr_t& attr UNUSED) const {
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
 template <>
-bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr) const {
+bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr UNUSED) const {
   return true;
 }
 

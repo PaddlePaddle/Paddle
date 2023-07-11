@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
-
 #include "paddle/phi/backends/dynload/lapack.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace funcs {
@@ -308,7 +308,7 @@ void lapackGelsd<double>(int m,
                          int *rank,
                          double *work,
                          int lwork,
-                         double *rwork,
+                         double *rwork UNUSED,
                          int *iwork,
                          int *info) {
   dynload::dgelsd_(&m,
@@ -340,7 +340,7 @@ void lapackGelsd<float>(int m,
                         int *rank,
                         float *work,
                         int lwork,
-                        float *rwork,
+                        float *rwork UNUSED,
                         int *iwork,
                         int *info) {
   dynload::sgelsd_(&m,
@@ -372,7 +372,7 @@ void lapackGelsy<double>(int m,
                          int *rank,
                          double *work,
                          int lwork,
-                         double *rwork,
+                         double *rwork UNUSED,
                          int *info) {
   dynload::dgelsy_(
       &m, &n, &nrhs, a, &lda, b, &ldb, jpvt, &rcond, rank, work, &lwork, info);
@@ -391,7 +391,7 @@ void lapackGelsy<float>(int m,
                         int *rank,
                         float *work,
                         int lwork,
-                        float *rwork,
+                        float *rwork UNUSED,
                         int *info) {
   dynload::sgelsy_(
       &m, &n, &nrhs, a, &lda, b, &ldb, jpvt, &rcond, rank, work, &lwork, info);
@@ -410,7 +410,7 @@ void lapackGelss<double>(int m,
                          int *rank,
                          double *work,
                          int lwork,
-                         double *rwork,
+                         double *rwork UNUSED,
                          int *info) {
   dynload::dgelss_(
       &m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond, rank, work, &lwork, info);
@@ -429,7 +429,7 @@ void lapackGelss<float>(int m,
                         int *rank,
                         float *work,
                         int lwork,
-                        float *rwork,
+                        float *rwork UNUSED,
                         int *info) {
   dynload::sgelss_(
       &m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond, rank, work, &lwork, info);

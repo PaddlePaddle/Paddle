@@ -20,26 +20,27 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& scale,
-                            const DenseTensor& bias,
-                            const paddle::optional<DenseTensor>& mean,
-                            const paddle::optional<DenseTensor>& variance,
-                            const DenseTensor& saved_mean,
-                            const DenseTensor& saved_variance,
-                            const paddle::optional<DenseTensor>& reserve_space,
-                            const DenseTensor& y_grad,
-                            float momentum,
-                            float epsilon,
-                            const std::string& data_layout,
-                            bool is_test,
-                            bool use_global_stats,
-                            bool trainable_statistics,
-                            bool is_inplace,
-                            DenseTensor* x_grad,
-                            DenseTensor* scale_grad,
-                            DenseTensor* bias_grad) {
+void BatchNormGradRawKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& scale,
+    const DenseTensor& bias,
+    const paddle::optional<DenseTensor>& mean UNUSED,
+    const paddle::optional<DenseTensor>& variance UNUSED,
+    const DenseTensor& saved_mean,
+    const DenseTensor& saved_variance,
+    const paddle::optional<DenseTensor>& reserve_space UNUSED,
+    const DenseTensor& y_grad,
+    float momentum UNUSED,
+    float epsilon,
+    const std::string& data_layout UNUSED,
+    bool is_test UNUSED,
+    bool use_global_stats UNUSED,
+    bool trainable_statistics UNUSED,
+    bool is_inplace UNUSED,
+    DenseTensor* x_grad,
+    DenseTensor* scale_grad,
+    DenseTensor* bias_grad) {
   funcs::BatchNormOneDNNHandler<T> handler(
       dev_ctx.GetEngine(), dev_ctx.GetPlace(), epsilon, &x, &scale, &y_grad);
 

@@ -76,7 +76,7 @@ std::vector<int> ComputeOutputShape(
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
     const paddle::optional<DenseTensor>& scale_tensor,
-    const std::string& data_layout,
+    const std::string& data_layout UNUSED,
     int out_d,
     int out_h,
     int out_w,
