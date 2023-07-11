@@ -755,7 +755,6 @@ def cmake_run(build_path):
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
-                "CINN_GIT_TAG",
             )
         }
     )
@@ -1431,8 +1430,6 @@ def get_setup_parameters():
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
         'paddle.fluid.layers',
-        'paddle.fluid.contrib',
-        'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+#include "paddle/fluid/eager/grad_node_info.h"
+
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -776,6 +778,13 @@ PYBIND11_MODULE(libpaddle, m) {
           }
         });
 
+  py::class_<egr::GradNodeBase>(m, "GradNodeBase")
+      .def("name", &egr::GradNodeBase::name)
+      .def_property_readonly("next_functions",
+                             &egr::GradNodeBase::NextFunctions)
+      .def("input_meta", &egr::GradNodeBase::InputMeta)
+      .def("output_meta", &egr::GradNodeBase::OutputMeta);
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
   m.def("gpu_memory_available", []() {
@@ -1009,9 +1018,9 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::XCCLCommContext::Release();
-    platform::CustomTracer::GetMap().clear();
-    platform::CustomDeviceEventResourcePool::GetMap().clear();
-    platform::CustomDeviceStreamResourcePool::GetMap().clear();
+    platform::CustomTracer::Release();
+    platform::CustomDeviceEventResourcePool::Release();
+    platform::CustomDeviceStreamResourcePool::Release();
     phi::DeviceManager::Clear();
 #endif
   });
