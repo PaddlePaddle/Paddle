@@ -33,6 +33,7 @@
 #include "paddle/phi/core/kernel_context.h"
 
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -109,6 +110,7 @@ void BuildPhiContext(
       ctx->EmplaceBackInput(in_ptr);
       continue;
     }
+
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
@@ -154,9 +156,27 @@ void BuildPhiContext(
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
       if (tensor_attr_type == "paddle::dialect::IntArrayAttribute") {
-        phi::Attribute r1 = phi::TensorRef(
-            &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
-        ctx->EmplaceBackAttr(r1);
+        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          phi::Attribute r1 = phi::TensorRef(
+              &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
+          ctx->EmplaceBackAttr(r1);
+        } else if (ptr.type().isa<ir::VectorType>()) {
+          auto& tensor_array = inner_scope->FindVar(in_var_name)
+                                   ->Get<paddle::framework::TensorRefArray>();
+          if (tensor_array.size() == 1) {
+            ctx->EmplaceBackAttr(phi::TensorRef(tensor_array[0]));
+          } else {
+            std::vector<phi::TensorRef> vec_ref;
+            for (size_t i = 0; i < tensor_array.size(); ++i) {
+              vec_ref.emplace_back(phi::TensorRef(tensor_array[i]));
+            }
+            ctx->EmplaceBackAttr(vec_ref);
+          }
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              " [%s] only support dense tensor and vector type  ",
+              tensor_attr_type));
+        }
       } else if (tensor_attr_type == "paddle::dialect::ScalarAttribute") {
         phi::Attribute r1 = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
