@@ -42,7 +42,10 @@ Event::Event(const Place& place, event_t event)
       event_(event),
       own_data_(false) {}
 
-Event::~Event() { Destroy(); }
+Event::~Event() {
+  g_events.remove(this);
+  Destroy();
+}
 
 bool Event::Init(const Place& place, Flag flags) {
   place_ = place;

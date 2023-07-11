@@ -32,7 +32,10 @@ void Stream::ReleaseAll() {
   }
 }
 
-Stream::~Stream() { Destroy(); }
+Stream::~Stream() {
+  g_streams.remove(this);
+  Destroy();
+}
 
 const stream_t& Stream::raw_stream() const { return stream_; }
 
