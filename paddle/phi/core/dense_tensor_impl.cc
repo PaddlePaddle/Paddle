@@ -42,16 +42,18 @@ void DenseTensor::check_memory_size() const {
       holder_,
       phi::errors::PreconditionNotMet("Tensor holds no memory. "
                                       "Call Tensor::mutable_data firstly."));
-  PADDLE_ENFORCE_LE(
-      numel() * SizeOf(dtype()),
-      memory_size(),
-      phi::errors::PreconditionNotMet(
-          "Tensor's dimension is out of bound."
-          "Tensor's dimension must be equal or less than the size of its "
-          "memory."
-          "But received Tensor's dimension is %d, memory's size is %d.",
-          numel() * SizeOf(dtype()),
-          memory_size()));
+  if (meta_.is_contiguous()) {
+    PADDLE_ENFORCE_LE(
+        numel() * SizeOf(dtype()),
+        memory_size(),
+        phi::errors::PreconditionNotMet(
+            "Tensor's dimension is out of bound."
+            "Tensor's dimension must be equal or less than the size of its "
+            "memory."
+            "But received Tensor's dimension is %d, memory's size is %d.",
+            numel() * SizeOf(dtype()),
+            memory_size()));
+  }
 }
 
 const Place& DenseTensor::place() const {
@@ -73,7 +75,7 @@ void DenseTensor::set_layout(const DataLayout layout) {
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
-  if (holder_) {
+  if (holder_ && meta_.is_contiguous()) {
     PADDLE_ENFORCE_LE(
         numel() * static_cast<int64_t>(SizeOf(dtype())) +
             static_cast<int64_t>(meta_.offset),
