@@ -60,16 +60,16 @@ class Beta(exponential_family.ExponentialFamily):
             >>> # scale input
             >>> beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
             >>> print(beta.mean)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.50000000])
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            0.50000000)
 
             >>> print(beta.variance)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.12500000])
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            0.12500000)
 
             >>> print(beta.entropy())
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.24156499])
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            -0.24156499)
 
             >>> # tensor input with broadcast
             >>> beta = paddle.distribution.Beta(alpha=paddle.to_tensor([0.2, 0.4]), beta=0.6)
