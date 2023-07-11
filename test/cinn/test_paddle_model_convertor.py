@@ -146,7 +146,7 @@ class TestPaddleModel(OpMapperTest):
     def load_paddle_program(self):
         self.exe = paddle.static.Executor(self.place)
         print("for debug list dir")
-
+        self.model_dir = os.path.dirname(self.model_dir)
         files = os.listdir(self.model_dir)
         for file in files:
             print(file)
