@@ -154,6 +154,13 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
                            const std::string& reduce,
                            MetaTensor* out);
 
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      const float epsilon,
+                      const int begin_norm_axis,
+                      MetaTensor* out);
+
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,
                        const MetaTensor& boxes_num,
