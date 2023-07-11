@@ -65,6 +65,7 @@ set(STRIED_TESTS test_bert test_cycle_gan test_lstm test_ptb_lm_v2 test_slice)
 foreach(STRIED_TEST ${STRIED_TESTS})
   py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
                   ${GC_ENVS} FLAGS_use_stride_kernel=true)
+  set_tests_properties(${STRIED_TEST}_with_stride PROPERTIES TIMEOUT 120)
 endforeach()
 
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)

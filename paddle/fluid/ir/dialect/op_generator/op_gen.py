@@ -43,6 +43,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
@@ -336,30 +337,26 @@ class OpInfoParser:
             for scalar_attr in self.op_compat_item['scalar'].keys():
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
                     if (
-                        self.op_compat_item['scalar'][scalar_attr]['data_type']
-                        == "std::string"
+                        scalar_attr == "depth"
+                        and self.op_phi_name[0] == "one_hot"
                     ):
-                        # see isclose and allclose in op_compat.yaml
-                        mutable_attribute_name_list.append(scalar_attr)
-                        mutable_attribute_type_list.append(
-                            ["ir::StrAttribute", "std::string"]
-                        )
+                        mutable_attribute_name_list.append("num_classes")
                     else:
-                        if (
-                            scalar_attr == "depth"
-                            and self.op_phi_name[0] == "one_hot"
-                        ):
-                            mutable_attribute_name_list.append("num_classes")
-                        else:
-                            mutable_attribute_name_list.append(scalar_attr)
-                        mutable_attribute_type_list.append(
-                            [
-                                "paddle::dialect::ScalarAttribute",
-                                self.op_compat_item['scalar'][scalar_attr][
-                                    'data_type'
-                                ],
-                            ]
-                        )
+                        mutable_attribute_name_list.append(scalar_attr)
+                    data_type = self.op_compat_item['scalar'][scalar_attr][
+                        'data_type'
+                    ]
+                    # patch for isclose and allclose
+                    if (self.op_compat_item['op'] == "isclose") or (
+                        self.op_compat_item['op'] == "allclose"
+                    ):
+                        data_type = "float"
+                    mutable_attribute_type_list.append(
+                        [
+                            "paddle::dialect::ScalarAttribute",
+                            data_type,
+                        ]
+                    )
                 # See eye in op_compat.yaml
                 else:
                     mutable_attribute_name_list.append(scalar_attr)
@@ -371,7 +368,6 @@ class OpInfoParser:
                             ],
                         ]
                     )
-
         # int_array
         if (self.op_compat_item is not None) and (
             'int_array' in self.op_compat_item
@@ -713,6 +709,10 @@ def OpGenerator(
             op_interfaces_str = ""
             if len(op_interfaces) > 0:
                 op_interfaces_str = "," + ",".join(op_interfaces)
+
+            if op_name[-1] == "_":
+                op_traits += ["InplaceTrait"]
+
             op_traits_str = ""
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)

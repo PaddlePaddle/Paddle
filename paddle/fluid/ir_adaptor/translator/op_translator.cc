@@ -69,15 +69,25 @@ using InputHandleFn = std::function<ir::OpResult(ir::IrContext*,
 constexpr char kTargetDialectPrefix[] = "pd.";
 constexpr char kEmptyVarName[] = "@EMPTY@";
 
-static const std::unordered_set<std::string> special_inplace_ops = {
+static const std::unordered_set<std::string> special_non_inplace_ops = {
     "batch_norm",
 };
 
+static const std::unordered_set<std::string> special_inplace_ops = {
+    "adagrad",
+    "adam",
+    "adamax",
+    "adamw",
+};
+
 inline bool IsInplace(const OpDesc& op_desc) {
-  bool inplace = false;
-  if (special_inplace_ops.count(op_desc.Type())) {
-    return inplace;
+  if (special_non_inplace_ops.count(op_desc.Type())) {
+    return false;
   }
+  if (special_inplace_ops.count(op_desc.Type())) {
+    return true;
+  }
+  bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
   if (input_names.size() == 0 || output_names.size() == 0) {
@@ -320,10 +330,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
   std::set<std::string> yaml_input_set;
   for (const auto& info : input_infos) {
-    if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
-      continue;
-    }
-
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
@@ -371,7 +377,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     std::vector<std::string> legacy_input_vars;
     // return empty OpResult if this arg is optional and not shown in OpDesc
-    // TODO(lyk): HasInput doesnot consider variadic attribute
     if (op_desc.HasInput(legacy_input_name, true)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
@@ -382,7 +387,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         continue;
       }
     }
-
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << legacy_input_name << " " << legacy_input_vars.size();
 
@@ -414,7 +418,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
         (info.type_name.find("IntArrayAttribute") != std::string::npos);
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
-
     // Specially process TensorArray, this because we cannot distinguish it with
     // Vector<DenseTensor> by other conditions but we cannot support it like
     // Vector<DenseTensor>
@@ -428,6 +431,10 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     // if src type is Tensor
     if (!is_vector) {
+      IR_ENFORCE(legacy_input_vars.size() == 1u,
+                 "Input %s not found when parsing op %s",
+                 info.name,
+                 op_desc.Type());
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 

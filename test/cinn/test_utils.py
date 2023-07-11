@@ -15,13 +15,11 @@
 # limitations under the License.
 
 import logging
-import math
 import unittest
 
 import cinn
 import numpy as np
-from cinn import common, framework, frontend, ir, lang, runtime
-from cinn.poly import create_stages
+from cinn import common, framework, ir, lang, runtime
 
 
 class SingleOpTester(unittest.TestCase):

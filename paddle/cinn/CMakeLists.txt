@@ -12,9 +12,7 @@ add_subdirectory(backends)
 add_subdirectory(lang)
 add_subdirectory(optim)
 add_subdirectory(hlir)
-if(CINN_ONLY)
-  add_subdirectory(pybind)
-endif()
+add_subdirectory(pybind)
 add_subdirectory(frontend)
 
 # Download a model

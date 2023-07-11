@@ -26,11 +26,13 @@
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+
 namespace paddle {
 namespace dialect {
 
@@ -63,7 +65,7 @@ phi::KernelKey GetKernelKey(
     if (data_type_info.size() > 0 && data_type_info[0] != "") {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
-      auto& input_map = op_info_parser->Name2Id();
+      auto& input_map = op_info_parser->InputName2Id();
 
       if (input_map.count(slot_name)) {
         // parse from input
@@ -338,6 +340,10 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     for (auto it1 = op_attr_map.begin(); it1 != op_attr_map.end(); ++it1) {
       op_attribute.emplace(it1->first, it1->second);
+    }
+
+    if ((*it)->HasTrait<paddle::dialect::InplaceTrait>()) {
+      op_attribute.emplace("is_inplace", ir::BoolAttribute::get(ctx, true));
     }
 
     ir::Operation* op = ir::Operation::Create(
