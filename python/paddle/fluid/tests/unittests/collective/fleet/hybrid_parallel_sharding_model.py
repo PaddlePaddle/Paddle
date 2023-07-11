@@ -296,7 +296,7 @@ class TestDistMPTraning(unittest.TestCase):
 
     def test_sharding_adam(self):
         sharded_accumulators = {
-            'linear_0.b_0_moment2_0',
+            "linear_0.b_0_moment2_0",
             'embedding_0.w_0_beta1_pow_acc_0',
             'linear_2.b_0_beta2_pow_acc_0',
             'linear_0.b_0_beta1_pow_acc_0',
