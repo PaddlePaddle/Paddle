@@ -32,7 +32,7 @@ class TestSetItemBase(unittest.TestCase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[:, 2] = x[:, 2] + 100
+            y[:, 2] = x[:, 2] + 99
             return y
 
         return foo
@@ -60,7 +60,7 @@ class TestCase1(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[2] = x[2] + 100  # (2, )
+            y[2] = x[2] + 99  # (2, )
             return y
 
         return foo
@@ -70,7 +70,7 @@ class TestCase2(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[:] = x[:] + 100  # slice(None,None,None)
+            y[:] = x[:] + 99  # slice(None,None,None)
             return y
 
         return foo
@@ -80,7 +80,7 @@ class TestCase3(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[1::2] = x[1::2] + 100  # slice(1,None,2)
+            y[1::2] = x[1::2] + 99  # slice(1,None,2)
             return y
 
         return foo
@@ -90,7 +90,7 @@ class TestCase4(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[1, 2] = x[1, 2] + 100  # (1, 2)
+            y[1, 2] = x[1, 2] + 99  # (1, 2)
             return y
 
         return foo
@@ -100,7 +100,7 @@ class TestCase5(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[[1, 2], [2, 3]] = x[[1, 2], [2, 3]] + 100  # ([1,2],[2,3])
+            y[[1, 2], [2, 3]] = x[[1, 2], [2, 3]] + 99  # ([1,2],[2,3])
             return y
 
         return foo
@@ -110,7 +110,7 @@ class TestCase6(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[1, :, 3] = x[1, :, 3] + 100  # slice(None,None,None),3)
+            y[1, :, 3] = x[1, :, 3] + 99  # slice(None,None,None),3)
             return y
 
         return foo
@@ -120,7 +120,7 @@ class TestCase7(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            y[1, ..., 2] = x[1, ..., 2] + 100  # (1, ..., 2)
+            y[1, ..., 2] = x[1, ..., 2] + 99  # (1, ..., 2)
             return y
 
         return foo
@@ -131,7 +131,7 @@ class TestCase8(TestSetItemBase):
         def foo(x):
             y = x + 1
             index = paddle.to_tensor([1, 2], dtype="int64")
-            y[index] = x[index] + 100  # Tensor([1,2])
+            y[index] = x[index] + 99  # Tensor([1,2])
             return y
 
         return foo
