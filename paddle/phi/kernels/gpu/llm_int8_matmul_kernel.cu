@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/llm_int8_mat_mul_kernel.h"
+#include "paddle/phi/kernels/llm_int8_matmul_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifndef PADDLE_WITH_HIP
-#include "paddle/phi/kernels/impl/llm_int8_mat_mul_kernel_impl.h"
+#include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"
 #endif
 
 namespace phi {
@@ -56,7 +56,7 @@ void llm_int8_compute(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void LLMInt8MatMulKernel(const Context& dev_ctx,
+void LLMInt8MatmulKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& weight,
                          const DenseTensor& weight_scale,
@@ -68,8 +68,8 @@ void LLMInt8MatMulKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(llm_int8_mat_mul,
+PD_REGISTER_KERNEL(llm_int8_matmul,
                    GPU,
                    ALL_LAYOUT,
-                   phi::LLMInt8MatMulKernel,
+                   phi::LLMInt8MatmulKernel,
                    phi::dtype::float16) {}
