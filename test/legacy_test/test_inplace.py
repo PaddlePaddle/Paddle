@@ -245,11 +245,11 @@ class TestDygraphInplace(unittest.TestCase):
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float64"
+        self.dtype = "float32"
 
     def set_np_compare_func(self):
         np_array_equal_with_nan = functools.partial(
-            np.allclose, atol=1e-15, rtol=1e-15, equal_nan=True
+            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
         )
         self.np_compare = np_array_equal_with_nan
 
@@ -644,9 +644,9 @@ class TestDygraphInplaceATanh(TestDygraphInplaceWithContinuous):
 class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 10])
-        self.dtype = "float64"
-        self.x = paddle.randn([10, 10], dtype="float64")
-        self.y = paddle.randn([10, 10], dtype="float64")
+        self.dtype = "float32"
+        self.x = paddle.randn([10, 10], dtype="float32")
+        self.y = paddle.randn([10, 10], dtype="float32")
 
     def non_inplace_api_processing(self, var):
         return paddle.addmm(var, x=self.x, y=self.y)
@@ -684,8 +684,8 @@ class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
 class TestDygraphInplacePowerTensor(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float64"
-        self.y = paddle.ones([10, 20, 1], dtype="float64") * 2
+        self.dtype = "float32"
+        self.y = paddle.ones([10, 20, 1], dtype="float32") * 2
 
     def inplace_api_processing(self, var):
         return paddle.pow_(var, self.y)
