@@ -18,12 +18,9 @@
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
 #endif
 
-#ifndef PADDLE_WITH_HIP
-#include "paddle/phi/kernels/impl/llm_int8_mat_mul_kernel_impl.h"
-#endif
-
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
+#include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"
 #endif
 
 #include "paddle/phi/kernels/gemv_weightonly_int8_kernel.h"
