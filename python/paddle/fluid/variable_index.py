@@ -821,14 +821,15 @@ def _setitem_impl_(var, item, value):
         inplace_map={"Input": "Out"},
     )
 
-    # map var to the new output
-    from paddle.jit.dy2static.program_translator import (
-        ProgramTranslator,
-    )
+    if not paddle.in_dynamic_mode():
+        # map var to the new output
+        from paddle.jit.dy2static.program_translator import (
+            ProgramTranslator,
+        )
 
-    ProgramTranslator.get_instance()._params_map.add(
-        cur_block.program, var.desc.id(), output
-    )
+        ProgramTranslator.get_instance()._params_map.add(
+            cur_block.program, var.desc.id(), output
+        )
 
     return output
 
