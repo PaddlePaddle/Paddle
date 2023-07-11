@@ -355,6 +355,10 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       op_attribute.emplace(it1->first, it1->second);
     }
 
+    if ((*it)->HasTrait<paddle::dialect::InplaceTrait>()) {
+      op_attribute.emplace("is_inplace", ir::BoolAttribute::get(ctx, true));
+    }
+
     ir::Operation* op = ir::Operation::Create(
         vec_inputs, op_attribute, op_output_types, op_info);
 
