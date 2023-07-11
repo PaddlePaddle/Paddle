@@ -232,6 +232,11 @@ Region &Operation::region(unsigned index) {
   return regions_[index];
 }
 
+const Region &Operation::region(unsigned index) const {
+  assert(index < num_regions_ && "invalid region index");
+  return regions_[index];
+}
+
 void Operation::SetParent(Block *parent, const Block::iterator &position) {
   parent_ = parent;
   position_ = position;

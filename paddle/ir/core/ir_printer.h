@@ -46,29 +46,29 @@ class IR_API IrPrinter : public BasicIrPrinter {
 
   /// @brief print program
   /// @param program
-  void PrintProgram(Program* program);
+  void PrintProgram(const Program* program);
 
   /// @brief dispatch to custom printer function or PrintGeneralOperation
-  void PrintOperation(Operation* op);
+  void PrintOperation(const Operation* op);
   /// @brief print operation itself without its regions
-  void PrintGeneralOperation(Operation* op);
+  void PrintGeneralOperation(const Operation* op);
   /// @brief print operation and its regions
-  void PrintFullOperation(Operation* op);
+  void PrintFullOperation(const Operation* op);
 
   void PrintRegion(const Region& Region);
-  void PrintBlock(Block* block);
+  void PrintBlock(const Block* block);
 
-  void PrintValue(Value v);
+  void PrintValue(const Value& v);
 
-  void PrintOpResult(Operation* op);
+  void PrintOpResult(const Operation* op);
 
-  void PrintAttributeMap(Operation* op);
+  void PrintAttributeMap(const Operation* op);
 
-  void PrintOpOperands(Operation* op);
+  void PrintOpOperands(const Operation* op);
 
-  void PrintOperandsType(Operation* op);
+  void PrintOperandsType(const Operation* op);
 
-  void PrintOpReturnType(Operation* op);
+  void PrintOpReturnType(const Operation* op);
 
  private:
   size_t cur_var_number_{0};
