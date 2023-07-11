@@ -2742,6 +2742,10 @@
   outputs :
     out : Out
 
+- op : tril_indices
+  outputs :
+    out : out
+
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2757,6 +2761,10 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : triu_indices
+  outputs :
+    out : out
 
 - op : trunc
   inputs :
@@ -2937,7 +2945,7 @@
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label}
+    {x: X, label: Label, pos_weight : pos_weight}
   outputs :
     out : Out
 
