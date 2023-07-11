@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ostream>
+#include <vector>
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
@@ -26,7 +27,7 @@ class Program;
 class OpOperand;
 class OpResult;
 
-class alignas(8) Operation final {
+class IR_API alignas(8) Operation final {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -52,14 +53,26 @@ class alignas(8) Operation final {
 
   OpResult result(uint32_t index) const;
 
-  OpOperand operand(uint32_t index) const;
+  OpOperand op_operand(uint32_t index) const;
 
-  void Print(std::ostream &os);
+  Value operand(uint32_t index) const;
+
+  /// Returns the region held by this operation at position 'index'.
+  Region &region(unsigned index);
+  const Region &region(unsigned index) const;
+
+  void Print(std::ostream &os) const;
 
   const AttributeMap &attributes() const { return attributes_; }
 
-  void SetAttribute(const std::string &key, Attribute value) {
+  void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
+  }
+
+  Attribute attribute(const std::string &key) const;
+
+  bool HasAttribute(const std::string &key) const {
+    return attributes_.find(key) != attributes_.end();
   }
 
   ir::OpInfo info() const { return info_; }
@@ -95,10 +108,18 @@ class alignas(8) Operation final {
 
   Program *GetParentProgram();
 
-  /// Returns the region held by this operation at position 'index'.
-  Region &GetRegion(unsigned index);
-
   operator Block::iterator() { return position_; }
+
+  operator Block::const_iterator() const { return position_; }
+
+  /// Replace all uses of results of this operation with the provided 'values'.
+  void ReplaceAllUsesWith(const std::vector<Value> &values);
+
+  inline void ReplaceAllUsesWith(Value value) {
+    ReplaceAllUsesWith(std::vector<Value>{value});
+  }
+
+  void Verify();
 
  private:
   Operation(const AttributeMap &attribute,

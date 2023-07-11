@@ -34,6 +34,8 @@ class ReadOnlyTrait : public ir::OpTraitBase<ReadOnlyTrait> {
   explicit ReadOnlyTrait(ir::Operation *op)
       : ir::OpTraitBase<ReadOnlyTrait>(op) {}
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(ReadOnlyTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(ReadOnlyTrait)
 
 /// \brief Define built-in Interface, derived from OpInterfaceBase. Concepts and
 /// Models need to be defined within the class. Concept defines abstract
@@ -66,6 +68,8 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  private:
   Concept *impl_;
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(InferShapeInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(InferShapeInterface)
 
 ir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
                                     std::vector<std::string> attributes) {
@@ -86,9 +90,8 @@ class Operation1 : public ir::Op<Operation1> {
   static const char *name() { return "test.operation1"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {
+  void Verify() {
+    auto &attributes = this->attributes();
     if (attributes.count("op1_attr1") == 0 ||
         !attributes.at("op1_attr1").isa<ir::StrAttribute>()) {
       throw("Type of attribute: parameter_name is not right.");
@@ -106,17 +109,16 @@ class Operation1 : public ir::Op<Operation1> {
     std::unordered_map<std::string, ir::Attribute> attributes =
         CreateAttributeMap({"op1_attr1", "op1_attr2"},
                            {"op1_attr1", "op1_attr2"});
-    argument.AddOperands<std::vector<ir::OpResult>::iterator>(inputs.begin(),
-                                                              inputs.end());
-    argument.AddTypes<std::vector<ir::Type>::iterator>(output_types.begin(),
-                                                       output_types.end());
-    argument.AddAttributes<
-        std::unordered_map<std::string, ir::Attribute>::iterator>(
-        attributes.begin(), attributes.end());
+    argument.AddOperands(inputs.begin(), inputs.end());
+    argument.AddOutputs(output_types.begin(), output_types.end());
+    argument.AddAttributes(attributes.begin(), attributes.end());
   }
 };
 const char *Operation1::attributes_name[attributes_num] = {"op1_attr1",
                                                            "op1_attr2"};
+
+IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
 // Define op2.
 class Operation2
@@ -126,9 +128,8 @@ class Operation2
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {
+  void Verify() {
+    auto &attributes = this->attributes();
     if (attributes.count("op2_attr1") == 0 ||
         (!attributes.at("op2_attr1").isa<ir::StrAttribute>())) {
       throw("Type of attribute: parameter_name is not right.");
@@ -142,6 +143,8 @@ class Operation2
 };
 const char *Operation2::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
+IR_DECLARE_EXPLICIT_TYPE_ID(Operation2)
+IR_DEFINE_EXPLICIT_TYPE_ID(Operation2)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
 class TestDialect : public ir::Dialect {
@@ -152,7 +155,7 @@ class TestDialect : public ir::Dialect {
   }
   static const char *name() { return "test"; }
 
-  void PrintOperation(ir::Operation *op,
+  void PrintOperation(const ir::Operation *op,
                       ir::IrPrinter &printer) const override {
     printer.PrintOpResult(op);
     printer.os << " =";
@@ -164,6 +167,8 @@ class TestDialect : public ir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1, Operation2>(); }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 TEST(op_test, op_test) {
   // (1) Register Dialect, Operation1, Operation2 into IrContext.
@@ -245,6 +250,7 @@ TEST(op_test, region_test) {
   block->push_front(op1);
   block->insert(block->begin(), op1_2);
   ir::Operation *op2 = ir::Operation::Create(std::move(argument));
+  EXPECT_EQ(op2->region(0).ir_context(), ctx);
   op2->Destroy();
 }
 
@@ -268,6 +274,6 @@ TEST(op_test, module_op_death) {
   EXPECT_EQ(program.module_op().program(), &program);
   EXPECT_EQ(program.module_op().ir_context(), ctx);
 
-  program.module_op()->SetAttribute("program",
-                                    ir::PointerAttribute::get(ctx, &program));
+  program.module_op()->set_attribute("program",
+                                     ir::PointerAttribute::get(ctx, &program));
 }

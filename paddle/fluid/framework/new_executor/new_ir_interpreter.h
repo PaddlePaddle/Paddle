@@ -60,6 +60,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void reset_scope(Scope* new_scope) override;
 
+  const Scope* local_scope() const override;
+
   const platform::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
@@ -118,6 +120,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   // scope
   bool HasLocalScope() const;
 
+  Scope* InnerScope();
+
   // For log and debug
   std::string GetDepsString() const;
 
@@ -147,6 +151,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   ExecutionConfig execution_config_;
 
   VariableScope var_scope_;
+  Scope* scope_{nullptr};
   Scope* local_scope_{nullptr};  // not owned
 
   EventsWaiter main_thread_blocker_;

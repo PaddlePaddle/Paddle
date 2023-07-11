@@ -17,12 +17,15 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 

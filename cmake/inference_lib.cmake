@@ -276,7 +276,13 @@ else()
       SRCS ${paddle_phi_lib}
       DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   endif()
-
+  if(WITH_SHARED_IR)
+    set(paddle_ir_lib ${PADDLE_BINARY_DIR}/paddle/ir/libir.*)
+    copy(
+      inference_lib_dist
+      SRCS ${paddle_ir_lib}
+      DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
+  endif()
 endif()
 
 copy(
@@ -364,10 +370,6 @@ else()
   set(paddle_inference_c_lib
       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c.*
   )
-endif()
-
-if(WITH_INFERENCE_NVTX AND NOT WIN32)
-  add_definitions(-DPADDLE_WITH_INFERENCE_NVTX)
 endif()
 
 copy(

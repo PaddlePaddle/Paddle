@@ -14,19 +14,24 @@
 
 #pragma once
 
-#include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/cast_utils.h"
+#include "paddle/ir/core/type_id.h"
 
 namespace ir {
+class AttributeStorage;
+class AbstractAttribute;
+class IrContext;
+class Dialect;
+
 ///
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
-class Attribute {
+class IR_API Attribute {
  public:
   using Storage = AttributeStorage;
 
-  constexpr Attribute() = default;
+  Attribute() = default;
 
   Attribute(const Storage *storage)  // NOLINT
       : storage_(storage) {}
@@ -46,17 +51,13 @@ class Attribute {
   ///
   /// \brief Some Attribute attribute acquisition interfaces.
   ///
-  TypeId type_id() { return storage_->abstract_attribute().type_id(); }
+  TypeId type_id();
 
-  const AbstractAttribute &abstract_attribute() {
-    return storage_->abstract_attribute();
-  }
+  const AbstractAttribute &abstract_attribute();
 
   const Storage *storage() const { return storage_; }
 
-  const Dialect &dialect() const {
-    return storage_->abstract_attribute().dialect();
-  }
+  const Dialect &dialect() const;
 
   IrContext *ir_context() const;
 
@@ -85,7 +86,7 @@ class Attribute {
   const Storage *storage_{nullptr};
 };
 
-std::ostream &operator<<(std::ostream &os, Attribute attr);
+IR_API std::ostream &operator<<(std::ostream &os, Attribute attr);
 }  // namespace ir
 
 namespace std {

@@ -479,17 +479,22 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                 bw_name.split('(')[0].strip()
                 for bw_name in op_comp_map['backward'].split(',')
             ]
-            for bw_name in bw_names:
-                # static_ops.yaml and ops.yaml use the common op_compat.yaml
-                if bw_name in bw_op_dict:
+            new_bw_names = [
+                bw_name for bw_name in bw_names if bw_name in bw_op_dict
+            ]
+            if len(new_bw_names) != 0:
+                bws_has_out_grad = False
+                for bw_name in bw_names:
+                    # static_ops.yaml and ops.yaml use the common op_compat.yaml
                     for out_grad in op_comp_map['drop_empty_grad']:
-                        assert (
-                            out_grad in bw_op_dict[bw_name]['output_dict']
-                        ), f'''
-                            {bw_name} with {out_grad} is not existed in output_dict '''
-                        bw_op_dict[bw_name]['output_dict'][out_grad][
-                            'drop_empty_grad'
-                        ] = False
+                        if out_grad in bw_op_dict[bw_name]['output_dict']:
+                            bw_op_dict[bw_name]['output_dict'][out_grad][
+                                'drop_empty_grad'
+                            ] = False
+                            bws_has_out_grad = True
+                assert (
+                    bws_has_out_grad
+                ), f'''{bw_names} with {op_comp_map['drop_empty_grad']} is not existed in output_dict '''
 
 
 def parse_get_expected_kerneltype(

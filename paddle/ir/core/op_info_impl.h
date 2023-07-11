@@ -25,9 +25,6 @@
 
 namespace ir {
 class Dialect;
-typedef void (*VerifyPtr)(const std::vector<OpResult> &inputs,
-                          const std::vector<Type> &outputs,
-                          const AttributeMap &attributes);
 
 ///
 /// \brief OpInfoImpl class.

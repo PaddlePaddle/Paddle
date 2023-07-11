@@ -68,6 +68,15 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_auto_tuner MODULES test_auto_tuner)
   set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 100)
+  py_test_modules(test_pipeline_scheduler MODULES test_pipeline_scheduler)
+  set_tests_properties(test_pipeline_scheduler
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
+  set_tests_properties(test_auto_tuner_compare
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
+  set_tests_properties(test_pass_quantization
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 60)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -83,8 +92,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_parallel_tuner_predict PROPERTIES TIMEOUT 120)
   py_test_modules(test_selective_recompute MODULES test_selective_recompute)
   set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
-  py_test_modules(test_pass_quantization MODULES test_pass_quantization)
-  set_tests_properties(test_pass_quantization PROPERTIES TIMEOUT 60)
   py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
   set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
   py_test_modules(test_fused_linear_pass MODULES test_fused_linear_pass)

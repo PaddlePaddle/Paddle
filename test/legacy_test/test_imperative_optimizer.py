@@ -23,22 +23,17 @@ from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
-    AdadeltaOptimizer,
-    AdagradOptimizer,
     Adam,
-    AdamaxOptimizer,
     DecayedAdagradOptimizer,
     DpsgdOptimizer,
     ExponentialMovingAverage,
     FtrlOptimizer,
-    LambOptimizer,
     LarsMomentumOptimizer,
     LookaheadOptimizer,
     ModelAverage,
     MomentumOptimizer,
     PipelineOptimizer,
     RecomputeOptimizer,
-    RMSPropOptimizer,
     SGDOptimizer,
 )
 
@@ -262,7 +257,7 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
     def get_optimizer(self):
         bd = [3, 6, 9]
         optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.piecewise_decay(
+            learning_rate=paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd,
                 values=[0.1 * (0.1**i) for i in range(len(bd) + 1)],
             )
@@ -359,17 +354,17 @@ class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
 
 class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.polynomial_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=0.1, decay_steps=5, cycle=self.cycle
             ),
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.polynomial_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=0.1, decay_steps=5, cycle=self.cycle
             )
         )
@@ -408,17 +403,17 @@ class TestImperativeOptimizerCosineDecay(TestImperativeOptimizerBase):
 
 class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.noam_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.NoamDecay(
                 d_model=512, warmup_steps=8000
             ),
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.noam_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.NoamDecay(
                 d_model=512, warmup_steps=8000
             )
         )
@@ -470,20 +465,20 @@ class TestOptimizerLearningRate(unittest.TestCase):
             bd = [2, 4, 6, 8]
             value = [0.2, 0.4, 0.6, 0.8, 1.0]
 
-            adam = fluid.optimizer.Adam(
-                fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                parameter_list=linear.parameters(),
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(bd, value)
+            adam = paddle.optimizer.Adam(
+                scheduler,
+                parameters=linear.parameters(),
             )
 
-            np.testing.assert_allclose(
-                adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0
-            )
+            np.testing.assert_allclose(adam.get_lr(), 0.2, rtol=1e-06, atol=0.0)
 
             ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
             for i in range(12):
                 adam.minimize(loss)
-                lr = adam.current_step_lr()
-
+                lr = adam.get_lr()
+                adam.step()
+                scheduler.step()
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_lr_decay_natural_exp(self):
@@ -499,25 +494,26 @@ class TestOptimizerLearningRate(unittest.TestCase):
             loss = paddle.mean(b)
             base_lr = 1.0
 
-            adam = fluid.optimizer.Adam(
-                fluid.dygraph.NaturalExpDecay(
-                    learning_rate=base_lr,
-                    decay_steps=3,
-                    decay_rate=0.5,
-                    staircase=True,
-                ),
-                parameter_list=linear.parameters(),
+            scheduler = paddle.optimizer.lr.NaturalExpDecay(
+                learning_rate=base_lr,
+                gamma=0.5,
+            )
+            adam = paddle.optimizer.Adam(
+                learning_rate=scheduler,
+                parameters=linear.parameters(),
             )
 
-            np.testing.assert_allclose(
-                adam.current_step_lr(), 1.0, rtol=1e-06, atol=0.0
-            )
+            np.testing.assert_allclose(adam.get_lr(), 1.0, rtol=1e-06, atol=0.0)
 
             ret = [1.0, 1.0, 1.0, np.exp(-0.5), np.exp(-0.5)]
+            counter = 0
             for i in range(5):
                 adam.minimize(loss)
-                lr = adam.current_step_lr()
-
+                lr = adam.get_lr()
+                counter += 1
+                if counter % 3 == 0:
+                    adam.step()
+                    scheduler.step()
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_set_lr(self):
@@ -550,14 +546,12 @@ class TestOptimizerLearningRate(unittest.TestCase):
             np.testing.assert_allclose(lr, 0.7, rtol=1e-06, atol=0.0)
 
             with self.assertRaises(RuntimeError):
-                adam = fluid.optimizer.Adam(
-                    fluid.dygraph.NaturalExpDecay(
+                adam = paddle.optimizer.Adam(
+                    paddle.optimizer.lr.NaturalExpDecay(
                         learning_rate=0.1,
-                        decay_steps=3,
-                        decay_rate=0.5,
-                        staircase=True,
+                        gamma=0.5,
                     ),
-                    parameter_list=linear.parameters(),
+                    parameters=linear.parameters(),
                 )
                 adam.set_lr(0.01)
 
@@ -594,13 +588,13 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Adagrad(
+            learning_rate=0.2, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdagradOptimizer(learning_rate=0.2)
+        optimizer = paddle.optimizer.Adagrad(learning_rate=0.2)
         return optimizer
 
     def test_adagrad(self):
@@ -609,13 +603,13 @@ class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdamaxOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Adamax(
+            learning_rate=0.2, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdamaxOptimizer(learning_rate=0.2)
+        optimizer = paddle.optimizer.Adamax(learning_rate=0.2)
         return optimizer
 
     def test_adamax(self):
@@ -662,16 +656,16 @@ class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdadeltaOptimizer(
+        optimizer = paddle.optimizer.Adadelta(
             learning_rate=0.0003,
             epsilon=1.0e-6,
             rho=0.95,
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdadeltaOptimizer(
+        optimizer = paddle.optimizer.Adadelta(
             learning_rate=0.0003, epsilon=1.0e-6, rho=0.95
         )
         return optimizer
@@ -682,13 +676,13 @@ class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = RMSPropOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list
+        optimizer = paddle.optimizer.RMSProp(
+            learning_rate=0.1, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = RMSPropOptimizer(learning_rate=0.1)
+        optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
         return optimizer
 
     def test_rmsprop(self):
@@ -716,15 +710,15 @@ def exclude_fn(param):
 
 class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = LambOptimizer(
+        optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002,
             exclude_from_weight_decay_fn=exclude_fn,
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = LambOptimizer(
+        optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn
         )
         return optimizer

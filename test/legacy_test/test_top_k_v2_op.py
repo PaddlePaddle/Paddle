@@ -73,6 +73,30 @@ class TestTopkOp(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestTopkOp_ZeroDim(TestTopkOp):
+    def init_args(self):
+        self.k = 1
+        self.axis = 0
+        self.largest = True
+
+    def setUp(self):
+        self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
+        self.dtype = np.float64
+        self.input_data = np.random.random(())
+        self.init_args()
+        self.if_enable_cinn()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'largest': self.largest}
+        output, indices = self.input_data, np.array(0).astype('int64')
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def if_enable_cinn(self):
+        pass
+
+
 class TestTopkOp1(TestTopkOp):
     def init_args(self):
         self.k = 3

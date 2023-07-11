@@ -56,7 +56,7 @@ class IrContextImpl {
 
   void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
-    VLOG(4) << "Register an abstract_type of: [TypeId_hash="
+    VLOG(6) << "Register an abstract_type of: [TypeId_hash="
             << std::hash<ir::TypeId>()(type_id)
             << ", AbstractType_ptr=" << abstract_type << "].";
     registed_abstract_types_.emplace(type_id, abstract_type);
@@ -66,7 +66,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter != registed_abstract_types_.end()) {
-      VLOG(4) << "Found a cached abstract_type of: [TypeId_hash="
+      VLOG(6) << "Found a cached abstract_type of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
@@ -79,7 +79,7 @@ class IrContextImpl {
   void RegisterAbstractAttribute(ir::TypeId type_id,
                                  AbstractAttribute *abstract_attribute) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_attributes_lock_);
-    VLOG(4) << "Register an abstract_attribute of: [TypeId_hash="
+    VLOG(6) << "Register an abstract_attribute of: [TypeId_hash="
             << std::hash<ir::TypeId>()(type_id)
             << ", AbstractAttribute_ptr=" << abstract_attribute << "].";
     registed_abstract_attributes_.emplace(type_id, abstract_attribute);
@@ -105,7 +105,7 @@ class IrContextImpl {
 
   void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
-    VLOG(4) << "Register an operation of: [Name=" << name
+    VLOG(6) << "Register an operation of: [Name=" << name
             << ", OpInfo ptr=" << info.AsOpaquePointer() << "].";
     registed_op_infos_.emplace(name, info);
   }
@@ -114,7 +114,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
-      VLOG(4) << "Found a cached OpInfo of: [name=" << name
+      VLOG(8) << "Found a cached OpInfo of: [name=" << name
               << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
       return iter->second;
     }
@@ -125,7 +125,7 @@ class IrContextImpl {
 
   void RegisterDialect(std::string name, Dialect *dialect) {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
-    VLOG(4) << "Register a dialect of: [name=" << name
+    VLOG(6) << "Register a dialect of: [name=" << name
             << ", dialect_ptr=" << dialect << "].";
     registed_dialect_.emplace(name, dialect);
   }
@@ -138,7 +138,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter != registed_dialect_.end()) {
-      VLOG(4) << "Found a cached dialect of: [name=" << name
+      VLOG(6) << "Found a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }
@@ -156,9 +156,14 @@ class IrContextImpl {
   Float16Type fp16_type;
   Float32Type fp32_type;
   Float64Type fp64_type;
+  UInt8Type uint8_type;
+  Int8Type int8_type;
   Int16Type int16_type;
   Int32Type int32_type;
   Int64Type int64_type;
+  BoolType bool_type;
+  Complex64Type complex64_type;
+  Complex128Type complex128_type;
 
   // Cached AbstractAttribute instances.
   std::unordered_map<TypeId, AbstractAttribute *> registed_abstract_attributes_;
@@ -182,6 +187,8 @@ IrContext *IrContext::Instance() {
   return &context;
 }
 
+IrContext::~IrContext() { delete impl_; }
+
 IrContext::IrContext() : impl_(new IrContextImpl()) {
   VLOG(4) << "BuiltinDialect registered into IrContext. ===>";
   GetOrRegisterDialect<BuiltinDialect>();
@@ -191,9 +198,14 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   impl_->fp16_type = TypeManager::get<Float16Type>(this);
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
   impl_->fp64_type = TypeManager::get<Float64Type>(this);
+  impl_->uint8_type = TypeManager::get<UInt8Type>(this);
+  impl_->int8_type = TypeManager::get<Int8Type>(this);
   impl_->int16_type = TypeManager::get<Int16Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
   impl_->int64_type = TypeManager::get<Int64Type>(this);
+  impl_->bool_type = TypeManager::get<BoolType>(this);
+  impl_->complex64_type = TypeManager::get<Complex64Type>(this);
+  impl_->complex128_type = TypeManager::get<Complex128Type>(this);
 }
 
 StorageManager &IrContext::type_storage_manager() {
@@ -213,7 +225,6 @@ void IrContext::RegisterAbstractAttribute(
   if (GetRegisteredAbstractAttribute(type_id) == nullptr) {
     impl().RegisterAbstractAttribute(
         type_id, new AbstractAttribute(std::move(abstract_attribute)));
-    VLOG(4) << "<--- Attribute registered into IrContext. --->";
   } else {
     LOG(WARNING) << " Attribute already registered.";
   }
@@ -266,7 +277,6 @@ void IrContext::RegisterAbstractType(ir::TypeId type_id,
   if (GetRegisteredAbstractType(type_id) == nullptr) {
     impl().RegisterAbstractType(type_id,
                                 new AbstractType(std::move(abstract_type)));
-    VLOG(4) << "<--- Type registered into IrContext. --->";
   } else {
     LOG(WARNING) << " type already registered.";
   }
@@ -292,7 +302,6 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                      attributes_name,
                                      verify);
     impl().RegisterOpInfo(name, info);
-    VLOG(4) << name << " op registered into IrContext. --->";
   }
 }
 
@@ -333,5 +342,19 @@ Int16Type Int16Type::get(IrContext *ctx) { return ctx->impl().int16_type; }
 Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
 
 Int64Type Int64Type::get(IrContext *ctx) { return ctx->impl().int64_type; }
+
+Int8Type Int8Type::get(IrContext *ctx) { return ctx->impl().int8_type; }
+
+UInt8Type UInt8Type::get(IrContext *ctx) { return ctx->impl().uint8_type; }
+
+BoolType BoolType::get(IrContext *ctx) { return ctx->impl().bool_type; }
+
+Complex64Type Complex64Type::get(IrContext *ctx) {
+  return ctx->impl().complex64_type;
+}
+
+Complex128Type Complex128Type::get(IrContext *ctx) {
+  return ctx->impl().complex128_type;
+}
 
 }  // namespace ir

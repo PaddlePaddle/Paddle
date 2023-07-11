@@ -24,6 +24,7 @@
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/enforce.h"
@@ -39,16 +40,18 @@ using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
 using VarDesc = ::paddle::framework::VarDesc;
 
+const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
+    "feed",
+    "fetch",
+};
+
+constexpr char kAttrStopGradients[] = "stop_gradient";
+
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      ir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
   ctx_ = ir::IrContext::Instance();
 }
-
-const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
-    "feed",
-    "fetch",
-};
 
 void ProgramTranslator::Translate() {
   PADDLE_ENFORCE_EQ(
@@ -71,6 +74,11 @@ void ProgramTranslator::Translate() {
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     SetParameterFromSingleBlock(block);
+  }
+
+  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
+    const BlockDesc& block = legacy_program_->Block(block_idx);
+    SetStopGradientAttributeForAllValue(block);
   }
 }
 
@@ -166,7 +174,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
-    ir::Operation* operation = fn(ctx_, &param_map_, program_, *op);
+    ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
 }
@@ -203,6 +211,36 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         }
       }
     }
+  }
+}
+
+void ProgramTranslator::SetStopGradientAttributeForAllValue(
+    const BlockDesc& block) {
+  // Currently we set stop gradient for operation that generated a value
+  // connected with VarDesc
+  for (const auto& [var_name, value_info] : param_map_) {
+    VLOG(10) << "[op translated][stop gradient]" << var_name;
+    VarDesc* var = block.FindVarRecursive(var_name);
+    if (var == nullptr) {
+      continue;
+    }
+    ir::OpResult value = value_info.value;
+    auto* defining_op = value.owner();
+    VLOG(8) << "[op translated][stop gradient]" << var_name
+            << " from: " << defining_op->name();
+    std::vector<ir::Attribute> stop_gradients;
+    if (defining_op->HasAttribute(kAttrStopGradients)) {
+      stop_gradients = defining_op->attribute(kAttrStopGradients)
+                           .dyn_cast<ir::ArrayAttribute>()
+                           .data();
+    } else {
+      stop_gradients = std::vector<ir::Attribute>(
+          defining_op->num_results(), ir::BoolAttribute::get(ctx_, false));
+    }
+    stop_gradients[value.GetResultIndex()] =
+        ir::BoolAttribute::get(ctx_, var->StopGradient());
+    defining_op->set_attribute(kAttrStopGradients,
+                               ir::ArrayAttribute::get(ctx_, stop_gradients));
   }
 }
 

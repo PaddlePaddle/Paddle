@@ -16,6 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -97,6 +99,10 @@ const VariableScope* InterpreterCore::GetVariableScope() const {
 
 void InterpreterCore::reset_scope(Scope* new_scope) {
   impl_->reset_scope(new_scope);
+}
+
+const Scope* InterpreterCore::local_scope() const {
+  return impl_->local_scope();
 }
 
 const platform::Place& InterpreterCore::GetPlace() const {

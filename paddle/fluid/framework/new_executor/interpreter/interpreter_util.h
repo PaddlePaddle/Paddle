@@ -38,7 +38,6 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/ir/core/program.h"
 
 using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 
@@ -66,7 +65,7 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
-bool IsCommunicationOp(const std::string& op_name);
+bool IsCommunicationOp(const OperatorBase* op);
 
 bool IsCommunicationOp(const Instruction& instr);
 
@@ -99,6 +98,7 @@ void BuildOpFuncList(
     ::ir::Block* block,
     std::vector<OpFuncNode>* vec_func_list,
     framework::Scope* scope,
+    framework::Scope* local_scope,
     const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config);
 

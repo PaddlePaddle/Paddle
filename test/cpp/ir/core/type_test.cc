@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <unordered_map>
 
+#include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
@@ -24,11 +25,15 @@
 #include "paddle/ir/core/type_name.h"
 #include "paddle/ir/core/utils.h"
 
-TEST(type_test, type_id) {
-  // Define two empty classes, just for testing.
-  class TypeA {};
-  class TypeB {};
+class TypeA {};
+IR_DECLARE_EXPLICIT_TYPE_ID(TypeA)
+IR_DEFINE_EXPLICIT_TYPE_ID(TypeA)
 
+class TypeB {};
+IR_DECLARE_EXPLICIT_TYPE_ID(TypeB)
+IR_DEFINE_EXPLICIT_TYPE_ID(TypeB)
+
+TEST(type_test, type_id) {
   // Test 1: Test construct TypeId by TypeId::get<T>() and overloaded operator==
   // method.
   ir::TypeId a_id = ir::TypeId::get<TypeA>();
@@ -46,17 +51,16 @@ TEST(type_test, type_id) {
   }
 }
 
+// Define a FakeDialect without registering any types.
+struct FakeDialect : ir::Dialect {
+  explicit FakeDialect(ir::IrContext *context)
+      : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
+  static const char *name() { return "fake"; }
+};
+IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
+
 TEST(type_test, type_base) {
-  // Define two empty classes, just for testing.
-  class TypeA {};
-
-  // Define a FakeDialect without registering any types.
-  struct FakeDialect : ir::Dialect {
-    explicit FakeDialect(ir::IrContext *context)
-        : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
-    static const char *name() { return "fake"; }
-  };
-
   // Test 1: Test the function of IrContext to register Dialect.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
@@ -164,7 +168,7 @@ struct IntegerTypeStorage : public ir::TypeStorage {
     return ParamKey(width_, signedness_) == key;
   }
 
-  static IntegerTypeStorage *Construct(ParamKey key) {
+  static IntegerTypeStorage *Construct(const ParamKey &key) {
     return new IntegerTypeStorage(key.first, key.second);
   }
 
@@ -181,6 +185,8 @@ class IntegerType : public ir::Type {
   using Type::Type;
   DECLARE_TYPE_UTILITY_FUNCTOR(IntegerType, IntegerTypeStorage);
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(IntegerType)
+IR_DEFINE_EXPLICIT_TYPE_ID(IntegerType)
 
 // Customize a Dialect IntegerDialect, registration type of IntegerType.
 struct IntegerDialect : ir::Dialect {
@@ -190,6 +196,8 @@ struct IntegerDialect : ir::Dialect {
   }
   static const char *name() { return "integer"; }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(IntegerDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {
   ir::IrContext *ctx = ir::IrContext::Instance();
@@ -220,6 +228,23 @@ TEST(type_test, custom_type_dialect) {
   ir::Dialect *dialect_integer1 = ctx->GetRegisteredDialect("integer");
   ir::Dialect *dialect_integer2 = ctx->GetRegisteredDialect<IntegerDialect>();
   EXPECT_EQ(dialect_integer1, dialect_integer2);
+}
+
+TEST(type_test, pd_dialect) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  paddle::dialect::SelectedRowsType select_rows_dtype =
+      paddle::dialect::SelectedRowsType::get(
+          ctx, fp32_dtype, dims, data_layout, lod, offset);
+  EXPECT_EQ(select_rows_dtype.dtype().isa<ir::Float32Type>(), true);
+  EXPECT_EQ(select_rows_dtype.dims(), dims);
+  EXPECT_EQ(select_rows_dtype.data_layout(), data_layout);
+  EXPECT_EQ(select_rows_dtype.lod(), lod);
+  EXPECT_EQ(select_rows_dtype.offset(), offset);
 }
 
 namespace TestNamespace {

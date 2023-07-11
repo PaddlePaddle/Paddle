@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_cache.h"
-
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 
 namespace paddle {
 namespace framework {

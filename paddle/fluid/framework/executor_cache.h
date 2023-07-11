@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -37,6 +36,8 @@ namespace framework {
 namespace ir {
 class Graph;
 }
+
+class InterpreterCore;
 
 namespace details {
 void AppendSkipDeletionVars(const std::vector<std::string>& append_vars,

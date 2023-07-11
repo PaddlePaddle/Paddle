@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
 DECLARE_bool(new_executor_use_local_scope);
-
-namespace ir {
-class Program;
-}  // namespace ir
 
 namespace ir {
 class Program;
@@ -67,6 +64,8 @@ class InterpreterCore {
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);
+
+  const Scope* local_scope() const;
 
   const platform::Place& GetPlace() const;
 

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPTI
 
 #include "paddle/fluid/platform/dynload/xpti.h"
 
@@ -28,4 +28,4 @@ XPTI_ROUTINE_EACH(DEFINE_WRAP);
 }  // namespace platform
 }  // namespace paddle
 
-#endif  // PADDLE_WITH_XPU
+#endif  // PADDLE_WITH_XPTI

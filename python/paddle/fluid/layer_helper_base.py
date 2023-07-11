@@ -381,6 +381,7 @@ class LayerHelperBase:
                     and dtype != core.VarDesc.VarType.FP64
                     and dtype != core.VarDesc.VarType.FP16
                     and dtype != core.VarDesc.VarType.BF16
+                    and dtype != core.VarDesc.VarType.INT8
                 ):
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16'] type. Set default_initializer to fit the parameter dtype!"
@@ -392,6 +393,7 @@ class LayerHelperBase:
                     'float64',
                     'bfloat16',
                     'float',
+                    'int8',
                 ]:
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16', 'float'] type. Set default_initializer to fit the parameter dtype!"
