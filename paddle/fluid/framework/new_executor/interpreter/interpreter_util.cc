@@ -126,6 +126,27 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
+bool IsCommunicationOp(const ir::Operation* op) {
+  auto op_attributes = op->attributes();
+  auto op_name =
+      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  if (op_attributes.count("ring_id") != 0) {
+    return true;
+  }
+  return false;
+}
+
 bool IsCommunicationOp(const OperatorBase* op) {
   const std::string& op_name = op->Type();
   const std::set<std::string> special_comm_op_set = {

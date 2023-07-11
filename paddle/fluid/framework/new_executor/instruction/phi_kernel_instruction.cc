@@ -42,6 +42,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   auto op_name =
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+
   phi_op_name_ = op_name;
 
   if (op_name == "builtin.combine" || op_name == "pd.feed" ||
@@ -51,6 +52,34 @@ PhiKernelInstruction::PhiKernelInstruction(
     SetArtificial(true);
     return;
   }
+
+  // Todo: support paddle::dialect::DistAttribute
+  if (op_attributes.count("execution_stream") != 0) {
+    SetExecutionStream(op_attributes.at("execution_stream")
+                           .dyn_cast<::ir::StrAttribute>()
+                           .data());
+  }
+  if (op_attributes.count("stream_priority") != 0) {
+    SetStreamPriority(op_attributes.at("stream_priority")
+                          .dyn_cast<::ir::Int32Attribute>()
+                          .data());
+  }
+  if (op_attributes.count("scheduling_priority") != 0) {
+    SetSchedulingPriority(op_attributes.at("scheduling_priority")
+                              .dyn_cast<::ir::Int64Attribute>()
+                              .data());
+  }
+  // else {
+  //   if (interpreter::IsCommunicationOp(op)) {
+  //     // NOTE(Ruibiao): Dispatching computation before communication improves
+  //     // multi-stream overlap when the time cost of communication less than
+  //     // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
+  //     // training).
+  //     op_func_node.scheduling_priority_ = 1;
+  //   }
+  // }
+
+  // SetKernelType(AnalyseOpFuncType(op, place));
 
   infer_meta_interface_ =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
