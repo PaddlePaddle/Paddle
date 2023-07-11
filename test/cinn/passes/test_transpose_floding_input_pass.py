@@ -16,8 +16,6 @@
 
 import unittest
 
-from cinn.common import *
-from cinn.frontend import *
 from pass_test import PassTest
 
 
