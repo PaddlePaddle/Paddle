@@ -31,7 +31,7 @@ class TestSetItemBase(unittest.TestCase):
 
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[:, 2] = x[:, 2] + 99
             return y
 
@@ -59,7 +59,7 @@ class TestSetItemBase(unittest.TestCase):
 class TestCase1(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[2] = x[2] + 99  # (2, )
             return y
 
@@ -69,7 +69,7 @@ class TestCase1(TestSetItemBase):
 class TestCase2(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[:] = x[:] + 99  # slice(None,None,None)
             return y
 
@@ -79,7 +79,7 @@ class TestCase2(TestSetItemBase):
 class TestCase3(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[1::2] = x[1::2] + 99  # slice(1,None,2)
             return y
 
@@ -89,7 +89,7 @@ class TestCase3(TestSetItemBase):
 class TestCase4(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[1, 2] = x[1, 2] + 99  # (1, 2)
             return y
 
@@ -99,7 +99,7 @@ class TestCase4(TestSetItemBase):
 class TestCase5(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[[1, 2], [2, 3]] = x[[1, 2], [2, 3]] + 99  # ([1,2],[2,3])
             return y
 
@@ -109,7 +109,7 @@ class TestCase5(TestSetItemBase):
 class TestCase6(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[1, :, 3] = x[1, :, 3] + 99  # slice(None,None,None),3)
             return y
 
@@ -119,7 +119,7 @@ class TestCase6(TestSetItemBase):
 class TestCase7(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             y[1, ..., 2] = x[1, ..., 2] + 99  # (1, ..., 2)
             return y
 
@@ -129,7 +129,7 @@ class TestCase7(TestSetItemBase):
 class TestCase8(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             index = paddle.to_tensor([1, 2], dtype="int64")
             y[index] = x[index] + 99  # Tensor([1,2])
             return y
@@ -140,7 +140,7 @@ class TestCase8(TestSetItemBase):
 class TestCase9(TestSetItemBase):
     def init_func(self):
         def foo(x):
-            y = x + 99
+            y = x + 1
             one = paddle.to_tensor(1, dtype="int64")
             two = paddle.to_tensor(2, dtype="int64")
             y[one, :, :, 2] = x[1, :, :, two] + 99  # Tensor([1]), Tensor([2])

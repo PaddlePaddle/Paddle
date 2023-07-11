@@ -50,7 +50,7 @@ def convert_load(x):
         return _convert_into_variable(x)
 
     # get the new output of the var
-    if isinstance(x, Variable):
+    if in_declarative_mode() and isinstance(x, Variable):
         cur_block = default_main_program().current_block()
 
         from paddle.jit.dy2static.program_translator import ProgramTranslator
