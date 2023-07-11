@@ -1994,6 +1994,16 @@
     data_type : x
   backward : reverse_grad
 
+- op : rms_norm
+  args : (Tensor x, Tensor weight, Tensor bias, float epsilon, int begin_norm_axis)
+  output : Tensor(out)
+  infer_meta :
+    func : RmsNormInferMeta
+  kernel :
+    func : rms_norm
+    data_type : x
+  optional : bias
+
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)
   output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out), Tensor(master_param_outs)

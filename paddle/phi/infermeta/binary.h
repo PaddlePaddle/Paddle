@@ -479,4 +479,11 @@ void Unpool3dInferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      const float epsilon,
+                      const int begin_norm_axis,
+                      MetaTensor* out);
+
 }  // namespace phi
