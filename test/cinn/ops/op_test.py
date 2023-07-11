@@ -18,8 +18,17 @@ import struct
 import unittest
 
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import (
+    BFloat16,
+    Bool,
+    DefaultHostTarget,
+    DefaultNVGPUTarget,
+    Float,
+    Float16,
+    Int,
+    UInt,
+    is_compiled_with_cuda,
+)
 from cinn.runtime import seed as cinn_seed
 
 import paddle
