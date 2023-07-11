@@ -622,6 +622,7 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
           generated_by_vector = false;
         }
       }
+
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
       idx_in_vector++;

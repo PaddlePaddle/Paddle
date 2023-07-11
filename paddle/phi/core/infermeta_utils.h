@@ -118,8 +118,7 @@ class InferMetaContext {
     }                                                                          \
   }
 
-#define PD_SPECIALIZE_InferMetaFnCallHelper_FOR_TENSOR_SCALAR_INTARRAY(        \
-    attr_type)                                                                 \
+#define PD_SPECIALIZE_InferMetaFnCallHelper_FOR_TENSOR_SCALAR(attr_type)       \
   template <typename... Tail>                                                  \
   struct InferMetaFnCallHelper<const attr_type&, Tail...> {                    \
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
@@ -131,6 +130,32 @@ class InferMetaContext {
       attr_type attr1;                                                         \
       if (cmp_t.index() == t.index()) {                                        \
         attr1 = attr_type((*paddle::get<phi::TensorRef>(t).Get()));            \
+      } else {                                                                 \
+        attr1 = paddle::get<attr_type>(t);                                     \
+      }                                                                        \
+      InferMetaFnCallHelper<                                                   \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
+                                                                 attr1);       \
+    }                                                                          \
+  }
+
+#define PD_SPECIALIZE_InferMetaFnCallHelper_FOR_TENSOR_INTARRAY(attr_type)     \
+  template <typename... Tail>                                                  \
+  struct InferMetaFnCallHelper<const attr_type&, Tail...> {                    \
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {          \
+      static_assert(out_idx == 0,                                              \
+                    "InferMeta's Attributes should appear before Outputs.");   \
+      const Attribute& t = ctx->AttrAt(attr_idx);                              \
+      static Attribute cmp_t = phi::TensorRef(nullptr);                        \
+      static Attribute vec_ref =                                               \
+          std::vector<phi::TensorRef>({phi::TensorRef(nullptr)});              \
+      attr_type attr1;                                                         \
+      if (cmp_t.index() == t.index()) {                                        \
+        attr1 = attr_type((*paddle::get<phi::TensorRef>(t).Get()));            \
+      } else if (vec_ref.index() == t.index()) {                               \
+        attr1 = attr_type(paddle::get<std::vector<phi::TensorRef>>(t));        \
       } else {                                                                 \
         attr1 = paddle::get<attr_type>(t);                                     \
       }                                                                        \
@@ -222,8 +247,8 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_TENSOR_SCALAR_INTARRAY(Scalar);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_TENSOR_SCALAR_INTARRAY(IntArray);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_TENSOR_SCALAR(Scalar);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_TENSOR_INTARRAY(IntArray);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
       std::vector<bool>);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);

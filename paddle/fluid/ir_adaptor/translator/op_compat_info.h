@@ -81,6 +81,7 @@ class OpNameNormalizer {
                                const std::string& arg_name) {
     bool is_grad_op = (op_type.find(kPhiGradSuffix) != std::string::npos);
     bool is_grad_arg = (arg_name.find(kPhiGradSuffix) != std::string::npos);
+
     if (is_grad_op && is_grad_arg) {
       std::string target = kPhiGradSuffix;
       std::string data = kFluidVarGradSuffix;

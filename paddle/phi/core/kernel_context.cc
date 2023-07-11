@@ -147,5 +147,6 @@ template const DataType& KernelContext::AttrAt(size_t idx) const;
 template const DataLayout& KernelContext::AttrAt(size_t idx) const;
 template const Place& KernelContext::AttrAt(size_t idx) const;
 template const TensorRef& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<TensorRef>& KernelContext::AttrAt(size_t idx) const;
 
 }  // namespace phi
