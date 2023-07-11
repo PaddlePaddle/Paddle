@@ -114,7 +114,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   VLOG(4) << ctx->IsRunMKLDNNKernel();
   VLOG(4) << data_layout;
   const int64_t C =
-      ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
+      ((ctx->IsRunMKLDNNKernel() == true) && (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]);
 
