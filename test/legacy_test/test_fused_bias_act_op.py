@@ -571,6 +571,9 @@ class TestQuantSwigluBF16(TestQuantBF16):
         return out
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestAssert(unittest.TestCase):
     def setUp(self):
         self.rows = 20
