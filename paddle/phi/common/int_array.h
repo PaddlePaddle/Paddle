@@ -63,6 +63,8 @@ class IntArrayBase {
   // The Tensor in vec must have only one element
   IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
 
+  explicit IntArrayBase(const std::vector<phi::TensorRef>& tensor_ref_list);
+
   template <typename OtherT>
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
 

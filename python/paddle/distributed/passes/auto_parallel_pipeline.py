@@ -28,10 +28,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import Program
 
 from .pass_base import PassBase, register_pass
-from .pipeline_scheduler_pass import (
-    _create_program,
-    _insert_sync_for_fthenb_1f1b,
-)
+from .pass_utils import _create_program, _insert_sync_for_fthenb_1f1b
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
