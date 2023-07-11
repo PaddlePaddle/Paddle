@@ -123,26 +123,35 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   }
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
-  // step2.3: Handle Partial
+  // step3.1: Handle Partial
   // (TODO) support case where embedding table is partial in very beginning.
   std::vector<int64_t> partial_on_dims;
   if (weight_row_axis_mapping > -1) {
     partial_on_dims.push_back(weight_row_axis_mapping);
   }
 
+  // step4: merge potential conflict in inputs
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(x_axes, axis_to_dim_map));
+  TensorDistAttr weight_dist_attr_dst =
+      CopyTensorDistAttrForOutput(weight_dist_attr_src);
+  weight_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(weight_axes, axis_to_dim_map));
+
   VLOG(4) << "EmbeddingSPMDRule InferForward: "
           << "Einsum notation: [" << x_axes << "," << weight_axes << " --> "
           << out_axes << "]. " << std::endl
           << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
           << str_join(x_dims_mapping) << "], dst_dims_mapping: ["
-          << str_join(x_dims_mapping) << "]; Y shape: ["
+          << str_join(x_dist_attr_dst.dims_mapping()) << "]; Y shape: ["
           << str_join(weight_shape) << "], src_dims_mapping: ["
           << str_join(weight_dims_mapping) << "], dst_dims_mapping: ["
-          << str_join(weight_dims_mapping) << "]; Output dims_mapping: ["
-          << str_join(out_dims_mapping) << "], partial_on_dims: ["
-          << str_join(partial_on_dims) << "]";
+          << str_join(weight_dist_attr_dst.dims_mapping())
+          << "]; Output dims_mapping: [" << str_join(out_dims_mapping)
+          << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
 
-  return {{x_dist_attr_src, weight_dist_attr_src}, {output_dist_attr_dst}};
+  return {{x_dist_attr_dst, weight_dist_attr_dst}, {output_dist_attr_dst}};
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
