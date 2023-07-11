@@ -236,7 +236,8 @@ TEST(LayerNormSPMDRule, Ctor) {
 
   SPMDRuleBase* layer_norm_rule = SPMDRuleMap::Instance().Get("layer_norm");
 
-  // ijk[1, -1, -1],k[-1],k[-1] --> ijk[1, -1, -1] partial[1]
+  // ijk[1, -1, -1], k[-1], k[-1] --> ijk[1, -1, -1], z[1], z[1], z=ij,
+  // begin_norm_axis=2
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
       infered_dist_attrs = layer_norm_rule->InferForward(
           {x_dist_tensor_spec, scale_dist_tensor_spec, bias_dist_tensor_spec},
@@ -261,7 +262,7 @@ TEST(LayerNormSPMDRule, Ctor) {
             std::vector<int64_t>({1}));
   VLOG(4) << "test1 done.";
 
-  // ijk[1, 0, -1],k[0],k[0] --> ijk[1, 0, -1]
+  // ijk[1, 0, -1],k[0],k[0] --> error, begin_norm_axis=2
   x_dist_tensor_spec.set_dims_mapping({1, 0, -1});
   scale_dist_tensor_spec.set_dims_mapping({0});
   bias_dist_tensor_spec.set_dims_mapping({0});
@@ -271,7 +272,8 @@ TEST(LayerNormSPMDRule, Ctor) {
           attrs););
   VLOG(4) << "test2 done.";
 
-  // ijk[0, -1, -1],z[-1],z[1] --> ijk[0, 1, -1, -1], z=jk
+  // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, 1, -1], i[0], i[0], y=jk,
+  // begin_norm_axis=1
   x_dist_tensor_spec.set_dims_mapping({0, -1, -1});
   scale_dist_tensor_spec.set_dims_mapping({-1});
   bias_dist_tensor_spec.set_dims_mapping({1});
