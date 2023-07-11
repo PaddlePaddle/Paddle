@@ -23,6 +23,9 @@ class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_sharding_logic(self):
         self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
 
+    def test_hybrid_parallel_sharding_state_dict(self):
+        self.run_mnist_2gpu('hybrid_parallel_sharding_state_dict.py')
+
 
 if __name__ == "__main__":
     unittest.main()
