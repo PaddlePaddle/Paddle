@@ -598,7 +598,7 @@ class TestAssert(unittest.TestCase):
                 cols=self.cols,
             )
         except ValueError as e:
-            print(e)
+            pass
 
     def test_assert_case2(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -617,7 +617,7 @@ class TestAssert(unittest.TestCase):
                 compute_dtype='fp16',
             )
         except ValueError as e:
-            print(e)
+            pass
 
 
 @unittest.skipIf(

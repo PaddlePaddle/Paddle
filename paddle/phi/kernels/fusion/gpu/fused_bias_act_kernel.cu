@@ -17,6 +17,7 @@
 namespace phi {
 namespace fusion {
 
+#ifndef PADDLE_WITH_HIP
 template <typename T,
           typename Functor,
           int VecSize,
@@ -192,7 +193,6 @@ void ComputeImpl(const Context &dev_ctx,
                  int cols,
                  LoadFunc load_func,
                  StoreFunc store_func) {
-#ifndef PADDLE_WITH_HIP
   if (act_method == "geglu") {
     // Note(Zhengzekang): For GLU structure, we need divide the cols by 2.
     VLOG(8) << "Doing geglu";
@@ -221,7 +221,6 @@ void ComputeImpl(const Context &dev_ctx,
     PADDLE_THROW(phi::errors::Unimplemented(
         "Currently Only Support GeGLU, SwiGLU, GeLU"));
   }
-#endif
 }
 
 template <typename T, typename Context>
@@ -424,6 +423,7 @@ void DispatchWithDtype(const Context &dev_ctx,
                        float quant_min_bound,
                        DenseTensor *out,
                        UnusedVersion) {}
+#endif
 
 template <typename T, typename Context>
 void FusedBiasActKernel(const Context &dev_ctx,

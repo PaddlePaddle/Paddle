@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -27,9 +28,7 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/load_store_util.h"
-#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
-#endif
 
 // for windows build
 #define M_SQRT1_2 0.70710678118654752440
@@ -105,14 +104,12 @@ struct GeluFunctor {
   }
 };
 
-#ifndef PADDLE_WITH_HIP
 template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
     return phi::GeluFwd<T, true>(x);
   }
 };
-#endif
 
 inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
@@ -133,3 +130,4 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
 
 }  // namespace fusion
 }  // namespace phi
+#endif
