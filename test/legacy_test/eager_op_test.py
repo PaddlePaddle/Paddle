@@ -1140,7 +1140,6 @@ class OpTest(unittest.TestCase):
         set_flags({"FLAGS_enable_new_ir_in_executor": True})
 
         executor = Executor(place)
-
         ir_outs = executor.run(
             program,
             feed=feed_map,
@@ -1244,7 +1243,6 @@ class OpTest(unittest.TestCase):
                 program = compiled_prog
 
             executor = Executor(place)
-
             outs = executor.run(
                 program,
                 feed=feed_map,
@@ -2956,7 +2954,6 @@ class OpTest(unittest.TestCase):
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
-
             res = list(
                 map(
                     np.array,
