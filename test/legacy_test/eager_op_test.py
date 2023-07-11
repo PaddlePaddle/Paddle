@@ -1140,13 +1140,12 @@ class OpTest(unittest.TestCase):
         set_flags({"FLAGS_enable_new_ir_in_executor": True})
 
         executor = Executor(place)
-        new_scope = core.Scope()
+
         ir_outs = executor.run(
             program,
             feed=feed_map,
             fetch_list=fetch_list,
             return_numpy=False,
-            scope=new_scope,
         )
         assert len(outs) == len(
             ir_outs
@@ -1245,13 +1244,12 @@ class OpTest(unittest.TestCase):
                 program = compiled_prog
 
             executor = Executor(place)
-            new_scope = core.Scope()
+
             outs = executor.run(
                 program,
                 feed=feed_map,
                 fetch_list=fetch_list,
                 return_numpy=False,
-                scope=new_scope,
             )
 
             self._check_ir_output(place, program, feed_map, fetch_list, outs)
@@ -2958,7 +2956,7 @@ class OpTest(unittest.TestCase):
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
-            new_scope = core.Scope()
+
             res = list(
                 map(
                     np.array,
@@ -2966,7 +2964,7 @@ class OpTest(unittest.TestCase):
                         prog,
                         feed_dict,
                         fetch_list,
-                        scope=new_scope,
+                        scope=scope,
                         return_numpy=False,
                     ),
                 )
