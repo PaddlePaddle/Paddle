@@ -524,6 +524,7 @@ class TensorRTEngine {
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
+      // Make 0-D tensor to 1-D tensor.
       if (input_shape.size() == 0) {
         input_shape.push_back(1);
       }

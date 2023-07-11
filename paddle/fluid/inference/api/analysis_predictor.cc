@@ -2235,7 +2235,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 
     // We need collect value range for shape tensor for Paddle-TRT's use.
     // To be noticed, this method to identify all shape tensors is based on
-    // assumption that all shape tensors in the model have numbers <= 7.
+    // assumption that all shape tensors in the model have numbers <= 8.
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor.numel() <= 8 && tensor.numel() >= 1;
