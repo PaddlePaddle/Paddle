@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
 import numpy as np
-
-from paddle.fluid import core
-
-sys.path.append("../../python/paddle/fluid/tests/unittests")
 from eager_op_test import OpTest
 from test_softmax_op import stable_softmax
+
+from paddle.fluid import core
 
 
 class TestSequenceSoftmaxOp(OpTest):

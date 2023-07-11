@@ -151,7 +151,7 @@ def extract_code_blocks_from_docstr(docstr):
         # nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
         code_blocks.append(
             {
-                'codes': inspect.cleandoc("\n".join(cb_info['cb_cur'])),
+                'codes': inspect.cleandoc("\n" + "\n".join(cb_info['cb_cur'])),
                 'name': cb_info['cb_cur_name'],
                 'id': cb_info['cb_cur_seq_id'],
                 'required': cb_info['cb_required'],
@@ -264,11 +264,9 @@ def is_required_match(requirestr, cbtitle='not-specified'):
         return None
 
     if all(
-        [
-            k in SAMPLE_CODE_TEST_CAPACITY
-            for k in requires
-            if k not in ['skip', 'skiptest']
-        ]
+        k in SAMPLE_CODE_TEST_CAPACITY
+        for k in requires
+        if k not in ['skip', 'skiptest']
     ):
         return True
 

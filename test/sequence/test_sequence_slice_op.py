@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../../python/paddle/fluid/tests/unittests")
 from eager_op_test import OpTest
 
 

@@ -35,6 +35,6 @@ from .assert_transformer import AssertTransformer
 from .slice_transformer import GetSetter as GSet  # noqa: F401
 from .ast_transformer import DygraphToStaticAst
 from .program_translator import convert_to_static
-from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from .static_analysis import NodeVarType, StaticAnalysisVisitor
 
 __all__ = []

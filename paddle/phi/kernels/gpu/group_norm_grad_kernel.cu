@@ -107,7 +107,7 @@ __global__ void GroupNormBackward(const T* x,
                                   int group_size,
                                   float epsilon,
                                   T* d_x) {
-  // using AccT = typename kps::details::MPTypeTrait<T>::Type;
+  // using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   int gid = blockIdx.y;
   int cid = blockIdx.x;
@@ -279,7 +279,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
-  using AccT = typename kps::details::MPTypeTrait<T>::Type;
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
@@ -291,7 +291,9 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const int W = (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                                   : x_dims[x_dims.size() - 2]);
 
-  dev_ctx.template Alloc<T>(d_x);
+  if (d_x) {
+    dev_ctx.template Alloc<T>(d_x);
+  }
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   DenseTensor ds, db;

@@ -7,7 +7,7 @@ cc_library(
 cc_library(
   cinn_launch_context
   SRCS cinn_launch_context.cc
-  DEPS ddim
+  DEPS phi
        lod_tensor
        scope
        proto_desc
@@ -17,13 +17,13 @@ cc_library(
        parallel_executor
        standalone_executor
        transform_type
-       cinn)
+       cinnapi)
 
 set(CINN_OP_DEPS
     parallel_executor
     string_helper
     variable_helper
-    cinn
+    cinnapi
     cinn_compiler
     cinn_op_helper
     cinn_launch_context

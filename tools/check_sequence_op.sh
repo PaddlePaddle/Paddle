@@ -26,7 +26,7 @@ function check_sequnece_op_unitests(){
         if [ "${in_white_list}" == "True" ]; then
             continue
         fi
-        unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${op_name}.py"
+        unittest_file="test/sequence/test_${op_name}.py"
         if [ ! -f "${PADDLE_ROOT}/${unittest_file}" ]; then
             INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (unittest file does not exists)\n"
             continue
@@ -39,7 +39,7 @@ function check_sequnece_op_unitests(){
     echo ${INVALID_SEQUENCE_OP_UNITTEST}
 }
 
-check_white_list_file="python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
+check_white_list_file="test/white_list/check_op_sequence_batch_1_input_white_list.py"
 function_grep="self.get_sequence_batch_size_1_input("
 INVALID_SEQUENCE_OP_UNITTEST=$(check_sequnece_op_unitests ${check_white_list_file} ${function_grep})
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then
@@ -51,7 +51,7 @@ if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then
     exit 1
 fi
 
-check_white_list_file="python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
+check_white_list_file="test/white_list/check_op_sequence_instance_0_input_white_list.py"
 function_grep="self.get_sequence_instance_size_0_input("
 INVALID_SEQUENCE_OP_UNITTEST=$(check_sequnece_op_unitests ${check_white_list_file} ${function_grep})
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then

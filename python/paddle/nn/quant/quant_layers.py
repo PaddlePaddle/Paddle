@@ -109,7 +109,10 @@ class FakeQuantAbsMax(Layer):
                     persistable=False,
                 )
                 out_scale.stop_gradient = True
-            out, _, = _legacy_C_ops.fake_quantize_dequantize_abs_max(
+            (
+                out,
+                _,
+            ) = _legacy_C_ops.fake_quantize_dequantize_abs_max(
                 input, quant_out, out_scale, *attrs
             )
             return out
@@ -1099,7 +1102,6 @@ class FakeQuantMAOutputScaleLayer(Layer):
         *args,
         **kwargs,
     ):
-
         super().__init__()
         self._layer = layer
         self._fake_quant_output = _get_fake_quant_type(

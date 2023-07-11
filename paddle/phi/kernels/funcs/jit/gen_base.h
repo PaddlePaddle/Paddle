@@ -33,7 +33,7 @@ namespace jit {
 
 class GenBase : public Kernel {
  public:
-  virtual ~GenBase() = default;
+  virtual ~GenBase() {}
   virtual std::string name() const = 0;
   virtual size_t getSize() const = 0;
   virtual const unsigned char* getCodeInternal() const = 0;

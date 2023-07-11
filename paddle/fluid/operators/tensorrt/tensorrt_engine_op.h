@@ -315,9 +315,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
       for (auto name : runtime_input_names_) {
         // NOTE(liuyuanle): It is a trick. If you need a [name], then you need
         // to use [name.substr(0, idx)].
-        // Maybe we insert suffix of "_cast.tmp_" in auto_mixed_precision_pass.
+        // Maybe we insert suffix of "_cast_auto_mixed.tmp_" in
+        // auto_mixed_precision_pass.
         std::string name_real = name;
-        auto idx = name.find("_cast.tmp_");
+        auto idx = name.find("_cast_auto_mixed.tmp_");
         name = name.substr(0, idx);
 
         auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(
@@ -387,9 +388,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
         for (auto x : runtime_input_names_) {
           // NOTE(liuyuanle): It is a trick. If you need a [x], then you need
           // to use [x.substr(0, idx)].
-          // Maybe we insert suffix of "_cast.tmp_" in
+          // Maybe we insert suffix of "_cast_auto_mixed.tmp_" in
           // auto_mixed_precision_pass.
-          auto idx = x.find("_cast.tmp_");
+          auto idx = x.find("_cast_auto_mixed.tmp_");
           x = x.substr(0, idx);
 
           PADDLE_ENFORCE_EQ(
@@ -560,9 +561,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
     for (auto x : runtime_input_names_) {
       // NOTE(liuyuanle): It is a trick. If you need a [x], then you need
       // to use [x.substr(0, idx)].
-      // Maybe we insert suffix of "_cast.tmp_" in auto_mixed_precision_pass.
+      // Maybe we insert suffix of "_cast_auto_mixed.tmp_" in
+      // auto_mixed_precision_pass.
       std::string x_real = x;
-      auto idx = x.find("_cast.tmp_");
+      auto idx = x.find("_cast_auto_mixed.tmp_");
       x = x.substr(0, idx);
 
 #if IS_TRT_VERSION_LT(8000)

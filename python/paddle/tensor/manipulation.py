@@ -1851,8 +1851,7 @@ def stack(x, axis=0, name=None):
                 x = [x]
             else:
                 raise TypeError(
-                    "The type of '%s' in %s must be %s, but received %s"
-                    % (
+                    "The type of '{}' in {} must be {}, but received {}".format(
                         'x',
                         'stack',
                         'list[Tensor], tuple[Tensor] or TensorArray',
@@ -2735,6 +2734,7 @@ def gather(x, index, axis=None, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
             ],
             'gather',
         )

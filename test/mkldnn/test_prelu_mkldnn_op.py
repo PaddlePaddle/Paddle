@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
 
 
 def ref_prelu(x, weight, mode):
@@ -166,7 +162,6 @@ def create_bf16_test_class(parent):
                             dout[:, i],
                             dout[:, i] * self.alpha[i],
                         )
-                    self.dx
             elif self.mode == "element":
                 self.dx = np.where(self.x[:] > 0, dout[:], dout[:] * self.alpha)
 

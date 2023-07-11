@@ -21,6 +21,7 @@ typedef SSIZE_T ssize_t;
 #undef copysign
 #endif
 
+#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -37,6 +38,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
+
 namespace paddle {
 class CustomOpKernelContext;
 namespace framework {
@@ -106,6 +112,11 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
+#ifdef PADDLE_WITH_DISTRIBUTE
+PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value);
+PyObject* ToPyObject(
+    const phi::distributed::auto_parallel::TensorDistAttr* value);
+#endif
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
@@ -114,6 +125,8 @@ PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
+
+PyObject* ToPyObject(egr::GradNodeBase* grad_node);
 
 class PyTensorHook : public egr::TensorHook {
  public:
@@ -286,6 +299,11 @@ paddle::Place CastPyArg2Place(PyObject* obj,
 paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos);
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+std::shared_ptr<phi::distributed::auto_parallel::TensorDistAttr>
+CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos);
+#endif
 
 paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type,

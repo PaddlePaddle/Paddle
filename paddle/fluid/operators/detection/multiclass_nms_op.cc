@@ -607,44 +607,11 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
   }
 };
 
-class MultiClassNMS3Op : public MultiClassNMS2Op {
- public:
-  MultiClassNMS3Op(const std::string& type,
-                   const framework::VariableNameMap& inputs,
-                   const framework::VariableNameMap& outputs,
-                   const framework::AttributeMap& attrs)
-      : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"), ctx.GetPlace());
-  }
-};
-
-class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
- public:
-  void Make() override {
-    MultiClassNMS2OpMaker::Make();
-    AddInput("RoisNum",
-             "(Tensor) The number of RoIs in shape (B),"
-             "B is the number of images")
-        .AsDispensable();
-    AddOutput("NmsRoisNum", "(Tensor), The number of NMS RoIs in each image")
-        .AsDispensable();
-  }
-};
-
 template <typename T, typename DeviceContext>
 class MultiClassNMS2Kernel : public MultiClassNMSKernel<T, DeviceContext> {};
 
 }  // namespace operators
 }  // namespace paddle
-
-DECLARE_INFER_SHAPE_FUNCTOR(multiclass_nms3,
-                            MultiClassNMSShapeFunctor,
-                            PD_INFER_META(phi::MultiClassNMSInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
@@ -668,11 +635,3 @@ PD_REGISTER_STRUCT_KERNEL(multiclass_nms2,
                           ops::MultiClassNMS2Kernel,
                           float,
                           double) {}
-
-REGISTER_OPERATOR(
-    multiclass_nms3,
-    ops::MultiClassNMS3Op,
-    ops::MultiClassNMS3OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    MultiClassNMSShapeFunctor);

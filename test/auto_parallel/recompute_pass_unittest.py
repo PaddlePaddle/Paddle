@@ -96,7 +96,6 @@ class TestRecomputePass(unittest.TestCase):
         self.check_results(mp_losses, rc1_losses)
 
     def test_recompute_pass_error(self):
-
         with self.assertRaises(AssertionError):
             rc_engine = self.get_engine(True, [2])
             history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
