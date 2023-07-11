@@ -22,7 +22,7 @@
 
 namespace phi {
 
-template <typename DeviceContext, typename T, typename D>
+template <typename DeviceContext, typename T, typename D, int bits>
 void quant_compute(const DeviceContext& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out,
@@ -59,15 +59,15 @@ void quant_compute(const DeviceContext& dev_ctx,
 
   per_channel_scale(scale_data, x_data, m, n);
 
-  per_channel_quant(x_int_data, x_data, scale_data, m, n);
+  per_channel_quant<T, bits>(x_int_data, x_data, scale_data, m, n);
   if (layout == "weight_only") {
-    permute_B_rows_for_mixed_gemm(
+    permute_B_rows_for_mixed_gemm<bits>(
         int_processed_data, x_int_data, std::vector<size_t>{m, n}, (int64_t)80);
-    row_major_to_column_major(
+    subbyte_transpose_impl<bits>(
         int_processed_2_data, int_processed_data, std::vector<size_t>{m, n});
-    interleave_column_major_tensor(
+    interleave_column_major_tensor<bits>(
         out_data, int_processed_2_data, std::vector<size_t>{m, n});
-    add_bias_and_interleave_int8s_inplace(out_data, num);
+    add_bias_and_interleave_inplace<bits>(out_data, num);
   } else if (layout == "llm.int8") {
     std::vector<int> axis = {1, 0};
     funcs::Transpose<DeviceContext, int8_t, 2> trans;
@@ -88,9 +88,16 @@ void QuantForCompressKernel(const Context& dev_ctx,
   if (bits == 8) {
     dev_ctx.template Alloc<int8_t>(out);
     dev_ctx.template Alloc<float>(scale);
-    quant_compute<Context, T, int8_t>(dev_ctx, x, out, scale, layout);
+    quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, layout);
+  } else if (bits == 4 && layout == "weight_only") {
+    dev_ctx.template Alloc<int8_t>(out);
+    dev_ctx.template Alloc<float>(scale);
+    quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, layout);
   } else {
-    phi::errors::Unimplemented("The bits only support 8, but got[%d]", bits);
+    phi::errors::Unimplemented(
+        "The bits only support 8 or weight_only 4, but got[%s] [%d]",
+        layout,
+        bits);
   }
   // VLOG(0) << "x: " << x.dtype() << x;
   // VLOG(0) << "out: " << out->dtype() << *out;
@@ -102,5 +109,4 @@ PD_REGISTER_KERNEL(quant_for_compress,
                    CPU,
                    ALL_LAYOUT,
                    phi::QuantForCompressKernel,
-                   float,
                    phi::dtype::float16) {}
