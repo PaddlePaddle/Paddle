@@ -57,6 +57,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         def set_dtype(self):
             self.dtype = self.in_type
+            if self.in_type == np.bool_:
+                self.dtype = "bool"
 
         def _call_setitem(self, x):
             x[0, 0] = self.value
@@ -171,6 +173,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtyper = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -229,6 +233,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -244,13 +250,9 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[5:2:-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemSliceNegetiveStep2(
+        XPUTestSetValueItemSliceNegetiveStep
+    ):
         def set_shape(self):
             self.shape = [5]
 
@@ -264,13 +266,9 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[1::-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemSliceNegetiveStep3(
+        XPUTestSetValueItemSliceNegetiveStep
+    ):
         def set_shape(self):
             self.shape = [3]
 
@@ -284,6 +282,14 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.data[::-1] = self.value
 
     class XPUTestSetValueItemSliceNegetiveStep4(XPUTestSetValueApi):
+        def set_dtype(self):
+            if self.in_type == np.float16:
+                self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
+            else:
+                self.dtype = self.in_type
+
         def set_shape(self):
             self.shape = [3, 4, 5]
 
@@ -296,6 +302,14 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         # 1.2.3 step < 0 and stride < -1
 
     class XPUTestSetValueItemSliceNegetiveStep5(XPUTestSetValueApi):
+        def set_dtype(self):
+            if self.in_type == np.float16:
+                self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
+            else:
+                self.dtype = self.in_type
+
         def set_shape(self):
             self.shape = [5, 5, 5]
 
@@ -363,6 +377,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -373,13 +389,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueItemTensor2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor2(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
@@ -388,13 +398,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0:2] = self.value
 
-    class XPUTestSetValueItemTensor3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor3(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
@@ -403,13 +407,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0:-1, 0:2] = self.value
 
-    class XPUTestSetValueItemTensor4(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor4(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
@@ -418,13 +416,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0:-1, 0:2, ::2] = self.value
 
-    class XPUTestSetValueItemTensor5(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor5(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
@@ -433,13 +425,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0:, 1:2:2, :] = self.value
 
-    class XPUTestSetValueItemTensor6(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor6(XPUTestSetValueItemTensor):
         def set_shape(self):
             self.shape = [3, 4, 5]
 
@@ -456,6 +442,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -465,104 +453,56 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[None] = self.value
 
-    class XPUTestSetValueItemNone2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone2(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[0, None, 1] = self.value
 
         def _get_answer(self):
             self.data[0, None, 1] = self.value
 
-    class XPUTestSetValueItemNone3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone3(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[:, None, None, 1] = self.value
 
         def _get_answer(self):
             self.data[:, None, None, 1] = self.value
 
-    class XPUTestSetValueItemNone4(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone4(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[0, 0, None, 1] = self.value
 
         def _get_answer(self):
             self.data[0, 0, None, 1] = self.value
 
-    class XPUTestSetValueItemNone5(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone5(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[0, None, 0, None, 1] = self.value
 
         def _get_answer(self):
             self.data[0, None, 0, None, 1] = self.value
 
-    class XPUTestSetValueItemNone6(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone6(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[None, 0, 0, None, 0] = self.value
 
         def _get_answer(self):
             self.data[None, 0, 0, None, 0] = self.value
 
-    class XPUTestSetValueItemNone7(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone7(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[:, None, 1] = np.zeros(self.shape)[:, None, 0]
 
         def _get_answer(self):
             self.data[:, None, 1] = np.zeros(self.shape)[:, None, 0]
 
-    class XPUTestSetValueItemNone8(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone8(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[:, 1, None] = np.zeros(self.shape)[:, 0, None]
 
         def _get_answer(self):
             self.data[:, 1, None] = np.zeros(self.shape)[:, 0, None]
 
-    class XPUTestSetValueItemNone9(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone9(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
 
@@ -571,13 +511,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 0, 0, :, None
             ]
 
-    class XPUTestSetValueItemNone10(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone10(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
 
@@ -589,10 +523,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
     # 1.6 item is list or Tensor of bol
     class XPUTestSetValueItemBool1(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[[True, False]] = self.value
@@ -602,10 +533,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemBool2(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[[False, False]] = self.value
@@ -615,10 +543,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemBool3(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[[False, True]] = np.zeros(self.shape[2])
@@ -628,10 +553,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemBool4(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             idx = paddle.assign(np.array([False, True]))
@@ -642,10 +564,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemBool5(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             idx = paddle.assign(
@@ -660,10 +579,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemBool6(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[0, ...] = 0
@@ -770,6 +686,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -782,13 +700,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueValueShape2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape2(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array([[3, 4, 5, 6]])  # shape is (1,4)
 
@@ -798,13 +710,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0:1] = self.value
 
-    class XPUTestSetValueValueShape3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape3(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array(
                 [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
@@ -816,13 +722,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueValueShape4(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape4(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array(
                 [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
@@ -836,13 +736,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueValueShape5(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape5(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array([3, 3, 3]).astype(self.dtype)
 

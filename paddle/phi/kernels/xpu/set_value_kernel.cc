@@ -14,18 +14,13 @@
 
 #include "paddle/phi/kernels/set_value_kernel.h"
 
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include <algorithm>
+#include <vector>
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
-#include "paddle/phi/kernels/xpu/elementwise.h"
 
 namespace phi {
 
@@ -166,7 +161,7 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  // Because strided_slice does not support the case of stride < 0
+  // Because strided_slice_view_update does not support the case of stride < 0
   // temporarily, the coordinates of starts_indices, ends_indices
   // and strides_indices need to be converted.
   // This logic may be deleted in the future.
@@ -186,20 +181,11 @@ void SetValueImpl(const Context& dev_ctx,
 
   auto out_shape = phi::vectorize<int>(out->dims());
   auto slice_shape = phi::vectorize<int>(slice_dims);
-  r = xpu::strided_slice(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUType*>(out->data<T>()),
-                         slice_data,
-                         out_shape,
-                         starts_indices,
-                         ends_indices,
-                         strides_indices);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
 
   r = xpu::constant(dev_ctx.x_context(), slice_data, slice_numels, XPUType(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-  // Step 2: Set a tensor with the same shape as out tensor. And its data at
-  // '_index' is the same as value, and data out of '_index' to zero
+  // Step 2: Set slice tensor
 
   // - Step 2.1 Set slice tensor with value
 
@@ -216,23 +202,25 @@ void SetValueImpl(const Context& dev_ctx,
   // is [3], which is right.
 
   CheckIsDimsMatch(slice_dims_for_assign, value_dims);
-  // XPUElementwise can do broadcasting
-  auto f = [](xpu::Context* ctx,
-              const XPUType* x,
-              const XPUType* y,
-              XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
-    return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
-  };
-  XPUElementwise<T, XPUType>(dev_ctx,
-                             reinterpret_cast<const T*>(slice_data),
-                             slice_dims_for_assign,
-                             value_data,
-                             value_dims,
-                             -1,
-                             reinterpret_cast<T*>(slice_data),
-                             f);
+  auto slice_dims_for_assign_vec = vectorize<int64_t>(slice_dims_for_assign);
+  auto value_dims_vec = vectorize<int64_t>(value_dims);
+  size_t max_dims = std::max(slice_dims_for_assign.size(), value_dims.size());
+  std::vector<int64_t> ext_slice_dims_for_assign(max_dims, 1);
+  std::vector<int64_t> ext_value_dims_vec(max_dims, 1);
+  std::copy(slice_dims_for_assign_vec.begin(),
+            slice_dims_for_assign_vec.end(),
+            ext_slice_dims_for_assign.begin() +
+                (max_dims - slice_dims_for_assign.size()));
+  std::copy(value_dims_vec.begin(),
+            value_dims_vec.end(),
+            ext_value_dims_vec.begin() + (max_dims - value_dims.size()));
+
+  r = xpu::broadcast<XPUType>(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(value_data),
+                              slice_data,
+                              ext_value_dims_vec,
+                              ext_slice_dims_for_assign);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 
   // - Step 2.2 If stride < 0, flip the slice_tensor.
   if (need_flip) {
@@ -392,29 +380,20 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<T> assign_values;
   assign_values.reserve(values.size());
   for (const auto& val : values) {
     assign_values.push_back(val.to<T>());
   }
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   auto value_dims = phi::make_ddim(shape);
-  XPUType* value_data =
-      RAII_GUARD.alloc_l3_or_gm<XPUType>(phi::product(value_dims));
 
-  phi::CPUPlace src_place;
-  auto dst_place = dev_ctx.GetPlace();
-  memory_utils::Copy(dst_place,
-                     value_data,
-                     src_place,
-                     assign_values.data(),
-                     assign_values.size() * sizeof(T));
+  DenseTensor value_tensor;
+  TensorFromVector<T>(assign_values, dev_ctx, &value_tensor);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
-                                 reinterpret_cast<const T*>(value_data),
+                                 value_tensor.data<T>(),
                                  value_dims,
                                  starts,
                                  ends,
@@ -434,7 +413,8 @@ PD_REGISTER_KERNEL(set_value,
                    float,
                    phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(set_value_with_tensor,
                    XPU,
