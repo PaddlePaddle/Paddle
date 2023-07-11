@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import numpy as np
 import tvm
 import tvm.contrib.graph_runtime as runtime
 import tvm.relay.testing
-from tvm import autotvm, relay, te
-from tvm.autotvm.tuner import GATuner, GridSearchTuner, RandomTuner, XGBTuner
-from tvm.contrib.utils import tempdir
+from tvm import relay
 
 # To test different ops, change this single-op network.
 # See https://github.com/apache/incubator-tvm/blob/main/docs/langref/relay_op.rst to get the op list.
@@ -240,14 +237,16 @@ def tune_and_evaluate(func):
         np.array(evaluator_preheat().results) * 1000
     )  # convert to millisecond
     print(
-        "[PreHeat]Mean inference time (std dev): %.4f ms (%.4f ms)"
-        % (np.mean(prof_res1), np.std(prof_res1))
+        "[PreHeat]Mean inference time (std dev): {:.4f} ms ({:.4f} ms)".format(
+            np.mean(prof_res1), np.std(prof_res1)
+        )
     )
 
     prof_res2 = np.array(evaluator().results) * 1000  # convert to millisecond
     print(
-        "[Benchmark]Mean inference time (std dev): %.4f ms (%.4f ms)"
-        % (np.mean(prof_res2), np.std(prof_res2))
+        "[Benchmark]Mean inference time (std dev): {:.4f} ms ({:.4f} ms)".format(
+            np.mean(prof_res2), np.std(prof_res2)
+        )
     )
 
 

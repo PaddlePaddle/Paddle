@@ -673,6 +673,32 @@ void MoeInferMeta(const MetaTensor& x,
                   const std::string& act_type,
                   MetaTensor* out);
 
+void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
+                                      const MetaTensor& key,
+                                      const MetaTensor& value,
+                                      const MetaTensor& mask,
+                                      float scale,
+                                      bool causal,
+                                      MetaTensor* out);
+
+void FusedMultiHeadAttentionVariableInferMeta(const MetaTensor& query,
+                                              const MetaTensor& key,
+                                              const MetaTensor& value,
+                                              const MetaTensor& seq_lens,
+                                              const MetaTensor& mask,
+                                              float scale,
+                                              bool causal,
+                                              MetaTensor* out);
+
+void LLMInt8MatmulInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out);
+
+void WeightOnlyMatmulInferMeta(const MetaTensor& x,
+                               const MetaTensor& weight,
+                               const MetaTensor& weight_scale,
+                               MetaTensor* out);
+
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,

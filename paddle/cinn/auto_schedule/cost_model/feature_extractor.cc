@@ -41,11 +41,13 @@
 namespace cinn {
 namespace auto_schedule {
 
-using namespace ::cinn::ir;
+using namespace ::cinn::ir;  // NOLINT
 
 FeatureExtractor::FeatureExtractor() {}
 
-void FeatureExtractor::Visit(const Expr *x) { IRVisitor::Visit(x); }
+void FeatureExtractor::Visit(const Expr *x) {
+  IRVisitorRequireReImpl::Visit(x);
+}
 
 Feature FeatureExtractor::Extract(const ir::ModuleExpr &mod_expr,
                                   const common::Target &target) {

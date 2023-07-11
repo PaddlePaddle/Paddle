@@ -16,15 +16,12 @@
 
 import unittest
 
-import numpy as np
-from op_mapper_test import OpMapperTest, logger
-
-import paddle
+from op_mapper_test import OpMapperTest
 
 
 class TestUniformRandomOp(OpMapperTest):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3]
         self.min = -1.0
         self.max = 1.0
@@ -65,7 +62,7 @@ class TestUniformRandomOp(OpMapperTest):
 
 class TestUniformRandomCase1(TestUniformRandomOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3, 4]
         self.min = -5.5
         self.max = 5.5
@@ -78,7 +75,7 @@ class TestUniformRandomCase1(TestUniformRandomOp):
 
 class TestUniformRandomCase2(TestUniformRandomOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3, 4]
         self.min = -10.0
         self.max = 10.0

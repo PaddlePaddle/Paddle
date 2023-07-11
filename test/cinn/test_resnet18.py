@@ -18,15 +18,11 @@ import sys
 import time
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime
-from cinn.common import *
-from cinn.framework import *
-from cinn.frontend import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
+from cinn.frontend import Interpreter
 
-import paddle as paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
@@ -110,7 +106,7 @@ class TestLoadResnetModel(unittest.TestCase):
                     out[i] - target_result[i],
                 )
         # TODO(thisjiang): revert atol to 1e-3 after fix inference mul problem
-        self.assertTrue(np.allclose(out, target_result, atol=1.0))
+        np.testing.assert_allclose(out, target_result, atol=1.0)
 
     def test_model(self):
         self.apply_test()

@@ -1972,7 +1972,7 @@ class CurandGenerator {
     CURAND_CALL(curandCreateGenerator(&generator_, CURAND_RNG_PSEUDO_DEFAULT));
   }
 
-  CurandGenerator(curandRngType rng_type) {
+  explicit CurandGenerator(curandRngType rng_type) {
     CURAND_CALL(curandCreateGenerator(&generator_, rng_type));
   }
 

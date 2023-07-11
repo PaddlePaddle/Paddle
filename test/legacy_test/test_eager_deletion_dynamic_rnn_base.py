@@ -42,7 +42,7 @@ def train(network, use_cuda, batch_size=32, pass_num=2):
 
     cost = network(data, label, word_dict_size)
     cost.persistable = True
-    optimizer = fluid.optimizer.Adagrad(learning_rate=0.2)
+    optimizer = paddle.optimizer.Adagrad(learning_rate=0.2)
     optimizer.minimize(cost)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()

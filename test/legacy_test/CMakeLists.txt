@@ -75,6 +75,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
+  list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
@@ -86,6 +87,7 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
+list(REMOVE_ITEM TEST_OPS test_linear_compress)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -153,6 +155,8 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
+  list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_linear_compress)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -1312,6 +1316,16 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
+set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2)
+
+foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
+  py_test_modules(
+    ${NEW_IR_COVERAGE_TEST}_new_ir MODULES ${NEW_IR_COVERAGE_TEST} ENVS
+    FLAGS_enable_new_ir_in_executor=true)
+endforeach()
+
+set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)
+
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
 set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
@@ -1333,3 +1347,14 @@ set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      250)
+file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_white_list"
+     NEW_IR_OP_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(
+      ${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                               "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
+  else()
+    message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
+  endif()
+endforeach()
