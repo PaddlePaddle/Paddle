@@ -124,7 +124,7 @@ Program PaddleModelConvertor::LoadModel(
     const std::unordered_map<std::string, std::vector<int64_t>>& feed) {
   paddle::cpp::ProgramDesc program_desc;
   paddle::LoadModelPb(model_dir,
-                      "__model__",
+                      "/__model__",
                       "",
                       scope_.get(),
                       &program_desc,

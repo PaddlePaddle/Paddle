@@ -102,24 +102,23 @@ class TestPaddleModel(OpMapperTest):
         self.model_filename = args.model_filename
         self.params_filename = args.params_filename
 
-        #for debug in ci, list cinn test model dir, remove it later
+        # for debug in ci, list cinn test model dir, remove it later
+        print("for debug in ci, list cinn test model dir, remove it later")
         dir_path = os.path.dirname(self.model_dir)
 
         def list_all_files(rootdir):
             _files = []
-
-            #列出文件夹下所有的目录与文件
             list_file = os.listdir(rootdir)
-            
-            for i in range(0,len(list_file)):
-                path = os.path.join(rootdir,list_file[i])
-                
+
+            for i in range(0, len(list_file)):
+                path = os.path.join(rootdir, list_file[i])
+
                 if os.path.isdir(path):
                     _files.extend(list_all_files(path))
                 if os.path.isfile(path):
                     _files.append(path)
             return _files
-        
+
         print(list_all_files(dir_path))
 
         logger.info(
