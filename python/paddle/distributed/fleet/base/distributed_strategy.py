@@ -17,7 +17,6 @@ import copy
 
 import google.protobuf
 import google.protobuf.text_format
-from google.protobuf.pyext import _message
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
@@ -2539,6 +2538,8 @@ class DistributedStrategy:
                                     google._upb._message.RepeatedScalarContainer
                                 )
                             else:
+                                from google.protobuf.pyext import _message
+
                                 RepeatedScalarContainer = (
                                     _message.RepeatedScalarContainer
                                 )
