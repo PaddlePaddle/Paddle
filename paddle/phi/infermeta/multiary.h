@@ -500,6 +500,13 @@ void RmspropInferMeta(const MetaTensor& param,
                       MetaTensor* mean_grad_out,
                       MetaTensor* master_param_outs);
 
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      const float epsilon,
+                      const int begin_norm_axis,
+                      MetaTensor* out);
+
 void RnnInferMeta(const MetaTensor& x,
                   const std::vector<const MetaTensor*>& pre_state,
                   const std::vector<const MetaTensor*>& weight_list,
