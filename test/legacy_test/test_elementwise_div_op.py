@@ -124,7 +124,6 @@ class ElementwiseDivOp(OpTest):
                 'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
                 'check_prim': self.check_prim,
-                'max_relative_error': 0.02,
             }
             if self.place is None:
                 self.check_grad(*check_args, **check_kwargs)
