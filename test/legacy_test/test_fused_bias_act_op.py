@@ -21,8 +21,6 @@ from scipy.special import erf, expit
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
 
 
 def round_type_1_process(val):
@@ -69,7 +67,7 @@ def fake_quant(
 
 def fused_act_bias_wrapper(
     x,
-    bias,
+    bias=None,
     dequant_scales=None,
     shift=None,
     smooth=None,
@@ -82,48 +80,21 @@ def fused_act_bias_wrapper(
     quant_max_bound=0,
     quant_min_bound=0,
 ):
-    if in_dygraph_mode():
-        return paddle._C_ops.fused_bias_act(
-            x,
-            bias,
-            dequant_scales,
-            shift,
-            smooth,
-            act_method,
-            compute_dtype,
-            rows,
-            cols,
-            quant_scale,
-            quant_round_type,
-            quant_max_bound,
-            quant_min_bound,
-        )
-
-    helper = LayerHelper('fused_act_bias', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='fused_act_bias',
-        inputs={
-            'x': x,
-            'bias': bias,
-            'dequant_scales': dequant_scales,
-            'shift': shift,
-            'smooth': smooth,
-        },
-        attrs={
-            'act_method': act_method,
-            'compute_dtype': compute_dtype,
-            'rows': rows,
-            'cols': cols,
-            'quant_scale': quant_scale,
-            'quant_round_type': quant_round_type,
-            'quant_max_bound': quant_max_bound,
-            'quant_min_bound': quant_min_bound,
-        },
-        outputs={'out': out},
+    return paddle._C_ops.fused_bias_act(
+        x,
+        bias,
+        dequant_scales,
+        shift,
+        smooth,
+        act_method,
+        compute_dtype,
+        rows,
+        cols,
+        quant_scale,
+        quant_round_type,
+        quant_max_bound,
+        quant_min_bound,
     )
-    return
 
 
 @unittest.skipIf(
@@ -598,6 +569,106 @@ class TestQuantSwigluBF16(TestQuantBF16):
         )
 
         return out
+
+
+class TestAssert(unittest.TestCase):
+    def setUp(self):
+        self.rows = 20
+        self.cols = 512
+
+        self.dtype = 'float32'
+        self.act_method = 'gelu'
+
+    def test_assert_case1(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        x = np.random.randint(
+            low=-16, high=16, size=(self.rows, self.cols)
+        ).astype('int32')
+
+        bias = np.random.rand(self.cols).astype(self.dtype)
+
+        try:
+            out = fused_act_bias_wrapper(
+                x=paddle.to_tensor(x),
+                bias=paddle.to_tensor(bias),
+                rows=self.rows,
+                cols=self.cols,
+            )
+        except ValueError as e:
+            print(e)
+
+    def test_assert_case2(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        x = np.random.randint(
+            low=-16, high=16, size=(self.rows, self.cols)
+        ).astype('int32')
+
+        bias = np.random.rand(self.cols).astype(self.dtype)
+
+        try:
+            out = fused_act_bias_wrapper(
+                x=paddle.to_tensor(x),
+                bias=paddle.to_tensor(bias),
+                rows=self.rows,
+                cols=self.cols,
+                compute_dtype='fp16',
+            )
+        except ValueError as e:
+            print(e)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestWithoutBias(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2017)
+        np.random.seed(2017)
+
+        self.op_type = "fused_bias_act"
+        self.rtol = 1e-5
+        self.atol = 1e-3
+
+        self.rows = 20
+        self.cols = 512
+
+        self.dtype = 'float32'
+        self.act_method = 'gelu'
+
+        self.use_glu = False
+
+        self.init_test_case()
+        self.generate_inputs()
+
+    def init_test_case(self):
+        pass
+
+    def generate_inputs(self):
+        self.x = (np.random.rand(self.rows, self.cols) * 16).astype(self.dtype)
+        # self.bias = np.random.rand(self.cols).astype(self.dtype)
+
+    def compute_baseline_output(self):
+        out = gelu(self.x).astype(self.dtype)
+        return out
+
+    def compute_paddle_output(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        x = paddle.to_tensor(self.x)
+
+        return fused_act_bias_wrapper(
+            x=x,
+            bias=None,
+            rows=self.rows,
+            cols=self.cols,
+            act_method=self.act_method,
+        )
+
+    def test_check_output(self):
+        final_out_ref = self.compute_baseline_output()
+        final_out = self.compute_paddle_output()
+        np.testing.assert_allclose(
+            final_out_ref, final_out, rtol=self.rtol, atol=self.atol
+        )
 
 
 if __name__ == '__main__':

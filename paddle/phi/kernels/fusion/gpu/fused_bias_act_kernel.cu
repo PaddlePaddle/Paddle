@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 
 namespace phi {
@@ -193,6 +192,7 @@ void ComputeImpl(const Context &dev_ctx,
                  int cols,
                  LoadFunc load_func,
                  StoreFunc store_func) {
+#ifndef PADDLE_WITH_HIP
   if (act_method == "geglu") {
     // Note(Zhengzekang): For GLU structure, we need divide the cols by 2.
     VLOG(8) << "Doing geglu";
@@ -221,6 +221,7 @@ void ComputeImpl(const Context &dev_ctx,
     PADDLE_THROW(phi::errors::Unimplemented(
         "Currently Only Support GeGLU, SwiGLU, GeLU"));
   }
+#endif
 }
 
 template <typename T, typename Context>
@@ -440,6 +441,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
+#ifndef PADDLE_WITH_HIP
   if (x.dtype() == phi::DataType::INT32) {
     if (compute_dtype == "bf16") {
       DispatchWithDtype<phi::dtype::bfloat16, Context>(
@@ -515,6 +517,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
         out,
         typename DispatchDtypeTrait<T>::FuncVersion{});
   }
+#endif
 }
 
 }  // namespace fusion
@@ -528,4 +531,3 @@ PD_REGISTER_KERNEL(fused_bias_act,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
                    int32_t) {}
-#endif
