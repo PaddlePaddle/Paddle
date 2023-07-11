@@ -13,13 +13,28 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 
-InstructionBase::InstructionBase(size_t id) : id_(id), is_artificial_(false) {
-  VLOG(4) << "Construct InstructionBase";
+InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
+  id_ = id;
+
+  is_artificial_ = false;
+
+  if (platform::is_cpu_place(place)) {
+    type_ = OpFuncType::kCpuSync;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        interpreter::IsSupportedHeterPlace(place),
+        true,
+        phi::errors::Fatal("Unsupported current place %s", place));
+    type_ = OpFuncType::kGpuAsync;
+  }
+
+  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
 }
 
 OpFuncType InstructionBase::KernelType() const { return type_; }
@@ -68,18 +83,9 @@ void InstructionBase::AddInplace(Variable* in, Variable* out) {
 
 void InstructionBase::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
-const std::map<std::string, std::vector<int>>& InstructionBase::Inputs() const {
-  return input_index_;
-}
-
 void InstructionBase::SetInputs(
     const std::map<std::string, std::vector<int>>& inputs) {
   input_index_ = inputs;
-}
-
-const std::map<std::string, std::vector<int>>& InstructionBase::Outputs()
-    const {
-  return output_index_;
 }
 
 void InstructionBase::SetOutputs(

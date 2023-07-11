@@ -36,6 +36,7 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
 namespace paddle {
@@ -96,7 +97,9 @@ NewIRInterpreter::~NewIRInterpreter() {
   gc_.reset(nullptr);
   async_work_queue_.reset();
   VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
-
+  // for (size_t idx = 0; idx < vec_instruction_base_.size(); idx++) {
+  //   delete vec_instruction_base_[idx];
+  // }
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
@@ -1486,14 +1489,25 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
 /// ======================== ///
 
 void NewIRInterpreter::BuildInstruction() {
-  VLOG(4) << "Build Instructions for new ir ... ";
+  VLOG(0) << "Build Instructions for new ir ... ";
+  vec_instruction_base_.clear();
   size_t op_idx = 0;
   for (auto it = ir_program_->block()->begin();
        it != ir_program_->block()->end();
        ++it) {
-    VLOG(4) << "Build Instruction for op: " << op_idx;
-    vec_instruction_base_.push_back(
-        std::make_unique<InstructionBase>(op_idx++));
+    VLOG(0) << "Build Instruction for op: " << op_idx;
+    if ((*it)->dialect()->name() == "pd.kernel") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<PhiKernelInstruction>(op_idx++,
+                                                 place_,
+                                                 (*it),
+                                                 scope_,
+                                                 local_scope_,
+                                                 value_2_var_name_map_));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Now only support pd.kernel dialect."));
+    }
   }
 }
 

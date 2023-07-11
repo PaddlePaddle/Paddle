@@ -179,8 +179,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
-
   /// ======================== ///
   ///        For new ir        ///
   /// ======================== ///
@@ -189,6 +187,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
+
+  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
 };
 
 }  // namespace framework

@@ -16,56 +16,52 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 
+namespace ir {
+class Operation;
+}  // namespace ir
+
 namespace paddle {
 namespace framework {
-
-// struct OpFuncNode {
-
-//   // fit for phi kernel
-//   phi::Kernel* phi_kernel_{nullptr};  // not owned
-//   platform::DeviceContext* dev_ctx_;  // not owned
-
-//   // TODO(zhiqiu): Better make it unique_ptr
-//   std::shared_ptr<OperatorBase> operator_base_{nullptr};
-
-//   OpKernelComputeFunc kernel_func_;
-
-//   // the next only for new IR
-//   phi::KernelContext kernel_context_;
-//   phi::InferMetaContext infer_meta_context_;
-//   std::string phi_op_name_;
-//   paddle::dialect::InferMetaInterface::Concept*
-//   infer_meta_interface_{nullptr};
-// };
+class Scope;
+class Value;
 
 class PhiKernelInstruction : public InstructionBase {
  public:
-  //   OpKernelComputeFunc KernelFunc() const;
+  PhiKernelInstruction(
+      size_t id,
+      const platform::Place& place,
+      ::ir::Operation* op,
+      Scope* scope,
+      Scope* local_scope,
+      const std::unordered_map<::ir::Value, std::string>& value_2_name_map);
 
-  //   phi::Kernel* PhiKernel() const;
+  const std::string& PhiOpName() const { return phi_op_name_; }
 
-  //   const std::map<int, int>& InplaceBackMap() const;
+  phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
-  //   OperatorBase* OpBase() const;
+  const phi::KernelContext& KernelContext() const { return kernel_context_; }
 
-  //   bool OpBaseValid() const;
+  const phi::InferMetaContext& InferMetaContext() const {
+    return infer_meta_context_;
+  }
 
-  //   void ResetContext(const VariableValueMap& in_vars,
-  //                     const VariableValueMap& out_vars);
+  paddle::dialect::InferMetaInterface::Concept* InferMetaInterface() const {
+    return infer_meta_interface_;
+  }
 
-  //   void ResetContextWithScope(const VariableValueMap& in_vars,
-  //                              const VariableValueMap& out_vars,
-  //                              const framework::Scope& scope);
+  void Run() override { std::cout << "phi run" << std::endl; }
 
-  //   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
+ private:
+  std::string phi_op_name_;
 
-  //   std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
+  paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
+      nullptr};  // not owned
 
-  //   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
+  phi::InferMetaContext infer_meta_context_;
 
-  //   std::shared_ptr<RuntimeContext> runtime_ctx_;
-  //   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
-  //   std::shared_ptr<ExecutionContext> execution_ctx_;
+  phi::KernelContext kernel_context_;
+
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
 };
 
 }  // namespace framework

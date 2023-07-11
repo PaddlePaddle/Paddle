@@ -1,1 +1,4 @@
-cc_library(instruction_base SRCS instruction_base.cc)
+cc_library(
+  instruction_base
+  SRCS instruction_base.cc phi_kernel_instruction.cc
+  DEPS framework_proto)

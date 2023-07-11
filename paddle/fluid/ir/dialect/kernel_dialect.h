@@ -25,7 +25,7 @@ class PaddleKernelDialect : public ir::Dialect {
  public:
   explicit PaddleKernelDialect(ir::IrContext* context);
 
-  static const char* name() { return "pd_kernel"; }
+  static const char* name() { return "pd.kernel"; }
 
   void PrintType(ir::Type type, std::ostream& os) const override;
 
