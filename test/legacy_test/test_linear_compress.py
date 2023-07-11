@@ -25,7 +25,6 @@ from paddle.framework import set_default_dtype
 np.random.seed(123)
 paddle.seed(123)
 default_main_program().random_seed = 42
-# paddle.disable_static()
 
 
 class LinearTestCase(unittest.TestCase):
@@ -146,7 +145,6 @@ class LinearTestCase6(LinearTestCase):
         self.bias = False
         self.in_features = 64
         self.out_features = 64
-        self.atol = 1e-1
 
 
 class LinearTestCase7(LinearTestCase):
@@ -157,7 +155,6 @@ class LinearTestCase7(LinearTestCase):
         self.bias = False
         self.in_features = 64
         self.out_features = 64
-        self.atol = 1e-1
 
 
 if __name__ == '__main__':

@@ -15,10 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/gemv_weightonly_int8_kernel.h"
 
 #include <assert.h>
-#include <math_constants.h>
 #include <stdint.h>
 #include <cmath>
-#include <cub/cub.cuh>  //NOLINT
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
