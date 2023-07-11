@@ -1019,14 +1019,16 @@ void MatMulInt8Function(const Context& ctx,
       phi::errors::InvalidArgument("[INT8 GEMM] The number of dims of input(x) "
                                    "must be equal to 2 but received %d",
                                    y_ndim));
-  PADDLE_ENFORCE_EQ(trans_x,
-                    false,
-                    phi::errors::InvalidArgument(
-                        "[INT8 GEMM] Input(x) must be not transposed"));
+  PADDLE_ENFORCE_EQ(
+      trans_x,
+      false,
+      phi::errors::InvalidArgument("[INT8 GEMM] Input(x) must be not "
+                                   "transposed to acheive better performance"));
   PADDLE_ENFORCE_EQ(
       trans_y,
       true,
-      phi::errors::InvalidArgument("[INT8 GEMM] Input(y) must be transposed"));
+      phi::errors::InvalidArgument("[INT8 GEMM] Input(y) must be transposed to "
+                                   "acheive better performance"));
 
   const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
   const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
