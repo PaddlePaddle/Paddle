@@ -74,7 +74,7 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
                       bool reduce_all,
                       phi::DenseTensor* output) {
   reduce_all = recompute_reduce_all(input, dims, reduce_all);
-  dev_ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<bool>(output);
 
   // The dims has full dim, set the reduce_all is True
   const auto& input_dim_size = input.dims().size();
