@@ -43,4 +43,7 @@ class TensorRef {
   const DenseTensor* tensor_base_{nullptr};
 };
 
+std::vector<int64_t> ConvertTensorRefVec2IntArray(
+    const std::vector<TensorRef>& tensor_ref_list);
+
 }  // namespace phi

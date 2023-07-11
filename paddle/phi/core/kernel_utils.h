@@ -261,17 +261,18 @@ namespace phi {
       static Attribute cmp_t = phi::TensorRef(nullptr);                   \
       static Attribute vec_ref =                                          \
           std::vector<phi::TensorRef>({phi::TensorRef(nullptr)});         \
-      attr_type attr1;                                                    \
+      attr_type attr;                                                     \
       if (cmp_t.index() == t.index()) {                                   \
-        attr1 = attr_type(*paddle::get<phi::TensorRef>(t).Get());         \
+        attr = attr_type(*paddle::get<phi::TensorRef>(t).Get());          \
       } else if (vec_ref.index() == t.index()) {                          \
-        attr1 = attr_type(paddle::get<std::vector<phi::TensorRef>>(t));   \
+        attr = ConvertTensorRefVec2IntArray(                              \
+            paddle::get<std::vector<phi::TensorRef>>(t));                 \
       } else {                                                            \
-        attr1 = paddle::get<attr_type>(t);                                \
+        attr = paddle::get<attr_type>(t);                                 \
       }                                                                   \
       KernelCallHelper<Tail...>::                                         \
           template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
-              ctx, pargs..., attr1);                                      \
+              ctx, pargs..., attr);                                       \
     }                                                                     \
   }
 template <typename T>
