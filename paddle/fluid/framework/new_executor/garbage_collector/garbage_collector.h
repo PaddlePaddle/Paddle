@@ -45,7 +45,7 @@ class InterpreterCoreGarbageCollector {
 
 bool IsInterpretercoreFastGCEnabled();
 
-std::unique_ptr<InterpreterCoreGarbageCollector>
+std::shared_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
     const platform::Place& place,
     const std::vector<Instruction>& vec_instruction);

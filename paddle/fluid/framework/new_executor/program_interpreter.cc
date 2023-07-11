@@ -81,7 +81,7 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
 ProgramInterpreter::~ProgramInterpreter() {
   // cancle gc's thread
-  gc_.reset(nullptr);
+  gc_.reset();
   async_work_queue_.reset();
   VLOG(4) << "~ProgramInterpreter(): " << this << " on " << place_;
 
@@ -283,6 +283,12 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
+void ProgramInterpreter::ShareGCFrom(InterpreterBaseImpl* src) {
+  gc_ = reinterpret_cast<ProgramInterpreter*>(src)->GetGC();
+  VLOG(8) << "Share GarbageCollector from InterpreterCore(" << src
+          << ") to InterpreterCore(" << this << ")";
+}
+
 bool ProgramInterpreter::BuildInplaceCheckVarIsOnlyInput(
     const std::vector<std::vector<size_t>>& input_var2op, size_t var_index) {
   if (!var_scope_.VarDesc(var_index)) {
@@ -309,6 +315,10 @@ ProgramInterpreter::GetWorkQueue() {
         nullptr);
   }
   return async_work_queue_;
+}
+
+std::shared_ptr<InterpreterCoreGarbageCollector> ProgramInterpreter::GetGC() {
+  return gc_;
 }
 
 void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {

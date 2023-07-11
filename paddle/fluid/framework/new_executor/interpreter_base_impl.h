@@ -74,6 +74,8 @@ class InterpreterBaseImpl {
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
+  virtual void ShareGCFrom(InterpreterBaseImpl* src) = 0;
+
   virtual void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) = 0;
 
   virtual void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) = 0;

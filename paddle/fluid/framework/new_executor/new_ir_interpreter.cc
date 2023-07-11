@@ -93,7 +93,7 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
 
 NewIRInterpreter::~NewIRInterpreter() {
   // cancle gc's thread
-  gc_.reset(nullptr);
+  gc_.reset();
   async_work_queue_.reset();
   VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
 
@@ -295,6 +295,12 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
+void NewIRInterpreter::ShareGCFrom(InterpreterBaseImpl* src) {
+  gc_ = reinterpret_cast<NewIRInterpreter*>(src)->GetGC();
+  VLOG(8) << "Share GC from InterpreterCore(" << src << ") to InterpreterCore("
+          << this << ")";
+}
+
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
     const std::vector<std::vector<size_t>>& input_var2op, size_t var_index) {
   if (!var_scope_.VarDesc(var_index)) {
@@ -320,6 +326,10 @@ std::shared_ptr<interpreter::AsyncWorkQueue> NewIRInterpreter::GetWorkQueue() {
         nullptr);
   }
   return async_work_queue_;
+}
+
+std::shared_ptr<InterpreterCoreGarbageCollector> NewIRInterpreter::GetGC() {
+  return gc_;
 }
 
 void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {

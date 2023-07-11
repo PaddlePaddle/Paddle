@@ -96,11 +96,26 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   const auto& jobs = plan_.JobList();
 
   if (!is_interpretercore_build_result_shared_) {
+    std::map<std::string, std::vector<size_t>> type_to_idx;
     for (size_t job_idx = 1; job_idx < jobs.size(); ++job_idx) {
       interpretercores_[job_idx]->ShareWorkQueueFrom(interpretercores_[0]);
       // TODO(Ruibiao): Share other build result, e.g., kernel choosing, data
       // transfer, op dependency, thread scheduling, GC, event analyzer, and so
       // on.
+      if (type_to_idx.find(jobs[job_idx]->Type()) == type_to_idx.end()) {
+        type_to_idx[jobs[job_idx]->Type()] = {job_idx};
+      } else {
+        type_to_idx[jobs[job_idx]->Type()].emplace_back(job_idx);
+      }
+    }
+
+    for (auto& pair : type_to_idx) {
+      auto& idxs = pair.second;
+      if (idxs.size() > 1) {
+        for (size_t i = 1; i < idxs.size(); ++i) {
+          interpretercores_[idxs[i]]->ShareGCFrom(interpretercores_[idxs[0]]);
+        }
+      }
     }
     is_interpretercore_build_result_shared_ = true;
   }

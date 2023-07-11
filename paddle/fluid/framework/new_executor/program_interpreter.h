@@ -50,6 +50,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
+  void ShareGCFrom(InterpreterBaseImpl* src) override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -115,6 +117,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
+  // gc
+  std::shared_ptr<InterpreterCoreGarbageCollector> GetGC();
+
   // scope
   bool HasLocalScope() const;
 
@@ -157,7 +162,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
-  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
+  std::shared_ptr<InterpreterCoreGarbageCollector> gc_;
 
   // last_live_ops_[i] contains the id of operators that last access the i-th
   // var
