@@ -1310,6 +1310,30 @@
   outputs :
     {out : Out, residual : Residual}
 
+- op : i0
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i0e
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1e
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
 - op : imag
   backward : imag_grad
   inputs :
@@ -1897,6 +1921,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : nextafter
+  inputs :
+    {x : x, y : y}
+  outputs :
+    out : out
+
 - op : nll_loss
   backward : nll_loss_grad
   inputs :
@@ -2000,6 +2030,12 @@
     x : X
   outputs :
     out : Out
+
+- op : polygamma
+  inputs :
+    x : x
+  outputs :
+    out : out
 
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
@@ -2706,6 +2742,10 @@
   outputs :
     out : Out
 
+- op : tril_indices
+  outputs :
+    out : out
+
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2721,6 +2761,10 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : triu_indices
+  outputs :
+    out : out
 
 - op : trunc
   inputs :
@@ -2901,7 +2945,7 @@
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label}
+    {x: X, label: Label, pos_weight : pos_weight}
   outputs :
     out : Out
 

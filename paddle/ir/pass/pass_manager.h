@@ -110,7 +110,8 @@ class IR_API PassManager {
     // TODO(liuyuanle): Add flags to control printing behavior.
   };
 
-  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> config);
+  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> option =
+                            std::make_unique<IRPrinterOption>());
 
   void EnablePassTiming(bool print_module = true);
 
