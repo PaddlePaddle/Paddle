@@ -26,7 +26,6 @@ from paddle.fluid.optimizer import (
     Adam,
     DecayedAdagradOptimizer,
     DpsgdOptimizer,
-    FtrlOptimizer,
     LarsMomentumOptimizer,
     MomentumOptimizer,
     PipelineOptimizer,
@@ -684,18 +683,6 @@ class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
 
     def test_rmsprop(self):
         self._check_mlp()
-
-
-class TestImperativeFtrlOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = FtrlOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = FtrlOptimizer(learning_rate=0.1)
-        return optimizer
 
     def test_ftrl(self):
         self._check_mlp()
