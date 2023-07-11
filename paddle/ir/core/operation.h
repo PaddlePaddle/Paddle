@@ -20,6 +20,7 @@
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
+#include "paddle/phi/core/macros.h"
 
 namespace ir {
 class OpBase;
@@ -122,6 +123,7 @@ class IR_API alignas(8) Operation final {
   void Verify();
 
  private:
+  DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,
             ir::OpInfo op_info,
             uint32_t num_results,
