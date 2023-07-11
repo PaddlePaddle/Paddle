@@ -139,14 +139,12 @@ void HandleForSpecialOp(ir::Operation* op,
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
     VLOG(6) << "Handle for pd.fetch:";
-    for (size_t i = 0; i < input_num; ++i) {
-      auto var = scope->Var("fetch");
-      VLOG(6) << "Create var: fetch in scope " << scope;
-      auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-      int index =
-          op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-      fetch_list->resize(index + 1);
-    }
+    auto var = scope->Var("fetch");
+    VLOG(6) << "Create var: fetch in scope " << scope;
+    auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    fetch_list->resize(index + 1);
   }
 
   if (op_name == "pd.feed") {
@@ -180,6 +178,8 @@ void HandleForSpecialOp(ir::Operation* op,
 
     auto var = CreateVar(out_value, name, scope, local_scope);
     auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
+    // clear tensor array
+    tensor_array->clear();
 
     for (size_t i = 0; i < input_num; ++i) {
       auto value = op->operand(i);
