@@ -5086,22 +5086,17 @@ void QuantForCompressInferMeta(const MetaTensor& x,
           x_dims[0]));
   std::vector<int64_t> dim_scale({x_dims[1]});
   std::vector<int64_t> dim_out;
-  if (layout == "weight_only") {
-    dim_out = std::vector<int64_t>({x_dims[0], x_dims[1]});
-  } else if (layout == "llm.int8") {
+  if (bits == 8) {
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
+  } else if (bits == 4) {
+    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
   } else {
-    phi::errors::InvalidArgument(
-        "The layout must be weight_only or llm.int8, but got %s", layout);
+    phi::errors::InvalidArgument("The bit must be 8 or 4, but got %d", bits);
   }
   out->set_dims(phi::make_ddim(dim_out));
 
-  // TODO(lizhenyun) support weight_only int4
-  if (bits == 8) {
-    out->set_dtype(DataType::INT8);
-  } else {
-    phi::errors::Fatal("The bits only support 8, but got[%d]", bits);
-  }
+  out->set_dtype(DataType::INT8);
+
   scale->set_dims(phi::make_ddim(dim_scale));
   scale->set_dtype(DataType::FLOAT32);
 }

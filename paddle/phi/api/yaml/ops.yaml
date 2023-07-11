@@ -1367,14 +1367,14 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
-- op : llm_int8_mat_mul
+- op : llm_int8_matmul
   args : (Tensor x, Tensor weight, Tensor weight_scale, float threshold=6.0)
   output : Tensor(out)
   infer_meta :
-    func : LLMInt8MatMulInferMeta
+    func : LLMInt8MatmulInferMeta
     param : [x, weight]
   kernel :
-    func : llm_int8_mat_mul
+    func : llm_int8_matmul
     data_type : x
 
 - op : log
@@ -2602,14 +2602,13 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
-- op : weight_only_mat_mul
+- op : weight_only_matmul
   args : (Tensor x, Tensor weight, Tensor weight_scale)
   output : Tensor(out)
   infer_meta :
-    func : WeightOnlyMatMulInferMeta
-    param : [x, weight]
+    func : WeightOnlyMatmulInferMeta
   kernel :
-    func : weight_only_mat_mul
+    func : weight_only_matmul
     data_type : x
 
 - op : weighted_sample_neighbors
