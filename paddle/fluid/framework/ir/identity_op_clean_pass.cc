@@ -40,7 +40,19 @@ FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
     : PatternBase(pattern, name_scope, name_scope) {
   auto* useless_op_in = pattern->NewNode(useless_op_in_repr())
                             ->assert_is_var()
-                            ->assert_var_not_persistable();
+                            ->assert_var_not_persistable()
+                            ->assert_has_n_outputs(1)
+                            ->assert_more([](Node* x) {
+                              for (auto* op : x->inputs) {
+                                CHECK_EQ(op->IsOp(), true);
+                                const auto& op_type = op->Op()->Type();
+                                if (op_type == "conditional_block" ||
+                                    op_type == "while" || op_type == "feed") {
+                                  return false;
+                                }
+                              }
+                              return true;
+                            });
 
   // This useless_op must have only one input and one output!
   auto* useless_op =
@@ -72,18 +84,7 @@ FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
           });
 
   auto* useless_op_out =
-      pattern->NewNode(useless_op_out_repr())
-          ->assert_is_var()
-          ->assert_more([](Node* x) {
-            for (auto* op : x->outputs) {
-              CHECK_EQ(op->IsOp(), true);
-              const auto& op_type = op->Op()->Type();
-              if (op_type == "conditional_block" || op_type == "while") {
-                return false;
-              }
-            }
-            return true;
-          });
+      pattern->NewNode(useless_op_out_repr())->assert_is_var();
 
   useless_op->LinksFrom({useless_op_in}).LinksTo({useless_op_out});
 }
@@ -106,14 +107,14 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
         CHECK_EQ(useless_op_out->IsVar(), true);
         CHECK_EQ(useless_op->IsOp(), true);
 
-        for (auto* next_op : useless_op_out->outputs) {
-          CHECK_EQ(next_op->IsOp(), true);
-          next_op->Op()->RenameInput(useless_op_out->Var()->Name(),
-                                     useless_op_in->Var()->Name());
-          IR_NODE_LINK_TO(useless_op_in, next_op);
+        for (auto* prev_op : useless_op_in->inputs) {
+          CHECK_EQ(prev_op->IsOp(), true);
+          prev_op->Op()->RenameOutput(useless_op_in->Var()->Name(),
+                                      useless_op_out->Var()->Name());
+          IR_NODE_LINK_TO(prev_op, useless_op_out);
         }
 
-        GraphSafeRemoveNodes(graph, {useless_op, useless_op_out});
+        GraphSafeRemoveNodes(graph, {useless_op_in, useless_op});
         found_count++;
       };
 
