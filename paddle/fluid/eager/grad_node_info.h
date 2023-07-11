@@ -251,6 +251,8 @@ class GradNodeBase {
     return true;
   }
 
+  std::vector<std::shared_ptr<egr::GradNodeBase>> NextFunctions();
+
   /**
    * Apply GradientHook
    * **/
