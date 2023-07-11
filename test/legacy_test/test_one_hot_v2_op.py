@@ -172,7 +172,7 @@ class TestOneHotOp_exception(unittest.TestCase):
                     return_numpy=False,
                 )
 
-            self.assertRaises(ValueError, run)
+            self.assertRaises(RuntimeError, run)
 
 
 class TestOneHotOpApi(unittest.TestCase):
