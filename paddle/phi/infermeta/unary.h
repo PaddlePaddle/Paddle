@@ -147,6 +147,8 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out);
 
 void DistBroadcastInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+
 void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v);
