@@ -700,8 +700,7 @@ class Optimizer:
         else:
             assert isinstance(self.helper, LayerHelper)
 
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
+            var_name = self._gen_master_weight_var_name(param)
             var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
@@ -721,6 +720,10 @@ class Optimizer:
             )
             self._master_weights[param.name] = var
         return var
+
+    def _gen_master_weight_var_name(self, param):
+        var_name = param.name + "_fp32_master"
+        return unique_name.generate(var_name)
 
     def _create_master_grad(self, grad):
         assert self._is_dtype_fp16_or_bf16(grad.dtype)
