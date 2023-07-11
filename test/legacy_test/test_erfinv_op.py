@@ -55,9 +55,9 @@ class TestErfinvOp(OpTest):
         )
 
 
-class TestErfinvFP32Op(TestErfinvOp):
+class TestErfinvFP64Op(TestErfinvOp):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
 
 class TestErfinvAPIOp(unittest.TestCase):
