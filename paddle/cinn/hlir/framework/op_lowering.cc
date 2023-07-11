@@ -87,10 +87,7 @@ bool OpLowerer::ElementwiseScheduleDetermineFunction(Node* node) {
 
 bool OpLowerer::ReduceScheduleDetermineFunction(Node* node) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
-  if (op_pattern_dict[node->op()] == framework::kReduction) {
-    return true;
-  }
-  return false;
+  return op_pattern_dict[node->op()] == framework::kReduction;
 }
 
 bool OpLowerer::NonFusibleScheduleDetermineFunction(Node* node) { return true; }
@@ -111,10 +108,10 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerGroup(
   std::unordered_map<std::string, ir::Tensor> tensor_map;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
   std::vector<ir::Expr> func_bodies = LowerOps(nodes,
-                                               &group_func_arg_tensors,
-                                               &tensor_map,
                                                do_op_schedule,
-                                               schedule_determine_func);
+                                               schedule_determine_func,
+                                               &group_func_arg_tensors,
+                                               &tensor_map);
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
@@ -131,7 +128,7 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerGroup(
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
   return PostProcess(
-      &ir_sch, group, tensor_map, &group_func_arg_tensors, do_op_schedule);
+      group, tensor_map, do_op_schedule, &ir_sch, &group_func_arg_tensors);
 }
 
 std::vector<ir::LoweredFunc> OpLowerer::LowerCustomCall(const GroupPtr& group) {
@@ -187,11 +184,11 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerCustomCall(const GroupPtr& group) {
 }
 
 std::vector<ir::LoweredFunc> OpLowerer::PostProcess(
-    ir::IRSchedule* ir_sch,
     const GroupPtr& group,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map,
-    std::vector<ir::Tensor>* group_func_arg_tensors,
-    bool done_op_schedule) {
+    bool done_op_schedule,
+    ir::IRSchedule* ir_sch,
+    std::vector<ir::Tensor>* group_func_arg_tensors) {
   // 1.Prepare function args
   group->input_names.clear();
   std::vector<ir::Argument> group_func_args;
@@ -270,10 +267,10 @@ std::vector<ir::LoweredFunc> OpLowerer::PostProcess(
 
 std::vector<ir::Expr> OpLowerer::LowerOps(
     const std::vector<Node*>& nodes,
-    std::vector<ir::Tensor>* group_func_arg_tensors,
-    std::unordered_map<std::string, ir::Tensor>* tensor_map,
     bool apply_op_schedule,
-    ScheduleDetermineFunction schedule_determine_func) {
+    ScheduleDetermineFunction schedule_determine_func,
+    std::vector<ir::Tensor>* group_func_arg_tensors,
+    std::unordered_map<std::string, ir::Tensor>* tensor_map) {
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
   for (Node* node : nodes) {
@@ -287,10 +284,10 @@ std::vector<ir::Expr> OpLowerer::LowerOps(
     }
     std::vector<ir::Tensor> op_func_arg_tensors =
         std::move(CollectInputTensor(node,
-                                     group_func_arg_tensors,
-                                     tensor_map,
                                      this->type_dict_,
-                                     this->shape_dict_));
+                                     this->shape_dict_,
+                                     group_func_arg_tensors,
+                                     tensor_map));
     auto op_impl =
         OpStrategy::SelectImpl(strategy[node->op()](node->attrs,
                                                     op_func_arg_tensors,
@@ -300,7 +297,7 @@ std::vector<ir::Expr> OpLowerer::LowerOps(
 
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
-        DoOpLower(node, op_impl, tensor_map, &op_func_arg_tensors);
+        DoOpLower(op_impl, node, tensor_map, &op_func_arg_tensors);
 
     if (apply_op_schedule && (this->*schedule_determine_func)(node)) {
       // 3.Perform the schedule of Op
@@ -316,8 +313,8 @@ std::vector<ir::Expr> OpLowerer::LowerOps(
 }
 
 std::vector<ir::LoweredFunc> OpLowerer::DoOpLower(
-    Node* node,
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
+    Node* node,
     std::unordered_map<std::string, ir::Tensor>* tensor_map,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << node->op()->name;
