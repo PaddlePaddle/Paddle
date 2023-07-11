@@ -282,7 +282,6 @@ class TestDistBase(unittest.TestCase):
         )
         tr0_pipe = open(path0, "w")
         tr1_pipe = open(path1, "w")
-        # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -299,6 +298,7 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
+        # print(tr1_out)
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
         # close trainer file
@@ -491,6 +491,15 @@ class TestDistBase(unittest.TestCase):
             np.random.seed(2020)
             weight = np.random.rand(1000, 16).astype(np.float32)
             need_result = np.matmul(input1, weight)
+            np.testing.assert_allclose(
+                result_data, need_result, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "dist_concat":
+            result_data = tr0_out[0]
+            need_result = np.concatenate((input1, input2), axis=1)
+            np.testing.assert_allclose(
+                result_data, need_result, rtol=1e-05, atol=1e-05
+            )
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )

@@ -184,7 +184,7 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
-        # print("w0_ep:", w0_ep, " w1_ep:", w1_ep)
+        # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
         env0 = {
             "FLAGS_selected_gpus": "0",
             "PADDLE_TRAINER_ID": "0",
@@ -290,6 +290,12 @@ class TestDistBase(unittest.TestCase):
             need_result = input1 + input2
             np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
         elif col_type == "scatter":
+            need_result = input2
+            need_result1 = need_result[0 : need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2 :]
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "dist_scatter":
             need_result = input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]
             need_result2 = need_result[need_result.shape[0] // 2 :]

@@ -44,6 +44,9 @@ class LayerHelper(LayerHelperBase):
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
 
+    def create_var(self, *args, **kwargs):
+        return self.main_program.current_block().create_var(*args, **kwargs)
+
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
         ret = []
