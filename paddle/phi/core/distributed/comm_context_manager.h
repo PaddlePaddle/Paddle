@@ -49,7 +49,8 @@ class CommContextManager {
                                     int dev_id,
                                     int ring_id,
                                     int rank,
-                                    int size);
+                                    int size,
+                                    std::string endpoints_hash="");
 #endif
 
 #if defined(PADDLE_WITH_GLOO)

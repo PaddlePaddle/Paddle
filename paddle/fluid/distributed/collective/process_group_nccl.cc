@@ -983,9 +983,10 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     int device_id,
     int rank,
     int size,
-    int gid) {
+    int gid,
+    std::string endpoints_hash) {
   phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store, device_id, gid, rank, size);
+      store, device_id, gid, rank, size, endpoints_hash);
   auto process_group =
       std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import hashlib
 from collections import OrderedDict
 
 import paddle
@@ -159,18 +160,20 @@ class ProcessGroup:
             strategy.nrings = 1
 
             if core.is_compiled_with_cuda():
-                global _g_process_group_store
-                if _g_process_group_store is None:
-                    _g_process_group_store = (
-                        paddle.distributed.collective.StaticTCPStore()
-                    )
+                store = paddle.distributed.collective.StaticTCPStore()
                 place = core.CUDAPlace(genv.device_id)
+
+                endpoints_str = ""
+                for endpoint in strategy.trainer_endpoints:
+                    endpoints_str += endpoint
+                    endpoints_str_hash = hashlib.md5(endpoints_str.encode(encoding='UTF-8')).hexdigest() 
                 core.CommContextManager.create_nccl_comm_context(
-                    _g_process_group_store,
+                    store,
                     genv.device_id,
                     ring_id,
                     strategy.local_rank,
-                    genv.world_size,
+                    strategy.nranks,
+                    endpoints_str_hash
                 )
                 core.set_device_comm_context(place, ring_id)
             elif core.is_compiled_with_xpu():
@@ -203,16 +206,6 @@ class ProcessGroup:
                     ),
                 )
 
-            # TODO(shenliang03): This is a temporary solution to solve the problem of
-            # hang caused by cross-creation of new_group
-            barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.all_reduce(
-                barrier_tensor,
-                'reduce_type',
-                paddle.distributed.ReduceOp.SUM,
-                'ring_id',
-                ring_id,
-            )
 
             # NOTE(zhiqiu): to avoid send/recv hang in lazy init
             if self._group_type == 'p2p':
@@ -231,7 +224,7 @@ class ProcessGroup:
                 'reduce_type',
                 paddle.distributed.ReduceOp.SUM,
                 'ring_id',
-                ring_id,
+                0,
             )
 
         self._is_instantiate = True
@@ -263,4 +256,3 @@ class ProcessGroup:
 # At the beginning, group 0 is empty and new ranks will be added automatically.
 _g_process_group_map = OrderedDict()
 _g_process_group_map[0] = ProcessGroup(0, [])
-_g_process_group_store = None
