@@ -60,7 +60,7 @@ foreach(TEST_OP ${TEST_OPS})
   endif()
 endforeach()
 
-set(STRIED_TESTS test_bert test_cycle_gan test_lstm test_ptb_lm_v2 test_slice)
+set(STRIED_TESTS test_bert test_lstm test_ptb_lm_v2 test_slice)
 
 foreach(STRIED_TEST ${STRIED_TESTS})
   py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
