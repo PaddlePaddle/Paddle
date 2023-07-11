@@ -59,8 +59,9 @@ class IR_API alignas(8) Operation final {
 
   /// Returns the region held by this operation at position 'index'.
   Region &region(unsigned index);
+  const Region &region(unsigned index) const;
 
-  void Print(std::ostream &os);
+  void Print(std::ostream &os) const;
 
   const AttributeMap &attributes() const { return attributes_; }
 
