@@ -1430,7 +1430,6 @@ def get_setup_parameters():
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
         'paddle.fluid.layers',
-        'paddle.fluid.contrib',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',

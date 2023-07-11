@@ -84,7 +84,7 @@ def train(
     else:
         raise NotImplementedError()
 
-    adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
+    adagrad = paddle.optimizer.Adagrad(learning_rate=0.002)
     adagrad.minimize(cost)
 
     train_data = paddle.batch(

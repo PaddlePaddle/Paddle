@@ -30,7 +30,7 @@ with fluid.device_guard("gpu"):
     input_y = paddle.cast(input_y, dtype="int64")
     cost = mlp(input_x, input_y)
 
-optimizer = fluid.optimizer.Adagrad(learning_rate=0.01)
+optimizer = paddle.optimizer.Adagrad(learning_rate=0.01)
 
 role = role_maker.PaddleCloudRoleMaker()
 fleet.init(role)
