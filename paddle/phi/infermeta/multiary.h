@@ -706,4 +706,26 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
 
+void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
+                                       const MetaTensor& bias,
+                                       const MetaTensor& src_mask,
+                                       const MetaTensor& sequence_lengths,
+                                       const MetaTensor& rotary_tensor,
+                                       const MetaTensor& beam_cache_offset,
+                                       const MetaTensor& cache_kv,
+                                       const MetaTensor& qkv_out_scale,
+                                       const MetaTensor& out_linear_shift,
+                                       const MetaTensor& out_linear_smooth,
+                                       int beam_size,
+                                       int rotary_emb_dims,
+                                       const bool mask_broadcast_num_heads,
+                                       const bool compute_bias,
+                                       const bool use_neox_rotary_style,
+                                       const float out_linear_in_scale,
+                                       const int quant_round_type,
+                                       const float quant_max_bound,
+                                       const float quant_min_bound,
+                                       MetaTensor* out,
+                                       MetaTensor* cache_kv_out);
+
 }  // namespace phi

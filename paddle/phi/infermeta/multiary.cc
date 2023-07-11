@@ -3624,5 +3624,67 @@ void WeightOnlyMatmulInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
+                                       const MetaTensor& bias,
+                                       const MetaTensor& src_mask,
+                                       const MetaTensor& sequence_lengths,
+                                       const MetaTensor& rotary_tensor,
+                                       const MetaTensor& beam_cache_offset,
+                                       const MetaTensor& cache_kv,
+                                       const MetaTensor& qkv_out_scale,
+                                       const MetaTensor& out_linear_shift,
+                                       const MetaTensor& out_linear_smooth,
+                                       int beam_size,
+                                       int rotary_emb_dims,
+                                       const bool mask_broadcast_num_heads,
+                                       const bool compute_bias,
+                                       const bool use_neox_rotary_style,
+                                       const float out_linear_in_scale,
+                                       const int quant_round_type,
+                                       const float quant_max_bound,
+                                       const float quant_min_bound,
+                                       MetaTensor* out,
+                                       MetaTensor* cache_kv_out) {
+  auto x_dims = x.dims();
+  auto cache_kv_dims = cache_kv.dims();
+  auto x_dtype = x.dtype();
+  int bsz = x_dims[0];
+  int num_head = x_dims[2];
+  int dim_head = x_dims[3];
+
+  if (sequence_lengths) {
+    out->set_dims({bsz, num_head * dim_head});
+  } else {
+    out->set_dims({bsz, 1, num_head, dim_head});
+  }
+  if (out_linear_in_scale > 0) {
+    out->set_dtype(DataType::INT8);
+  } else {
+    out->set_dtype(x_dtype);
+  }
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      errors::InvalidArgument("The dimensions of x must be 4"
+                              "(batch_size, 3, num_head, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims.size(),
+      5,
+      errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
+                              cache_kv_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims[0],
+      2,
+      errors::InvalidArgument("The first dim of cache_kv must be 2, but got %d",
+                              cache_kv_dims[0]));
+
+  cache_kv_out->set_dims(cache_kv_dims);
+  cache_kv_out->set_dtype(cache_kv.dtype());
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
