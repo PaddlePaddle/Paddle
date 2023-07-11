@@ -178,6 +178,8 @@ void HandleForSpecialOp(ir::Operation* op,
 
     auto var = CreateVar(out_value, name, scope, local_scope);
     auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
+    // clear tensor array
+    tensor_array->clear();
 
     for (size_t i = 0; i < input_num; ++i) {
       auto value = op->operand(i);
@@ -203,8 +205,10 @@ void HandleForSpecialOp(ir::Operation* op,
     // change opreand name to param_name
 
     auto orig_name = name_map->at(in_ptr);
+    if (scope->FindVar(param_name) == nullptr) {
+      scope->Rename(orig_name, param_name);
+    }
     (*name_map)[in_ptr] = param_name;
-    scope->Rename(orig_name, param_name);
   }
 
   if (op_name == "builtin.get_parameter") {
