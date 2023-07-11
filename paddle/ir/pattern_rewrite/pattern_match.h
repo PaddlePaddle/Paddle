@@ -26,6 +26,7 @@
 
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/dll_decl.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation.h"
@@ -148,6 +149,8 @@ class IR_API Pattern {
 
   const PatternBenefit benefit_;
   IrContext* context_;
+  // A list of the potential operations that may be generated when rewriting an
+  // op with this pattern.
   std::vector<OpInfo> generated_ops_;
 
   std::string debug_name_;
@@ -162,13 +165,13 @@ class IR_API RewritePattern : public Pattern {
 
   virtual void Rewrite(Operation* op,
                        PatternRewriter& rewriter) const {  // NOLINT
-    throw(
+    IR_THROW(
         "need to implement either MatchAndRewrite or one of the rewrite "
         "functions.");
   }
 
   virtual bool Match(Operation* op) const {
-    throw("need to implement either MatchAndRewrite or Match.");
+    IR_THROW("need to implement either MatchAndRewrite or Match.");
     return false;
   }
 
@@ -220,10 +223,10 @@ struct OpOrInterfaceRewritePatternBase : public RewritePattern {
 
   virtual void Rewrite(SourceOp op,
                        PatternRewriter& rewriter) const {  // NOLINT
-    throw("must override Rewrite or MatchAndRewrite");
+    IR_THROW("must override Rewrite or MatchAndRewrite");
   }
   virtual bool Match(SourceOp op) const {
-    throw("must override Match or MatchAndRewrite");
+    IR_THROW("must override Match or MatchAndRewrite");
   }
   virtual bool MatchAndRewrite(SourceOp op,
                                PatternRewriter& rewriter) const {  // NOLINT
