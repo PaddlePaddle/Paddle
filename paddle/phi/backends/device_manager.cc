@@ -670,7 +670,9 @@ DeviceManager& DeviceManager::Instance() {
   return platform_manager;
 }
 
-void DeviceManager::Clear() {
+void DeviceManager::Release() {
+  stream::Stream::ReleaseAll();
+  event::Event::ReleaseAll();
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }

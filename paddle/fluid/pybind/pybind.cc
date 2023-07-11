@@ -1012,7 +1012,7 @@ PYBIND11_MODULE(libpaddle, m) {
     platform::CustomTracer::Release();
     platform::CustomDeviceEventResourcePool::Release();
     platform::CustomDeviceStreamResourcePool::Release();
-    phi::DeviceManager::Clear();
+    phi::DeviceManager::Release();
 #endif
   });
 
