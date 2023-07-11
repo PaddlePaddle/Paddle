@@ -486,4 +486,11 @@ void GemvWeightonlyInt8InferMeta(const MetaTensor& x,
                                  const std::string& act_method,
                                  MetaTensor* out);
 
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      const float epsilon,
+                      const int begin_norm_axis,
+                      MetaTensor* out);
+
 }  // namespace phi
