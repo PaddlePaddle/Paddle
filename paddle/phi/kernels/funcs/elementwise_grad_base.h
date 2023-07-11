@@ -402,7 +402,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
       y.data<T>(),
-      out.data<Tout>(), /*  */
+      out.data<Tout>(),
       dout.data<Tout>(),
       dx_op,
       dy_op,

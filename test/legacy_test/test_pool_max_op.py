@@ -319,7 +319,7 @@ def create_test_bf16_class(parent):
                 self.check_grad_with_place(
                     place,
                     {'X'},
-                    ['Out'],  # , user_defined_grads=[numeric_grads]
+                    ['Out'],
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
