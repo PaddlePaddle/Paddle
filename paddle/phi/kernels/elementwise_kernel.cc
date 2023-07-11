@@ -258,20 +258,6 @@ PD_REGISTER_KERNEL(subtract,
                    complex128,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(add,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::AddKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
-
 PD_REGISTER_KERNEL(multiply,
                    KPS,
                    ALL_LAYOUT,

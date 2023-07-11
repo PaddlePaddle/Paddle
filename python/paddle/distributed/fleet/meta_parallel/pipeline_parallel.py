@@ -56,13 +56,17 @@ class FakeMicroDataset:
     def _load_micro_batch(self, micro_step):
         inputs = self._data
 
-        if self._is_first_stage or self._is_last_stage:
+        data = None
+        label = None
+        if self._is_first_stage:
             assert len(inputs) == 2, "length of input should be 2"
             data = self._load_micro_batch_impl(inputs[0], micro_step)
+
+        if self._is_last_stage:
+            assert len(inputs) == 2, "length of input should be 2"
             label = self._load_micro_batch_impl(inputs[1], micro_step)
-            return (data, label)
-        else:
-            return (None, None)
+
+        return (data, label)
 
     def _load_micro_batch_impl(self, inputs, micro_step):
         begin = micro_step * self._micro_batch_size
@@ -709,12 +713,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert len(self.model_chunks) == self.num_model_chunks
         self._virtual_pp_world_size = self.num_model_chunks
         self._virtual_pp_rank = 0
-        self._tag_parameters()
+        self._assign_vpp_info(self.model_chunks)
 
-    def _tag_parameters(self):
-        for (i, chunk) in enumerate(self.model_chunks):
-            for _, param in chunk._obtain_parameters_buffers().items():
-                param.chunk_id = i
+    def _assign_vpp_info(self, chunks):
+        chunk_num = len(chunks)
+        for i, chunk in enumerate(chunks):
+            for p in chunk.parameters():
+                p._chunk_info = {"chunk_id": i, "chunk_num": chunk_num}
 
     def _get_virtual_pp_rank(self, micro_step, forward):
         virtual_pp_stage = micro_step % (

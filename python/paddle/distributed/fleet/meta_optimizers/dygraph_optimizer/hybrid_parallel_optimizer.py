@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
+import distutils.util
 import os
-from collections import OrderedDict
+
+import numpy as np
 
 import paddle
 from paddle import framework
@@ -41,213 +43,10 @@ __all__ = []
 
 g_calc_shard_locally = int(os.environ.get("CALC_SHARD_LOCALLY", 1))
 logger.info(f"g_calc_shard_locally {g_calc_shard_locally}")
-
-
-class ChunkNormer:
-    def __init__(self):
-        self.sum_square_dist_fp16 = []
-        self.sum_square_dist_bf16 = []
-        self.sum_square_dist_fp32 = []
-        self.sum_square_not_dist_fp16 = []
-        self.sum_square_not_dist_bf16 = []
-        self.sum_square_not_dist_fp32 = []
-
-    def add(self, p, g, local_sharding_only=False):
-        if g is None:
-            return
-        if getattr(p, 'need_clip', True) is False:
-            return
-        local_shard = getattr(p, 'local_shard', True)
-        if local_sharding_only and not local_shard:
-            logger.debug("skip sharded param")
-            return
-
-        merge_grad = g
-        if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-            merge_grad = clip.merge_selected_rows(g)
-            merge_grad = clip.get_tensor_from_selected_rows(merge_grad)
-        square = paddle.square(merge_grad)
-        sum_square = paddle.sum(square)
-
-        not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
-            hasattr(p, 'is_firstly_shared')
-            and getattr(p, 'is_firstly_shared', True)
-        )
-
-        if not_shared_enable:
-            if p.is_distributed:
-                if g.dtype == paddle.float16:
-                    self.sum_square_dist_fp16.append(sum_square)
-                elif g.dtype == paddle.bfloat16:
-                    self.sum_square_dist_bf16.append(sum_square)
-                elif g.dtype == paddle.float32:
-                    self.sum_square_dist_fp32.append(sum_square)
-            else:
-                if g.dtype == paddle.float16:
-                    self.sum_square_not_dist_fp16.append(sum_square)
-                if g.dtype == paddle.bfloat16:
-                    self.sum_square_not_dist_bf16.append(sum_square)
-                elif g.dtype == paddle.float32:
-                    self.sum_square_not_dist_fp32.append(sum_square)
-
-    def get_norm(self):
-        def transform(sum_square_list, cast=True):
-            if len(sum_square_list) == 0:
-                sum_square = paddle.to_tensor([0.0], dtype=paddle.float32)
-            else:
-                sum_square = paddle.concat(sum_square_list)
-                sum_square = paddle.sum(sum_square)
-                if cast:
-                    sum_square = paddle.cast(sum_square, dtype=paddle.float32)
-            return sum_square
-
-        sum_square_dist_fp16 = transform(self.sum_square_dist_fp16)
-        sum_square_dist_bf16 = transform(self.sum_square_dist_bf16)
-        sum_square_dist_fp32 = transform(self.sum_square_dist_fp32, False)
-
-        sum_square_not_dist_fp16 = transform(self.sum_square_not_dist_fp16)
-        sum_square_not_dist_bf16 = transform(self.sum_square_not_dist_bf16)
-        sum_square_not_dist_fp32 = transform(
-            self.sum_square_not_dist_fp32, False
-        )
-
-        chunk_sum_square_dist = paddle.concat(
-            [sum_square_dist_fp16, sum_square_dist_bf16, sum_square_dist_fp32]
-        )
-        chunk_sum_square_not_dist = paddle.concat(
-            [
-                sum_square_not_dist_fp16,
-                sum_square_not_dist_bf16,
-                sum_square_not_dist_fp32,
-            ]
-        )
-
-        chunk_sum_square_dist = paddle.unsqueeze(chunk_sum_square_dist, axis=0)
-        chunk_sum_square_not_dist = paddle.unsqueeze(
-            chunk_sum_square_not_dist, axis=0
-        )
-        # two dim: dist or not -> datatype
-        chunk_sum_square = paddle.concat(
-            [chunk_sum_square_dist, chunk_sum_square_not_dist], axis=0
-        )
-        return chunk_sum_square
-
-    def get_raw_numpy(self):
-        result_list = []
-
-        def transform(l, dtype):
-            if l:
-                return paddle.concat(l).cpu().numpy()
-            else:
-                return paddle.to_tensor([0.0], dtype=dtype).cpu().numpy()
-
-        result_list.append(transform(self.sum_square_dist_fp16, paddle.float16))
-        result_list.append(
-            transform(self.sum_square_dist_bf16, paddle.bfloat16)
-        )
-        result_list.append(transform(self.sum_square_dist_fp32, paddle.float32))
-        result_list.append(
-            transform(self.sum_square_not_dist_fp16, paddle.float16)
-        )
-        result_list.append(
-            transform(self.sum_square_not_dist_bf16, paddle.bfloat16)
-        )
-        result_list.append(
-            transform(self.sum_square_not_dist_fp32, paddle.float32)
-        )
-        return result_list
-
-
-class LocalNormGather:
-    def __init__(self, hcg):
-        self.chunks = OrderedDict()
-        self._hcg = hcg
-
-    def add_grad(self, p, g, chunk_id=0, local_sharding_only=False):
-        if chunk_id not in self.chunks:
-            self.chunks[chunk_id] = ChunkNormer()
-        self.chunks[chunk_id].add(p, g, local_sharding_only)
-
-    def get_result(self):
-        assert len(self.chunks), "no chunks"
-        chunk_sum_squares = []
-        for (k, v) in self.chunks.items():
-            chunk_sum_square = v.get_norm()
-            # three dim: chunk -> dist or not -> datatype
-            chunk_sum_square = paddle.unsqueeze(chunk_sum_square, axis=0)
-            chunk_sum_squares.append(chunk_sum_square)
-        chunk_sum_squares = paddle.concat(chunk_sum_squares, axis=0)
-        num_chunks = len(self.chunks)
-        if num_chunks > 1:
-            # redistribute chunks results among pipe line
-            chunk_list = []
-            paddle.distributed.all_gather(
-                chunk_list,
-                chunk_sum_squares,
-                self._hcg.get_pipe_parallel_group(),
-            )
-            chunk_list = [paddle.unsqueeze(x, axis=0) for x in chunk_list]
-            chunk_sum_squares = paddle.concat(chunk_list, axis=0)
-            chunk_sum_squares = paddle.transpose(
-                chunk_sum_squares, [1, 0, 2, 3]
-            )
-            pp_degree = self._hcg.get_pipe_parallel_world_size()
-            pp_rank = self._hcg.get_stage_id()
-            chunk_sum_squares = paddle.reshape(
-                chunk_sum_squares, [pp_degree, num_chunks, 2, 3]
-            )[pp_rank]
-        sum_squares = paddle.sum(chunk_sum_squares, axis=0)
-        sum_squares = paddle.sum(sum_squares, axis=-1)
-        sum_square_dist = sum_squares[0]
-        sum_square_not_dist = sum_squares[1]
-        return sum_square_dist, sum_square_not_dist
-
-    def get_strict_result(self):
-        assert len(self.chunks), "no chunks"
-        num_chunk = len(self.chunks)
-        if num_chunk == 1:
-            return self.get_result()
-        numpy_chunks = [v.get_raw_numpy() for (k, v) in self.chunks.items()]
-        # rank -> chunk
-        chunk_list = []
-        paddle.distributed.all_gather_object(
-            chunk_list, numpy_chunks, self._hcg.get_pipe_parallel_group()
-        )
-        # chunk -> rank
-        chunk_list = [list(e) for e in zip(*chunk_list)]
-
-        def flat_list(l):
-            flatted_list = []
-            for sublist in l:
-                for item in sublist:
-                    flatted_list.append(item)
-            return flatted_list
-
-        pp_degree = self._hcg.get_pipe_parallel_world_size()
-        pp_rank = self._hcg.get_stage_id()
-        # chunk*pp_gegree
-        chunk_list = flat_list(chunk_list)
-        assert len(chunk_list) == num_chunk * pp_degree
-        # chunk -> list of numpy
-        chunk_list = chunk_list[pp_rank * num_chunk : (pp_rank + 1) * num_chunk]
-        chunk_list = list(zip(*chunk_list))
-        chunk_list = [list(e) for e in chunk_list]
-        # convert to paddle tensor
-        sum_squares_list = [
-            [paddle.to_tensor(e) for e in l] for l in chunk_list
-        ]
-        sum_squares_list = [paddle.concat(l) for l in sum_squares_list]
-        sum_squares_list = [paddle.sum(l) for l in sum_squares_list]
-        sum_squares_list = [
-            paddle.cast(e, dtype=paddle.float32) for e in sum_squares_list
-        ]
-        assert len(sum_squares_list) == 6
-        sum_squares = paddle.concat(sum_squares_list, axis=0)
-        sum_squares = paddle.reshape(sum_squares, [2, 3])
-        sum_squares = paddle.sum(sum_squares, axis=-1)
-        sum_square_dist = sum_squares[0]
-        sum_square_not_dist = sum_squares[1]
-        return sum_square_dist, sum_square_not_dist
+g_shard_use_reduce = int(os.environ.get("SHARD_USE_REDUCE", 0))
+logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
+if not g_calc_shard_locally:
+    assert not g_shard_use_reduce
 
 
 class HybridParallelClipGrad:
@@ -255,8 +54,138 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = False
+        # self.not_sharding_stage1 = True
+        self._vpp_chunk_num = None
+        self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
+            os.getenv('FLAGS_force_align_vpp_grad_sum_order', '0')
+        )
 
-    def _global_norm(self, params_grads):
+    def _get_vpp_chunk_num(self, params_grads):
+        chunk_num = -1
+        for p, g in params_grads:
+            if g is None:
+                continue
+            chunk_info = getattr(p, '_chunk_info', {})
+            cur_chunk_num = chunk_info.get('chunk_num', -1)
+            if chunk_num < 0:
+                chunk_num = cur_chunk_num
+            else:
+                assert chunk_num == cur_chunk_num
+        return chunk_num
+
+    @no_grad()
+    def _vpp_dygraph_clip(self, params_grads, chunk_num):
+        pp_group = self._hcg.get_pipe_parallel_group()
+        pp_rank = self._hcg.get_stage_id()
+        pp_size = self._hcg.get_pipe_parallel_world_size()
+
+        if self._vpp_chunk_num is None:
+            all_chunk_nums = []
+            paddle.distributed.all_gather_object(
+                all_chunk_nums, chunk_num, group=pp_group
+            )
+            assert all([chunk_num == n for n in all_chunk_nums])
+            self._vpp_chunk_num = chunk_num
+        else:
+            assert self._vpp_chunk_num == chunk_num
+
+        sum_square_metas = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            local_shard = getattr(p, 'local_shard', True)
+            if g_calc_shard_locally and not local_shard:
+                logger.debug("skip sharded param")
+                continue
+
+            not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
+                hasattr(p, 'is_firstly_shared')
+                and getattr(p, 'is_firstly_shared', True)
+            )
+
+            chunk_id = p._chunk_info['chunk_id']
+            if not_shared_enable:
+                if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                    merge_grad = clip.merge_selected_rows(g)
+                    g = clip.get_tensor_from_selected_rows(merge_grad)
+                square = paddle.square(g)
+                sum_square = paddle.sum(square)
+                layer_id = chunk_id * pp_size + pp_rank
+                sum_square_metas.append(
+                    [layer_id, p.is_distributed, sum_square.numpy()]
+                )
+
+        all_sum_square_metas = []
+        paddle.distributed.all_gather_object(
+            all_sum_square_metas,
+            sum_square_metas,
+            group=pp_group,
+        )
+
+        # order: FP16, BF16, FP32
+        sum_square_dist = [[], [], []]
+        sum_square_not_dist = [[], [], []]
+
+        pp_stage = self._hcg.get_stage_id()
+        for i, metas in enumerate(all_sum_square_metas):
+            for layer_id, is_distributed, sum_square in metas:
+                rank = layer_id // chunk_num
+                assert rank < pp_size
+                if rank != pp_rank:
+                    continue
+                if sum_square.dtype == np.float32:
+                    idx = 2
+                elif sum_square.dtype == np.float16:
+                    idx = 0
+                else:
+                    assert (
+                        sum_square.dtype == np.uint16
+                    ), "The data type of grad must be FP32, FP16 or BF16, but got {}".format(
+                        sum_square.dtype
+                    )
+                    idx = 1
+
+                if is_distributed:
+                    sum_square_dist[idx].append(sum_square)
+                else:
+                    sum_square_not_dist[idx].append(sum_square)
+
+        global_norm_var_dist = self._add_sum_squares(sum_square_dist)
+        global_norm_var_not_dist = self._add_sum_squares(sum_square_not_dist)
+
+        return self._comm_and_clip(
+            params_grads, global_norm_var_dist, global_norm_var_not_dist
+        )
+
+    def _add_sum_squares(self, sum_squares):
+        norm_sum = None
+        for sq in sum_squares:
+            if len(sq) == 0:
+                continue
+
+            sq = np.concatenate(sq, axis=0).flatten()
+            sq = paddle.to_tensor(sq)
+            sq = paddle.sum(sq)
+            if sq.dtype != paddle.float32:
+                sq = sq.astype(paddle.float32)
+
+            if norm_sum is None:
+                norm_sum = sq
+            else:
+                norm_sum = norm_sum + sq
+
+        if norm_sum is None:
+            norm_sum = paddle.to_tensor([0.0], dtype=paddle.float32)
+
+        return norm_sum
+
+    @no_grad()
+    def _dygraph_clip(self, params_grads):
+        if self._force_align_vpp_grad_sum_order:
+            chunk_num = self._get_vpp_chunk_num(params_grads)
+            if chunk_num > 0:
+                return self._vpp_dygraph_clip(params_grads, chunk_num)
+
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -268,6 +197,10 @@ class HybridParallelClipGrad:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
+                continue
+            local_shard = getattr(p, 'local_shard', True)
+            if g_calc_shard_locally and not local_shard:
+                logger.debug("skip sharded param")
                 continue
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -371,83 +304,35 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_bf16
             + global_norm_not_dist_fp32
         )
+        return self._comm_and_clip(
+            params_grads, global_norm_var_dist, global_norm_var_not_dist
+        )
 
-        # add all reduce to get global norm of distributed params_and_grads
-        if self._hcg.get_model_parallel_world_size() > 1:
-            sharding_flag = False
-            if (
-                self._hcg.get_sharding_parallel_world_size() > 1
-                and self._hcg.get_data_parallel_world_size() == 1
-            ):
-                sharding_flag = True
-            paddle.distributed.all_reduce(
-                global_norm_var_dist,
-                group=self._hcg.get_check_parallel_group(sharding_flag),
-            )
-
-        # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
-        if self._hcg.get_pipe_parallel_world_size() > 1:
-            paddle.distributed.all_reduce(
-                global_norm_var_not_dist,
-                group=self._hcg.get_pipe_parallel_group(),
-            )
-
-        # In Sharding mode, param and grad is mapping different rank in optimizer.
-        # ClipGradByGlobalNorm need allreduce to get globol norm
-        # TODO(pangengzheng): remove the self.not_sharding_stage1 flag when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-        if (
-            self._hcg.get_sharding_parallel_world_size() > 1
-            and self.not_sharding_stage1
-        ):
-            paddle.distributed.all_reduce(
-                global_norm_var_not_dist,
-                group=self._hcg.get_sharding_parallel_group(),
-            )
-        return global_norm_var_dist, global_norm_var_not_dist
-
-    def _global_norm_v2(self, params_grads, locally_calc_shard=False):
-
-        local_norm = LocalNormGather(self._hcg)
-        for p, g in params_grads:
-            chunk_id = getattr(p, "chunk_id", 0)
-            local_norm.add_grad(p, g, chunk_id, locally_calc_shard)
-
-        (
-            global_norm_var_dist,
-            global_norm_var_not_dist,
-        ) = local_norm.get_result()
-
+    def _comm_and_clip(
+        self, params_grads, global_norm_var_dist, global_norm_var_not_dist
+    ):
+        # sharding first
         sharding_flag = False
         if (
             self._hcg.get_sharding_parallel_world_size() > 1
             and self._hcg.get_data_parallel_world_size() == 1
         ):
             sharding_flag = True
-
-        if sharding_flag and locally_calc_shard:
-            paddle.distributed.all_reduce(
-                global_norm_var_dist,
-                group=self._hcg.get_sharding_parallel_group(),
-            )
-
-            paddle.distributed.all_reduce(
-                global_norm_var_not_dist,
-                group=self._hcg.get_sharding_parallel_group(),
-            )
-
         # add all reduce to get global norm of distributed params_and_grads
-        if self._hcg.get_model_parallel_world_size() > 1:
+
+        if sharding_flag and g_calc_shard_locally:
             paddle.distributed.all_reduce(
                 global_norm_var_dist,
-                group=self._hcg.get_check_parallel_group(sharding_flag),
+                group=self._hcg.get_sharding_parallel_group(),
             )
+        paddle.distributed.all_reduce(
+            global_norm_var_dist,
+            group=self._hcg.get_check_parallel_group(sharding_flag),
+        )
 
-        # In Sharding mode, param and grad is mapping different rank in optimizer.
-        # ClipGradByGlobalNorm need allreduce to get globol norm
-        # TODO(pangengzheng): remove the self.not_sharding_stage1 flag when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
         if (
             self._hcg.get_sharding_parallel_world_size() > 1
-            and self.not_sharding_stage1
+            and g_calc_shard_locally
         ):
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
@@ -461,14 +346,17 @@ class HybridParallelClipGrad:
                 group=self._hcg.get_pipe_parallel_group(),
             )
 
-        return global_norm_var_dist, global_norm_var_not_dist
-
-    @no_grad()
-    def _dygraph_clip(self, params_grads):
-
-        global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(
-            params_grads, g_calc_shard_locally
-        )
+        # In Sharding mode, param and grad is mapping different rank in optimizer.
+        # ClipGradByGlobalNorm need allreduce to get globol norm
+        # TODO(pangengzheng): remove the self.not_sharding_stage1 flag when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+        if (
+            self._hcg.get_sharding_parallel_world_size() > 1
+            and self.not_sharding_stage1
+        ):
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group(),
+            )
 
         global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
