@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 
 namespace phi {
@@ -527,3 +528,4 @@ PD_REGISTER_KERNEL(fused_bias_act,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
                    int32_t) {}
+#endif

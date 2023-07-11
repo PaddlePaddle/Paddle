@@ -19,6 +19,7 @@ from eager_op_test import convert_float_to_uint16
 from scipy.special import erf, expit
 
 import paddle
+import paddle.nn.functional as F
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -34,7 +35,7 @@ def round_type_1_process(val):
 # rounding to nearest ties away from zero
 round_type_1 = np.vectorize(round_type_1_process)
 
-M_SQRT1_2 = 0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
+M_SQRT1_2 = 0.70710678118654752440
 
 
 def gelu(x):
@@ -186,6 +187,37 @@ class TestBaseFP16(TestFusedBiasActOp):
         self.act_method = 'gelu'
 
 
+class TestFastGeluFP16(TestFusedBiasActOp):
+    def use_fast_math(self, enabled):
+        paddle.set_flags({'FLAGS_use_fast_math': enabled})
+
+    def init_test_case(self):
+        self.dtype = np.float16
+        self.act_method = 'gelu'
+
+    def compute_baseline_output(self):
+        out = F.gelu(
+            paddle.to_tensor(self.x) + paddle.to_tensor(self.bias),
+            approximate=True,
+        )
+        return out
+
+    def compute_paddle_output(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        x = paddle.to_tensor(self.x)
+        bias = paddle.to_tensor(self.bias)
+        self.use_fast_math(True)
+        out = fused_act_bias_wrapper(
+            x=x,
+            bias=bias,
+            rows=self.rows,
+            cols=self.cols,
+            act_method=self.act_method,
+        )
+        self.use_fast_math(False)
+        return out
+
+
 class TestGegluFP16(TestFusedBiasActOp):
     def init_test_case(self):
         self.dtype = np.float16
@@ -322,7 +354,9 @@ class TestQuantGegluFP16(TestQuantFP32):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFusedBiasActOpBF16(unittest.TestCase):
     def setUp(self):
@@ -376,6 +410,11 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestGegluBF16(TestFusedBiasActOpBF16):
     def init_test_case(self):
         self.act_method = 'geglu'
@@ -390,6 +429,11 @@ class TestGegluBF16(TestFusedBiasActOpBF16):
         return convert_float_to_uint16(out)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestSwigluBF16(TestFusedBiasActOpBF16):
     def init_test_case(self):
         self.act_method = 'swiglu'
@@ -404,11 +448,17 @@ class TestSwigluBF16(TestFusedBiasActOpBF16):
         return convert_float_to_uint16(out)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestQuantBF16(TestFusedBiasActOpBF16):
     def init_test_case(self):
         self.atol = 1
 
         self.compute_dtype = 'bf16'
+        self.act_method = 'gelu'
         self.quant_scale = 0.5
         self.quant_round_type = 1
         self.quant_max_bound = 127.0
@@ -418,10 +468,11 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
 
     def generate_inputs(self):
         self.x = np.random.randint(
-            low=-16, high=16, size=(self.rows, self.cols)
+            low=-1000, high=1000, size=(self.rows, self.cols)
         ).astype('int32')
         self.bias = np.zeros(self.cols).astype('float32')
-        self.dequant_scales = np.random.rand(self.cols).astype('float32')
+        self.dequant_scales = np.ones(self.cols).astype('float32')
+
         quant_params_cols = self.cols // 2 if self.use_glu else self.cols
         self.shift = np.zeros(quant_params_cols).astype('float32')
         self.smooth = np.ones(quant_params_cols).astype('float32')
@@ -469,6 +520,11 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
         return out
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestQuantGegluBF16(TestQuantBF16):
     def init_test_case(self):
         self.atol = 1
@@ -504,6 +560,11 @@ class TestQuantGegluBF16(TestQuantBF16):
         return out
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestQuantSwigluBF16(TestQuantBF16):
     def init_test_case(self):
         self.atol = 1

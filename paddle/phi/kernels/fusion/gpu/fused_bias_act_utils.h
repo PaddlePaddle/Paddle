@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
 #pragma once
 
 #include <string>
@@ -129,3 +130,4 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
 
 }  // namespace fusion
 }  // namespace phi
+#endif
