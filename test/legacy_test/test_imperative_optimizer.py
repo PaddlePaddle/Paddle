@@ -24,7 +24,6 @@ from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
     Adam,
-    DpsgdOptimizer,
     LarsMomentumOptimizer,
     MomentumOptimizer,
     PipelineOptimizer,
@@ -609,29 +608,6 @@ class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
 
     def test_adamax(self):
         self._check_mlp()
-
-
-class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01,
-            clip=10.0,
-            batch_size=16.0,
-            sigma=1.0,
-            parameter_list=parameter_list,
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def test_dpsgd(self):
-        self._check_mlp(place=fluid.CPUPlace())
 
 
 class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
