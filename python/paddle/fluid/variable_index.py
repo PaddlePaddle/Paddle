@@ -929,10 +929,32 @@ def parse_index(x, indices):
     indices = replace_ellipsis(x, indices)
     indices, none_axes = replace_none(indices)
 
+    is_tensor_array = (
+        hasattr(x, "desc")
+        and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    )
+
     estimated_dim = 0
     for dim, slice_item in enumerate(indices):
         start, end, step = None, None, None
         if is_integer_or_scalar_tensor(slice_item):
+            if (
+                not is_tensor_array
+                and isinstance(slice_item, int)
+                and x.shape[dim] is not None
+                and x.shape[dim] >= 0
+                and slice_item >= x.shape[dim]
+            ):
+                # For python, if users write a, b = var, the __getitem__
+                # method will iterate through 0, 1, 2 ... until __getitem__
+                # throws an IndexError, then stop. The var[0], var[1] will
+                # be given to a, b respectively. If more values are given,
+                # the unpack size would cause error.
+                # We raises IndexError here to support grammar like `a, b = var`
+                raise IndexError(
+                    "slice_item %d at dim %d should be >= 0 and < x.shape[%d]: %d"
+                    % (slice_item, dim, dim, x.shape[dim])
+                )
             # not calculate result to reduce call times for slice OP.
             decrease_axes.append(dim)
             start = slice_item
