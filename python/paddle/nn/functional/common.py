@@ -1892,11 +1892,11 @@ def linear_compress(
 ):
     if in_dynamic_mode():
         if algo == "llm.int8":
-            y = _C_ops.llm_int8_mat_mul(
+            y = _C_ops.llm_int8_matmul(
                 x, weight, weight_scale, config['threshold']
             )
         elif algo == "weight_only":
-            y = _C_ops.weight_only_mat_mul(x, weight, weight_scale)
+            y = _C_ops.weight_only_matmul(x, weight, weight_scale)
         else:
             raise ValueError(
                 "Unknown algo: '{}'. It can only be 'llm.int8' or 'weight_only'.".format(
@@ -1915,11 +1915,19 @@ def linear_compress(
 
         if algo == "llm.int8":
             type = "llm_int8_matmul"
-            inputs = {'X': [x], 'Y': [weight], 'weight_scale': [weight_scale]}
+            inputs = {
+                'x': [x],
+                'weight': [weight],
+                'weight_scale': [weight_scale],
+            }
             attrs = {'algo': algo, 'threshold': config['threshold']}
         elif algo == "weight_only":
             type = "weight_only_matmul"
-            inputs = {'X': [x], 'Y': [weight], 'weight_scale': [weight_scale]}
+            inputs = {
+                'x': [x],
+                'weight': [weight],
+                'weight_scale': [weight_scale],
+            }
             attrs = {}
         else:
             raise ValueError(

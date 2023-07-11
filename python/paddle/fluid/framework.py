@@ -2456,6 +2456,12 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_custom_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.CustomPlace(
+                p.custom_device_type(), p.custom_device_id()
+            )
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -7623,8 +7629,15 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.IPUPlace(device_id)
 
+    place_info_list = place.split(':', 1)
+    device_type = place_info_list[0]
+    if device_type in core.get_all_custom_device_type():
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.CustomPlace(device_type, device_id)
+
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace and IPUPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 
