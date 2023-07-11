@@ -44,6 +44,11 @@ void CommContextManager::CreateNCCLCommContext(
     int rank,
     int size) {
   phi::backends::gpu::SetDeviceId(dev_id);
+  auto& comm_context_manager = CommContextManager::GetInstance();
+  if (comm_context_manager.Has(ring_id)) {
+      VLOG(3) << "for comm_context for ring_id " << ring_id << ", rank " << rank;
+      return;
+  }
   ncclUniqueId nccl_id;
   if (rank == 0) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
@@ -62,7 +67,6 @@ void CommContextManager::CreateNCCLCommContext(
 
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
-  auto& comm_context_manager = CommContextManager::GetInstance();
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(ring_id, std::move(nccl_comm_context));
 }
@@ -88,10 +92,6 @@ void CommContextManager::CreateGlooCommContext(
 
 CommContext* CommContextManager::Emplace(
     int ring_id, std::unique_ptr<CommContext> comm_context) {
-  if (Has(ring_id)) {
-      VLOG(3) << "find comm_context for ring_id " << ring_id;
-      return Get(ring_id);
-  }
   id_to_comm_context_.emplace(ring_id, std::move(comm_context));
   return id_to_comm_context_.at(ring_id).get();
 }

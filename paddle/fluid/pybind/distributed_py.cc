@@ -1242,6 +1242,7 @@ void BindDistributed(py::module *m) {
                   py::arg("rank"),
                   py::arg("world_size"),
                   py::arg("group_id") = 0,
+                  py::arg("endpoints_str") = "",
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
       .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);

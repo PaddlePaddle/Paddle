@@ -405,6 +405,7 @@ class Engine:
             self.main_program._pipeline_opt
             and not auto_utils.use_new_executor()
         ):
+            self._logger.info("use fleet executor")
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
             fwd_task = None
