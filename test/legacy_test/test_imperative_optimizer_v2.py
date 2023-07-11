@@ -23,7 +23,6 @@ from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
-    DecayedAdagradOptimizer,
     DpsgdOptimizer,
     LarsMomentumOptimizer,
     MomentumOptimizer,
@@ -762,21 +761,6 @@ class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
 
     def test_dpsgd(self):
         self._check_mlp(place=fluid.CPUPlace())
-
-
-class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DecayedAdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DecayedAdagradOptimizer(learning_rate=0.2)
-        return optimizer
-
-    def test_decayadagrad(self):
-        self._check_mlp()
 
 
 class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):

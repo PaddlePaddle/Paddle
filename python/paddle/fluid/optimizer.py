@@ -70,7 +70,6 @@ __all__ = [
     'MomentumOptimizer',
     'AdamOptimizer',
     'DpsgdOptimizer',
-    'DecayedAdagradOptimizer',
     'LarsMomentum',
     'LarsMomentumOptimizer',
     'PipelineOptimizer',
@@ -2516,138 +2515,6 @@ class DpsgdOptimizer(Optimizer):
             return dpsgd_op
 
 
-class DecayedAdagradOptimizer(Optimizer):
-    r"""
-    The Decayed Adagrad optimizer can be seen as an Adagrad algorithm that introduces
-    the decay rate to solve the problem of a sharp drop in the learning rate
-    during model training when using the AdagradOptimizer.
-
-    The parameter ``param_out`` update rule with gradient ``grad``:
-
-    .. math::
-
-        moment\_out & = decay * moment + (1 - decay) * grad * grad
-
-        param\_out & = param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
-
-    Related paper: `Adaptive Subgradient Methods for Online Learning and Stochastic
-    Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
-
-    The original paper does not have an ``epsilon`` attribute. It is added here for numerical
-    stability to avoid the division by zero error.
-
-    Args:
-        learning_rate (float|Variable): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Variable`` with a float type.
-        decay (float, optional): The decay rate. The default value is 0.95.
-        epsilon (float, optional): A small float value for numerical stability.
-            The default value is 1e-06.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
-            The default value is None in static graph mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`.
-            The default value is None.
-
-    **Notes**:
-        **Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.**
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-
-            paddle.enable_static()
-            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
-            trans = paddle.static.nn.fc(x, 100)
-            cost = paddle.mean(trans)
-            optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
-            optimizer.minimize(cost)
-    """
-    _moment_acc_str = "moment"
-
-    def __init__(
-        self,
-        learning_rate,
-        decay=0.95,
-        epsilon=1.0e-6,
-        parameter_list=None,
-        regularization=None,
-        grad_clip=None,
-        name=None,
-    ):
-        assert learning_rate is not None
-        assert decay is not None
-        assert epsilon is not None
-
-        super().__init__(
-            learning_rate=learning_rate,
-            parameter_list=parameter_list,
-            regularization=regularization,
-            grad_clip=grad_clip,
-            name=name,
-        )
-        self.type = "decayed_adagrad"
-        self._decay = decay
-        self._epsilon = epsilon
-
-    def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
-
-        for p in parameters:
-            self._add_accumulator(self._moment_acc_str, p)
-
-    def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
-
-        moment_acc = self._get_accumulator(
-            self._moment_acc_str, param_and_grad[0]
-        )
-
-        if in_dygraph_mode():
-            _legacy_C_ops.decayed_adagrad(
-                param_and_grad[0],
-                param_and_grad[1],
-                moment_acc,
-                self._create_param_lr(param_and_grad),
-                param_and_grad[0],
-                moment_acc,
-                "epsilon",
-                self._epsilon,
-                "decay",
-                self._decay,
-            )
-        else:
-            # Create the decayed adagrad optimizer op
-            decayed_adagrad_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Moment": moment_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": moment_acc,
-                },
-                attrs={"epsilon": self._epsilon, "decay": self._decay},
-                stop_gradient=True,
-            )
-
-            return decayed_adagrad_op
-
-
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -2660,7 +2527,6 @@ SGD = SGDOptimizer
 Momentum = MomentumOptimizer
 Adam = AdamOptimizer
 Dpsgd = DpsgdOptimizer
-DecayedAdagrad = DecayedAdagradOptimizer
 LarsMomentum = LarsMomentumOptimizer
 
 
