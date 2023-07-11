@@ -4464,7 +4464,7 @@ def logit(x, eps=None, name=None):
             \end{array}\right.
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         eps (float, optional):  the epsilon for input clamp bound. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
