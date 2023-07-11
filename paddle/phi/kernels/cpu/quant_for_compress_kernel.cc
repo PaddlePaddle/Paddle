@@ -109,4 +109,5 @@ PD_REGISTER_KERNEL(quant_for_compress,
                    CPU,
                    ALL_LAYOUT,
                    phi::QuantForCompressKernel,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

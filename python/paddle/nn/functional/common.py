@@ -1886,7 +1886,7 @@ def linear_compress(
     weight_scale,
     bias=None,
     bits=8,
-    algo="llm.int8",
+    algo="weight_only",
     name=None,
     config=None,
 ):

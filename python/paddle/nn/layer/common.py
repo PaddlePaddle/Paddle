@@ -219,7 +219,7 @@ class LinearCompress(Layer):
         name (str, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
         bits (int, optional): The attribute to set num of bits in quant during weight_only,
-            it must be set as 8, default: 8.
+            it must be set as 8 or 4, default: 8.
         algo (str, optional): The  attribute to set algorithm of cpmoress, it must be set as 'weight_only'
             or 'llm.int8', default: weight_only.
         config (dict, optional): The parameter config for algorithm of cpmoress.

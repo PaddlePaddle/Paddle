@@ -71,13 +71,25 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
       cutlass::platform::is_same<T, half>::value,
       cutlass::half_t,
       T>::type;
-  using ElementType = ElementType_;
+
+#ifdef PADDLE_CUDA_BF16
+  using ElementType = typename cutlass::platform::conditional<
+      cutlass::platform::is_same<ElementType_, __nv_bfloat16>::value,
+      cutlass::bfloat16_t,
+      ElementType_>::type;
+#endif
 
   using CutlassWeightType_ = typename cutlass::platform::conditional<
       cutlass::platform::is_same<WeightType, half>::value,
       cutlass::half_t,
       WeightType>::type;
-  using CutlassWeightType = CutlassWeightType_;
+
+#ifdef PADDLE_CUDA_BF16
+  using CutlassWeightType = typename cutlass::platform::conditional<
+      cutlass::platform::is_same<CutlassWeightType_, __nv_bfloat16>::value,
+      cutlass::bfloat16_t,
+      CutlassWeightType_>::type;
+#endif
 
   // We need separate config for each architecture since we will target
   // different tensorcore instructions. For float, we do not target TCs.

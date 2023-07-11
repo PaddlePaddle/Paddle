@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_uint16_to_float
 
 import paddle
 from paddle import fluid
@@ -24,7 +25,7 @@ from paddle.framework import set_default_dtype
 np.random.seed(123)
 paddle.seed(123)
 default_main_program().random_seed = 42
-paddle.disable_static()
+# paddle.disable_static()
 
 
 class LinearTestCase(unittest.TestCase):
@@ -80,6 +81,9 @@ class LinearTestCase(unittest.TestCase):
     def test_linear_compress(self):
         out_real = self.get_linear_compress_out()
         out_expect = self.get_linear_out()
+        if self.dtype == "bfloat16":
+            out_real = convert_uint16_to_float(out_real)
+            out_expect = convert_uint16_to_float(out_expect)
         np.testing.assert_allclose(
             out_real, out_expect, rtol=self.rtol, atol=self.atol
         )
@@ -122,6 +126,38 @@ class LinearTestCase4(LinearTestCase):
         self.in_features = 128
         self.out_features = 64
         self.bits = 4
+
+
+class LinearTestCase5(LinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.bias = False
+        self.in_features = 64
+        self.out_features = 64
+        self.algo = "llm.int8"
+        self.atol = 1e-1
+
+
+class LinearTestCase6(LinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.bias = False
+        self.in_features = 64
+        self.out_features = 64
+        self.atol = 1e-1
+
+
+class LinearTestCase7(LinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.bits = 4
+        self.bias = False
+        self.in_features = 64
+        self.out_features = 64
+        self.atol = 1e-1
 
 
 if __name__ == '__main__':

@@ -72,4 +72,5 @@ PD_REGISTER_KERNEL(llm_int8_matmul,
                    GPU,
                    ALL_LAYOUT,
                    phi::LLMInt8MatmulKernel,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
