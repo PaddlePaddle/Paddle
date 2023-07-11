@@ -35,6 +35,8 @@ std::vector<Attribute> ArrayAttribute::data() const {
 
 void* PointerAttribute::data() const { return storage()->GetAsKey(); }
 
+Type TypeAttribute::data() const { return storage()->GetAsKey(); }
+
 }  // namespace ir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::StrAttribute)
@@ -45,3 +47,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int32Attribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int64Attribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::ArrayAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::PointerAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::TypeAttribute)

@@ -43,8 +43,10 @@ class AssertTrueMsgTool {
   const T& GetFlagValue(const std::string& param) {
     InitFlagInfo();
     CHECK(flag_values_.count(param))
-        << "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter \"only_warning/rtol/atol/equal_nan\" now";
-    CHECK(absl::holds_alternative<T>(flag_values_.at(param))) << "Try get value from a error type!";
+        << "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
+           "\"only_warning/rtol/atol/equal_nan\" now";
+    CHECK(absl::holds_alternative<T>(flag_values_.at(param)))
+        << "Try get value from a error type!";
     return absl::get<T>(flag_values_.at(param));
   }
 
@@ -60,7 +62,12 @@ class AssertTrueMsgTool {
 };
 }  // namespace utils
 
-void cinn_assert_true(void* v_args, int num_args, int msg, bool only_warning, void* stream, const Target& target);
+void cinn_assert_true(void* v_args,
+                      int num_args,
+                      int msg,
+                      bool only_warning,
+                      void* stream,
+                      const Target& target);
 
 }  // namespace runtime
 }  // namespace cinn

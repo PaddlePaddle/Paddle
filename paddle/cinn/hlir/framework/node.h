@@ -32,8 +32,8 @@ namespace framework {
 class Node;
 class NodeData;
 
-using NodePtr     = common::Shared<Node>;
-using AttrType    = utils::Attribute;
+using NodePtr = common::Shared<Node>;
+using AttrType = utils::Attribute;
 using AttrMapType = utils::AttributeMap;
 
 /**
@@ -69,14 +69,15 @@ class Node : public common::GraphNode {
  public:
   Node() = default;
   Node(const Operator *op, const std::string &name, std::string id = {}) {
-    this->attrs.op        = op;
+    this->attrs.op = op;
     this->attrs.node_name = name;
-    this->id_             = std::move(id);
+    this->id_ = std::move(id);
   }
   const char *type_info() const override { return __type_info__; }
   std::tuple<common::GraphEdge *, common::GraphEdge *> LinkTo(NodeData *other);
 
-  // This node determines another node, which means the other node depeneds on this node.
+  // This node determines another node, which means the other node depeneds on
+  // this node.
   void Controls(NodeData *other);
 
   /**
@@ -89,10 +90,12 @@ class Node : public common::GraphNode {
    */
   NodeAttr attrs;
 
-  //! Get the input tensors in order to match tensors correctly. If do refresh, we will update the links.
+  //! Get the input tensors in order to match tensors correctly. If do refresh,
+  //! we will update the links.
   std::vector<common::Shared<common::GraphEdge>> inlinks_in_order() const;
 
-  //! Get the output tensors in order to match tensors correctly. If do refresh, we will update the links.
+  //! Get the output tensors in order to match tensors correctly. If do refresh,
+  //! we will update the links.
   std::vector<common::Shared<common::GraphEdge>> outlinks_in_order() const;
 
   inline const Operator *op() const { return this->attrs.op; }
@@ -102,17 +105,21 @@ class Node : public common::GraphNode {
   inline uint32_t num_outputs() {
     if (is_variable()) return 1;
     if (this->op()->num_outputs == 0) {
-      using shape_func_t = std::function<std::vector<shape_t>(const std::vector<shape_t> &, const AttrMapType &)>;
-      const auto &op_infershape = Operator::GetAttrs<shape_func_t>("infershape");
-      auto key                  = Operator::Get(this->op()->name);
-      auto out_shapes           = op_infershape[key]({}, this->attrs.attr_store);
+      using shape_func_t = std::function<std::vector<shape_t>(
+          const std::vector<shape_t> &, const AttrMapType &)>;
+      const auto &op_infershape =
+          Operator::GetAttrs<shape_func_t>("infershape");
+      auto key = Operator::Get(this->op()->name);
+      auto out_shapes = op_infershape[key]({}, this->attrs.attr_store);
       return out_shapes.size();
     } else {
       return this->op()->num_outputs;
     }
   }
 
-  inline uint32_t num_inputs() { return is_variable() ? 1 : this->op()->num_inputs; }
+  inline uint32_t num_inputs() {
+    return is_variable() ? 1 : this->op()->num_inputs;
+  }
 
   template <class... Args>
   static NodePtr Create(Args &&...args) {
@@ -135,29 +142,39 @@ class NodeData : public common::GraphNode {
   using attr_t = AttrType;
 
  public:
-  NodeData(NodePtr node, uint32_t index, uint32_t version, std::string id, bool is_const = false)
-      : source_node(std::move(node)), output_index(index), version(version), id_(std::move(id)), is_const_(is_const) {}
+  NodeData(NodePtr node,
+           uint32_t index,
+           uint32_t version,
+           std::string id,
+           bool is_const = false)
+      : source_node(std::move(node)),
+        output_index(index),
+        version(version),
+        id_(std::move(id)),
+        is_const_(is_const) {}
 
   NodeData() : source_node(), output_index(), version(), id_(), is_const_() {}
 
   std::tuple<common::GraphEdge *, common::GraphEdge *> LinkTo(Node *other);
 
-  // This node determines another node, which means the other node depeneds on this node.
+  // This node determines another node, which means the other node depeneds on
+  // this node.
   void Controls(Node *other);
 
   static std::shared_ptr<NodeData> Create(
       const char *op_name,
       std::string node_name,
       std::vector<NodeData> inputs,
-      std::string id                                 = nullptr,
-      absl::flat_hash_map<std::string, attr_t> attrs = absl::flat_hash_map<std::string, attr_t>(),
-      bool is_const                                  = false) {
-    auto res                           = std::make_shared<NodeData>();
-    res->id_                           = std::move(id);
-    res->is_const_                     = is_const;
-    res->source_node                   = Node::Create();
-    res->source_node->attrs.op         = Operator::Get(op_name);
-    res->source_node->attrs.node_name  = std::move(node_name);
+      std::string id = nullptr,
+      absl::flat_hash_map<std::string, attr_t> attrs =
+          absl::flat_hash_map<std::string, attr_t>(),
+      bool is_const = false) {
+    auto res = std::make_shared<NodeData>();
+    res->id_ = std::move(id);
+    res->is_const_ = is_const;
+    res->source_node = Node::Create();
+    res->source_node->attrs.op = Operator::Get(op_name);
+    res->source_node->attrs.node_name = std::move(node_name);
     res->source_node->attrs.attr_store = attrs;
     return res;
   }
@@ -186,7 +203,8 @@ class NodeData : public common::GraphNode {
   /**
    * \brief The version of input Variable.
    *  This field can only be nonzero when this->node is a Variable node.
-   *  version is increased by one each time a Variable get composed to a mutation Op.
+   *  version is increased by one each time a Variable get composed to a
+   * mutation Op.
    */
   uint32_t version;
 
@@ -201,11 +219,17 @@ class NodeData : public common::GraphNode {
 };
 
 // insert op_node after input_data
-NodeData *InsertGraphOpNodeAfter(
-    common::Graph *graph, Node *insert_node, NodeData *input_nodedata, Node *dst_node, int pos);
+NodeData *InsertGraphOpNodeAfter(common::Graph *graph,
+                                 Node *insert_node,
+                                 NodeData *input_nodedata,
+                                 Node *dst_node,
+                                 int pos);
 // insert op_node before out_data
-NodeData *InsertGraphOpNodeBefore(
-    common::Graph *graph, Node *insert_node, Node *input_node, NodeData *dst_data, int pos);
+NodeData *InsertGraphOpNodeBefore(common::Graph *graph,
+                                  Node *insert_node,
+                                  Node *input_node,
+                                  NodeData *dst_data,
+                                  int pos);
 
 }  // namespace framework
 }  // namespace hlir

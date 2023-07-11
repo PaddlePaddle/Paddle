@@ -34,7 +34,8 @@ struct _Tensor_;
  * @param Args type of the extra arguments passed to the all the methods.
  */
 template <typename RetTy = void, typename... Args>
-struct IRVisitorBase {
+class IRVisitorRequireReImpl {
+ public:
   //! Visit a expression.
   // @{
   virtual RetTy Visit(const ir::Expr* expr, Args... args) {
@@ -53,7 +54,6 @@ struct IRVisitorBase {
     return RetTy();
   }
   // @}
-
  protected:
 #define __(op__) virtual RetTy Visit(const ir::op__* op, Args... args) = 0;
   NODETY_FORALL(__)
@@ -63,17 +63,21 @@ struct IRVisitorBase {
 /**
  * Base of all the Ir readonly visitor.
  */
-struct IRVisitor : public IRVisitorBase<void> {
+struct IRVisitor : public IRVisitorRequireReImpl<void> {
   IRVisitor() = default;
 
-  void Visit(const Expr* x) { IRVisitorBase::Visit(x); }
+  void Visit(const Expr* x) { IRVisitorRequireReImpl::Visit(x); }
 #define __m(t__) \
-  virtual void Visit(const t__* x) {}
+  virtual void Visit(const t__* x) { return VisitDefault(x); }
   NODETY_FORALL(__m)
 #undef __m
-};
 
-// std::set<Expr> CollectIRNodes(Expr expr, std::function<bool(const Expr*)> teller);
+  virtual void VisitDefault(const Object* obj) {
+    LOG(FATAL) << "not supported NodeTy";
+  }
+};
+// std::set<Expr> CollectIRNodes(Expr expr, std::function<bool(const Expr*)>
+// teller);
 
 bool operator==(Expr a, Expr b);
 bool operator!=(Expr a, Expr b);

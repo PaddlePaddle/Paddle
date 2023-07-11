@@ -496,9 +496,11 @@ void CheckNumericsKernel(const Context& ctx,
                          DenseTensor* values) {
   int dev_id = tensor.place().device;
   VLOG(6) << "op_type=" << op_type << ", var_name=" << var_name
-          << ", dev_id=gpu:" << dev_id
+          << ", dev_id=gpu:" << dev_id << ", numel=" << tensor.numel()
           << ", stack_height_limit=" << stack_height_limit
           << ", output_dir=" << output_dir;
+
+  if (tensor.numel() <= 0) return;
 
   // Print to the standard output.
   char* gpu_str_ptr = GetGpuHintStringPtr<T>(ctx, op_type, var_name, dev_id);

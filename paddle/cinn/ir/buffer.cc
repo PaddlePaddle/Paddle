@@ -27,12 +27,15 @@ namespace ir {
 std::string TensorGetBufferName(const _Tensor_ *tensor) {
   CHECK(!tensor->name.empty());
   CHECK(!utils::Startswith(tensor->name, "_"))
-      << "the name with prefix _ is not allowed for tensor. Current tensor's name is: " << tensor->name;
+      << "the name with prefix _ is not allowed for tensor. Current tensor's "
+         "name is: "
+      << tensor->name;
   return "_" + tensor->name;
 }
 std::string BufferGetTensorName(const _Buffer_ *buffer) {
   CHECK(!buffer->name.empty());
-  CHECK(utils::Startswith(buffer->name, "_")) << "buffer's name should start with _";
+  CHECK(utils::Startswith(buffer->name, "_"))
+      << "buffer's name should start with _";
   return buffer->name.substr(1);
 }
 
@@ -52,29 +55,29 @@ Buffer _Buffer_::Make(Var data,
   CHECK(dtype.valid());
   CHECK(!dtype.is_unk());
   CHECK(!dtype.is_void());
-  auto *node           = common::make_shared<_Buffer_>();
-  node->shape          = shape;
-  node->strides        = strides;
-  node->elem_offset    = elem_offset;
-  node->name           = name;
-  node->scope          = scope;
+  auto *node = common::make_shared<_Buffer_>();
+  node->shape = shape;
+  node->strides = strides;
+  node->elem_offset = elem_offset;
+  node->name = name;
+  node->scope = scope;
   node->data_alignment = data_alignment;
-  node->offset_factor  = offset_factor;
-  node->target         = target;
-  node->dtype          = dtype;
+  node->offset_factor = offset_factor;
+  node->target = target;
+  node->dtype = dtype;
   return Buffer(node);
 }
 
 Buffer _Buffer_::Make(const std::string &name, const std::vector<Expr> &shape) {
-  auto *node  = common::make_shared<_Buffer_>();
-  node->name  = name;
+  auto *node = common::make_shared<_Buffer_>();
+  node->name = name;
   node->shape = shape;
   node->dtype = Void();
   return Buffer(node);
 }
 
 Buffer _Buffer_::Make() {
-  auto *node  = common::make_shared<_Buffer_>();
+  auto *node = common::make_shared<_Buffer_>();
   node->dtype = Void();
   return Buffer(node);
 }
@@ -85,11 +88,14 @@ void _Buffer_::BindTo(const Tensor &tensor) { BindTo(tensor.As<_Tensor_>()); }
 void _Buffer_::BindTo(const _Tensor_ *tensor) {
   if (name.empty()) name = TensorGetBufferName(tensor);
   if (type().is_unk()) set_type(tensor->type());
-  CHECK(!tensor->shape.empty()) << "Tensor should have shape to bind to a Buffer";
+  CHECK(!tensor->shape.empty())
+      << "Tensor should have shape to bind to a Buffer";
   shape = tensor->shape;
   binded_tensors_names_.insert(tensor->name);
 }
-void _Buffer_::Unbind(const _Tensor_ *tensor) { binded_tensors_names_.erase(tensor->name); }
+void _Buffer_::Unbind(const _Tensor_ *tensor) {
+  binded_tensors_names_.erase(tensor->name);
+}
 
 Var _Buffer_::buffer_addr() const {
   auto thetype = type().ElementOf();
@@ -114,12 +120,13 @@ void _Buffer_::Verify() const {
 
 Expr Buffer::DestroyExpr() const {
   auto *node = operator->();
-  return runtime::IntrinsicCall(
-      Void(), runtime::intrinsic::buffer_destroy, {ir::_Var_::Make(node->name, node->type())});
+  return runtime::IntrinsicCall(Void(),
+                                runtime::intrinsic::buffer_destroy,
+                                {ir::_Var_::Make(node->name, node->type())});
 }
 
 Expr _BufferRange_::Make(const Expr &buffer, const std::vector<Var> &ranges) {
-  auto node    = make_shared<_BufferRange_>();
+  auto node = make_shared<_BufferRange_>();
   node->buffer = buffer;
   node->ranges = ranges;
   return Expr(node);
@@ -129,7 +136,7 @@ void _BufferRange_::Verify() const {
   CHECK(buffer_ptr);
 }
 Expr _BufferRange_::Copy() const {
-  auto node    = make_shared<_BufferRange_>();
+  auto node = make_shared<_BufferRange_>();
   node->buffer = buffer;
   node->ranges = ranges;
   node->set_type(type());
@@ -137,27 +144,31 @@ Expr _BufferRange_::Copy() const {
 }
 
 bool BufferRange::operator==(const BufferRange &x) const {
-  auto this_buffer  = operator->()->buffer.As<_Buffer_>();
+  auto this_buffer = operator->()->buffer.As<_Buffer_>();
   auto other_buffer = x->buffer.As<_Buffer_>();
   CHECK(this_buffer);
   CHECK(other_buffer);
   if (this_buffer != other_buffer) return false;
   if (x->ranges.size() != operator->()->ranges.size()) return false;
   for (int i = 0; i < x->ranges.size(); i++) {
-    Var this_range  = operator->()->ranges[i];
+    Var this_range = operator->()->ranges[i];
     Var other_range = x->ranges[i];
-    if (!is_zero(this_range->lower_bound - other_range->lower_bound)) return false;
-    if (!is_zero(this_range->upper_bound - other_range->upper_bound)) return false;
+    if (!is_zero(this_range->lower_bound - other_range->lower_bound))
+      return false;
+    if (!is_zero(this_range->upper_bound - other_range->upper_bound))
+      return false;
   }
   return true;
 }
-bool BufferRange::operator!=(const BufferRange &x) const { return !(*this == x); }
+bool BufferRange::operator!=(const BufferRange &x) const {
+  return !(*this == x);
+}
 BufferRange &BufferRange::operator=(_BufferRange_ *x) {
   *this = BufferRange(x);
   return *this;
 }
 BufferRange &BufferRange::operator=(const _BufferRange_ *x) {
-  auto node    = make_shared<_BufferRange_>();
+  auto node = make_shared<_BufferRange_>();
   node->buffer = x->buffer;
   node->ranges = x->ranges;
   node->set_type(x->type());

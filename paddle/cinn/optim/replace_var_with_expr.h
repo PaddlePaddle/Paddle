@@ -27,8 +27,9 @@ namespace optim {
  * Replace the variable with a expression.
  * @param var The variable to replace.
  * @param expr The candidate expression.
- * @param tensor_name Name of the tensor whose indices will be edited. If it is empty, means we will
- * do the replace in all Expr instead of only in specific tensor's indices.
+ * @param tensor_name Name of the tensor whose indices will be edited. If it is
+ * empty, means we will do the replace in all Expr instead of only in specific
+ * tensor's indices.
  */
 /**
  * Example 1: ReplaceVarWithExpr(source, Var("i"), Expr(0), "A")
@@ -53,12 +54,16 @@ namespace optim {
  *   for(j, 0, 10)
  *      B[k,j] = A[k,j]
  */
-void ReplaceVarWithExpr(Expr *source, const Var &var, const Expr &expr, const std::string &tensor_name = "");
+void ReplaceVarWithExpr(Expr *source,
+                        const Var &var,
+                        const Expr &expr,
+                        const std::string &tensor_name = "");
 
 /**
  * Collect the specific tensor's indices.
  * @param tensor_name The specific tensor's name.
- * @return Return a vector containing all the indices of the specific tensor appeared in source.
+ * @return Return a vector containing all the indices of the specific tensor
+ * appeared in source.
  */
 /**
  * Example: CollectTensorIndex(source, "A")
@@ -71,7 +76,8 @@ void ReplaceVarWithExpr(Expr *source, const Var &var, const Expr &expr, const st
  * Return value:
  * {{i,j},{0,j}}
  */
-std::vector<std::vector<Expr>> CollectTensorIndex(Expr *source, const std::string &tensor_name);
+std::vector<std::vector<Expr>> CollectTensorIndex(
+    Expr *source, const std::string &tensor_name);
 
 }  // namespace optim
 }  // namespace cinn

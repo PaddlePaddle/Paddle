@@ -62,6 +62,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   void reset_scope(Scope* new_scope) override;
 
+  const Scope* local_scope() const override;
+
   const platform::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {

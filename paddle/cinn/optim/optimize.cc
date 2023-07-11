@@ -42,7 +42,10 @@ DECLARE_bool(cinn_ir_schedule);
 namespace cinn {
 namespace optim {
 
-Expr Optimize(Expr e, Target target, bool runtime_debug_info, bool remove_gpu_for_loops) {
+Expr Optimize(Expr e,
+              Target target,
+              bool runtime_debug_info,
+              bool remove_gpu_for_loops) {
   CHECK(e.defined());
   auto copied = IRCopy(e);
 

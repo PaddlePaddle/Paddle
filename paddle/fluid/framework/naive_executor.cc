@@ -28,7 +28,7 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 #endif
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #ifdef PADDLE_WITH_LITE
@@ -57,20 +57,24 @@ void NaiveExecutor::Run() {
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
 #endif
 
+    for (auto &func : input_hookfuncs_) {
+      func(op.get(), scope_);
+    }
+
     if (op->Type() == "while") {
-      op->SetOutputHooks(hookfuncs_);
+      op->SetOutputHooks(output_hookfuncs_);
     }
 
     op->Run(*scope_, place_);
@@ -101,14 +105,14 @@ void NaiveExecutor::Run() {
       }
     }
 
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    for (auto &func : hookfuncs_) {
+    for (auto &func : output_hookfuncs_) {
       func(op.get(), scope_);
     }
   }
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
 #endif
 }
@@ -185,7 +189,11 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 }
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
-  hookfuncs_.push_back(hookfunc);
+  output_hookfuncs_.push_back(hookfunc);
+}
+
+void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
+  input_hookfuncs_.push_back(hookfunc);
 }
 
 void NaiveExecutor::MakeReusePlan(

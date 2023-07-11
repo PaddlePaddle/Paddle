@@ -56,13 +56,8 @@ else()
       "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgmock.a"
       CACHE FILEPATH "gmock libraries." FORCE)
   set(GTEST_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-  if(CINN_ONLY)
-    set(GTEST_CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
-  else()
-    set(GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  endif()
+  set(GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
-
 
 if(WITH_MKLML)
   # wait for mklml downloading completed

@@ -109,7 +109,7 @@ with_mkl        = '%(with_mkl)s'
             'istaged': is_taged(),
             'with_mkl': '${WITH_MKL}'})
 
-write_version_py(filename='${CINN_BINARY_DIR}/python/cinn/version/info.py')
+write_version_py(filename='${CMAKE_BINARY_DIR}/python/cinn/version/info.py')
 
 if sys.platform != 'win32':
     @contextmanager
@@ -127,6 +127,7 @@ else:
         yield
 
 libs_path = '${CMAKE_BINARY_DIR}/python/cinn/libs'
+os.makedirs(libs_path, exist_ok=True)
 
 cinnlibs = []
 package_data = {'cinn': ['core_api.so'], 'cinn.libs': []}

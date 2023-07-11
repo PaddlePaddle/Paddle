@@ -38,7 +38,8 @@ namespace common {
     return code__;               \
   }
 __m(std::nullptr_t, -1);
-__m(char *, 20);  // start from a larger number to avoid duplicate id with cinn_pod_value_t
+__m(char *, 20);  // start from a larger number to avoid duplicate id with
+                  // cinn_pod_value_t
 __m(char const *, 21);
 __m(ir::Expr, 22);
 __m(ir::Var, 23);
@@ -106,18 +107,24 @@ cinn_value_t ToValue<char const *>(char const *v) {
 }
 // @}
 
-bool CINNValue::is_string() const { return type_code_ == TypeCode<std::string>(); }
+bool CINNValue::is_string() const {
+  return type_code_ == TypeCode<std::string>();
+}
 
 bool CINNValue::is_var() const { return type_code_ == TypeCode<ir::Var>(); }
 
 bool CINNValue::is_expr() const {
-  return type_code_ == TypeCode<ir::Expr>() && !absl::any_cast<Expr>(shared_).as_tensor();
+  return type_code_ == TypeCode<ir::Expr>() &&
+         !absl::any_cast<Expr>(shared_).as_tensor();
 }
 
-bool CINNValue::is_stagemap() const { return type_code_ == TypeCode<poly::StageMap>(); }
+bool CINNValue::is_stagemap() const {
+  return type_code_ == TypeCode<poly::StageMap>();
+}
 
 bool CINNValue::is_tensor() const {
-  return type_code_ == TypeCode<ir::Expr>() && absl::any_cast<Expr>(shared_).as_tensor();
+  return type_code_ == TypeCode<ir::Expr>() &&
+         absl::any_cast<Expr>(shared_).as_tensor();
 }
 
 CINNValue::operator std::string() const {
@@ -140,24 +147,30 @@ CINNValue::operator poly::StageMap() const {
   CHECK_EQ(type_code(), TypeCode<poly::StageMap>());
   return absl::any_cast<poly::StageMap>(shared_);
 }
-CINNValue::CINNValue(char *value) : cinn_pod_value_t(ToValue(value), TypeCode<char *>()) {}
+CINNValue::CINNValue(char *value)
+    : cinn_pod_value_t(ToValue(value), TypeCode<char *>()) {}
 
-CINNValue::CINNValue(const std::string &value) : cinn_pod_value_t(cinn_value_t(), TypeCode<std::string>()) {
+CINNValue::CINNValue(const std::string &value)
+    : cinn_pod_value_t(cinn_value_t(), TypeCode<std::string>()) {
   shared_ = value;
 }
-CINNValue::CINNValue(const Var &value) : cinn_pod_value_t(cinn_value_t(), TypeCode<Var>()) {
+CINNValue::CINNValue(const Var &value)
+    : cinn_pod_value_t(cinn_value_t(), TypeCode<Var>()) {
   CHECK(value.defined());
   shared_ = value;
 }
-CINNValue::CINNValue(const Expr &value) : cinn_pod_value_t(cinn_value_t(), TypeCode<Expr>()) {
+CINNValue::CINNValue(const Expr &value)
+    : cinn_pod_value_t(cinn_value_t(), TypeCode<Expr>()) {
   CHECK(value.defined());
   shared_ = value;
 }
-CINNValue::CINNValue(const CINNValuePack &value) : cinn_pod_value_t(cinn_value_t(), TypeCode<CINNValuePack>()) {
+CINNValue::CINNValue(const CINNValuePack &value)
+    : cinn_pod_value_t(cinn_value_t(), TypeCode<CINNValuePack>()) {
   CHECK(value.defined());
   shared_ = value;
 }
-CINNValue::CINNValue(const poly::StageMap &value) : cinn_pod_value_t(cinn_value_t(), TypeCode<poly::StageMap>()) {
+CINNValue::CINNValue(const poly::StageMap &value)
+    : cinn_pod_value_t(cinn_value_t(), TypeCode<poly::StageMap>()) {
   CHECK(value.defined());
   shared_ = value;
 }

@@ -15,8 +15,9 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_mapper_test import OpMapperTest, logger
+
+from op_mapper_test import OpMapperTest
+
 import paddle
 
 
@@ -34,7 +35,8 @@ class TestArgSortOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
@@ -44,7 +46,7 @@ class TestArgSortOp(OpMapperTest):
         return {'Out': ['int64'], 'Indices': ['int64']}
 
     def skip_check_outputs(self):
-        #'Out' is never used in Paddle API
+        # 'Out' is never used in Paddle API
         return {"Out"}
 
     def test_check_results(self):

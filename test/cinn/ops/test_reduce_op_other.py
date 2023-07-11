@@ -20,22 +20,10 @@ class TestReduceForBool(TestReduceAll):
         super().init_attrs()
         self.dtypes = [{"dtype": "bool"}]
         self.attrs = [
-            {
-                "op_type": "all",
-                "keepdim": True
-            },
-            {
-                "op_type": "all",
-                "keepdim": False
-            },
-            {
-                "op_type": "any",
-                "keepdim": True
-            },
-            {
-                "op_type": "any",
-                "keepdim": False
-            },
+            {"op_type": "all", "keepdim": True},
+            {"op_type": "all", "keepdim": False},
+            {"op_type": "any", "keepdim": True},
+            {"op_type": "any", "keepdim": False},
         ]
 
 

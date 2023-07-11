@@ -870,8 +870,10 @@ void TensorRTEngine::GetEngineInfo() {
       infer_engine_->createEngineInspector());
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
-  LOG(INFO) << infer_inspector->getEngineInformation(
-      nvinfer1::LayerInformationFormat::kJSON);
+  for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
+    LOG(INFO) << infer_inspector->getLayerInformation(
+        i, nvinfer1::LayerInformationFormat::kJSON);
+  }
   LOG(INFO) << "====== engine info end ======";
 #else
   LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";

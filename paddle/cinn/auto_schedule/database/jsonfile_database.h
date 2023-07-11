@@ -19,16 +19,20 @@
 namespace cinn {
 namespace auto_schedule {
 
-// JSONFileDatabase is a database implemented by JSON file to save/load underlying data.
+// JSONFileDatabase is a database implemented by JSON file to save/load
+// underlying data.
 class JSONFileDatabase : public Database {
  public:
   /*!
    * \brief Build a JSONFileDatabase object from a json file.
    * \param capacity_per_task The max number of candidates stored.
    * \param record_file_path The path of the json file.
-   * \param allow_new_file Whether to create new file when the given path is not found.
+   * \param allow_new_file Whether to create new file when the given path is not
+   * found.
    */
-  JSONFileDatabase(int capacity_per_task, const std::string& record_file_path, bool allow_new_file);
+  JSONFileDatabase(int capacity_per_task,
+                   const std::string& record_file_path,
+                   bool allow_new_file);
   ~JSONFileDatabase() = default;
 
   // convert a TuningRecord object to string in JSON format
@@ -46,7 +50,8 @@ class JSONFileDatabase : public Database {
 void AppendLineToFile(const std::string& file_path, const std::string& line);
 
 // read lines from a json file
-std::vector<std::string> ReadLinesFromFile(const std::string& file_path, bool allow_new_file = true);
+std::vector<std::string> ReadLinesFromFile(const std::string& file_path,
+                                           bool allow_new_file = true);
 
 }  // namespace auto_schedule
 }  // namespace cinn

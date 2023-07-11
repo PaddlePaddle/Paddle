@@ -14,22 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import math
-import numpy as np
-import cinn
-from cinn import frontend
-from cinn import runtime
-from cinn import lang
-from cinn import framework
-from cinn import ir
-from cinn import common
-from cinn.poly import create_stages
-import logging
-from test_utils import SingleOpTester
-import paddle
-import paddle.static as static
 import os
+import unittest
+
+from cinn import framework
+from test_utils import SingleOpTester
+
+import paddle
+from paddle import static
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
@@ -44,13 +37,11 @@ def matmul_util(inputs_data, input_shape, trans_a, trans_b, alpha):
         output = paddle.scale(output, scale=alpha)
         exe = static.Executor(paddle.CPUPlace())
         exe.run(static.default_startup_program())
-        res, = exe.run(
+        (res,) = exe.run(
             static.default_main_program(),
-            feed={
-                'x': input_x,
-                'y': input_y
-            },
-            fetch_list=[output])
+            feed={'x': input_x, 'y': input_y},
+            fetch_list=[output],
+        )
         return res
 
 
@@ -67,13 +58,19 @@ class OpTest_matmul_0(SingleOpTester):
         self.attrs.set_attr("alpha", self.alpha)
 
     def create_target_data(self, inputs_data, attrs):
-        return matmul_util(inputs_data, self.input_shape, self.trans_a,
-                           self.trans_b, self.alpha)
+        return matmul_util(
+            inputs_data,
+            self.input_shape,
+            self.trans_a,
+            self.trans_b,
+            self.alpha,
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op(self.input_shape, self.output_shape, "matmul",
-                        self.attrs, 0)
+        self.to_test_op(
+            self.input_shape, self.output_shape, "matmul", self.attrs, 0
+        )
 
 
 class OpTest_matmul_1(SingleOpTester):
@@ -89,13 +86,19 @@ class OpTest_matmul_1(SingleOpTester):
         self.attrs.set_attr("alpha", self.alpha)
 
     def create_target_data(self, inputs_data, attrs):
-        return matmul_util(inputs_data, self.input_shape, self.trans_a,
-                           self.trans_b, self.alpha)
+        return matmul_util(
+            inputs_data,
+            self.input_shape,
+            self.trans_a,
+            self.trans_b,
+            self.alpha,
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op(self.input_shape, self.output_shape, "matmul",
-                        self.attrs, 0)
+        self.to_test_op(
+            self.input_shape, self.output_shape, "matmul", self.attrs, 0
+        )
 
 
 class OpTest_matmul_2(SingleOpTester):
@@ -111,13 +114,19 @@ class OpTest_matmul_2(SingleOpTester):
         self.attrs.set_attr("alpha", self.alpha)
 
     def create_target_data(self, inputs_data, attrs):
-        return matmul_util(inputs_data, self.input_shape, self.trans_a,
-                           self.trans_b, self.alpha)
+        return matmul_util(
+            inputs_data,
+            self.input_shape,
+            self.trans_a,
+            self.trans_b,
+            self.alpha,
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op(self.input_shape, self.output_shape, "matmul",
-                        self.attrs, 0)
+        self.to_test_op(
+            self.input_shape, self.output_shape, "matmul", self.attrs, 0
+        )
 
 
 class OpTest_matmul_3(SingleOpTester):
@@ -133,13 +142,19 @@ class OpTest_matmul_3(SingleOpTester):
         self.attrs.set_attr("alpha", self.alpha)
 
     def create_target_data(self, inputs_data, attrs):
-        return matmul_util(inputs_data, self.input_shape, self.trans_a,
-                           self.trans_b, self.alpha)
+        return matmul_util(
+            inputs_data,
+            self.input_shape,
+            self.trans_a,
+            self.trans_b,
+            self.alpha,
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op(self.input_shape, self.output_shape, "matmul",
-                        self.attrs, 0)
+        self.to_test_op(
+            self.input_shape, self.output_shape, "matmul", self.attrs, 0
+        )
 
 
 class OpTest_matmul_4(SingleOpTester):
@@ -155,13 +170,19 @@ class OpTest_matmul_4(SingleOpTester):
         self.attrs.set_attr("alpha", self.alpha)
 
     def create_target_data(self, inputs_data, attrs):
-        return matmul_util(inputs_data, self.input_shape, self.trans_a,
-                           self.trans_b, self.alpha)
+        return matmul_util(
+            inputs_data,
+            self.input_shape,
+            self.trans_a,
+            self.trans_b,
+            self.alpha,
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op(self.input_shape, self.output_shape, "matmul",
-                        self.attrs, 0)
+        self.to_test_op(
+            self.input_shape, self.output_shape, "matmul", self.attrs, 0
+        )
 
 
 class OpTest_matmul_5(SingleOpTester):
@@ -177,13 +198,19 @@ class OpTest_matmul_5(SingleOpTester):
         self.attrs.set_attr("alpha", self.alpha)
 
     def create_target_data(self, inputs_data, attrs):
-        return matmul_util(inputs_data, self.input_shape, self.trans_a,
-                           self.trans_b, self.alpha)
+        return matmul_util(
+            inputs_data,
+            self.input_shape,
+            self.trans_a,
+            self.trans_b,
+            self.alpha,
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op(self.input_shape, self.output_shape, "matmul",
-                        self.attrs, 0)
+        self.to_test_op(
+            self.input_shape, self.output_shape, "matmul", self.attrs, 0
+        )
 
 
 class OpTest_matmul_6(SingleOpTester):
@@ -199,13 +226,19 @@ class OpTest_matmul_6(SingleOpTester):
         self.attrs.set_attr("alpha", self.alpha)
 
     def create_target_data(self, inputs_data, attrs):
-        return matmul_util(inputs_data, self.input_shape, self.trans_a,
-                           self.trans_b, self.alpha)
+        return matmul_util(
+            inputs_data,
+            self.input_shape,
+            self.trans_a,
+            self.trans_b,
+            self.alpha,
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op(self.input_shape, self.output_shape, "matmul",
-                        self.attrs, 0)
+        self.to_test_op(
+            self.input_shape, self.output_shape, "matmul", self.attrs, 0
+        )
 
 
 if __name__ == "__main__":

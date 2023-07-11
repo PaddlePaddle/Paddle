@@ -50,8 +50,10 @@ const std::vector<std::string>& Context::runtime_include_dir() {
       VLOG(4) << "get runtime_include_dir from env: " << env;
       runtime_include_dir_ = cinn::utils::Split(env, ":");
     } else if (defined_runtime_include_dir) {
-      VLOG(4) << "get runtime_include_dir from RUNTIME_INCLUDE_DIR: " << defined_runtime_include_dir;
-      runtime_include_dir_ = cinn::utils::Split(defined_runtime_include_dir, ":");
+      VLOG(4) << "get runtime_include_dir from RUNTIME_INCLUDE_DIR: "
+              << defined_runtime_include_dir;
+      runtime_include_dir_ =
+          cinn::utils::Split(defined_runtime_include_dir, ":");
     }
   }
   return runtime_include_dir_;
@@ -76,5 +78,7 @@ std::string NameGenerator::New(const std::string& name_hint) {
 
 }  // namespace common
 
-DEFINE_bool(cinn_runtime_display_debug_info, false, "Whether to display debug information in runtime");
+DEFINE_bool(cinn_runtime_display_debug_info,
+            false,
+            "Whether to display debug information in runtime");
 }  // namespace cinn

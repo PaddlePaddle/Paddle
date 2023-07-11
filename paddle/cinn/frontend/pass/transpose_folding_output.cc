@@ -29,13 +29,16 @@ class TransposeFoldingOutputPass : public TransposeFoldingBase {
   using TransposeFoldingBase::TransposeFoldingBase;
 
  protected:
-  void set_target_instrs() override { TransposeFoldingBase::target_instrs_ = {"cublas_matmul"}; }
+  void set_target_instrs() override {
+    TransposeFoldingBase::target_instrs_ = {"cublas_matmul"};
+  }
 
-  void DoMatmulFoldOptimize(Instruction* dot,
-                            const Out2InstrType& out2instr,
-                            const In2InstrType& in2instr,
-                            const std::unordered_set<std::string>& fetch_ids,
-                            absl::flat_hash_set<Instruction*>* remove_instrs) const override {
+  void DoMatmulFoldOptimize(
+      Instruction* dot,
+      const Out2InstrType& out2instr,
+      const In2InstrType& in2instr,
+      const std::unordered_set<std::string>& fetch_ids,
+      absl::flat_hash_set<Instruction*>* remove_instrs) const override {
     const auto& gemm_out_name = (*dot)->outputs[0]->id;
 
     auto debug_info = [](const std::vector<Instruction*>& instrs) {
@@ -46,11 +49,13 @@ class TransposeFoldingOutputPass : public TransposeFoldingBase {
       return ss.str();
     };
 
-    if (in2instr.contains(gemm_out_name) && in2instr.at(gemm_out_name).size() == 1) {
+    if (in2instr.contains(gemm_out_name) &&
+        in2instr.at(gemm_out_name).size() == 1) {
       // for example: dot -> x -> scale -> y -> transpose -> z
       // fold_instrs = {"scale", "transpose"}
       // ensure the foldiong structions's output only link to one op
-      const auto& fold_instrs = GetFoldInstruction(*in2instr.at(gemm_out_name).begin(), out2instr, in2instr, false);
+      const auto& fold_instrs = GetFoldInstruction(
+          *in2instr.at(gemm_out_name).begin(), out2instr, in2instr, false);
 
       VLOG(4) << "Fold Instruction: [" << debug_info(fold_instrs) << "]"
               << " into output of matmul: " << *dot;
@@ -61,12 +66,14 @@ class TransposeFoldingOutputPass : public TransposeFoldingBase {
 
       bool shape_has_changed = false;
       for (int i = fold_instrs.size() - 1; i >= 0; --i) {
-        auto instr      = fold_instrs[i];
+        auto instr = fold_instrs[i];
         auto prev_instr = (i == 0) ? dot : fold_instrs[i - 1];
 
         if (IsValidTranspose(*instr)) {
           // As for cublas_matmul, we can continue to set the `trans_out` attr.
-          bool trans_out = (*dot)->attrs.count("trans_out") ? absl::get<bool>((*dot)->attrs.at("trans_out")) : false;
+          bool trans_out = (*dot)->attrs.count("trans_out")
+                               ? absl::get<bool>((*dot)->attrs.at("trans_out"))
+                               : false;
           dot->SetAttr("trans_out", static_cast<bool>(trans_out ^ true));
 
           // shape has changed, the ignore op should update shape
@@ -74,10 +81,16 @@ class TransposeFoldingOutputPass : public TransposeFoldingBase {
         } else if (IsValidScale(*instr)) {
           // assume C = alpha * A * B + beta * C
           // fold scale into alpha/beta
-          float scale = (*instr)->attrs.count("scale") ? absl::get<float>((*instr)->attrs.at("scale")) : 1.0f;
+          float scale = (*instr)->attrs.count("scale")
+                            ? absl::get<float>((*instr)->attrs.at("scale"))
+                            : 1.0f;
 
-          float alpha = (*dot)->attrs.count("alpha") ? absl::get<float>((*dot)->attrs.at("alpha")) : 1.0f;
-          float beta  = (*dot)->attrs.count("beta") ? absl::get<float>((*dot)->attrs.at("beta")) : 0.0f;
+          float alpha = (*dot)->attrs.count("alpha")
+                            ? absl::get<float>((*dot)->attrs.at("alpha"))
+                            : 1.0f;
+          float beta = (*dot)->attrs.count("beta")
+                           ? absl::get<float>((*dot)->attrs.at("beta"))
+                           : 0.0f;
 
           dot->SetAttr("alpha", alpha * scale);
           dot->SetAttr("beta", beta * scale);
@@ -105,7 +118,9 @@ class TransposeFoldingOutputPass : public TransposeFoldingBase {
 }  // namespace cinn::frontend::pass
 
 CINN_REGISTER_HELPER(TransposeFoldingOutput) {
-  CINN_REGISTER_PROGRAM_PASS(TransposeFoldingOutput, ::cinn::frontend::pass::TransposeFoldingOutputPass);
+  CINN_REGISTER_PROGRAM_PASS(
+      TransposeFoldingOutput,
+      ::cinn::frontend::pass::TransposeFoldingOutputPass);
 
   return true;
 }

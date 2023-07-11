@@ -41,30 +41,38 @@ void BindExecutionEngine(py::module *m) {
       .def_readwrite("enable_debug_info", &ExecutionOptions::enable_debug_info);
 
   auto lookup = [](ExecutionEngine &self, absl::string_view name) {
-    auto *function_ptr    = reinterpret_cast<void (*)(void **, int32_t)>(self.Lookup(name));
-    auto function_wrapper = [function_ptr](std::vector<cinn_pod_value_t> &args) {
-      function_ptr(reinterpret_cast<void **>(args.data()), args.size());
-    };
-    return std::function<void(std::vector<cinn_pod_value_t> &)>(function_wrapper);
+    auto *function_ptr =
+        reinterpret_cast<void (*)(void **, int32_t)>(self.Lookup(name));
+    auto function_wrapper =
+        [function_ptr](std::vector<cinn_pod_value_t> &args) {
+          function_ptr(reinterpret_cast<void **>(args.data()), args.size());
+        };
+    return std::function<void(std::vector<cinn_pod_value_t> &)>(
+        function_wrapper);
   };
 
   py::class_<ExecutionEngine> engine(*m, "ExecutionEngine");
   engine
-      .def_static("create",
-                  py::overload_cast<const ExecutionOptions &>(&ExecutionEngine::Create),
-                  py::arg("options") = ExecutionOptions())
-      .def(py::init(py::overload_cast<const ExecutionOptions &>(&ExecutionEngine::Create)),
+      .def_static(
+          "create",
+          py::overload_cast<const ExecutionOptions &>(&ExecutionEngine::Create),
+          py::arg("options") = ExecutionOptions())
+      .def(py::init(py::overload_cast<const ExecutionOptions &>(
+               &ExecutionEngine::Create)),
            py::arg("options") = ExecutionOptions())
       .def("lookup", lookup)
       .def("link", &ExecutionEngine::Link);
 
   {
     auto lookup = [](Compiler &self, absl::string_view name) {
-      auto *function_ptr    = reinterpret_cast<void (*)(void **, int32_t)>(self.Lookup(name));
-      auto function_wrapper = [function_ptr](std::vector<cinn_pod_value_t> &args) {
-        function_ptr(reinterpret_cast<void **>(args.data()), args.size());
-      };
-      return std::function<void(std::vector<cinn_pod_value_t> &)>(function_wrapper);
+      auto *function_ptr =
+          reinterpret_cast<void (*)(void **, int32_t)>(self.Lookup(name));
+      auto function_wrapper =
+          [function_ptr](std::vector<cinn_pod_value_t> &args) {
+            function_ptr(reinterpret_cast<void **>(args.data()), args.size());
+          };
+      return std::function<void(std::vector<cinn_pod_value_t> &)>(
+          function_wrapper);
     };
 
     py::class_<Compiler> compiler(*m, "Compiler");
