@@ -57,7 +57,7 @@ struct StrAttributeStorage : public AttributeStorage {
     data_ = reinterpret_cast<char *>(malloc(key.size()));
     memcpy(data_, key.c_str(), key.size());
     size_ = key.size();
-    DataString = ParamKey(data_, size_);
+    data_string_ = ParamKey(data_, size_);
   }
 
   ~StrAttributeStorage() { free(data_); }
@@ -74,12 +74,12 @@ struct StrAttributeStorage : public AttributeStorage {
     return std::equal(data_, data_ + size_, key.c_str());
   }
 
-  const ParamKey &GetAsKey() const { return DataString; }
+  const ParamKey &GetAsKey() const { return data_string_; }
 
  private:
   char *data_;
   uint32_t size_;
-  ParamKey DataString;
+  ParamKey data_string_;
 };
 
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(BoolAttributeStorage, bool);
