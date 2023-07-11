@@ -290,8 +290,10 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, SGD.__bases__) and not isinstance(
-            optimizer, OptimizerWithMixedPrecision
+        if (
+            not isinstance(optimizer, SGD.__bases__)
+            and not isinstance(optimizer, fluid.optimizer.Optimizer)
+            and not isinstance(optimizer, OptimizerWithMixedPrecision)
         ):
             raise TypeError("optimizer must be an instance of Optimizer")
 
