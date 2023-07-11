@@ -158,7 +158,7 @@ class TestOneHotOp_exception(unittest.TestCase):
                 dtype='float32',
             )
             block.append_op(
-                type='one_hot',
+                type='one_hot_v2',
                 inputs={'X': x},
                 attrs={'depth': self.depth},
                 outputs={'Out': one_hot_out},
