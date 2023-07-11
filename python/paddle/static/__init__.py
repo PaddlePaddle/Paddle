@@ -94,6 +94,7 @@ __all__ = [  # noqa
     'name_scope',
     'program_guard',
     'WeightNormParamAttr',
+    'ExponentialMovingAverage',
     'default_main_program',
     'default_startup_program',
     'Program',
