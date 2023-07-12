@@ -11,4 +11,5 @@ if(NOT WIN32)
     test_c_tcp_store
     SRCS test_tcp_store.cc
     DEPS phi)
+  set_tests_properties(test_c_tcp_store PROPERTIES LABELS "RUN_TYPE=Ampere")
 endif()

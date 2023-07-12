@@ -73,6 +73,9 @@ set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 120)
 #set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
+set_tests_properties(test_cpu_cuda_to_tensor PROPERTIES LABELS
+                                                        "RUN_TYPE=Ampere")
+set_tests_properties(test_to_tensor PROPERTIES LABELS "RUN_TYPE=Ampere")
 
 if(NOT WIN32)
   set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 120)

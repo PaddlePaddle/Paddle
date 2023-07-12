@@ -825,8 +825,10 @@ if(WITH_XPU_BKCL)
 endif()
 
 if(WITH_HETERPS)
-  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
-  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS"
+                                                       LABELS "RUN_TYPE=Ampere")
+  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS"
+                                                       LABELS "RUN_TYPE=Ampere")
 endif()
 
 if(WIN32)
@@ -985,16 +987,20 @@ else()
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
-set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_select_op PROPERTIES LABELS "RUN_TYPE=Ampere"
+                                                     TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
                      PROPERTIES TIMEOUT 120)
+set_tests_properties(test_executor_feed_non_tensor PROPERTIES LABELS
+                                                              "RUN_TYPE=Ampere")
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_gather_nd_op PROPERTIES LABELS "RUN_TYPE=Ampere"
+                                                  TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
@@ -1325,7 +1331,8 @@ foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
 endforeach()
 
 set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)
-
+set_tests_properties(test_top_k_v2_op PROPERTIES LABELS "RUN_TYPE=Ampere")
+set_tests_properties(test_roll_op PROPERTIES LABELS "RUN_TYPE=Ampere")
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
 set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)

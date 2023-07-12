@@ -156,8 +156,9 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_cpu_barrier_with_gloo MODULES
     test_collective_cpu_barrier_with_gloo ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_collective_cpu_barrier_with_gloo
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+  set_tests_properties(
+    test_collective_cpu_barrier_with_gloo
+    PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST" LABELS "RUN_TYPE=Ampere")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(

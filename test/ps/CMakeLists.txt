@@ -15,5 +15,6 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 if(WITH_HETERPS AND NOT WITH_PSLIB)
-  set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS" LABELS
+                                                 "RUN_TYPE=Ampere")
 endif()
