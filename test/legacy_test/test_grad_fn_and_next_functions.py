@@ -82,8 +82,6 @@ class TestAnonmousSurvey(unittest.TestCase):
             grad_fn (grad_fn): grad_fn of node
             grad_fn_json (dict): grad_node_json of node
         """
-        # print(grad_fn.name())
-        # assert func name
         self.assertEqual(grad_fn.name(), grad_fn_json["func_name"])
         # Recursively test other nodes
         if hasattr(grad_fn, 'next_functions') and grad_fn.next_functions[0]:
