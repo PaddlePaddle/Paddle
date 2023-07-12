@@ -273,7 +273,7 @@ void BuildScope(const ir::Block& block,
           << inner_local_scope << "]";
 
   // int count = name_map->size();
-  int count = name_map->size();
+  int count = inner_local_scope->Size();
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
