@@ -25,6 +25,7 @@
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule_error.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"

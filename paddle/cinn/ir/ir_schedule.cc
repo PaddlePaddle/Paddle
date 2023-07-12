@@ -33,6 +33,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_operators.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule_error.h"
 #include "paddle/cinn/ir/ir_schedule_util.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"

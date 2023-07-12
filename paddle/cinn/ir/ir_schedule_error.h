@@ -38,6 +38,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/cinn/ir/ir_schedule.h"
 
 namespace cinn {
 namespace ir {
@@ -125,31 +126,34 @@ struct EnforceNotMet : public std::exception {
 }  // namespace enforce
 
 /**
- *  \brief Indicates the level of printing error message in the current Schedule
- */
-enum class ScheduleErrorMessageLevel : int32_t {
-  /** \brief  Print an error message in short mode.
-   * Short mode shows which and where the schedule error happens*/
-  kGeneral = 0,
-  /** \brief Print an error message in detailed mode.
-   * Detailed mode shows which and where the schedule error happens, and the
-   * schedule input parameters.
-   */
-  kDetailed = 1,
-};
-
-/**
- * This handler is dealing with the errors happen in in the current Scheduling.
+ * This handler is dealing with the errors happen in in the current
+ * Scheduling.
  */
 class IRScheduleErrorHandler : public std::runtime_error {
  public:
   IRScheduleErrorHandler() : std::runtime_error("") {}
   /**
    * \brief constructor
-   * \param s the error message
+   * \param err_msg the error message
    */
-  explicit IRScheduleErrorHandler(const std::string& s)
-      : std::runtime_error(s) {}
+  explicit IRScheduleErrorHandler(const std::string& err_msg,
+                                  const ModuleExpr& module_expr)
+      : std::runtime_error(err_msg) {
+    err_msg_ = err_msg;
+    module_expr_ = module_expr;
+  }
+
+  /**
+   * \brief Returns a short error message corresponding to the kGeneral error
+   * level.
+   */
+  std::string GeneralErrorMessage() const;
+
+  /**
+   * \brief Returns a detailed error message corresponding to the kDetailed
+   * error level.
+   */
+  std::string DetailedErrorMessage() const;
 
   /**
    * \brief Returns a detailed error message corresponding to the kDetailed
@@ -159,18 +163,17 @@ class IRScheduleErrorHandler : public std::runtime_error {
       const std::string& primitive,
       const ScheduleErrorMessageLevel& err_msg_level) const;
 
-  /**
-   * \brief Returns a short error message corresponding to the kGeneral error
-   * level.
-   */
-  virtual std::string GeneralErrorMessage() const = 0;
-
-  /**
-   * \brief Returns a detailed error message corresponding to the kDetailed
-   * error level.
-   */
-  virtual std::string DetailedErrorMessage() const = 0;
+ private:
+  ModuleExpr module_expr_;
+  std::string err_msg_;
 };
+
+std::string NegativeFactorErrorMessage(const int64_t& factor,
+                                       const size_t& idx);
+
+std::string InferFactorErrorMessage();
+
+std::string FactorProductErrorMessage();
 
 }  // namespace ir
 }  // namespace cinn

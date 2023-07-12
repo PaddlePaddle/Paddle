@@ -22,13 +22,26 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_schedule_error.h"
 #include "paddle/cinn/ir/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {
 namespace ir {
+
+/**
+ *  \brief Indicates the level of printing error message in the current Schedule
+ */
+enum class ScheduleErrorMessageLevel : int32_t {
+  /** \brief  Print an error message in short mode.
+   * Short mode shows which and where the schedule error happens*/
+  kGeneral = 0,
+  /** \brief Print an error message in detailed mode.
+   * Detailed mode shows which and where the schedule error happens, and the
+   * schedule input parameters.
+   */
+  kDetailed = 1,
+};
 
 /**
  * A struct representing a module that contains Expr. This struct is only used
