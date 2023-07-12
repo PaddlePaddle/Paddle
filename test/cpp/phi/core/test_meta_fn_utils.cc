@@ -17,25 +17,10 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/generated.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 namespace tests {
-
-TEST(WrappedInferMeta, Scale) {
-  phi::DenseTensor dense_x;
-  dense_x.Resize(phi::make_ddim({3, 4}));
-
-  phi::MetaTensor meta_x(&dense_x);
-  phi::DenseTensor dense_out1;
-  phi::MetaTensor meta_out(&dense_out1);
-  phi::ScaleInferMeta(meta_x, 0, 0, false, &meta_out);
-
-  EXPECT_EQ(dense_out1.dims().size(), dense_x.dims().size());
-  EXPECT_EQ(dense_out1.dims()[0], dense_x.dims()[0]);
-  EXPECT_EQ(dense_out1.dims()[1], dense_x.dims()[1]);
-}
 
 TEST(MetaFnFactory, InferMetaFnExists) {
   phi::DenseTensor dense_x;
