@@ -565,8 +565,8 @@ struct XPUSoftPlusGradFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
-template<typename T>
-struct XPUSinGradFunctor: public funcs::BaseActivationFunctor<T> {
+template <typename T>
+struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   template <typename Context>
   void operator()(const Context& dev_ctx,
@@ -588,8 +588,8 @@ struct XPUSinGradFunctor: public funcs::BaseActivationFunctor<T> {
   }
 };
 
-template<typename T>
-struct XPUCosGradFunctor: public funcs::BaseActivationFunctor<T> {
+template <typename T>
+struct XPUCosGradFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   template <typename Context>
   void operator()(const Context& dev_ctx,

@@ -591,7 +591,7 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_any", XPUKernelSet({phi::DataType::BOOL})},
       {"reduce_max_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reduce_max",
-       XPUKernelSet({phi::DataType::FLOAT32, 
+       XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
       {"reduce_mean_grad", XPUKernelSet({phi::DataType::FLOAT32})},
