@@ -54,7 +54,7 @@ class DependencyBuilder {
     return op_happens_before_->at(prior_op_idx).at(posterior_op_idx);
   }
 
-  void ShareDependencyFrom(const DependencyBuilder& src);
+  void ShareDependencyFrom(DependencyBuilder* src);
 
  private:
   void AddDependencyForCoalesceTensorOp();

@@ -112,8 +112,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     for (const auto& pair : type_to_id) {
       const auto& idx = pair.second;
       for (size_t i = 1; i < idx.size(); ++i) {
-        // interpretercores_[idx[i]]->ShareBuildResultsFrom(
-        //     interpretercores_[idx[0]]);
+        interpretercores_[idx[i]]->ShareBuildResultsFrom(
+            interpretercores_[idx[0]]);
       }
     }
   }

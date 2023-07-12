@@ -114,8 +114,8 @@ DependencyBuilder::GetDependency() {
   return std::make_tuple(op_downstream_map_, op_happens_before_);
 }
 
-void DependencyBuilder::ShareDependencyFrom(const DependencyBuilder& src) {
-  std::tie(op_downstream_map_, op_happens_before_) = GetDependency();
+void DependencyBuilder::ShareDependencyFrom(DependencyBuilder* src) {
+  std::tie(op_downstream_map_, op_happens_before_) = src->GetDependency();
   is_build_ = true;
 }
 
@@ -333,8 +333,9 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
           posterior_op_idx,
           posterior_op_idx,
           prior_op_idx));
-
+  VLOG(8) << "here1";
   std::set<size_t>& downstream_ops = op_downstream_map_->at(prior_op_idx);
+  VLOG(8) << "here1";
   // NOTE(Ruibiao): Here the downstream map shrinking is best-effort, therefore
   // ShrinkDownstreamMap after BuildDownstreamMap is still helpful. For example,
   // a->c will not be shrinked in the following case: AddDownstreamOp(a, b) ->
@@ -533,7 +534,7 @@ void DependencyBuilder::ShrinkDownstreamMap() {
     }
     // NOTE(Ruibiao): op_happens_before will not be changed when shrink
     // dowstream map
-    op_downstream_map_->at(i) = minumum_nexts;
+    (*op_downstream_map_)[i] = minumum_nexts;
   }
   VLOG(8) << "Finish shrink downstream map";
   VLOG(8) << "downstream count: " << CountDownstreamMap(*op_downstream_map_);
