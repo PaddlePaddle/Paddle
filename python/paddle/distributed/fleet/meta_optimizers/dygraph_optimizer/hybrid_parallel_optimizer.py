@@ -298,28 +298,31 @@ class HybridParallelClipGrad:
         self, params_grads, global_norm_var_dist, global_norm_var_not_dist
     ):
         # sharding first
-        sharding_flag = False
-        if (
+        sharding_flag = (
             self._hcg.get_sharding_parallel_world_size() > 1
             and self._hcg.get_data_parallel_world_size() == 1
-        ):
-            sharding_flag = True
+        )
+        mp_flag = self._hcg.get_model_parallel_world_size() > 1
         # add all reduce to get global norm of distributed params_and_grads
         if sharding_flag and not g_shard_norm_align_dp:
-            paddle.distributed.all_reduce(
-                global_norm_var_dist,
-                group=self._hcg.get_sharding_parallel_group(),
-            )
+            # norm of mp distributed variable
+            if mp_flag:
+                paddle.distributed.all_reduce(
+                    global_norm_var_dist,
+                    group=self._hcg.get_sharding_parallel_group(),
+                )
             # not dist only reduce among sharding group and pp group later
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),
             )
-        # dist should reduce among sharding group、mp group、pp group
-        paddle.distributed.all_reduce(
-            global_norm_var_dist,
-            group=self._hcg.get_check_parallel_group(sharding_flag),
-        )
+        # norm of mp distributed variable
+        if mp_flag:
+            # dist should reduce among sharding group、mp group、pp group
+            paddle.distributed.all_reduce(
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group(sharding_flag),
+            )
 
         # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
         if self._hcg.get_pipe_parallel_world_size() > 1:
