@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import paddle
 from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -68,11 +69,18 @@ def norm_helper(
 
     helper = LayerHelper('norm_helper', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    mean = helper.create_variable_for_type_inference(dtype=paddle.float32)
+    variance = helper.create_variable_for_type_inference(dtype=paddle.float32)
     outputs_dict = {}
     outputs_dict['out'] = out
-    if residual:
-        residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        outputs_dict['residual_out'] = residual_out
+    outputs_dict['mean'] = mean
+    outputs_dict['variance'] = variance
+    # if residual:
+    #     residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    #     outputs_dict['residual_out'] = residual_out
+
+    residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    outputs_dict['residual_out'] = residual_out
 
     inputs = {}
     inputs['x'] = x
@@ -96,4 +104,4 @@ def norm_helper(
         },
         outputs=outputs_dict,
     )
-    return out
+    return (out, residual_out) if residual else out
