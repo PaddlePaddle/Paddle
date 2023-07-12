@@ -73,8 +73,8 @@ void TransposeKernel(const Context& dev_ctx,
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
 
   auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
-  auto dst_md =
-      dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
+  auto dst_md = dnnl::memory::desc(
+      x_vec_dims, x.mem_desc().get_data_type(), fake_strides);
   auto reorder_dst_memory_p =
       reorder_handler.AcquireDstMemory(out, dst_md, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
