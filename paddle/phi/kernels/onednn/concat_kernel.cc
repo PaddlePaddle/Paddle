@@ -63,16 +63,6 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
     this->AcquireForwardPrimitiveDescriptor(dst_md, concat_axis, srcs_md);
   }
 
-  // (jczaja) concat oneDNN prim is not having .desc attribute so
-  // we cannot use base AcquireForwardPrimitiveDescriptor
-  void AcquireForwardPrimitiveDescriptor(
-      const memory::desc& dst_md,
-      const int concat_axis,
-      const std::vector<memory::desc>& srcs_md) {
-    this->fwd_pd_.reset(new dnnl::concat::primitive_desc(
-        dst_md, concat_axis, srcs_md, this->engine_));
-  }
-
   std::shared_ptr<dnnl::memory> AcquireSrcMemory(const DenseTensor& input,
                                                  int i) {
     const T* input_data = input.data<T>();

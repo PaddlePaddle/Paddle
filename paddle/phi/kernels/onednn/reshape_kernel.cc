@@ -120,7 +120,7 @@ void ExecuteReshape(const Context& dev_ctx,
                     const DDim& x_dims,
                     DenseTensor* out) {
   auto out_dims = ValidateShape(shape.GetData(), x_dims);
-  auto x_vec_dims = x.mem_desc().dims();
+  auto x_vec_dims = x.mem_desc().get_dims();
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
