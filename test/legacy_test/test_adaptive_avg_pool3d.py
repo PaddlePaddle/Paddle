@@ -169,15 +169,15 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            assert np.allclose(res_1, self.res_1_np)
+            np.testing.assert_allclose(res_1, self.res_1_np)
 
-            assert np.allclose(res_2, self.res_2_np)
+            np.testing.assert_allclose(res_2, self.res_2_np)
 
-            assert np.allclose(res_3, self.res_3_np)
+            np.testing.assert_allclose(res_3, self.res_3_np)
 
-            assert np.allclose(res_4, self.res_4_np)
+            np.testing.assert_allclose(res_4, self.res_4_np)
 
-            assert np.allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
         for use_cuda in (
@@ -209,17 +209,17 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
                 x=x, mode="area", size=[2, 3, 5]
             )
 
-            assert np.allclose(out_1.numpy(), self.res_1_np)
+            np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
 
-            assert np.allclose(out_2.numpy(), self.res_2_np)
+            np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
 
-            assert np.allclose(out_3.numpy(), self.res_3_np)
+            np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
 
-            assert np.allclose(out_4.numpy(), self.res_4_np)
+            np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
-            assert np.allclose(out_5.numpy(), self.res_5_np)
+            np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
-            assert np.allclose(out_6.numpy(), self.res_3_np)
+            np.testing.assert_allclose(out_6.numpy(), self.res_3_np)
 
 
 class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
@@ -288,15 +288,15 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            assert np.allclose(res_1, self.res_1_np)
+            np.testing.assert_allclose(res_1, self.res_1_np)
 
-            assert np.allclose(res_2, self.res_2_np)
+            np.testing.assert_allclose(res_2, self.res_2_np)
 
-            assert np.allclose(res_3, self.res_3_np)
+            np.testing.assert_allclose(res_3, self.res_3_np)
 
-            assert np.allclose(res_4, self.res_4_np)
+            np.testing.assert_allclose(res_4, self.res_4_np)
 
-            assert np.allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
         for use_cuda in (
@@ -329,15 +329,15 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             )
             out_5 = adaptive_avg_pool(x=x)
 
-            assert np.allclose(out_1.numpy(), self.res_1_np)
+            np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
 
-            assert np.allclose(out_2.numpy(), self.res_2_np)
+            np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
 
-            assert np.allclose(out_3.numpy(), self.res_3_np)
+            np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
 
-            assert np.allclose(out_4.numpy(), self.res_4_np)
+            np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
-            assert np.allclose(out_5.numpy(), self.res_5_np)
+            np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
 
 if __name__ == '__main__':

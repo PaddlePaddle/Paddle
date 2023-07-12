@@ -330,7 +330,7 @@ class TestSparseConvert(unittest.TestCase):
         def verify(dense_x):
             sparse_x = dense_x.to_sparse_csr()
             out = sparse_x.to_dense()
-            assert np.allclose(out.numpy(), dense_x.numpy())
+            np.testing.assert_allclose(out.numpy(), dense_x.numpy())
 
         shape = np.random.randint(low=1, high=10, size=3)
         shape = list(shape)

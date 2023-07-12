@@ -328,7 +328,9 @@ class TestAddMMOp5(unittest.TestCase):
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
             out = paddle.tensor.addmm(input, x, y)
-            assert np.allclose(np_input + np.dot(np_x, np_y), out.numpy())
+            np.testing.assert_allclose(
+                np_input + np.dot(np_x, np_y), out.numpy()
+            )
 
 
 class TestAddMMAPI(unittest.TestCase):

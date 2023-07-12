@@ -173,7 +173,7 @@ class TestBatchNorm(unittest.TestCase):
 
                     bn = paddle.nn.BatchNorm2D(shape[1])
                     eag_y = bn(paddle.to_tensor(x))
-                    assert np.allclose(eag_y.numpy(), y.numpy())
+                    np.testing.assert_allclose(eag_y.numpy(), y.numpy())
                 return y.numpy()
 
             def compute_v3(x, is_test, trainable_statistics):
@@ -351,10 +351,10 @@ class TestBatchNormChannelLast(unittest.TestCase):
             y.backward()
             y2.backward()
 
-            assert np.allclose(
+            np.testing.assert_allclose(
                 y.numpy().flatten(), y2.numpy().flatten(), atol=1e-5, rtol=1e-5
             )
-            assert np.allclose(
+            np.testing.assert_allclose(
                 bn1d.weight.grad.numpy().flatten(),
                 bn2d.weight.grad.numpy().flatten(),
                 atol=1e-5,

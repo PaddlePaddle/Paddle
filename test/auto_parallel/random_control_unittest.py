@@ -90,7 +90,10 @@ class TestRandomControl(unittest.TestCase):
                         mask_tensor_remote.numpy(), mask_tensor_local.numpy()
                     )
                 else:
-                    assert not np.array_equal(
+                    import operator
+
+                    np.testing.assert_array_compare(
+                        operator.__ne__,
                         mask_tensor_remote.numpy(),
                         mask_tensor_local.numpy(),
                     )

@@ -267,7 +267,7 @@ def step_check(output_dir):
     m1 = np.load(p1).reshape(-1)
     m2 = np.load(p2).reshape(-1)
     try:
-        assert np.allclose(m1, m2, rtol=1e-5, atol=1e-6)
+        np.testing.assert_allclose(m1, m2, rtol=1e-5, atol=1e-6)
     except:
         diff = m1 - m2
         logger.error(f"max diff{diff.max()}, min diff: {diff.min()}")

@@ -296,14 +296,16 @@ class TestSparseConv(unittest.TestCase):
         dense_out = sp_out.to_dense()
         sp_loss = dense_out.mean()
         sp_loss.backward()
-        assert np.allclose(out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3)
-        assert np.allclose(
+        np.testing.assert_allclose(
+            out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3
+        )
+        np.testing.assert_allclose(
             conv3d.weight.grad.numpy().transpose(2, 3, 4, 1, 0),
             sp_conv3d.weight.grad.numpy(),
             atol=1e-3,
             rtol=1e-3,
         )
-        assert np.allclose(
+        np.testing.assert_allclose(
             conv3d.bias.grad.numpy(),
             sp_conv3d.bias.grad.numpy(),
             atol=1e-5,

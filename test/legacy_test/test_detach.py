@@ -167,7 +167,11 @@ class Test_Detach(unittest.TestCase):
         array_no_detach_multi = self.no_detach_multi()
         array_detach_multi = self.detach_multi()
 
-        assert not np.array_equal(array_no_detach_multi, array_detach_multi)
+        import operator
+
+        np.testing.assert_array_compare(
+            operator.__ne__, array_no_detach_multi, array_detach_multi
+        )
 
     def test_NoDetachSingle_DetachMulti(self):
         array_no_detach_single = self.no_detach_single()
