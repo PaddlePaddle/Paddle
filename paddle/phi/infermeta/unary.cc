@@ -884,6 +884,11 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   out_v->set_dtype(out_dtype);
 }
 
+void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
                    MetaTensor* out_w,
@@ -1055,7 +1060,7 @@ void ExpandInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto expand_shape = shape.GetData();
 
-  if (expand_shape.size() == 0) {
+  if (expand_shape.empty()) {
     expand_shape = std::vector<int64_t>(x_dims.size(), -1);
   }
 
@@ -3173,7 +3178,7 @@ void ReduceInferMeta(const MetaTensor& x,
                      bool keep_dim,
                      MetaTensor* out) {
   bool reduce_all = false;
-  if (axis.size() == 0) {
+  if (axis.empty()) {
     reduce_all = true;
   }
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
@@ -3396,7 +3401,7 @@ void RollInferMeta(const MetaTensor& x,
                    MetaTensor* out) {
   auto shifts_data = shifts.GetData();
 
-  if (axis.size() != 0) {
+  if (!axis.empty()) {
     PADDLE_ENFORCE_EQ(
         axis.size(),
         shifts_data.size(),
@@ -3581,7 +3586,7 @@ void SliceRawInferMeta(const MetaTensor& input,
   }
 
   out->set_dims(out_dims);
-  if (new_axes.size() > 0 && new_axes[0] != 0) {
+  if (!new_axes.empty() && new_axes[0] != 0) {
     out->share_lod(input);
   }
 }
@@ -3993,7 +3998,7 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
   }
   DDim out_dims(phi::make_ddim(out_dims_vector));
   // generate new shape
-  if (decrease_axis.size() > 0) {
+  if (!decrease_axis.empty()) {
     std::vector<int64_t> new_out_shape;
     for (size_t i = 0; i < decrease_axis.size(); ++i) {
       if (config.is_runtime && infer_flags[i] != -1) {
@@ -4181,7 +4186,7 @@ void TileInferMeta(const MetaTensor& x,
 
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
-  if (repeat_times_data.size() == 0) {
+  if (repeat_times_data.empty()) {
     repeat_times_data = std::vector<int64_t>(x_dims.size(), 1);
   }
 
@@ -5086,22 +5091,17 @@ void QuantForCompressInferMeta(const MetaTensor& x,
           x_dims[0]));
   std::vector<int64_t> dim_scale({x_dims[1]});
   std::vector<int64_t> dim_out;
-  if (layout == "weight_only") {
-    dim_out = std::vector<int64_t>({x_dims[0], x_dims[1]});
-  } else if (layout == "llm.int8") {
+  if (bits == 8) {
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
+  } else if (bits == 4) {
+    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
   } else {
-    phi::errors::InvalidArgument(
-        "The layout must be weight_only or llm.int8, but got %s", layout);
+    phi::errors::InvalidArgument("The bit must be 8 or 4, but got %d", bits);
   }
   out->set_dims(phi::make_ddim(dim_out));
 
-  // TODO(lizhenyun) support weight_only int4
-  if (bits == 8) {
-    out->set_dtype(DataType::INT8);
-  } else {
-    phi::errors::Fatal("The bits only support 8, but got[%d]", bits);
-  }
+  out->set_dtype(DataType::INT8);
+
   scale->set_dims(phi::make_ddim(dim_scale));
   scale->set_dtype(DataType::FLOAT32);
 }
