@@ -333,9 +333,7 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
           posterior_op_idx,
           posterior_op_idx,
           prior_op_idx));
-  VLOG(8) << "here1";
-  std::set<size_t>& downstream_ops = op_downstream_map_->at(prior_op_idx);
-  VLOG(8) << "here1";
+  std::set<size_t>& downstream_ops = (*op_downstream_map_)[prior_op_idx];
   // NOTE(Ruibiao): Here the downstream map shrinking is best-effort, therefore
   // ShrinkDownstreamMap after BuildDownstreamMap is still helpful. For example,
   // a->c will not be shrinked in the following case: AddDownstreamOp(a, b) ->
@@ -391,8 +389,8 @@ void DependencyBuilder::BuildDownstreamMap() {
       std::map<size_t, size_t>();  // # map from variable to recent write op.
   auto op2dependences =
       std::map<size_t,
-               std::set<size_t>>();  // # map from op to the dependence list,
-                                     //  op must run after the dependence.
+               std::set<size_t>>();  //# map from op to the dependence list,
+                                     // op must run after the dependence.
   std::set<size_t>
       remove_duplicate;  // remove the duplicate between inputs and outputs
 

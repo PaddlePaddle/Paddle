@@ -559,7 +559,7 @@ void ProgramInterpreter::BuildOperatorDependences() {
 
     if (!is_shared_) {
       for (size_t next_instr_id : next_instr_ids) {
-        ++dependecy_count_->at(next_instr_id);
+        ++(*dependecy_count_)[next_instr_id];
       }
     }
   }
@@ -626,7 +626,7 @@ void ProgramInterpreter::Convert(
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
-    if (dependecy_count_->at(i)) {
+    if ((*dependecy_count_)[i] == 0) {
       auto& inst = vec_instruction_[i];
       if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
           platform::is_gpu_place(place_)) {
@@ -1014,7 +1014,7 @@ void ProgramInterpreter::ExecuteInstructionList(
   exception_holder_.Clear();
 
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
-    if (dependecy_count_->at(i)) {
+    if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
       if (FLAGS_new_executor_serial_run) {
@@ -1370,7 +1370,7 @@ void ProgramInterpreter::TraceInstructionList(
   exception_holder_.Clear();
 
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
-    if (dependecy_count_->at(i)) {
+    if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
     }
@@ -1449,7 +1449,7 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
   SchedulingQueue ready_ops(instruction_scheduling_priority_less);
 
   for (size_t instr_id = 0; instr_id < dependecy_count_->size(); ++instr_id) {
-    if (dependecy_count_->at(instr_id)) {
+    if ((*dependecy_count_)[instr_id] == 0) {
       ready_ops.push(instr_id);
     }
   }
