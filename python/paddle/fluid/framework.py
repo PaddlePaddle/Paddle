@@ -111,7 +111,7 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
-
+_stride_in_no_check_dy2st_diff_mode = False
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
@@ -3544,6 +3544,16 @@ class Operator:
         self.desc.dist_attr = dist_attr
 
 
+@signature_safe_contextmanager
+def _stride_in_no_check_dy2st_diff():
+    global _stride_in_no_check_dy2st_diff_mode
+    _stride_in_no_check_dy2st_diff_mode = True
+    try:
+        yield
+    finally:
+        _stride_in_no_check_dy2st_diff_mode = False
+
+
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
     if outputs is not None:
         for k, v in outputs.items():
@@ -3553,8 +3563,8 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You mast find the location of the strided API be called, and call %s = %s.assign().'
-                        % (op_type, k, k, k)
+                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                        % (op_type, k)
                     )
             elif isinstance(v, list):
                 for var in v:
@@ -3564,8 +3574,8 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You mast find the location of the strided API be called, and call %s = %s.assign().'
-                                % (op_type, k, k, k)
+                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                                % (op_type, k)
                             )
 
 
@@ -4225,7 +4235,10 @@ class Block:
             }
             from .dygraph.base import in_declarative_mode
 
-            if in_declarative_mode():
+            if (
+                in_declarative_mode()
+                and not _stride_in_no_check_dy2st_diff_mode
+            ):
                 check_if_to_static_diff_with_dygraph(
                     op_type, inplace_map, outputs
                 )
