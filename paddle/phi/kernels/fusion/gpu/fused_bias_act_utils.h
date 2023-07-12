@@ -18,7 +18,6 @@
 
 #include "glog/logging.h"
 
-#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -27,9 +26,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
-
+#endif
 // for windows build
 #define M_SQRT1_2 0.70710678118654752440
 
@@ -38,6 +38,7 @@ PHI_DECLARE_bool(use_fast_math);
 namespace phi {
 namespace fusion {
 
+#ifndef PADDLE_WITH_HIP
 template <typename T>
 struct GeluComputeType;
 
@@ -127,7 +128,7 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
                                           kBlockSize * kNumWaves));
   return cudaSuccess;
 }
+#endif
 
 }  // namespace fusion
 }  // namespace phi
-#endif
