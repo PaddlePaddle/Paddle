@@ -1,9 +1,9 @@
-cc_test_old(
-  pattern_rewrite_test
-  SRCS
-  pattern_rewrite_test.cc
-  DEPS
-  ir
-  pd_dialect
-  transform_general_functions
-  gtest)
+set(PATTERN_REWRITE_TEST_DEPS _constant_folding_pass
+                              transform_general_functions gtest pd_dialect ir)
+
+if(WITH_DISTRIBUTE)
+  set(PATTERN_REWRITE_TEST_DEPS ${PATTERN_REWRITE_TEST_DEPS} fleet_executor)
+endif()
+
+cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
+            ${PATTERN_REWRITE_TEST_DEPS})

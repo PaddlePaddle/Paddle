@@ -43,19 +43,17 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
   funcs::BatchNormOneDNNHandler<T> handler(
       dev_ctx.GetEngine(), dev_ctx.GetPlace(), epsilon, &x, &scale, &y_grad);
 
-  const unsigned int C = vectorize(scale.dims())[0];
-  const size_t scaleshift_size = 2 * C;
-  std::vector<T> diff_scaleshift_data;
-  diff_scaleshift_data.reserve(scaleshift_size);
+  T* diff_scale_data = dev_ctx.template Alloc<T>(scale_grad);
+  T* diff_shift_data = dev_ctx.template Alloc<T>(bias_grad);
 
   auto src_memory = handler.AcquireSrcMemory(&x);
   auto mean_memory = handler.AcquireMeanMemory(&saved_mean);
   auto variance_memory = handler.AcquireVarianceMemory(&saved_variance);
   auto diff_dst_memory = handler.AcquireDiffDstMemory(&y_grad);
-  auto scaleshift_memory = handler.AcquireScaleShiftMemory(&scale, &bias);
+  auto scaleshift_mems = handler.AcquireScaleShiftMemory(&scale, &bias);
   auto diff_src_memory = handler.AcquireDiffSrcMemory(x_grad);
-  auto diff_scaleshift_memory =
-      handler.AcquireDiffScaleShiftMemory(diff_scaleshift_data.data());
+  auto diff_scaleshift_mems =
+      handler.AcquireDiffScaleShiftMemory(diff_scale_data, diff_shift_data);
 
   auto batch_norm_bwd_p = handler.AcquireBackwardPrimitive();
 
@@ -66,19 +64,11 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
        {DNNL_ARG_MEAN, *mean_memory},
        {DNNL_ARG_VARIANCE, *variance_memory},
        {DNNL_ARG_DIFF_DST, *diff_dst_memory},
-       {DNNL_ARG_SCALE_SHIFT, *scaleshift_memory},
+       {DNNL_ARG_SCALE, *(std::get<0>(scaleshift_mems))},
        {DNNL_ARG_DIFF_SRC, *diff_src_memory},
-       {DNNL_ARG_DIFF_SCALE_SHIFT, *diff_scaleshift_memory}});
+       {DNNL_ARG_DIFF_SCALE, *(std::get<0>(diff_scaleshift_mems))},
+       {DNNL_ARG_DIFF_SHIFT, *(std::get<1>(diff_scaleshift_mems))}});
   astream.wait();
-
-  T* diff_scale_data = dev_ctx.template Alloc<T>(scale_grad);
-  T* diff_shift_data = dev_ctx.template Alloc<T>(bias_grad);
-
-  // copy back diff scale/shift to output tensors (diff scale/shift)
-  diff_scaleshift_data.resize(scaleshift_size);
-  auto it = std::begin(diff_scaleshift_data);
-  std::copy(it, std::next(it, C), diff_scale_data);
-  std::copy(std::next(it, C), std::end(diff_scaleshift_data), diff_shift_data);
 
   // set memory descriptor of out tensor
   x_grad->set_mem_desc(diff_src_memory->get_desc());

@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-
-import numpy
-import numpy as np
-
 import paddle
 from paddle import fluid, static
 
