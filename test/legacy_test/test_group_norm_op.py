@@ -293,6 +293,44 @@ class TestGroupNormBF16Op1(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['groups'] = 1
 
+class TestGroupNormBF16Op2(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.data_format = "NHWC"
+        self.shape = (1, 100, 96, 96)
+        self.attrs['groups'] = 4
+        print("#####################")
+
+class TestGroupNormBF16Op3(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.data_format = "NHWC"
+        self.shape = (1, 128, 96, 96)
+        self.attrs['groups'] = 32
+
+class TestGroupNormBF16Op4(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.data_format = "NCHW"
+        self.shape = (1, 128, 96, 96)
+        self.attrs['groups'] = 32
+
+class TestGroupNormBF16Op5(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.data_format = "NCHW"
+        self.shape = (1, 45, 46, 46)
+        self.attrs['groups'] = 5
+
+
+class TestGroupNormBF16Op6(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.data_format = "NHWC"
+        self.shape = (1, 45, 46, 46)
+        self.attrs['groups'] = 5
+
+class TestGroupNormBF16Op7(TestGroupNormBF16Op):
+    def init_test_case(self):
+        self.data_format = "NHWC"
+        self.shape = (1, 48, 46, 46)
+        self.attrs['groups'] = 8
+
 
 class TestGroupNormOp2(TestGroupNormOp):
     def init_test_case(self):
