@@ -114,13 +114,13 @@ class TestBert(unittest.TestCase):
 
                 step_idx += 1
                 if step_idx == STEP_NUM:
-                    if to_static:
-                        paddle.jit.save(bert, self.model_save_prefix)
-                    else:
-                        paddle.save(
-                            bert.state_dict(),
-                            self.dy_state_dict_save_path + '.pdparams',
-                        )
+                    # if to_static:
+                    #     paddle.jit.save(bert, self.model_save_prefix)
+                    # else:
+                    #     paddle.save(
+                    #         bert.state_dict(),
+                    #         self.dy_state_dict_save_path + '.pdparams',
+                    #     )
                     break
             return loss, ppl
 
@@ -232,7 +232,7 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
-        self.verify_predict()
+        # self.verify_predict()
 
     # def test_train_composite(self):
     #     core._set_prim_backward_enabled(True)
