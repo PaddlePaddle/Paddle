@@ -1085,9 +1085,14 @@ void LogDeviceMemoryStats(const platform::Place& place) {
   }
 }
 
+bool IsPhiCommOp(framework::OperatorBase* operator_base) {
+    static std::set<std::string> collective_ops({"broadcast", "all_gather", "all_reduce", "reduce", "reduce_scatter", "p_send", "p_recv", "all_to_all", "dist_concat"});
+    return  collective_ops.find(operator_base->Type()) != collective_ops.end() && operator_base->HasAttr("ring_id");
+}
+
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx) {
-  if (operator_base->HasAttr("ring_id")) {
+  if (IsPhiCommOp(operator_base)) {
     int ring_id = operator_base->Attr<int>("ring_id");
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
