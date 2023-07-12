@@ -114,17 +114,17 @@ def OpNameNormalizerInitialization(
             insert_new_mutable_attributes(
                 legacy_name, op_compat_item["int_array"]
             )
+            for backward_op in legacy_backward_op_names:
+                insert_new_mutable_attributes(
+                    backward_op, op_compat_item["int_array"]
+                )
 
         if "scalar" in op_compat_item:
             insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
-
-        if "int_array" in op_compat_item:
-            insert_new_mutable_attributes(
-                legacy_name, op_compat_item["int_array"]
-            )
-
-        if "scalar" in op_compat_item:
-            insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
+            for backward_op in legacy_backward_op_names:
+                insert_new_mutable_attributes(
+                    backward_op, op_compat_item["scalar"]
+                )
 
     # special op mappings
     op_name_mappings["fetch_v2"] = "fetch"

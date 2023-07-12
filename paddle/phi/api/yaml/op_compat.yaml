@@ -882,6 +882,8 @@
     {x : Ids, weight : W}
   outputs :
     out : Out
+  attrs :
+   sparse : is_sparse
   manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
@@ -2531,6 +2533,7 @@
   int_array:
       sections :
           data_type : int
+          tensor_name : AxesTensor
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
