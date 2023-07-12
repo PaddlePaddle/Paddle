@@ -38,7 +38,7 @@ void ConvertConv2d(TensorRTEngine* engine,
                    RegistFunc fadd_layer,
                    SetDilationFunc fset_dilation,
                    const std::string& name) {
-  VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
+  VLOG(3) << "convert a " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
 
