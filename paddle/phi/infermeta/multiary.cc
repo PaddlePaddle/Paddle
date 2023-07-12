@@ -1430,9 +1430,11 @@ void FusedBiasActInferMeta(const MetaTensor& x,
       } else if (compute_dtype == "fp32") {
         out->set_dtype(phi::DataType::FLOAT32);
       } else {
-        PADDLE_THROW(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "In the case of quantization enabled with Input(x) INT32, "
-            "Attr(compute_dtype) must be set in (bf16, fp16, fp32)");
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+            "but get compute_dtype (%s)",
+            compute_dtype));
       }
     }
   } else {

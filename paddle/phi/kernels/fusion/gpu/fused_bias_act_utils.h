@@ -16,15 +16,12 @@
 
 #include <string>
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/load_store_util.h"
@@ -32,8 +29,6 @@
 #endif
 // for windows build
 #define M_SQRT1_2 0.70710678118654752440
-
-PHI_DECLARE_bool(use_fast_math);
 
 namespace phi {
 namespace fusion {

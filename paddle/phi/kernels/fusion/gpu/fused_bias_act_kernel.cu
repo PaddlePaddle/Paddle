@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
+
+PHI_DECLARE_bool(use_fast_math);
 
 namespace phi {
 namespace fusion {
@@ -495,9 +499,12 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_min_bound,
           out,
           typename DispatchDtypeTrait<float>::FuncVersion{});
-
     } else {
-      PADDLE_THROW("Only bf16, fp16 and fp32 are supported. ");
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "In the case of quantization enabled with Input(x) INT32, "
+          "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+          "but get compute_dtype (%s)",
+          compute_dtype));
     }
   } else {
     DispatchWithDtype<T, Context>(
