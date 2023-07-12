@@ -27,7 +27,7 @@ class IdentityOpCleanPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  virtual ~IdentityOpCleanPass() = default;
+  const std::string name_scope_{"identity_op_clean_pass"};
 };
 
 }  // namespace ir
