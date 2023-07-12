@@ -263,7 +263,7 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
 
 std::string ProgramDesc::CachedHashString() {
   std::string serialize_str;
-  if (cached_hash_str_.size() == 0 || NeedUpdate()) {
+  if (cached_hash_str_.empty() || NeedUpdate()) {
     Flush();
     desc_.SerializePartialToString(&serialize_str);
     // non-cryptographic is enough

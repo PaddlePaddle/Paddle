@@ -358,7 +358,7 @@ int TrtEmbeddingEltwiseLayerNormFusePass::BuildFusion(
       new_op_desc.SetType("fused_embedding_eltwise_layernorm");
       new_op_desc.SetInput("Ids", ids);
       new_op_desc.SetInput("Embs", embs);
-      if (use_varseqlen && pos_id != "" && mask_id != "") {
+      if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
         new_op_desc.SetInput("PosId", {pos_id});
         new_op_desc.SetInput("MaskId", {mask_id});
       }
@@ -471,8 +471,8 @@ void TrtEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if ((use_varseqlen && pos_id != "" && mask_id != "") ||
-        (!use_varseqlen && pos_id == "")) {
+    if ((use_varseqlen && !pos_id.empty() && !mask_id.empty()) ||
+        (!use_varseqlen && pos_id.empty())) {
       VLOG(3) << "start trt_embedding_eltwise_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
