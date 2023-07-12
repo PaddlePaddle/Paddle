@@ -400,10 +400,10 @@ class TestReshapeAPI(unittest.TestCase):
             fetch_list=[out_1, out_2, out_3, out_4],
         )
 
-        assert np.array_equal(res_1, input.reshape(shape))
-        assert np.array_equal(res_2, input.reshape(shape))
-        assert np.array_equal(res_3, input.reshape([5, 10]))
-        assert np.array_equal(res_4, input.reshape(shape))
+        np.testing.assert_array_equal(res_1, input.reshape(shape))
+        np.testing.assert_array_equal(res_2, input.reshape(shape))
+        np.testing.assert_array_equal(res_3, input.reshape([5, 10]))
+        np.testing.assert_array_equal(res_4, input.reshape(shape))
 
     def test_paddle_api(self):
         self._set_paddle_api()
@@ -424,9 +424,9 @@ class TestReshapeAPI(unittest.TestCase):
             shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
             out_3 = self.reshape(x, shape=shape_tensor)
 
-        assert np.array_equal(out_1.numpy(), input.reshape(shape))
-        assert np.array_equal(out_2.numpy(), input.reshape([5, 10]))
-        assert np.array_equal(out_3.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_1.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_2.numpy(), input.reshape([5, 10]))
+        np.testing.assert_array_equal(out_3.numpy(), input.reshape(shape))
 
 
 class TestStaticReshape_(TestReshapeAPI):
@@ -448,9 +448,9 @@ class TestStaticReshape_(TestReshapeAPI):
             shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
             out_3 = self.reshape(x, shape=shape_tensor)
 
-        assert np.array_equal(out_1.numpy(), input.reshape(shape))
-        assert np.array_equal(out_2.numpy(), input.reshape(shape))
-        assert np.array_equal(out_3.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_1.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_2.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_3.numpy(), input.reshape(shape))
 
 
 # Test Input Error

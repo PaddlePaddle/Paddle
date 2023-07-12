@@ -38,8 +38,8 @@ class TestUnbind(unittest.TestCase):
             fetch_list=[out_0, out_1],
         )
 
-        assert np.array_equal(res_1, input_1[0, 0:100])
-        assert np.array_equal(res_2, input_1[1, 0:100])
+        np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+        np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
     def test_unbind_static_fp16_gpu(self):
         if paddle.fluid.core.is_compiled_with_cuda():
@@ -61,8 +61,8 @@ class TestUnbind(unittest.TestCase):
                     fetch_list=[y],
                 )
 
-                assert np.array_equal(res[0], input[0, :])
-                assert np.array_equal(res[1], input[1, :])
+                np.testing.assert_array_equal(res[0], input[0, :])
+                np.testing.assert_array_equal(res[1], input[1, :])
 
     def test_unbind_dygraph(self):
         with fluid.dygraph.guard():
@@ -96,8 +96,8 @@ class TestLayersUnbind(unittest.TestCase):
             fetch_list=[out_0, out_1],
         )
 
-        assert np.array_equal(res_1, input_1[0, 0:100])
-        assert np.array_equal(res_2, input_1[1, 0:100])
+        np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+        np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
 
 class TestUnbindOp(OpTest):

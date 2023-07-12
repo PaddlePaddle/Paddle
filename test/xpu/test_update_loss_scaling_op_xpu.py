@@ -174,14 +174,20 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                         num_bad_steps,
                     ],
                 )
-            assert np.array_equal(result_v[0], a_v)
-            assert np.array_equal(result_v[1], b_v)
-            assert np.array_equal(result_v[0], result_v[2])
-            assert np.array_equal(result_v[1], result_v[3])
-            assert np.array_equal(result_v[4], found_inf_v)
-            assert np.array_equal(result_v[5], prev_loss_scaling_v * incr_ratio)
-            assert np.array_equal(result_v[6], np.zeros_like(num_good_steps_v))
-            assert np.array_equal(result_v[7], np.zeros_like(num_bad_steps_v))
+            np.testing.assert_array_equal(result_v[0], a_v)
+            np.testing.assert_array_equal(result_v[1], b_v)
+            np.testing.assert_array_equal(result_v[0], result_v[2])
+            np.testing.assert_array_equal(result_v[1], result_v[3])
+            np.testing.assert_array_equal(result_v[4], found_inf_v)
+            np.testing.assert_array_equal(
+                result_v[5], prev_loss_scaling_v * incr_ratio
+            )
+            np.testing.assert_array_equal(
+                result_v[6], np.zeros_like(num_good_steps_v)
+            )
+            np.testing.assert_array_equal(
+                result_v[7], np.zeros_like(num_bad_steps_v)
+            )
 
         def loss_scaling_check_inf(self, use_cuda=True, scope=fluid.Scope()):
             a = paddle.static.data(
@@ -252,14 +258,20 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
                         num_bad_steps,
                     ],
                 )
-            assert np.array_equal(result_v[0], np.zeros_like(a_v))
-            assert np.array_equal(result_v[1], np.zeros_like(b_v))
-            assert np.array_equal(result_v[2], np.zeros_like(a_v))
-            assert np.array_equal(result_v[3], np.zeros_like(b_v))
-            assert np.array_equal(result_v[4], found_inf_v)
-            assert np.array_equal(result_v[5], prev_loss_scaling_v * decr_ratio)
-            assert np.array_equal(result_v[6], np.zeros_like(num_good_steps_v))
-            assert np.array_equal(result_v[7], np.zeros_like(num_bad_steps_v))
+            np.testing.assert_array_equal(result_v[0], np.zeros_like(a_v))
+            np.testing.assert_array_equal(result_v[1], np.zeros_like(b_v))
+            np.testing.assert_array_equal(result_v[2], np.zeros_like(a_v))
+            np.testing.assert_array_equal(result_v[3], np.zeros_like(b_v))
+            np.testing.assert_array_equal(result_v[4], found_inf_v)
+            np.testing.assert_array_equal(
+                result_v[5], prev_loss_scaling_v * decr_ratio
+            )
+            np.testing.assert_array_equal(
+                result_v[6], np.zeros_like(num_good_steps_v)
+            )
+            np.testing.assert_array_equal(
+                result_v[7], np.zeros_like(num_bad_steps_v)
+            )
 
         def test_loss_scaling(self):
             main = fluid.Program()

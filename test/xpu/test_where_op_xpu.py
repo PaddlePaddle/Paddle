@@ -132,18 +132,18 @@ class TestXPUWhereAPI(unittest.TestCase):
                         feed={'cond': self.cond, 'x': self.x, 'y': self.y},
                         fetch_list=fetch_list,
                     )
-                    assert np.array_equal(out[0], self.out)
+                    np.testing.assert_array_equal(out[0], self.out)
 
                     if x_stop_gradient is False:
-                        assert np.array_equal(
+                        np.testing.assert_array_equal(
                             out[2], self.ref_x_backward(out[1])
                         )
                         if y.stop_gradient is False:
-                            assert np.array_equal(
+                            np.testing.assert_array_equal(
                                 out[3], self.ref_y_backward(out[1])
                             )
                     elif y.stop_gradient is False:
-                        assert np.array_equal(
+                        np.testing.assert_array_equal(
                             out[2], self.ref_y_backward(out[1])
                         )
 
@@ -165,7 +165,7 @@ class TestXPUWhereAPI(unittest.TestCase):
             out = exe.run(
                 train_prog, feed={'x': x_i, 'y': y_i}, fetch_list=[result]
             )
-            assert np.array_equal(out[0], np.where(x_i > 1, x_i, y_i))
+            np.testing.assert_array_equal(out[0], np.where(x_i > 1, x_i, y_i))
 
 
 class TestWhereDygraphAPI(unittest.TestCase):
@@ -178,7 +178,9 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = fluid.dygraph.to_variable(y_i)
             cond = fluid.dygraph.to_variable(cond_i)
             out = paddle.where(cond, x, y)
-            assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
+            np.testing.assert_array_equal(
+                out.numpy(), np.where(cond_i, x_i, y_i)
+            )
 
 
 if __name__ == '__main__':

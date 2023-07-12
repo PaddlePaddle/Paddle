@@ -169,7 +169,7 @@ class TestLinspaceAPI(unittest.TestCase):
             res_1, res_2, res_3 = exe.run(
                 fluid.default_main_program(), fetch_list=[out_1, out_2, out_3]
             )
-            assert np.array_equal(res_1, res_2)
+            np.testing.assert_array_equal(res_1, res_2)
 
     def test_name(self):
         with paddle_static_guard():

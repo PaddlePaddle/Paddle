@@ -162,8 +162,8 @@ class TestMeshgridOp3(unittest.TestCase):
             feed={'x': input_1, 'y': input_2},
             fetch_list=[grid_x, grid_y],
         )
-        assert np.array_equal(res_1, out_1)
-        assert np.array_equal(res_2, out_2)
+        np.testing.assert_array_equal(res_1, out_1)
+        np.testing.assert_array_equal(res_2, out_2)
 
 
 class TestMeshgridOp4(unittest.TestCase):
@@ -199,8 +199,8 @@ class TestMeshgridOp4(unittest.TestCase):
             fetch_list=[grid_x, grid_y],
         )
 
-        assert np.array_equal(res_1, out_1)
-        assert np.array_equal(res_2, out_2)
+        np.testing.assert_array_equal(res_1, out_1)
+        np.testing.assert_array_equal(res_2, out_2)
 
 
 class TestMeshgridOp5(unittest.TestCase):
@@ -236,8 +236,8 @@ class TestMeshgridOp5(unittest.TestCase):
             fetch_list=[grid_x, grid_y],
         )
 
-        assert np.array_equal(res_1, out_1)
-        assert np.array_equal(res_2, out_2)
+        np.testing.assert_array_equal(res_1, out_1)
+        np.testing.assert_array_equal(res_2, out_2)
 
 
 class TestMeshgridOp6(unittest.TestCase):
@@ -262,8 +262,8 @@ class TestMeshgridOp6(unittest.TestCase):
             tensor_4 = fluid.dygraph.to_variable(input_4)
             res_3, res_4 = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
-            assert np.array_equal(res_3.shape, [100, 200])
-            assert np.array_equal(res_4.shape, [100, 200])
+            np.testing.assert_array_equal(res_3.shape, [100, 200])
+            np.testing.assert_array_equal(res_4.shape, [100, 200])
 
 
 class TestMeshgridOp7(unittest.TestCase):
@@ -288,8 +288,8 @@ class TestMeshgridOp7(unittest.TestCase):
             tensor_4 = fluid.dygraph.to_variable(input_4)
             res_3, res_4 = paddle.tensor.meshgrid([tensor_3, tensor_4])
 
-            assert np.array_equal(res_3.shape, [100, 200])
-            assert np.array_equal(res_4.shape, [100, 200])
+            np.testing.assert_array_equal(res_3.shape, [100, 200])
+            np.testing.assert_array_equal(res_4.shape, [100, 200])
 
 
 class TestMeshgridOp8(unittest.TestCase):
@@ -314,8 +314,8 @@ class TestMeshgridOp8(unittest.TestCase):
             tensor_4 = fluid.dygraph.to_variable(input_4)
             res_3, res_4 = paddle.tensor.meshgrid((tensor_3, tensor_4))
 
-            assert np.array_equal(res_3.shape, [100, 200])
-            assert np.array_equal(res_4.shape, [100, 200])
+            np.testing.assert_array_equal(res_3.shape, [100, 200])
+            np.testing.assert_array_equal(res_4.shape, [100, 200])
 
 
 class TestMeshGrid_ZeroDim(TestMeshgridOp):

@@ -86,7 +86,7 @@ class TestMaskedSelectAPI(unittest.TestCase):
         mask = paddle.to_tensor(np_mask)
         out = paddle.masked_select(x, mask)
         np_out = np_masked_select(np_x, np_mask)
-        self.assertEqual(np.allclose(out.numpy(), np_out), True)
+        np.testing.assert_allclose(out.numpy(), np_out)
         paddle.enable_static()
 
     def test_static_mode(self):
@@ -106,7 +106,7 @@ class TestMaskedSelectAPI(unittest.TestCase):
             feed={"x": np_x, "mask": np_mask},
             fetch_list=[out],
         )
-        self.assertEqual(np.allclose(res, np_out), True)
+        np.testing.assert_allclose(res, np_out)
 
 
 class TestMaskedSelectError(unittest.TestCase):

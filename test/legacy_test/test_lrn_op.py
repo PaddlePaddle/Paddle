@@ -371,7 +371,7 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                         fetch_list=[y],
                     )
 
-                    assert np.array_equal(res[0].shape, input.shape)
+                    np.testing.assert_array_equal(res[0].shape, input.shape)
 
 
 if __name__ == "__main__":

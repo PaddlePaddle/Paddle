@@ -66,9 +66,9 @@ class TestBroadcastToAPI(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3],
         )
-        assert np.array_equal(res_1, np.tile(input, (1, 1)))
-        assert np.array_equal(res_2, np.tile(input, (1, 1)))
-        assert np.array_equal(res_3, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
     def test_api_fp16_gpu(self):
         if paddle.fluid.core.is_compiled_with_cuda():
@@ -101,9 +101,9 @@ class TestBroadcastToAPI(unittest.TestCase):
                     },
                     fetch_list=[out_1, out_2, out_3],
                 )
-                assert np.array_equal(res_1, np.tile(input, (1, 1)))
-                assert np.array_equal(res_2, np.tile(input, (1, 1)))
-                assert np.array_equal(res_3, np.tile(input, (1, 1)))
+                np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+                np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+                np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
 
 if __name__ == "__main__":

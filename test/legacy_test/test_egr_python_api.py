@@ -844,7 +844,11 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         ori_place = egr_tensor.place
 
         new_arr = np.random.rand(4, 16, 16, 32).astype('float32')
-        self.assertFalse(np.array_equal(egr_tensor.numpy(), new_arr))
+        import operator
+
+        np.testing.assert_array_compare(
+            operator.__ne__, egr_tensor.numpy(), new_arr
+        )
 
         egr_tensor.set_value(new_arr)
         self.assertEqual(egr_tensor.stop_gradient, True)
@@ -964,7 +968,11 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         linear = paddle.nn.Linear(1, 3)
         ori_place = linear.weight.place
         new_weight = np.ones([1, 3]).astype('float32')
-        self.assertFalse(np.array_equal(linear.weight.numpy(), new_weight))
+        import operator
+
+        np.testing.assert_array_compare(
+            operator.__ne__, linear.weight.numpy(), new_weight
+        )
 
         linear.weight.set_value(new_weight)
         np.testing.assert_array_equal(linear.weight.numpy(), new_weight)

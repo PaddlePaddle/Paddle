@@ -172,7 +172,9 @@ class Test_Detach(unittest.TestCase):
     def test_NoDetachSingle_DetachMulti(self):
         array_no_detach_single = self.no_detach_single()
         array_detach_multi = self.detach_multi()
-        assert np.array_equal(array_no_detach_single, array_detach_multi)
+        np.testing.assert_array_equal(
+            array_no_detach_single, array_detach_multi
+        )
 
 
 class TestInplace(unittest.TestCase):

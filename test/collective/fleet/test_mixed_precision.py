@@ -128,9 +128,21 @@ class AMPTest(unittest.TestCase):
                     np.testing.assert_array_equal(beta_pow1_, pre_beta_pow1_)
                 else:
                     self.assertFalse(found_inf)
-                    self.assertFalse(np.array_equal(weight_, pre_weight_))
-                    self.assertFalse(np.array_equal(moment1_, pre_moment1_))
-                    self.assertFalse(np.array_equal(beta_pow1_, pre_beta_pow1_))
+                    import operator
+
+                    np.testing.assert_array_compare(
+                        operator.__ne__, weight_, pre_weight_
+                    )
+                    import operator
+
+                    np.testing.assert_array_compare(
+                        operator.__ne__, moment1_, pre_moment1_
+                    )
+                    import operator
+
+                    np.testing.assert_array_compare(
+                        operator.__ne__, beta_pow1_, pre_beta_pow1_
+                    )
                 pre_weight_, pre_moment1_, pre_beta_pow1_ = (
                     weight_,
                     moment1_,

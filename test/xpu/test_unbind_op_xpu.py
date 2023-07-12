@@ -50,8 +50,8 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
                 fetch_list=[out_0, out_1],
             )
 
-            assert np.array_equal(res_1, input_1[0, 0:100])
-            assert np.array_equal(res_2, input_1[1, 0:100])
+            np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
         def test_unbind_dygraph(self):
             with fluid.dygraph.guard():
@@ -89,8 +89,8 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
                 fetch_list=[out_0, out_1],
             )
 
-            assert np.array_equal(res_1, input_1[0, 0:100])
-            assert np.array_equal(res_2, input_1[1, 0:100])
+            np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
     class TestUnbindOp(XPUOpTest):
         def initParameters(self):

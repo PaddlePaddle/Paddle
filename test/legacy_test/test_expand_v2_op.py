@@ -318,9 +318,9 @@ class TestExpandV2API(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3],
         )
-        assert np.array_equal(res_1, np.tile(input, (1, 1)))
-        assert np.array_equal(res_2, np.tile(input, (1, 1)))
-        assert np.array_equal(res_3, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+        np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
 
 class TestExpandInferShape(unittest.TestCase):

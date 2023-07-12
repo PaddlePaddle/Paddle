@@ -338,14 +338,30 @@ class TestFillConstantAPI(unittest.TestCase):
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8],
         )
 
-        assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_3, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_4, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_7, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_8, np.full([1, 2], 1.1, dtype="float32"))
+        np.testing.assert_array_equal(
+            res_1, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_2, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_3, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_4, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_5, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_6, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_7, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_8, np.full([1, 2], 1.1, dtype="float32")
+        )
 
 
 class TestFillConstantImperative(unittest.TestCase):
@@ -369,16 +385,16 @@ class TestFillConstantImperative(unittest.TestCase):
             res4 = paddle.tensor.fill_constant(
                 shape=shape, dtype='int32', value=value
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res1.numpy(), np.full([1, 2], 1.1, dtype="float32")
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res2.numpy(), np.full([1, 2], 1.1, dtype="float32")
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res3.numpy(), np.full([1, 2], 1.1, dtype="float32")
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res4.numpy(), np.full([1, 2], 88, dtype="int32")
             )
 

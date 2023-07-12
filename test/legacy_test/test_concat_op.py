@@ -472,9 +472,15 @@ class TestConcatAPI(unittest.TestCase):
             feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
             fetch_list=[out_1, out_2, out_3],
         )
-        assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
+        np.testing.assert_array_equal(
+            res_1, np.concatenate((input_2, input_3), axis=1)
+        )
+        np.testing.assert_array_equal(
+            res_2, np.concatenate((input_2, input_3), axis=1)
+        )
+        np.testing.assert_array_equal(
+            res_3, np.concatenate((input_2, input_3), axis=1)
+        )
 
     def test_api(self):
         paddle.enable_static()
@@ -501,10 +507,18 @@ class TestConcatAPI(unittest.TestCase):
             feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
             fetch_list=[out_1, out_2, out_3, out_4],
         )
-        assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_4, np.concatenate((input_2, input_3), axis=1))
+        np.testing.assert_array_equal(
+            res_1, np.concatenate((input_2, input_3), axis=1)
+        )
+        np.testing.assert_array_equal(
+            res_2, np.concatenate((input_2, input_3), axis=1)
+        )
+        np.testing.assert_array_equal(
+            res_3, np.concatenate((input_2, input_3), axis=1)
+        )
+        np.testing.assert_array_equal(
+            res_4, np.concatenate((input_2, input_3), axis=1)
+        )
 
     def test_imperative(self):
         in1 = np.array([[1, 2, 3], [4, 5, 6]])
