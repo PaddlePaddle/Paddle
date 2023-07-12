@@ -207,7 +207,7 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
                     out = model(in)
     '''
     if start >= end:
-        yield
+        return
 
     try:
         if iter_id == start:
