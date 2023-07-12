@@ -164,7 +164,7 @@ void ConvertConv2d(TensorRTEngine* engine,
 
   if (!Y_v) layer->setInput(1, *filter);
 
-  if (output_padding.size() > 0) {
+  if (!output_padding.empty()) {
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
   }
