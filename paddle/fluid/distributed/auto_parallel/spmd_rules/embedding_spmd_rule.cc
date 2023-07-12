@@ -52,7 +52,7 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
       weight_ndim,
       weight_dims_mapping.size(),
       phi::errors::InvalidArgument(
-          "Mismatch of Y's tensor size: [%d] and Y's dims_mapping size [%d].",
+          "Mismatch of W's tensor size: [%d] and W's dims_mapping size [%d].",
           weight_ndim,
           weight_dims_mapping.size()));
   PADDLE_ENFORCE_EQ(
@@ -68,14 +68,15 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   // determine parallel mode
   int64_t weight_row_axis_mapping = weight_dims_mapping[0];
 
-  // padding_idx s not supported by c_embedding kernl.
+  // padding_idx s not supported by c_embedding kernel.
   // (TODO) might be could reshard as replicated when padding_idx != -1
   if (padding_idx != -1) {
     PADDLE_ENFORCE_EQ(
         weight_row_axis_mapping,
         -1,
         phi::errors::InvalidArgument(
-            "Row-wise parallel of embedding table does NOT support Padding, "
+            "Row-wise parallel of embedding table does NOT support Padding "
+            "Idx, "
             "but got padding_idx [%d] and row axis of embedding table is "
             "sharded by mesh dimension [%d].",
             padding_idx,
