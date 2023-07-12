@@ -114,11 +114,68 @@ class Pipeline1F1BPass(PipelinePassBase):
         return types, sub_program_list
 
 
+@register_pass("pipeline_scheduler_Eager1F1B")
+class PipelineEager1F1BPass(PipelinePassBase):
+    def __init__(self):
+        super().__init__()
+
+    def create_job_list(self):
+        num_micro_batches = self.get_attr("num_micro_batches")
+        pp_stage = self.get_attr("pp_stage")
+        pp_degree = self.get_attr("pp_degree")
+
+        job_list = []
+        lr_job = core.Job("lr")
+        job_list.append(lr_job)
+
+        assert (
+            pp_degree <= num_micro_batches
+        ), "Num of micro batches should larger than pp degree."
+
+        micro_batch_in_warmup = 2 * (pp_degree - pp_stage) - 1
+        micro_batch_in_1f1b = num_micro_batches - micro_batch_in_warmup
+
+        forward_micro_batch_id = 0
+        for i in range(micro_batch_in_warmup):
+            forward_job = core.Job("forward")
+            forward_job.set_micro_batch_id(forward_micro_batch_id)
+            job_list.append(forward_job)
+            forward_micro_batch_id += 1
+
+        backward_micro_batch_id = 0
+        for i in range(micro_batch_in_1f1b):
+            backward_job = core.Job("backward")
+            backward_job.set_micro_batch_id(backward_micro_batch_id)
+            job_list.append(backward_job)
+            backward_micro_batch_id += 1
+            forward_job = core.Job("forward")
+            forward_job.set_micro_batch_id(forward_micro_batch_id)
+            job_list.append(forward_job)
+            forward_micro_batch_id += 1
+
+        for i in range(micro_batch_in_warmup):
+            backward_job = core.Job("backward")
+            backward_job.set_micro_batch_id(backward_micro_batch_id)
+            job_list.append(backward_job)
+            backward_micro_batch_id += 1
+
+        opt_job = core.Job("optimizer")
+        job_list.append(opt_job)
+        return job_list
+
+    def partial_programs(self, program):
+        # TODO: More function will be added later. Now it uses the same logic as FTthenB and 1F1B.
+        types = ["lr", "forward", "backward", "optimizer"]
+        sub_program_list = _program_for_fthenb_and_1f1b(program)
+        return types, sub_program_list
+
+
 def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
     assert pass_name in [
         "FThenB",
         "1F1B",
-    ], "pipeline scheduler only support FThenB and 1F1B, but recieve {}".format(
+        "Eager1F1B",
+    ], "pipeline scheduler only support FThenB, 1F1B and Eager1F1B, but recieve {}".format(
         pass_name
     )
     pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
