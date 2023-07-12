@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
+#include <memory>
+#include "paddle/ir/core/dll_decl.h"
 
-namespace paddle {
-namespace framework {
 namespace ir {
 
-class LayerNormOneDNNOptimizationPass : public FusePassBase {
- public:
-  virtual ~LayerNormOneDNNOptimizationPass() {}
+class Pass;
 
- protected:
-  void ApplyImpl(Graph *graph) const override;
-};
+IR_API std::unique_ptr<Pass> CreateConstantFoldingPass();
 
 }  // namespace ir
-}  // namespace framework
-}  // namespace paddle
