@@ -20,6 +20,7 @@ from eager_op_test import convert_uint16_to_float
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid
+from paddle.fluid import core
 from paddle.framework import set_default_dtype
 
 np.random.seed(123)
@@ -109,6 +110,10 @@ class GemvWeightOnlyInt8TestCaseCase2(GemvWeightOnlyInt8TestCase):
         self.out_features = 64
 
 
+@unittest.skipIf(
+    not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not support bfloat16",
+)
 class GemvWeightOnlyInt8TestCaseCase3(GemvWeightOnlyInt8TestCase):
     def config(self):
         super().config()
