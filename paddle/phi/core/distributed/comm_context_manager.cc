@@ -47,7 +47,6 @@ void CommContextManager::CreateNCCLCommContext(
   phi::backends::gpu::SetDeviceId(dev_id);
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(ring_id)) {
-    VLOG(3) << "for comm_context for ring_id " << ring_id << ", rank " << rank;
     return;
   }
   ncclUniqueId nccl_id;
