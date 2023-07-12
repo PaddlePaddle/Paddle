@@ -152,6 +152,15 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
   std::vector<int64_t> src_shape = input_specs[0].shape();
   std::vector<int64_t> tgt_shape =
       ExtractAttr<std::vector<int64_t>>("shape", attrs);
+
+  // handle the '0' values in target shape, '0' indicates
+  // that the target shape is equal to the source shape
+  for (int64_t i = 0, n = tgt_shape.size(); i < n; i++) {
+    if (tgt_shape[i] == 0) {
+      tgt_shape[i] = src_shape[i];
+    }
+  }
+
   std::vector<DimTrans*> trans = MakeReshapeDimTrans(src_shape, tgt_shape);
 
   // step2: infer the dims mapping of input (if reshard is

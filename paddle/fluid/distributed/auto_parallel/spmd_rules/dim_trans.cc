@@ -255,12 +255,10 @@ std::pair<int64_t, DimTrans*> GetDimTransSize(
 
     if (split->split_id() == 0) {
       if (dim_size.second != nullptr) {
-        PADDLE_ENFORCE_EQ(
-            dim_size.second->type(),
-            DimTrans::Type::INPUTDIM,
-            phi::errors::InvalidArgument("The returned dim_trans must be"
-                                         "INPUTDIM, but it's %d here.",
-                                         dim_size.second->type()));
+        PADDLE_ENFORCE_EQ(dim_size.second->type(),
+                          DimTrans::Type::INPUTDIM,
+                          phi::errors::InvalidArgument(
+                              "The returned dim_trans must be INPUTDIM."));
         InputDim* inputdim = dynamic_cast<InputDim*>(dim_size.second);
         int64_t nmesh = mesh_shape.size();
         int64_t dim = inputdim->input_dim();
