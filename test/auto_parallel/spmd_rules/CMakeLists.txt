@@ -5,6 +5,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
   py_test_modules(test_matmul_rule MODULES test_matmul_rule)
+  py_test_modules(test_matmul_rule MODULES test_embedding_rule)
+  py_test_modules(test_matmul_rule MODULES test_replicated_rule)
+  py_test_modules(test_matmul_rule MODULES test_softmax_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

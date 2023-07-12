@@ -16,10 +16,12 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/elementwise_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
 
 // TODO(ljz) Automatic this process in cmake file.
 namespace paddle {
@@ -134,6 +136,14 @@ REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
 
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
+
+// embedding rule
+REGISTER_SPMD_RULE(embedding, EmbeddingSPMDRule);
+REGISTER_SPMD_RULE(lookup_table_v2, EmbeddingSPMDRule);
+
+// softmax rule
+REGISTER_SPMD_RULE(softmax, SoftmaxSPMDRule);
+REGISTER_SPMD_RULE(log_softmax, SoftmaxSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed
