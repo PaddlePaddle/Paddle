@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ from legacy_test.test_collective_api_base import (
 
 import paddle
 from paddle import fluid, framework
-from paddle.fluid import core, data_feeder
+from paddle.fluid import data_feeder
 
 paddle.enable_static()
 
@@ -47,13 +47,7 @@ def concat_new(tensor, group=None):
     ring_id = 0 if group is None else group.id
     nranks = 2
 
-    out = helper.create_var(
-        name="outofconcat",
-        dtype='float32',
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        persistable=False,
-        stop_gradient=False,
-    )
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     helper.append_op(
         type=op_type,
         inputs={'x': [tensor]},
