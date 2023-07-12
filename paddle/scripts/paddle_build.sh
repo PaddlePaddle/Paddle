@@ -2197,13 +2197,13 @@ EOF
         protobuf_version=`pip list | grep "protobuf" | awk '{print $2}'`
         if [[ "$protobuf_version" == 3.* ]]; then
             echo "Your current protobuf version is $protobuf_version"
-            ctest -L "RUN_TYPE=GPUPS" --timeout 120
+            ctest -L "RUN_TYPE=Ampere" --timeout 120
         else
             echo "Your current protobuf version is $protobuf_version"
             #get all unittests need to be run by protobuf 3
             python ${PADDLE_ROOT}/tools/test_run_by_protobuf_3.py > all_ut_run_by_protobuf3
             # get all unittets need to be run in gpups ci
-            ctest -N -V -L "RUN_TYPE=GPUPS"| grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > ut_gpups
+            ctest -N -V -L "RUN_TYPE=Ampere"| grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > ut_gpups
             #get the intersection of ut_run_by_protobuf3 and ut_gpups
             grep -F  -f all_ut_run_by_protobuf3 ut_gpups > ut_run_by_protobuf3_in_gpups
             #get the difference set of ut_gpups and ut_run_by_protobuf3_in_gpups
