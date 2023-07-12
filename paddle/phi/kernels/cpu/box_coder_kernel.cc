@@ -178,7 +178,7 @@ void BoxCoderKernel(const Context &dev_ctx,
                     int axis,
                     const std::vector<float> &variance,
                     DenseTensor *output_box) {
-  if (target_box.lod().size()) {
+  if (!target_box.lod().empty()) {
     PADDLE_ENFORCE_EQ(target_box.lod().size(),
                       1UL,
                       phi::errors::InvalidArgument(

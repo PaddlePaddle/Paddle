@@ -410,7 +410,7 @@ struct GradLayer {
          dev_ctx.GetPlace(),
          false,
          dynamic_grad_last_h);
-    if (last_c_grad_unbind.size() > 0) {
+    if (!last_c_grad_unbind.empty()) {
       dynamic_grad_last_c->Resize(last_c_grad_unbind[current_layer_idx].dims());
       dev_ctx.Alloc<T>(dynamic_grad_last_c);
       Copy(dev_ctx,
@@ -426,7 +426,7 @@ struct GradLayer {
     DenseTensor* dynamic_grad_pre_h = &c;
     DenseTensor* dynamic_grad_pre_c = &d;
     phi::funcs::SetConstant<CPUContext, T> zero;
-    if (init_h_grad_unbind->size() > 0) {
+    if (!init_h_grad_unbind->empty()) {
       dynamic_grad_pre_h->ShareDataWith(
           (*init_h_grad_unbind)[current_layer_idx]);
     } else {
@@ -434,7 +434,7 @@ struct GradLayer {
       dev_ctx.Alloc<T>(dynamic_grad_pre_h);
       zero(dev_ctx, dynamic_grad_pre_h, static_cast<T>(0.0));
     }
-    if (init_c_grad_unbind->size() > 0) {
+    if (!init_c_grad_unbind->empty()) {
       dynamic_grad_pre_c->ShareDataWith(
           (*init_c_grad_unbind)[current_layer_idx]);
     } else {
@@ -495,12 +495,12 @@ struct GradLayer {
       hidden = &(*output_tensor_unbind)[i];
       if (i == 0) {
         pre_hidden = &(*init_h_unbind)[current_layer_idx];
-        if (init_c_unbind->size() > 0) {
+        if (!init_c_unbind->empty()) {
           pre_state = &(*init_c_unbind)[current_layer_idx];
         }
       } else {
         pre_hidden = &(*output_tensor_unbind)[i - 1];
-        if (layer_state_tensor_unbind->size() > 0) {
+        if (!layer_state_tensor_unbind->empty()) {
           pre_state = &(*layer_state_tensor_unbind)[begin_idx + i - 1];
         }
       }
@@ -536,14 +536,14 @@ struct GradLayer {
                       mode);
 
     // copy the gradient to init_c init_h
-    if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
+    if (!(*init_h_grad_unbind).empty() && time_step % 2 == 0) {
       Copy(dev_ctx,
            *dynamic_grad_last_h,
            dev_ctx.GetPlace(),
            false,
            &((*init_h_grad_unbind)[current_layer_idx]));
     }
-    if ((*init_c_grad_unbind).size() > 0 && time_step % 2 == 0) {
+    if (!(*init_c_grad_unbind).empty() && time_step % 2 == 0) {
       Copy(dev_ctx,
            *dynamic_grad_last_c,
            dev_ctx.GetPlace(),
@@ -736,7 +736,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_state_tensor;
     std::vector<DenseTensor> layer_state_tensor_unbind;
-    if (state_tensor_unbind.size() > 0) {
+    if (!state_tensor_unbind.empty()) {
       layer_state_tensor = state_tensor_unbind[layer_idx];
       layer_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});
@@ -745,7 +745,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_act_state_tensor;
     std::vector<DenseTensor> layer_act_state_tensor_unbind;
-    if (act_state_tensor_unbind.size() > 0) {
+    if (!act_state_tensor_unbind.empty()) {
       layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
       layer_act_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});
@@ -881,7 +881,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_state_tensor;
     std::vector<DenseTensor> layer_state_tensor_unbind;
-    if (state_tensor_unbind.size() > 0) {
+    if (!state_tensor_unbind.empty()) {
       layer_state_tensor = state_tensor_unbind[layer_idx];
       layer_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});
@@ -890,7 +890,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_act_state_tensor;
     std::vector<DenseTensor> layer_act_state_tensor_unbind;
-    if (act_state_tensor_unbind.size() > 0) {
+    if (!act_state_tensor_unbind.empty()) {
       layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
       layer_act_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});

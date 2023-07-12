@@ -79,14 +79,14 @@ void TensorDistAttr::set_annotated(
 
 void TensorDistAttr::set_default_dims_mapping(
     const std::vector<int64_t>& tensor_shape) {
-  if (tensor_shape.size() != 0) {
+  if (!tensor_shape.empty()) {
     dims_mapping_ = std::vector<int64_t>(tensor_shape.size(), -1);
   }
 }
 
 void TensorDistAttr::set_default_dynamic_dims(
     const std::vector<int64_t>& tensor_shape) {
-  if (tensor_shape.size() != 0) {
+  if (!tensor_shape.empty()) {
     dynamic_dims_ = std::vector<bool>(tensor_shape.size(), false);
   }
 }
@@ -160,7 +160,7 @@ bool TensorDistAttr::verify_dynamic_dims(
     const std::vector<bool>& dynamic_dims,
     const std::vector<int64_t>& tensor_shape) const {
   VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " << str_join(dynamic_dims);
-  if (dynamic_dims.size() > 0 && dynamic_dims.size() != tensor_shape.size()) {
+  if (!dynamic_dims.empty() && dynamic_dims.size() != tensor_shape.size()) {
     return false;
   }
   return true;

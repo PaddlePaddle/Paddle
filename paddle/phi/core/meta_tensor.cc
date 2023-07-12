@@ -132,7 +132,7 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
       phi::SparseCsrTensor::classof(tensor_)) {
     return;
   }
-  if (meta_tensor.lod().size() == 0) {
+  if (meta_tensor.lod().empty()) {
     // no need share
     return;
   }

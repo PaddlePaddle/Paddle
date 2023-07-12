@@ -2220,7 +2220,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
-    if (shape.size() >= 1) {
+    if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
     } else if (tensor.numel() > 0) {
       // This must be a zero dimension tensor.

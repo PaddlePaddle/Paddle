@@ -38,8 +38,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto pos_id_name = engine_->tensorrt_transformer_posid();
     auto mask_id_name = engine_->tensorrt_transformer_maskid();
     bool flag_prelayernorm = engine_->with_interleaved() &&
-                             engine_->use_varseqlen() && pos_id_name != "" &&
-                             mask_id_name != "";
+                             engine_->use_varseqlen() && !pos_id_name.empty() &&
+                             !mask_id_name.empty();
 
     if (!flag_prelayernorm) {
       PADDLE_THROW(platform::errors::Fatal(

@@ -88,7 +88,7 @@ KernelType to_kerneltype(const std::string& act) {
   std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
   if (lower == "relu" || lower == "vrelu") {
     return kVRelu;
-  } else if (lower == "identity" || lower == "videntity" || lower == "") {
+  } else if (lower == "identity" || lower == "videntity" || lower.empty()) {
     return kVIdentity;
   } else if (lower == "exp" || lower == "vexp") {
     return kVExp;

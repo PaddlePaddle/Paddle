@@ -189,7 +189,7 @@ void RnnGradKernel(const Context &dev_ctx,
   const T *init_c_data = nullptr;
   // const T *last_c_data = nullptr;
   const T *last_c_grad_data = nullptr;
-  T *init_h_grad_data = pre_state_grad.size() != 0 && pre_state_grad[0]
+  T *init_h_grad_data = !pre_state_grad.empty() && pre_state_grad[0]
                             ? dev_ctx.template Alloc<T>(pre_state_grad[0])
                             : nullptr;
   T *init_c_grad_data = nullptr;

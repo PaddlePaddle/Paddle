@@ -221,7 +221,7 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
     if (i == 0) {
       fc_input_var_0 = pattern->NewNode(
           [=](Node* x) {
-            if (x->outputs.size() <= 0 || x->inputs.size() <= 0U) {
+            if (x->outputs.empty() || x->inputs.empty()) {
               return false;
             }
             if (x->IsVar() && x->Var() && x->Var()->GetShape().size() > 2) {
@@ -275,8 +275,8 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
             return false;
           }
           x = before_var_of_part(x);
-          if (i == 0 && x->outputs.size() > 0U) {
-            if (x->inputs.size() <= 0U) {
+          if (i == 0 && !x->outputs.empty()) {
+            if (x->inputs.empty()) {
               return false;
             }
             int fc_idx = FindFCIdx(x);
@@ -291,7 +291,7 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
             }
           } else {
             return var_next_is_fc_act_repeated_n_times(x, num_fc - i, "relu") &&
-                   x->inputs.size() > 0 &&
+                   !x->inputs.empty() &&
                    var_before_is_fc_act_repeated_n_times(x, i, "relu");
           }
         },

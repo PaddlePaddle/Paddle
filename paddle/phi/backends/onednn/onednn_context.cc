@@ -208,7 +208,7 @@ struct OneDNNContext::Impl {
       // max pblob capacity
       if ((static_cast<size_t>(sid) ==
            OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing) &&
-          sBlob->size() &&
+          !sBlob->empty() &&
           (sBlob->size() >=
            static_cast<size_t>(
                OneDNNContext::tls().cur_input_shape_cache_capacity))) {

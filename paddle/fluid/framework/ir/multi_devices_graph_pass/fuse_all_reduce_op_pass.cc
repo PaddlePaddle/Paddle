@@ -59,7 +59,7 @@ class FuseAllReduceOpPass : public ir::Pass {
         GetAllReduceOps(result, places, grads);
 
     VLOG(6) << "Find all_reduce_ops: " << all_reduce_ops.size();
-    if (all_reduce_ops.size() == 0) {
+    if (all_reduce_ops.empty()) {
       return;
     }
 

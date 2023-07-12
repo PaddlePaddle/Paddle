@@ -175,7 +175,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       nullptr);
 
   if (!self->tensor.impl()->initialized()) {
-    if (tensor_dims.size() == 0) {
+    if (tensor_dims.empty()) {
       py_dims[0] = 0;
       py_strides[0] = 0;
       PyObject* array = api.PyArray_NewFromDescr_(

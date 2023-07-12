@@ -45,7 +45,7 @@ class SendOpV2 : public framework::OperatorWithKernel {
       auto t_arr = var->Get<framework::LoDTensorArray>();
       // NOTE(sandyhouse): Support an empty tensor array as Input.
       // And set the kernel type is float.
-      if (t_arr.size() == 0) {
+      if (t_arr.empty()) {
         return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
       }
     }

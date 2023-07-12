@@ -395,7 +395,7 @@ static void Interpolate1DCPUBwd(
             "should be greater than 0, but received value is %d.",
             scale_w));
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(
           scale_w > 0,
@@ -414,7 +414,7 @@ static void Interpolate1DCPUBwd(
         funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
     out_w = out_size_data[0];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_w = new_size[0];
@@ -536,7 +536,7 @@ static void Interpolate2DCPUBwd(
     out_h = out_size_data[0];
     out_w = out_size_data[1];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_h = new_size[0];
@@ -716,7 +716,7 @@ static void Interpolate3DCPUBwd(
     out_h = out_size_data[1];
     out_w = out_size_data[2];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_d = new_size[0];

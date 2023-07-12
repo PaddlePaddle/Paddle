@@ -137,7 +137,7 @@ class ParallelExecutorPrivate {
    *                                       them.
    */
   inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
-    if (mem_opt_var_infos_.size() == 0) {
+    if (mem_opt_var_infos_.empty()) {
       VLOG(4) << "The mem_opt_var_infos_ is empty, maybe no memory "
                  "optimization strategy is enabled";
       return;
@@ -673,7 +673,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE_EQ(places.size() > 0,
+  PADDLE_ENFORCE_EQ(!places.empty(),
                     true,
                     platform::errors::Unavailable(
                         "NPU is not supported in ParallelExecutor."));

@@ -32,7 +32,7 @@ phi::DenseTensor* CreateTensor(framework::Scope* scope,
                                const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<phi::DenseTensor>();
-  if (shape.size() > 0) {
+  if (!shape.empty()) {
     tensor->mutable_data<T>(phi::make_ddim(shape), place);
   }
   return tensor;

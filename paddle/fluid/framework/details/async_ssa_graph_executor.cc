@@ -148,7 +148,7 @@ FetchResultType AsyncSSAGraphExecutor::Run(
                         "AsyncSSAGraphExecutor does not support unmerged "
                         "results to be fetched!"));
   // init once
-  if (run_futures_.size() == 0 && places_.size() > 1) {
+  if (run_futures_.empty() && places_.size() > 1) {
 #if defined PADDLE_WITH_PSCORE
     if (strategy_.thread_barrier_) {
       paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(

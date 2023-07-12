@@ -601,14 +601,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
-  if (enable_int8 && calibration_data.size() != 0) {
+  if (enable_int8 && !calibration_data.empty()) {
     calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
     LOG(INFO) << "RUN Paddle TRT int8 calibration mode...";
   }
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode =
-      (enable_int8 && calibration_data.size() == 0 && use_calib_mode);
+      (enable_int8 && calibration_data.empty() && use_calib_mode);
   if (calibration_mode) {
     // calibraion mode means generate int8 calibration table data process.
     return calibration_engine_key;
@@ -620,7 +620,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
   // Check trt version for dynamic shape input.
 
-  if (min_input_shape.size() > 0 && TRT_VERSION < 6000) {
+  if (!min_input_shape.empty() && TRT_VERSION < 6000) {
     LOG_FIRST_N(WARNING, 1) << "You are using the dynamic size input mode of "
                                "Paddle-TRT, but we found that the version of "
                                "the TensorRT is less than 6.0, so we use the "

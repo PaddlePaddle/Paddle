@@ -374,7 +374,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     }
   }
 
-  if (outputs_tensor.size() == 0) {
+  if (outputs_tensor.empty()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "At least one output of `PyLayer.forward` is a `Tensor`."));
   }

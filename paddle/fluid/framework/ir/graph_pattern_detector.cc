@@ -1210,7 +1210,7 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   } else {
     fc_op->assert_more([&](Node *x) {
       if (!HasInput(x, "ResidualData") ||
-          x->Op()->Input("ResidualData").size() == 0)
+          x->Op()->Input("ResidualData").empty())
         return true;
       return false;
     });
@@ -1741,7 +1741,7 @@ PDNode *patterns::LinearAct::operator()(
     elementwise_add_grad_op->LinksFrom({matmul_out_var});
   }
 
-  if (act_types.size() > 0) {
+  if (!act_types.empty()) {
     ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
 
     auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
@@ -1812,7 +1812,7 @@ PDNode *patterns::ElewiseAddMatmulAct::operator()(
     matmul_grad->LinksTo({matmul_grad_dx_var, matmul_grad_dw_var});
   }
 
-  if (!without_x_gradient && act_grad_types.size() > 0) {
+  if (!without_x_gradient && !act_grad_types.empty()) {
     matmul_grad_dx_var->AsIntermediate()->assert_is_ops_input(
         act_grad_types, GradVarName("Out"));
 
@@ -2059,7 +2059,7 @@ PDNode *patterns::FusedMatmul::operator()(bool with_residual) {
   if (!with_residual) {
     matmul_op->assert_more([&](Node *x) {
       return (!HasInput(x, "ResidualData") ||
-              x->Op()->Input("ResidualData").size() == 0);
+              x->Op()->Input("ResidualData").empty());
     });
   }
 
@@ -2115,7 +2115,7 @@ PDNode *patterns::ConvResidual::operator()(const std::string &conv_type,
   if (!with_residual_data) {
     conv_op->assert_more([&](Node *x) {
       if (!HasInput(x, "ResidualData") ||
-          x->Op()->Input("ResidualData").size() == 0)
+          x->Op()->Input("ResidualData").empty())
         return true;
       return false;
     });
@@ -3799,7 +3799,7 @@ PDNode *patterns::AddSupportInt8::operator()() {
   auto quant_out =
       pattern->NewNode(quant_out_repr())
           ->assert_is_var()
-          ->assert_more([&](Node *node) { return node->outputs.size() > 0; })
+          ->assert_more([&](Node *node) { return !node->outputs.empty(); })
           ->AsOutput();
   quant_op->LinksTo({quant_out});
   return quant_out;

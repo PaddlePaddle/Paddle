@@ -58,7 +58,7 @@ void PriorBoxKernel(const Context& ctx,
   }
 
   int num_priors = new_aspect_ratios.size() * min_sizes.size();
-  if (max_sizes.size() > 0) {
+  if (!max_sizes.empty()) {
     num_priors += max_sizes.size();
   }
 
@@ -80,7 +80,7 @@ void PriorBoxKernel(const Context& ctx,
           b_t[2] = (center_x + box_width) / img_width;
           b_t[3] = (center_y + box_height) / img_height;
           b_t += 4;
-          if (max_sizes.size() > 0) {
+          if (!max_sizes.empty()) {
             auto max_size = max_sizes[s];
             // square prior with size sqrt(minSize * maxSize)
             box_width = box_height = sqrt(min_size * max_size) / 2.;
@@ -116,7 +116,7 @@ void PriorBoxKernel(const Context& ctx,
             b_t[3] = (center_y + box_height) / img_height;
             b_t += 4;
           }
-          if (max_sizes.size() > 0) {
+          if (!max_sizes.empty()) {
             auto max_size = max_sizes[s];
             // square prior with size sqrt(minSize * maxSize)
             box_width = box_height = sqrt(min_size * max_size) / 2.;

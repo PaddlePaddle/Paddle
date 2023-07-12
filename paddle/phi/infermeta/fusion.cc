@@ -428,7 +428,7 @@ void FusedMultiTransformerXpuInferMeta(
           "shape of input x = [%s], and the shape of input qkv_weight = [%s]",
           x_dim,
           y_dim));
-  if (cache_kv.size() > 0) {
+  if (!cache_kv.empty()) {
     const auto& c_dim = cache_kv[0]->dims();
     PADDLE_ENFORCE_EQ(
         c_dim.size(),
@@ -617,14 +617,14 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims,
           strides.size()));
-  if (output_size.size())
+  if (!output_size.empty())
     PADDLE_ENFORCE_EQ(
         output_size.size(),
         strides.size(),
         errors::InvalidArgument(
             "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-  if (output_padding.size())
+  if (!output_padding.empty())
     PADDLE_ENFORCE_EQ(
         output_padding.size(),
         strides.size(),
@@ -672,9 +672,9 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
                                  paddings_[2 * i] - paddings_[2 * i + 1] +
                                  filter_extent
                            : -1;
-    if (output_size.size()) {
+    if (!output_size.empty()) {
       output_shape.push_back(output_size[i]);
-    } else if (output_padding.size()) {
+    } else if (!output_padding.empty()) {
       output_shape.push_back((infer_shape + output_padding[i]));
     } else {
       output_shape.push_back(infer_shape);

@@ -1636,7 +1636,7 @@ static void Interpolate1DInferShapeCheck(
                                      i,
                                      dim_x[i]));
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // top prority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
@@ -1677,7 +1677,7 @@ static void Interpolate1DInferShapeCheck(
     }
     out_w_tmp = -1;
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       float scale_w = -1;
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(
@@ -1768,7 +1768,7 @@ static void Interpolate2DInferShapeCheck(
                                      dim_x[i]));
   }
 
-  if (size_tensor && size_tensor->size()) {
+  if (size_tensor && !size_tensor->empty()) {
     // top prority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
@@ -1814,7 +1814,7 @@ static void Interpolate2DInferShapeCheck(
     out_h_tmp = -1;
     out_w_tmp = -1;
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       float scale_h = -1;
       float scale_w = -1;
       scale_h = scale[0];
@@ -1919,7 +1919,7 @@ static void Interpolate3DInferShapeCheck(
                                      dim_x[i]));
   }
 
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // top prority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
@@ -1959,7 +1959,7 @@ static void Interpolate3DInferShapeCheck(
     out_h_tmp = -1;
     out_w_tmp = -1;
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       float scale_d = -1;
       float scale_h = -1;
       float scale_w = -1;

@@ -291,7 +291,7 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context UNUSED,
                   const phi::SelectedRows& input1,
                   phi::DenseTensor* input2) {
-    if (UNLIKELY(input1.rows().size() == 0)) {
+    if (UNLIKELY(input1.rows().empty())) {
       LOG(WARNING) << "input selected rows is empty!";
       return;
     }
@@ -440,7 +440,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 #endif
   for (auto* input : inputs) {
-    if (input->rows().size() == 0) {
+    if (input->rows().empty()) {
       continue;
     }
     auto* input_data = input->value().data<T>();
@@ -477,7 +477,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
   VLOG(4) << "[CPU] add_sparse_inputs <" << typeid(T).name();
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
   for (auto* input : inputs) {
-    if (input->rows().size() == 0) {
+    if (input->rows().empty()) {
       continue;
     }
     auto* input_data = input->value().data<T>();
@@ -516,13 +516,13 @@ struct MergeAddImpl {
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
-    if (inputs.size() == 0) {
+    if (inputs.empty()) {
       VLOG(3) << "no input! return";
       return;
     }
     const phi::SelectedRows* has_value_input = nullptr;
     for (auto* in : inputs) {
-      if (in->rows().size() > 0) {
+      if (!in->rows().empty()) {
         has_value_input = in;
         break;
       }
@@ -537,7 +537,7 @@ struct MergeAddImpl {
     std::set<int64_t> merged_row_set;
     size_t row_num = 0;
     for (auto* input : inputs) {
-      if (input->rows().size() == 0) {
+      if (input->rows().empty()) {
         continue;
       }
       PADDLE_ENFORCE_EQ(
@@ -831,13 +831,13 @@ struct MergeAverage<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output) {
-    if (inputs.size() == 0) {
+    if (inputs.empty()) {
       VLOG(3) << "no input! return";
       return;
     }
     const phi::SelectedRows* has_value_input = nullptr;
     for (auto* in : inputs) {
-      if (in->rows().size() > 0) {
+      if (!in->rows().empty()) {
         has_value_input = in;
         break;
       }
@@ -852,7 +852,7 @@ struct MergeAverage<phi::CPUContext, T> {
     std::set<int64_t> merged_row_set;
     size_t row_num = 0;
     for (auto* input : inputs) {
-      if (input->rows().size() == 0) {
+      if (input->rows().empty()) {
         continue;
       }
       PADDLE_ENFORCE_EQ(
@@ -891,7 +891,7 @@ struct MergeAverage<phi::CPUContext, T> {
 
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     for (auto* input : inputs) {
-      if (input->rows().size() == 0) {
+      if (input->rows().empty()) {
         continue;
       }
       auto* input_data = input->value().data<T>();

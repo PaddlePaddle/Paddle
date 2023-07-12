@@ -59,8 +59,8 @@ MultiplyGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(2);
   for (int i = 0; i < 2; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =
@@ -269,8 +269,8 @@ MultiplyDoubleGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(3);
   for (int i = 0; i < 3; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =
@@ -485,8 +485,8 @@ MultiplyGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(2);
   for (int i = 0; i < 2; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =

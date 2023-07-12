@@ -691,7 +691,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).empty()) {
     // Find current attr via attr name and set the correct attribute value
     if (is_runtime_attr) {
       attr_type =

@@ -164,9 +164,10 @@ static void InitVarBaseOnly(imperative::VarBase *self,
                             const std::string &name,
                             bool persistable = false,
                             int stop_gradient = -1) {
-  auto name_ = name == "" ? imperative::GetCurrentTracer()->GenerateUniqueName(
-                                "generated_tensor")
-                          : name;
+  auto name_ = name.empty()
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
 
   VLOG(5) << "Init Tensor as: / name: " << name_
           << " / persistable: " << persistable
@@ -250,7 +251,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   VLOG(4) << "Init VarBase from Arg: ";
   // 0: self, 1: value, 2: place, 3: persistable, 4: zero_copy, 5: name , 6:
   // stop_gradient
-  if (name == "") {
+  if (name.empty()) {
     name =
         imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor");
   }
@@ -280,9 +281,10 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
                                                 const std::string &name) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
-  auto name_ = name == "" ? imperative::GetCurrentTracer()->GenerateUniqueName(
-                                "generated_tensor")
-                          : name;
+  auto name_ = name.empty()
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
   new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -304,9 +306,10 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
                                          const P &place,
                                          const std::string &name) {
   VLOG(4) << "Init VarBase";
-  auto name_ = name == "" ? imperative::GetCurrentTracer()->GenerateUniqueName(
-                                "generated_tensor")
-                          : name;
+  auto name_ = name.empty()
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
   new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);

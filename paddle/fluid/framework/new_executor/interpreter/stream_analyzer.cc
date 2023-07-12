@@ -357,7 +357,7 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
   // can only add event for it with the help of depend_op.
   if (HasDataDependency(instructions[cur_instr_id],
                         instructions[next_instr_id]) ||
-      run_type_info[next_instr_id][DownstreamRunType::kEventRun].size() ||
+      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id].OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
