@@ -18,9 +18,8 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import *
-from cinn.framework import *
-from cinn.frontend import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
+from cinn.frontend import Program, Variable
 
 import paddle
 from paddle import static

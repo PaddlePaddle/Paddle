@@ -559,4 +559,20 @@ void GradNodeBase::HandleComplexGradToRealGrad(
   }
 }
 
+std::vector<std::shared_ptr<GradNodeBase>> GradNodeBase::NextFunctions() {
+  std::vector<std::shared_ptr<GradNodeBase>> next_nodes;
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      metas = OutputMeta();
+
+  for (const auto& meta_list : metas) {
+    for (const GradSlotMeta& meta : meta_list) {
+      const auto& edge = meta.GetEdge();
+      std::shared_ptr<GradNodeBase> next_node = edge.GetMutableGradNode();
+      next_nodes.push_back(next_node);
+    }
+  }
+
+  return next_nodes;
+}
+
 }  // namespace egr
