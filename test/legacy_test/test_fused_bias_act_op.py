@@ -114,6 +114,7 @@ class TestFusedBiasActOp(unittest.TestCase):
 
         self.dtype = 'float32'
         self.act_method = 'gelu'
+        self.compute_dtype = 'default'
 
         self.use_glu = False
 
@@ -142,6 +143,7 @@ class TestFusedBiasActOp(unittest.TestCase):
             rows=self.rows,
             cols=self.cols,
             act_method=self.act_method,
+            compute_dtype=self.compute_dtype,
         )
 
     def test_check_output(self):
@@ -156,6 +158,20 @@ class TestBaseFP16(TestFusedBiasActOp):
     def init_test_case(self):
         self.dtype = np.float16
         self.act_method = 'gelu'
+
+
+class TestWithComTypeFP32(TestFusedBiasActOp):
+    def init_test_case(self):
+        self.dtype = 'float32'
+        self.act_method = 'gelu'
+        self.compute_dtype = 'fp32'
+
+
+class TestWithComTypeFP16(TestFusedBiasActOp):
+    def init_test_case(self):
+        self.dtype = 'float16'
+        self.act_method = 'gelu'
+        self.compute_dtype = 'fp16'
 
 
 class TestFastGeluFP16(TestFusedBiasActOp):
@@ -279,8 +295,65 @@ class TestQuantFP32(TestFusedBiasActOp):
         return out
 
 
+class TestDequantFP32(TestQuantFP32):
+    def init_test_case(self):
+        self.rows = 10
+        self.cols = 10
+        self.atol = 1
+
+        self.dtype = 'float32'
+        self.compute_dtype = 'fp32'
+        self.quant_scale = 0.5
+        self.quant_round_type = 1
+        self.quant_max_bound = 127.0
+        self.quant_min_bound = -127.0
+
+    def generate_inputs(self):
+        self.x = np.random.randint(
+            low=-16, high=16, size=(self.rows, self.cols)
+        ).astype('int32')
+        self.bias = np.random.rand(self.cols).astype(self.dtype)
+        self.dequant_scales = np.ones(self.cols).astype('float32')
+
+    def compute_baseline_output(self):
+        input_dequanted = fake_dequant(self.x, self.dequant_scales)
+        out = gelu(input_dequanted + self.bias).astype(self.dtype)
+        return out
+
+    def compute_paddle_output(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        x = paddle.to_tensor(self.x)
+        bias = paddle.to_tensor(self.bias)
+        dequant_scales = paddle.to_tensor(self.dequant_scales)
+
+        out = fused_act_bias_wrapper(
+            x=x,
+            bias=bias,
+            dequant_scales=dequant_scales,
+            act_method=self.act_method,
+            compute_dtype=self.compute_dtype,
+            rows=self.rows,
+            cols=self.cols,
+        )
+        return out
+
+
 class TestQuantFP16(TestQuantFP32):
     def init_test_case(self):
+        self.atol = 1
+
+        self.dtype = 'float16'
+        self.compute_dtype = 'fp16'
+        self.quant_scale = 0.5
+        self.quant_round_type = 1
+        self.quant_max_bound = 127.0
+        self.quant_min_bound = -127.0
+
+
+class TestDequantFP16(TestDequantFP32):
+    def init_test_case(self):
+        self.rows = 10
+        self.cols = 10
         self.atol = 1
 
         self.dtype = 'float16'
@@ -379,6 +452,17 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
         np.testing.assert_allclose(
             final_out_ref, final_out, rtol=self.rtol, atol=self.atol
         )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestWithComTypeBF16(unittest.TestCase):
+    def init_test_case(self):
+        self.act_method = 'geglu'
+        self.compute_dtype = 'bf16'
 
 
 @unittest.skipIf(
@@ -615,6 +699,26 @@ class TestAssert(unittest.TestCase):
                 rows=self.rows,
                 cols=self.cols,
                 compute_dtype='fp16',
+            )
+        except ValueError as e:
+            pass
+
+    def test_assert_case3(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        x = np.random.randint(
+            low=-16, high=16, size=(self.rows, self.cols)
+        ).astype('int32')
+
+        bias = np.random.rand(self.cols).astype(self.dtype)
+        act_method = "error_type"
+        try:
+            out = fused_act_bias_wrapper(
+                x=paddle.to_tensor(x),
+                bias=paddle.to_tensor(bias),
+                rows=self.rows,
+                cols=self.cols,
+                compute_dtype='fp16',
+                act_method=act_method,
             )
         except ValueError as e:
             pass
