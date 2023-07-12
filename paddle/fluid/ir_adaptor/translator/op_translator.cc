@@ -894,6 +894,41 @@ struct RnnOpTranscriber : public OpTranscriber {
   };
 };
 
+struct EmbeddingGradOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(ir::IrContext* ctx,
+                                  ir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "padding_idx") {
+      (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
+    } else if (info.name == "sparse") {
+      (*attribute_map)[info.name] = ir::BoolAttribute::get(ctx, false);
+    }
+  }
+
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name =
+        kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
+
+    bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
+
+    if (is_sparse) {
+      target_op_name = "pd.embedding_grad_sparse";
+    } else {
+      target_op_name = "pd.embedding_grad_dense";
+    }
+    VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
+            << target_op_name;
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               target_op_name);
+    }
+
+    return op_info;
+  }
+};
+
 struct FeedOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
@@ -960,6 +995,7 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
+  special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
