@@ -1529,7 +1529,7 @@ void NewIRInterpreter::BuildInstruction() {
        it != ir_program_->block()->end();
        ++it) {
     VLOG(0) << "Build Instruction for op: " << op_idx;
-    if ((*it)->dialect()->name() == "pd.kernel") {
+    if ((*it)->dialect()->name() == "pd_kernel") {
       vec_instruction_base_.emplace_back(
           std::make_unique<PhiKernelInstruction>(op_idx++,
                                                  place_,
@@ -1539,7 +1539,7 @@ void NewIRInterpreter::BuildInstruction() {
                                                  value_2_var_name_map_));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Now only support pd.kernel dialect."));
+          "Now only support pd_kernel dialect."));
     }
   }
 }
