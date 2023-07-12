@@ -11,9 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <thrust/scan.h>
+#include <thrust/execution_policy.h>
+#include <thrust/device_vector.h>
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
+
+#include "paddle/phi/kernels/argsort_kernel.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
+#include "paddle/phi/kernels/unique_kernel.h"
+
+
+// #include "paddle/phi/kernels/xpu/argsort_kernel.cc"
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -26,6 +36,8 @@
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_int64(embedding_deterministic);
 
@@ -63,6 +75,126 @@ __global__ void EmbeddingGrad(T* table,
 #endif
     idy += blockDim.y * gridDim.x;
   }
+}
+
+template <typename T, typename IdT>
+__global__ void EmbeddingGradWithAddUsehalf2float(T* table,
+                                         const IdT* sorted_ids,
+                                         const IdT* sorted_idsarg,
+                                         const int64_t N,
+                                         const int64_t K,
+                                         const int64_t D,
+                                         const int64_t workload_perblk,
+                                         const int64_t blocknum_perrow,
+                                         const int64_t unique_num,
+                                         const int64_t *groupPtr,
+                                         const T* output) {
+  const int global_id = threadIdx.x + blockIdx.x * blockDim.x;
+  const int tid = threadIdx.x;
+  const int blkid = blockIdx.x;
+  const int blk_lainid = blkid % blocknum_perrow;
+  const int group_id = blkid / blocknum_perrow;
+  const int starti = groupPtr[group_id];
+  const int endi = group_id == unique_num -1 ? K : groupPtr[group_id + 1];
+  const int tabid = sorted_ids[starti];
+  T* tab = table + tabid * D;
+  float tab_tmp = 0;
+  for (int i = starti; i < endi; i++)
+  {
+    const int outid = sorted_idsarg[i];
+    const T* out = output + outid * D;
+    const int startj = workload_perblk * blk_lainid;
+    const int endj = blk_lainid == blocknum_perrow - 1 ? D : workload_perblk * (blk_lainid + 1);
+    for (int j = startj; j < endj; j += blockDim.x)
+    {
+      tab_tmp += static_cast<float>(out[j]);
+    }
+  }
+  if (blk_lainid * workload_perblk + tid < D)
+    tab[blk_lainid * workload_perblk + tid] = static_cast<T>(tab_tmp);
+}
+
+template <typename T, typename IdT>
+void LaunchEmbeddingGradWithAddUsehalf2float(const GPUContext& ctx,
+                                                       const DenseTensor& tensor_ids,
+                                                       const T* d_out,
+                                                       T* d_table,
+                                                       int64_t N,
+                                                       int64_t D,
+                                                       int64_t K) {
+  // sort and gerenate related indeices with ids
+  const auto* ids = tensor_ids.template data<IdT>();
+  DenseTensor tensor_sorted_ids = phi::Empty<IdT>(ctx, {K});
+  DenseTensor tensor_sorted_idsarg = phi::Empty<int64_t>(ctx, {K});
+  std::vector<int64_t> shape = {K};
+  DenseTensor tensor_idstmp = Reshape<IdT, GPUContext>(ctx, tensor_ids, shape);
+  phi::ArgsortKernel<int64_t, GPUContext>(ctx, 
+                                          tensor_idstmp, 
+                                          0, 
+                                          false, 
+                                          &tensor_sorted_ids, 
+                                          &tensor_sorted_idsarg);
+  const auto* sorted_ids = tensor_sorted_ids.template data<IdT>();
+  const auto* sorted_idsarg = tensor_sorted_idsarg.template data<IdT>();
+
+  // obtain unique value of ids and record the repeat count of each unique value
+  DenseTensor tensor_indices_empty;
+  DenseTensor tensor_index_empty;
+  DenseTensor tensor_repeat_count;
+  DenseTensor tensor_unique_sortids;
+  std::vector<int> axis;
+  phi::UniqueKernel<int64_t, GPUContext>(ctx, 
+                                         tensor_sorted_ids, 
+                                         false, 
+                                         false, 
+                                         true, 
+                                         axis, 
+                                         phi::DataType::INT64,
+                                         &tensor_unique_sortids, 
+                                         &tensor_indices_empty, 
+                                         &tensor_index_empty, 
+                                         &tensor_repeat_count);
+  const auto* repeat_count = tensor_repeat_count.template data<IdT>();
+  const auto* unique_sortids = tensor_unique_sortids.template data<IdT>();
+  const int unique_num = tensor_unique_sortids.numel();
+
+  // use thrust to do prefix sum 
+  thrust::device_vector<int64_t> vec_repeat_count(unique_num);
+#ifdef PADDLE_WITH_HIP
+  thrust::copy(thrust::hip::par.on(ctx.stream()),
+                repeat_count,
+                repeat_count + unique_num,
+                vec_repeat_count.begin());
+#else
+  thrust::copy(thrust::cuda::par.on(ctx.stream()),
+                repeat_count,
+                repeat_count + unique_num,
+                vec_repeat_count.begin());
+#endif
+  thrust::exclusive_scan(thrust::device, 
+                         vec_repeat_count.begin(), 
+                         vec_repeat_count.end(), 
+                         vec_repeat_count.begin());
+  int64_t* groupPtr = thrust::raw_pointer_cast(vec_repeat_count.data());
+
+  // call cuda kernel to do EmbeddingGrad
+  const int threads_perblk = 1024;
+  const int workload_perthread = 1;
+  const int workload_perblk = workload_perthread * threads_perblk;
+  const int blocknum_perrow = ceil(1.0 * D / workload_perblk);
+  const int useblock_num = unique_num * blocknum_perrow;
+  EmbeddingGradWithAddUsehalf2float<T, IdT><<<useblock_num, threads_perblk, 0, ctx.stream()>>>(
+      d_table, 
+      sorted_ids, 
+      sorted_idsarg, 
+      N, 
+      K, 
+      D, 
+      workload_perblk, 
+      blocknum_perrow, 
+      unique_num, 
+      groupPtr, 
+      d_out);
 }
 
 template <typename T, typename Context>
@@ -104,20 +236,26 @@ struct EmbeddingGradCUDAFunctor {
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
-      if (FLAGS_embedding_deterministic == 1) {
-        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
-            dev_ctx_, ids, d_output, d_table, N, D, K);
-      } else {
-        const int gridx = 2 * dev_ctx_.GetSMCount();
-        dim3 threads(128, 8);
-        dim3 grids(gridx, 1);
-        if (FLAGS_embedding_deterministic > 1) {
-          VLOG(2) << "Run grad kernel of embedding with single thread.";
-          grids.x = 1;
-          threads.y = 1;
+      if (std::is_same<T, phi::dtype::float16>::value || std::is_same<T, phi::dtype::bfloat16>::value) {
+        LaunchEmbeddingGradWithAddUsehalf2float<T, IdT>(
+            dev_ctx_, input_, d_output, d_table, N, D, K);
+      }
+      else {
+        if (FLAGS_embedding_deterministic == 1) {
+          phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
+              dev_ctx_, ids, d_output, d_table, N, D, K);
+        } else {
+          const int gridx = 2 * dev_ctx_.GetSMCount();
+          dim3 threads(128, 8);
+          dim3 grids(gridx, 1);
+          if (FLAGS_embedding_deterministic > 1) {
+            VLOG(2) << "Run grad kernel of embedding with single thread.";
+            grids.x = 1;
+            threads.y = 1;
+          }
+          EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
+              d_table, d_output, ids, N, K, D);
         }
-        EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
-            d_table, d_output, ids, N, K, D);
       }
     }
   }
