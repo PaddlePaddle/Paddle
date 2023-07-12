@@ -23,7 +23,6 @@ from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import _apply_pass
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -505,6 +504,7 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
+            print("forward prog", progs[0])
             return progs[0]
         else:
             return self.infer_program
@@ -518,6 +518,7 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
+            print("bwackward prog", progs[1])
             return progs[1]
         else:
             """
@@ -821,26 +822,26 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                forward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            # _apply_pass(
+            #     forward_program,
+            #     empty_startup_program,
+            #     "buffer_shared_inplace_pass",
+            #     attrs,
+            #     attr_types,
+            # )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                backward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            # _apply_pass(
+            #     backward_program,
+            #     empty_startup_program,
+            #     "buffer_shared_inplace_pass",
+            #     attrs,
+            #     attr_types,
+            # )
 
     @LazyInitialized
     def _inout_var_names(self):

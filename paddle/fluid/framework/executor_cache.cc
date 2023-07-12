@@ -316,6 +316,7 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     core.reset(new InterpreterCore(
         place, program_desc.Block(0), scope, execution_config));
   }
+  std::cerr << "insert program id " << program_id << std::endl;
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, is_grad);
   cached_value.core_ = core;

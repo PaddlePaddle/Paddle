@@ -270,8 +270,7 @@ void BuildScope(const ir::Block& block,
   VLOG(6) << "Build: scope [" << scope << "] inner_local_scope ["
           << inner_local_scope << "]";
 
-  // int count = name_map->size();
-  int count = name_map->size();
+  int count = inner_local_scope->Size();
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 

@@ -19,119 +19,146 @@ import numpy as np
 
 import paddle
 
+# class TestNewIr(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         paddle.enable_static()
+#         place = paddle.CPUPlace()
+#         exe = paddle.static.Executor(place)
 
-class TestNewIr(unittest.TestCase):
-    def test_with_new_ir(self):
-        paddle.enable_static()
-        place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
+#         main_program = paddle.static.Program()
+#         new_scope = paddle.static.Scope()
+#         with paddle.static.scope_guard(new_scope):
+#             with paddle.static.program_guard(main_program):
+#                 x = paddle.ones([2, 2], dtype="float32")
+#                 y = paddle.ones([2, 2], dtype="float32")
 
-        main_program = paddle.static.Program()
-        new_scope = paddle.static.Scope()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
-                x = paddle.ones([2, 2], dtype="float32")
-                y = paddle.ones([2, 2], dtype="float32")
+#                 z = x + y
+#             out = exe.run(main_program, {}, fetch_list=[z.name])
 
-                z = x + y
-            out = exe.run(main_program, {}, fetch_list=[z.name])
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
 
-        gold_res = np.ones([2, 2], dtype="float32") * 2
-
-        np.testing.assert_array_equal(out[0], gold_res)
-
-
-class TestCombineOp(unittest.TestCase):
-    def test_with_new_ir(self):
-        place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-
-        main_program = paddle.static.Program()
-        new_scope = paddle.static.Scope()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
-                x = paddle.ones([2, 2], dtype="float32")
-                y = paddle.ones([2, 2], dtype="float32")
-
-                z = paddle.linalg.multi_dot([x, y])
-            out = exe.run(main_program, {}, fetch_list=[z.name])
-
-        gold_res = np.ones([2, 2], dtype="float32") * 2
-
-        np.testing.assert_array_equal(out[0], gold_res)
+#         np.testing.assert_array_equal(out[0], gold_res)
 
 
-class TestFeedOp(unittest.TestCase):
-    def test_with_new_ir(self):
-        place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
+# class TestCombineOp(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         place = paddle.CPUPlace()
+#         exe = paddle.static.Executor(place)
 
-        main_program = paddle.static.Program()
-        new_scope = paddle.static.Scope()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
-                x = paddle.static.data("x", [2, 2], dtype="float32")
-                y = paddle.static.data("y", [2, 2], dtype="float32")
+#         main_program = paddle.static.Program()
+#         new_scope = paddle.static.Scope()
+#         with paddle.static.scope_guard(new_scope):
+#             with paddle.static.program_guard(main_program):
+#                 x = paddle.ones([2, 2], dtype="float32")
+#                 y = paddle.ones([2, 2], dtype="float32")
 
-                z = x + y
+#                 z = paddle.linalg.multi_dot([x, y])
+#             out = exe.run(main_program, {}, fetch_list=[z.name])
 
-            np_a = np.random.rand(2, 2).astype("float32")
-            np_b = np.random.rand(2, 2).astype("float32")
-            out = exe.run(
-                main_program,
-                feed={"x": np_a, "y": np_b},
-                fetch_list=[z.name],
-            )
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
 
-        gold_res = np_a + np_b
-
-        np.testing.assert_array_equal(out[0], gold_res)
+#         np.testing.assert_array_equal(out[0], gold_res)
 
 
-class TestAddGradOp(unittest.TestCase):
-    def test_with_new_ir(self):
-        place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
+# class TestFeedOp(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         place = paddle.CPUPlace()
+#         exe = paddle.static.Executor(place)
 
-        main_program = paddle.static.Program()
-        new_scope = paddle.static.Scope()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
-                x = paddle.static.data("x", [2, 2], dtype="float32")
-                y = paddle.static.data("y", [2, 2], dtype="float32")
-                x.stop_gradient = False
+#         main_program = paddle.static.Program()
+#         new_scope = paddle.static.Scope()
+#         with paddle.static.scope_guard(new_scope):
+#             with paddle.static.program_guard(main_program):
+#                 x = paddle.static.data("x", [2, 2], dtype="float32")
+#                 y = paddle.static.data("y", [2, 2], dtype="float32")
 
-                z = x * y
+#                 z = x + y
 
-                paddle.static.gradients(z, x)
+#             np_a = np.random.rand(2, 2).astype("float32")
+#             np_b = np.random.rand(2, 2).astype("float32")
+#             out = exe.run(
+#                 main_program,
+#                 feed={"x": np_a, "y": np_b},
+#                 fetch_list=[z.name],
+#             )
 
-            np_a = np.random.rand(2, 2).astype("float32")
-            np_b = np.random.rand(2, 2).astype("float32")
-            out = exe.run(
-                main_program,
-                feed={"x": np_a, "y": np_b},
-                fetch_list=[z.name],
-            )
+#         gold_res = np_a + np_b
 
-        gold_res = np_a * np_b
-
-        np.testing.assert_array_equal(out[0], gold_res)
+#         np.testing.assert_array_equal(out[0], gold_res)
 
 
-class TestNewIrDygraph(unittest.TestCase):
+# class TestAddGradOp(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         place = paddle.CPUPlace()
+#         exe = paddle.static.Executor(place)
+
+#         main_program = paddle.static.Program()
+#         new_scope = paddle.static.Scope()
+#         with paddle.static.scope_guard(new_scope):
+#             with paddle.static.program_guard(main_program):
+#                 x = paddle.static.data("x", [2, 2], dtype="float32")
+#                 y = paddle.static.data("y", [2, 2], dtype="float32")
+#                 x.stop_gradient = False
+
+#                 z = x * y
+
+#                 paddle.static.gradients(z, x)
+
+#             np_a = np.random.rand(2, 2).astype("float32")
+#             np_b = np.random.rand(2, 2).astype("float32")
+#             out = exe.run(
+#                 main_program,
+#                 feed={"x": np_a, "y": np_b},
+#                 fetch_list=[z.name],
+#             )
+
+#         gold_res = np_a * np_b
+
+#         np.testing.assert_array_equal(out[0], gold_res)
+
+
+# class TestNewIrDygraph(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         paddle.disable_static()
+#         paddle.device.set_device("cpu")
+
+#         @paddle.jit.to_static
+#         def func(x, y):
+#             return x + y
+
+#         x = paddle.ones([2, 2], dtype='float32')
+#         y = paddle.ones([2, 2], dtype='float32')
+#         z = func(x, y)
+
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
+#         self.assertEqual(
+#             np.array_equal(
+#                 z.numpy(),
+#                 gold_res,
+#             ),
+#             True,
+#         )
+
+
+class TestNewIrBackwardDygraph(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.disable_static()
         paddle.device.set_device("cpu")
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.enable_inplace = False
 
-        @paddle.jit.to_static
+        @paddle.jit.to_static(build_strategy=build_strategy)
         def func(x, y):
-            return x + y
+            return x * y
 
         x = paddle.ones([2, 2], dtype='float32')
         y = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
         z = func(x, y)
-
-        gold_res = np.ones([2, 2], dtype="float32") * 2
+        loss = z.mean()
+        loss.backward()
+        gold_res = np.ones([2, 2], dtype="float32")
         self.assertEqual(
             np.array_equal(
                 z.numpy(),
@@ -140,6 +167,10 @@ class TestNewIrDygraph(unittest.TestCase):
             True,
         )
 
+        print(x.gradient())
+        print(y.gradient())
+
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

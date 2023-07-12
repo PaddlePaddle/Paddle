@@ -91,6 +91,10 @@ void BuildPhiContext(
   VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
           << inner_scope << "]";
   // inputs include input and mutable attributes
+  std::cerr
+      << "op name "
+      << op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data()
+      << std::endl;
 
   auto attr_map = op->attributes();
 

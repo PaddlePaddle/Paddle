@@ -19,7 +19,7 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -360,6 +360,7 @@ inline void RunProgramAPI(
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
   if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
+    std::cerr << "not have cache " << program_id << std::endl;
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -385,7 +386,26 @@ inline void RunProgramAPI(
 
       auto name2value = program_translator.Name2ValueMap();
 
-      for (auto &name : output_names) {
+      std::set<std::string> set_parameter_names;
+
+      for (auto op_desc : backward_program->Block(0).AllOps()) {
+        for (const auto &n : op_desc->Inputs()) {
+          const auto &input_var_names = n.second;
+          for (const auto &var_name : input_var_names) {
+            set_parameter_names.insert(var_name);
+          }
+        }
+      }
+
+      for (auto &t : output_names) {
+        set_parameter_names.insert(t);
+      }
+
+      for (auto &name : set_parameter_names) {
+        // std::cerr << "set paramter " << name << std::endl;
+        if (!name2value.count(name)) {
+          continue;
+        }
         auto t = name2value.at(name);
 
         std::string set_parameter_op_name(ir::SetParameterOp::name());
@@ -400,6 +420,8 @@ inline void RunProgramAPI(
         program->block()->push_back(operation);
       }
 
+      std::cerr << "forward program  " << std::endl;
+      // program->Print( std::cout );
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
     }
@@ -415,6 +437,7 @@ inline void RunProgramAPI(
     std::set<std::string> skip_eager_delete_vars =
         paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
             *backward_program);
+
     // all out_vars are skip_eager_var
     skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
     skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
@@ -536,18 +559,61 @@ inline void RunProgramGradAPI(
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
   if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
+    std::cerr << "backward not have cache " << program_id << std::endl;
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
-    interpreter_core =
-        paddle::framework::CreateInterpreterCoreInfoToCache(*backward_program,
-                                                            place,
-                                                            /*is_grad=*/true,
-                                                            program_id,
-                                                            global_inner_scope);
+
+    std::unique_ptr<::ir::Program> ir_program;
+    if (FLAGS_enable_new_ir_in_executor) {
+      std::cerr << "backward " << std::endl;
+      auto ir_ctx = ir::IrContext::Instance();
+      auto program = std::make_unique<::ir::Program>(ir_ctx);
+
+      paddle::translator::ProgramTranslator program_translator(backward_program,
+                                                               program.get());
+      std::cerr << "after translaote" << std::endl;
+      program_translator.Translate();
+
+      auto name2value = program_translator.Name2ValueMap();
+
+      // auto output_names = details::GetTensorsName( x_grad);
+      auto param_grad_names = details::GetTensorsName(params_grad);
+      for (auto &name : param_grad_names) {
+        // std::cerr << "out put set name " << name << std::endl;
+        if (name == "@EMPTY@") {
+          continue;
+        }
+        auto t = name2value.at(name);
+
+        std::string set_parameter_op_name(ir::SetParameterOp::name());
+        ir::OpInfo op_info = ir_ctx->GetRegisteredOpInfo(set_parameter_op_name);
+        std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
+            {"parameter_name", ir::StrAttribute::get(ir_ctx, name)},
+        };
+
+        ir::Operation *operation =
+            ir::Operation::Create({t.value}, op_attribute_map, {}, op_info);
+
+        program->block()->push_back(operation);
+      }
+
+      program->Print(std::cout);
+      ir_program.reset(
+          paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
+      ir_program->Print(std::cout);
+    }
+
+    interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
+        *backward_program,
+        place,
+        /*is_grad=*/true,
+        program_id,
+        global_inner_scope,
+        std::move(ir_program));
 
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly
