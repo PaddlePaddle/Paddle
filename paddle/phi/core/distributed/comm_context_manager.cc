@@ -47,15 +47,16 @@ void CommContextManager::CreateNCCLCommContext(
   phi::backends::gpu::SetDeviceId(dev_id);
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(ring_id)) {
-      VLOG(3) << "for comm_context for ring_id " << ring_id << ", rank " << rank;
-      return;
+    VLOG(3) << "for comm_context for ring_id " << ring_id << ", rank " << rank;
+    return;
   }
   ncclUniqueId nccl_id;
   if (rank == 0) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
-  std::string unique_key = "NCCLCommContext/" + std::to_string(ring_id) + "/Peer/" + endpoints_hash;
+  std::string unique_key =
+      "NCCLCommContext/" + std::to_string(ring_id) + "/Peer/" + endpoints_hash;
   if (rank == 0) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),

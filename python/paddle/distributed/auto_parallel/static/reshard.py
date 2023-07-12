@@ -17,7 +17,6 @@ from collections import OrderedDict
 from functools import reduce
 
 import paddle
-import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name

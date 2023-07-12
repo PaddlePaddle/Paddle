@@ -166,14 +166,16 @@ class ProcessGroup:
                 endpoints_str = ""
                 for endpoint in strategy.trainer_endpoints:
                     endpoints_str += endpoint
-                    endpoints_str_hash = hashlib.md5(endpoints_str.encode(encoding='UTF-8')).hexdigest() 
+                    endpoints_str_hash = hashlib.md5(
+                        endpoints_str.encode(encoding='UTF-8')
+                    ).hexdigest()
                 core.CommContextManager.create_nccl_comm_context(
                     store,
                     genv.device_id,
                     ring_id,
                     strategy.local_rank,
                     strategy.nranks,
-                    endpoints_str_hash
+                    endpoints_str_hash,
                 )
                 core.set_device_comm_context(place, ring_id)
             elif core.is_compiled_with_xpu():
