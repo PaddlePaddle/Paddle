@@ -209,6 +209,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
+  std::cout << "Try to find library" << std::endl;
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
 
@@ -250,11 +251,14 @@ static inline void* GetDsoHandleFromSearchPath(
   void* dso_handle = nullptr;
   for (auto dso : dso_names) {
     // 1. search in user config path by FLAGS
+    std::cout << config_path << "config_path,"<< dso <<  std::endl;
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
+    std::cout << (int)(nullptr == dso_handle) << std::endl;
     // 2. search in system default path
     if (nullptr == dso_handle) {
       dso_handle = GetDsoHandleFromDefaultPath(dso, dynload_flags);
     }
+    std::cout << "知道哦额" << (int)(nullptr == dso_handle) << std::endl;
     // 3. search in extra paths
     if (nullptr == dso_handle) {
       for (auto path : extra_paths) {

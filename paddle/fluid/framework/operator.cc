@@ -1955,13 +1955,21 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                           tensors,
                           HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
+
         (*phi_kernel_)(impl_->getKernelContext());
+
       } else {
         phi::KernelContext phi_kernel_context;
         // Do data transform before building KernelContext
         // TODO(zhiqiu): support TransferInplaceVarsBack
+        std::cout << "111111" << std::endl;
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, &phi_kernel_context);
+        std::cout << phi_kernel_name << std::endl;
+        std::cout << *phi_kernel_ << std::endl;
+        std::cout << *kernel_type_ << std::endl;
+        std::cout << "222222" << std::endl;
         (*phi_kernel_)(&phi_kernel_context);
+        std::cout << "3333333" << std::endl;
       }
     } else if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
                                       phi::KernelRegisteredType::STRUCTURE) {

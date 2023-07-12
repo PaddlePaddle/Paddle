@@ -75,6 +75,13 @@ void NaiveExecutor::Run() {
 
     op->Run(*scope_, place_);
 
+
+ paddle::platform::DeviceContextPool &pool = paddle::platform::DeviceContextPool::Instance();
+ auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(place_));
+std::cout << "有error吗：" << cudaGetErrorString( cudaGetLastError() ) << std::endl;
+    auto success = cudaStreamSynchronize(dev_ctx->stream());
+    PADDLE_ENFORCE_GPU_SUCCESS(success);
+
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
       for (auto &it : reuse_cache_[op.get()]) {

@@ -32,7 +32,10 @@ class KernelCallback {
   explicit KernelCallback(FuncType func_) : func(func_) {}
   virtual ~KernelCallback() {}
 
-  ReturnType Run(Args... args) { return func(args...); }
+  ReturnType Run(Args... args) { 
+    std::cout << "哈哈哈哈" << (void*)(func) << std::endl;
+    return func(args...); 
+  }
 
  private:
   FuncType func;
@@ -51,11 +54,14 @@ class AutoTuneBase {
   virtual ~AutoTuneBase() {}
 
   explicit AutoTuneBase(KernelType kernel) {
+    std::lock_guard<std::mutex> lock(mutex_);
     kernels_.push_back(/*default=*/kernel);
   }
 
   template <typename ReturnType, typename... Args>
   void AddCallBack(ReturnType (*func)(Args...)) {
+    std::cout << "kernels_.push_back(MakeCallback<T>(func));" << (void*)(func) << std:: endl;
+    std::cout << is_init_ << std:: endl;
     if (!is_init_) {
       std::lock_guard<std::mutex> lock(mutex_);
       kernels_.push_back(MakeCallback<T>(func));
@@ -75,21 +81,28 @@ class AutoTuneBase {
       kernels_[best_idx].Run(args...);
     } else {
       bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      
+      std::cout << "bool use_autotune" <<use_autotune<< std::endl;
+
       if (use_autotune) {
         // All avaliable kernels have ran while picking the best kernel,
         // so there may be no need for another kernel run.
         auto best_idx = PickBestKernel(ctx, args...);
         cache.Set(key, best_idx);
       } else {
+        std::cout << "kernels_[0].Run(args...); begin: " << kernels_.size() << std::endl;
+        std::cout << a << std::endl;
         kernels_[0].Run(args...);
+        std::cout << "kernels_[0].Run(args...); end" << std::endl;
       }
     }
   }
 
  protected:
+  int a = 123;
   bool is_init_{false};
   std::vector<KernelType> kernels_;
-  mutable std::mutex mutex_;
+  std::mutex mutex_;
 
   void CheckKernelSize() {
     PADDLE_ENFORCE_GT(
@@ -299,8 +312,12 @@ MakeGatherGemmScatterTuner(ReturnType (*func)(T, T, Args...)) {
       std::call_once(name##_init_flag, [&] {                             \
         auto obj = MakeCallback<T>(func);                                \
         instance.reset(new name##AutoTuner<T, ReturnType, Args...>);     \
+        std::cout << "std::call_once(" << std::endl; \
+                                                                          \
         instance->AddCallBack(func);                                     \
       });                                                                \
+      std::cout << "instance.get()" << instance.get() << "is_init_" << instance->is_init_ << std::endl;  \
+      std::cout <<" func func " << (void *)(func) << std::endl;   \
       return instance.get();                                             \
     }                                                                    \
   };
@@ -317,7 +334,7 @@ MakeGatherGemmScatterTuner(ReturnType (*func)(T, T, Args...)) {
   DEFINE_AUTOTUNER_COMMON_OBJ(name) \
   DEFINE_AUTOTUNER_FN(name)
 
-DEFINE_AUTOTUNER(Transpose)
+DEFINE_AUTOTUNER(Transpose1)
 DEFINE_AUTOTUNER_FN(Matmul)
 
 #undef DEFINE_AUTOTUNER_COMMON_OBJECT

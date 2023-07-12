@@ -1405,6 +1405,9 @@ inline void PermuteAndTranspose(
     phi::DenseTensor* out,
     const phi::funcs::PermuteDimsSimplifier& simplifier) {
   T* dst_data = out->data<T>();
+  
+  std::cout << "PermuteAndTranspose(" << std::endl;
+
   const T* src_data = in.data<T>();
   const auto count = simplifier.GetCount();
   auto classifier = PermTypeClassifier<T>(ctx.GetSMCount(),
@@ -1449,6 +1452,7 @@ inline void PermuteWithEigen(
     phi::DenseTensor* out,
     const phi::funcs::PermuteDimsSimplifier& simplifier) {
   bool not_same_dims = simplifier.GetRank() != rank;
+  std::cout << "bool not_same_dims" << not_same_dims << std::endl;
   if (not_same_dims) {
     phi::DDim dst_dims = out->dims();
     phi::DenseTensor temp_in;
@@ -1474,12 +1478,17 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
   const int rank = perm.size();
   int64_t numel = in.numel();
   bool ret = TransposeSimple<T>::Run(ctx, in, perm, out, numel);
+  std::cout << "TransposeSimple<T>::Run(ctx, in, perm, out, numel) 返回值" << ret << std::endl;
   if (!ret) {
     auto simplifier = phi::funcs::PermuteDimsSimplifier(
         rank, numel, perm, phi::vectorize<int64_t>(in.dims()));
-    auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
+    auto* tuner = phi::autotune::MakeTranspose1Tuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
-
+    std::cout << (void*)(PermuteWithEigen<T>) << std::endl;
+    std::cout << "全局tuner指针" << tuner << std::endl;
+    //PermuteWithEigen<T>(ctx, rank, in, out, simplifier);
+    //return;
+    
     size_t key = phi::autotune::TransposeKey(simplifier.GetSrcDims(),
                                              simplifier.GetPerm(),
                                              phi::CppTypeToDataType<T>::Type());

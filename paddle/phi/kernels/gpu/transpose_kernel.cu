@@ -46,7 +46,11 @@ void TransposeKernel(const Context& ctx,
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
     return;
   }
+
+  std::cout << "ente red TransposeGPUKernelDriver"  << std::endl;
+  std::cout << "phi::funcs::TransposeGPUKernelDriver" << (void*)(phi::funcs::TransposeGPUKernelDriver<T>) << std::endl;
   phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, formated_axis, out);
+  std::cout << "leaved Transpo seGPUKer nelDriver" << std::endl;
 }
 
 }  // namespace phi
