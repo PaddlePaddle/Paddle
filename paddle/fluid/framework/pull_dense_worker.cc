@@ -203,7 +203,7 @@ void PullDenseWorker::PullDense(bool force_update) {
       ResetThreadVersion(tid);
     }
   }
-  if (pull_dense_status_.size() != 0) {
+  if (!pull_dense_status_.empty()) {
     Wait(&pull_dense_status_);
   }
 }

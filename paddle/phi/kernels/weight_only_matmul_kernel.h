@@ -16,10 +16,9 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void LLMInt8MatMulKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& weight,
-                         const DenseTensor& weight_scale,
-                         const float threshold,
-                         DenseTensor* out);
+void WeightOnlyMatmulKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& weight,
+                            const DenseTensor& weight_scale,
+                            DenseTensor* out);
 }  // namespace phi

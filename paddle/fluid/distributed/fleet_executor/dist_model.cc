@@ -541,11 +541,11 @@ bool DistModel::PrepareFeedAndFetch() {
     }
   }
 
-  if (feeds_.size() == 0) {
+  if (feeds_.empty()) {
     LOG(ERROR) << "No feed ops in the inf program, please check the program.";
     return false;
   }
-  if (fetches_.size() == 0) {
+  if (fetches_.empty()) {
     LOG(ERROR) << "No fetch op in the inf program, please check the program.";
     return false;
   }

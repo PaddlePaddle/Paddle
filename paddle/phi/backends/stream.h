@@ -66,6 +66,8 @@ class Stream {
   void Synchronize() const;
   const Place& GetPlace() const;
 
+  static void ReleaseAll();
+
  private:
   DISABLE_COPY_AND_ASSIGN(Stream);
   Place place_;

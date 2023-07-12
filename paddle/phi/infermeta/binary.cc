@@ -684,14 +684,14 @@ void ConvTransposeInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims,
           strides.size()));
-  if (output_size.size())
+  if (!output_size.empty())
     PADDLE_ENFORCE_EQ(
         output_size.size(),
         strides.size(),
         errors::InvalidArgument(
             "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-  if (output_padding.size())
+  if (!output_padding.empty())
     PADDLE_ENFORCE_EQ(
         output_padding.size(),
         strides.size(),
@@ -740,7 +740,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                                  paddings_[2 * i] - paddings_[2 * i + 1] +
                                  filter_extent
                            : -1;
-    if (output_size.size()) {
+    if (!output_size.empty()) {
       if (config.is_runtime) {
         PADDLE_ENFORCE_GE(
             output_size[i],
@@ -767,7 +767,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 infer_shape + strides[i]));
       }
       output_shape.push_back(output_size[i]);
-    } else if (output_padding.size()) {
+    } else if (!output_padding.empty()) {
       if (config.is_runtime) {
         PADDLE_ENFORCE_GE(
             output_padding[i],
@@ -2473,7 +2473,7 @@ void PriorBoxInferMeta(const MetaTensor& input,
   ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
 
   size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
-  if (max_sizes.size() > 0) {
+  if (!max_sizes.empty()) {
     PADDLE_ENFORCE_EQ(
         max_sizes.size(),
         min_sizes.size(),
@@ -3135,6 +3135,38 @@ void Unpool3dInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
+}
+
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      const float epsilon,
+                      const int begin_norm_axis,
+                      MetaTensor* out) {
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  auto x_dims_size = x_dims_vec.size();
+
+  size_t normalized_dims = 1;
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
+    normalized_dims *= x_dims_vec[i];
+  }
+
+  PADDLE_ENFORCE_EQ(normalized_dims,
+                    weight.dims()[0],
+                    phi::errors::InvalidArgument(
+                        "The normalized size of Input(X) must equal to be"
+                        "the size of Weight, but received"
+                        "normalized size of Input(X) is [%d], received size"
+                        "of Weight is [%d]",
+                        normalized_dims,
+                        weight.dims()[0]));
+
+  auto out_dims = phi::make_ddim(x_dims_vec);
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 }  // namespace phi
