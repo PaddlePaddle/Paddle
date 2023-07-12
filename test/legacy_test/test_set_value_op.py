@@ -138,7 +138,7 @@ class TestSetValueItemSlice3(TestSetValueApi):
 
     def _call_setitem_static_api(self, x):
         x = paddle.static.setitem(x, (slice(0, -1), slice(0, 2)), self.value)
-        return
+        return x
 
     def _get_answer(self):
         self.data[0:-1, 0:2] = self.value
