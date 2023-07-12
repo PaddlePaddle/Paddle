@@ -33,7 +33,7 @@ TEST(default_ctor, span) {
   // dynamic size
   {
     constexpr span<int> s{};
-    static_assert(s.size() == 0, "");
+    static_assert(s.empty(), "");
     static_assert(s.data() == nullptr, "");
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end(), "");
@@ -45,7 +45,7 @@ TEST(default_ctor, span) {
   // fixed size
   {
     constexpr span<int, 0> s{};
-    static_assert(s.size() == 0, "");
+    static_assert(s.empty(), "");
     static_assert(s.data() == nullptr, "");
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end(), "");
@@ -480,7 +480,7 @@ TEST(ctor_from_spans, span) {
   constexpr zero_const_span s0{};
   constexpr dynamic_const_span d{s0};
 
-  static_assert(d.size() == 0, "");
+  static_assert(d.empty(), "");
   static_assert(d.data() == nullptr, "");
 #ifndef _MSC_VER
   static_assert(d.begin() == d.end(), "");
@@ -574,7 +574,7 @@ TEST(subview, span) {
 TEST(observers, span) {
   // We already use this everywhere, but whatever
   constexpr span<int, 0> empty{};
-  static_assert(empty.size() == 0, "");
+  static_assert(empty.size() == 0, "");  // NOLINT
   static_assert(empty.empty(), "");
 
   constexpr int arr[] = {1, 2, 3};
