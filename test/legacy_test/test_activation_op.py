@@ -566,6 +566,16 @@ class TestTanh(TestActivation, TestParameter):
         pass
 
 
+class TestTanh_Complex64(TestTanh):
+    def init_dytpe(self):
+        self.dtype = np.complex64
+
+
+class TestTanh_Complex128(TestTanh):
+    def init_dytpe(self):
+        self.dtype = np.complex128
+
+
 class TestTanh_ZeroDim(TestTanh):
     def init_shape(self):
         self.shape = []
