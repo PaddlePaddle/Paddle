@@ -32,6 +32,7 @@ inplace_optional_out_type_map = {
 class ForwardAPI(BaseAPI):
     def __init__(self, api_item_yaml):
         super().__init__(api_item_yaml)
+        self.check_inputs()
         self.is_dygraph_api, self.intermediate_outs = self.parse_intermediate(
             api_item_yaml
         )
@@ -44,6 +45,29 @@ class ForwardAPI(BaseAPI):
             return self.api + '_intermediate'
         else:
             return self.api
+
+    def check_inputs(self):
+        # Check the order of inputs
+        def is_optional_input(input_info):
+            return input_info.count("paddle::optional") != 0
+
+        has_optional_input = False
+        optional_input_name = ""
+        for input_name in self.inputs['names']:
+            input_info = self.inputs['input_info'][input_name]
+            if is_optional_input(input_info):
+                has_optional_input = True
+                optional_input_name = input_name
+            else:
+                assert (
+                    not has_optional_input
+                ), f"{self.api} : Order error of input tensors. The optional input tensor should be behind the no optional tensor, but now the input ('{input_name}') is behind the optional input tensor ('{optional_input_name}')."
+
+        # Check the name of inputs
+        for input_name in self.inputs['names']:
+            assert not input_name.endswith(
+                "_grad"
+            ), f"{self.api} : Tensor name error ('{input_name}'). The name of tensor in forward op should not be endwith '_grad', because it has special meaning. Please change another name for tensor('{input_name}')."
 
     def gene_input(self, kernel_tensor_type=None, code_indent=''):
         kernel_param = self.kernel['param']
