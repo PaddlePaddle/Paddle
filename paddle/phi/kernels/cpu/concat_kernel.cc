@@ -47,11 +47,11 @@ void ConcatKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   // If axis is 0, the lod of the output is not the same as inputs.
-  if (axis == 0 && x[0]->lod().size() > 0) {
+  if (axis == 0 && !x[0]->lod().empty()) {
     size_t lod_size_0 = x[0]->lod().size();
     size_t lod_size = lod_size_0;
     for (size_t i = 1; i < x.size(); ++i) {
-      if (x[i]->lod().size() > 0) {
+      if (!x[i]->lod().empty()) {
         PADDLE_ENFORCE_EQ(
             x[i]->lod().size(),
             lod_size_0,

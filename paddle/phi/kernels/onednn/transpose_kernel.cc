@@ -59,7 +59,7 @@ void TransposeKernel(const Context& dev_ctx,
       AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
-  if (axis.size() == 1 || axis.size() == 0) {
+  if (axis.size() == 1 || axis.empty()) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
     out->set_mem_desc(x.mem_desc());
     return;
