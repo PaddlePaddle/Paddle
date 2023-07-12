@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -67,6 +68,18 @@ void LessThanRawKernel(const Context& ctx,
                            Context,
                            funcs::LessThanFunctor<T>,
                            funcs::GreaterThanFunctor<T>>(ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void LessEqualRawKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        int axis,
+                        DenseTensor* out) {
+  CompareCudaRawKernelImpl<T,
+                           Context,
+                           funcs::LessEqualFunctor<T>,
+                           funcs::GreaterEqualFunctor<T>>(ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -143,6 +156,21 @@ PD_REGISTER_KERNEL(
 
 #else
 
+PD_REGISTER_KERNEL(less_than_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::LessThanRawKernel,
+                   bool,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
 #define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)        \
   PD_REGISTER_KERNEL(name##_raw,                          \
                      KPS,                                 \
@@ -159,7 +187,6 @@ PD_REGISTER_KERNEL(
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 
-PD_REGISTER_COMPARE_RAW_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_RAW_KERNEL(less_equal, LessEqual)
 PD_REGISTER_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
 PD_REGISTER_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)

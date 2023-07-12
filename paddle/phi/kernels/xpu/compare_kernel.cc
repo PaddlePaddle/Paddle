@@ -53,7 +53,7 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
 }
 
 #define DEFINE_XPU_COMPARE_KERNEL(name, functor)                      \
-  \ template <typename T, typename Context>                           \
+  template <typename T, typename Context>                             \
   void name##Kernel(const Context& dev_ctx,                           \
                     const DenseTensor& x,                             \
                     const DenseTensor& y,                             \
