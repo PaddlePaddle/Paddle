@@ -25,12 +25,12 @@ void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
   dump_fields_path_ = desc.dump_fields_path();
   need_dump_field_ = false;
   need_dump_param_ = false;
-  if (dump_fields_path_ == "") {
+  if (dump_fields_path_.empty()) {
     VLOG(2) << "dump_fields_path_ is empty";
     return;
   }
   auto& file_list = dataset_ptr_->GetFileList();
-  if (file_list.size() == 0) {
+  if (file_list.empty()) {
     VLOG(2) << "file_list is empty";
     return;
   }
