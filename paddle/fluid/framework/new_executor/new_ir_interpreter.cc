@@ -295,6 +295,11 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
+void NewIRInterpreter::ShareBuildResultsFrom(InterpreterBaseImpl* src) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "ShareBuildResultsFrom is not implemented in NewIRInterpreter."));
+}
+
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
     const std::vector<std::vector<size_t>>& input_var2op, size_t var_index) {
   if (!var_scope_.VarDesc(var_index)) {

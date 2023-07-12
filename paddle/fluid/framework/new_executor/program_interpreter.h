@@ -50,6 +50,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
+  void ShareBuildResultsFrom(InterpreterBaseImpl* src) override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -123,6 +125,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
+  bool is_shared_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned

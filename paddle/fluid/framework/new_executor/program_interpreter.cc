@@ -283,6 +283,14 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
+void ProgramInterpreter::ShareBuildResultsFrom(InterpreterBaseImpl* src) {
+  VLOG(8) << "Share BuildResults from InterpreterCore(" << src
+          << ") to InterpreterCore(" << this << ")";
+  is_shared_ = true;
+
+  // share op dependency
+}
+
 bool ProgramInterpreter::BuildInplaceCheckVarIsOnlyInput(
     const std::vector<std::vector<size_t>>& input_var2op, size_t var_index) {
   if (!var_scope_.VarDesc(var_index)) {
