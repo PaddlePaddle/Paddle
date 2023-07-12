@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -139,43 +139,42 @@ class TestInstanceNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_static(self):
-        paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "instance_norm"
-        ):
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            exe = fluid.Executor(p)
-            shape = [4, 10, 16, 16]
+        with paddle.fluid.framework._static_guard():
+            places = [fluid.CPUPlace()]
+            if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "instance_norm"
+            ):
+                places.append(fluid.CUDAPlace(0))
+            for p in places:
+                exe = fluid.Executor(p)
+                shape = [4, 10, 16, 16]
 
-            def compute_v1(x_np):
-                with program_guard(Program(), Program()):
-                    ins = paddle.nn.InstanceNorm2D(shape[1])
-                    x = paddle.static.data(
-                        name='x', shape=x_np.shape, dtype=x_np.dtype
-                    )
-                    y = ins(x)
-                    exe.run(fluid.default_startup_program())
-                    r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
-                return r
+                def compute_v1(x_np):
+                    with program_guard(Program(), Program()):
+                        ins = paddle.nn.InstanceNorm2D(shape[1])
+                        x = paddle.static.data(
+                            name='x', shape=x_np.shape, dtype=x_np.dtype
+                        )
+                        y = ins(x)
+                        exe.run(fluid.default_startup_program())
+                        r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
+                    return r
 
-            def compute_v2(x_np):
-                with program_guard(Program(), Program()):
-                    ins = paddle.nn.InstanceNorm2D(shape[1])
-                    x = paddle.static.data(
-                        name='x', shape=x_np.shape, dtype=x_np.dtype
-                    )
-                    y = ins(x)
-                    exe.run(fluid.default_startup_program())
-                    r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
-                return r
+                def compute_v2(x_np):
+                    with program_guard(Program(), Program()):
+                        ins = paddle.nn.InstanceNorm2D(shape[1])
+                        x = paddle.static.data(
+                            name='x', shape=x_np.shape, dtype=x_np.dtype
+                        )
+                        y = ins(x)
+                        exe.run(fluid.default_startup_program())
+                        r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
+                    return r
 
-            x = np.random.randn(*shape).astype("float32")
-            y1 = compute_v1(x)
-            y2 = compute_v2(x)
-            np.testing.assert_allclose(y1, y2, rtol=1e-05)
-        paddle.disable_static()
+                x = np.random.randn(*shape).astype("float32")
+                y1 = compute_v1(x)
+                y2 = compute_v2(x)
+                np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
 
 class TestInstanceNormFP32OP(OpTest):
@@ -211,11 +210,8 @@ class TestInstanceNormFP32OP(OpTest):
     def test_check_output(self):
         self.check_output(atol=self.atol, check_prim=True)
 
-    def test_check_grad(self, check_prim=True):
-        self.check_grad(
-            ['X', 'Scale', 'Bias'],
-            'Y',
-        )
+    def test_check_grad(self):
+        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=True)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -231,6 +227,12 @@ class TestInstanceNormFP32OP(OpTest):
 
     def set_err_thre(self):
         self.atol = 1e-3
+        self.fw_comp_rtol = 1e-6
+        self.fw_comp_atol = 1e-6
+        self.rev_comp_rtol = 1e-4
+        self.rev_comp_atol = 1e-4
+        self.cinn_rtol = 1e-4
+        self.cinn_atol = 1e-4
 
 
 @unittest.skipIf(
@@ -241,11 +243,6 @@ class TestInstanceNormFP32OP(OpTest):
 class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     def setUp(self):
         super().setUp()
-
-        self.fw_comp_rtol = self.max_relative_error
-        self.fw_comp_atol = self.atol
-        self.rev_comp_rtol = self.max_relative_error
-        self.rev_comp_atol = self.atol
 
     def init_dtype(self):
         self.dtype = np.float16
@@ -269,126 +266,133 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
         )
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda()
-#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-#     "core is not compiled with CUDA or not support the bfloat16",
-# )
-# class TestInstanceNormBF16OP(OpTest):
-#     def setUp(self):
-#         self.op_type = "instance_norm"
-#         self.__class__.op_type = self.op_type
-#         self.python_api = instance_norm_wrapper
-#         self.eps = 1e-5
-#         self.data_format = "NCHW"
-#         self.dtype = np.uint16
-#         self.init_shape()
-#         self.init_value()
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestInstanceNormBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "instance_norm"
+        self.prim_op_type = "comp"
+        self.__class__.op_type = self.op_type
+        self.python_api = instance_norm_wrapper
+        self.public_python_api = instance_norm_wrapper
+        self.eps = 1e-5
+        self.data_format = "NCHW"
+        self.dtype = np.uint16
+        self.init_shape()
+        self.init_value()
 
-#         y, mean, variance = _reference_instance_norm(
-#             self.value, self.scale, self.bias, self.eps
-#         )
-#         var_inv = 1.0 / variance
-#         self.user_defined_grads = _reference_instance_norm_grad(
-#             self.value, self.scale, mean, var_inv
-#         )
-#         self.python_out_sig = ['Y']
-#         self.outputs = {
-#             'Y': convert_float_to_uint16(y),
-#             'SavedMean': mean,
-#             'SavedVariance': var_inv,
-#         }
-#         self.inputs = {
-#             'X': convert_float_to_uint16(self.value),
-#             'Scale': self.scale,
-#             'Bias': self.bias,
-#         }
-#         self.attrs = {
-#             'epsilon': self.eps,
-#             'momentum': 0.9,
-#             'data_format': self.data_format,
-#         }
+        y, mean, variance = _reference_instance_norm(
+            self.value, self.scale, self.bias, self.eps
+        )
+        var_inv = 1.0 / variance
+        self.user_defined_grads = _reference_instance_norm_grad(
+            self.value, self.scale, mean, var_inv
+        )
+        self.python_out_sig = ['Y']
+        self.outputs = {
+            'Y': convert_float_to_uint16(y),
+            'SavedMean': mean,
+            'SavedVariance': var_inv,
+        }
+        self.inputs = {
+            'X': convert_float_to_uint16(self.value),
+            'Scale': self.scale,
+            'Bias': self.bias,
+        }
+        self.attrs = {
+            'epsilon': self.eps,
+            'momentum': 0.9,
+            'data_format': self.data_format,
+        }
 
-#     def init_value(self):
-#         np.random.seed(0)
-#         self.value = np.random.random(self.shape).astype(np.float32)
-#         self.scale = np.random.random([self.shape[1]]).astype(np.float32)
-#         self.bias = np.random.random([self.shape[1]]).astype(np.float32)
+    def init_value(self):
+        np.random.seed(0)
+        self.value = np.random.random(self.shape).astype(np.float32)
+        self.scale = np.random.random([self.shape[1]]).astype(np.float32)
+        self.bias = np.random.random([self.shape[1]]).astype(np.float32)
 
-#     def init_shape(self):
-#         self.shape = [4, 100, 4, 4]
+    def init_shape(self):
+        self.shape = [4, 100, 4, 4]
 
-#     def test_check_output(self):
-#         place = core.CUDAPlace(0)
-#         self.check_output_with_place(place)
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_prim=True)
 
-#     def test_check_grad(self):
-#         place = core.CUDAPlace(0)
-#         self.check_grad_with_place(
-#             place,
-#             ['X', 'Scale', 'Bias'],
-#             'Y',
-#             user_defined_grads=self.user_defined_grads,
-#         )
-
-
-# class PrimNet(paddle.nn.Layer):
-#     def __init__(self):
-#         super().__init__()
-#         self.conv = nn.Conv2D(2, 4, (3, 3), bias_attr=False)
-#         self.instance_norm = nn.InstanceNorm2D(4)
-
-#     def forward(self, x):
-#         y = self.conv(x)
-#         out = self.instance_norm(y)
-#         res = F.max_pool2d(out, kernel_size=2, stride=2, padding=0)
-#         return res
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            user_defined_grads=self.user_defined_grads,
+            check_prim=True,
+        )
 
 
-# def apply_to_static(net, use_cinn):
-#     build_strategy = paddle.static.BuildStrategy()
-#     build_strategy.build_cinn_pass = use_cinn
-#     return paddle.jit.to_static(net, build_strategy=False)
+class PrimNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv = paddle.nn.Conv2D(2, 4, (3, 3), bias_attr=False)
+        self.instance_norm = paddle.nn.InstanceNorm2D(4)
+
+    def forward(self, x):
+        y = self.conv(x)
+        out = self.instance_norm(y)
+        res = paddle.nn.functional.max_pool2d(
+            out, kernel_size=2, stride=2, padding=0
+        )
+        return res
 
 
-# class TestPrimForwardAndBackward(unittest.TestCase):
-#     """
-#     Test PrimNet with @to_static + amp O2(with fp32)
-#     """
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=False)
 
-#     def setUp(self):
-#         paddle.seed(2022)
-#         paddle.disable_static()
-#         self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
-#         self.x.stop_gradient = False
 
-#     def train(self, use_amp, data_layout="NCHW"):
-#         paddle.seed(2022)
-#         net = PrimNet()
-#         sgd = paddle.optimizer.SGD(
-#             learning_rate=0.1, parameters=net.parameters()
-#         )
-#         net = apply_to_static(net, False)
-#         if use_amp:
-#             net = paddle.amp.decorate(models=net, level='O2')
-#         with paddle.amp.auto_cast(enable=use_amp, level='O2'):
-#             out = net(self.x)
-#             loss = paddle.mean(out)
-#             loss.backward()
-#             sgd.step()
-#             sgd.clear_grad()
-#             return loss
+class TestPrimForwardAndBackward(unittest.TestCase):
+    """
+    Test PrimNet with @to_static + amp O2(with fp32)
+    """
 
-#     def test_amp_nchw(self):
-#         if not isinstance(framework._current_expected_place(), core.CPUPlace):
-#             expected = self.train(False)
-#             actual = self.train(True)
-#             np.testing.assert_allclose(
-#                 expected,
-#                 actual,
-#                 rtol=1e-3,
-#                 atol=1e-3,
-#             )
+    def setUp(self):
+        paddle.seed(2022)
+        paddle.disable_static()
+        self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
+        self.x.stop_gradient = False
+
+    def train(self, use_amp, data_layout="NCHW"):
+        paddle.seed(2022)
+        net = PrimNet()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=net.parameters()
+        )
+        net = apply_to_static(net, False)
+        if use_amp:
+            net = paddle.amp.decorate(models=net, level='O2')
+        with paddle.amp.auto_cast(enable=use_amp, level='O2'):
+            out = net(self.x)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+            return loss
+
+    def test_amp_nchw(self):
+        if not isinstance(
+            paddle.fluid.framework._current_expected_place(), core.CPUPlace
+        ):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
 
 
 if __name__ == '__main__':
