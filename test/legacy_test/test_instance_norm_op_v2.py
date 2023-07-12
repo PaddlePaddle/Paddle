@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -206,12 +207,15 @@ class TestInstanceNormFP32OP(OpTest):
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
         self.public_python_api = instance_norm_wrapper
+        self.check_prim = (
+            False if os.getenv("FLAGS_enable_new_ir_in_executor") else True
+        )
 
     def test_check_output(self):
-        self.check_output(atol=self.atol, check_prim=True)
+        self.check_output(atol=self.atol, check_prim=self.check_prim)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=True)
+        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=self.check_prim)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -253,7 +257,9 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=self.atol, check_prim=True)
+        self.check_output_with_place(
+            place, atol=self.atol, check_prim=self.check_prim
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -262,7 +268,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
             ['X', 'Scale', 'Bias'],
             'Y',
             max_relative_error=self.max_relative_error,
-            check_prim=True,
+            check_prim=self.check_prim,
         )
 
 
@@ -307,6 +313,9 @@ class TestInstanceNormBF16OP(OpTest):
             'momentum': 0.9,
             'data_format': self.data_format,
         }
+        self.check_prim = (
+            False if os.getenv("FLAGS_enable_new_ir_in_executor") else True
+        )
 
     def init_value(self):
         np.random.seed(0)
@@ -319,7 +328,7 @@ class TestInstanceNormBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=True)
+        self.check_output_with_place(place, check_prim=self.check_prim)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -328,7 +337,7 @@ class TestInstanceNormBF16OP(OpTest):
             ['X', 'Scale', 'Bias'],
             'Y',
             user_defined_grads=self.user_defined_grads,
-            check_prim=True,
+            check_prim=self.check_prim,
         )
 
 
