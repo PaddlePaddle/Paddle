@@ -28,6 +28,7 @@ namespace phi {
 
 namespace {
 
+#ifdef PADDLE_WITH_CUDA
 constexpr int kWarpSize = 32;
 constexpr int kPerBlockWarpNum = 16;
 
@@ -279,7 +280,7 @@ void int8_weight_only_gemv_launcher(const T* input,
                                     const int k,
                                     const int n,
                                     const bool gelu,
-                                    cudaStream_t stream) {
+                                    gpuStream_t stream) {
   dim3 block(kWarpSize * kPerBlockWarpNum);  // equal to 512;
   dim3 grid(n / kPerBlockWarpNum /
             2);  // Note(zhengzekang): Since each warp process 2 rows of matrix.
@@ -311,7 +312,7 @@ void int8_weight_only_gemv_launcher(const float* input,
                                     const int k,
                                     const int n,
                                     const bool gelu,
-                                    cudaStream_t stream) {
+                                    gpuStream_t stream) {
   // Weightonly GEMV do not support float.
   assert(false);
 }
@@ -352,6 +353,7 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
       gelu,
       ctx.stream());
 }
+#endif
 
 template <typename T, typename Context>
 void GemvWeightonlyInt8Kernel(const Context& dev_ctx,
@@ -361,6 +363,7 @@ void GemvWeightonlyInt8Kernel(const Context& dev_ctx,
                               const DenseTensor& weight_scale,
                               const std::string& act_method,
                               DenseTensor* out) {
+#ifdef PADDLE_WITH_CUDA
   const T* x_data = x.data<T>();
   const int8_t* weight_data =
       weight.data<int8_t>();  // Actually, we pass the weight datatype is
@@ -384,6 +387,7 @@ void GemvWeightonlyInt8Kernel(const Context& dev_ctx,
                                         k,
                                         act_method,
                                         out_data);
+#endif
 }
 
 template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
@@ -396,6 +400,7 @@ template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const std::string& act_method,
                                         phi::dtype::float16* output);
 
+#ifdef PADDLE_CUDA_BF16
 template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const phi::dtype::bfloat16* x,
                                         const int8_t* weight,
@@ -405,6 +410,7 @@ template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const int k,
                                         const std::string& act_method,
                                         phi::dtype::bfloat16* output);
+#endif
 
 template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const float* x,
