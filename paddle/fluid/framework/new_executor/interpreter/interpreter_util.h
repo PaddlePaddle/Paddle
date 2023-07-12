@@ -44,6 +44,7 @@ using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 namespace paddle {
 namespace framework {
 namespace interpreter {
+
 class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,
@@ -107,6 +108,8 @@ void BuildVariableScope(const framework::BlockDesc& block,
                         VariableScope* var_scope);
 
 void LogDeviceMemoryStats(const platform::Place& place);
+
+bool IsPhiCommOp(framework::OperatorBase* operator_base);
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx);

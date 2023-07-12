@@ -23,11 +23,74 @@ from legacy_test.test_collective_api_base import (
 
 import paddle
 from paddle import fluid
+from paddle import framework
+import paddle.distributed as dist
+from paddle.fluid import data_feeder
 from paddle.distributed.utils import moe_utils
 
 paddle.enable_static()
 
+def alltoall(
+    in_tensor_or_tensor_list,
+    out_tensor_or_tensor_list,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
+    op_type = 'alltoall'
+    ring_id = 0 if group is None else group.id
+    nranks = dist.get_world_size()
+    helper = framework.LayerHelper(op_type, **locals())
 
+    in_tensor = in_tensor_or_tensor_list
+    if isinstance(in_tensor_or_tensor_list, list):
+        if len(in_tensor_or_tensor_list) == 0:
+            raise RuntimeError("The input tensor_list should not be empty.")
+        # 0-D use stack/unstack while others use concat/split
+        if len(in_tensor_or_tensor_list[0].shape) == 0:
+            in_tensor = paddle.stack(in_tensor_or_tensor_list, axis=0)
+        else:
+            in_tensor = paddle.concat(in_tensor_or_tensor_list, axis=0)
+
+    out_tensor = out_tensor_or_tensor_list
+    if isinstance(out_tensor_or_tensor_list, list):
+        if len(out_tensor_or_tensor_list) != 0:
+            raise ValueError(
+                "The 'out_tensor_list' for all_to_all " "must be an empty list."
+            )
+        out_tensor = helper.create_variable_for_type_inference(
+            dtype=in_tensor.dtype
+        )
+
+    data_feeder.check_variable_and_dtype(
+        in_tensor,
+        'in_tensor',
+        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'all_to_all',
+    )
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [in_tensor]},
+        outputs={'Out': [out_tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': sync_op 
+        },
+    )
+    # NOTE(liyurui): If the argument `out_tensor_or_tensor_list` is a tensor_list,
+    # we need to split the result. So we should wait the result of all_to_all
+    # before split if the communication is not on calc stream.
+    if isinstance(out_tensor_or_tensor_list, list):
+        if not sync_op:
+            dist.wait(out_tensor, use_calc_stream=False)
+        # 0-D use stack/unstack while others use concat/split
+        if len(in_tensor_or_tensor_list[0].shape) == 0:
+            out_tensor_or_tensor_list.extend(paddle.unstack(out_tensor, 0))
+        else:
+            out_tensor_or_tensor_list.extend(
+                paddle.split(out_tensor, nranks, 0)
+            )
+    return None
 class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
@@ -86,7 +149,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
                 name="local_expert_count", shape=[tot_expert], dtype="int64"
             )
             global_expert_count = []
-            paddle.distributed.alltoall(
+            alltoall(
                 paddle.split(local_expert_count, 2, axis=0), global_expert_count
             )
             global_expert_count = paddle.concat(global_expert_count, axis=0)
