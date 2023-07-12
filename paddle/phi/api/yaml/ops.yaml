@@ -1788,7 +1788,7 @@
 
 - op : norm_helper
   args : (Tensor x, Tensor residual, Tensor bias, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, str norm_type, int begin_norm_axis)
-  output : Tensor(mean), Tensor(variance), Tensor(residual_out), Tensor(out)
+  output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : NormHelperInferMeta
   kernel :

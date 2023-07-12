@@ -3534,10 +3534,10 @@ void NormHelperInferMeta(const MetaTensor& x,
                          const float residual_alpha,
                          const std::string& norm_type,
                          int begin_norm_axis,
-                         MetaTensor* mean,
-                         MetaTensor* variance,
+                         MetaTensor* out,
                          MetaTensor* residual_out,
-                         MetaTensor* out) {
+                         MetaTensor* mean,
+                         MetaTensor* variance) {
   std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
   auto size = phi::product(x.dims());

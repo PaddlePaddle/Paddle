@@ -134,9 +134,6 @@ class NormHelper {
                                        output_data,
                                        mean_data,
                                        var_data);
-
-      VLOG(0) << "+======";
-
     } else if (norm_type_ == "rmsnorm") {
       // For rmsnorm, it use Input's type weight and bias.
       // Currently, it only used in inference, so we do not save intermediate
@@ -180,10 +177,10 @@ void NormHelperKernel(const Context& dev_ctx,
                       float residual_alpha,
                       const std::string& norm_type,
                       const int begin_norm_axis,
-                      DenseTensor* mean,
-                      DenseTensor* variance,
+                      DenseTensor* out,
                       DenseTensor* residual_out,
-                      DenseTensor* out) {
+                      DenseTensor* mean,
+                      DenseTensor* variance) {
 #if defined(PADDLE_WITH_HIP)
   LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
 #else

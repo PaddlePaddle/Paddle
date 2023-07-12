@@ -64,7 +64,7 @@ def norm_helper(
             residual_alpha,
             norm_type,
             begin_norm_axis,
-        )
+        )[0:2]
 
     helper = LayerHelper('norm_helper', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -94,6 +94,6 @@ def norm_helper(
             "norm_type": norm_type,
             "begin_norm_axis": begin_norm_axis,
         },
-        outputs={'out': out},
+        outputs=outputs_dict,
     )
     return out

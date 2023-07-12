@@ -29,9 +29,9 @@ void NormHelperKernel(const Context& dev_ctx,
                       const float residual_alpha,
                       const std::string& norm_type,
                       const int begin_norm_axis,
-                      DenseTensor* mean,
-                      DenseTensor* variance,
+                      DenseTensor* out,
                       DenseTensor* residual_out,
-                      DenseTensor* out);
+                      DenseTensor* mean,
+                      DenseTensor* variance);
 
 }  // namespace phi
