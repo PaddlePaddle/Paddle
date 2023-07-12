@@ -755,7 +755,6 @@ def cmake_run(build_path):
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
-                "CINN_GIT_TAG",
             )
         }
     )
@@ -1032,13 +1031,15 @@ def get_package_data_and_package_dir():
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
 
         cinn_fp16_file = (
-            env_dict.get("CINN_INCLUDE_DIR") + '/paddle/cinn/runtime/cuda/float16.h'
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/float16.h'
         )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
         cinn_bf16_file = (
-            env_dict.get("CINN_INCLUDE_DIR") + '/paddle/cinn/runtime/cuda/bfloat16.h'
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/bfloat16.h'
         )
         if os.path.exists(cinn_bf16_file):
             shutil.copy(cinn_bf16_file, libs_path)
@@ -1087,13 +1088,7 @@ def get_package_data_and_package_dir():
                 )
         shutil.copy(env_dict.get("MKLDNN_SHARED_LIB"), libs_path)
         if os.name != 'nt':
-            shutil.copy(env_dict.get("MKLDNN_SHARED_LIB_1"), libs_path)
-            shutil.copy(env_dict.get("MKLDNN_SHARED_LIB_2"), libs_path)
-            package_data['paddle.libs'] += [
-                'libmkldnn.so.0',
-                'libdnnl.so.1',
-                'libdnnl.so.2',
-            ]
+            package_data['paddle.libs'] += ['libdnnl.so.3']
         else:
             package_data['paddle.libs'] += ['mkldnn.dll']
 
@@ -1429,8 +1424,6 @@ def get_setup_parameters():
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
         'paddle.fluid.layers',
-        'paddle.fluid.contrib',
-        'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',

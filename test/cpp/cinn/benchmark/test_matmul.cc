@@ -20,8 +20,8 @@ namespace cinn {
 namespace tests {
 
 // default
-std::vector<ir::Tensor> MatmulTester::CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                             poly::StageMap *stages) {
+std::vector<ir::Tensor> MatmulTester::CreateSpecificStrategy(
+    const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
   CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
   std::vector<ir::Tensor> outs = hlir::pe::Matmul(inputs[0], inputs[1]);
   for (auto &out : outs) {
@@ -31,8 +31,8 @@ std::vector<ir::Tensor> MatmulTester::CreateSpecificStrategy(const std::vector<i
 }
 
 // tile
-std::vector<ir::Tensor> MatmulTileTester::CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                                 poly::StageMap *stages) {
+std::vector<ir::Tensor> MatmulTileTester::CreateSpecificStrategy(
+    const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
   CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
   std::vector<ir::Tensor> outs = hlir::pe::Matmul(inputs[0], inputs[1]);
   CHECK(!outs.empty());
@@ -45,8 +45,8 @@ std::vector<ir::Tensor> MatmulTileTester::CreateSpecificStrategy(const std::vect
 }
 
 // split
-std::vector<ir::Tensor> MatmulSplitTester::CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                                  poly::StageMap *stages) {
+std::vector<ir::Tensor> MatmulSplitTester::CreateSpecificStrategy(
+    const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
   CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
   std::vector<ir::Tensor> outs = hlir::pe::Matmul(inputs[0], inputs[1]);
   CHECK(!outs.empty());
@@ -66,29 +66,35 @@ std::vector<ir::Tensor> MatmulSplitTester::CreateSpecificStrategy(const std::vec
 }
 
 // block
-std::vector<ir::Tensor> MatmulBlockTester::CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                                  poly::StageMap *stages) {
+std::vector<ir::Tensor> MatmulBlockTester::CreateSpecificStrategy(
+    const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
   CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
   std::vector<ir::Tensor> outs;
   auto k1 = Var(input_shapes_[0][1], "k1");
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0]) << "matmul's reduce axis shape should be same\n";
+  CHECK_EQ(input_shapes_[0].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[1].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
+      << "matmul's reduce axis shape should be same\n";
   auto C = Compute(
       {Expr(input_shapes_[0][0]), Expr(input_shapes_[1][1])},
-      [&](Var i, Var j) { return ReduceSum(inputs[0](i, k1) * inputs[1](k1, j), {k1}); },
+      [&](Var i, Var j) {
+        return ReduceSum(inputs[0](i, k1) * inputs[1](k1, j), {k1});
+      },
       "C");
   (*stages)->InsertLazily(C);
-  int bn                                 = 32;
-  auto _i_outer_i_inner_j_outer_j_inner_ = (*stages)[C]->Tile(0, 1, bn, bn);  // NOLINT
-  auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-  auto _k_outer_k_inner_                 = (*stages)[C]->Split(k1->name, 4);  // NOLINT
-  auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-  auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+  int bn = 32;
+  auto _i_outer_i_inner_j_outer_j_inner_ =
+      (*stages)[C]->Tile(0, 1, bn, bn);  // NOLINT
+  auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+  auto _k_outer_k_inner_ = (*stages)[C]->Split(k1->name, 4);  // NOLINT
+  auto &k_outer = std::get<0>(_k_outer_k_inner_);
+  auto &k_inner = std::get<1>(_k_outer_k_inner_);
   (*stages)[C]->Reorder({i_outer, j_outer, k_outer, k_inner, i_inner, j_inner});
 
   outs.push_back(C);
@@ -96,29 +102,35 @@ std::vector<ir::Tensor> MatmulBlockTester::CreateSpecificStrategy(const std::vec
 }
 
 // vectorize
-std::vector<ir::Tensor> MatmulVectorizeTester::CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                                      poly::StageMap *stages) {
+std::vector<ir::Tensor> MatmulVectorizeTester::CreateSpecificStrategy(
+    const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
   CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
   std::vector<ir::Tensor> outs;
   auto k1 = Var(input_shapes_[0][1], "k1");
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0]) << "matmul's reduce axis shape should be same\n";
+  CHECK_EQ(input_shapes_[0].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[1].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
+      << "matmul's reduce axis shape should be same\n";
   auto C = Compute(
       {Expr(input_shapes_[0][0]), Expr(input_shapes_[1][1])},
-      [&](Var i, Var j) { return ReduceSum(inputs[0](i, k1) * inputs[1](k1, j), {k1}); },
+      [&](Var i, Var j) {
+        return ReduceSum(inputs[0](i, k1) * inputs[1](k1, j), {k1});
+      },
       "C");
   (*stages)->InsertLazily(C);
-  int bn                                 = 32;
-  auto _i_outer_i_inner_j_outer_j_inner_ = (*stages)[C]->Tile(0, 1, bn, bn);  // NOLINT
-  auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-  auto _k_outer_k_inner_                 = (*stages)[C]->Split(k1->name, 4);  // NOLINT
-  auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-  auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+  int bn = 32;
+  auto _i_outer_i_inner_j_outer_j_inner_ =
+      (*stages)[C]->Tile(0, 1, bn, bn);  // NOLINT
+  auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+  auto _k_outer_k_inner_ = (*stages)[C]->Split(k1->name, 4);  // NOLINT
+  auto &k_outer = std::get<0>(_k_outer_k_inner_);
+  auto &k_inner = std::get<1>(_k_outer_k_inner_);
   (*stages)[C]->Reorder({i_outer, j_outer, k_outer, k_inner, i_inner, j_inner});
   (*stages)[C]->Vectorize(j_inner, 8);
 
@@ -127,29 +139,35 @@ std::vector<ir::Tensor> MatmulVectorizeTester::CreateSpecificStrategy(const std:
 }
 
 // loop permutation
-std::vector<ir::Tensor> MatmulLoopPermutationTester::CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                                            poly::StageMap *stages) {
+std::vector<ir::Tensor> MatmulLoopPermutationTester::CreateSpecificStrategy(
+    const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
   CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
   std::vector<ir::Tensor> outs;
   auto k1 = Var(input_shapes_[0][1], "k1");
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0]) << "matmul's reduce axis shape should be same\n";
+  CHECK_EQ(input_shapes_[0].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[1].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
+      << "matmul's reduce axis shape should be same\n";
   auto C = Compute(
       {Expr(input_shapes_[0][0]), Expr(input_shapes_[1][1])},
-      [&](Var i, Var j) { return ReduceSum(inputs[0](i, k1) * inputs[1](k1, j), {k1}); },
+      [&](Var i, Var j) {
+        return ReduceSum(inputs[0](i, k1) * inputs[1](k1, j), {k1});
+      },
       "C");
   (*stages)->InsertLazily(C);
-  int bn                                 = 32;
-  auto _i_outer_i_inner_j_outer_j_inner_ = (*stages)[C]->Tile(0, 1, bn, bn);  // NOLINT
-  auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-  auto _k_outer_k_inner_                 = (*stages)[C]->Split(k1->name, 4);  // NOLINT
-  auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-  auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+  int bn = 32;
+  auto _i_outer_i_inner_j_outer_j_inner_ =
+      (*stages)[C]->Tile(0, 1, bn, bn);  // NOLINT
+  auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+  auto _k_outer_k_inner_ = (*stages)[C]->Split(k1->name, 4);  // NOLINT
+  auto &k_outer = std::get<0>(_k_outer_k_inner_);
+  auto &k_inner = std::get<1>(_k_outer_k_inner_);
   (*stages)[C]->Reorder({i_outer, j_outer, k_outer, i_inner, k_inner, j_inner});
   (*stages)[C]->Vectorize(j_inner, 8);
   (*stages)[C]->Unroll(5);
@@ -159,14 +177,17 @@ std::vector<ir::Tensor> MatmulLoopPermutationTester::CreateSpecificStrategy(cons
 }
 
 // array packing
-std::vector<ir::Tensor> MatmulArrayPackingTester::CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                                         poly::StageMap *stages) {
+std::vector<ir::Tensor> MatmulArrayPackingTester::CreateSpecificStrategy(
+    const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
   CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
   std::vector<ir::Tensor> outs;
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U) << "matmul's input teosor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0]) << "matmul's reduce axis shape should be same\n";
+  CHECK_EQ(input_shapes_[0].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[1].size(), 2U)
+      << "matmul's input teosor's shape should be 2.\n";
+  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
+      << "matmul's reduce axis shape should be same\n";
 
   Var k(input_shapes_[0][1], "k0");
 
@@ -178,7 +199,9 @@ std::vector<ir::Tensor> MatmulArrayPackingTester::CreateSpecificStrategy(const s
       "packedB");
   auto C = Compute(
       {Expr(input_shapes_[0][0]), Expr(input_shapes_[1][1])},
-      [&](Expr i, Expr j) { return ReduceSum(inputs[0](i, k) * packedB(j / bn, k, j % bn), {k}); },
+      [&](Expr i, Expr j) {
+        return ReduceSum(inputs[0](i, k) * packedB(j / bn, k, j % bn), {k});
+      },
       "C");
   (*stages)->InsertLazily(C);
   (*stages)->InsertLazily(packedB);
@@ -186,16 +209,18 @@ std::vector<ir::Tensor> MatmulArrayPackingTester::CreateSpecificStrategy(const s
   (*stages)[packedB]->Vectorize(2, 8);
 
   {
-    auto _i_outer_i_inner_j_outer_j_inner_ = (*stages)[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
-    auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-    auto _k_outer_k_inner_                 = (*stages)[C]->Split("k0", 4);  // NOLINT
-    auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-    auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+    auto _i_outer_i_inner_j_outer_j_inner_ =
+        (*stages)[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
+    auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+    auto _k_outer_k_inner_ = (*stages)[C]->Split("k0", 4);  // NOLINT
+    auto &k_outer = std::get<0>(_k_outer_k_inner_);
+    auto &k_inner = std::get<1>(_k_outer_k_inner_);
 
-    (*stages)[C]->Reorder({i_outer, j_outer, k_outer, i_inner, k_inner, j_inner});
+    (*stages)[C]->Reorder(
+        {i_outer, j_outer, k_outer, i_inner, k_inner, j_inner});
     (*stages)[C]->Vectorize(j_inner, 8);
   }
   outs.push_back(packedB);
@@ -214,7 +239,8 @@ TEST(test_matmul, default) {
   std::vector<Type> input_types{Float(32), Float(32)};
   std::vector<Type> output_types{Float(32), Float(32)};
   auto input_tensors = matmul_tester.CreateInputTensors<float>();
-  matmul_tester.TestOp("matmul_default", input_tensors, attrs, input_types, output_types);
+  matmul_tester.TestOp(
+      "matmul_default", input_tensors, attrs, input_types, output_types);
 }
 
 TEST(test_matmul, tile) {
@@ -228,7 +254,8 @@ TEST(test_matmul, tile) {
   std::vector<Type> input_types{Float(32), Float(32)};
   std::vector<Type> output_types{Float(32)};
   auto input_tensors = matmul_tester.CreateInputTensors<float>();
-  matmul_tester.TestOp("matmul_tile", input_tensors, attrs, input_types, output_types, false);
+  matmul_tester.TestOp(
+      "matmul_tile", input_tensors, attrs, input_types, output_types, false);
 }
 
 TEST(test_matmul, split) {
@@ -242,7 +269,8 @@ TEST(test_matmul, split) {
   std::vector<Type> input_types{Float(32), Float(32)};
   std::vector<Type> output_types{Float(32)};
   auto input_tensors = matmul_tester.CreateInputTensors<float>();
-  matmul_tester.TestOp("matmul_split", input_tensors, attrs, input_types, output_types, false);
+  matmul_tester.TestOp(
+      "matmul_split", input_tensors, attrs, input_types, output_types, false);
 }
 
 TEST(test_matmul, block) {
@@ -256,7 +284,8 @@ TEST(test_matmul, block) {
   std::vector<Type> input_types{Float(32), Float(32)};
   std::vector<Type> output_types{Float(32)};
   auto input_tensors = matmul_tester.CreateInputTensors<float>();
-  matmul_tester.TestOp("matmul_block", input_tensors, attrs, input_types, output_types, false);
+  matmul_tester.TestOp(
+      "matmul_block", input_tensors, attrs, input_types, output_types, false);
 }
 
 TEST(test_matmul, vectorize) {
@@ -270,7 +299,12 @@ TEST(test_matmul, vectorize) {
   std::vector<Type> input_types{Float(32), Float(32)};
   std::vector<Type> output_types{Float(32)};
   auto input_tensors = matmul_tester.CreateInputTensors<float>();
-  matmul_tester.TestOp("matmul_vectorize", input_tensors, attrs, input_types, output_types, false);
+  matmul_tester.TestOp("matmul_vectorize",
+                       input_tensors,
+                       attrs,
+                       input_types,
+                       output_types,
+                       false);
 }
 
 TEST(test_matmul, loop_permutation) {
@@ -284,7 +318,12 @@ TEST(test_matmul, loop_permutation) {
   std::vector<Type> input_types{Float(32), Float(32)};
   std::vector<Type> output_types{Float(32)};
   auto input_tensors = matmul_tester.CreateInputTensors<float>();
-  matmul_tester.TestOp("matmul_loop_permutation", input_tensors, attrs, input_types, output_types, false);
+  matmul_tester.TestOp("matmul_loop_permutation",
+                       input_tensors,
+                       attrs,
+                       input_types,
+                       output_types,
+                       false);
 }
 
 TEST(test_matmul, array_packing) {
@@ -298,7 +337,12 @@ TEST(test_matmul, array_packing) {
   std::vector<Type> input_types{Float(32), Float(32)};
   std::vector<Type> output_types{Float(32), Float(32)};
   auto input_tensors = matmul_tester.CreateInputTensors<float>();
-  matmul_tester.TestOp("matmul_array_packing", input_tensors, attrs, input_types, output_types, false);
+  matmul_tester.TestOp("matmul_array_packing",
+                       input_tensors,
+                       attrs,
+                       input_types,
+                       output_types,
+                       false);
 }
 
 }  // namespace tests

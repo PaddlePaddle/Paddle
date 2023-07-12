@@ -36,15 +36,34 @@ TEST(TestSearchState, SearchStateHash_Equal) {
       {M, N}, [&](Var i, Var j) { return A(i, j) + B(i, j); }, "C");
 
   cinn::common::Context::Global().ResetNameId();
-  auto a_plus_const_funcs_1 =
-      lang::LowerVec("A_plus_const", poly::CreateStages({A, B}), {A, B}, {}, {}, nullptr, target, true);
+  auto a_plus_const_funcs_1 = lang::LowerVec("A_plus_const",
+                                             poly::CreateStages({A, B}),
+                                             {A, B},
+                                             {},
+                                             {},
+                                             nullptr,
+                                             target,
+                                             true);
 
   cinn::common::Context::Global().ResetNameId();
-  auto a_plus_const_funcs_2 =
-      lang::LowerVec("A_plus_const", poly::CreateStages({A, B}), {A, B}, {}, {}, nullptr, target, true);
+  auto a_plus_const_funcs_2 = lang::LowerVec("A_plus_const",
+                                             poly::CreateStages({A, B}),
+                                             {A, B},
+                                             {},
+                                             {},
+                                             nullptr,
+                                             target,
+                                             true);
 
   cinn::common::Context::Global().ResetNameId();
-  auto a_plus_b_funcs = lang::LowerVec("A_plus_B", poly::CreateStages({A, C}), {A, C}, {}, {}, nullptr, target, true);
+  auto a_plus_b_funcs = lang::LowerVec("A_plus_B",
+                                       poly::CreateStages({A, C}),
+                                       {A, C},
+                                       {},
+                                       {},
+                                       nullptr,
+                                       target,
+                                       true);
 
   std::string a_plus_const_funcs_1_str = R"ROC(function A_plus_const (_A, _B)
 {
@@ -114,19 +133,25 @@ TEST(TestSearchState, SearchStateHash_Equal) {
 })ROC";
 
   ASSERT_EQ(a_plus_const_funcs_1.size(), 1);
-  EXPECT_EQ(a_plus_const_funcs_1_str, utils::GetStreamCnt(a_plus_const_funcs_1.front()));
+  EXPECT_EQ(a_plus_const_funcs_1_str,
+            utils::GetStreamCnt(a_plus_const_funcs_1.front()));
   ASSERT_EQ(a_plus_const_funcs_2.size(), 1);
-  EXPECT_EQ(a_plus_const_funcs_2_str, utils::GetStreamCnt(a_plus_const_funcs_2.front()));
+  EXPECT_EQ(a_plus_const_funcs_2_str,
+            utils::GetStreamCnt(a_plus_const_funcs_2.front()));
   ASSERT_EQ(a_plus_b_funcs.size(), 1);
   EXPECT_EQ(a_plus_b_funcs_str, utils::GetStreamCnt(a_plus_b_funcs.front()));
 
-  SearchState a_plus_const_state1(ir::IRSchedule(ir::ModuleExpr({a_plus_const_funcs_1.front()->body})));
-  SearchState a_plus_const_state2(ir::IRSchedule(ir::ModuleExpr({a_plus_const_funcs_2.front()->body})));
-  SearchState a_plus_b_state(ir::IRSchedule(ir::ModuleExpr({a_plus_b_funcs.front()->body})));
+  SearchState a_plus_const_state1(
+      ir::IRSchedule(ir::ModuleExpr({a_plus_const_funcs_1.front()->body})));
+  SearchState a_plus_const_state2(
+      ir::IRSchedule(ir::ModuleExpr({a_plus_const_funcs_2.front()->body})));
+  SearchState a_plus_b_state(
+      ir::IRSchedule(ir::ModuleExpr({a_plus_b_funcs.front()->body})));
 
   SearchStateHash hash_functor;
   SearchStateEqual equal_functor;
-  ASSERT_EQ(hash_functor(a_plus_const_state1), hash_functor(a_plus_const_state2));
+  ASSERT_EQ(hash_functor(a_plus_const_state1),
+            hash_functor(a_plus_const_state2));
   ASSERT_TRUE(equal_functor(a_plus_const_state1, a_plus_const_state2));
   ASSERT_NE(hash_functor(a_plus_const_state1), hash_functor(a_plus_b_state));
   ASSERT_FALSE(equal_functor(a_plus_const_state1, a_plus_b_state));

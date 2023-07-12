@@ -246,17 +246,21 @@ class FusedCommBuffer:
     def _comm_grads(self):
         assert self._all_params_checked_in
 
-        if self._act == HOOK_ACTION.ALL_REDUCE:
-            task = paddle.distributed.all_reduce(
-                self.grad_storage, group=self._comm_group, sync_op=False
-            )
-        elif self._act == HOOK_ACTION.REDUCE:
-            task = paddle.distributed.reduce(
-                self.grad_storage,
-                dst=self._dst,
-                group=self._comm_group,
-                sync_op=False,
-            )
+        # Note: after sharding change to reduce operation here also need to be updated
+        # if self._act == HOOK_ACTION.ALL_REDUCE:
+        #     task = paddle.distributed.all_reduce(
+        #         self.grad_storage, group=self._comm_group, sync_op=False
+        #     )
+        # elif self._act == HOOK_ACTION.REDUCE:
+        #     task = paddle.distributed.reduce(
+        #         self.grad_storage,
+        #         dst=self._dst,
+        #         group=self._comm_group,
+        #         sync_op=False,
+        #     )
+        task = paddle.distributed.all_reduce(
+            self.grad_storage, group=self._comm_group, sync_op=False
+        )
         self._task = task
 
     @imperative_base.no_grad

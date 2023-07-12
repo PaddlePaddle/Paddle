@@ -24,7 +24,8 @@ namespace cinn::optim {
 
 TEST(IfSimplify, if_true) {
   Var n("n");
-  auto e = ir::IfThenElse::Make(Expr(1) /*true*/, ir::Let::Make(n, Expr(1)), ir::Let::Make(n, Expr(2)));
+  auto e = ir::IfThenElse::Make(
+      Expr(1) /*true*/, ir::Let::Make(n, Expr(1)), ir::Let::Make(n, Expr(2)));
 
   LOG(INFO) << "\n" << e;
 
@@ -37,7 +38,8 @@ TEST(IfSimplify, if_true) {
 
 TEST(IfSimplify, if_false) {
   Var n("n");
-  auto e = ir::IfThenElse::Make(Expr(0) /*false*/, ir::Let::Make(n, Expr(1)), ir::Let::Make(n, Expr(2)));
+  auto e = ir::IfThenElse::Make(
+      Expr(0) /*false*/, ir::Let::Make(n, Expr(1)), ir::Let::Make(n, Expr(2)));
 
   LOG(INFO) << "\n" << e;
 

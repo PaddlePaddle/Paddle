@@ -33,45 +33,48 @@ using ir::Tensor;
 using poly::StageMap;
 
 /**
- * \brief Lower the computation of \p tensor_args and \p scalar_args to a LoweredFunc.
+ * \brief Lower the computation of \p tensor_args and \p scalar_args to a
+ * LoweredFunc.
  * @param name The name of the function.
  * @param tensor_args The tensor arguments, where the computation logic locates.
  * @param scalar_args The scalar arguments, indicate some dimensions.
  * @param temp_tensors The temporary tensors(buffers) used in the body.
  * @param b The module this function belongs to.
- * @return A LoweredFunc, whose name is \p name, the argument list is the concatenation of \p tensor_args and \p
- * scalar_args.
+ * @return A LoweredFunc, whose name is \p name, the argument list is the
+ * concatenation of \p tensor_args and \p scalar_args.
  */
 ir::LoweredFunc Lower(const std::string &name,
                       StageMap stages,
                       const std::vector<Tensor> &tensor_args,
-                      const std::vector<Var> &scalar_args     = {},
+                      const std::vector<Var> &scalar_args = {},
                       const std::vector<Tensor> &temp_tensors = {},
-                      ir::Module::Builder *b                  = nullptr,
-                      const Target &target                    = common::DefaultHostTarget(),
-                      bool support_ir_schedule                = false);
+                      ir::Module::Builder *b = nullptr,
+                      const Target &target = common::DefaultHostTarget(),
+                      bool support_ir_schedule = false);
 
 /**
- * \brief Lower the computation of \p tensor_args and \p scalar_args to a vector of LoweredFuncs. Each schedule group
- * forms a LoweredFunc.
+ * \brief Lower the computation of \p tensor_args and \p scalar_args to a vector
+ * of LoweredFuncs. Each schedule group forms a LoweredFunc.
  * @param name The name of the function.
  * @param tensor_args The tensor arguments, where the computation logic locates.
  * @param scalar_args The scalar arguments, indicate some dimensions.
  * @param temp_tensors The temporary tensors(buffers) used in the body.
  * @param b The module this function belongs to.
- * @return A vector of LoweredFuncs, whose name is \p name, name + "_1", name + "_2"... The argument list is deduced
- * from the expression of each func.
+ * @return A vector of LoweredFuncs, whose name is \p name, name + "_1", name +
+ * "_2"... The argument list is deduced from the expression of each func.
  */
-std::vector<ir::LoweredFunc> LowerVec(const std::string &name,
-                                      StageMap stages,
-                                      const std::vector<Tensor> &tensor_args,
-                                      const std::vector<Var> &scalar_args     = {},
-                                      const std::vector<Tensor> &temp_tensors = {},
-                                      ir::Module::Builder *b                  = nullptr,
-                                      const Target &target                    = common::DefaultHostTarget(),
-                                      bool support_ir_schedule                = false);
+std::vector<ir::LoweredFunc> LowerVec(
+    const std::string &name,
+    StageMap stages,
+    const std::vector<Tensor> &tensor_args,
+    const std::vector<Var> &scalar_args = {},
+    const std::vector<Tensor> &temp_tensors = {},
+    ir::Module::Builder *b = nullptr,
+    const Target &target = common::DefaultHostTarget(),
+    bool support_ir_schedule = false);
 
-std::vector<ir::Argument> GetArgs(const Expr &func_body, const std::vector<std::string> &input_output_nodes);
+std::vector<ir::Argument> GetArgs(
+    const Expr &func_body, const std::vector<std::string> &input_output_nodes);
 
 //! Collect the temporary tensors from a computational graph.
 std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor> &tensor_args,
@@ -79,7 +82,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor> &tensor_args,
                                        Expr body);
 
 //! Collect the temporary tensors from a computational graph.
-std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument> &args, Expr body);
+std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument> &args,
+                                       Expr body);
 
 }  // namespace lang
 }  // namespace cinn

@@ -20,22 +20,28 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void GaussianRandomOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void GaussianRandomOpMapper(const paddle::cpp::OpDesc& op_desc,
+                            const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  auto shape_origin = utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape");
-  auto shape        = utils::ToShapeType(shape_origin);
+  auto shape_origin =
+      utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape");
+  auto shape = utils::ToShapeType(shape_origin);
 
   auto mean = utils::GetAttrOrDefault<float>(op_desc, "mean", 0.0f);
-  auto std  = utils::GetAttrOrDefault<float>(op_desc, "std", 1.0f);
+  auto std = utils::GetAttrOrDefault<float>(op_desc, "std", 1.0f);
   auto seed = utils::GetAttrOrDefault<int>(op_desc, "seed", 0);
 
-  auto dtype = utils::GetPaddleDtype(op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
-  CHECK(!dtype.empty()) << "The op \"gaussian_random\"'s attribute \"dtype\" should not be unknown type! Please check.";
+  auto dtype = utils::GetPaddleDtype(
+      op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
+  CHECK(!dtype.empty()) << "The op \"gaussian_random\"'s attribute \"dtype\" "
+                           "should not be unknown type! Please check.";
 
-  VLOG(4) << out_name << "[" << cinn::utils::Join(shape, ", ") << "] = uniform_random(mean=" << mean << ", std=" << std
-          << ", seed=" << seed << ", dtype=" << dtype << ", shape=[" << cinn::utils::Join(shape, ", ") << "])";
+  VLOG(4) << out_name << "[" << cinn::utils::Join(shape, ", ")
+          << "] = uniform_random(mean=" << mean << ", std=" << std
+          << ", seed=" << seed << ", dtype=" << dtype << ", shape=["
+          << cinn::utils::Join(shape, ", ") << "])";
 
   auto out = ctx.Builder()->GaussianRandom(shape, mean, std, seed, dtype);
   ctx.AddVar(out_name, out);
@@ -47,6 +53,7 @@ void GaussianRandomOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperCo
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_gaussian_random) {
-  CINN_REGISTER_OP_MAPPER(gaussian_random, cinn::frontend::paddle_mappers::GaussianRandomOpMapper)
+  CINN_REGISTER_OP_MAPPER(
+      gaussian_random, cinn::frontend::paddle_mappers::GaussianRandomOpMapper)
   return true;
 }

@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_mapper_test import OpMapperTest, logger
+from op_mapper_test import OpMapperTest
+
 import paddle
 
 
@@ -39,7 +41,7 @@ class TestFillConstantOp(OpMapperTest):
             "shape": self.shape,
             "value": float(self.value),
             "str_value": self.str_value,
-            "dtype": self.nptype2paddledtype(self.dtype)
+            "dtype": self.nptype2paddledtype(self.dtype),
         }
 
     def set_op_outputs(self):
@@ -51,7 +53,7 @@ class TestFillConstantOp(OpMapperTest):
 
 class TestFillConstantCase1(TestFillConstantOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [10, 10]
         self.value = np.random.default_rng(12345).integers(low=0, high=10000)
         self.str_value = ""
@@ -60,7 +62,7 @@ class TestFillConstantCase1(TestFillConstantOp):
 
 class TestFillConstantCase2(TestFillConstantOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [10, 10]
         self.value = 0
         self.str_value = "0.123456"
@@ -72,7 +74,8 @@ class TestFillConstantByValueTensor(TestFillConstantOp):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {"ValueTensor": [x]}
 
 

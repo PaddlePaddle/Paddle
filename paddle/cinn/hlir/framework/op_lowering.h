@@ -39,41 +39,45 @@ using GroupPtr = std::shared_ptr<Graph::Group>;
 using common::Target;
 
 class OpLowerer;
-typedef std::vector<Expr> (OpLowerer::*IRComputeFunction)(poly::StageMap&,
-                                                          std::vector<ir::Tensor>&,
-                                                          std::unordered_map<std::string, ir::Tensor>&,
-                                                          const GroupPtr&,
-                                                          const GroupPtr&,
-                                                          bool);
+typedef std::vector<Expr> (OpLowerer::*IRComputeFunction)(
+    poly::StageMap&,
+    std::vector<ir::Tensor>&,
+    std::unordered_map<std::string, ir::Tensor>&,
+    const GroupPtr&,
+    const GroupPtr&,
+    bool);
 
 class OpLowerer {
  public:
   OpLowerer(const absl::flat_hash_map<std::string, Type>&,
             const absl::flat_hash_map<std::string, shape_t>&,
             const Target&);
-  std::vector<ir::LoweredFunc> Lower(GroupPtr& group);
-  std::vector<ir::LoweredFunc> LowerWithoutSchedule(GroupPtr& group);
+  std::vector<ir::LoweredFunc> Lower(GroupPtr& group);                 // NOLINT
+  std::vector<ir::LoweredFunc> LowerWithoutSchedule(GroupPtr& group);  // NOLINT
 
  private:
   std::vector<ir::LoweredFunc> IRLowerOp(IRComputeFunction, GroupPtr&);
   std::vector<ir::LoweredFunc> IRLowerNonFusibleOp(GroupPtr&, bool);
-  std::vector<ir::LoweredFunc> IRLowerOpWithoutSchedule(IRComputeFunction, GroupPtr&);
-#define DEFINE_IR_COMPUTE(type)                                                                \
-  std::vector<Expr> IR##type##Compute(poly::StageMap& stages,                                  \
-                                      std::vector<ir::Tensor>& func_args,                      \
-                                      std::unordered_map<std::string, ir::Tensor>& tensor_map, \
-                                      const GroupPtr& group,                                   \
-                                      const GroupPtr& sub_group,                               \
-                                      bool apply_impl_schedule = false);
+  std::vector<ir::LoweredFunc> IRLowerOpWithoutSchedule(IRComputeFunction,
+                                                        GroupPtr&);
+#define DEFINE_IR_COMPUTE(type)                                \
+  std::vector<Expr> IR##type##Compute(                         \
+      poly::StageMap& stages,                                  \
+      std::vector<ir::Tensor>& func_args,                      \
+      std::unordered_map<std::string, ir::Tensor>& tensor_map, \
+      const GroupPtr& group,                                   \
+      const GroupPtr& sub_group,                               \
+      bool apply_impl_schedule = false);
 
   // compute and schedule
   DEFINE_IR_COMPUTE(Elementwise);
   DEFINE_IR_COMPUTE(Reduce);
   DEFINE_IR_COMPUTE(OutEWiseFusable);
 
-  void IRSchedule(ir::IRSchedule& ir_sch,
-                  const GroupPtr& group,
-                  const std::unordered_map<std::string, ir::Tensor>& tensor_map);
+  void IRSchedule(
+      ir::IRSchedule& ir_sch,  // NOLINT
+      const GroupPtr& group,
+      const std::unordered_map<std::string, ir::Tensor>& tensor_map);
 
   Target target_;
   const absl::flat_hash_map<std::string, Type>& type_dict_;

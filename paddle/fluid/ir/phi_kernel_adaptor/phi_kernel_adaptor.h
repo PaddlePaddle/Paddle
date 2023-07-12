@@ -21,6 +21,7 @@
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -55,7 +56,7 @@ class PhiKernelAdaptor {
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    BuildScope(block, scope_, &name_map);
+    BuildScope(*block, scope_, nullptr, &name_map);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -80,7 +81,13 @@ class PhiKernelAdaptor {
 
       phi::InferMetaContext ctx;
 
-      ir::BuildInferMetaContext((*it), name_map, scope_, yaml_info, &ctx);
+      paddle::dialect::OpYamlInfoParser op_yaml_info_parser(yaml_info);
+      ir::BuildPhiContext<
+          phi::InferMetaContext,
+          phi::MetaTensor,
+          phi::MetaTensor,
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+          false>((*it), name_map, scope_, nullptr, op_yaml_info_parser, &ctx);
 
       infer_meta_impl->infer_meta_(&ctx);
 
@@ -95,8 +102,12 @@ class PhiKernelAdaptor {
 
       phi::KernelContext kernel_ctx(dev_ctx);
 
-      ir::BuildPhiKernelContext(
-          (*it), name_map, scope_, yaml_info, &kernel_ctx);
+      ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          true>(
+          (*it), name_map, scope_, nullptr, op_yaml_info_parser, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);

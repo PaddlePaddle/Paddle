@@ -14,19 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-from cinn.frontend import *
-from cinn import Target
-from cinn.framework import *
-import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.common import *
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
+from cinn.frontend import Interpreter
+
+from paddle import fluid
 
 assert len(sys.argv) == 1 + 2 + 1  # model and enable_gpu count
 enable_gpu = sys.argv.pop()
@@ -130,8 +125,9 @@ class TestLoadPaddleModel_FC(unittest.TestCase):
     def test_model(self):
         np.random.seed(0)
         self.x_shape = [4, 30]
-        x_data = np.random.random(
-            self.x_shape).astype("float16").astype("float32")
+        x_data = (
+            np.random.random(self.x_shape).astype("float16").astype("float32")
+        )
         print('x_data', x_data)
 
         self.executor = Interpreter(["A"], [self.x_shape])
@@ -147,7 +143,7 @@ class TestLoadPaddleModel_FC(unittest.TestCase):
         out_np = out.numpy(self.target)
         print("cinn data's shape is: ", out_np.shape)
 
-        self.assertTrue(np.allclose(out_np, target_data, atol=1e-4))
+        np.testing.assert_allclose(out_np, target_data, atol=1e-4)
 
 
 class TestLoadPaddleModel_MultiFC(unittest.TestCase):
@@ -184,7 +180,7 @@ class TestLoadPaddleModel_MultiFC(unittest.TestCase):
         out = self.executor.get_tensor("fc_5.tmp_2")
         target = self.get_paddle_inference_result(self.model_dir, x_data)
 
-        self.assertTrue(np.allclose(out.numpy(self.target), target, atol=1e-4))
+        np.testing.assert_allclose(out.numpy(self.target), target, atol=1e-4)
 
 
 if __name__ == "__main__":

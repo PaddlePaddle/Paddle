@@ -82,12 +82,12 @@ inline Expr Sigmoid(Expr e) {
 }
 
 inline Expr Sign(Expr e) {
-  auto zero    = Zero(e->type());
-  auto one     = One(e->type());
+  auto zero = Zero(e->type());
+  auto one = One(e->type());
   auto neg_one = ir::Cast::Make(e->type(), Expr(-1));
-  auto ret0    = ir::Select::Make(ir::EQ::Make(e, zero), zero, e);
-  auto ret1    = ir::Select::Make(e > zero, one, ret0);
-  auto ret2    = ir::Select::Make(e < zero, neg_one, ret1);
+  auto ret0 = ir::Select::Make(ir::EQ::Make(e, zero), zero, e);
+  auto ret1 = ir::Select::Make(e > zero, one, ret0);
+  auto ret2 = ir::Select::Make(e < zero, neg_one, ret1);
   return ret2;
 }
 
@@ -108,13 +108,15 @@ inline Expr Relu(Expr e, double threshold = 0.0) {
 }
 
 inline Expr Relu6(Expr e, double threshold = 0.0) {
-  return ir::Min::Make(ir::Max::Make(e, ir::Cast::Make(e->type(), Expr(threshold))),
-                       ir::Cast::Make(e->type(), Expr(6.0)));
+  return ir::Min::Make(
+      ir::Max::Make(e, ir::Cast::Make(e->type(), Expr(threshold))),
+      ir::Cast::Make(e->type(), Expr(6.0)));
 }
 
 inline Expr LeakyRelu(Expr e, double alpha) {
   auto zero = Zero(e->type());
-  return ir::Select::Make(e > zero, e, e * ir::Cast::Make(e->type(), Expr(alpha)));
+  return ir::Select::Make(
+      e > zero, e, e * ir::Cast::Make(e->type(), Expr(alpha)));
 }
 
 inline Expr LeakyRelu(Expr e, Expr alpha) {
@@ -122,39 +124,51 @@ inline Expr LeakyRelu(Expr e, Expr alpha) {
   return ir::Select::Make(e > zero, e, e * alpha);
 }
 
-inline Expr ReduceSum(Expr e, const std::vector<Var>& reduce_axis, Expr initial = Expr()) {
+inline Expr ReduceSum(Expr e,
+                      const std::vector<Var>& reduce_axis,
+                      Expr initial = Expr()) {
   if (!initial.defined()) {
     initial = Zero(e->type());
   }
   return ir::Reduce::Make(ir::Reduce::kSum, initial, e, reduce_axis);
 }
 
-inline Expr ReduceMul(Expr e, const std::vector<Var>& reduce_axis, Expr initial = Expr()) {
+inline Expr ReduceMul(Expr e,
+                      const std::vector<Var>& reduce_axis,
+                      Expr initial = Expr()) {
   if (!initial.defined()) {
     initial = One(e->type());
   }
   return ir::Reduce::Make(ir::Reduce::kMul, initial, e, reduce_axis);
 }
 
-inline Expr ReduceMax(Expr e, const std::vector<Var>& reduce_axis, Expr initial = Expr()) {
+inline Expr ReduceMax(Expr e,
+                      const std::vector<Var>& reduce_axis,
+                      Expr initial = Expr()) {
   if (!initial.defined()) {
     initial = min_value(e.type());
   }
   return ir::Reduce::Make(ir::Reduce::kMax, initial, e, reduce_axis);
 }
-inline Expr ReduceMin(Expr e, const std::vector<Var>& reduce_axis, Expr initial = Expr()) {
+inline Expr ReduceMin(Expr e,
+                      const std::vector<Var>& reduce_axis,
+                      Expr initial = Expr()) {
   if (!initial.defined()) {
     initial = max_value(e.type());
   }
   return ir::Reduce::Make(ir::Reduce::kMin, initial, e, reduce_axis);
 }
-inline Expr ReduceAll(Expr e, const std::vector<Var>& reduce_axis, Expr initial = Expr()) {
+inline Expr ReduceAll(Expr e,
+                      const std::vector<Var>& reduce_axis,
+                      Expr initial = Expr()) {
   if (!initial.defined()) {
     initial = Expr(true);
   }
   return ir::Reduce::Make(ir::Reduce::kAll, initial, e, reduce_axis);
 }
-inline Expr ReduceAny(Expr e, const std::vector<Var>& reduce_axis, Expr initial = Expr()) {
+inline Expr ReduceAny(Expr e,
+                      const std::vector<Var>& reduce_axis,
+                      Expr initial = Expr()) {
   if (!initial.defined()) {
     initial = Expr(false);
   }

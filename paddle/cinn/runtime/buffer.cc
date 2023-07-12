@@ -17,7 +17,8 @@
 namespace cinn {
 namespace runtime {
 
-Shape::Shape(const Shape &other) : data_(new value_type[other.ndims()]), ndims_(other.ndims()) {
+Shape::Shape(const Shape &other)
+    : data_(new value_type[other.ndims()]), ndims_(other.ndims()) {
   if (ndims() > 0) {
     memcpy(data_, other.data(), ndims_ * sizeof(value_type));
   }

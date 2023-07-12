@@ -19,46 +19,50 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void LogOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void LogOpMapper(const paddle::cpp::OpDesc& op_desc,
+                 const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  auto x   = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->Log(x);
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void Log2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Log2OpMapper(const paddle::cpp::OpDesc& op_desc,
+                  const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  auto x   = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->Log2(x);
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void Log10OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Log10OpMapper(const paddle::cpp::OpDesc& op_desc,
+                   const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  auto x   = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->Log10(x);
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void Log1pOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Log1pOpMapper(const paddle::cpp::OpDesc& op_desc,
+                   const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
@@ -66,9 +70,11 @@ void Log1pOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ct
 
   auto x = ctx.GetVar(x_name);
 
-  auto one =
-      ctx.Builder()->FillConstant(x->shape, 1.0f, cinn::UniqName(x->id + "_1p"), cinn::common::Type2Str(x->type));
-  auto y   = ctx.Builder()->Add(x, one);
+  auto one = ctx.Builder()->FillConstant(x->shape,
+                                         1.0f,
+                                         cinn::UniqName(x->id + "_1p"),
+                                         cinn::common::Type2Str(x->type));
+  auto y = ctx.Builder()->Add(x, one);
   auto out = ctx.Builder()->Log(y);
 
   ctx.AddVar(out_name, out);

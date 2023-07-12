@@ -20,13 +20,15 @@
 namespace cinn::frontend::paddle::pb {
 
 template <>
-framework_proto::BlockDesc* ProgramDesc::GetBlock<framework_proto::BlockDesc>(int32_t idx) {
+framework_proto::BlockDesc* ProgramDesc::GetBlock<framework_proto::BlockDesc>(
+    int32_t idx) {
   CHECK_LT(idx, BlocksSize()) << "idx >= blocks.size()";
   return desc_->mutable_blocks(idx);
 }
 
 template <>
-framework_proto::BlockDesc* ProgramDesc::AddBlock<framework_proto::BlockDesc>() {
+framework_proto::BlockDesc*
+ProgramDesc::AddBlock<framework_proto::BlockDesc>() {
   return desc_->add_blocks();
 }
 

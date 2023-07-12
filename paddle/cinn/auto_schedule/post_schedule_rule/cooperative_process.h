@@ -20,8 +20,9 @@ namespace cinn {
 namespace auto_schedule {
 
 /*
- * @brief Rewrite the cooperative_process annotation to actually bind the loop on threadIdx.
- * This rule is used for collaborative data handling of multiple threads within the same block.
+ * @brief Rewrite the cooperative_process annotation to actually bind the loop
+ * on threadIdx. This rule is used for collaborative data handling of multiple
+ * threads within the same block.
  */
 class CooperativeProcess : public PostScheduleRule {
  public:

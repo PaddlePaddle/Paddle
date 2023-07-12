@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/region.h"

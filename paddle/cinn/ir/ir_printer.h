@@ -29,13 +29,14 @@ class LoweredFunc;
 namespace ir {
 class Module;
 
-struct IrPrinter : public IRVisitor {
+struct IrPrinter : public IRVisitorRequireReImpl<void> {
   explicit IrPrinter(std::ostream &os) : os_(os) {}
 
   //! Emit an expression on the output stream.
   void Print(Expr e);
   //! Emit a expression list with , splitted.
-  void Print(const std::vector<Expr> &exprs, const std::string &splitter = ", ");
+  void Print(const std::vector<Expr> &exprs,
+             const std::string &splitter = ", ");
   //! Emit a binary operator
   template <typename IRN>
   void PrintBinaryOp(const std::string &op, const BinaryOpNode<IRN> *x);
@@ -68,7 +69,8 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a);
 std::ostream &operator<<(std::ostream &os, const Module &m);
 
 template <typename IRN>
-void IrPrinter::PrintBinaryOp(const std::string &op, const BinaryOpNode<IRN> *x) {
+void IrPrinter::PrintBinaryOp(const std::string &op,
+                              const BinaryOpNode<IRN> *x) {
   os_ << "(";
   Print(x->a());
   os_ << " " + op + " ";

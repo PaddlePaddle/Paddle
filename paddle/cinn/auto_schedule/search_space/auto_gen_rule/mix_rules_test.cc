@@ -29,32 +29,35 @@ namespace auto_schedule {
 
 class TestMixRules : public TestAutoGenRuleBase {
  public:
-  std::vector<std::string> default_input_names  = {"X", "Y"};
+  std::vector<std::string> default_input_names = {"X", "Y"};
   std::vector<std::string> default_output_names = {"temp_matmul_out"};
 };
 
 TEST_F(TestMixRules, 2DMatmulOnMultiTilingRelated) {
-  frontend::Program matmul_op = tests::OpBuilder("matmul").Build({{"X", {32, 32}}, {"Y", {32, 32}}});
+  frontend::Program matmul_op =
+      tests::OpBuilder("matmul").Build({{"X", {32, 32}}, {"Y", {32, 32}}});
   Initialize(common::DefaultNVGPUTarget());
-  ir::IRSchedule ir_schedule       = MakeIRSchedule(matmul_op);
+  ir::IRSchedule ir_schedule = MakeIRSchedule(matmul_op);
   std::vector<ir::Expr> func_bodys = ir_schedule.GetModule().GetExprs();
   ASSERT_EQ(func_bodys.size(), 1UL);
   VLOG(6) << "Original Expr:\n" << func_bodys[0];
 
   // Apply MultiLevelTiling
-  MultiLevelTiling multi_level_tiling(target_, MultiLevelTiling::kConfigs.at(target_.arch));
+  MultiLevelTiling multi_level_tiling(
+      target_, MultiLevelTiling::kConfigs.at(target_.arch));
   multi_level_tiling.Init(&ir_schedule);
   ASSERT_EQ(multi_level_tiling.NumberApplicable(), 1);
   multi_level_tiling.ApplyRandomly();
   VLOG(6) << "after MultiLevelTiling Expr:\n" << func_bodys[0];
 
   // build ir::Module and debug source code
-  auto ir_module   = BuildIRModule(ir_schedule);
+  auto ir_module = BuildIRModule(ir_schedule);
   auto source_code = GenSourceCode(ir_module);
   VLOG(6) << "scheduled source code:\n" << source_code;
   // execute and check precision
   CheckResult(GenExecutableKernel(ir_module),
-              GenExecutableKernel(BuildIRModule(MakeIRSchedule(matmul_op, /* apply_manual_schedule */ true))),
+              GenExecutableKernel(BuildIRModule(
+                  MakeIRSchedule(matmul_op, /* apply_manual_schedule */ true))),
               default_input_names,
               default_output_names,
               {{32, 32}, {32, 32}},

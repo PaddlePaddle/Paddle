@@ -128,8 +128,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 gamma=0.5,
             )
             Step_scheduler = paddle.optimizer.lr.StepDecay(0.5, step_size=3)
-            Reducelr_scheduler = fluid.dygraph.ReduceLROnPlateau(
-                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
+            Reducelr_scheduler = paddle.optimizer.lr.ReduceOnPlateau(
+                learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
             adam1 = fluid.optimizer.Adam(
@@ -166,8 +166,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             Step_scheduler_test = paddle.optimizer.lr.StepDecay(
                 0.5, step_size=3
             )
-            Reducelr_scheduler_test = fluid.dygraph.ReduceLROnPlateau(
-                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
+            Reducelr_scheduler_test = paddle.optimizer.lr.ReduceOnPlateau(
+                learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
             paddle.save(adam1.state_dict(), "save_path.pdopt")
@@ -209,8 +209,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             )
             adam_test.set_dict(opt_state)
             self.assertEqual(
-                adam_test._learning_rate.best_loss,
-                adam3._learning_rate.best_loss,
+                adam_test._learning_rate.best,
+                adam3._learning_rate.best,
                 "best_loss is different before and after set_dict",
             )
             self.assertEqual(
@@ -224,8 +224,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 "num_bad_epochs is different before and after set_dict",
             )
             self.assertEqual(
-                adam_test._learning_rate.epoch_num,
-                adam3._learning_rate.epoch_num,
+                adam_test._learning_rate.last_epoch,
+                adam3._learning_rate.last_epoch,
                 "epoch is different before and after set_dict",
             )
             self.assertEqual(
@@ -245,35 +245,37 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 right_result = noam_decay(
                     step, d_model, warmup_steps, learning_rate
                 )
+                lr.step()
                 fluid_result = lr()
 
                 self.assertAlmostEqual(
                     right_result,
-                    fluid_result[0],
+                    fluid_result,
                     msg='Failed lr scheduler in step {}, Python result is {}, Fluid result is {}'.format(
-                        step, right_result, fluid_result[0]
+                        step, right_result, fluid_result
                     ),
                 )
 
     def test_LinearLrWarmup(self):
         with fluid.dygraph.guard():
-            lr = fluid.layers.polynomial_decay(
+            lr = paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=1.0,
                 decay_steps=10,
-                end_learning_rate=0.0,
+                end_lr=0.0,
                 power=1.0,
             )
-            lr = fluid.layers.linear_lr_warmup(
+            lr.step()
+            lr = paddle.optimizer.lr.LinearWarmup(
                 learning_rate=lr, warmup_steps=2, start_lr=0.0, end_lr=1.0
             )
-
+            lr.step()
             right_result = [0.5, 0.9, 0.8, 0.7, 0.6]
             for i in range(5):
+                if i == 1:
+                    lr.step()
                 t = lr()
-
-                np.testing.assert_allclose(
-                    t.numpy().item(), right_result[i], rtol=1e-05
-                )
+                lr.step()
+                np.testing.assert_allclose(t, right_result[i], rtol=1e-05)
 
             with self.assertRaises(TypeError):
                 lr = fluid.layers.linear_lr_warmup(

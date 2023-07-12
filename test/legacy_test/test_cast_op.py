@@ -34,7 +34,8 @@ def cast_wrapper(x, out_dtype=None):
 
 class TestCastOpFp32ToFp64(OpTest):
     def setUp(self):
-        ipt = np.random.random(size=[10, 10])
+        self.init_shapes()
+        ipt = np.random.random(size=self.input_shape)
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
@@ -46,11 +47,19 @@ class TestCastOpFp32ToFp64(OpTest):
         self.python_api = cast_wrapper
         self.public_python_api = cast_wrapper
 
+    def init_shapes(self):
+        self.input_shape = [10, 10]
+
     def test_check_output(self):
         self.check_output()
 
     def test_grad(self):
         self.check_grad(['X'], ['Out'], check_prim=True)
+
+
+class TestCastOpFp32ToFp64_ZeroDim(TestCastOpFp32ToFp64):
+    def init_shapes(self):
+        self.input_shape = ()
 
 
 class TestCastOpFp16ToFp32(OpTest):

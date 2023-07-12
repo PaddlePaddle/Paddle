@@ -26,8 +26,9 @@
 namespace cinn {
 namespace poly {
 
-DomainAddUnitLoopMutator::DomainAddUnitLoopMutator(const std::vector<std::string>& dim_names,
-                                                   const std::vector<std::tuple<int, int, int>>& dim_min_max)
+DomainAddUnitLoopMutator::DomainAddUnitLoopMutator(
+    const std::vector<std::string>& dim_names,
+    const std::vector<std::tuple<int, int, int>>& dim_min_max)
     : dim_names_(dim_names), dim_min_max_(dim_min_max) {}
 
 void DomainAddUnitLoopMutator::operator()(ir::Expr* expr) {
@@ -40,12 +41,13 @@ void DomainAddUnitLoopMutator::operator()(ir::Expr* expr) {
 
 void DomainAddUnitLoopMutator::Visit(const ir::For* op, Expr* expr) {
   VLOG(6) << "DomainAddUnitLoopMutator Visit For";
-  ir::For* node      = expr->As<ir::For>();
+  ir::For* node = expr->As<ir::For>();
   bool add_unit_loop = false;
   if (parent_for_.size() < dim_names_.size()) {
-    std::string check_name      = dim_names_[parent_for_.size()];
+    std::string check_name = dim_names_[parent_for_.size()];
     std::tuple<int, int, int> t = dim_min_max_[parent_for_.size()];
-    if (!utils::Startswith(node->loop_var->name, check_name) && (std::get<2>(t) - std::get<1>(t) == 0)) {
+    if (!utils::Startswith(node->loop_var->name, check_name) &&
+        (std::get<2>(t) - std::get<1>(t) == 0)) {
       ir::Expr unit_loop = ir::For::Make(ir::Var(check_name),
                                          ir::Expr(0),
                                          ir::Expr(1),
@@ -57,7 +59,8 @@ void DomainAddUnitLoopMutator::Visit(const ir::For* op, Expr* expr) {
         parent_for_.push_back(unit_loop.As<ir::For>());
         longest_loop_.push_back(unit_loop);
         add_unit_loop = true;
-      } else if (parent_for_.back()->body.As<ir::For>() && parent_for_.back()->body == *expr) {
+      } else if (parent_for_.back()->body.As<ir::For>() &&
+                 parent_for_.back()->body == *expr) {
         parent_for_.back()->body = ir::Block::Make({unit_loop});
         parent_for_.push_back(unit_loop.As<ir::For>());
         longest_loop_.push_back(unit_loop);
@@ -75,7 +78,8 @@ void DomainAddUnitLoopMutator::Visit(const ir::For* op, Expr* expr) {
   }
 
   if (add_unit_loop) {
-    ir::IRMutator<>::Visit(&(parent_for_.back()->body), &(parent_for_.back()->body));
+    ir::IRMutator<>::Visit(&(parent_for_.back()->body),
+                           &(parent_for_.back()->body));
     parent_for_.pop_back();
   } else {
     parent_for_.push_back(node);
@@ -87,26 +91,29 @@ void DomainAddUnitLoopMutator::Visit(const ir::For* op, Expr* expr) {
 
 void DomainAddUnitLoopMutator::Visit(const ir::PolyFor* op, Expr* expr) {
   VLOG(6) << "DomainAddUnitLoopMutator Visit PolyFor";
-  ir::PolyFor* node  = expr->As<ir::PolyFor>();
+  ir::PolyFor* node = expr->As<ir::PolyFor>();
   bool add_unit_loop = false;
   if (parent_poly_for_.size() < dim_names_.size()) {
-    std::string check_name      = dim_names_[parent_poly_for_.size()];
+    std::string check_name = dim_names_[parent_poly_for_.size()];
     std::tuple<int, int, int> t = dim_min_max_[parent_poly_for_.size()];
-    if (!utils::Startswith(node->iterator->name, check_name) && (std::get<2>(t) - std::get<1>(t) == 0)) {
-      ir::Expr unit_loop = ir::PolyFor::Make(ir::Var(check_name),
-                                             ir::Expr(0),
-                                             ir::LE::Make(ir::Var(check_name), ir::Expr(0)),
-                                             ir::Expr(1),
-                                             ir::ForType::Serial,
-                                             node->device_api,
-                                             ir::Block::Make({*expr}));
+    if (!utils::Startswith(node->iterator->name, check_name) &&
+        (std::get<2>(t) - std::get<1>(t) == 0)) {
+      ir::Expr unit_loop =
+          ir::PolyFor::Make(ir::Var(check_name),
+                            ir::Expr(0),
+                            ir::LE::Make(ir::Var(check_name), ir::Expr(0)),
+                            ir::Expr(1),
+                            ir::ForType::Serial,
+                            node->device_api,
+                            ir::Block::Make({*expr}));
 
       if (parent_poly_for_.empty()) {
         *expr = unit_loop;
         parent_poly_for_.push_back(unit_loop.As<ir::PolyFor>());
         longest_loop_.push_back(unit_loop);
         add_unit_loop = true;
-      } else if (parent_poly_for_.back()->body.As<ir::PolyFor>() && parent_poly_for_.back()->body == *expr) {
+      } else if (parent_poly_for_.back()->body.As<ir::PolyFor>() &&
+                 parent_poly_for_.back()->body == *expr) {
         parent_poly_for_.back()->body = ir::Block::Make({unit_loop});
         parent_poly_for_.push_back(unit_loop.As<ir::PolyFor>());
         longest_loop_.push_back(unit_loop);
@@ -124,7 +131,8 @@ void DomainAddUnitLoopMutator::Visit(const ir::PolyFor* op, Expr* expr) {
   }
 
   if (add_unit_loop) {
-    ir::IRMutator<>::Visit(&(parent_poly_for_.back()->body), &(parent_poly_for_.back()->body));
+    ir::IRMutator<>::Visit(&(parent_poly_for_.back()->body),
+                           &(parent_poly_for_.back()->body));
     parent_poly_for_.pop_back();
   } else {
     parent_poly_for_.push_back(node);
@@ -145,8 +153,9 @@ void DomainAddUnitLoopMutator::MutateAfterVisit(ir::Expr* expr) {
     std::tuple<int, int, int> t = dim_min_max_[i];
     if (longest_loop_[i].As<ir::For>()) {
       const ir::For* node = longest_loop_[i].As<ir::For>();
-      if (utils::Startswith(node->loop_var->name, dim_names_[i]) && node->min.is_constant() &&
-          node->min.as_int32() == std::get<1>(t) && node->extent.is_constant() &&
+      if (utils::Startswith(node->loop_var->name, dim_names_[i]) &&
+          node->min.is_constant() && node->min.as_int32() == std::get<1>(t) &&
+          node->extent.is_constant() &&
           node->extent.as_int32() == std::get<2>(t)) {
         ++loop_match_len;
       } else {
@@ -155,9 +164,10 @@ void DomainAddUnitLoopMutator::MutateAfterVisit(ir::Expr* expr) {
       }
     } else if (longest_loop_[i].As<ir::PolyFor>()) {
       const ir::PolyFor* node = longest_loop_[i].As<ir::PolyFor>();
-      if (utils::Startswith(node->iterator->name, dim_names_[i]) && node->init.is_constant() &&
-          node->init.as_int32() == std::get<1>(t) &&
-          node->condition == ir::LE::Make(ir::Var(dim_names_[i]), ir::Expr(std::get<2>(t)))) {
+      if (utils::Startswith(node->iterator->name, dim_names_[i]) &&
+          node->init.is_constant() && node->init.as_int32() == std::get<1>(t) &&
+          node->condition ==
+              ir::LE::Make(ir::Var(dim_names_[i]), ir::Expr(std::get<2>(t)))) {
         ++loop_match_len;
       } else {
         loop_match_len = -1;
@@ -182,7 +192,9 @@ void DomainAddUnitLoopMutator::MutateAfterVisit(ir::Expr* expr) {
   }
 
   if (longest_loop_.empty() || longest_loop_.back().As<ir::PolyFor>()) {
-    ir::Expr body = longest_loop_.empty() ? *expr : longest_loop_.back().As<ir::PolyFor>()->body;
+    ir::Expr body = longest_loop_.empty()
+                        ? *expr
+                        : longest_loop_.back().As<ir::PolyFor>()->body;
     for (int i = dim_min_max_.size() - 1; i >= loop_match_len; --i) {
       if (!body.As<ir::Block>()) {
         body = ir::Block::Make({body});
@@ -193,7 +205,9 @@ void DomainAddUnitLoopMutator::MutateAfterVisit(ir::Expr* expr) {
           ir::LE::Make(ir::Var(dim_names_[i]), ir::Expr(0)),
           ir::Expr(1),
           ir::ForType::Serial,
-          longest_loop_.empty() ? ir::DeviceAPI::UNK : longest_loop_.back().As<ir::PolyFor>()->device_api,
+          longest_loop_.empty()
+              ? ir::DeviceAPI::UNK
+              : longest_loop_.back().As<ir::PolyFor>()->device_api,
           body);
     }
     if (longest_loop_.empty()) {
@@ -205,8 +219,12 @@ void DomainAddUnitLoopMutator::MutateAfterVisit(ir::Expr* expr) {
     ir::For* node = longest_loop_.back().As<ir::For>();
     ir::Expr body = node->body;
     for (int i = dim_min_max_.size() - 1; i >= loop_match_len; --i) {
-      ir::Expr unit_loop =
-          ir::For::Make(ir::Var(dim_names_[i]), ir::Expr(0), ir::Expr(1), ir::ForType::Serial, node->device_api, body);
+      ir::Expr unit_loop = ir::For::Make(ir::Var(dim_names_[i]),
+                                         ir::Expr(0),
+                                         ir::Expr(1),
+                                         ir::ForType::Serial,
+                                         node->device_api,
+                                         body);
       body = ir::Block::Make({unit_loop});
     }
     node->body = body;
