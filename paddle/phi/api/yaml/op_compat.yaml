@@ -882,6 +882,8 @@
     {x : Ids, weight : W}
   outputs :
     out : Out
+  attrs :
+   sparse : is_sparse
   manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,

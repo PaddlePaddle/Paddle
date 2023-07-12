@@ -38,7 +38,7 @@ void CustomKernelMap::RegisterCustomKernel(const std::string& name,
 void CustomKernelMap::RegisterCustomKernels() {
   VLOG(3) << "Size of custom_kernel_map: " << kernels_.size();
 
-  if (kernels_.size() <= 0) {
+  if (kernels_.empty()) {
     LOG(INFO) << "No custom kernel info found in loaded lib(s).";
     return;
   }

@@ -764,7 +764,7 @@ void ProgramInterpreter::BuildSkipShareLoDInfo() {
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
         if (var->IsType<phi::DenseTensor>()) {
-          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
+          if (!var->Get<phi::DenseTensor>().lod().empty()) {
             can_skip_lod = false;
             break;
           }
