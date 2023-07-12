@@ -324,10 +324,10 @@ void BuildPhiContext(
         ctx->EmplaceBackOutput(out_ptr);
       } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
         ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
-            &(scope->Var(name)->Get<phi::DenseTensor>()))));
+            &(inner_scope->Var(name)->Get<phi::DenseTensor>()))));
       } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
         ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
-            &(scope->Var(name)->Get<phi::SelectedRows>()))));
+            &(inner_scope->Var(name)->Get<phi::SelectedRows>()))));
       } else {
         PADDLE_THROW("not support type");
       }
