@@ -116,7 +116,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
 
     size_t reduce_size = reduce_dims_vec.size();
     size_t reshape_size = reshape_dims_vec.size();
-    bool just_copy = (reduce_dims_vec.size() == 0);
+    bool just_copy = (reduce_dims_vec.empty());
     ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // If this turns out to be a No-Op, simply perform a tensor copy

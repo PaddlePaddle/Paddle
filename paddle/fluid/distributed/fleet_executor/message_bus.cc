@@ -39,7 +39,7 @@ void MessageBus::Init(
   rank_to_addr_ = rank_to_addr;
   addr_ = addr;
 
-  if (addr_ != "") {
+  if (!addr_.empty()) {
     const auto& addr = GetAddr(rank_);
     PADDLE_ENFORCE_EQ(addr,
                       addr_,
@@ -55,7 +55,7 @@ void MessageBus::Init(
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   // NOTE: To make the brpc is compatible with collective,
   // need release the handler holding the ip address.
-  if (addr_ != "") {
+  if (!addr_.empty()) {
     VLOG(3) << "Message bus is releasing the fd held by gen_comm_id.";
     paddle::platform::SocketServer& socket_server =
         paddle::platform::SocketServer::GetInstance(addr_);
@@ -174,7 +174,7 @@ bool MessageBus::DispatchMsgToCarrier(
 }
 
 void MessageBus::ListenPort() {
-  if (addr_ == "") {
+  if (addr_.empty()) {
     LOG(INFO) << "No need listen to port since training on single card.";
     return;
   }
