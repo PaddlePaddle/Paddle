@@ -185,7 +185,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
             pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
         nullptr);
 
-    if (tensor_dims.size() == 0) {
+    if (tensor_dims.empty()) {
       py_dims[0] = 0;
       py_strides[0] = 0;
       PyObject* array = api.PyArray_NewFromDescr_(

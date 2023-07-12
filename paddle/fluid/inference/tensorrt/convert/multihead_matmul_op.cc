@@ -77,10 +77,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
     bool flag_varseqlen = engine_->use_varseqlen() &&
-                          engine_->tensorrt_transformer_posid() != "" &&
-                          engine_->tensorrt_transformer_maskid() != "";
+                          !engine_->tensorrt_transformer_posid().empty() &&
+                          !engine_->tensorrt_transformer_maskid().empty();
     if (engine_->with_dynamic_shape()) {
-      if (engine_->tensorrt_transformer_maskid() != "" &&
+      if (!engine_->tensorrt_transformer_maskid().empty() &&
           engine_->precision() != phi::DataType::FLOAT32 &&
           platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
               75) {

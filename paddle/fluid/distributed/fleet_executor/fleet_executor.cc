@@ -261,7 +261,7 @@ void FleetExecutor::InitMessageBus() {
       addr = ip_port;
     }
   }
-  if (addr == "") {
+  if (addr.empty()) {
     PADDLE_ENFORCE_EQ(
         rank_to_addr.size(),
         1,
@@ -273,9 +273,9 @@ void FleetExecutor::InitMessageBus() {
         platform::errors::NotFound("Address is empty but cur rank is not 0."));
   }
   VLOG(3) << "Current rank is " << cur_rank << " and the ip_port is "
-          << (addr == "" ? "empty" : addr) << ".";
+          << (addr.empty() ? "empty" : addr) << ".";
   VLOG(3) << "The number of ranks are "
-          << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
+          << (rank_to_addr.empty() ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
   GlobalVal<MessageBus>::Get()->Init(cur_rank, rank_to_addr, addr);
 }

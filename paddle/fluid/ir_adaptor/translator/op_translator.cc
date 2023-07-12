@@ -90,7 +90,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
   bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
-  if (input_names.size() == 0 || output_names.size() == 0) {
+  if (input_names.empty() || output_names.empty()) {
     return inplace;
   }
 
@@ -103,7 +103,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
                         output_names.end(),
                         std::back_inserter(name_intersection));
 
-  if (name_intersection.size() > 0) {
+  if (!name_intersection.empty()) {
     std::string redundant_variables = std::accumulate(
         std::next(name_intersection.begin()),
         name_intersection.end(),
@@ -381,7 +381,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
-    if (legacy_input_vars.size() == 0) {
+    if (legacy_input_vars.empty()) {
       if (info.optional) {
         op_inputs.push_back(ir::OpResult(nullptr));
         continue;
@@ -390,7 +390,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << legacy_input_name << " " << legacy_input_vars.size();
 
-    if (legacy_input_vars.size() == 0 && mutable_attributes != nullptr &&
+    if (legacy_input_vars.empty() && mutable_attributes != nullptr &&
         mutable_attributes->count(info.name) != 0) {
       const auto& candidate_var_names =
           op_normalizer.GetMutableAttributeInfos(op_desc.Type(), info.name);
@@ -400,7 +400,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
                  << var_name << "]";
         if (op_desc.HasInput(var_name)) {
           legacy_input_vars = op_desc.Input(var_name, true);
-          if (legacy_input_vars.size() == 0) continue;
+          if (legacy_input_vars.empty()) continue;
           found_candidate_var = true;
           break;
         }
@@ -511,7 +511,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << "[" << op_desc.Type() << "]" << info.name << " :"
                << info.type_name << " " << legacy_output_name << " "
                << legacy_output_vars.size();
-      if (legacy_output_vars.size() == 0) {
+      if (legacy_output_vars.empty()) {
         op_output_types.push_back(ir::Type(nullptr));
         continue;
       }
@@ -855,7 +855,7 @@ ir::OpResult TranslateDropOutStateIn(ir::IrContext* ctx,
     legacy_output_vars = op_desc.Output(legacy_output_name);
   }
 
-  if (legacy_output_vars.size() == 0) {
+  if (legacy_output_vars.empty()) {
     VLOG(3) << "[input translating] not find output variable: DropoutState";
     return ir::OpResult(nullptr);
   }
