@@ -14,8 +14,7 @@
 
 
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.frontend import NetBuilder
 from op_test import OpTest
 from op_test_helper import TestCaseHelper
 
