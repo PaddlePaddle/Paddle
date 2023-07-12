@@ -49,7 +49,7 @@ class PhiKernelInstruction : public InstructionBase {
     return infer_meta_interface_;
   }
 
-  void Run() override { std::cout << "phi run" << std::endl; }
+  void Run() override;
 
  private:
   std::string phi_op_name_;

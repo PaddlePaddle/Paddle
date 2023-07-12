@@ -126,7 +126,7 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
-bool IsCommunicationOp(const ir::Operation* op) {
+bool IsCommunicationOp(const ::ir::Operation* op) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();

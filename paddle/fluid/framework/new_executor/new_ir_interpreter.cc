@@ -236,6 +236,39 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
+FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
+                                    bool need_fetch) {
+  SetDeviceId(place_);
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    ::ir::BuildScope(
+        *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
+    BuildInstruction();
+    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+         ++instr_id) {
+      vec_instruction_base_[instr_id]->Run();
+    }
+  } else {
+    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+         ++instr_id) {
+      vec_instruction_base_[instr_id]->Run();
+    }
+  }
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
+  // return Fetch Tensors
+  Scope* inner_scope = InnerScope();
+  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+  if (fetch_var && need_fetch) {
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+    return fetch_list;
+  } else {
+    return {};
+  }
+}
+
 void NewIRInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }

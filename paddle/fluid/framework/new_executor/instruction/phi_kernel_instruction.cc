@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
@@ -30,6 +31,42 @@
 
 namespace paddle {
 namespace framework {
+
+OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return OpFuncType::kCpuSync;
+  }
+
+  PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
+                    true,
+                    phi::errors::Fatal("Unsupported current place %s", place));
+
+  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
+  // computing. They execute serially in device thread and block CUDA kernel
+  // launching in other GPU OPs. To improve performance, set them as kGpuSync
+  // and so that they would be dispatched to host thread.
+  auto op_attributes = op->attributes();
+  auto op_name =
+      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+  if (op_name == kCoalesceTensor &&
+      (!platform::is_xpu_place(place) ||
+       op->attribute<ir::BoolAttribute>("persist_output").data() == false) &&
+      op->attribute<ir::BoolAttribute>("set_constant").data() == false &&
+      op->attribute<ir::BoolAttribute>("copy_data").data() == false) {
+    return OpFuncType::kGpuSync;
+  }
+
+  // for memcpy explicitly called by user
+  if (platform::is_gpu_place(place) && op_name == interpreter::kMemcpyD2H) {
+    return OpFuncType::kGpuSync;
+  }
+
+  if (op_name == "shape") {
+    return OpFuncType::kGpuSync;
+  }
+  return OpFuncType::kGpuAsync;
+}
+
 PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
     const platform::Place& place,
@@ -54,32 +91,34 @@ PhiKernelInstruction::PhiKernelInstruction(
   }
 
   // Todo: support paddle::dialect::DistAttribute
-  if (op_attributes.count("execution_stream") != 0) {
-    SetExecutionStream(op_attributes.at("execution_stream")
-                           .dyn_cast<::ir::StrAttribute>()
-                           .data());
-  }
-  if (op_attributes.count("stream_priority") != 0) {
-    SetStreamPriority(op_attributes.at("stream_priority")
-                          .dyn_cast<::ir::Int32Attribute>()
-                          .data());
-  }
-  if (op_attributes.count("scheduling_priority") != 0) {
-    SetSchedulingPriority(op_attributes.at("scheduling_priority")
-                              .dyn_cast<::ir::Int64Attribute>()
-                              .data());
-  }
-  // else {
-  //   if (interpreter::IsCommunicationOp(op)) {
-  //     // NOTE(Ruibiao): Dispatching computation before communication improves
-  //     // multi-stream overlap when the time cost of communication less than
-  //     // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
-  //     // training).
-  //     op_func_node.scheduling_priority_ = 1;
+  //   if (op_attributes.count("dist_attr") != 0) {
+  //     if (op_attributes.count("execution_stream") != 0) {
+  //         SetExecutionStream(op_attributes.at("execution_stream")
+  //                             .dyn_cast<::ir::StrAttribute>()
+  //                             .data());
+  //     }
+  //     if (op_attributes.count("stream_priority") != 0) {
+  //         SetStreamPriority(op_attributes.at("stream_priority")
+  //                             .dyn_cast<::ir::Int32Attribute>()
+  //                             .data());
+  //     }
+  //     if (op_attributes.count("scheduling_priority") != 0) {
+  //         SetSchedulingPriority(op_attributes.at("scheduling_priority")
+  //                                 .dyn_cast<::ir::Int64Attribute>()
+  //                                 .data());
+  //     }
+  //   } else {
+  //     if (interpreter::IsCommunicationOp(op)) {
+  //       // NOTE(Ruibiao): Dispatching computation before communication
+  //       improves
+  //       // multi-stream overlap when the time cost of communication less than
+  //       // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
+  //       // training).
+  //       op_func_node.scheduling_priority_ = 1;
+  //     }
   //   }
-  // }
 
-  // SetKernelType(AnalyseOpFuncType(op, place));
+  SetKernelType(AnalyseOpFuncType(op, place));
 
   infer_meta_interface_ =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
@@ -132,6 +171,13 @@ PhiKernelInstruction::PhiKernelInstruction(
   SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
   VLOG(6) << "finish process device context";
+}
+
+void PhiKernelInstruction::Run() {
+  VLOG(5) << "Run op " << phi_op_name_ << " infer meta.";
+  infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  VLOG(5) << "Run op " << phi_op_name_ << " kernel.";
+  (*(phi_kernel_))(&(kernel_context_));
 }
 
 }  // namespace framework

@@ -67,7 +67,7 @@ class AsyncWorkQueue {
 
 bool IsCommunicationOp(const OperatorBase* op);
 
-bool IsCommunicationOp(const ir::Operation* op);
+bool IsCommunicationOp(const ::ir::Operation* op);
 
 bool IsCommunicationOp(const Instruction& instr);
 

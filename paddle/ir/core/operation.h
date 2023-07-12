@@ -17,6 +17,7 @@
 #include <ostream>
 #include <vector>
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
@@ -63,6 +64,13 @@ class IR_API alignas(8) Operation final {
   void Print(std::ostream &os);
 
   const AttributeMap &attributes() const { return attributes_; }
+
+  template <typename T>
+  T attribute(const std::string &name) {
+    IR_ENFORCE(attributes().count(name) > 0 && attributes().at(name).isa<T>(),
+               "Attribute is not right.");
+    return attributes().at(name).dyn_cast<T>();
+  }
 
   void SetAttribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
