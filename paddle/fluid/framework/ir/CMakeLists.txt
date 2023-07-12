@@ -435,6 +435,10 @@ cc_test(
   SRCS delete_assign_op_pass_test.cc
   DEPS delete_assign_op_pass)
 cc_test(
+  test_identity_op_clean_pass_cc
+  SRCS identity_op_clean_pass_test.cc
+  DEPS identity_op_clean_pass)
+cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
   DEPS delete_dropout_op_pass)
