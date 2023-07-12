@@ -17,10 +17,10 @@
 #include <ostream>
 #include <vector>
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/macros.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
-#include "paddle/phi/core/macros.h"
 
 namespace ir {
 class OpBase;
