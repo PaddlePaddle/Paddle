@@ -1309,10 +1309,6 @@ void GraphGpuWrapper::set_keys2rank(int gpu_id,
   reinterpret_cast<GpuPsGraphTable *>(graph_table)->set_keys2rank(gpu_id, keys2rank);
 }
 
-void GraphGpuWrapper::debug(const char* desc) const {
-  reinterpret_cast<GpuPsGraphTable *>(graph_table)->debug(desc);
-}
-
 std::string &GraphGpuWrapper::get_node_type_size(std::string first_node_type) {
   auto node_types =
       paddle::string::split_string<std::string>(first_node_type, ";");

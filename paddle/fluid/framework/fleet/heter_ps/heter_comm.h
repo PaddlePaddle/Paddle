@@ -160,28 +160,11 @@ class HeterComm {
 
 #if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
-  void push_sparse_multi_node(int num,
-                              KeyType* d_keys,
-                              GradType* d_grads,
-                              size_t len,
-                              Sgd& sgd);  // NOLINT
-
-  template <typename Sgd>
   void update_one_table(int num,
                         KeyType* d_keys,
                         GradType* d_grads,
                         size_t len,
                         Sgd& sgd);  // NOLINT
-
-  int gather_one_node_grad(int num,
-                           KeyType* d_keys,
-                           GradType* d_grads,
-                           int len);
-
-  int gather_multi_node_grad(int num,
-                             KeyType* d_keys,
-                             GradType* d_grads,
-                             int len);
 
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
@@ -672,7 +655,7 @@ class HeterComm {
                               const int& trans_id,
                               const size_t& value_bytes,
                               const cudaStream_t& stream);
-  void scatter_inter_vals_by_copy(const int& gpu_id,
+  void scatter_inner_vals_by_copy(const int& gpu_id,
                                   const size_t& fea_size,
                                   const char* d_in_vals,
                                   void* d_out_vals,
@@ -700,7 +683,7 @@ class HeterComm {
                     const void* d_in_grads,
                     void* d_out_grads,
                     const cudaStream_t& stream);
-  size_t gather_inter_gradient_by_copy(const int& gpu_id,
+  size_t gather_inner_gradient_by_copy(const int& gpu_id,
                                        const size_t& push_size,
                                        KeyType* d_keys,
                                        void* d_push_vals,

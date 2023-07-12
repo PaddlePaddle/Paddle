@@ -107,7 +107,6 @@ void HeterPs<GPUAccessor, GPUOptimizer>::push_sparse(int num,
                                                      float* d_grads,
                                                      size_t len) {
   comm_->push_sparse(num, d_keys, d_grads, len);
-  // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
 
 }  // end namespace framework
