@@ -884,6 +884,11 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   out_v->set_dtype(out_dtype);
 }
 
+void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
                    MetaTensor* out_w,
