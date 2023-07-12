@@ -476,7 +476,7 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
   auto waiting_for_scale =
       UpdateScales(graph, var_quant_scales, scale_immutable_ops);
   std::unordered_set<std::string> waiting_for_scale_prev{};
-  while (waiting_for_scale.size() != 0 &&
+  while (!waiting_for_scale.empty() &&
          waiting_for_scale != waiting_for_scale_prev) {
     waiting_for_scale_prev.clear();
     waiting_for_scale_prev.insert(waiting_for_scale.begin(),
