@@ -574,8 +574,7 @@ PD_REGISTER_KERNEL(
     log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(
-    relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float,
-phi::dtype::float16) {}
+    relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::dtype::float16) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
