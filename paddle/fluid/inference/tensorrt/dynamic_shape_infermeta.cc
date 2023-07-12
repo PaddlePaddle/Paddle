@@ -490,7 +490,7 @@ nvinfer1::DimsExprs PNormInferMeta(
     for (int i = 0; i < x_dim.nbDims; ++i) {
       if (i != axis) reduce_dims.emplace_back(x_dim.d[i]);
     }
-    if (reduce_dims.size() == 0) {
+    if (reduce_dims.empty()) {
       reduce_dims.emplace_back(expr_builder.constant(1));
     }
   }
@@ -728,11 +728,11 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
 
   CHECK_EQ(padding_algorithm == "EXPLICIT", true);
   CHECK_EQ(data_format == "NCHW", true);
-  CHECK_EQ(output_size.size() == 0, true);
+  CHECK_EQ(output_size.empty(), true);
   CHECK_EQ(paddings.size() == 2, true);
   CHECK_EQ(x_dims.nbDims == 4, true);
   CHECK_EQ(x_dims.nbDims == filter_dims.nbDims, true);
-  CHECK_EQ(output_padding.size() == 0, true);
+  CHECK_EQ(output_padding.empty(), true);
 
   int stride_size = strides.size();
   for (int i = 0; i < stride_size; ++i) {
@@ -742,11 +742,11 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
   int in_sub_stride_size = x_dims.nbDims - stride_size;
   CHECK_EQ(in_sub_stride_size == 2, true);
 
-  if (output_size.size()) {
+  if (!output_size.empty()) {
     CHECK_EQ(output_size.size() == strides.size(), true);
   }
 
-  if (output_padding.size()) {
+  if (!output_padding.empty()) {
     CHECK_EQ(strides.size() == output_padding.size(), true);
   }
 
