@@ -134,6 +134,9 @@ class NormHelper {
                                        output_data,
                                        mean_data,
                                        var_data);
+
+      VLOG(0) << "+======";
+
     } else if (norm_type_ == "rmsnorm") {
       // For rmsnorm, it use Input's type weight and bias.
       // Currently, it only used in inference, so we do not save intermediate
@@ -187,6 +190,8 @@ void NormHelperKernel(const Context& dev_ctx,
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   T* out_data = dev_ctx.template Alloc<T>(out);
+  ComputeType* mean_data = dev_ctx.template Alloc<ComputeType>(mean);
+  ComputeType* variance_data = dev_ctx.template Alloc<ComputeType>(variance);
 
   int32_t rows = 1;
   int32_t cols = 1;
