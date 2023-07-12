@@ -49,8 +49,6 @@ class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
         self._clip = clip
         self._hcg = hcg
-        self.not_sharding_stage1 = False
-        # self.not_sharding_stage1 = True
         self._vpp_chunk_num = None
         self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
             os.getenv('FLAGS_force_align_vpp_grad_sum_order', '0')
