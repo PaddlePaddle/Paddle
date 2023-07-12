@@ -580,8 +580,11 @@ inline void RunProgramGradAPI(
 
       auto name2value = program_translator.Name2ValueMap();
 
-      // auto output_names = details::GetTensorsName( x_grad);
+      auto output_names = details::GetTensorsName(x_grad);
       auto param_grad_names = details::GetTensorsName(params_grad);
+      for (auto &t : output_names) {
+        param_grad_names.push_back(t);
+      }
       for (auto &name : param_grad_names) {
         // std::cerr << "out put set name " << name << std::endl;
         if (name == "@EMPTY@") {
