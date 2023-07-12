@@ -185,7 +185,6 @@ if(WITH_MKLDNN)
   pass_library(elementwise_act_onednn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
   pass_library(quant_transpose2_dequant_onednn_fuse_pass inference DIR mkldnn)
   pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
@@ -435,6 +434,10 @@ cc_test(
   test_delete_assign_op_pass_cc
   SRCS delete_assign_op_pass_test.cc
   DEPS delete_assign_op_pass)
+cc_test(
+  test_identity_op_clean_pass_cc
+  SRCS identity_op_clean_pass_test.cc
+  DEPS identity_op_clean_pass)
 cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc

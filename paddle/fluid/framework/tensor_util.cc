@@ -959,7 +959,7 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
 }
 
 std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
-  if (t.lod().size() > 0) {
+  if (!t.lod().empty()) {
     os << "  - lod: " << t.lod() << "\n";
   }
 

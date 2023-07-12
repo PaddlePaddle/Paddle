@@ -99,11 +99,9 @@ import paddle
 #                 x = paddle.static.data("x", [2, 2], dtype="float32")
 #                 y = paddle.static.data("y", [2, 2], dtype="float32")
 #                 x.stop_gradient = False
-
 #                 z = x * y
 
 #                 paddle.static.gradients(z, x)
-
 #             np_a = np.random.rand(2, 2).astype("float32")
 #             np_b = np.random.rand(2, 2).astype("float32")
 #             out = exe.run(

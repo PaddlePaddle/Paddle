@@ -104,6 +104,39 @@ repos:
             (?x)^(
                 paddle/utils/flat_hash_map\.h
             )$
+-   repo: local
+    hooks:
+    -   id: clang-tidy
+        name: clang-tidy
+        description: Parallel clang-tidy runner.
+        entry: python ./tools/codestyle/clang-tidy.py
+        language: system
+        files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
+        args:
+            - -p=build/
+            - -extra-arg=-Wno-unknown-warning-option
+            - -extra-arg=-Wno-pessimizing-move
+            - -extra-arg=-Wno-braced-scalar-init
+            - -extra-arg=-Wno-dangling-gsl
+            - -extra-arg=-Wno-deprecated-copy
+            - -extra-arg=-Wno-final-dtor-non-final-class
+            - -extra-arg=-Wno-implicit-int-float-conversion
+            - -extra-arg=-Wno-inconsistent-missing-override
+            - -extra-arg=-Wno-infinite-recursion
+            - -extra-arg=-Wno-mismatched-tags
+            - -extra-arg=-Wno-self-assign
+            - -extra-arg=-Wno-sign-compare
+            - -extra-arg=-Wno-sometimes-uninitialized
+            - -extra-arg=-Wno-tautological-overlap-compare
+            - -extra-arg=-Wno-unused-const-variable
+            - -extra-arg=-Wno-unused-lambda-capture
+            - -extra-arg=-Wno-unused-private-field
+            - -extra-arg=-Wno-unused-value
+            - -extra-arg=-Wno-unused-variable
+            - -extra-arg=-Wno-overloaded-virtual
+            - -extra-arg=-Wno-defaulted-function-deleted
+            - -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor
+            - -extra-arg=-Wno-return-type-c-linkage
 # For CMake files
 -   repo: local
     hooks:

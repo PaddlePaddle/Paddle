@@ -234,7 +234,8 @@ class FeatureNode : public Node {
     T v;
     size_t feat_str_size = feat_str_end - feat_str_begin;
     size_t Tsize = sizeof(T) * feat_str_size;
-    char buffer[Tsize] = {'\0'};
+    char buffer[Tsize];
+    memset(buffer, 0, Tsize * sizeof(char));
     for (size_t i = 0; i < feat_str_size; i++) {
       std::stringstream ss(*(feat_str_begin + i));
       ss >> v;
