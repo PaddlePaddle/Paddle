@@ -205,28 +205,6 @@ class ProcessGroup:
                         paddle.distributed.ParallelEnv().dev_id,
                     ),
                 )
-
-
-            # NOTE(zhiqiu): to avoid send/recv hang in lazy init
-            if self._group_type == 'p2p':
-                alltoall_tmp = paddle.empty(
-                    shape=[self.nranks, self.nranks], dtype="int32"
-                )
-                paddle._legacy_C_ops.all_to_all(
-                    alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
-                )
-                paddle.device.cuda.synchronize()
-
-        if self.nranks > 1:
-            barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.all_reduce(
-                barrier_tensor,
-                'reduce_type',
-                paddle.distributed.ReduceOp.SUM,
-                'ring_id',
-                0,
-            )
-
         self._is_instantiate = True
 
     def is_member(self):
