@@ -412,8 +412,7 @@ void multiply_double_grad(const Tensor& x,
       }
 
     } else {
-      auto dx = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
-      set_output<T>(dx, x_grad);
+      x_grad = nullptr;
     }
   }
   if (y_grad) {
@@ -434,22 +433,22 @@ void multiply_double_grad(const Tensor& x,
         set_output<T>(dy, y_grad);
       }
     } else {
-      auto dy = full<T>(phi::vectorize(y.dims()), 0.0, y.dtype());
-      set_output<T>(dy, y_grad);
+      y_grad = nullptr;
     }
   }
   if (grad_out_grad) {
-    Tensor ddout;
     if (grad_x_grad && grad_y_grad) {
-      ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
+      auto ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
+      set_output<T>(ddout, grad_out_grad);
     } else if (grad_x_grad) {
-      ddout = grad_x_grad.get() * y;
+      auto ddout = grad_x_grad.get() * y;
+      set_output<T>(ddout, grad_out_grad);
     } else if (grad_y_grad) {
-      ddout = grad_y_grad.get() * x;
+      auto ddout = grad_y_grad.get() * x;
+      set_output<T>(ddout, grad_out_grad);
     } else {
-      ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, grad_out.dtype());
+      grad_out_grad = nullptr;
     }
-    set_output<T>(ddout, grad_out_grad);
   }
 }
 
@@ -462,10 +461,10 @@ void add_double_grad(const Tensor& y,
                      Tensor* grad_out_grad) {
   if (grad_out_grad) {
     // ddout = ddx + ddy
-    Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
     if (!grad_x_grad && !grad_y_grad) {
-      set_output<T>(ddout, grad_out_grad);
+      grad_out_grad = nullptr;
     } else {
+      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
       if (grad_x_grad) {
         ddout = ddout + grad_x_grad.get();
       }
