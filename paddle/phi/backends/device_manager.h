@@ -273,7 +273,7 @@ class DeviceManager {
                                        uint64_t start_ns,
                                        void* context);
 
-  static void Clear();
+  static void Release();
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);

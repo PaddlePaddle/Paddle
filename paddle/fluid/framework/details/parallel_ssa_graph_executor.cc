@@ -288,7 +288,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
               &(PADDLE_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
         }
       }
-      if (lodtensor_ptrs.size() != 0) {
+      if (!lodtensor_ptrs.empty()) {
         phi::DenseTensor var;
         MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
         ret.emplace_back(var);
