@@ -236,8 +236,13 @@ std::vector<shape_t> InferShapeForBroadcastTo(
   VLOG(3) << "broadcast input shape: " << utils::Join(inputs_shape[0], ", ");
   VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
   VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
-  CHECK_EQ(inputs_shape[0].size(), broadcast_axes.size())
-      << "broadcast_axes's size should be same with the input shape's size";
+  if (inputs_shape[0].empty()) {
+    CHECK(broadcast_axes.size() == 1 && broadcast_axes[0] == 0)
+        << "broadcast_axes's size should be {1} when the input is 0D-Tensor";
+  } else {
+    CHECK_EQ(inputs_shape[0].size(), broadcast_axes.size())
+        << "broadcast_axes's size should be same with the input shape's size";
+  }
   CHECK_GE(out_shape.size(), broadcast_axes.size())
       << "broadcast_axes's size should be no more than out_shape's size";
 
