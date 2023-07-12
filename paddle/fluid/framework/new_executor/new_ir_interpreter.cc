@@ -97,9 +97,7 @@ NewIRInterpreter::~NewIRInterpreter() {
   gc_.reset(nullptr);
   async_work_queue_.reset();
   VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
-  // for (size_t idx = 0; idx < vec_instruction_base_.size(); idx++) {
-  //   delete vec_instruction_base_[idx];
-  // }
+
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
@@ -189,8 +187,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     ::ir::BuildScope(
         *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
-
-    BuildInstruction();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
