@@ -34,6 +34,7 @@ template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
                               size_t len,
+                              int dft_val,
                               uint64_t* global_num) {
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
@@ -48,7 +49,48 @@ __global__ void insert_kernel(Table* table,
 
   if (i < len) {
     kv.first = keys[i];
-    kv.second = 1;  // fake value
+    kv.second = dft_val;  // fake value
+    if (kv.first == 0) {
+      printf("insert dft 0 key, rank=%u\n", kv.second);
+    }
+    auto it = table->insert(kv, op, &local_num);
+    assert(it != table->end() && "error: insert fails: table is full");
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    atomicAdd(global_num, local_num);
+  }
+}
+
+template <typename Table>
+__global__ void insert_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              const typename Table::mapped_type* const vals,
+                              size_t len,
+                              uint64_t* global_num) {
+  ReplaceOp<typename Table::mapped_type> op;
+  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
+
+  __shared__ uint64_t local_num;
+
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (threadIdx.x == 0) {
+    local_num = 0;
+  }
+  __syncthreads();
+
+  if (i < len) {
+    kv.first = keys[i];
+    kv.second = vals[i];
+    if (kv.first == 0) {
+      printf("insert 0 key, rank=%u\n", kv.second);
+    }
+    /*
+    auto real = kv.second;
+    auto expect = (kv.first / 8) % 2;
+    PADDLE_ENFORCE(real == expect, "error, real:%u, expect:%u", real, expect);
+    */
     auto it = table->insert(kv, op, &local_num);
     assert(it != table->end() && "error: insert fails: table is full");
   }
@@ -108,6 +150,26 @@ __global__ void search_kernel(Table* table,
     auto it = table->find(keys[i]);
     if (it != table->end()) {
       vals[i] = it->second;
+    }
+  }
+}
+
+template <typename Table>
+__global__ void search_ranks_kernel(Table* table,
+                              const typename Table::key_type* const keys,
+                              typename Table::mapped_type* const vals,
+                              size_t len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      vals[i] = it->second;
+      /*
+      auto real = vals[i];
+      auto expect = (keys[i] / 8) % 2;
+      PADDLE_ENFORCE(real == expect,
+              "error, real:%u, expect:%u", real, expect);
+      */
     }
   }
 }
@@ -228,6 +290,52 @@ __global__ void get_keys_kernel(Table* table,
   }
 }
 
+template <typename Table>
+__global__ void get_key_values_kernel(Table* table,
+                                typename Table::key_type* d_keys,
+                                typename Table::mapped_type* d_vals,
+                                uint64_t* global_cursor,
+                                uint64_t unused_key) {
+  __shared__ typename Table::key_type local_key[256];
+  //__shared__ typename Table::mapped_type local_val[256];
+  __shared__ uint8_t local_val[256];
+  __shared__ uint64_t local_num;
+  __shared__ uint64_t global_num;
+
+  size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (threadIdx.x == 0) {
+    local_num = 0;
+  }
+  __syncthreads();
+  uint64_t len = table->size();
+  if (idx < len) {
+    typename Table::value_type val = *(table->data() + idx);
+    if (val.first != unused_key) {
+      uint64_t dst = atomicAdd(&local_num, 1);
+      local_key[dst] = val.first;
+      local_val[dst] = val.second;
+    }
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    global_num = atomicAdd(global_cursor, local_num);
+  }
+  __syncthreads();
+
+  if (threadIdx.x < local_num) {
+    d_keys[global_num + threadIdx.x] = local_key[threadIdx.x];
+    d_vals[global_num + threadIdx.x] = local_val[threadIdx.x];
+    /*
+    uint32_t real = d_vals[global_num + threadIdx.x];
+    uint32_t expect = (d_keys[global_num + threadIdx.x] / 8) % 2;
+    PADDLE_ENFORCE(real == expect,
+            "error, key:%lu real:%u expect:%u",
+            local_key[threadIdx.x], real, expect);
+    */
+  }
+}
+
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
@@ -311,7 +419,37 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
+void HashTable<KeyType, ValType>::get_ranks(const KeyType* d_keys,
+                                      ValType* d_vals,
+                                      size_t len,
+                                      StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  search_ranks_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, d_vals, len);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
+                                         size_t len,
+                                         uint64_t* global_num,
+                                         int dft_val,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, len, dft_val, global_num);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
+                                         const ValType* d_vals,
                                          size_t len,
                                          uint64_t* global_num,
                                          StreamType stream) {
@@ -320,7 +458,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-      container_, d_keys, len, global_num);
+      container_, d_keys, d_vals, len, global_num);
 }
 
 template <typename KeyType, typename ValType>
@@ -348,6 +486,21 @@ void HashTable<KeyType, ValType>::get_keys(KeyType* d_out,
   size_t shared_mem_size = sizeof(KeyType) * BLOCK_SIZE_;
   get_keys_kernel<<<grid_size, BLOCK_SIZE_, shared_mem_size, stream>>>(
       container_, d_out, global_cursor, unuse_key);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::get_key_values(KeyType* d_keys,
+                                                 ValType* d_vals,
+                                                 uint64_t* global_cursor,
+                                                 StreamType stream) {
+  const int BLOCK_SIZE = 128;
+  size_t len = container_->size();
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  KeyType unuse_key = std::numeric_limits<KeyType>::max();
+  size_t shared_mem_size = (sizeof(KeyType) + sizeof(ValType)) * BLOCK_SIZE_;
+  get_key_values_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, d_vals, global_cursor, unuse_key);
 }
 
 template <typename KeyType, typename ValType>
@@ -419,6 +572,8 @@ template class HashTable<uint64_t, uint64_t>;
 template class HashTable<uint64_t, uint64_t*>;
 template class HashTable<uint64_t, int64_t>;
 template class HashTable<uint64_t, int64_t*>;
+template class HashTable<uint64_t, uint32_t*>;
+template class HashTable<uint64_t, uint32_t>;
 template class HashTable<int64_t, int64_t>;
 template class HashTable<int64_t, uint64_t>;
 template class HashTable<int64_t, unsigned int>;
@@ -441,6 +596,8 @@ template void HashTable<int64_t, int>::get<cudaStream_t>(const int64_t* d_keys,
 
 template void HashTable<uint64_t, int>::get<cudaStream_t>(
     const uint64_t* d_keys, int* d_vals, size_t len, cudaStream_t stream);
+template void HashTable<uint64_t, unsigned int>::get<cudaStream_t>(
+    const uint64_t* d_keys, unsigned int* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<uint64_t, uint64_t>::get<cudaStream_t>(
     const uint64_t* d_keys, uint64_t* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<uint64_t, int64_t>::get<cudaStream_t>(
@@ -451,6 +608,11 @@ template void HashTable<int64_t, int64_t>::get<cudaStream_t>(
     const int64_t* d_keys, int64_t* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<int64_t, unsigned int>::get<cudaStream_t>(
     const int64_t* d_keys,
+    unsigned int* d_vals,
+    size_t len,
+    cudaStream_t stream);
+template void HashTable<uint64_t, unsigned int>::get_ranks<cudaStream_t>(
+    const uint64_t* d_keys,
     unsigned int* d_vals,
     size_t len,
     cudaStream_t stream);
@@ -474,6 +636,7 @@ template void HashTable<uint64_t, float*>::insert<cudaStream_t>(
 
 template void HashTable<int64_t, int>::insert<cudaStream_t>(
     const int64_t* d_keys, const int* d_vals, size_t len, cudaStream_t stream);
+
 template void HashTable<int64_t, int64_t>::insert<cudaStream_t>(
     const int64_t* d_keys,
     const int64_t* d_vals,
@@ -504,8 +667,29 @@ template void HashTable<int64_t, unsigned int>::insert<cudaStream_t>(
 template void HashTable<uint64_t, uint64_t>::get_keys<cudaStream_t>(
     uint64_t* d_out, uint64_t* global_cursor, cudaStream_t stream);
 
+template void HashTable<uint64_t, uint32_t>::get_keys<cudaStream_t>(
+    uint64_t* d_out, uint64_t* global_cursor, cudaStream_t stream);
+
+template void HashTable<uint64_t, uint32_t>::get_key_values<cudaStream_t>(
+    uint64_t* d_keys, uint32_t* d_vals, uint64_t* global_cursor, cudaStream_t stream);
+
 template void HashTable<uint64_t, uint64_t>::insert<cudaStream_t>(
     const uint64_t* d_keys,
+    uint64_t len,
+    uint64_t* global_num,
+    int dft_val,
+    cudaStream_t stream);
+
+template void HashTable<uint64_t, uint32_t>::insert<cudaStream_t>(
+    const uint64_t* d_keys,
+    uint64_t len,
+    uint64_t* global_num,
+    int dft_val,
+    cudaStream_t stream);
+
+template void HashTable<uint64_t, uint32_t>::insert<cudaStream_t>(
+    const uint64_t* d_keys,
+    const uint32_t* d_values,
     uint64_t len,
     uint64_t* global_num,
     cudaStream_t stream);

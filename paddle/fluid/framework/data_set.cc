@@ -39,6 +39,8 @@ USE_INT_STAT(STAT_total_feasign_num_in_mem);
 USE_INT_STAT(STAT_epoch_finish);
 PHI_DECLARE_bool(graph_get_neighbor_id);
 PHI_DECLARE_int32(gpugraph_storage_mode);
+PHI_DECLARE_string(graph_edges_split_mode);
+PHI_DECLARE_bool(query_dest_rank_by_multi_node);
 
 namespace paddle {
 namespace framework {
@@ -494,7 +496,24 @@ void DatasetImpl<T>::LoadIntoMemory() {
 
     uint64_t zerokey = 0;
     gpu_graph_total_keys_.emplace_back(zerokey);
-    VLOG(1) << "add zero key in multi node";
+    VLOG(0) << "add zero key in multi node";
+
+    // for fennel mode
+    keys_vec_.resize(thread_num_);
+    ranks_vec_.resize(thread_num_);
+    keys2rank_tables_.resize(thread_num_);
+    if (FLAGS_graph_edges_split_mode == "fennel" ||
+            FLAGS_query_dest_rank_by_multi_node) {
+      for (int i = 0; i < thread_num_; i++) {
+        keys_vec_[i] = readers_[i]->GetHostVec();
+        ranks_vec_[i] = readers_[i]->GetHostRanks();
+        keys2rank_tables_[i] = readers_[i]->GetKeys2RankTable();
+      }
+      keys_vec_[0]->push_back(zerokey);
+      if (readers_[0]->IsTrainMode() || readers_[0]->GetSageMode()) {
+        ranks_vec_[0]->push_back(0);
+      }
+    }
 
     if (GetEpochFinish() == true) {
       VLOG(0) << "epoch finish, set stat and clear sample stat!";

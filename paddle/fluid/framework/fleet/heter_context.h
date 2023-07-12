@@ -46,6 +46,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename KeyType, typename ValType>
+class HashTable;
+
 class HeterContext {
  public:
   virtual ~HeterContext() {
@@ -92,6 +95,12 @@ class HeterContext {
   std::vector<std::mutex*> mutex_;
   std::vector<std::vector<std::mutex*>> dim_mutex_;
   int multi_mf_dim_ = 0;
+
+  // keys: key id
+  // value: dest machine rank id
+  // vector: multi gpu data_feed
+  std::vector<std::unordered_map<uint64_t, uint32_t>> keys2rank_map_vec_;
+  std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>> keys2rank_tables_;
 
   void* sub_graph_feas = NULL;
   void* sub_graph_float_feas = NULL;
@@ -186,6 +195,11 @@ class HeterContext {
         }
       }
     }
+
+    for (auto & item : keys2rank_map_vec_) {
+      item.clear();
+    }
+    keys2rank_map_vec_.clear();
   }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {

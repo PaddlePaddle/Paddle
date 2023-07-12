@@ -52,7 +52,7 @@ PADDLE_DEFINE_EXPORTED_string(
 >>>>>>> eaabb314df... add fennel split, fix amp bug,  fix node edge not equal (#318)
     graph_edges_split_mode,
     "hard",
-    "graph split split, optional: [dbh,hard,none], default:hard");
+    "graph split split, optional: [dbh,hard,fennel,none], default:hard");
 PADDLE_DEFINE_EXPORTED_bool(graph_edges_split_debug,
                             false,
                             "graph split by debug");
@@ -1724,7 +1724,7 @@ void GraphTable::dbh_graph_feature_partition() {
   }
 }
 // query all ids rank
-void GraphTable::query_all_ids_rank(const size_t &total, const uint64_t *ids, int *ranks) {
+void GraphTable::query_all_ids_rank(const size_t &total, const uint64_t *ids, uint32_t *ranks) {
   std::vector<std::future<size_t>> wait_tasks;
   size_t step = static_cast<size_t>((total + load_thread_num_ - 1) / load_thread_num_);
   for (size_t start = 0; start < total; start = start + step) {
@@ -3763,7 +3763,7 @@ void GraphTable::calc_edge_type_limit() {
   std::vector<std::vector<int>> neighbor_size_array;
   neighbor_size_array.resize(task_pool_size_);
 
-  int max_neighbor_size;
+  int max_neighbor_size = 0;
   int neighbor_size_limit;
   size_t size_limit;
   double neighbor_size_percent = FLAGS_graph_neighbor_size_percent;

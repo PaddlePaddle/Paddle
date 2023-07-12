@@ -75,6 +75,7 @@ void PsGraphClient::FinalizeWorker() {
                                                     const uint64_t *keys,
                                                     size_t num,
                                                     uint16_t pass_id,
+                                                    const std::vector<std::unordered_map<uint64_t, uint32_t>> & keys2rank_vec,
                                                     const uint16_t &dim_id) {
   platform::Timer timeline;
   timeline.Start();
@@ -89,10 +90,30 @@ void PsGraphClient::FinalizeWorker() {
   for (int rank = 0; rank < _rank_num; ++rank) {
     ars[rank].Clear();
   }
+
   // split keys to rankid
   for (size_t i = 0; i < num; ++i) {
     auto &k = keys[i];
-    int rank = ps_wrapper->PartitionKeyForRank(k);
+    int rank = 0;
+    auto shard_num = keys2rank_vec.size();
+    if (shard_num > 0) {
+      auto shard = k % shard_num;
+      auto it = keys2rank_vec[shard].find(k);
+      if (it != keys2rank_vec[shard].end()) {
+        rank = it->second;
+        /*
+        int real = rank;
+        int expect = (k / 8) % 2;
+        CHECK(real == expect);
+        */
+      } else {
+        // Should not happen
+        VLOG(0) << "PullSparsePtr, miss key " << k << " rank=" << _rank_id;
+        CHECK(it != keys2rank_vec[shard].end());
+      }
+    } else {
+      rank = ps_wrapper->PartitionKeyForRank(k);
+    }
     if (rank == _rank_id) {
       local_keys.push_back(k);
     } else {

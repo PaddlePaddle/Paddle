@@ -1165,11 +1165,14 @@ PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                          false,
                          "enable debug gpu memory, default false");
 PHI_DEFINE_EXPORTED_bool(graph_embedding_split_infer_mode,
-                            false,
+                            true,
                             "graph embedding split infer mode not need nccl barrier");
 PHI_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
                             false,
                             "control multi-node sample");
+PADDLE_DEFINE_EXPORTED_bool(query_dest_rank_by_multi_node,
+                            false,
+                            "Control whether to query dest rank by multi machine");
 
 /**
  * ProcessGroupNCCL related FLAG

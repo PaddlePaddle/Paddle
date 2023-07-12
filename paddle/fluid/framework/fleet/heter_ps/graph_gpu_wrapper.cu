@@ -21,6 +21,7 @@
 #include "paddle/phi/core/flags.h"
 PHI_DECLARE_int32(gpugraph_storage_mode);
 PHI_DECLARE_bool(graph_metapath_split_opt);
+PHI_DECLARE_string(graph_edges_split_mode);
 
 namespace paddle {
 namespace framework {
@@ -1019,6 +1020,46 @@ void GraphGpuWrapper::build_gpu_graph_float_fea(
   return;
 }
 
+void GraphGpuWrapper::seek_keys_rank(int gpu_id,
+                      const uint64_t* d_in_keys,
+                      int len,
+                      uint32_t* d_out_ranks) {
+  platform::CUDADeviceGuard guard(gpu_id);
+  platform::CUDAPlace place = platform::CUDAPlace(gpu_id);
+  auto stream = get_local_stream(gpu_id);
+
+  std::vector<uint64_t> h_keys(len);
+  std::vector<uint32_t> h_ranks(len);
+  CUDA_CHECK(cudaMemcpyAsync(
+              h_keys.data(),
+              d_in_keys,
+              sizeof(uint64_t) * len,
+              cudaMemcpyDeviceToHost,
+              stream));
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+
+  if (FLAGS_graph_edges_split_mode == "fennel") {
+    reinterpret_cast<GpuPsGraphTable *>(graph_table)
+        ->cpu_graph_table_->query_all_ids_rank(len, h_keys.data(), h_ranks.data());
+  } else {
+    auto gpu_num = reinterpret_cast<GpuPsGraphTable *>(graph_table)
+        ->get_device_num();
+    for (size_t i = 0; i < len; ++i) {
+      bool hit = false;
+      auto & k = h_keys[i];
+      h_ranks[i] = (k / gpu_num) % node_size_;
+    }
+  }
+
+  CUDA_CHECK(cudaMemcpyAsync(
+              d_out_ranks,
+              h_ranks.data(),
+              sizeof(uint32_t) * len,
+              cudaMemcpyHostToDevice,
+              stream));
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+}
+
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
     NeighborSampleQuery q, bool cpu_switch, bool compress, bool weighted) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
@@ -1028,7 +1069,7 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
 NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_sage(
     int gpu_id,
     int edge_type_len,
-    uint64_t *key,
+    const uint64_t* d_keys,
     int sample_size,
     int len,
     std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
@@ -1037,7 +1078,7 @@ NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_sage(
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->graph_neighbor_sample_sage(gpu_id,
                                    edge_type_len,
-                                   key,
+                                   d_keys,
                                    sample_size,
                                    len,
                                    edge_type_graphs,
@@ -1261,6 +1302,15 @@ std::unordered_map<int, int> &GraphGpuWrapper::get_type_to_neighbor_limit() {
 std::unordered_map<int, int> &GraphGpuWrapper::get_graph_type_to_index() {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->type_to_index_;
+}
+
+void GraphGpuWrapper::set_keys2rank(int gpu_id,
+        std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank) {
+  reinterpret_cast<GpuPsGraphTable *>(graph_table)->set_keys2rank(gpu_id, keys2rank);
+}
+
+void GraphGpuWrapper::debug(const char* desc) const {
+  reinterpret_cast<GpuPsGraphTable *>(graph_table)->debug(desc);
 }
 
 std::string &GraphGpuWrapper::get_node_type_size(std::string first_node_type) {

@@ -46,6 +46,8 @@ limitations under the License. */
 
 PHI_DECLARE_int32(gpugraph_dedup_pull_push_mode);
 PHI_DECLARE_int32(gpugraph_storage_mode);
+PHI_DECLARE_bool(query_dest_rank_by_multi_node);
+PHI_DECLARE_string(graph_edges_split_mode);
 
 namespace paddle {
 namespace framework {
@@ -357,13 +359,90 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
     timeline.Start();
     add_key_to_local(vec_data);
     timeline.Pause();
-    VLOG(1) << "GpuGraphTotalKeys: " << vec_data.size()
+    VLOG(0) << "GpuGraphTotalKeys: " << vec_data.size()
             << ", add_key_to_local cost " << timeline.ElapsedSec()
             << " seconds.";
+
+    if (FLAGS_graph_edges_split_mode == "fennel" ||
+            FLAGS_query_dest_rank_by_multi_node) {
+      timeline.Start();
+      gpu_task->keys2rank_tables_ = dataset_for_pull->GetPassKeys2RankTable();
+      const auto & keys_vec = dataset_for_pull->GetPassKeysVec();
+      const auto & ranks_vec = dataset_for_pull->GetPassRanksVec();
+      size_t total_keys = 0;
+      size_t pred_keys = 0;
+      for (auto & keys : keys_vec) {
+        total_keys += keys->size();
+      }
+      pred_keys = total_keys / thread_keys_thread_num_;
+      gpu_task->keys2rank_map_vec_.resize(thread_keys_thread_num_);
+
+      auto build_keys2rank_func = [this](
+              const std::vector<std::vector<uint64_t>*> & keys_vec,
+              const std::vector<std::vector<uint32_t>*> & ranks_vec,
+              std::vector<std::unordered_map<uint64_t, uint32_t>>& keys2rank_maps,
+              size_t pred_size,
+              int id) {
+        keys2rank_maps[id].reserve(pred_size);
+        for (size_t i = 0; i < keys_vec.size(); ++i) {
+          if (!infer_mode_ || sage_mode_) {
+            CHECK(keys_vec[i]->size() == ranks_vec[i]->size());
+            for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
+              auto & key = (*keys_vec[i])[j];
+              auto & rank = (*ranks_vec[i])[j];
+              int shard_idx = key % thread_keys_thread_num_;
+              if (shard_idx == id) {
+                keys2rank_maps[id][key] = rank;
+              }
+            }
+          } else {
+            CHECK(ranks_vec[i]->size() == 0);
+            for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
+              auto & key = (*keys_vec[i])[j];
+              int shard_idx = key % thread_keys_thread_num_;
+              if (shard_idx == id) {
+                keys2rank_maps[id][key] = rank_id_;
+              }
+            }
+          }
+        }
+        VLOG(2) << "build keys2rank_map, shard_idx=" << id
+            << " shard_keys=" << keys2rank_maps[id].size();
+      };
+
+      for (int i = 0; i < thread_keys_thread_num_; i++) {
+        threads.push_back(
+                std::thread(
+                    build_keys2rank_func,
+                    std::ref(keys_vec),
+                    std::ref(ranks_vec),
+                    std::ref(gpu_task->keys2rank_map_vec_),
+                    pred_keys,
+                    i));
+      }
+      for (std::thread& t : threads) {
+        t.join();
+      }
+
+      size_t total_shard_keys = 0;
+      for (auto & shard : gpu_task->keys2rank_map_vec_) {
+          total_shard_keys += shard.size();
+      }
+      timeline.Pause();
+      VLOG(0) << "build keys2rank_map, cost " << timeline.ElapsedSec() << " seconds"
+          << ", total input keys=" << total_keys
+          << ", total uniq keys=" << total_shard_keys;
+      CHECK(total_shard_keys <= total_keys);
+    }
   }
 
+  timeline.Start();
   add_key_to_gputask(gpu_task);
+  timeline.Pause();
+  VLOG(0) << "add_key_to_gputask cost" << timeline.ElapsedSec()
+            << " seconds.";
 }
+
 void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
   platform::Timer time_stage;
@@ -697,7 +776,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   time_stage.Start();
   gpu_task->UniqueKeys();
   time_stage.Pause();
-  VLOG(1) << "passid=" << gpu_task->pass_id_
+  VLOG(0) << "passid=" << gpu_task->pass_id_
           << ", BuildPull slot feature uniq and sort cost time: "
           << time_stage.ElapsedSec();
 
@@ -779,6 +858,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
           local_dim_keys[i][j].data(),
           key_size,
           gpu_task->pass_id_,
+          gpu_task->keys2rank_map_vec_,
           j);
       bool flag = true;
 
@@ -836,7 +916,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   }
   task_futures.clear();
   timeline.Pause();
-  VLOG(1) << "passid=" << gpu_task->pass_id_
+  VLOG(0) << "passid=" << gpu_task->pass_id_
           << ", pull sparse from CpuPS into GpuPS total keys " << total_key
           << ", cost " << timeline.ElapsedSec() << " seconds.";
 }
@@ -846,11 +926,23 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
 #ifdef PADDLE_WITH_GPU_GRAPH
   auto& shard_keys = gpu_task->feature_dim_keys_[shard_id][dim_id];
   auto& shard_values = gpu_task->value_dim_ptr_[shard_id][dim_id];
+  auto& keys2rank_vec = gpu_task->keys2rank_map_vec_;
   size_t dedup_size = 0;
+
   for (size_t pos = 0; pos < shard_keys.size(); ++pos) {
     auto& key = shard_keys[pos];
-    if (PartitionKeyForRank(key) != rank_id_) {
-      continue;
+    auto shard_num = keys2rank_vec.size();
+    if (shard_num > 0) {
+      auto shard = key % shard_num;
+      auto it = keys2rank_vec[shard].find(key);
+      CHECK(it != keys2rank_vec[shard].end());
+      if ((int)(it->second) != rank_id_) {
+        continue;
+      }
+    } else {
+      if (PartitionKeyForRank(key) != rank_id_) {
+        continue;
+      }
     }
     if (dedup_size == pos) {
       ++dedup_size;
@@ -1277,11 +1369,16 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     VLOG(1) << i << " card with dynamic mf contains feasign nums total: "
             << feature_keys_count[i];
     size_max = std::max(size_max, feature_keys_count[i]);
+    if (FLAGS_graph_edges_split_mode == "fennel" ||
+            FLAGS_query_dest_rank_by_multi_node) {
+      resource_->set_keys2rank(i, gpu_task->keys2rank_tables_[i]);
+    }
   }
   if (size_max <= 0) {
     VLOG(0) << "Skip build gpu ps cause feasign nums = " << size_max;
     return;
   }
+
   auto accessor_wrapper_ptr =
       GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   if (HeterPs_ == NULL) {

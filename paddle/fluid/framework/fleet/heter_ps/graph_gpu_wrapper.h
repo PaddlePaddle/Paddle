@@ -153,6 +153,10 @@ class GraphGpuWrapper {
                                                 bool cpu_switch,
                                                 bool compress,
                                                 bool weighted);
+  void seek_keys_rank(int gpu_id,
+                      const uint64_t* d_in_keys,
+                      int len,
+                      uint32_t* d_out_ranks);
   NeighborSampleResult graph_neighbor_sample(int gpu_id,
                                              uint64_t* device_keys,
                                              int walk_degree,
@@ -160,7 +164,7 @@ class GraphGpuWrapper {
   NeighborSampleResultV2 graph_neighbor_sample_sage(
       int gpu_id,
       int edge_type_len,
-      uint64_t* key,
+      const uint64_t* d_keys,
       int sample_size,
       int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
@@ -224,7 +228,10 @@ class GraphGpuWrapper {
   std::unordered_map<int, int>& get_graph_type_to_index();
   std::string& get_node_type_size(std::string first_node_type);
   std::string& get_edge_type_size();
+  void set_keys2rank(int gpu_id,
+          std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank);
   void show_mem(const char* msg);
+  void debug(const char* desc) const;
 
   std::unordered_map<std::string, int> edge_to_id, node_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;

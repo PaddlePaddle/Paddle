@@ -249,6 +249,7 @@ HeterPsResource::HeterPsResource(const std::vector<int> &dev_ids) {
     resources_.push_back(resource);
     devid_2_index_[dev_ids_[i]] = i;
   }
+  keys2rank_vec_.resize(dev_ids.size());
 }
 
 ppStream HeterPsResource::comm_stream(int dev_num, int stream_num) {

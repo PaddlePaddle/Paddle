@@ -156,6 +156,7 @@ class PSClient {
       const uint64_t *keys UNUSED,
       size_t num UNUSED,
       uint16_t pass_id UNUSED,
+      const std::vector<std::unordered_map<uint64_t, uint32_t>> & keys2rank_vec UNUSED,
       const uint16_t &dim_id UNUSED = 0) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;

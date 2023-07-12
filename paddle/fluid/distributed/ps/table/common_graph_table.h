@@ -634,7 +634,7 @@ class GraphTable : public Table {
   Node *find_node(GraphTableType table_type, int idx, uint64_t id);
   Node *find_node(GraphTableType table_type, uint64_t id);
   // query all ids rank
-  void query_all_ids_rank(const size_t &total, const uint64_t *ids, int *ranks);
+  void query_all_ids_rank(const size_t &total, const uint64_t *ids, uint32_t *ranks);
 
   virtual int32_t Pull(TableContext &context UNUSED) { return 0; }  // NOLINT
   virtual int32_t Push(TableContext &context UNUSED) { return 0; }  // NOLINT

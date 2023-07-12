@@ -374,6 +374,7 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("set_infer_mode",  &GraphGpuWrapper::set_infer_mode)
       .def("set_slot_feature_separator",
            &GraphGpuWrapper::set_slot_feature_separator)
+      .def("debug", &GraphGpuWrapper::debug)
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
       .def("query_node_list", &GraphGpuWrapper::query_node_list)

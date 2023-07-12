@@ -138,7 +138,7 @@ class GpuPsGraphTable
   NeighborSampleResultV2 graph_neighbor_sample_sage(
       int gpu_id,
       int edge_type_len,
-      uint64_t* key,
+      const uint64_t* d_keys,
       int sample_size,
       int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
@@ -147,7 +147,7 @@ class GpuPsGraphTable
   NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
       int gpu_id,
       int edge_type_len,
-      uint64_t *key,
+      const uint64_t *key,
       int sample_size,
       int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
@@ -157,7 +157,7 @@ class GpuPsGraphTable
   NeighborSampleResultV2 graph_neighbor_sample_sage_all2all(
       int gpu_id,
       int edge_type_len,
-      uint64_t *key,
+      const uint64_t *key,
       int sample_size,
       int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
@@ -294,8 +294,15 @@ class GpuPsGraphTable
   gpuStream_t get_local_stream(int gpu_id) {
     return resource_->local_stream(gpu_id, 0);
   }
-  void set_infer_mode(bool infer_mode) {
-    infer_mode_ = infer_mode;
+  int get_device_num() const {
+    return gpu_num;
+  }
+  void debug(const char* desc) const {
+    VLOG(0) << "THIS is GpuPsGraphTable by " << desc;
+  }
+  void set_infer_mode(bool infer_mode) { infer_mode_ = infer_mode; }
+  void set_keys2rank(int gpu_id, std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank) {
+    resource_->set_keys2rank(gpu_id, keys2rank);
   }
 
   int gpu_num;

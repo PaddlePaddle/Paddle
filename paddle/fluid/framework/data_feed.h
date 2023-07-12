@@ -1029,8 +1029,10 @@ class GraphDataGenerator {
       return total_row_[0];
     }
   }
-
   std::vector<uint64_t>& GetHostVec() { return host_vec_; }
+  std::vector<uint32_t>& GetHostRanks() { return host_ranks_; }
+  std::shared_ptr<HashTable<uint64_t, uint32_t>> GetKeys2RankTable() { return keys2rank_table_; }
+
   bool get_epoch_finish() { return epoch_finish_; }
   int get_pass_end() { return pass_end_; }
   void clear_gpu_mem();
@@ -1042,7 +1044,10 @@ class GraphDataGenerator {
   bool DoWalkForTrain();
   void DoSageForTrain();
 
-  HashTable<uint64_t, uint64_t>* table_;
+  // key: key id,
+  // value: dest machine rank id
+  // Two usage: dup keys and cache dest machine rank of keys
+  std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank_table_;
   GraphDataGeneratorConfig conf_;
   std::vector<size_t> infer_cursor_;
   std::vector<size_t> jump_rows_;
@@ -1109,6 +1114,7 @@ class GraphDataGenerator {
   bool epoch_finish_;
   int pass_end_ = 0;
   std::vector<uint64_t> host_vec_;
+  std::vector<uint32_t> host_ranks_;
   std::vector<std::vector<uint64_t>> h_device_keys_len_;
   std::vector<uint64_t> h_train_metapath_keys_len_;
   uint64_t copy_unique_len_;
@@ -1260,8 +1266,12 @@ class DataFeed {
 }
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  virtual const std::vector<uint64_t>* GetHostVec() {
+  virtual std::vector<uint64_t>* GetHostVec() {
     return &(gpu_graph_data_generator_.GetHostVec());
+  }
+
+  virtual std::vector<uint32_t>* GetHostRanks() {
+    return &(gpu_graph_data_generator_.GetHostRanks());
   }
 
   virtual void clear_gpu_mem() { gpu_graph_data_generator_.clear_gpu_mem(); }
@@ -1290,6 +1300,11 @@ class DataFeed {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(DoWalkandSage) is not implemented."));
   }
+
+  std::shared_ptr<HashTable<uint64_t, uint32_t>> GetKeys2RankTable() {
+    return gpu_graph_data_generator_.GetKeys2RankTable();
+  }
+
 #endif
 
   virtual bool IsTrainMode() { return train_mode_; }

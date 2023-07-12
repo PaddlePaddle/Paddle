@@ -232,6 +232,7 @@ int32_t PsLocalClient::Initialize() {
     const uint64_t* keys,
     size_t num,
     uint16_t pass_id,
+    const std::vector<std::unordered_map<uint64_t, uint32_t>> & keys2rank_vec,
     const uint16_t& /**dim_id*/) {
   // FIXME
   // auto timer =

@@ -128,6 +128,14 @@ class HashTable {
   void insert(const KeyType* d_keys,
               size_t len,
               uint64_t* global_num,
+              int dft_val,
+              StreamType stream);
+
+  template <typename StreamType>
+  void insert(const KeyType* d_keys,
+              const ValType* d_vals,
+              size_t len,
+              uint64_t* global_num,
               StreamType stream);
 
   template <typename StreamType>
@@ -151,6 +159,12 @@ class HashTable {
            StreamType stream,
            const GPUAccessor& fv_accessor);
 
+  template <typename StreamType>
+  void get_ranks(const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
+           StreamType stream);
+
   void show();
 
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
@@ -161,6 +175,12 @@ class HashTable {
 
   template <typename StreamType>
   void get_keys(KeyType* d_out, uint64_t* global_cursor, StreamType stream);
+
+  template <typename StreamType>
+  void get_key_values(KeyType* d_keys, // output
+                      ValType* d_vals, // output
+                      uint64_t* global_cursor, // temp use
+                      StreamType stream);
 
 #if defined(PADDLE_WITH_CUDA)
 

@@ -443,6 +443,16 @@ class HeterComm {
     platform::Timer inner_barrier_;
     platform::Timer node_span_;
     platform::Timer node_barrier_;
+
+    platform::Timer node_wait_;
+    platform::Timer node_trans_;
+    platform::Timer node_p2p_;
+    platform::Timer local_oper_;
+    platform::Timer nvcomp_comp_;
+    platform::Timer nvcomp_decomp_;
+    size_t total_keys_ = 0;
+    size_t local_keys_ = 0;
+    size_t remote_keys_ = 0;
   };
 
   void init_path();
@@ -576,7 +586,7 @@ class HeterComm {
   size_t gather_inter_keys_by_all2all(const int& gpu_id,
                                       const size_t& fea_size,
                                       const KeyType* d_in_keys,
-                                      const cudaStream_t& stream);
+                                      const cudaStream_t& stream, bool debug=false);
   void scatter_inter_vals_by_all2all(const int& gpu_id,
                                      const size_t& fea_size,
                                      const char* d_in_vals,

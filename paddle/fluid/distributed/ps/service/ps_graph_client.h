@@ -52,6 +52,7 @@ class PsGraphClient : public PsLocalClient {
                                                const uint64_t *keys,
                                                size_t num,
                                                uint16_t pass_id,
+                                               const std::vector<std::unordered_map<uint64_t, uint32_t>> & keys2rank_vec,
                                                const uint16_t &dim_id = 0);
   virtual std::shared_ptr<SparseShardValues> TakePassSparseReferedValues(
       const size_t &table_id, const uint16_t &pass_id, const uint16_t &dim_id);
