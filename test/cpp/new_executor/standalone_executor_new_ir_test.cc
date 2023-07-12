@@ -64,8 +64,6 @@ TEST(StandaloneExecutor, run) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  kernel_program->Print(std::cout);
-
   auto place = platform::CPUPlace();
   Scope scope;
 
