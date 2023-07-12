@@ -76,7 +76,7 @@ CustomContext::CustomContext(const CustomPlace& place)
   impl_->Init();
 }
 
-CustomContext::~CustomContext() { impl_->Init(); }
+CustomContext::~CustomContext() { impl_.reset(); }
 
 phi::ccl::CCLComm CustomContext::xccl_comm() const {
   return impl_->xccl_comm();

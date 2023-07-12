@@ -73,8 +73,8 @@ def train(args, place, to_static):
         policy = Policy()
 
         eps = np.finfo(np.float32).eps.item()
-        optimizer = fluid.optimizer.AdamaxOptimizer(
-            learning_rate=1e-2, parameter_list=policy.parameters()
+        optimizer = paddle.optimizer.Adamax(
+            learning_rate=1e-2, parameters=policy.parameters()
         )
 
         def get_mean_and_std(values=[]):

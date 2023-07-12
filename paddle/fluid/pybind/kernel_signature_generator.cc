@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
         kernel_signature_map_str =
             kernel_signature_map_str + "\"" + inputs_[i] + "\",";
       }
-      if (inputs_.size()) kernel_signature_map_str.pop_back();
+      if (!inputs_.empty()) kernel_signature_map_str.pop_back();
 
       kernel_signature_map_str += "],\"attrs\":[";
       auto attrs_ = args.attr_names;
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
         kernel_signature_map_str =
             kernel_signature_map_str + "\"" + attrs_[i] + "\",";
       }
-      if (attrs_.size()) kernel_signature_map_str.pop_back();
+      if (!attrs_.empty()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "],\"outputs\":[";
       auto outputs_ = args.output_names;
       for (size_t i = 0; i < outputs_.size(); i++) {
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
             kernel_signature_map_str + "\"" + outputs_[i] + "\",";
       }
 
-      if (outputs_.size()) kernel_signature_map_str.pop_back();
+      if (!outputs_.empty()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "]},";
     }
   }

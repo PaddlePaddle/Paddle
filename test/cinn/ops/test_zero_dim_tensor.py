@@ -16,10 +16,9 @@
 
 import unittest
 
-import cinn
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import Bool, Float, Int, is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 
 import paddle
@@ -231,7 +230,7 @@ create_unit_test(
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d, "div", paddle.divide, "builder.divide"
 )
-# # Paddle'atan2 only supports 0D + 0D -> 0D
+# Paddle'atan2 only supports 0D + 0D -> 0D
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D, "atan2", paddle.atan2, "builder.atan2"
 )
@@ -466,6 +465,12 @@ create_unit_test(
     "builder.less_equal",
     dtype="int64",
 )
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D,
+    "is_close",
+    paddle.isclose,
+    "builder.isclose",
+)
 
 
 ######################
@@ -609,7 +614,7 @@ class TestScaleOp(OpTest):
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
-        builder = NetBuilder("reduce_op")
+        builder = NetBuilder("scale_op")
         x = builder.create_input(
             cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
         )
@@ -649,7 +654,7 @@ class TestSumOp(OpTest):
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
-        builder = NetBuilder("reduce_op")
+        builder = NetBuilder("sum_op")
         x = builder.create_input(
             cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
         )
@@ -692,7 +697,7 @@ class TestDropoutOp(OpTest):
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
-        builder = NetBuilder("reduce_op")
+        builder = NetBuilder("dropout_op")
         x = builder.create_input(
             cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
         )

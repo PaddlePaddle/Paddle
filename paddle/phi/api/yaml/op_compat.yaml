@@ -117,7 +117,7 @@
   inputs :
     input : Theta
   outputs :
-    out : Output
+    output : Output
   int_array:
     output_shape :
       data_type : int
@@ -208,6 +208,7 @@
 - op : argmax(arg_max)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
@@ -218,6 +219,7 @@
 - op : argmin(arg_min)
   inputs :
     x : X
+    axis : axis
   outputs :
     out : Out
   scalar:
@@ -632,6 +634,18 @@
   outputs :
     {softmax : Softmax, loss : Loss}
 
+- op : cummax
+  inputs :
+    { x : x }
+  outputs :
+    { out : out, indices : indices }
+
+- op : cummin
+  inputs :
+    { x : x }
+  outputs :
+    { out : out, indices : indices }
+
 - op : cumprod
   backward : cumprod_grad
   inputs :
@@ -868,6 +882,8 @@
     {x : Ids, weight : W}
   outputs :
     out : Out
+  attrs :
+   sparse : is_sparse
   manual_signature : [embedding_grad]
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
@@ -1295,6 +1311,30 @@
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
+
+- op : i0
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i0e
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1
+  inputs :
+    {x : x}
+  outputs :
+    out : out
+
+- op : i1e
+  inputs :
+    {x : x}
+  outputs :
+    out : out
 
 - op : imag
   backward : imag_grad
@@ -1883,6 +1923,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : nextafter
+  inputs :
+    {x : x, y : y}
+  outputs :
+    out : out
+
 - op : nll_loss
   backward : nll_loss_grad
   inputs :
@@ -1986,6 +2032,12 @@
     x : X
   outputs :
     out : Out
+
+- op : polygamma
+  inputs :
+    x : x
+  outputs :
+    out : out
 
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
@@ -2480,6 +2532,7 @@
   int_array:
       sections :
           data_type : int
+          tensor_name : AxesTensor
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
@@ -2692,6 +2745,10 @@
   outputs :
     out : Out
 
+- op : tril_indices
+  outputs :
+    out : out
+
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2707,6 +2764,10 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : triu_indices
+  outputs :
+    out : out
 
 - op : trunc
   inputs :
@@ -2833,6 +2894,12 @@
   outputs :
     {warpctcgrad : WarpCTCGrad, loss : Loss}
 
+- op : warprnnt
+  inputs :
+    {input : input, label : label,  input_lengths : input_lengths, label_lengths : label_lengths}
+  outputs :
+    {loss : loss, warprnntgrad : warprnntgrad}
+
 - op : where
   backward : where_grad
   inputs :
@@ -2881,7 +2948,7 @@
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label}
+    {x: X, label: Label, pos_weight : pos_weight}
   outputs :
     out : Out
 

@@ -490,7 +490,7 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id) {
 
 void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
                                           const std::string& place_key) {
-  if (place_to_comm_ctx_.size() > 0) {
+  if (!place_to_comm_ctx_.empty()) {
     VLOG(3) << "Warning: Tensors from multiple devices are not supported yet.";
   }
 
@@ -795,7 +795,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
 void CheckTensorsInDifferentDevices(
     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
   PADDLE_ENFORCE_EQ(
-      tensors.size() == 0,
+      tensors.empty(),
       false,
       phi::errors::InvalidArgument("Tensor list must be nonempty."));
   PADDLE_ENFORCE_LE(
