@@ -129,19 +129,15 @@ struct EnforceNotMet : public std::exception {
  * This handler is dealing with the errors happen in in the current
  * Scheduling.
  */
-class IRScheduleErrorHandler : public std::runtime_error {
+class IRScheduleErrorHandler {
  public:
-  IRScheduleErrorHandler() : std::runtime_error("") {}
   /**
    * \brief constructor
    * \param err_msg the error message
    */
   explicit IRScheduleErrorHandler(const std::string& err_msg,
                                   const ModuleExpr& module_expr)
-      : std::runtime_error(err_msg) {
-    err_msg_ = err_msg;
-    module_expr_ = module_expr;
-  }
+      : err_msg_(err_msg), module_expr_(module_expr) {}
 
   /**
    * \brief Returns a short error message corresponding to the kGeneral error
