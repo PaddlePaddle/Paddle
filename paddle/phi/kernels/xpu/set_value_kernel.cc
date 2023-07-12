@@ -181,10 +181,7 @@ void SetValueImpl(const Context& dev_ctx,
 
   auto out_shape = phi::vectorize<int>(out->dims());
   auto slice_shape = phi::vectorize<int>(slice_dims);
-  /*
-  r = xpu::constant(dev_ctx.x_context(), slice_data, slice_numels, XPUType(0));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  */
+
   // Step 2: Set slice tensor
 
   // - Step 2.1 Set slice tensor with value
