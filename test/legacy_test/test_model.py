@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import Model, fluid, jit, to_tensor
+from paddle import Model, fluid, to_tensor
 from paddle.hapi.model import prepare_distributed_context
 from paddle.io import Dataset, DistributedBatchSampler
 from paddle.metric import Accuracy
@@ -483,12 +483,19 @@ class MyDataset(Dataset):
         return 40
 
 
+import sys
+import time
+
+
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):
+        start = time.time()
+        print("DEBUG begin test_train_batch", time.time() - start)
+        sys.stdout.flush()
         dim = 20
         data = np.random.random(size=(4, dim)).astype(np.float32)
         label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
@@ -528,8 +535,13 @@ class TestModelFunction(unittest.TestCase):
             (loss,) = model.train_batch([data], [label])
             np.testing.assert_allclose(loss.flatten(), ref.flatten())
             fluid.disable_dygraph() if dynamic else None
+        print("DEBUG test_train_batch ", time.time() - start)
+        sys.stdout.flush()
 
     def test_test_batch(self):
+        start = time.time()
+        print("DEBUG begin test_test_batch", time.time() - start)
+        sys.stdout.flush()
         dim = 20
         data = np.random.random(size=(4, dim)).astype(np.float32)
 
@@ -555,8 +567,13 @@ class TestModelFunction(unittest.TestCase):
 
             np.testing.assert_allclose(out, ref, rtol=1e-6)
             fluid.disable_dygraph() if dynamic else None
+        print("DEBUG test_test_batch ", time.time() - start)
+        sys.stdout.flush()
 
     def test_save_load(self):
+        start = time.time()
+        print("DEBUG begin test_save_load", time.time() - start)
+        sys.stdout.flush()
         path = os.path.join(tempfile.mkdtemp(), '.cache_test_save_load')
         if not os.path.exists(path):
             os.makedirs(path)
@@ -577,8 +594,13 @@ class TestModelFunction(unittest.TestCase):
             model.load(path)
             fluid.disable_dygraph() if dynamic else None
         shutil.rmtree(path)
+        print("DEBUG test_save_load ", time.time() - start)
+        sys.stdout.flush()
 
     def test_dynamic_load(self):
+        start = time.time()
+        print("DEBUG begin test_dynamic_load", time.time() - start)
+        sys.stdout.flush()
         mnist_data = MnistDataset(mode='train')
 
         path = os.path.join(tempfile.mkdtemp(), '.cache_dynamic_load')
@@ -607,8 +629,13 @@ class TestModelFunction(unittest.TestCase):
             model.load(path)
             paddle.enable_static()
         shutil.rmtree(path)
+        print("DEBUG test_dynamic_load ", time.time() - start)
+        sys.stdout.flush()
 
     def test_dynamic_save_static_load(self):
+        start = time.time()
+        print("DEBUG begin test_dynamic_save_static_load", time.time() - start)
+        sys.stdout.flush()
         path = os.path.join(
             tempfile.mkdtemp(), '.cache_dynamic_save_static_load'
         )
@@ -634,8 +661,13 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.load(path)
         shutil.rmtree(path)
+        print("DEBUG test_dynamic_save_static_load ", time.time() - start)
+        sys.stdout.flush()
 
     def test_static_save_dynamic_load(self):
+        start = time.time()
+        print("DEBUG begin test_static_save_dynamic_load", time.time() - start)
+        sys.stdout.flush()
         path = os.path.join(
             tempfile.mkdtemp(), '.cache_test_static_save_dynamic_load'
         )
@@ -665,8 +697,13 @@ class TestModelFunction(unittest.TestCase):
         model.load(path)
         shutil.rmtree(path)
         fluid.disable_dygraph()
+        print("DEBUG test_static_save_dynamic_load ", time.time() - start)
+        sys.stdout.flush()
 
     def test_parameters(self):
+        start = time.time()
+        print("DEBUG begin test_parameters", time.time() - start)
+        sys.stdout.flush()
         for dynamic in [True, False]:
             device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
@@ -678,8 +715,14 @@ class TestModelFunction(unittest.TestCase):
             self.assertTrue(params[0].shape[0] == 20)
             self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
+        print("DEBUG test_parameters ", time.time() - start)
+        sys.stdout.flush()
 
     def test_summary(self):
+        start = time.time()
+        print("DEBUG begin test_summary", time.time() - start)
+        sys.stdout.flush()
+
         def _get_param_from_state_dict(state_dict):
             params = 0
             for k, v in state_dict.items():
@@ -702,11 +745,22 @@ class TestModelFunction(unittest.TestCase):
             model.summary(input_size=(20))
             model.summary(input_size=[(20)])
             model.summary(input_size=(20), dtype='float32')
+        print("DEBUG test_summary ", time.time() - start)
+        sys.stdout.flush()
 
     def test_summary_non_tensor(self):
+        start = time.time()
+        print("DEBUG begin test_summary_non_tensor", time.time() - start)
+        sys.stdout.flush()
         paddle.summary(ModelOutter(), input_size=(-1, 3))
+        print("DEBUG test_summary_non_tensor ", time.time() - start)
+        sys.stdout.flush()
 
     def test_summary_nlp(self):
+        start = time.time()
+        print("DEBUG begin test_summary_nlp", time.time() - start)
+        sys.stdout.flush()
+
         def _get_param_from_state_dict(state_dict):
             params = 0
             for k, v in state_dict.items():
@@ -735,7 +789,13 @@ class TestModelFunction(unittest.TestCase):
         gt_params = _get_param_from_state_dict(rnn.state_dict())
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
 
+        print("DEBUG test_summary_nlp ", time.time() - start)
+        sys.stdout.flush()
+
     def test_summary_input(self):
+        start = time.time()
+        print("DEBUG begin test_summary_input", time.time() - start)
+        sys.stdout.flush()
         paddle.enable_static()
         mymodel = MyModel()
         input_data = paddle.rand([1, 20])
@@ -756,13 +816,23 @@ class TestModelFunction(unittest.TestCase):
             'x2': paddle.rand([1, 400]),
         }
         paddle.summary(lenet_dict_input, input=input_data)
+        print("DEBUG test_summary_input ", time.time() - start)
+        sys.stdout.flush()
 
     def test_summary_dtype(self):
+        start = time.time()
+        print("DEBUG begin test_summary_dtype", time.time() - start)
+        sys.stdout.flush()
         input_shape = (3, 1)
         net = paddle.nn.Embedding(10, 3, sparse=True)
         paddle.summary(net, input_shape, dtypes='int64')
+        print("DEBUG test_summary_dtype ", time.time() - start)
+        sys.stdout.flush()
 
     def test_summary_error(self):
+        start = time.time()
+        print("DEBUG begin test_summary_error", time.time() - start)
+        sys.stdout.flush()
         with self.assertRaises(TypeError):
             nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
             paddle.summary(nlp_net, (1, 1, '2'))
@@ -774,17 +844,13 @@ class TestModelFunction(unittest.TestCase):
         paddle.disable_static()
         nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
         paddle.summary(nlp_net, (1, 1, 2))
-
-    def test_static_flops(self):
-        if True:
-            return
-        paddle.disable_static()
-        net = models.__dict__['mobilenet_v2'](pretrained=False)
-        inputs = paddle.randn([1, 3, 224, 224])
-        static_program = jit._trace(net, inputs=[inputs])[1]
-        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
+        print("DEBUG test_summary_error ", time.time() - start)
+        sys.stdout.flush()
 
     def test_dynamic_flops(self):
+        start = time.time()
+        print("DEBUG begin test_dynamic_flops", time.time() - start)
+        sys.stdout.flush()
         net = models.__dict__['mobilenet_v2'](pretrained=False)
 
         def customize_dropout(m, x, y):
@@ -797,7 +863,16 @@ class TestModelFunction(unittest.TestCase):
             print_detail=True,
         )
 
+        print("DEBUG test_dynamic_flops ", time.time() - start)
+        sys.stdout.flush()
+
     def test_dynamic_flops_with_multiple_outputs(self):
+        start = time.time()
+        print(
+            "DEBUG begin test_dynamic_flops_with_multiple_outputs",
+            time.time() - start,
+        )
+        sys.stdout.flush()
         net = paddle.nn.MaxPool2D(
             kernel_size=2, stride=2, padding=0, return_mask=True
         )
@@ -811,8 +886,16 @@ class TestModelFunction(unittest.TestCase):
             custom_ops={paddle.nn.Dropout: customize_dropout},
             print_detail=True,
         )
+        print(
+            "DEBUG test_dynamic_flops_with_multiple_outputs ",
+            time.time() - start,
+        )
+        sys.stdout.flush()
 
     def test_export_deploy_model(self):
+        start = time.time()
+        print("DEBUG begin test_export_deploy_model", time.time() - start)
+        sys.stdout.flush()
         self.set_seed()
         np.random.seed(201)
 
@@ -866,8 +949,16 @@ class TestModelFunction(unittest.TestCase):
             paddle.enable_static()
 
         shutil.rmtree(save_dir)
+        print("DEBUG test_export_deploy_model ", time.time() - start)
+        sys.stdout.flush()
 
     def test_dygraph_export_deploy_model_about_inputs(self):
+        start = time.time()
+        print(
+            "DEBUG begin test_dygraph_export_deploy_model_about_inputs",
+            time.time() - start,
+        )
+        sys.stdout.flush()
         self.set_seed()
         np.random.seed(201)
         mnist_data = MnistDataset(mode='train')
@@ -918,11 +1009,19 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
         shutil.rmtree(save_dir)
+        print(
+            "DEBUG test_dygraph_export_deploy_model_about_inputs ",
+            time.time() - start,
+        )
+        sys.stdout.flush()
 
     def test_accumulate(
         self,
     ):
         dim = 20
+        start = time.time()
+        print("DEBUG begin test_accumulate", time.time() - start)
+        sys.stdout.flush()
         data = np.random.random(size=(4, dim)).astype(np.float32)
         label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
         net = MyModel()
@@ -953,10 +1052,15 @@ class TestModelFunction(unittest.TestCase):
 
             np.testing.assert_almost_equal(losses[0], losses[1], decimal=4)
             np.testing.assert_almost_equal(losses[0], losses[2], decimal=4)
+        print("DEBUG test_accumulate ", time.time() - start)
+        sys.stdout.flush()
 
 
 class TestModelWithLRScheduler(unittest.TestCase):
     def test_fit_by_step(self):
+        start = time.time()
+        print("DEBUG begin test_fit_by_step", time.time() - start)
+        sys.stdout.flush()
         base_lr = 1e-3
         boundaries = [5, 8]
 
@@ -1016,8 +1120,13 @@ class TestModelWithLRScheduler(unittest.TestCase):
             model._optimizer._learning_rate.last_lr,
             base_lr * (0.1 ** len(boundaries)),
         )
+        print("DEBUG test_fit_by_step ", time.time() - start)
+        sys.stdout.flush()
 
     def test_fit_by_epoch(self):
+        start = time.time()
+        print("DEBUG begin test_fit_by_epoch", time.time() - start)
+        sys.stdout.flush()
         base_lr = 1e-3
         boundaries = [5, 8]
         epochs = 10
@@ -1111,23 +1220,41 @@ class TestModelWithLRScheduler(unittest.TestCase):
         np.testing.assert_allclose(
             model._optimizer._learning_rate.last_lr, base_lr * (0.1**cnt)
         )
+        print("DEBUG test_fit_by_epoch ", time.time() - start)
+        sys.stdout.flush()
 
 
 class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
+        start = time.time()
+        print("DEBUG begin test_input_without_name", time.time() - start)
+        sys.stdout.flush()
         net = MyModel()
         inputs = [InputSpec([None, 10], 'float32')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
+        print("DEBUG test_input_without_name ", time.time() - start)
+        sys.stdout.flush()
 
     def test_static_without_inputs(self):
+        start = time.time()
+        print("DEBUG begin test_static_without_inputs", time.time() - start)
+        sys.stdout.flush()
         paddle.enable_static()
         net = MyModel()
         with self.assertRaises(TypeError):
             model = Model(net)
+        print("DEBUG test_static_without_inputs ", time.time() - start)
+        sys.stdout.flush()
 
     def test_save_infer_model_without_inputs_and_run_in_dygraph(self):
+        start = time.time()
+        print(
+            "DEBUG begin test_save_infer_model_without_inputs_and_run_in_dygraph",
+            time.time() - start,
+        )
+        sys.stdout.flush()
         paddle.disable_static()
         net = MyModel()
         save_dir = os.path.join(tempfile.mkdtemp(), '.cache_test_save_infer')
@@ -1138,8 +1265,19 @@ class TestRaiseError(unittest.TestCase):
             model.save(save_dir, training=False)
         paddle.enable_static()
         shutil.rmtree(save_dir)
+        print(
+            "DEBUG test_save_infer_model_without_inputs_and_run_in_dygraph ",
+            time.time() - start,
+        )
+        sys.stdout.flush()
 
     def test_save_infer_model_without_file_prefix(self):
+        start = time.time()
+        print(
+            "DEBUG begin test_save_infer_model_without_file_prefix",
+            time.time() - start,
+        )
+        sys.stdout.flush()
         paddle.enable_static()
         net = LeNet()
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
@@ -1151,6 +1289,11 @@ class TestRaiseError(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             model.save(path, training=False)
+        print(
+            "DEBUG test_save_infer_model_without_file_prefix ",
+            time.time() - start,
+        )
+        sys.stdout.flush()
 
 
 if __name__ == '__main__':
