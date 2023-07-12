@@ -19,6 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
+#include "paddle/phi/kernels/rms_norm_kernel.h"
 
 namespace phi {
 
@@ -62,10 +63,10 @@ class NormHelper {
                         phi::DenseTensor* var,
                         phi::DenseTensor* bias_residual_out,
                         phi::DenseTensor* output) {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     const T* x_data = x.data<T>();
-    const T* residual_data = residual.data<T>();
-    const T* bias_data = bias ? bias.data<T>() : nullptr;
+    const T* residual_data = residual.get().data<T>();
+    const T* bias_data = bias ? bias.get().data<T>() : nullptr;
     U* mean_data = mean ? mean->data<U>() : nullptr;
     U* var_data = var ? var->data<U>() : nullptr;
     T* bias_residual_out_data = bias_residual_out->data<T>();
@@ -73,8 +74,8 @@ class NormHelper {
 
     if (norm_type_ == "layernorm") {
       // For layernorm, it use FP32 type weight and bias.
-      const U* norm_weight_data = norm_weight ? norm_weight.data<U>() : nullptr;
-      const U* norm_bias_data = norm_bias ? norm_bias.data<U>() : nullptr;
+      const U* norm_weight_data = norm_weight.data<U>();
+      const U* norm_bias_data = norm_bias ? norm_bias.get().data<U>() : nullptr;
       residual_bias_add_layernorm_helper_.LayernormResidualDropoutBias(
           dev_ctx_,
           x_data,
@@ -88,35 +89,37 @@ class NormHelper {
           mean_data,
           var_data);
     } else if (norm_type_ == "rmsnorm") {
-      //   // For rmsnorm, it use Input's type weight and bias.
-      //   const T *norm_weight_data =
-      //       norm_weight ? norm_weight->data<T>() : nullptr;
-      //   const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
-      //   phi::ResidualAddRmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
-      //                                                      x_data,
-      //                                                      residual_data,
-      //                                                      bias_data,
-      //                                                      norm_weight_data,
-      //                                                      norm_bias_data,
-      //                                                      epsilon_,
-      //                                                      rows_,
-      //                                                      cols_,
-      //                                                      bias_residual_out_data,
-      //                                                      output_data);
+      // For rmsnorm, it use Input's type weight and bias.
+      // Currently, it only used in inference, so we do not save intermediate
+      // result for backward.
+      const T* norm_weight_data = norm_weight.data<T>();
+      const T* norm_bias_data = norm_bias ? norm_bias.get().data<T>() : nullptr;
+      phi::ResidualAddRmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
+                                                         x_data,
+                                                         residual_data,
+                                                         bias_data,
+                                                         norm_weight_data,
+                                                         norm_bias_data,
+                                                         epsilon_,
+                                                         rows_,
+                                                         cols_,
+                                                         bias_residual_out_data,
+                                                         output_data);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Currently NormHelper only support `layernorm`, `rmsnorm`. "));
     }
   }
 
   // dst = Norm(x)
-  void Norm(const T* x_data,
+  void Norm(const phi::DenseTensor& x,
             const phi::DenseTensor& norm_weight,
             const paddle::optional<DenseTensor>& norm_bias,
             phi::DenseTensor* mean,
             phi::DenseTensor* var,
             phi::DenseTensor* output) {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
+    const T* x_data = x.data<T>();
     U* mean_data = mean ? mean->data<U>() : nullptr;
     U* var_data = var ? var->data<U>() : nullptr;
     T* output_data = output->data<T>();
@@ -124,7 +127,7 @@ class NormHelper {
     if (norm_type_ == "layernorm") {
       // For layernorm, it use FP32 type weight and bias.
       const U* norm_weight_data = norm_weight.data<U>();
-      const U* norm_bias_data = norm_bias ? norm_bias.data<U>() : nullptr;
+      const U* norm_bias_data = norm_bias ? norm_bias.get().data<U>() : nullptr;
       layernorm_helper_.ComputeForward(x_data,
                                        norm_weight_data,
                                        norm_bias_data,
@@ -132,19 +135,21 @@ class NormHelper {
                                        mean_data,
                                        var_data);
     } else if (norm_type_ == "rmsnorm") {
-      //   // For rmsnorm, it use Input's type weight and bias.
-      //   const T *norm_weight_data = norm_weight.data<T>();
-      //   const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
-      //   phi::RmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
-      //                                           x_data,
-      //                                           norm_weight_data,
-      //                                           norm_bias_data,
-      //                                           epsilon_,
-      //                                           rows_,
-      //                                           cols_,
-      //                                           output_data);
+      // For rmsnorm, it use Input's type weight and bias.
+      // Currently, it only used in inference, so we do not save intermediate
+      // result for backward.
+      const T* norm_weight_data = norm_weight.data<T>();
+      const T* norm_bias_data = norm_bias ? norm_bias.get().data<T>() : nullptr;
+      phi::RmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
+                                              x_data,
+                                              norm_weight_data,
+                                              norm_bias_data,
+                                              epsilon_,
+                                              rows_,
+                                              cols_,
+                                              output_data);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Currently NormHelper only support `layernorm`, `rmsnorm`. "));
     }
   }
@@ -170,7 +175,8 @@ void NormHelperKernel(const Context& dev_ctx,
                       const paddle::optional<DenseTensor>& norm_bias,
                       float epsilon,
                       float residual_alpha,
-                      const std::string& norm_type int begin_norm_axis,
+                      const std::string& norm_type,
+                      const int begin_norm_axis,
                       DenseTensor* mean,
                       DenseTensor* variance,
                       DenseTensor* residual_out,
@@ -194,11 +200,11 @@ void NormHelperKernel(const Context& dev_ctx,
 
   NormHelper<T> norm_helper(
       dev_ctx, norm_type, rows, cols, epsilon, residual_alpha);
-  if (resiudal) {
+  if (residual) {
     T* residual_out_data = dev_ctx.template Alloc<T>(residual_out);
 
     // Do residual+biasAdd+Norm fusion.
-    norm_helper.NormResidualBias(x_data,
+    norm_helper.NormResidualBias(x,
                                  residual,
                                  bias, /*skip_bias*/
                                  norm_weight,
@@ -209,10 +215,18 @@ void NormHelperKernel(const Context& dev_ctx,
                                  out);
   } else {
     // Do norm.
-    norm_helper.Norm(x_data, norm_weight, norm_bias, mean, variance, out);
+    norm_helper.Norm(x, norm_weight, norm_bias, mean, variance, out);
   }
 
 #endif
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(norm_helper,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::NormHelperKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
