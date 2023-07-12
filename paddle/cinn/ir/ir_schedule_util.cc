@@ -29,7 +29,6 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_operators.h"
 #include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_schedule_error.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_copy.h"
