@@ -41,7 +41,32 @@ const size_t& AllocatedDenseTensorType::offset() const {
   return storage()->dense_tensor_type_.offset();
 }
 
+const phi::Place& AllocatedSelectedRowsType::place() const {
+  return storage()->place_;
+}
+
+const ir::Type& AllocatedSelectedRowsType::dtype() const {
+  return storage()->selected_rows_type_.dtype();
+}
+
+const phi::DDim& AllocatedSelectedRowsType::dims() const {
+  return storage()->selected_rows_type_.dims();
+}
+
+const phi::DataLayout& AllocatedSelectedRowsType::data_layout() const {
+  return storage()->selected_rows_type_.data_layout();
+}
+
+const phi::LoD& AllocatedSelectedRowsType::lod() const {
+  return storage()->selected_rows_type_.lod();
+}
+
+const size_t& AllocatedSelectedRowsType::offset() const {
+  return storage()->selected_rows_type_.offset();
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSelectedRowsType)

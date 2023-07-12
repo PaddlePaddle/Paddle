@@ -104,6 +104,8 @@ void BuildValue(ir::Value value,
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    var->GetMutable<phi::SelectedRows>();
   } else if (value.type().isa<ir::VectorType>()) {
     auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
     for (size_t i = 0; i < value.type().dyn_cast<ir::VectorType>().size();

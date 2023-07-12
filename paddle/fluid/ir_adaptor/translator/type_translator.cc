@@ -28,6 +28,8 @@ using VarDesc = paddle::framework::VarDesc;
 using VarType = paddle::framework::proto::VarType;
 using DenseTensorType = paddle::dialect::DenseTensorType;
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
+using SelectedRowsType = paddle::dialect::SelectedRowsType;
+using SelectedRowsTypeStorage = paddle::dialect::SelectedRowsTypeStorage;
 
 TypeTranslator::TypeTranslator() {
   handlers = {
@@ -105,7 +107,17 @@ TypeTranslator::TypeTranslator() {
          VLOG(10) << "[vartype translating]"
                   << "[" << var_desc.Name() << "] from SELECTED_ROWS";
 
-         return this->operator[](VarType::LOD_TENSOR)(ctx, var_desc);
+         ir::Type dtype =
+             this->operator[](var_desc.GetDataType())(ctx, var_desc);
+
+         SelectedRowsTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
+         SelectedRowsTypeStorage::DataLayout layout =
+             SelectedRowsTypeStorage::DataLayout::UNDEFINED;
+         SelectedRowsTypeStorage::LoD lod = {};
+         size_t offset = 0;
+         ir::Type SelectedRows =
+             SelectedRowsType::get(ctx, dtype, dim, layout, lod, offset);
+         return SelectedRows;
        }},
   };
 }

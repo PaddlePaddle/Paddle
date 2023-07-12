@@ -252,6 +252,13 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
           ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
           op_output_types.push_back(t1);
+        } else if (result_type.isa<dialect::SelectedRowsType>()) {
+          auto allocated_selected_rows_dtype =
+              paddle::dialect::AllocatedSelectedRowsType::get(
+                  ctx,
+                  phi::TransToPhiPlace(kernel_key.backend()),
+                  result_type.dyn_cast<dialect::SelectedRowsType>());
+          op_output_types.push_back(allocated_selected_rows_dtype);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
               "Result type only support DenseTensorType and VectorType"));
@@ -322,6 +329,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
             // [ todo need update here, support combine data transfomer]
+          } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
+            // do nothing here
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support allocated dense tensor type for now"));

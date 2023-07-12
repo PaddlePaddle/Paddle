@@ -253,6 +253,16 @@
     data_type : weight
   backward : embedding_grad
 
+- op : embedding_grad_dense
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor(weight_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [weight]
+  kernel :
+    func : embedding_grad
+    data_type : weight
+
 - op : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
