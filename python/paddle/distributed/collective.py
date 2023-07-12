@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import datetime
+import hashlib
 import os
 
 import paddle
@@ -155,9 +155,16 @@ def _new_process_group_impl(
         endpoints_str = ""
         for endpoint in genv.trainer_endpoints:
             endpoints_str += endpoint
-            endpoints_str_hash = hashlib.md5(endpoints_str.encode(encoding='UTF-8')).hexdigest()
+            endpoints_str_hash = hashlib.md5(
+                endpoints_str.encode(encoding='UTF-8')
+            ).hexdigest()
         pg = core.ProcessGroupNCCL.create(
-            store, genv.device_id, rank, world_size, group_id, endpoints_str_hash
+            store,
+            genv.device_id,
+            rank,
+            world_size,
+            group_id,
+            endpoints_str_hash,
         )
 
     elif backend == "xccl":
@@ -329,7 +336,7 @@ def is_available():
 def _init_parallel_env(backend):
     master_endpoint = os.getenv("PADDLE_MASTER", None)
     if master_endpoint is None:
-        master_endpoint = trainer_endpoints.split(',')[0]
+        master_endpoint = master_endpoint.split(',')[0]
         assert (
             master_endpoint is not None
         ), "Please set PADDLE_MASTER enviroment variable."
@@ -355,7 +362,9 @@ def _init_parallel_env(backend):
             endpoints_str = ""
             for endpoint in global_env.trainer_endpoints:
                 endpoints_str += endpoint
-                endpoints_str_hash = hashlib.md5(endpoints_str.encode(encoding='UTF-8')).hexdigest()
+                endpoints_str_hash = hashlib.md5(
+                    endpoints_str.encode(encoding='UTF-8')
+                ).hexdigest()
 
             core.CommContextManager.create_nccl_comm_context(
                 store, dev_id, 0, rank, world_size, endpoints_str_hash
