@@ -41,12 +41,8 @@ from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
-g_calc_shard_locally = int(os.environ.get("CALC_SHARD_LOCALLY", 1))
-logger.info(f"g_calc_shard_locally {g_calc_shard_locally}")
-g_shard_use_reduce = int(os.environ.get("SHARD_USE_REDUCE", 0))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
-if not g_calc_shard_locally:
-    assert not g_shard_use_reduce
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
+logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
 
 
 class HybridParallelClipGrad:
@@ -92,10 +88,6 @@ class HybridParallelClipGrad:
         sum_square_metas = []
         for p, g in params_grads:
             if g is None:
-                continue
-            local_shard = getattr(p, 'local_shard', True)
-            if g_calc_shard_locally and not local_shard:
-                logger.debug("skip sharded param")
                 continue
 
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
@@ -197,10 +189,6 @@ class HybridParallelClipGrad:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
-                continue
-            local_shard = getattr(p, 'local_shard', True)
-            if g_calc_shard_locally and not local_shard:
-                logger.debug("skip sharded param")
                 continue
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -319,43 +307,27 @@ class HybridParallelClipGrad:
         ):
             sharding_flag = True
         # add all reduce to get global norm of distributed params_and_grads
-
-        if sharding_flag and g_calc_shard_locally:
+        if sharding_flag and not g_shard_norm_align_dp:
             paddle.distributed.all_reduce(
                 global_norm_var_dist,
                 group=self._hcg.get_sharding_parallel_group(),
             )
-        paddle.distributed.all_reduce(
-            global_norm_var_dist,
-            group=self._hcg.get_check_parallel_group(sharding_flag),
-        )
-
-        if (
-            self._hcg.get_sharding_parallel_world_size() > 1
-            and g_calc_shard_locally
-        ):
+            # not dist only reduce among sharding group and pp group later
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),
             )
+        # dist should reduce among sharding group、mp group、pp group
+        paddle.distributed.all_reduce(
+            global_norm_var_dist,
+            group=self._hcg.get_check_parallel_group(sharding_flag),
+        )
 
         # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
         if self._hcg.get_pipe_parallel_world_size() > 1:
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_pipe_parallel_group(),
-            )
-
-        # In Sharding mode, param and grad is mapping different rank in optimizer.
-        # ClipGradByGlobalNorm need allreduce to get globol norm
-        # TODO(pangengzheng): remove the self.not_sharding_stage1 flag when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-        if (
-            self._hcg.get_sharding_parallel_world_size() > 1
-            and self.not_sharding_stage1
-        ):
-            paddle.distributed.all_reduce(
-                global_norm_var_not_dist,
-                group=self._hcg.get_sharding_parallel_group(),
             )
 
         global_norm_var_fp32 = paddle.sqrt(

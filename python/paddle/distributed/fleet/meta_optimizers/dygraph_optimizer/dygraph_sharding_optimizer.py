@@ -24,8 +24,15 @@ from paddle.fluid.dygraph import base as imperative_base
 
 from ...utils.log_util import logger
 
-g_shard_use_reduce = int(os.environ.get("SHARD_USE_REDUCE", 0))
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
 logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
+logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
+
+if g_shard_norm_align_dp:
+    assert (
+        not g_shard_use_reduce
+    ), "g_shard_norm_align_dp is not support if g_shard_use_reduce is true"
 
 
 def _is_trainable(param):
@@ -152,8 +159,6 @@ class DygraphShardingOptimizer:
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:
-                # tag param
-                param.reduced = False
                 g_var = None
                 if param.trainable and (param._grad_ivar() is not None):
                     g_var = param._grad_ivar()
@@ -165,10 +170,6 @@ class DygraphShardingOptimizer:
                 if g_var is not None:
                     g_var.scale_(1.0 / sharding_nrank)
                     param_rank = self._param2rank[param.name]
-                    # reduced
-                    param.reduced = True
-                    # sharded to local
-                    param.local_shard = self._sharding_rank == param_rank
                     if not g_shard_use_reduce:
                         paddle.distributed.all_reduce(
                             g_var,
@@ -260,11 +261,10 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-            if hasattr(self._inner_opt._grad_clip, 'not_sharding_stage1'):
-                self._inner_opt._grad_clip.not_sharding_stage1 = False
-            params_grads = self._inner_opt._grad_clip(params_grads)
-            # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
-            self._set_inner_opt_attr('_grad_clip', None)
+            if g_shard_norm_align_dp:
+                params_grads = self._inner_opt._grad_clip(params_grads)
+                # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
+                self._set_inner_opt_attr('_grad_clip', None)
             update_param_names = [
                 p.name for p in self._rank2params[self._sharding_rank]
             ]
@@ -276,8 +276,9 @@ class DygraphShardingOptimizer:
                 startup_program=None,
                 params_grads=update_params_grads,
             )
-            # restore the grad clip
-            self._set_inner_opt_attr('_grad_clip', origin_clip)
+            if g_shard_norm_align_dp:
+                # restore the grad clip
+                self._set_inner_opt_attr('_grad_clip', origin_clip)
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
