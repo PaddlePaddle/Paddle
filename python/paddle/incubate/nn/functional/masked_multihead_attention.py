@@ -46,7 +46,7 @@ def masked_multihead_attention(
 
         .. code-block:: python
 
-            x = paddle.transpose(x, [0, 2, 1, 3])  # [bz, seqlen, nhead, head_dim] --> [bz, nhead, seqlen, head_dim]
+            x = paddle.transpose(x, [0, 2, 1, 3])  # [batch\_size, sequence_length, num\_head, dim\_head] --> [batch\_size, num\_head, sequence_length, dim\_head]
             q, k, v = paddle.split(x, 3, axis=2)
             cache_k, cache_v= paddle.split(cache_kv_out, 2, axis=0)
             k = paddle.concat([cache_k.squeeze(0), k], axis=2)
@@ -58,7 +58,7 @@ def masked_multihead_attention(
             out = paddle.matmul(product, v).transpose([0, 2, 1, 3])
 
     Args:
-        x (Tensor): the input tensor could be 4-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3, num_head, dim_head]`.
+        x (Tensor): the input tensor could be 4-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3, num\_head, dim\_head]`.
         bias (Tensor, optional): The bias tensor of qkv, the shape is `[3, num\_head, dim\_head]`.
         src_mask (Tensor): The src_mask tensor. the shape is `[batch\_size, 1, 1, sequence\_length]`.
         sequence_lengths (Tensor, optional): The sequence_lengths tensor. the shape is `[batch\_size, 1]`.
