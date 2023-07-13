@@ -104,6 +104,8 @@ void BuildValue(ir::Value value,
     var->GetMutable<phi::DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    var->GetMutable<phi::SelectedRows>();
   } else if (value.type().isa<ir::VectorType>()) {
     auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
     for (size_t i = 0; i < value.type().dyn_cast<ir::VectorType>().size();
@@ -163,6 +165,7 @@ void HandleForSpecialOp(ir::Operation* op,
     auto feed_list = feed_var->Get<paddle::framework::FeedList>();
     auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
     out_tensor->ShareDataWith(in_tensor);
+    out_tensor->set_lod(in_tensor.lod());
   }
 
   if (op_name == "builtin.combine") {
@@ -271,7 +274,7 @@ void BuildScope(const ir::Block& block,
           << inner_local_scope << "]";
 
   // int count = name_map->size();
-  int count = name_map->size();
+  int count = inner_local_scope->Size();
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 

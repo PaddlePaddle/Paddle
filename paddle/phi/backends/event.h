@@ -49,6 +49,8 @@ class Event {
   void Synchronize() const;
   const Place& GetPlace() const;
 
+  static void ReleaseAll();
+
  private:
   DISABLE_COPY_AND_ASSIGN(Event);
   Place place_;
