@@ -288,7 +288,11 @@ void ProgramInterpreter::ShareBuildResultsFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 
   // share op dependency
-  //   dependency_builder_.ShareDependencyFrom(src->GetDependencyBuilder());
+  dependency_builder_.ShareDependencyFrom(
+      reinterpret_cast<ProgramInterpreter*>(src)->GetDependencyBuilder());
+  dependecy_count_ =
+      reinterpret_cast<ProgramInterpreter*>(src)->GetDependecyCount();
+  is_shared_ = true;
 }
 
 bool ProgramInterpreter::BuildInplaceCheckVarIsOnlyInput(
@@ -321,6 +325,10 @@ ProgramInterpreter::GetWorkQueue() {
 
 interpreter::DependencyBuilder* ProgramInterpreter::GetDependencyBuilder() {
   return &dependency_builder_;
+}
+
+std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependecyCount() {
+  return dependecy_count_;
 }
 
 void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {

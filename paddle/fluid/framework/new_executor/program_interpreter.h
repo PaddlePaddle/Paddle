@@ -119,6 +119,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   // op dependences
   interpreter::DependencyBuilder* GetDependencyBuilder();
+  std::shared_ptr<std::vector<size_t>> GetDependecyCount();
 
   // scope
   bool HasLocalScope() const;
