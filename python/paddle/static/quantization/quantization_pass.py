@@ -2544,7 +2544,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 if name in self.processed_vars:
                     continue
                 is_weight = (
-                    True if var_node.name() in self.persistable_vars else False
+                    True
+                    if var_node.name() in self.persistable_vars
+                    or var_node.name() in self.persistable_cast_output_vars
+                    else False
                 )
 
                 # if var node is weight and weight_preprocess_func is not None,
@@ -2645,7 +2648,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         for var_node in op.inputs:
             if var_node.name() not in op.input_arg_names():
                 continue
-            if var_node.name() in self.persistable_vars:
+            if (
+                var_node.name() in self.persistable_vars
+                or var_node.name() in self.persistable_cast_output_vars
+            ):
                 has_weight = True
         return has_weight
 
@@ -2748,6 +2754,16 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         ]
 
         ops = graph.all_op_nodes()
+
+        # Mark the output of cast op where the input is weight for AMP program
+        self.persistable_cast_output_vars = []
+        for op in graph.all_op_nodes():
+            if (
+                op.name() == "cast"
+                and op.inputs[0].name() in self.persistable_vars
+            ):
+                self.persistable_cast_output_vars.append(op.outputs[0].name())
+
         # Do the preproccess of quantization, such as skipping some ops
         # for not being quantized.
         for op in ops:

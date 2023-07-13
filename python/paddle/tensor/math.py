@@ -478,7 +478,7 @@ def pow(x, y, name=None):
 def pow_(x, y, name=None):
     """
     Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_pow`.
+    Please refer to :ref:`api_paddle_pow`.
     """
     if isinstance(y, (int, float)):
         return _C_ops.pow_(x, y)
@@ -4464,7 +4464,7 @@ def logit(x, eps=None, name=None):
             \end{array}\right.
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         eps (float, optional):  the epsilon for input clamp bound. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.

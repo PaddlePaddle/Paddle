@@ -17,16 +17,12 @@
 import sys
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime
-from cinn.common import *
-from cinn.framework import *
-from cinn.frontend import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
+from cinn.frontend import Computation, NetBuilder
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 
 assert len(sys.argv) == 3
 enable_gpu = sys.argv.pop()

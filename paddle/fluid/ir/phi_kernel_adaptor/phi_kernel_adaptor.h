@@ -56,7 +56,7 @@ class PhiKernelAdaptor {
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    BuildScope(block, scope_, &name_map);
+    BuildScope(*block, scope_, nullptr, &name_map);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -87,7 +87,8 @@ class PhiKernelAdaptor {
           phi::MetaTensor,
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>((*it), name_map, scope_, op_yaml_info_parser, &ctx);
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+          false>((*it), name_map, scope_, nullptr, op_yaml_info_parser, &ctx);
 
       infer_meta_impl->infer_meta_(&ctx);
 
@@ -106,8 +107,9 @@ class PhiKernelAdaptor {
                           const phi::TensorBase*,
                           phi::TensorBase*,
                           paddle::small_vector<const phi::TensorBase*>,
+                          paddle::small_vector<phi::TensorBase*>,
                           true>(
-          (*it), name_map, scope_, op_yaml_info_parser, &kernel_ctx);
+          (*it), name_map, scope_, nullptr, op_yaml_info_parser, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);

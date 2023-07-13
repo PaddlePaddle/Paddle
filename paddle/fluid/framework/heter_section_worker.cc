@@ -391,7 +391,7 @@ void HeterSectionWorker::Run() {
         micro_ids_.push_back(i);
       }
       // backward
-      if (micro_ids_.size() > 0) {
+      if (!micro_ids_.empty()) {
         MiniBatchBarrier();
       }
       VLOG(0) << "one batch run over! micro_ids_size: " << micro_ids_.size();

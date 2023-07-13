@@ -25,6 +25,7 @@
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -32,6 +33,7 @@
 #include "paddle/phi/core/kernel_context.h"
 
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -39,37 +41,69 @@
 #include "glog/logging.h"
 
 namespace ir {
+paddle::framework::Variable* CreateVar(ir::Value value,
+                                       const std::string& name,
+                                       paddle::framework::Scope* scope,
+                                       paddle::framework::Scope* local_scope);
 
-void BuildScope(ir::Block* block,
+void BuildValue(ir::Value value,
                 paddle::framework::Scope* scope,
+                paddle::framework::Scope* local_scope,
+                std::unordered_map<ir::Value, std::string>* name_map,
+                int& count);  // NOLINT
+
+void HandleForSpecialOp(ir::Operation* op,
+                        paddle::framework::Scope* scope,
+                        paddle::framework::Scope* local_scope,
+                        std::unordered_map<ir::Value, std::string>* name_map,
+                        int& count);  // NOLINT
+
+void HandleForInplaceOp(ir::Operation* op,
+                        paddle::framework::Scope* scope,
+                        paddle::framework::Scope* local_scope,
+                        std::unordered_map<ir::Value, std::string>* name_map,
+                        int& count);  // NOLINT
+
+void CheckInputVars(ir::Operation* op,
+                    const std::unordered_map<ir::Value, std::string>& name_map);
+
+void BuildScope(const ir::Block& block,
+                paddle::framework::Scope* scope,
+                paddle::framework::Scope* local_scope,
                 std::unordered_map<ir::Value, std::string>* name_map);
 
 template <typename Context,
           typename InType,
           typename OutType,
-          typename ListType,
+          typename InListType,
+          typename OutListType,
           bool is_kernel>
 void BuildPhiContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
+    paddle::framework::Scope* local_scope,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
     Context* ctx,
     std::map<std::string, std::vector<int>>* input_map = nullptr,
     std::map<std::string, std::vector<int>>* output_map = nullptr) {
+  paddle::framework::Scope* inner_scope =
+      local_scope != nullptr ? local_scope : scope;
+  VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
+          << inner_scope << "]";
   // inputs include input and mutable attributes
 
   auto attr_map = op->attributes();
 
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
 
-  auto& name2id = op_yaml_info.Name2Id();
+  auto& name2id = op_yaml_info.InputName2Id();
   for (auto& t : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
-    auto index = op_yaml_info.Name2Id().at(t);
+    auto index = op_yaml_info.InputName2Id().at(t);
     ir::Value ptr = op->operand(index);
     if (!ptr) {
       phi::DenseTensor* ptr = nullptr;
@@ -77,22 +111,23 @@ void BuildPhiContext(
       ctx->EmplaceBackInput(in_ptr);
       continue;
     }
+
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
-    PADDLE_ENFORCE_NOT_NULL(scope->FindLocalVar(in_var_name),
+    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
-
-    auto var = scope->Var(in_var_name);
+    auto var = inner_scope->FindVar(in_var_name);
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
-    } else if (var->IsType<paddle::framework::TensorRefArray>()) {
-      ListType inputs;
-      auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
-      for (size_t i = 0; i < tensor_array.size(); ++i) {
-        inputs.emplace_back(InType(tensor_array[i]));
+    } else if (var->IsType<paddle::framework::VariableRefArray>()) {
+      InListType inputs;
+      auto& variable_array = var->Get<paddle::framework::VariableRefArray>();
+      for (size_t i = 0; i < variable_array.size(); ++i) {
+        inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
+            &(variable_array[i]->Get<phi::DenseTensor>()))));
       }
       ctx->EmplaceBackInputs(inputs);
     } else {
@@ -123,12 +158,33 @@ void BuildPhiContext(
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
       if (tensor_attr_type == "paddle::dialect::IntArrayAttribute") {
-        phi::Attribute r1 =
-            phi::TensorRef(&(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
-        ctx->EmplaceBackAttr(r1);
+        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          phi::Attribute attr = phi::TensorRef(
+              &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
+          ctx->EmplaceBackAttr(attr);
+        } else if (ptr.type().isa<ir::VectorType>()) {
+          auto& tensor_array = inner_scope->FindVar(in_var_name)
+                                   ->Get<paddle::framework::VariableRefArray>();
+          if (tensor_array.size() == 1) {
+            phi::Attribute attr =
+                phi::TensorRef(&(tensor_array[0]->Get<phi::DenseTensor>()));
+            ctx->EmplaceBackAttr(attr);
+          } else {
+            std::vector<phi::TensorRef> vec_ref;
+            for (size_t i = 0; i < tensor_array.size(); ++i) {
+              vec_ref.emplace_back(
+                  phi::TensorRef(&(tensor_array[i]->Get<phi::DenseTensor>())));
+            }
+            ctx->EmplaceBackAttr(vec_ref);
+          }
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              " [%s] only support dense tensor and vector type  ",
+              tensor_attr_type));
+        }
       } else if (tensor_attr_type == "paddle::dialect::ScalarAttribute") {
-        phi::Attribute r1 =
-            phi::TensorRef(&(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+        phi::Attribute r1 = phi::TensorRef(
+            &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
 
         ctx->EmplaceBackAttr(r1);
       } else {
@@ -156,6 +212,23 @@ void BuildPhiContext(
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
     } else if (attr_type_name == "ir::StrAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::StrAttribute>().data());
+    } else if (attr_type_name ==
+               "ir::ArrayAttribute<paddle::dialect::ScalarAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      std::vector<phi::Scalar> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<paddle::dialect::ScalarAttribute>(),
+            true,
+            phi::errors::Unimplemented(
+                "the 0th elementwise MUST be dialect::ScalarAttribute"));
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(array_list[i]
+                                .dyn_cast<paddle::dialect::ScalarAttribute>()
+                                .data());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int32Attribute>") {
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
       std::vector<int32_t> vec_res;
@@ -170,6 +243,7 @@ void BuildPhiContext(
               array_list[i].dyn_cast<ir::Int32Attribute>().data());
         }
       }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::FloatAttribute>") {
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
       std::vector<float> vec_res;
@@ -187,9 +261,7 @@ void BuildPhiContext(
       }
       ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
-      std::cerr << "int64 array" << std::endl;
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
-      std::cerr << "len " << array_list.size() << std::endl;
 
       std::vector<int64_t> vec_res;
       if (array_list.size() > 0) {
@@ -198,12 +270,25 @@ void BuildPhiContext(
             true,
             phi::errors::PreconditionNotMet(
                 "Element in array list MUST be ir::Int64Attribute "));
-        std::cerr << "int 64" << std::endl;
 
         for (size_t i = 0; i < array_list.size(); ++i) {
-          std::cerr << "i  " << i << "\t"
-                    << array_list[i].dyn_cast<ir::Int64Attribute>().data()
-                    << std::endl;
+          vec_res.push_back(
+              array_list[i].dyn_cast<ir::Int64Attribute>().data());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
+    } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+
+      std::vector<int64_t> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<ir::Int64Attribute>(),
+            true,
+            phi::errors::PreconditionNotMet(
+                "Element in array list MUST be ir::Int64Attribute "));
+
+        for (size_t i = 0; i < array_list.size(); ++i) {
           vec_res.push_back(
               array_list[i].dyn_cast<ir::Int64Attribute>().data());
         }
@@ -227,7 +312,7 @@ void BuildPhiContext(
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
        "pd.fetch")) {
     // process fetch op
-    auto fetch_var = scope->Var("fetch");
+    auto fetch_var = inner_scope->FindVar("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
@@ -237,13 +322,29 @@ void BuildPhiContext(
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
       auto name = name_map.at(out_ptr);
-      if (out_ptr.type()) {
-        ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
-            &(scope->Var(name)->Get<phi::DenseTensor>()))));
-      } else {
+      auto out_type = out_ptr.type();
+      if (!out_type) {
         phi::DenseTensor* ptr = nullptr;
         OutType out_ptr(ptr);
         ctx->EmplaceBackOutput(out_ptr);
+      } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+        ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
+            &(scope->Var(name)->Get<phi::DenseTensor>()))));
+      } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+        ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
+            &(scope->Var(name)->Get<phi::SelectedRows>()))));
+      } else if (out_type.isa<ir::VectorType>()) {
+        OutListType outputs;
+        auto& variable_array =
+            scope->Var(name)->Get<paddle::framework::VariableRefArray>();
+        for (size_t i = 0; i < variable_array.size(); ++i) {
+          outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
+              &(variable_array[i]->Get<phi::DenseTensor>()))));
+        }
+        ctx->EmplaceBackOutputs(outputs);
+      } else {
+        PADDLE_THROW(
+            phi::errors::Unimplemented("only support DenseTensor and vector "));
       }
 
       if (output_map != nullptr) {

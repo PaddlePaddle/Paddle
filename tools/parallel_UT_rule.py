@@ -528,6 +528,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_collective_reduce_api',
     'test_multiprocess_dataloader_exception',
     'test_collective_allgather_api',
+    'test_collective_concat_api',
     'test_dist_fleet_ps10',
     'test_dist_sparse_tensor_load_rmsprop',
     'test_collective_split_embedding_none_divisible',

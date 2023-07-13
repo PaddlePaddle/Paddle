@@ -133,7 +133,7 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
     }
 
     if (VLOG_IS_ON(10)) {
-      if (incr_local_exec_scopes.at(scope_id).size() &&
+      if (!incr_local_exec_scopes.at(scope_id).empty() &&
           FLAGS_local_exe_sub_scope_limit > 0) {
         VLOG(10)
             << "FLAGS_local_exe_sub_scope_limit is "

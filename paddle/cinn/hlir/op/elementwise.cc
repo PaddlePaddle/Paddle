@@ -687,10 +687,6 @@ std::vector<std::vector<int>> InferShapeForSqueeze(
 
   VLOG(4) << "The output calculated in Squeeze: "
           << cinn::utils::Join(output_shape, ", ");
-
-  if (output_shape.size() == 0) {
-    output_shape.push_back(1);
-  }
   return {output_shape};
 }
 
