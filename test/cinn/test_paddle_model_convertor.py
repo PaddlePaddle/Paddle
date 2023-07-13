@@ -145,11 +145,6 @@ class TestPaddleModel(OpMapperTest):
 
     def load_paddle_program(self):
         self.exe = paddle.static.Executor(self.place)
-        print("for debug list dir")
-
-        files = os.listdir(self.model_dir)
-        for file in files:
-            print(file)
 
         [
             self.inference_program,
@@ -158,8 +153,6 @@ class TestPaddleModel(OpMapperTest):
         ] = paddle.static.io.load_inference_model(
             path_prefix=self.model_dir,
             executor=self.exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename,
         )
 
         self.param_vars = paddle.load(

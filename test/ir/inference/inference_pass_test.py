@@ -60,9 +60,13 @@ class InferencePassTest(unittest.TestCase):
             # save models as combined to ensure that
             # there won't be too many useless files
             # after finishing a couple of tests.
+            feeded_vars = [
+                self.main_program.global_block().var(name)
+                for name in feeded_var_names
+            ]
             paddle.static.io.save_inference_model(
                 dirname,
-                self.feeds[feeded_var_names],
+                feeded_vars,
                 target_vars,
                 executor,
                 program=program,
@@ -113,7 +117,7 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig.
         '''
-        config = AnalysisConfig(self.path)
+        config = AnalysisConfig(self.path + ".pdmodel", self.path + ".pdmodel")
         config.disable_gpu()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
