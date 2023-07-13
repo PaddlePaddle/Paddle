@@ -39,7 +39,6 @@ CrossEntropyWithSoftmaxSPMDRule::InferForward(
   std::vector<int64_t> x_dims_mapping_src = x_dist_attr_src.dims_mapping();
 
   auto label_shape = input_specs[1].shape();
-  int label_ndim = label_shape.size();
   auto label_dist_attr_src = input_specs[1].dist_attr();
   std::vector<int64_t> label_dims_mapping_src =
       label_dist_attr_src.dims_mapping();
@@ -101,19 +100,21 @@ CrossEntropyWithSoftmaxSPMDRule::InferForward(
       GetBroadcastAxes(x_ndim - 1, x_ndim - 1, alphabet);
   std::string x_axes = broadcast_axes;
   x_axes.insert(axis, "k");
+  std::string label_axes;
   if (soft_label) {
-    std::string label_axes = x_axes;
+    label_axes = x_axes;
   } else {
-    std::string label_axes = broadcast_axes;
+    label_axes = broadcast_axes;
     label_axes.insert(axis, "1");
   }
   std::string loss_axes = broadcast_axes;
   loss_axes.insert(axis, "1");
   // optional output
+  std::string softmax_out_axes;
   if (use_softmax) {
-    std::string softmax_out_axes = x_axes;
+    softmax_out_axes = x_axes;
   } else {
-    std::string softmax_out_axes = "";
+    softmax_out_axes = "";
   }
 
   // step2: Sharding Propogation
@@ -142,6 +143,8 @@ CrossEntropyWithSoftmaxSPMDRule::InferForward(
       GetDimsMappingForAxes(label_axes, axis_to_dim_map));
 
   VLOG(4) << "CrossEntropyWithSoftmaxSPMDRule InferForward Inputs: "
+          << "Einsum notation: [" << x_axes << "," << label_axes << " --> "
+          << softmax_out_axes << "," << loss_axes << "]. " << std::endl
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping_src: ["
           << str_join(x_dims_mapping_src) << "], x_dims_mapping_dst: ["
           << str_join(x_dist_attr_dst.dims_mapping()) << "]; Label shape: ["
@@ -153,17 +156,18 @@ CrossEntropyWithSoftmaxSPMDRule::InferForward(
           << "], softmax_out_dims_mapping_src: ["
           << str_join(softmax_out_dist_attr_dst.dims_mapping()) << "]; axis: "
           << "[" << axis << "], ignore_index: [" << ignore_index
-          << "], numeric_stable_mode: [" << numeric_stable_mode
-          << "], use_softmax: [" << use_softmax << "], soft_label: ["
-          << soft_label << "].";
+          << "], numeric_stable_mode: ["
+          << (numeric_stable_mode ? "true" : "false") << "], use_softmax: ["
+          << (use_softmax ? "true" : "false") << "], soft_label: ["
+          << (soft_label ? "true" : "false") << "].";
 
   // todo if softmax_normalize axis is sharded, notify downstream phi api to
   // select c_softmax_with_entropy_kernel.
-  std::vector<TensorDistAttr> output_vec = {loss_dist_attr_dst};
-  if (use_softmax) {
-    output_vec.emplace_back(softmax_out_dist_attr_dst);
-  }
-  return {{x_dist_attr_dst, label_dist_attr_dst}, output_vec};
+
+  // according to the phi api implemetation, the softmax_out tensor will alway
+  // be genereated not matter the value of use_softmax.
+  return {{x_dist_attr_dst, label_dist_attr_dst},
+          {softmax_out_dist_attr_dst, loss_dist_attr_dst}};
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
