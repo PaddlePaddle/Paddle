@@ -26,7 +26,6 @@ from paddle.fluid.optimizer import (
     Adam,
     LarsMomentumOptimizer,
     MomentumOptimizer,
-    PipelineOptimizer,
     RecomputeOptimizer,
     SGDOptimizer,
 )
@@ -685,19 +684,6 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
 
     def test_dgcmomentum(self):
         exception_message = "In dygraph, don't support DGCMomentumOptimizer."
-        self._check_exception(exception_message)
-
-
-class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = fluid.optimizer.SGD(
-            learning_rate=0.5, parameter_list=parameter_list
-        )
-        optimizer = PipelineOptimizer(optimizer)
-        return optimizer
-
-    def test_pipline(self):
-        exception_message = "In dygraph, don't support PipelineOptimizer."
         self._check_exception(exception_message)
 
 

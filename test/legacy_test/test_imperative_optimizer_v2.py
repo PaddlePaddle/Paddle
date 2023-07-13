@@ -25,7 +25,6 @@ from paddle.fluid import core
 from paddle.fluid.optimizer import (
     LarsMomentumOptimizer,
     MomentumOptimizer,
-    PipelineOptimizer,
     RecomputeOptimizer,
 )
 
@@ -843,7 +842,7 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = PipelineOptimizer(optimizer)
+        optimizer = paddle.incubate.optimizer.PipelineOptimizer(optimizer)
         return optimizer
 
     def test_pipline(self):
