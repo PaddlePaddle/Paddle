@@ -79,6 +79,14 @@ void SetValueImpl(const Context& dev_ctx,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = in.dims();
+
+  auto new_value_dims = value_dims;
+
+  // support for 0-d tensor
+  if (value_dims.size() == 0) {
+    new_value_dims = {1};
+  }
+
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
@@ -198,10 +206,11 @@ void SetValueImpl(const Context& dev_ctx,
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
 
-  CheckIsDimsMatch(slice_dims_for_assign, value_dims);
+  CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
   auto slice_dims_for_assign_vec = vectorize<int64_t>(slice_dims_for_assign);
-  auto value_dims_vec = vectorize<int64_t>(value_dims);
-  size_t max_dims = std::max(slice_dims_for_assign.size(), value_dims.size());
+  auto value_dims_vec = vectorize<int64_t>(new_value_dims);
+  size_t max_dims =
+      std::max(slice_dims_for_assign.size(), new_value_dims.size());
   std::vector<int64_t> ext_slice_dims_for_assign(max_dims, 1);
   std::vector<int64_t> ext_value_dims_vec(max_dims, 1);
   std::copy(slice_dims_for_assign_vec.begin(),
