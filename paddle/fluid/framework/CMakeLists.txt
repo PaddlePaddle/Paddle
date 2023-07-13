@@ -506,7 +506,7 @@ cc_test(
   operator_test
   SRCS operator_test.cc
   DEPS operator op_registry device_context)
-if(WITH_TESTTING)
+if(WITH_TESTING)
   set_tests_properties(operator_test PROPERTIES LABELS "RUN_TYPE=Ampere")
 endif()
 cc_test(
