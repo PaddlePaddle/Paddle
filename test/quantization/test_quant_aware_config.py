@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import logging
 import os
 import unittest
 
@@ -19,6 +21,8 @@ from test_quant_aware import MobileNet
 
 import paddle
 from paddle.static.quantization.quanter import convert, quant_aware
+
+logging.basicConfig(level="INFO", format="%(message)s")
 
 
 class TestQuantAwareBase(unittest.TestCase):
@@ -107,7 +111,7 @@ class TestQuantAwareBase(unittest.TestCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
+                    logging.info(
                         'train iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                             iter, cost, top1, top5
                         )
@@ -127,7 +131,7 @@ class TestQuantAwareBase(unittest.TestCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
+                    logging.info(
                         'eval iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                             iter, cost, top1, top5
                         )
@@ -137,7 +141,7 @@ class TestQuantAwareBase(unittest.TestCase):
                 result[2].append(top5)
                 if stop_iter is not None and iter == stop_iter:
                     break
-            print(
+            logging.info(
                 ' avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                     np.mean(result[0]), np.mean(result[1]), np.mean(result[2])
                 )
@@ -164,8 +168,8 @@ class TestQuantAwareBase(unittest.TestCase):
 
         top1_2, top5_2 = test(convert_eval_prog)
         # values before quantization and after quantization should be close
-        print(f"before quantization: top1: {top1_1}, top5: {top5_1}")
-        print(f"after quantization: top1: {top1_2}, top5: {top5_2}")
+        logging.info(f"before quantization: top1: {top1_1}, top5: {top5_1}")
+        logging.info(f"after quantization: top1: {top1_2}, top5: {top5_2}")
 
 
 class TestQuantAwareNone(TestQuantAwareBase):
