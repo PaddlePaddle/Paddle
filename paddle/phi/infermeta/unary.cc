@@ -844,6 +844,14 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
   out->set_dtype(alpha.dtype());
 }
 
+void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
+  if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
+
 void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
   out->set_dims(x.dims());
