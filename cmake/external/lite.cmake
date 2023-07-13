@@ -62,11 +62,11 @@ endif()
 
 if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
-  set(LITE_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/lite)
   set(LITE_PROJECT extern_lite)
   set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
-  set(LITE_BINARY_DIR ${LITE_SOURCE_DIR}/src/extern_lite-build)
+  set(LITE_BINARY_DIR ${LITE_PREFIX_DIR}/src/extern_lite-build)
+  set(LITE_SOURCE_DIR ${LITE_PREFIX_DIR}/src/extern_lite)
 
   set(LITE_SHARED_LIB
       ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
@@ -78,28 +78,6 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
 
   if(NOT CUDA_ARCH_NAME)
     set(CUDA_ARCH_NAME "Auto")
-  endif()
-
-  file(GLOB LITE_SOURCE_FILE_LIST ${LITE_SOURCE_DIR})
-  list(LENGTH LITE_SOURCE_FILE_LIST RES_LEN)
-  if(RES_LEN EQUAL 0)
-    execute_process(
-      COMMAND
-        ${GIT_EXECUTABLE} clone -b ${LITE_GIT_TAG}
-        "https://github.com/PaddlePaddle/Paddle-Lite.git" ${LITE_SOURCE_DIR})
-  else()
-    # check git tag
-    execute_process(
-      COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
-      OUTPUT_VARIABLE VERSION
-      OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
-      WORKING_DIRECTORY ${LITE_SOURCE_DIR})
-    if(NOT ${VERSION} STREQUAL ${LITE_GIT_TAG})
-      message(
-        WARNING "lite version is not ${VERSION}, checkout to ${LITE_GIT_TAG}")
-      execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${LITE_GIT_TAG}
-                      WORKING_DIRECTORY ${LITE_SOURCE_DIR})
-    endif()
   endif()
 
   # No quotes, so cmake can resolve it as a command with arguments.
@@ -130,7 +108,8 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      SOURCE_DIR ${LITE_SOURCE_DIR}
+      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
+      GIT_TAG ${LITE_GIT_TAG}
       PREFIX ${LITE_PREFIX_DIR}
       PATCH_COMMAND
         mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch
@@ -182,13 +161,14 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      SOURCE_DIR ${LITE_SOURCE_DIR}
+      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
+      GIT_TAG ${LITE_GIT_TAG}
       PREFIX ${LITE_PREFIX_DIR}
       UPDATE_COMMAND ""
       PATCH_COMMAND
         sed -i
         "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?"
-        ${LITE_SOURCE_DIR}/lite/tools/cmake_tools/record_supported_kernel_op.py
+        ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND ""
       CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
