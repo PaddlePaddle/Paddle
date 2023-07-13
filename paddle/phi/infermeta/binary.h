@@ -333,6 +333,12 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_y,
                      MetaTensor* out);
 
+void MatmulInt8InferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         bool trans_x,
+                         bool trans_y,
+                         MetaTensor* out);
+
 void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 int x_num_col_dims,

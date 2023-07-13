@@ -39,25 +39,16 @@ const std::map<std::tuple<int, int, int>, CublasLtAlgoParam> AlgoParamCache{};
 
 class CublasLtHelper {
  public:
-  CublasLtHelper(int m, int k, int n)
-      : alpha_(1), beta_(0), m_(m), k_(k), n_(n) {
+  CublasLtHelper(int m, int k, int n, cublasLtHandle_t handle)
+      : handle_(handle), alpha_(1), beta_(0), m_(m), k_(k), n_(n) {
     cublasStatus_t status;
-    // handle and matmul desc
-    status = dyl::cublasLtCreate(&handle_);
 #if CUBLAS_VER_MAJOR < 11
     cudaDataType_t cudaComputeType = CUDA_R_32I;
 #else
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
 #endif
 
-    PADDLE_ENFORCE_EQ(
-        status,
-        CUBLAS_STATUS_SUCCESS,
-        phi::errors::External(
-            "cublasLtMatrixLayoutCreate execution error"
-            "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
-            "information"));
-
+    // matmul desc
 #if CUBLAS_VER_MAJOR < 11
     status = dyl::cublasLtMatmulDescCreate(&matmul_desc_, cudaComputeType);
 #else
@@ -179,7 +170,7 @@ class CublasLtHelper {
   }
   ~CublasLtHelper() {}
 
-  void GEMM(int8_t* A_dev,
+  void GEMM(const int8_t* A_dev,
             const int8_t* B_dev,
             int32_t* C_dev,
             cudaStream_t stream,
@@ -226,14 +217,14 @@ class CublasLtHelper {
 
   cublasLtMatmulAlgo_t algo_;
 
-  int32_t alpha_;
-  int32_t beta_;
+  int32_t alpha_ = 1;
+  int32_t beta_ = 0;
 
-  int m_;
-  int k_;
-  int n_;
+  int m_ = 0;
+  int k_ = 0;
+  int n_ = 0;
 
-  size_t workspace_size_;
+  size_t workspace_size_ = 0;
 };
 
 }  // namespace phi
