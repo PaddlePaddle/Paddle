@@ -14,33 +14,14 @@
 
 #pragma once
 
-#include <cassert>
-#include <cstdint>
-#include <limits>
-#include <sstream>
-#include <vector>
-
-#include "paddle/phi/api/ext/exception.h"
-#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-class DenseTensor;
-
-// In static model pre analysis, we can't get the data from tensor
-class TensorRef {
- public:
-  // Constructor support implicit
-  TensorRef() = default;
-  explicit TensorRef(const DenseTensor* base) : tensor_base_(base) {}
-
-  const DenseTensor* Get() const {
-    assert(tensor_base_ != nullptr);
-    return tensor_base_;
-  }
-
- private:
-  const DenseTensor* tensor_base_{nullptr};
-};
+template <typename T, typename Context>
+void DistConcatKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      int nranks,
+                      DenseTensor* out);
 
 }  // namespace phi

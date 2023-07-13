@@ -2532,7 +2532,17 @@
   int_array:
       sections :
           data_type : int
-          tensor_name : AxesTensor
+  scalar :
+      axis :
+        data_type : int
+        support_tensor : true
+
+- op : split_with_num
+  scalar :
+      axis :
+        data_type : int
+        support_tensor : true
+        tensor_name : AxisTensor
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
@@ -2678,7 +2688,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
   inputs :
     x : X
   outputs :
