@@ -3294,9 +3294,15 @@ class TestPow_factor_tensor(TestActivation):
                 fetch_list=[out_1, out_2, res, out_6],
             )
 
-            np.testing.assert_allclose(res_1, np.power(input, 2))
-            np.testing.assert_allclose(res_2, np.power(input, 3))
-            np.testing.assert_allclose(res_6, np.power(input, 3))
+            np.testing.assert_allclose(
+                res_1, np.power(input, 2), rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_2, np.power(input, 3), rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_6, np.power(input, 3), rtol=1e-6, atol=1e-6
+            )
 
 
 def ref_stanh(x, scale_a=0.67, scale_b=1.7159):

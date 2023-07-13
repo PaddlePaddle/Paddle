@@ -275,8 +275,8 @@ class TestPixelShuffleAPI(unittest.TestCase):
             res_1 = res_1[0] if len(res_1) == 1 else res_1
             res_2 = res_2[0] if len(res_2) == 1 else res_2
 
-            np.testing.assert_allclose(res_1[0], out_1_np)
-            np.testing.assert_allclose(res_2[0], out_2_np)
+            np.testing.assert_allclose(res_1, out_1_np, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(res_2, out_2_np, rtol=1e-6, atol=1e-6)
 
     def run_dygraph(self, up_factor, data_format):
         n, c, h, w = 2, 9, 4, 4

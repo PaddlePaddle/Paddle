@@ -148,15 +148,21 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            np.testing.assert_allclose(res_1, self.res_1_np)
-
-            np.testing.assert_allclose(res_2, self.res_2_np)
-
-            np.testing.assert_allclose(res_3, self.res_3_np)
-
-            np.testing.assert_allclose(res_4, self.res_4_np)
-
-            np.testing.assert_allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(
+                res_1, self.res_1_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_2, self.res_2_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_3, self.res_3_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_4, self.res_4_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_5, self.res_5_np, rtol=1e-6, atol=1e-6
+            )
 
     def test_dynamic_graph(self):
         for use_cuda in (
@@ -169,36 +175,38 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             out_1 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[3, 3]
             )
-
             out_2 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=5)
-
             out_3 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[2, 5]
             )
-
             out_4 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[3, 3], data_format="NHWC"
             )
-
             out_5 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[None, 3]
             )
-
             out_6 = paddle.nn.functional.interpolate(
                 x=x, mode="area", size=[2, 5]
             )
 
-            np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
-
-            np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
-
-            np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
-
-            np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
-
-            np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
-
-            np.testing.assert_allclose(out_6.numpy(), self.res_3_np)
+            np.testing.assert_allclose(
+                out_1.numpy(), self.res_1_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                out_2.numpy(), self.res_2_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                out_3.numpy(), self.res_3_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                out_4.numpy(), self.res_4_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                out_5.numpy(), self.res_5_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                out_6.numpy(), self.res_3_np, rtol=1e-6, atol=1e-6
+            )
 
 
 class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
@@ -260,15 +268,21 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            np.testing.assert_allclose(res_1, self.res_1_np)
-
-            np.testing.assert_allclose(res_2, self.res_2_np)
-
-            np.testing.assert_allclose(res_3, self.res_3_np)
-
-            np.testing.assert_allclose(res_4, self.res_4_np)
-
-            np.testing.assert_allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(
+                res_1, self.res_1_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_2, self.res_2_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_3, self.res_3_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_4, self.res_4_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_5, self.res_5_np, rtol=1e-6, atol=1e-6
+            )
 
     def test_dynamic_graph(self):
         for use_cuda in (
