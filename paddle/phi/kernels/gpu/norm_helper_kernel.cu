@@ -225,6 +225,7 @@ void NormHelperKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(norm_helper,
                    GPU,
                    ALL_LAYOUT,
@@ -232,3 +233,11 @@ PD_REGISTER_KERNEL(norm_helper,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+#else
+PD_REGISTER_KERNEL(norm_helper,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::NormHelperKernel,
+                   float,
+                   phi::dtype::float16) {}
+#endif
