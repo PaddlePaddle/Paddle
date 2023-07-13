@@ -185,7 +185,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     ::ir::BuildScope(
-        *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
+        *ir_program_->block(), InnerScope(), &value_2_var_name_map_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,

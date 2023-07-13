@@ -41,36 +41,9 @@
 #include "glog/logging.h"
 
 namespace ir {
-paddle::framework::Variable* CreateVar(ir::Value value,
-                                       const std::string& name,
-                                       paddle::framework::Scope* scope,
-                                       paddle::framework::Scope* local_scope);
-
-void BuildValue(ir::Value value,
-                paddle::framework::Scope* scope,
-                paddle::framework::Scope* local_scope,
-                std::unordered_map<ir::Value, std::string>* name_map,
-                int& count);  // NOLINT
-
-void HandleForSpecialOp(ir::Operation* op,
-                        paddle::framework::Scope* scope,
-                        paddle::framework::Scope* local_scope,
-                        std::unordered_map<ir::Value, std::string>* name_map,
-                        int& count);  // NOLINT
-
-void HandleForInplaceOp(ir::Operation* op,
-                        paddle::framework::Scope* scope,
-                        paddle::framework::Scope* local_scope,
-                        std::unordered_map<ir::Value, std::string>* name_map,
-                        int& count);  // NOLINT
-
-void CheckInputVars(ir::Operation* op,
-                    const std::unordered_map<ir::Value, std::string>& name_map);
-
 void BuildScope(const ir::Block& block,
-                paddle::framework::Scope* scope,
-                paddle::framework::Scope* local_scope,
-                std::unordered_map<ir::Value, std::string>* name_map);
+                paddle::framework::Scope* inner_scope,
+                std::unordered_map<ir::Value, std::string>* value_2_name);
 
 template <typename Context,
           typename InType,
