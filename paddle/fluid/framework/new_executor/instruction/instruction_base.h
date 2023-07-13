@@ -31,6 +31,8 @@ class InstructionBase {
  public:
   explicit InstructionBase(size_t id, const platform::Place& place);
 
+  virtual ~InstructionBase() = default;
+
   size_t Id() const { return id_; }
 
   bool IsArtificial() const { return is_artificial_; }
