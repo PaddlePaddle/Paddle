@@ -601,15 +601,6 @@ __global__ void masked_multihead_attention_kernel(
   }
   __syncthreads();
 
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("=======q_out=======\n");
-  //   for (int i = 0; i < Dh; ++i) printf("%f ",
-  //   static_cast<float>(q_smem[i])); printf("\n");
-  // }
-  // __syncthreads();
-#endif
-
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
@@ -704,15 +695,6 @@ __global__ void masked_multihead_attention_kernel(
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("=======qk_out=======\n");
-  //   for (int i = 0; i <= params.timestep; ++i) printf("%f ", qk_smem[i]);
-  //   printf("qk_max=%f\n", qk_max);
-  // }
-  // __syncthreads();
-#endif
-
   float sum = 0.f;
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
     // bool is_mask = false;
@@ -779,15 +761,6 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("======logits_out=====\n");
-  //   for (int i = 0; i <= params.timestep; ++i) printf("%f ", logits_smem[i]);
-  //   printf("\n");
-  // }
-  // __syncthreads();
-#endif
-
   V_vec v_bias;
   zero(v_bias);
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
@@ -851,15 +824,6 @@ __global__ void masked_multihead_attention_kernel(
 #endif
   }
 
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  // __syncthreads();
-  // if (bi == 0 && hi == 0 && tid == 0) {
-  //   printf("======fmha_out=====\n");
-  //   for (int i = 0; i < Dh; ++i)
-  //     printf("%f ", static_cast<float>(params.out[i]));
-  //   printf("\n");
-  // }
-#endif
 #else
   assert(false);
 #endif
@@ -1270,7 +1234,6 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                                           quant_min_bound);
     fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
-    std::cout << "dequant_qkv_scales   " << quant_fmha_out_scale << std::endl;
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
                                    3 * num_head * dim_head);

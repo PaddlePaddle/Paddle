@@ -38,6 +38,73 @@ def masked_multihead_attention(
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
 ):
+    r"""
+    Multi-head attention for text summarization.
+    This is a fusion operator to compute masked multihead attention in transformer model architecture.
+    This operator only supports running on GPU. The function of the transformer layer is consistent
+    with the following pseudo code:
+
+        .. code-block:: python
+
+            x = paddle.transpose(x, [0, 2, 1, 3])  # [bz, seqlen, nhead, head_dim] --> [bz, nhead, seqlen, head_dim]
+            q, k, v = paddle.split(x, 3, axis=2)
+            cache_k, cache_v= paddle.split(cache_kv_out, 2, axis=0)
+            k = paddle.concat([cache_k.squeeze(0), k], axis=2)
+            v = paddle.concat([cache_v.squeeze(0), v], axis=2)
+
+            product = paddle.matmul(x=q * (x.shape[3]**-0.5), y=k, transpose_y=True)
+            product = product + src_mask
+            product = paddle.nn.functional.softmax(product)
+            out = paddle.matmul(product, v).transpose([0, 2, 1, 3])
+
+    Args:
+        x (Tensor): the input tensor could be 4-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3, num_head, dim_head]`.
+        bias (Tensor, optional): The bias tensor of qkv, the shape is `[3, num\_head, dim\_head]`.
+        src_mask (Tensor): The src_mask tensor. the shape is `[batch\_size, 1, 1, sequence\_length]`.
+        sequence_lengths (Tensor, optional): The sequence_lengths tensor. the shape is `[batch\_size, 1]`.
+        rotary_tensor (Tensor, optional): The rotary_tensor tensor. the shape is `[batch\_size, 1]`.
+        beam_cache_offset (Tensor, optional): The rotary_tensor tensor. the shape is `[batch\_size, beam\_size, max\_seq\_len + max\_dec\_len]`.
+        cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`.
+        rotary_tensor (Tensor, optional): The rotary_tensor tensor. the shape is `[batch\_size, 1, 1, sequence\_length, dim_head]`.
+        qkv_out_scale (Tensor, optional): The qkv_out_scale tensor. the shape is `[3, num\_head, dim\_head]]`.
+        out_linear_shift (Tensor, optional): The out_linear_shift tensor.
+        out_linear_smooth (Tensor, optional): The out_linear_smooth tensor.
+        beam_size (int, optional): The beam_size of beam search. Default 1.
+        rotary_emb_dims (int, optional): The rotary_emb_dims. Default 0.
+        mask_broadcast_num_heads (bool, optional): A flag indicating whether broadcast is needed of src_mask num_head dim or not. Default True.
+        compute_bias (bool, optional): A flag indicating whether bias is computed or not. Default False.
+        use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
+        out_linear_in_scale (float, optional): The out_linear_in_scale.
+        quant_round_type (int, optional): The quant_round_type. Default 1.
+        quant_max_bound (float, optional): The quant_max_bound. Default 127.0.
+        quant_min_bound (float, optional): The quant_min_bound. Default -127.0.
+
+    Returns:
+        Tensor|tuple: If "beam_cache_offset_out" is not none, return the
+        tuple (output, cache_kvs_out, beam_cache_offset_out), which output is the output of
+        masked_multihead_attention layers, cache_kvs_out is inplace with input `cache_kvs`.
+        If "beam_cache_offset_out" is none, return the tuple (output, cache_kvs_out).
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            import paddle.incubate.nn.functional as F
+
+            # input: [batch_size, 3, num_head, dim_head]
+            x = paddle.rand(shape=(2, 3, 32, 128), dtype="float32")
+
+            # src_mask: [batch_size, 1, 1, sequence_length]
+            src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
+
+            # cache_kv: [2, batch_size, num_head, max_seq_len, dim_head]
+            cache_kv = paddle.rand(shape=(2, 2, 32, 64, 128), dtype="float32")
+
+            output = F.masked_multihead_attention(
+                x, src_mask=src_mask, cache_kv=cache_kv)
+
+    """
     if in_dynamic_mode():
         return _C_ops.masked_multihead_attention_(
             x,
