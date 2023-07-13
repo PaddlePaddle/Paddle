@@ -336,39 +336,39 @@ def is_available():
 def _init_parallel_env(backend):
     master_endpoint = os.getenv("PADDLE_MASTER", None)
     if master_endpoint is None:
-        master_endpoint = master_endpoint.split(',')[0]
-        assert (
-            master_endpoint is not None
-        ), "Please set PADDLE_MASTER enviroment variable."
-    if master_endpoint:
-        master_addr = master_endpoint.split(":")[0]
-        master_port = int(master_endpoint.split(":")[1])
-        global_env = _get_global_env()
-        rank = global_env.rank
-        world_size = global_env.world_size
-        dev_id = global_env.device_id
-        is_master = rank == 0
-        store = core.TCPStore(
-            master_addr,
-            master_port,
-            is_master,
-            world_size,
-        )
-        if backend == "gloo":
-            core.CommContextManager.create_gloo_comm_context(
-                store, 0, rank, world_size
-            )
-        elif backend == "nccl":
-            endpoints_str = ""
-            for endpoint in global_env.trainer_endpoints:
-                endpoints_str += endpoint
-                endpoints_str_hash = hashlib.md5(
-                    endpoints_str.encode(encoding='UTF-8')
-                ).hexdigest()
+        master_endpoint = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+    assert (
+        master_endpoint is not None
+    ), "Please set PADDLE_MASTER enviroment variable."
 
-            core.CommContextManager.create_nccl_comm_context(
-                store, dev_id, 0, rank, world_size, endpoints_str_hash
-            )
+    master_addr = master_endpoint.split(":")[0]
+    master_port = int(master_endpoint.split(":")[1])
+    global_env = _get_global_env()
+    rank = global_env.rank
+    world_size = global_env.world_size
+    dev_id = global_env.device_id
+    is_master = rank == 0
+    store = core.TCPStore(
+        master_addr,
+        master_port,
+        is_master,
+        world_size,
+    )
+    if backend == "gloo":
+        core.CommContextManager.create_gloo_comm_context(
+            store, 0, rank, world_size
+        )
+    elif backend == "nccl":
+        endpoints_str = ""
+        for endpoint in global_env.trainer_endpoints:
+            endpoints_str += endpoint
+            endpoints_str_hash = hashlib.md5(
+                endpoints_str.encode(encoding='UTF-8')
+            ).hexdigest()
+
+        core.CommContextManager.create_nccl_comm_context(
+            store, dev_id, 0, rank, world_size, endpoints_str_hash
+        )
 
 
 # @paddle.fluid.framework.static_only

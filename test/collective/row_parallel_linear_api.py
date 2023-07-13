@@ -17,6 +17,7 @@ from legacy_test.test_collective_api_base import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
+from collective.collective_broadcast_api import broadcast
 
 import paddle
 from paddle import fluid
@@ -38,7 +39,7 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
             data = paddle.static.data(
                 name='tindata', shape=[10, 1000], dtype="float32"
             )
-            paddle.distributed.broadcast(data, src=0)
+            broadcast(data, src=0)
             data = paddle.split(data, 2, axis=1)[rank]
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
