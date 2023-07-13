@@ -49,7 +49,7 @@ static void NewVar(BlockDesc *block,
                    const std::string &name,
                    const std::vector<int64_t> &shape) {
   auto *var_desc = block->Var(name);
-  if (shape.size() > 0) {
+  if (!shape.empty()) {
     var_desc->SetShape(shape);
     var_desc->SetType(proto::VarType::LOD_TENSOR);
     var_desc->SetDataType(proto::VarType_Type_FP32);

@@ -224,7 +224,7 @@ std::string GenerateOpFunctionsBody(
         output.duplicable() ? OUT_VAR_LIST_TYPE : OUT_VAR_TYPE;
 
     if (FindPassingOutsMap(op_type, out_name)) {
-      if (input_args != "") {
+      if (!input_args.empty()) {
         input_args += ",";
       }
       input_args += out_type;
@@ -262,7 +262,7 @@ std::string GenerateOpFunctionsBody(
       // split op. We need to specify the number of variables for the
       // duplicable output, as the argument OutNum;
       if (output.duplicable()) {
-        if (input_args != "") {
+        if (!input_args.empty()) {
           input_args += ",";
         }
         auto out_num_str =
@@ -335,7 +335,7 @@ std::string GenerateOpFunctionsBody(
   }
 
   std::string function_args = "";
-  if (input_args == "") {
+  if (!input_args.empty()) {
     function_args = FUNCTION_ARGS_NO_INPUT;
   } else {
     function_args = paddle::string::Sprintf(FUNCTION_ARGS, input_args);
