@@ -155,7 +155,7 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
             np.testing.assert_allclose(res_3, self.res_3_np)
 
-            # assert np.allclose(res_4, self.res_4_np)
+            # np.testing.assert_allclose(res_4, self.res_4_np)
 
             np.testing.assert_allclose(res_5, self.res_5_np)
 
@@ -190,7 +190,7 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
             np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
 
-            # assert np.allclose(out_4.numpy(), self.res_4_np)
+            # np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
             np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
@@ -261,7 +261,7 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
 
             np.testing.assert_allclose(res_3, self.res_3_np)
 
-            # assert np.allclose(res_4, self.res_4_np)
+            # np.testing.assert_allclose(res_4, self.res_4_np)
 
             np.testing.assert_allclose(res_5, self.res_5_np)
 
@@ -297,7 +297,7 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
 
             np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
 
-            # assert np.allclose(out_4.numpy(), self.res_4_np)
+            # np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
             np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
