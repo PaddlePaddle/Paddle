@@ -14,6 +14,7 @@
 
 import contextlib
 import inspect
+import operator
 import unittest
 
 import nets
@@ -452,7 +453,6 @@ class TestLayer(LayerTest):
             )
             dy_ret1 = conv2d1(base.to_variable(images))
             dy_ret2 = conv2d2(base.to_variable(images))
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, dy_ret1.numpy(), dy_ret2.numpy()
@@ -460,7 +460,6 @@ class TestLayer(LayerTest):
 
             conv2d1_weight_np = conv2d1.weight.numpy()
             conv2d1_bias = conv2d1.bias
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, conv2d1_weight_np, conv2d2.weight.numpy()
@@ -589,7 +588,6 @@ class TestLayer(LayerTest):
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y)
             )
             dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, dy_rlt1.numpy(), dy_rlt2.numpy()
@@ -661,13 +659,11 @@ class TestLayer(LayerTest):
             )
             rep1 = emb1(base.to_variable(inp_word))
             rep2 = emb2(base.to_variable(inp_word))
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, emb1.weight.numpy(), custom_weight
             )
             np.testing.assert_array_equal(emb2.weight.numpy(), custom_weight)
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, rep1.numpy(), rep2.numpy()
@@ -772,7 +768,6 @@ class TestLayer(LayerTest):
             )
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, dy_ret1.numpy(), dy_ret2.numpy()
@@ -780,7 +775,6 @@ class TestLayer(LayerTest):
 
             conv3d1_weight_np = conv3d1.weight.numpy()
             conv3d1_bias = conv3d1.bias
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, conv3d1_weight_np, conv3d2.weight.numpy()
@@ -1029,7 +1023,6 @@ class TestLayer(LayerTest):
             )
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, dy_ret1.numpy(), dy_ret2.numpy()
@@ -1037,7 +1030,6 @@ class TestLayer(LayerTest):
 
             conv3d1_weight_np = conv3d1.weight.numpy()
             conv3d1_bias = conv3d1.bias
-            import operator
 
             np.testing.assert_array_compare(
                 operator.__ne__, conv3d1_weight_np, conv3d2.weight.numpy()

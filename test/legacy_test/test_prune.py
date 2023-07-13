@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+import operator
 import unittest
 
 import numpy as np
@@ -318,7 +319,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
-                import operator
 
                 np.testing.assert_array_compare(
                     operator.__ne__, weight_init, weight
@@ -352,7 +352,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
-                import operator
 
                 np.testing.assert_array_compare(
                     operator.__ne__, weight_init, weight
@@ -614,7 +613,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         np.testing.assert_array_equal(weight_with_prune, weight_expected)
-        import operator
 
         np.testing.assert_array_compare(
             operator.__ne__, weight_without_prune, weight_expected
@@ -682,7 +680,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         np.testing.assert_array_equal(weight_with_prune, weight_expected)
-        import operator
 
         np.testing.assert_array_compare(
             operator.__ne__, weight_without_prune, weight_expected
@@ -742,7 +739,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 weight2 = np.array(
                     scope.find_var(w2_param_attrs.name).get_tensor()
                 )
-                import operator
 
                 np.testing.assert_array_compare(
                     operator.__ne__, weight1_init, weight1
@@ -809,7 +805,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         np.testing.assert_array_equal(weight_with_prune, weight_expected)
-        import operator
 
         np.testing.assert_array_compare(
             operator.__ne__, weight_without_prune, weight_expected
