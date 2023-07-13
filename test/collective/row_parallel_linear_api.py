@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+from collective.collective_broadcast_api import broadcast
 from legacy_test.test_collective_api_base import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
-from collective.collective_broadcast_api import broadcast
 
 import paddle
 from paddle import fluid

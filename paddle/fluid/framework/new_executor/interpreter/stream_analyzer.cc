@@ -201,7 +201,10 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
           .Get(ring_id, place_)
           ->dev_context();
     }
-    // NOTE(yuwentao01) must judge by op type, otherwise when modifying the fluid operator will result in test_dist_hapi_model unit test failed, the phenomenon is the LeNet model predict and evaluate acc result not inconsistent, 
+    // NOTE(yuwentao01) must judge by op type, otherwise when modifying the
+    // fluid operator will result in test_dist_hapi_model unit test failed, the
+    // phenomenon is the LeNet model predict and evaluate acc result not
+    // inconsistent,
     if (IsPhiCommOp(op.get())) {
       int ring_id = op->Attr<int>("ring_id");
       dev_ctx =

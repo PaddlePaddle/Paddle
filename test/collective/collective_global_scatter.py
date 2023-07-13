@@ -15,6 +15,7 @@
 import os
 
 import numpy as np
+from collective.collective_alltoall_api import alltoall
 from legacy_test.test_collective_api_base import (
     TestCollectiveAPIRunnerBase,
     dump_output,
@@ -23,13 +24,10 @@ from legacy_test.test_collective_api_base import (
 
 import paddle
 from paddle import fluid
-from paddle import framework
-import paddle.distributed as dist
-from paddle.fluid import data_feeder
 from paddle.distributed.utils import moe_utils
-from collective.collective_alltoall_api import alltoall
 
 paddle.enable_static()
+
 
 class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
