@@ -255,13 +255,23 @@ PD_REGISTER_KERNEL(
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, CPU, ALL_LAYOUT, phi::func, float, double) {}
 
+#define PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(name, func) \
+  PD_REGISTER_KERNEL(name,                                          \
+                     CPU,                                           \
+                     ALL_LAYOUT,                                    \
+                     phi::func,                                     \
+                     float,                                         \
+                     double,                                        \
+                     phi::dtype::complex<float>,                    \
+                     phi::dtype::complex<double>) {}
+
 #define PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                                         \
       name, CPU, ALL_LAYOUT, phi::func, float, double, phi::dtype::float16) {}
 
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(tan_grad, TanGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(sin_grad, SinGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(cos_grad, CosGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(tan_grad, TanGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(acos_grad, AcosGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(asin_grad, AsinGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(atan_grad, AtanGradKernel)
@@ -355,7 +365,9 @@ PD_REGISTER_KERNEL(sin_double_grad,
                    double,
                    phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(sin_triple_grad,
                    CPU,
@@ -365,7 +377,9 @@ PD_REGISTER_KERNEL(sin_triple_grad,
                    double,
                    phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(cos_double_grad,
                    CPU,
@@ -375,7 +389,9 @@ PD_REGISTER_KERNEL(cos_double_grad,
                    double,
                    phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(cos_triple_grad,
                    CPU,
@@ -385,7 +401,9 @@ PD_REGISTER_KERNEL(cos_triple_grad,
                    double,
                    phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)

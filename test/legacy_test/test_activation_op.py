@@ -1587,10 +1587,21 @@ class TestCos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
+        self.check_grad(['X'], 'Out', check_prim=False)
 
     def if_enable_cinn(self):
         pass
+
+
+class TestCos_Complex64(TestCos):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestCos_Complex128(TestCos):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestCos_ZeroDim(TestCos):
@@ -1627,6 +1638,16 @@ class TestTan(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestTan_Complex64(TestTan):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestTan_Complex128(TestTan):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestTan_ZeroDim(TestTan):
@@ -1728,10 +1749,21 @@ class TestSin(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
+        self.check_grad(['X'], 'Out', check_prim=False)
 
     def if_enable_cinn(self):
         pass
+
+
+class TestSin_Complex64(TestSin):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSin_Complex128(TestSin):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSin_ZeroDim(TestSin):

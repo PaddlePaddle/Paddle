@@ -166,9 +166,9 @@ PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
                      phi::dtype::complex<float>,               \
                      phi::dtype::complex<double>) {}
 
-PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
-PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)
-PD_REGISTER_ACTIVATION_KERNEL(tan, TanKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sin, SinKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(cos, CosKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tan, TanKernel)
 PD_REGISTER_ACTIVATION_KERNEL(acos, AcosKernel)
 PD_REGISTER_ACTIVATION_KERNEL(asin, AsinKernel)
 PD_REGISTER_ACTIVATION_KERNEL(atan, AtanKernel)
