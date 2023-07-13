@@ -100,8 +100,8 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               int64_t n,
                               float epsilon,
                               MetaTensor* out,
-                              // MetaTensor* mean,
-                              // MetaTensor* variance,
+                              MetaTensor* mean,
+                              MetaTensor* variance,
                               MetaTensor* z_add) {
   int axis = -1;
   auto x_dims = x.dims();
@@ -115,12 +115,12 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
-  // mean->set_dims(phi::make_ddim({m}));
-  // mean->set_dtype(DataType::FLOAT32);
-  // mean->set_layout(x.layout());
-  // variance->set_dims(phi::make_ddim({m}));
-  // variance->set_dtype(DataType::FLOAT32);
-  // variance->set_layout(x.layout());
+  mean->set_dims(phi::make_ddim({m}));
+  mean->set_dtype(DataType::FLOAT32);
+  mean->set_layout(x.layout());
+  variance->set_dims(phi::make_ddim({m}));
+  variance->set_dtype(DataType::FLOAT32);
+  variance->set_layout(x.layout());
   z_add->set_dims(phi::make_ddim({m, n}));
   z_add->set_dtype(x.dtype());
   z_add->set_layout(x.layout());

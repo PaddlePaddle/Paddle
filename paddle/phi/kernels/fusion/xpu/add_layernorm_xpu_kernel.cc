@@ -31,8 +31,8 @@ void AddLayernormXPUKernel(const Context& ctx,
                            int64_t n,
                            float epsilon,
                            DenseTensor* out,
-                           //  DenseTensor* mean,
-                           //  DenseTensor* variance,
+                           DenseTensor* mean,
+                           DenseTensor* variance,
                            DenseTensor* z_add) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -43,8 +43,12 @@ void AddLayernormXPUKernel(const Context& ctx,
 
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
   LOG(INFO) << "x_shape= 1";
-  auto* z_add_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(z_add));
-  LOG(INFO) << "x_shape= 4";
+  ctx.template Alloc<float>(mean);
+  float* mean_data = mean->data<float>();
+  ctx.template Alloc<float>(variance);
+  float* variance_data = variance->data<float>();
+  XPUType* z_add_data =
+      reinterpret_cast<XPUType*>(ctx.template Alloc<T>(z_add));
 
   int r = xpu::add_layer_norm_fusion<XPUType>(  // T
       /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
@@ -56,10 +60,8 @@ void AddLayernormXPUKernel(const Context& ctx,
       /* float epsilon */ epsilon,
       /* const float* scale */ scale_data,
       /* const float* bias */ bias_data,
-      /* float* mean */ nullptr,
-      /* float* variance */ nullptr,
-      // /* float* mean */ mean_data,
-      // /* float* variance */ variance_data,
+      /* float* mean */ mean_data,
+      /* float* variance */ variance_data,
       /* T* z_add */ z_add_data);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layernorm_xpu");
 }
