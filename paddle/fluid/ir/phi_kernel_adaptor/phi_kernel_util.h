@@ -75,7 +75,8 @@ void BuildScope(const ir::Block& block,
 template <typename Context,
           typename InType,
           typename OutType,
-          typename ListType,
+          typename InListType,
+          typename OutListType,
           bool is_kernel>
 void BuildPhiContext(
     ir::Operation* op,
@@ -121,11 +122,12 @@ void BuildPhiContext(
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
-    } else if (var->IsType<paddle::framework::TensorRefArray>()) {
-      ListType inputs;
-      auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
-      for (size_t i = 0; i < tensor_array.size(); ++i) {
-        inputs.emplace_back(InType(tensor_array[i]));
+    } else if (var->IsType<paddle::framework::VariableRefArray>()) {
+      InListType inputs;
+      auto& variable_array = var->Get<paddle::framework::VariableRefArray>();
+      for (size_t i = 0; i < variable_array.size(); ++i) {
+        inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
+            &(variable_array[i]->Get<phi::DenseTensor>()))));
       }
       ctx->EmplaceBackInputs(inputs);
     } else {
@@ -157,18 +159,21 @@ void BuildPhiContext(
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
       if (tensor_attr_type == "paddle::dialect::IntArrayAttribute") {
         if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-          phi::Attribute r1 = phi::TensorRef(
+          phi::Attribute attr = phi::TensorRef(
               &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
-          ctx->EmplaceBackAttr(r1);
+          ctx->EmplaceBackAttr(attr);
         } else if (ptr.type().isa<ir::VectorType>()) {
           auto& tensor_array = inner_scope->FindVar(in_var_name)
-                                   ->Get<paddle::framework::TensorRefArray>();
+                                   ->Get<paddle::framework::VariableRefArray>();
           if (tensor_array.size() == 1) {
-            ctx->EmplaceBackAttr(phi::TensorRef(tensor_array[0]));
+            phi::Attribute attr =
+                phi::TensorRef(&(tensor_array[0]->Get<phi::DenseTensor>()));
+            ctx->EmplaceBackAttr(attr);
           } else {
             std::vector<phi::TensorRef> vec_ref;
             for (size_t i = 0; i < tensor_array.size(); ++i) {
-              vec_ref.emplace_back(phi::TensorRef(tensor_array[i]));
+              vec_ref.emplace_back(
+                  phi::TensorRef(&(tensor_array[i]->Get<phi::DenseTensor>())));
             }
             ctx->EmplaceBackAttr(vec_ref);
           }
@@ -328,8 +333,18 @@ void BuildPhiContext(
       } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
         ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
             &(scope->Var(name)->Get<phi::SelectedRows>()))));
+      } else if (out_type.isa<ir::VectorType>()) {
+        OutListType outputs;
+        auto& variable_array =
+            scope->Var(name)->Get<paddle::framework::VariableRefArray>();
+        for (size_t i = 0; i < variable_array.size(); ++i) {
+          outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
+              &(variable_array[i]->Get<phi::DenseTensor>()))));
+        }
+        ctx->EmplaceBackOutputs(outputs);
       } else {
-        PADDLE_THROW("not support type");
+        PADDLE_THROW(
+            phi::errors::Unimplemented("only support DenseTensor and vector "));
       }
 
       if (output_map != nullptr) {
