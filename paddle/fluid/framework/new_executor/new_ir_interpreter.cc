@@ -185,8 +185,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    ::ir::BuildScope(
-        *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
+    ::ir::BuildScope(*ir_program_->block(),
+                     scope_,
+                     local_scope_,
+                     &value_2_var_name_,
+                     &var_name_2_id_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
@@ -194,7 +197,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                  &op_func_nodes,
                                  scope_,
                                  local_scope_,
-                                 value_2_var_name_map_,
+                                 value_2_var_name_,
                                  execution_config_);
     // SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -237,8 +240,11 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
-    ::ir::BuildScope(
-        *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
+    ::ir::BuildScope(*ir_program_->block(),
+                     scope_,
+                     local_scope_,
+                     &value_2_var_name_,
+                     &var_name_2_id_);
     BuildInstruction();
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
@@ -1516,7 +1522,6 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-
 void NewIRInterpreter::BuildInstruction() {
   VLOG(0) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
@@ -1532,10 +1537,58 @@ void NewIRInterpreter::BuildInstruction() {
                                                  (*it),
                                                  scope_,
                                                  local_scope_,
-                                                 value_2_var_name_map_));
+                                                 value_2_var_name_,
+                                                 var_name_2_id_));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel dialect."));
+    }
+  }
+}
+
+void NewIRInterpreter::BuildInstructionDependences() {
+  // analysis the dependences between instructions, add next_instr_list to each
+  // instr, and set the dependecy_count_
+  size_t instr_num = vec_instruction_base_.size();
+  dependecy_count_ = std::vector<size_t>(instr_num, 0);
+
+  auto downstream_map = dependency_builder_.Build(vec_instruction_);
+
+  for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
+    Instruction& cur_instr = vec_instruction_[instr_id];
+    const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
+
+    if (FLAGS_new_executor_serial_run) {
+      for (size_t next_instr_id : next_instr_ids) {
+        cur_instr.AddNextInstrInSameThread(next_instr_id);
+      }
+    } else {
+      if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+        for (size_t next_instr_id : next_instr_ids) {
+          if (vec_instruction_[next_instr_id].KernelType() ==
+              OpFuncType::kGpuAsync) {
+            cur_instr.AddNextInstrInSameThread(next_instr_id);
+          } else {
+            cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      } else {
+        bool has_instr_in_same_thread = false;
+        for (size_t next_instr_id : next_instr_ids) {
+          if (!has_instr_in_same_thread &&
+              vec_instruction_[next_instr_id].KernelType() !=
+                  OpFuncType::kGpuAsync) {
+            cur_instr.AddNextInstrInSameThread(next_instr_id);
+            has_instr_in_same_thread = true;
+          } else {
+            cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      }
+    }
+
+    for (size_t next_instr_id : next_instr_ids) {
+      ++dependecy_count_[next_instr_id];
     }
   }
 }

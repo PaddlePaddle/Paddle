@@ -41,36 +41,43 @@
 #include "glog/logging.h"
 
 namespace ir {
-paddle::framework::Variable* CreateVar(ir::Value value,
-                                       const std::string& name,
-                                       paddle::framework::Scope* scope,
-                                       paddle::framework::Scope* local_scope);
+// paddle::framework::Variable* CreateVar(ir::Value value,
+//                                        const std::string& name,
+//                                        paddle::framework::Scope* scope,
+//                                        paddle::framework::Scope* local_scope,
+//                                        std::map<std::string, int>*
+//                                        var_name_2_id);
 
-void BuildValue(ir::Value value,
-                paddle::framework::Scope* scope,
-                paddle::framework::Scope* local_scope,
-                std::unordered_map<ir::Value, std::string>* name_map,
-                int& count);  // NOLINT
+// void BuildValue(ir::Value value,
+//                 paddle::framework::Scope* scope,
+//                 paddle::framework::Scope* local_scope,
+//                 std::unordered_map<ir::Value, std::string>* name_map,
+//                 int& count, std::map<std::string, int>* var_name_2_id);  //
+//                 NOLINT
 
-void HandleForSpecialOp(ir::Operation* op,
-                        paddle::framework::Scope* scope,
-                        paddle::framework::Scope* local_scope,
-                        std::unordered_map<ir::Value, std::string>* name_map,
-                        int& count);  // NOLINT
+// void HandleForSpecialOp(ir::Operation* op,
+//                         paddle::framework::Scope* scope,
+//                         paddle::framework::Scope* local_scope,
+//                         std::unordered_map<ir::Value, std::string>* name_map,
+//                         int& count, std::map<std::string, int>*
+//                         var_name_2_id);  // NOLINT
 
-void HandleForInplaceOp(ir::Operation* op,
-                        paddle::framework::Scope* scope,
-                        paddle::framework::Scope* local_scope,
-                        std::unordered_map<ir::Value, std::string>* name_map,
-                        int& count);  // NOLINT
+// void HandleForInplaceOp(ir::Operation* op,
+//                         paddle::framework::Scope* scope,
+//                         paddle::framework::Scope* local_scope,
+//                         std::unordered_map<ir::Value, std::string>* name_map,
+//                         int& count, std::map<std::string, int>*
+//                         var_name_2_id);  // NOLINT
 
-void CheckInputVars(ir::Operation* op,
-                    const std::unordered_map<ir::Value, std::string>& name_map);
+// void CheckInputVars(ir::Operation* op,
+//                     const std::unordered_map<ir::Value, std::string>&
+//                     name_map);
 
 void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
-                std::unordered_map<ir::Value, std::string>* name_map);
+                std::unordered_map<ir::Value, std::string>* name_map,
+                std::map<std::string, int>* var_name_2_id);
 
 template <typename Context,
           typename InType,

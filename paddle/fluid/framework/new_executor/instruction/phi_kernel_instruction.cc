@@ -73,7 +73,8 @@ PhiKernelInstruction::PhiKernelInstruction(
     ir::Operation* op,
     Scope* scope,
     Scope* local_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_name_map)
+    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const std::map<std::string, int>& var_name_2_id)
     : InstructionBase(id, place) {
   auto op_attributes = op->attributes();
   auto op_name =

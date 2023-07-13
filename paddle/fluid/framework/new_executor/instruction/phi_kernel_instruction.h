@@ -33,7 +33,8 @@ class PhiKernelInstruction : public InstructionBase {
       ::ir::Operation* op,
       Scope* scope,
       Scope* local_scope,
-      const std::unordered_map<::ir::Value, std::string>& value_2_name_map);
+      const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+      const std::map<std::string, int>& var_name_2_id);
 
   const std::string& PhiOpName() const { return phi_op_name_; }
 
@@ -48,6 +49,13 @@ class PhiKernelInstruction : public InstructionBase {
   paddle::dialect::InferMetaInterface::Concept* InferMetaInterface() const {
     return infer_meta_interface_;
   }
+
+  void AnalyseInputOutputID(
+      ::ir::Operation* op,
+      Scope* scope,
+      Scope* local_scope,
+      const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+      const std::map<std::string, int>& var_name_2_id);
 
   void Run() override;
 

@@ -149,6 +149,10 @@ class InstructionBase {
 
   std::map<std::string, std::vector<int>> input_index_;
   std::map<std::string, std::vector<int>> output_index_;
+
+  // std::map<ir::Value, std::tuple<int, std::vector<int>>> input_index_;  //
+  // value may be a vector<Tensor> std::map<ir::Value, std::tuple<int,
+  // std::vector<int>>> output_index_;
 };
 
 }  // namespace framework
