@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <list>
+
 #include "paddle/phi/backends/stream.h"
 
 #include "glog/logging.h"
@@ -22,7 +24,18 @@
 namespace phi {
 namespace stream {
 
-Stream::~Stream() { Destroy(); }
+std::list<Stream*> g_streams;
+
+void Stream::ReleaseAll() {
+  for (auto* stream : g_streams) {
+    stream->Destroy();
+  }
+}
+
+Stream::~Stream() {
+  g_streams.remove(this);
+  Destroy();
+}
 
 const stream_t& Stream::raw_stream() const { return stream_; }
 
@@ -52,6 +65,7 @@ bool Stream::Init(const Place& place,
           << ", priority: " << static_cast<int>(priority)
           << ", flag:" << static_cast<int>(flag);
   own_data_ = true;
+  g_streams.push_back(this);
   return true;
 }
 
@@ -83,11 +97,14 @@ void Stream::Wait() const {
 void Stream::WaitCallback() const { callback_manager_->Wait(); }
 
 void Stream::Destroy() {
-  if (own_data_ && stream_ != nullptr) {
-    phi::DeviceManager::SetDevice(place_);
-    device_->DestroyStream(this);
+  if (device_) {
+    if (own_data_) {
+      phi::DeviceManager::SetDevice(place_);
+      device_->DestroyStream(this);
+    }
     own_data_ = false;
     stream_ = nullptr;
+    device_ = nullptr;
   }
 }
 
