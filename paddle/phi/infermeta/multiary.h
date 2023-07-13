@@ -726,6 +726,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const float quant_max_bound,
                                        const float quant_min_bound,
                                        MetaTensor* out,
-                                       MetaTensor* cache_kv_out);
+                                       MetaTensor* cache_kv_out,
+                                       MetaTensor* beam_cache_offset_out);
 
 }  // namespace phi

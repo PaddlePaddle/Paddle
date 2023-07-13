@@ -19,8 +19,6 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
 
 
 def mmha_wrapper(
@@ -44,63 +42,27 @@ def mmha_wrapper(
     quant_max_bound,
     quant_min_bound,
 ):
-    if in_dygraph_mode():
-        return paddle._C_ops.masked_multihead_attention_(
-            x,
-            bias,
-            src_mask,
-            sequence_lengths,
-            rotary_tensor,
-            beam_cache_offset,
-            cache_kv_out,
-            qkv_out_scale,
-            out_linear_shift,
-            out_linear_smooth,
-            beam_size,
-            rotary_emb_dims,
-            mask_broadcast_num_heads,
-            compute_bias,
-            use_neox_rotary_style,
-            out_linear_in_scale,
-            quant_round_type,
-            quant_max_bound,
-            quant_min_bound,
-        )
-
-    helper = LayerHelper('masked_multihead_attention', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='masked_multihead_attention',
-        inputs={
-            'x': x,
-            'bias': bias,
-            'src_mask': src_mask,
-            'sequence_lengths': sequence_lengths,
-            'rotary_tensor': rotary_tensor,
-            'beam_cache_offset': beam_cache_offset,
-            'cache_kv': cache_kv_out,
-            'qkv_out_scale': qkv_out_scale,
-            'out_linear_shift': out_linear_shift,
-            'out_linear_smooth': out_linear_smooth,
-        },
-        attrs={
-            'beam_size': beam_size,
-            'rotary_emb_dims': rotary_emb_dims,
-            'mask_broadcast_num_heads': mask_broadcast_num_heads,
-            'compute_bias': compute_bias,
-            'use_neox_rotary_style': use_neox_rotary_style,
-            'out_linear_in_scale': out_linear_in_scale,
-            'quant_round_type': quant_round_type,
-            'quant_max_bound': quant_max_bound,
-            'quant_min_bound': quant_min_bound,
-        },
-        outputs={
-            'out': out,
-            'cache_kv_out': cache_kv_out,
-        },
+    return paddle._C_ops.masked_multihead_attention_(
+        x,
+        bias,
+        src_mask,
+        sequence_lengths,
+        rotary_tensor,
+        beam_cache_offset,
+        cache_kv_out,
+        qkv_out_scale,
+        out_linear_shift,
+        out_linear_smooth,
+        beam_size,
+        rotary_emb_dims,
+        mask_broadcast_num_heads,
+        compute_bias,
+        use_neox_rotary_style,
+        out_linear_in_scale,
+        quant_round_type,
+        quant_max_bound,
+        quant_min_bound,
     )
-    return out, cache_kv_out
 
 
 @unittest.skipIf(

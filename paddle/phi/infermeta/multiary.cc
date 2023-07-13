@@ -3644,7 +3644,8 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const float quant_max_bound,
                                        const float quant_min_bound,
                                        MetaTensor* out,
-                                       MetaTensor* cache_kv_out) {
+                                       MetaTensor* cache_kv_out,
+                                       MetaTensor* beam_cache_offset_out) {
   auto x_dims = x.dims();
   auto cache_kv_dims = cache_kv.dims();
   auto x_dtype = x.dtype();
@@ -3684,6 +3685,11 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
 
   cache_kv_out->set_dims(cache_kv_dims);
   cache_kv_out->set_dtype(cache_kv.dtype());
+
+  if (beam_cache_offset) {
+    beam_cache_offset_out->set_dims(beam_cache_offset.dims());
+    beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
+  }
 }
 
 }  // namespace phi

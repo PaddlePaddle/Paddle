@@ -44,7 +44,8 @@ void MMHAKernel(const Context& dev_ctx,
                 const float quant_max_bound,
                 const float quant_min_bound,
                 DenseTensor* out,
-                DenseTensor* cache_kv_out);
+                DenseTensor* cache_kv_out,
+                DenseTensor* beam_cache_offset_out);
 
 }  // namespace fusion
 }  // namespace phi
