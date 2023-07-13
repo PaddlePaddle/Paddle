@@ -38,20 +38,12 @@ inline void CompareAllKernelImpl(const Context& ctx,
 
 #define DEFINE_COMPARE_KERNEL(name, functor, inverse_functor)      \
   template <typename T, typename Context>                          \
-  void name##RawKernel(const Context& ctx,                         \
-                       const DenseTensor& x,                       \
-                       const DenseTensor& y,                       \
-                       int axis,                                   \
-                       DenseTensor* out) {                         \
-    CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
-        ctx, x, y, axis, out);                                     \
-  }                                                                \
-  template <typename T, typename Context>                          \
   void name##Kernel(const Context& ctx,                            \
                     const DenseTensor& x,                          \
                     const DenseTensor& y,                          \
                     DenseTensor* out) {                            \
-    name##RawKernel<T, Context>(ctx, x, y, -1, out);               \
+    CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
+        ctx, x, y, -1, out);                                       \
   }
 
 DEFINE_COMPARE_KERNEL(LessThan,
