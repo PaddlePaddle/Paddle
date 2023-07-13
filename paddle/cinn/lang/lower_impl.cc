@@ -833,26 +833,12 @@ LowerImpl::LowerImpl(const std::string& fn_name,
       temp_tensor_args_(temp_tensor_args),
       target_(target),
       support_ir_schedule_(support_ir_schedule) {
-  {  // Initialize the graph
-    std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
-    tensors.insert(
-        std::end(tensors), temp_tensor_args.begin(), temp_tensor_args.end());
+  std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
+  tensors.insert(
+      std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
+  compu_graph_ = CreateCompGraph(tensors, stages, true /*inline_hide*/);
 
-    compu_graph_ = CreateCompGraph(tensors, stages, false /*inline_hide*/);
-
-    VLOG(1) << "compute_graph:\n" << compu_graph_->Visualize();
-  }
-
-  // Todo: Here insert auto syncthreads() @haoze
-
-  {  // update schedule.
-    std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
-    tensors.insert(
-        std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
-    compu_graph_ = CreateCompGraph(tensors, stages, true /*inline_hide*/);
-
-    VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
-  }
+  VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
 }
 
 }  // namespace detail
