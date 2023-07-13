@@ -37,6 +37,7 @@ def feed_with_place():
 
 class TestNewIr(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
