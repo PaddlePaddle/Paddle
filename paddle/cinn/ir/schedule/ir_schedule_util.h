@@ -22,6 +22,7 @@
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/utils/random_engine.h"
@@ -248,7 +249,8 @@ void ReplaceExpr(Expr* source,
  * @return return The valiated factors.
  */
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
-                                 int total_extent);
+                                 int total_extent,
+                                 const ModuleExpr& module_expr);
 
 void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis);
 
