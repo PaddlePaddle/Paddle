@@ -90,4 +90,5 @@ class TestAnonmousSurvey(unittest.TestCase):
                 self.check_func(u, next_funcs_json[u.name()])
 
 
-unittest.main()
+if __name__ == "__main__":
+    unittest.main()
