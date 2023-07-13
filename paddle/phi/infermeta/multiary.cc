@@ -3654,7 +3654,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   int dim_head = x_dims[3];
 
   if (sequence_lengths) {
-    out->set_dims({bsz, num_head * dim_head});
+    out->set_dims({bsz, num_head, dim_head});
   } else {
     out->set_dims({bsz, 1, num_head, dim_head});
   }
