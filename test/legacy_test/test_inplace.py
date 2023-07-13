@@ -124,6 +124,14 @@ class TestDygraphInplace(unittest.TestCase):
         inplace_var[0] = 2.0
         np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
 
+    def test_forward_result(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        no_inplace_var = self.non_inplace_api_processing(var)
+        inplace_var = self.inplace_api_processing(var)
+        np.testing.assert_array_equal(
+            no_inplace_var.numpy(), inplace_var.numpy()
+        )
+
     def test_forward_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
@@ -249,7 +257,7 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
 
     def set_np_compare_func(self):
         np_array_equal_with_nan = functools.partial(
-            np.allclose, atol=1e-5, rtol=1e-5, equal_nan=True
+            np.array_equal, equal_nan=True
         )
         self.np_compare = np_array_equal_with_nan
 
