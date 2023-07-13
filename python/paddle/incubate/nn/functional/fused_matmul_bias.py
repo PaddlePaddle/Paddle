@@ -100,18 +100,19 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
     """
     return fused_matmul_bias(x, weight, bias, False, transpose_weight, name)
 
-def fused_linear_activation(x, y, bias=None, trans_x = False, trans_y=False, activation = None ):
+
+def fused_linear_activation(
+    x, y, bias, trans_x=False, trans_y=False, activation=None
+):
     """
     Fully-connected linear and activation transformation operator. This method requires CUDA version >= 11.6.
 
     Args:
         x (Tensor): the input Tensor to be multiplied.
         weight (Tensor): the weight Tensor to be multiplied. Its rank must be 2.
-        bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
-            be performed. Otherwise, the bias is added to the matrix multiplication result.
+        bias (Tensor): the input bias Tensor, the bias is added to the matrix multiplication result.
         transpose_weight (bool): Whether to transpose :math:`weight` before multiplication.
-        activation(str|None): For activation currently only support gelu and relu. 
-
+        activation(str|None): Activation function, Currently, the available activation functions are limited to GELU (Gaussian Error Linear Unit) and ReLU (Rectified Linear Unit). These activation functions are applied to the output of the bias add.
     Returns:
         Tensor: the output Tensor.
 
@@ -129,17 +130,28 @@ def fused_linear_activation(x, y, bias=None, trans_x = False, trans_y=False, act
             print(out.shape) # [3, 5]
     """
 
-    if bias is None:
-        return matmul(x, y, transpose_x, transpose_y, name)
     if in_dynamic_mode():
-        return _legacy_C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x', trans_x, 'trans_y', trans_y, 'activation', activation)
-
+        return _legacy_C_ops.fused_gemm_epilogue(
+            x,
+            y,
+            bias,
+            'trans_x',
+            trans_x,
+            'trans_y',
+            trans_y,
+            'activation',
+            activation,
+        )
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='fused_gemm_epilogue',
         inputs={'X': x, 'Y': y, 'Bias': bias},
         outputs={'Out': out},
-        attrs={'trans_x': transpose_x, 'trans_y': transpose_y, 'activation':activation},
+        attrs={
+            'trans_x': trans_x,
+            'trans_y': trans_y,
+            'activation': activation,
+        },
     )
     return out
