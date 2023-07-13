@@ -318,10 +318,6 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
 copy(
   inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/dense_tensor.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
-copy(
-  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/init_phi.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/)
 copy(
