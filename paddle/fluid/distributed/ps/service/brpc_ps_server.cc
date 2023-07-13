@@ -428,7 +428,7 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
                                      1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
-  if (push_data.size() < 1) {
+  if (push_data.empty()) {
     // set_response_code(response, 0, "push sparse data is empty");
     return 0;
   }
@@ -557,7 +557,7 @@ int32_t BrpcPsService::PushSparse(Table *table,
       "PsService->PushSparse", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
-  if (push_data.size() < 1) {
+  if (push_data.empty()) {
     // set_response_code(response, 0, "push sparse data is empty");
     return 0;
   }

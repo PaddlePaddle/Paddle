@@ -90,7 +90,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
   bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
-  if (input_names.size() == 0 || output_names.size() == 0) {
+  if (input_names.empty() || output_names.empty()) {
     return inplace;
   }
 
@@ -103,7 +103,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
                         output_names.end(),
                         std::back_inserter(name_intersection));
 
-  if (name_intersection.size() > 0) {
+  if (!name_intersection.empty()) {
     std::string redundant_variables = std::accumulate(
         std::next(name_intersection.begin()),
         name_intersection.end(),
@@ -381,7 +381,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
-    if (legacy_input_vars.size() == 0) {
+    if (legacy_input_vars.empty()) {
       if (info.optional) {
         op_inputs.push_back(ir::OpResult(nullptr));
         continue;
@@ -390,7 +390,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << legacy_input_name << " " << legacy_input_vars.size();
 
-    if (legacy_input_vars.size() == 0 && mutable_attributes != nullptr &&
+    if (legacy_input_vars.empty() && mutable_attributes != nullptr &&
         mutable_attributes->count(info.name) != 0) {
       const auto& candidate_var_names =
           op_normalizer.GetMutableAttributeInfos(op_desc.Type(), info.name);
@@ -400,7 +400,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
                  << var_name << "]";
         if (op_desc.HasInput(var_name)) {
           legacy_input_vars = op_desc.Input(var_name, true);
-          if (legacy_input_vars.size() == 0) continue;
+          if (legacy_input_vars.empty()) continue;
           found_candidate_var = true;
           break;
         }
@@ -511,7 +511,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << "[" << op_desc.Type() << "]" << info.name << " :"
                << info.type_name << " " << legacy_output_name << " "
                << legacy_output_vars.size();
-      if (legacy_output_vars.size() == 0) {
+      if (legacy_output_vars.empty()) {
         op_output_types.push_back(ir::Type(nullptr));
         continue;
       }
@@ -622,6 +622,7 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
           generated_by_vector = false;
         }
       }
+
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
       idx_in_vector++;
@@ -854,7 +855,7 @@ ir::OpResult TranslateDropOutStateIn(ir::IrContext* ctx,
     legacy_output_vars = op_desc.Output(legacy_output_name);
   }
 
-  if (legacy_output_vars.size() == 0) {
+  if (legacy_output_vars.empty()) {
     VLOG(3) << "[input translating] not find output variable: DropoutState";
     return ir::OpResult(nullptr);
   }
@@ -891,6 +892,41 @@ struct RnnOpTranscriber : public OpTranscriber {
     }
     return TranslateDropOutStateIn;
   };
+};
+
+struct EmbeddingGradOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(ir::IrContext* ctx,
+                                  ir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "padding_idx") {
+      (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
+    } else if (info.name == "sparse") {
+      (*attribute_map)[info.name] = ir::BoolAttribute::get(ctx, false);
+    }
+  }
+
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name =
+        kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
+
+    bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
+
+    if (is_sparse) {
+      target_op_name = "pd.embedding_grad_sparse";
+    } else {
+      target_op_name = "pd.embedding_grad_dense";
+    }
+    VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
+            << target_op_name;
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               target_op_name);
+    }
+
+    return op_info;
+  }
 };
 
 struct FeedOpTranscriber : public OpTranscriber {
@@ -959,6 +995,7 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
+  special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();

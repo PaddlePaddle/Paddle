@@ -14,14 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-#define GET_ATTR_FROM_VECTOR(attr_name__)                                   \
-  do {                                                                      \
-    std::vector<int64_t> vec_##attr_name__;                                 \
-    if (op_desc.HasAttr(#attr_name__)) {                                    \
-      vec_##attr_name__ = PADDLE_GET_CONST(std::vector<int64_t>,            \
-                                           op_desc.GetAttr(#attr_name__));  \
-      if (vec_##attr_name__.size() > 0) attr_name__ = vec_##attr_name__[0]; \
-    }                                                                       \
+#define GET_ATTR_FROM_VECTOR(attr_name__)                                  \
+  do {                                                                     \
+    std::vector<int64_t> vec_##attr_name__;                                \
+    if (op_desc.HasAttr(#attr_name__)) {                                   \
+      vec_##attr_name__ = PADDLE_GET_CONST(std::vector<int64_t>,           \
+                                           op_desc.GetAttr(#attr_name__)); \
+      if (!vec_##attr_name__.empty()) attr_name__ = vec_##attr_name__[0];  \
+    }                                                                      \
   } while (0)
 
 namespace paddle {
@@ -50,7 +50,7 @@ class SetValueConverter : public OpConverter {
     std::vector<int32_t> decr_axes{decrease_axes.begin(), decrease_axes.end()};
     auto value_rank = updates->getDimensions().nbDims;
     auto input_rank = inputs->getDimensions().nbDims;
-    if (decrease_axes.size() > 0 && value_rank != input_rank) {
+    if (!decrease_axes.empty() && value_rank != input_rank) {
       updates = Unsqueeze(updates, decr_axes);
     }
 

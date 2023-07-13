@@ -375,7 +375,7 @@ bool InMemoryDataFeed<T>::Start() {
     output_channel_->Write(std::move(data));
   }
 #endif
-  if (batch_offsets_.size() > 0) {
+  if (!batch_offsets_.empty()) {
     VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
     enable_heterps_ = true;
     this->offset_index_ = 0;
@@ -1536,13 +1536,13 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
 
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec_[i].GetFloatData();
-      float* tensor_ptr =
-          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      float* tensor_ptr = feed_vec_[i]->template mutable_data<float>(
+          {total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, &feasign[0], total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec_[i].GetUint64Data();
-      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+      int64_t* tensor_ptr = feed_vec_[i]->template mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
       CopyToFeedTensor(
           tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
@@ -2690,7 +2690,7 @@ bool SlotRecordInMemoryDataFeed::Start() {
     input_channel_->Read(data);
   }
 #endif
-  if (batch_offsets_.size() > 0) {
+  if (!batch_offsets_.empty()) {
     VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
     enable_heterps_ = true;
     this->offset_index_ = 0;
