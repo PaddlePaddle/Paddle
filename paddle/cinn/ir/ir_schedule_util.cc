@@ -220,19 +220,22 @@ void ReplaceExpr(Expr* source,
 }
 
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
-                                 int total_extent) {
+                                 int total_extent,
+                                 const ModuleExpr& module_expr) {
   CHECK(!factors.empty())
       << "The factors param of Split should not be empty! Please check.";
   bool has_minus_one = false;
   int product = 1;
+  int idx = -1;
   for (auto& i : factors) {
-    CHECK(i != 0)
-        << "The params in factors of Split should not be 0! Please check.";
-    CHECK(i >= -1) << "The params in factors of Split should not be less than "
-                      "-1! Please check.";
-    if (i == -1) {
-      CHECK(!has_minus_one) << "The params in factors of Split should not have "
-                               "more than one -1! Please check.";
+    idx++;
+    if (i == 0 || i < -1) {
+      throw IRScheduleErrorHandler(NegativeFactorErrorMessage(i, idx),
+                                   module_expr);
+    } else if (i == -1) {
+      if (has_minus_one) {
+        throw IRScheduleErrorHandler(InferFactorErrorMessage(), module_expr);
+      }
       has_minus_one = true;
     } else {
       product *= i;
@@ -240,15 +243,14 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   }
   std::vector<int> validated_factors = factors;
   if (!has_minus_one) {
-    CHECK_GE(product, total_extent)
-        << "In Split, the factors' product should be equal to original loop's "
-           "extent! Please check.";
+    if (product < total_extent) {
+      throw IRScheduleErrorHandler(FactorProductErrorMessage(), module_expr);
+    }
     return validated_factors;
   } else {
-    CHECK_LE(product, total_extent)
-        << "In Split, when there is -1 in factors, the other factors' product "
-           "should be <= "
-           "original loop's extent! Please check.";
+    if (product > total_extent) {
+      throw IRScheduleErrorHandler(FactorProductErrorMessage(), module_expr);
+    }
     int minus_one_candidate = static_cast<int>(
         ceil(static_cast<double>(total_extent) / static_cast<double>(product)));
     for (int i = 0; i < validated_factors.size(); ++i) {

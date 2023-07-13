@@ -30,6 +30,20 @@ namespace cinn {
 namespace ir {
 
 /**
+ *  \brief Indicates the level of printing error message in the current Schedule
+ */
+enum class ScheduleErrorMessageLevel : int32_t {
+  /** \brief  Print an error message in short mode.
+   * Short mode shows which and where the schedule error happens*/
+  kGeneral = 0,
+  /** \brief Print an error message in detailed mode.
+   * Detailed mode shows which and where the schedule error happens, and the
+   * schedule input parameters.
+   */
+  kDetailed = 1,
+};
+
+/**
  * A struct representing a module that contains Expr. This struct is only used
  * in Schedule process.
  */
@@ -70,7 +84,9 @@ class IRSchedule {
   IRSchedule();
   explicit IRSchedule(const ModuleExpr& modexpr,
                       utils::LinearRandomEngine::StateType rand_seed = -1,
-                      bool debug_flag = false);
+                      bool debug_flag = false,
+                      ScheduleErrorMessageLevel err_msg_level =
+                          ScheduleErrorMessageLevel::kGeneral);
   IRSchedule(ir::ModuleExpr&& mod_expr,
              ScheduleDesc&& trace,
              utils::LinearRandomEngine::StateType rand_seed = -1);
