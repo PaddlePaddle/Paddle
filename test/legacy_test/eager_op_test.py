@@ -2343,8 +2343,8 @@ class OpTest(unittest.TestCase):
             ), "Operator ({}) : Output ({}) gradient shape mismatch, expect shape is {}, but actual shape is {}".format(
                 self.op_type, name, a.shape, b.shape
             )
-            # Used by bfloat16 for now to solve precision problem
-            if self.is_bfloat16_op():
+            # Used by float16 & bfloat16 for now to solve precision problem
+            if self.is_float16_op() or self.is_bfloat16_op():
                 if a.size == 0:
                     self.assertTrue(b.size == 0)
                 np.testing.assert_allclose(
