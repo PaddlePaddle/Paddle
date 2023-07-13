@@ -59,10 +59,10 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 data = np.random.random(shape).astype("float32")
                 expect_res1 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=6
-                )
+                )[0]
                 expect_res2 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=2
-                )
+                )[0]
 
                 gn1 = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
                 gn2 = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
@@ -98,10 +98,10 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
                 data = np.random.random(shape).astype("float32")
                 expect_res1 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=6
-                )
+                )[0]
                 expect_res2 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=2
-                )
+                )[0]
 
                 gn1 = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
                 gn2 = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
