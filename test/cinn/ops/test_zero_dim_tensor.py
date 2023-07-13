@@ -824,5 +824,50 @@ class TestSqueezeOp2D(TestSqueezeOp):
         self.target_shape = ()
 
 
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestMatmulOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [10]).astype(self.dtype),
+            "y": np.random.randint(-10, 10, [10]).astype(self.dtype),
+        }
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        y = paddle.to_tensor(self.inputs["y"], stop_gradient=False)
+        out = paddle.matmul(x, y)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("matmul_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        y = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["y"].shape, "y"
+        )
+        out = builder.matmul(x, y)
+
+        prog = builder.build()
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
 if __name__ == "__main__":
     unittest.main()
