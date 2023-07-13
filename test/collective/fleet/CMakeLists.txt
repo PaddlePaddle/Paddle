@@ -114,8 +114,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
     START_BASH
     ../../legacy_test/dist_test.sh
     LABELS
-    "RUN_TYPE=DIST"
-    "RUN_TYPE=Ampere"
+    "RUN_TYPE=DIST:Ampere"
     ENVS
     "PADDLE_DIST_UT_PORT=21212;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
