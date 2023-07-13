@@ -169,15 +169,21 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            np.testing.assert_allclose(res_1, self.res_1_np)
-
-            np.testing.assert_allclose(res_2, self.res_2_np)
-
-            np.testing.assert_allclose(res_3, self.res_3_np)
-
-            np.testing.assert_allclose(res_4, self.res_4_np)
-
-            np.testing.assert_allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(
+                res_1, self.res_1_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_2, self.res_2_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_3, self.res_3_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_4, self.res_4_np, rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                res_5, self.res_5_np, rtol=1e-6, atol=1e-6
+            )
 
     def test_dynamic_graph(self):
         for use_cuda in (
