@@ -157,6 +157,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_linear_compress)
+  list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
