@@ -140,7 +140,6 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              framework::Scope* scope,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
-
   std::string program_desc_str;
   VLOG(3) << "loading model from " << model_filename;
   ReadBinaryFile(model_filename, &program_desc_str);

@@ -153,6 +153,8 @@ class TestPaddleModel(OpMapperTest):
         ] = paddle.static.io.load_inference_model(
             path_prefix=self.model_dir,
             executor=self.exe,
+            model_filename=self.model_filename,
+            params_filename=self.params_filename,
         )
 
         self.param_vars = paddle.load(

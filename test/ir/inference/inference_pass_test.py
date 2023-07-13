@@ -117,7 +117,9 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig.
         '''
-        config = AnalysisConfig(self.path + ".pdmodel", self.path + ".pdmodel")
+        config = AnalysisConfig(
+            self.path + ".pdmodel", self.path + ".pdiparams"
+        )
         config.disable_gpu()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)

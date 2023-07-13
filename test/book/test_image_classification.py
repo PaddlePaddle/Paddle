@@ -252,14 +252,17 @@ def infer(use_cuda, save_dirname=None):
         )
 
         print("infer results: ", results[0])
-
-        # paddle.static.io.save_inference_model(
-        #     save_dirname,
-        #     feed_target_names,
-        #     fetch_targets,
-        #     exe,
-        #     program=inference_program,
-        # )
+        feeded_vars = [
+            inference_program.global_block().var(name)
+            for name in feed_target_names
+        ]
+        paddle.static.io.save_inference_model(
+            save_dirname,
+            feeded_vars,
+            fetch_targets,
+            exe,
+            program=inference_program,
+        )
 
 
 def main(net_type, use_cuda, is_local=True):
