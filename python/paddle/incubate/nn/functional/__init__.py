@@ -30,6 +30,7 @@ __all__ = [
     'fused_multi_transformer',
     'fused_matmul_bias',
     'fused_linear',
+    'fused_linear_activation',
     'fused_bias_dropout_residual_layer_norm',
     'fused_ec_moe',
     'fused_dropout_add',

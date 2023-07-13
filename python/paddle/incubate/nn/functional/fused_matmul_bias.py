@@ -99,3 +99,47 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
             print(out.shape) # [3, 5]
     """
     return fused_matmul_bias(x, weight, bias, False, transpose_weight, name)
+
+def fused_linear_activation(x, y, bias=None, trans_x = False, trans_y=False, activation = None ):
+    """
+    Fully-connected linear and activation transformation operator. This method requires CUDA version >= 11.6.
+
+    Args:
+        x (Tensor): the input Tensor to be multiplied.
+        weight (Tensor): the weight Tensor to be multiplied. Its rank must be 2.
+        bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
+            be performed. Otherwise, the bias is added to the matrix multiplication result.
+        transpose_weight (bool): Whether to transpose :math:`weight` before multiplication.
+        activation(str|None): For activation currently only support gelu and relu. 
+
+    Returns:
+        Tensor: the output Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            from paddle.incubate.nn.functional import fused_linear_activation
+
+            x = paddle.randn([3, 4])
+            weight = paddle.randn([4, 5])
+            bias = paddle.randn([5])
+            out = fused_linear_activation(x, weight, bias)
+            print(out.shape) # [3, 5]
+    """
+
+    if bias is None:
+        return matmul(x, y, transpose_x, transpose_y, name)
+    if in_dynamic_mode():
+        return _legacy_C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x', trans_x, 'trans_y', trans_y, 'activation', activation)
+
+    helper = LayerHelper('fused_matmul_bias', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fused_gemm_epilogue',
+        inputs={'X': x, 'Y': y, 'Bias': bias},
+        outputs={'Out': out},
+        attrs={'trans_x': transpose_x, 'trans_y': transpose_y, 'activation':activation},
+    )
+    return out
