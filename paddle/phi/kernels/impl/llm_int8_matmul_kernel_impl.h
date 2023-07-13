@@ -667,7 +667,8 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
   dev_ctx.Alloc<int32_t>(&int_out);
 
   {
-    auto helper = std::make_unique<CublasLtHelper>(m, k, n);
+    auto helper =
+        std::make_unique<CublasLtHelper>(m, k, n, dev_ctx.cublaslt_handle());
     helper->GEMM(quant_input.data<int8_t>(),
                  weight->data<int8_t>(),
                  int_out.data<int32_t>(),
