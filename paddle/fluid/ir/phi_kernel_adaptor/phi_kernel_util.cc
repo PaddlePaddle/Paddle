@@ -91,12 +91,13 @@ void CheckInputVars(
 void BuildValue(ir::Value value,
                 paddle::framework::Scope* inner_scope,
                 std::unordered_map<ir::Value, std::string>* value_2_name,
-                VariableNameMap* variable_2_name) {
+                VariableNameMap* variable_2_name,
+                int& count) {  // NOLINT
   std::string name;
   if (value_2_name->find(value) != value_2_name->end()) {
     name = value_2_name->at(value);
   } else {
-    name = "inner_var_" + std::to_string(value_2_name->size());
+    name = "inner_var_" + std::to_string(count++);
     value_2_name->emplace(value, name);
   }
   auto var = CreateVar(value, name, inner_scope);
@@ -117,7 +118,7 @@ void BuildValue(ir::Value value,
                      paddle::platform::errors::Fatal(
                          "Element of VectorType output only support "
                          "DenseTensorType"));
-      std::string name_i = "inner_var_" + std::to_string(value_2_name->size());
+      std::string name_i = "inner_var_" + std::to_string(count++);
       auto var_i = CreateVar(value, name_i, inner_scope);
       var_i->GetMutable<phi::DenseTensor>();
       tensor_array->emplace_back(var_i);
@@ -133,7 +134,8 @@ void HandleForSpecialOp(
     ir::Operation* op,
     paddle::framework::Scope* inner_scope,
     const VariableNameMap& variable_2_name,
-    std::unordered_map<ir::Value, std::string>* value_2_name) {
+    std::unordered_map<ir::Value, std::string>* value_2_name,
+    int& count) {  // NOLINT
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -153,7 +155,7 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.feed") {
     auto value = op->result(0);
-    std::string name = "inner_var_" + std::to_string(value_2_name->size());
+    std::string name = "inner_var_" + std::to_string(count++);
     auto var = CreateVar(value, name, inner_scope);
     value_2_name->emplace(value, name);
     // TODO(phlrain): need to update here, support StringTensor
@@ -176,7 +178,7 @@ void HandleForSpecialOp(
     if (value_2_name->find(out_value) != value_2_name->end()) {
       name = value_2_name->at(out_value);
     } else {
-      name = "inner_var_" + std::to_string(value_2_name->size());
+      name = "inner_var_" + std::to_string(count++);
       value_2_name->emplace(out_value, name);
     }
 
@@ -257,7 +259,8 @@ void HandleForSpecialOp(
 void HandleForInplaceOp(
     ir::Operation* op,
     paddle::framework::Scope* inner_scope,
-    std::unordered_map<ir::Value, std::string>* value_2_name) {  // NOLINT
+    std::unordered_map<ir::Value, std::string>* value_2_name,
+    int& count) {  // NOLINT
   if (op->num_results() < 1) return;
   ir::IrContext* ctx = ir::IrContext::Instance();
   std::string op_name = op->name();
@@ -283,7 +286,7 @@ void HandleForInplaceOp(
               << " (var: " << var_name << ")";
       value_2_name->emplace(value, var_name);
     } else {
-      BuildValue(value, inner_scope, value_2_name, &variable_2_name);
+      BuildValue(value, inner_scope, value_2_name, &variable_2_name, count);
     }
   }
 }
@@ -299,7 +302,7 @@ void BuildScope(const ir::Block& block,
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
 
   VariableNameMap variable_2_name;
-
+  int count = value_2_name->size();
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
@@ -313,7 +316,7 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
-      HandleForSpecialOp(op, inner_scope, variable_2_name, value_2_name);
+      HandleForSpecialOp(op, inner_scope, variable_2_name, value_2_name, count);
       continue;
     }
 
@@ -325,11 +328,12 @@ void BuildScope(const ir::Block& block,
             .at("is_inplace")
             .dyn_cast<ir::BoolAttribute>()
             .data()) {
-      HandleForInplaceOp(op, inner_scope, value_2_name);
+      HandleForInplaceOp(op, inner_scope, value_2_name, count);
       continue;
     } else {
       for (size_t i = 0; i < op->num_results(); ++i) {
-        BuildValue(op->result(i), inner_scope, value_2_name, &variable_2_name);
+        BuildValue(
+            op->result(i), inner_scope, value_2_name, &variable_2_name, count);
       }
     }
   }
