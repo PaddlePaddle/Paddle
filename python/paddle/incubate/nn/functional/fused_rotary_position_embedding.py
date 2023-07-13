@@ -17,7 +17,7 @@ from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 
 
-def fused_rotary_position_embedding(q, k, v):
+def fused_rotary_position_embedding(q, k, v, sin=None, cos=None):
     r"""
     Fused rotary position embedding.
 
@@ -46,4 +46,4 @@ def fused_rotary_position_embedding(q, k, v):
             out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
     """
     if in_dynamic_mode():
-        return _C_ops.fused_rotary_position_embedding(q, k, v)
+        return _C_ops.fused_rotary_position_embedding(q, k, v, sin, cos)

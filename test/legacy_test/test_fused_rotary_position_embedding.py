@@ -92,9 +92,15 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.dtype = 'float32'
         self.training = True
         self.seed = 1203
+        self.shape_sc = [16, 16]
 
     def get_paddle_tensor(self):
         tmp = paddle.randn(self.shape, self.dtype)
+        tmp.stop_gradient = False
+        return tmp
+
+    def get_paddle_tensor_sin_cos(self):
+        tmp = paddle.randn(self.shape_sc, self.dtype)
         tmp.stop_gradient = False
         return tmp
 
@@ -124,11 +130,58 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         return fw, bw
 
+    def get_forward_backward_sin_cos(self, rope_function, seed):
+        paddle.disable_static()
+        paddle.seed(seed)
+        fw = []
+        bw = []
+        tensor_q = self.get_paddle_tensor()
+        tensor_k = self.get_paddle_tensor()
+        tensor_v = self.get_paddle_tensor()
+        tensor_sin = self.get_paddle_tensor_sin_cos()
+        tensor_cos = self.get_paddle_tensor_sin_cos()
+        out_q, out_k, out_v = rope_function(
+            tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
+        )
+
+        fw.append(out_q)
+        fw.append(out_k)
+        fw.append(out_v)
+
+        out_gq = paddle.randn(out_q.shape, self.dtype)
+        out_gk = paddle.randn(out_q.shape, self.dtype)
+        out_gv = paddle.randn(out_q.shape, self.dtype)
+        paddle.autograd.backward(
+            [out_q, out_k, out_v], [out_gq, out_gk, out_gv], True
+        )
+        bw.append(tensor_q)
+        bw.append(tensor_k)
+        bw.append(tensor_v)
+        bw.append(tensor_sin)
+        bw.append(tensor_cos)
+
+        return fw, bw
+
     def test_fused_dropout_add(self):
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding, seed=self.seed
         )
         f_fw, f_bw = self.get_forward_backward(
+            fused_rotary_position_embedding, seed=self.seed
+        )
+        for i in range(len(p_fw)):
+            np.testing.assert_allclose(
+                p_fw[i].numpy(), f_fw[i].numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                p_bw[i].numpy(), f_bw[i].numpy(), rtol=1e-05
+            )
+
+    def test_fused_dropout_add_sin_cos(self):
+        p_fw, p_bw = self.get_forward_backward_sin_cos(
+            paddle_fused_rotary_position_embedding, seed=self.seed
+        )
+        f_fw, f_bw = self.get_forward_backward_sin_cos(
             fused_rotary_position_embedding, seed=self.seed
         )
         for i in range(len(p_fw)):
