@@ -976,11 +976,14 @@ struct SplitOpTranscriber : public OpTranscriber {
 
     // process sections
     int num = paddle::get<int>(op_desc.GetAttr("num"));
+    std::cerr << "num " << num << std::endl;
     if (num <= 0) {
-      if (op_desc.HasInput("SectionsTensorList")) {
+      if (op_desc.HasInput("SectionsTensorList") &&
+          op_desc.Input("SectionsTensorList").size() > 0) {
         // get SectionsTensorList from input
 
         auto sec_tensor_list = op_desc.Input("SectionsTensorList");
+        std::cerr << "sec tensor list " << sec_tensor_list.size() << std::endl;
         auto* combine_op = InsertCombineOperationForTarget(
             ctx, param_map, program, sec_tensor_list);
         op_inputs.push_back(combine_op->result(0));
@@ -988,9 +991,11 @@ struct SplitOpTranscriber : public OpTranscriber {
         auto& attribute_translator = AttributeTranslator::instance();
         ir::Attribute new_attr = attribute_translator(
             "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("sections"));
+        std::cerr << "after get new attr" << std::endl;
         auto sec_defin_op =
             InsertFullOperationForAttributeInput(ctx, program, new_attr);
         op_inputs.push_back(sec_defin_op->result(0));
+        std::cerr << "fin contrcut input" << std::endl;
       }
     }
 
@@ -1004,13 +1009,16 @@ struct SplitOpTranscriber : public OpTranscriber {
       auto axis_defining_info = (*param_map)[axis_var_list[0]];
       op_inputs.push_back(axis_defining_info.value);
     } else {
+      std::cerr << "get axis" << std::endl;
       auto& attribute_translator = AttributeTranslator::instance();
       ir::Attribute new_attr =
           attribute_translator("ir::Int32Attribute", op_desc.GetAttr("axis"));
 
+      std::cerr << "get axis 1" << std::endl;
       auto sec_defin_op =
           InsertFullOperationForAttributeInput(ctx, program, new_attr);
       op_inputs.push_back(sec_defin_op->result(0));
+      std::cerr << "get axis 3" << std::endl;
     }
 
     return op_inputs;
