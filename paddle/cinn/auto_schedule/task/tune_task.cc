@@ -39,7 +39,8 @@ void TuneTask::Initialize(
   op_lowerer = lower_handler;
 
   // Set lowered_funcs and analyze output names.
-  this->lowered_funcs = op_lowerer->LowerWithoutSchedule(subgraph);
+  this->lowered_funcs = op_lowerer->Lower(
+      subgraph, /*apply_op_schedule = */ false, /*apply_group_schedule=*/false);
   this->output_names = GetOutputNamesFromLoweredFunc(this->lowered_funcs);
   this->serialized_key = SerializeToString(shape_dict, dtype_dict);
 }

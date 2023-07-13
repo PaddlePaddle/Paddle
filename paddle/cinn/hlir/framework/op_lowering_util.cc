@@ -92,19 +92,19 @@ ir::Tensor GetTensor(
 
 std::vector<ir::Tensor> CollectInputTensor(
     const Node* node,
-    std::vector<ir::Tensor>& func_args,                       // NOLINT
-    std::unordered_map<std::string, ir::Tensor>& tensor_map,  // NOLINT
     const absl::flat_hash_map<std::string, Type>& type_dict,
-    const absl::flat_hash_map<std::string, shape_t>& shape_dict) {
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    std::vector<ir::Tensor>* func_args,
+    std::unordered_map<std::string, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   // get all input nodes
   for (auto& node_data : GetInputNodeData(node)) {
     CHECK(node_data);
     auto tensor = GetTensor(node_data, type_dict, shape_dict);
-    if (!tensor_map.count(node_data->id())) {
-      tensor_map[node_data->id()] = tensor;
+    if (!tensor_map->count(node_data->id())) {
+      (*tensor_map)[node_data->id()] = tensor;
       // record func input args
-      func_args.push_back(tensor);
+      func_args->push_back(tensor);
     }
     tensors.push_back(tensor);
   }
