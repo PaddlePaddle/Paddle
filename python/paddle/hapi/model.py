@@ -23,15 +23,13 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import framework
-from paddle.fluid import data_feeder
 import paddle.distributed as dist
-from paddle import fluid
-from paddle.distributed.communication.group import _get_global_group
+from paddle import fluid, framework
 from paddle.autograd import no_grad
 from paddle.distributed import fleet
+from paddle.distributed.communication.group import _get_global_group
 from paddle.distributed.fleet.base import role_maker
-from paddle.fluid import core
+from paddle.fluid import core, data_feeder
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
@@ -96,7 +94,7 @@ def extract_args(func):
 
 def _all_gather(x):
     output = []
-    #dist.all_gather(output, x)
+    # dist.all_gather(output, x)
     if framework.in_dynamic_mode():
         group = _get_global_group()
 
@@ -108,33 +106,34 @@ def _all_gather(x):
         helper = framework.LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         data_feeder.check_variable_and_dtype(
-                x,
-                'x',
-                [ 'float16',
-                    'float32',
-                    'float64',
-                    'int32',
-                    'int64',
-                    'bool',
-                    'int8',
-                    'uint8',
-                    'uint16', 
-                ],
-                op_type,
-            )
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'int8',
+                'uint8',
+                'uint16',
+            ],
+            op_type,
+        )
 
         ring_id = 0
         nranks = dist.get_world_size()
         helper.append_op(
-                type=op_type,
-                inputs={'X': [x]},
-                outputs={'Out': [out]},
-                attrs={
+            type=op_type,
+            inputs={'X': [x]},
+            outputs={'Out': [out]},
+            attrs={
                 'ring_id': ring_id,
                 'use_calc_stream': True,
                 'nranks': nranks,
-                },
-            )
+            },
+        )
         output.extend(paddle.split(out, nranks, 0))
     output = paddle.concat(output, axis=0)
     return output
