@@ -2538,8 +2538,10 @@ class DistributedStrategy:
                                     google._upb._message.RepeatedScalarContainer
                                 )
                             else:
+                                from google.protobuf.pyext import _message
+
                                 RepeatedScalarContainer = (
-                                    google.protobuf.pyext._message.RepeatedScalarContainer
+                                    _message.RepeatedScalarContainer
                                 )
                             for ff in config_fields:
                                 if isinstance(
