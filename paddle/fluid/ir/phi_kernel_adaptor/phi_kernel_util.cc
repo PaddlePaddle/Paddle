@@ -43,6 +43,9 @@
 
 namespace ir {
 
+using VariableNameMap =
+    std::unordered_map<const paddle::framework::Variable*, std::string>;
+
 paddle::framework::Variable* CreateVar(ir::Value value,
                                        const std::string& name,
                                        paddle::framework::Scope* scope,
@@ -89,6 +92,7 @@ void BuildValue(ir::Value value,
                 paddle::framework::Scope* scope,
                 paddle::framework::Scope* local_scope,
                 std::unordered_map<ir::Value, std::string>* name_map,
+                VariableNameMap* variable_name_map,
                 int& count) {  // NOLINT
   auto inner_local_scope = local_scope != nullptr ? local_scope : scope;
   std::string name;
@@ -107,7 +111,7 @@ void BuildValue(ir::Value value,
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
   } else if (value.type().isa<ir::VectorType>()) {
-    auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
+    auto tensor_array = var->GetMutable<paddle::framework::VariableRefArray>();
     for (size_t i = 0; i < value.type().dyn_cast<ir::VectorType>().size();
          i++) {
       PADDLE_ENFORCE(value.type()
@@ -118,7 +122,9 @@ void BuildValue(ir::Value value,
                          "DenseTensorType"));
       std::string name_i = "inner_var_" + std::to_string(count++);
       auto var_i = CreateVar(value, name_i, scope, inner_local_scope);
-      tensor_array->emplace_back(var_i->GetMutable<phi::DenseTensor>());
+      var_i->GetMutable<phi::DenseTensor>();
+      tensor_array->emplace_back(var_i);
+      variable_name_map->emplace(var_i, name_i);
     }
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -127,6 +133,7 @@ void BuildValue(ir::Value value,
 }
 
 void HandleForSpecialOp(ir::Operation* op,
+                        const VariableNameMap& variable_name_map,
                         paddle::framework::Scope* scope,
                         paddle::framework::Scope* local_scope,
                         std::unordered_map<ir::Value, std::string>* name_map,
@@ -180,7 +187,7 @@ void HandleForSpecialOp(ir::Operation* op,
     }
 
     auto var = CreateVar(out_value, name, scope, local_scope);
-    auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
+    auto tensor_array = var->GetMutable<paddle::framework::VariableRefArray>();
     // clear tensor array
     tensor_array->clear();
 
@@ -192,8 +199,7 @@ void HandleForSpecialOp(ir::Operation* op,
           true,
           phi::errors::PreconditionNotMet("can not found input of combine op"));
       tensor_array->emplace_back(
-          &(CreateVar(value, name_map->at(value), scope, local_scope)
-                ->Get<phi::DenseTensor>()));
+          CreateVar(value, name_map->at(value), scope, local_scope));
     }
   }
 
@@ -223,6 +229,34 @@ void HandleForSpecialOp(ir::Operation* op,
     auto out_ptr = op->result(0);
     name_map->emplace(out_ptr, param_name);
   }
+
+  if (op_name == "builtin.slice") {
+    VLOG(6) << "Handle for builtin.slice";
+    auto out_value = op->result(0);
+
+    auto in_value = op->operand(0);
+
+    PADDLE_ENFORCE_EQ(name_map->count(in_value),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "input of buildin slice not in name map"));
+
+    int index =
+        op->attributes().at("index").dyn_cast<ir::Int32Attribute>().data();
+    auto in_var = scope->FindVar(name_map->at(in_value));
+    auto variable_array = in_var->Get<paddle::framework::VariableRefArray>();
+
+    PADDLE_ENFORCE_EQ(
+        variable_name_map.count(variable_array[index]),
+        true,
+        phi::errors::PreconditionNotMet("[%d] the variable in build slice "
+                                        "input MUST in variable name map",
+                                        index));
+
+    std::string var_name = variable_name_map.at(variable_array[index]);
+
+    name_map->emplace(out_value, var_name);
+  }
 }
 
 void HandleForInplaceOp(ir::Operation* op,
@@ -242,7 +276,7 @@ void HandleForInplaceOp(ir::Operation* op,
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
           ->get_op_info_());
-
+  VariableNameMap variable_name_map;
   for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value value = op->result(i);
     std::string value_name = yaml_parser.OutputNames()[i];
@@ -255,7 +289,8 @@ void HandleForInplaceOp(ir::Operation* op,
               << " (var: " << var_name << ")";
       name_map->emplace(value, var_name);
     } else {
-      BuildValue(value, scope, local_scope, name_map, count);
+      BuildValue(
+          value, scope, local_scope, name_map, &variable_name_map, count);
     }
   }
 }
@@ -273,8 +308,11 @@ void BuildScope(const ir::Block& block,
   VLOG(6) << "Build: scope [" << scope << "] inner_local_scope ["
           << inner_local_scope << "]";
 
+  std::unordered_map<const paddle::framework::Variable*, std::string>
+      variable_name_map;
+
   // int count = name_map->size();
-  int count = inner_local_scope->Size();
+  int count = name_map->size();
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
@@ -288,9 +326,10 @@ void BuildScope(const ir::Block& block,
 
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter") {
-      VLOG(4) << "HandleForSpecialOp: " << op_name;
-      HandleForSpecialOp(op, scope, inner_local_scope, name_map, count);
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+      VLOG(6) << "HandleForSpecialOp: " << op_name;
+      HandleForSpecialOp(
+          op, variable_name_map, scope, inner_local_scope, name_map, count);
       continue;
     }
 
@@ -306,7 +345,12 @@ void BuildScope(const ir::Block& block,
       continue;
     } else {
       for (size_t i = 0; i < op->num_results(); ++i) {
-        BuildValue(op->result(i), scope, local_scope, name_map, count);
+        BuildValue(op->result(i),
+                   scope,
+                   local_scope,
+                   name_map,
+                   &variable_name_map,
+                   count);
       }
     }
   }
