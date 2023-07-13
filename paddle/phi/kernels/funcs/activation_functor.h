@@ -3923,7 +3923,7 @@ template <typename T>
 struct CudaSwishFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
-  float beta;
+  float beta = 1.0;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}};
