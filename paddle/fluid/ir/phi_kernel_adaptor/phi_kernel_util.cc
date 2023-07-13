@@ -165,6 +165,7 @@ void HandleForSpecialOp(ir::Operation* op,
     auto feed_list = feed_var->Get<paddle::framework::FeedList>();
     auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
     out_tensor->ShareDataWith(in_tensor);
+    out_tensor->set_lod(in_tensor.lod());
   }
 
   if (op_name == "builtin.combine") {
