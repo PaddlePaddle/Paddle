@@ -109,7 +109,7 @@ class TestSparseBatchNorm(unittest.TestCase):
         sp_x.stop_gradient = False
         sp_bn = paddle.sparse.nn.BatchNorm(shape[-1], data_format=data_format)
         sp_y = sp_bn(sp_x)
-        sp_loss = loss.to_sparse_coo(dim-1)
+        sp_loss = loss.to_sparse_coo(dim - 1)
         sp_y.backward(sp_loss)
 
         np.testing.assert_allclose(
