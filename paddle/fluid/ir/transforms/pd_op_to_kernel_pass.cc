@@ -32,11 +32,22 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-
 namespace paddle {
 namespace dialect {
 
 const int init_on_gpu_threashold = 1000;
+
+std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
+    {"DataType::FLOAT16", phi::DataType::FLOAT16},
+    {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
+    {"DataType::FLOAT32", phi::DataType::FLOAT32},
+    {"DataType::FLOAT64", phi::DataType::FLOAT64},
+    {"DataType::INT16", phi::DataType::INT16},
+    {"DataType::INT32", phi::DataType::INT32},
+    {"DataType::INT64", phi::DataType::INT64},
+    {"DataType::INT8", phi::DataType::INT8},
+    {"DataType::BOOL", phi::DataType::BOOL},
+};
 
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
@@ -67,7 +78,10 @@ phi::KernelKey GetKernelKey(
       auto slot_name = data_type_info[0];
       auto& input_map = op_info_parser->InputName2Id();
 
-      if (input_map.count(slot_name)) {
+      auto find_it = Str2PhiDataType.find(slot_name);
+      if (find_it != Str2PhiDataType.end()) {
+        kernel_data_type = find_it->second;
+      } else if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
 
