@@ -24,7 +24,7 @@ struct ErfinvFunctor {
   HOSTDEVICE inline T operator()(const T x) const { return erfinv(x); }
 };
 template <>
-struct LogCUDAFunctor<float16> {
+struct ErfinvFunctor<float16> {
   HOSTDEVICE inline float16 operator()(const float16 x) const {
     auto x_ = static_cast<float>(x);
     return static_cast<float16>(erfinv(x_));
@@ -32,7 +32,7 @@ struct LogCUDAFunctor<float16> {
 };
 
 template <>
-struct LogCUDAFunctor<bfloat16> {
+struct ErfinvFunctor<bfloat16> {
   HOSTDEVICE inline bfloat16 operator()(const bfloat16 x) const {
     auto x_ = static_cast<float>(x);
     return static_cast<bfloat16>(erfinv(x_));
