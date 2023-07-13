@@ -36,5 +36,4 @@ __all__ = [
     'fused_dropout_add',
     'fused_rotary_position_embedding',
     "rms_norm",
-    "norm_helper",
 ]
