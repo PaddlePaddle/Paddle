@@ -698,16 +698,15 @@ class TestCycleGANModel(unittest.TestCase):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)
 
-        assert_func = np.allclose
+        assert_func = np.testing.assert_allclose
         # Note(Aurelius84): Because we disable BN on GPU,
         # but here we enhance the check on CPU by `np.array_equal`
         # which means the dy_out and st_out shall be exactly same.
         if not fluid.is_compiled_with_cuda():
-            assert_func = np.array_equal
+            assert_func = np.testing.assert_array_equal
 
-        self.assertTrue(
-            assert_func(dy_out, st_out),
-            msg=f"dy_out:\n {dy_out}\n st_out:\n{st_out}",
+        assert_func(
+            dy_out, st_out, err_msg=f"dy_out:\n {dy_out}\n st_out:\n{st_out}"
         )
 
 
