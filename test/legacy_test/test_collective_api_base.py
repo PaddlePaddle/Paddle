@@ -494,6 +494,15 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
+        elif col_type == "dist_concat":
+            result_data = tr0_out[0]
+            need_result = np.concatenate((input1, input2), axis=1)
+            np.testing.assert_allclose(
+                result_data, need_result, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                result_data, need_result, rtol=1e-05, atol=1e-05
+            )
         elif col_type == "alltoall":
             need_result1 = np.vstack(
                 (
