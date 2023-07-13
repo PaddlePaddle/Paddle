@@ -3547,7 +3547,7 @@ void NormHelperInferMeta(const MetaTensor& x,
     normalized_dims *= x_dims_vec[i];
   }
 
-  size_t rows = size / normalized_dims;
+  int64_t rows = size / normalized_dims;
 
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
