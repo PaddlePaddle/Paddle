@@ -34,7 +34,8 @@ struct ModularEntry {
   static ModularEntry Add(const ModularEntry& a, const ModularEntry& b);
 };
 
-ModularEntry EvalModular(const Expr& e, const std::map<Var, ModularEntry>& mod_map);
+ModularEntry EvalModular(const Expr& e,
+                         const std::map<Var, ModularEntry>& mod_map);
 
 }  // namespace backends
 }  // namespace cinn

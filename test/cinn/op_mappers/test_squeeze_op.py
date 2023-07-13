@@ -15,8 +15,9 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_mapper_test import OpMapperTest, logger
+
+from op_mapper_test import OpMapperTest
+
 import paddle
 
 
@@ -33,7 +34,8 @@ class TestSqueezeOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
@@ -42,7 +44,7 @@ class TestSqueezeOp(OpMapperTest):
     def set_op_outputs(self):
         return {
             'Out': [str(self.feed_data['x'].dtype)],
-            "XShape": [str(self.feed_data['x'].dtype)]
+            "XShape": [str(self.feed_data['x'].dtype)],
         }
 
     def skip_check_outputs(self):

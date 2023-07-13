@@ -41,8 +41,9 @@ class DecomposerPass : public ProgramPass {
     absl::flat_hash_map<std::string, Variable> var_map;
     DecomposerContext context(&builder, &var_map);
     for (size_t i = 0; i < prog->size(); i++) {
-      auto instr      = (*prog)[i];
-      auto decomposer = InstrDecomposerRegistry::Global()->Find(instr->op_type, target);
+      auto instr = (*prog)[i];
+      auto decomposer =
+          InstrDecomposerRegistry::Global()->Find(instr->op_type, target);
       if (decomposer) {
         VLOG(3) << "Run decomposer of op " << instr->op_type;
         decomposer->Run(instr, context);
@@ -79,7 +80,8 @@ class DecomposerPass : public ProgramPass {
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(Decomposer) {
-  CINN_REGISTER_PROGRAM_PASS(Decomposer, ::cinn::frontend::pass::DecomposerPass);
+  CINN_REGISTER_PROGRAM_PASS(Decomposer,
+                             ::cinn::frontend::pass::DecomposerPass);
 
   return true;
 }

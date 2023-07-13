@@ -42,9 +42,10 @@ std::string BufferGetTensorName(const _Buffer_* buffer);
 
 /**
  * Buffer is a symbolic multi-dimensional data structure, it is a node in IR.
- * It is a composition of primitive symbolic types, used to specify the memory layout of the Tensor used in the program
- * input. User can create a buffer and bind to multiple Tensors to specify that the tensors are not inlined and persist
- * data to this buffer.
+ * It is a composition of primitive symbolic types, used to specify the memory
+ * layout of the Tensor used in the program input. User can create a buffer and
+ * bind to multiple Tensors to specify that the tensors are not inlined and
+ * persist data to this buffer.
  */
 class Buffer : public IrNodeRef {
  public:
@@ -88,7 +89,8 @@ class _Buffer_ : public ExprNode<_Buffer_> {
   MemoryType memory_type{MemoryType::Heap};
 
   //! The data type of the elements.
-  //! This is different from `type`, a buffer's type should always be `cinn_buffer_t*`.
+  //! This is different from `type`, a buffer's type should always be
+  //! `cinn_buffer_t*`.
   Type dtype;
 
   _Buffer_() : elem_offset(Expr(0)) { set_type(type_of<cinn_buffer_t*>()); }
@@ -104,13 +106,14 @@ class _Buffer_ : public ExprNode<_Buffer_> {
                      int offset_factor,
                      Target target = UnkTarget());
 
-  static Buffer Make(const std::string& name, const std::vector<Expr>& shape = {});
+  static Buffer Make(const std::string& name,
+                     const std::vector<Expr>& shape = {});
 
   static Buffer Make(const std::string& name, Type type) {
     CHECK(!type.is_void());
     CHECK(!type.is_unk());
-    auto n   = make_shared<_Buffer_>();
-    n->name  = name;
+    auto n = make_shared<_Buffer_>();
+    n->name = name;
     n->dtype = type;
     return Buffer(n);
   }
@@ -118,14 +121,19 @@ class _Buffer_ : public ExprNode<_Buffer_> {
   //! Make an empty buffer.
   static Buffer Make();
 
-  bool is_on_gpu() const { return memory_type == MemoryType::GPULocal || memory_type == MemoryType::GPUShared; }
+  bool is_on_gpu() const {
+    return memory_type == MemoryType::GPULocal ||
+           memory_type == MemoryType::GPUShared;
+  }
   bool is_on_host() const { return !is_on_gpu(); }
 
   void BindTo(const Tensor& tensor);
   void BindTo(const _Tensor_* tensor);
   void Unbind(const _Tensor_* tensor);
 
-  const std::set<std::string>& binded_tensor_names() const { return binded_tensors_names_; }
+  const std::set<std::string>& binded_tensor_names() const {
+    return binded_tensors_names_;
+  }
 
   Var buffer_addr() const;
 
@@ -138,18 +146,23 @@ class _Buffer_ : public ExprNode<_Buffer_> {
   static const IrNodeTy _node_type_ = IrNodeTy::_Buffer_;
 
   // Copy the meta infos to other.
-  void CopyMeta(_Buffer_* other) const { other->binded_tensors_names_ = binded_tensors_names_; }
+  void CopyMeta(_Buffer_* other) const {
+    other->binded_tensors_names_ = binded_tensors_names_;
+  }
 
  private:
   std::set<std::string> binded_tensors_names_;
 };
 
-static bool operator<(const ir::Buffer& a, const ir::Buffer& b) { return a->name < b->name; }
+static bool operator<(const ir::Buffer& a, const ir::Buffer& b) {
+  return a->name < b->name;
+}
 
 // represents the multi-dimension ranges of the buffer
 struct _BufferRange_ : public ExprNode<_BufferRange_> {
   Expr buffer;
-  // For every range, it starts from var's lower_bound and ends at var's upper_bound.
+  // For every range, it starts from var's lower_bound and ends at var's
+  // upper_bound.
   std::vector<Var> ranges;
 
   _BufferRange_() = default;
@@ -184,7 +197,9 @@ struct BufferRange : public IrNodeRef {
 
   const _BufferRange_* operator->() const { return get(); }
   _BufferRange_* operator->() { return get(); }
-  const _BufferRange_* get() const { return static_cast<const _BufferRange_*>(ptr()); }
+  const _BufferRange_* get() const {
+    return static_cast<const _BufferRange_*>(ptr());
+  }
   _BufferRange_* get() { return static_cast<_BufferRange_*>(ptr()); }
 };
 

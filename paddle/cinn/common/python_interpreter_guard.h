@@ -18,13 +18,14 @@ namespace cinn {
 namespace common {
 
 /**
- * Singleton to handle Python interpreter life time, since pybind11::initialize_interpreter and
- * pybind11::finalize_interpreter cannot be called initialization again after finalization, this
- * singleton calls pybind11::finalize_interpreter when it constructs and calls finalization when
+ * Singleton to handle Python interpreter life time, since
+ * pybind11::initialize_interpreter and pybind11::finalize_interpreter cannot be
+ * called initialization again after finalization, this singleton calls
+ * pybind11::finalize_interpreter when it constructs and calls finalization when
  * it destructs.
  *
- * In this case, every caller can call this guard to make sure the pybind11 Python interpreter
- * is alive.
+ * In this case, every caller can call this guard to make sure the pybind11
+ * Python interpreter is alive.
  */
 class PythonInterpreterGuard {
  public:

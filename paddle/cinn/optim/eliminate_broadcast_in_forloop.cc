@@ -36,14 +36,18 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
 
     auto* node = expr->As<ir::Store>();
 
-    auto broadcasts = ir::CollectIRNodes(node->value, [&](const Expr* expr) { return expr->As<ir::Broadcast>(); });
+    auto broadcasts = ir::CollectIRNodes(node->value, [&](const Expr* expr) {
+      return expr->As<ir::Broadcast>();
+    });
     std::vector<Expr> let_exprs;
 
     Var tmp;
     Expr let_expr;
 
-    Var cur_level_loop_var = forloop_stack.back()->As<ir::For>() ? forloop_stack.back()->As<ir::For>()->loop_var
-                                                                 : forloop_stack.back()->As<ir::PolyFor>()->iterator;
+    Var cur_level_loop_var =
+        forloop_stack.back()->As<ir::For>()
+            ? forloop_stack.back()->As<ir::For>()->loop_var
+            : forloop_stack.back()->As<ir::PolyFor>()->iterator;
     for (Expr broadcast : broadcasts) {
       if (ContainsLoopVar(broadcast, cur_level_loop_var)) continue;
       VLOG(4) << "eliminating " << broadcast;
@@ -57,13 +61,16 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
 
     Expr* outer_forloop = forloop_stack[forloop_stack.size() - 2];
 
-    auto& outer_forloop_body =
-        outer_forloop->As<ir::For>() ? outer_forloop->As<ir::For>()->body : outer_forloop->As<ir::PolyFor>()->body;
+    auto& outer_forloop_body = outer_forloop->As<ir::For>()
+                                   ? outer_forloop->As<ir::For>()->body
+                                   : outer_forloop->As<ir::PolyFor>()->body;
 
     auto* outer_forloop_body_block = outer_forloop_body.As<ir::Block>();
     if (outer_forloop_body_block) {
       outer_forloop_body_block->stmts.insert(
-          std::begin(outer_forloop_body_block->stmts), let_exprs.begin(), let_exprs.end());
+          std::begin(outer_forloop_body_block->stmts),
+          let_exprs.begin(),
+          let_exprs.end());
 
     } else {
       let_exprs.push_back(outer_forloop_body);
@@ -73,7 +80,8 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
 
   bool ContainsLoopVar(Expr expr, Var loop_var) {
     return !ir::CollectIRNodes(expr, [&](const Expr* e) -> bool {
-              return e->As<ir::_Var_>() && e->As<ir::_Var_>()->name == loop_var->name;
+              return e->As<ir::_Var_>() &&
+                     e->As<ir::_Var_>()->name == loop_var->name;
             }).empty();
   }
 

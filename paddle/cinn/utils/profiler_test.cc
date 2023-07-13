@@ -26,8 +26,10 @@ TEST(RecordEvent, HOST) {
   ProfilerHelper::EnableCPU();
 
   LOG(INFO) << "Usage 1: RecordEvent for HOST";
-  std::vector<EventType> types = {
-      EventType::kOrdinary, EventType::kCompile, EventType::kCompile, EventType::kInstruction};
+  std::vector<EventType> types = {EventType::kOrdinary,
+                                  EventType::kCompile,
+                                  EventType::kCompile,
+                                  EventType::kInstruction};
   for (int i = 0; i < 4; ++i) {
     std::string name = "evs_op_" + std::to_string(i);
     RecordEvent record_event(name, types[i]);
@@ -38,7 +40,7 @@ TEST(RecordEvent, HOST) {
   auto &events = HostEventRecorder::GetInstance().Events();
   EXPECT_EQ(events.size(), 4U);
   for (int i = 0; i < 4; ++i) {
-    auto &event      = events[i];
+    auto &event = events[i];
     std::string name = "evs_op_" + std::to_string(i);
     EXPECT_EQ(event.annotation_, name);
     EXPECT_GT(event.duration_, 0.0);
@@ -48,14 +50,14 @@ TEST(RecordEvent, HOST) {
 
   LOG(INFO) << HostEventRecorder::Table();
   /*
-    40: ------------------------->     Profiling Report     <-------------------------
-    40:
-    40:  Category             Name                 CostTime(ms)         Ratio in Category(%)  Ratio in Total(%)
-    40:
-    40:  Ordinary             evs_op_0             9725.647664          100.000000           99.999827
-    40:  Instruction          evs_op_3             0.006967             100.000000           0.000072
-    40:  Compile              evs_op_1             0.005083             51.536044            0.000052
-    40:  Compile              evs_op_2             0.004780             48.463956            0.000049
+    40: ------------------------->     Profiling Report
+    <------------------------- 40: 40:  Category             Name CostTime(ms)
+    Ratio in Category(%)  Ratio in Total(%) 40: 40:  Ordinary evs_op_0
+    9725.647664          100.000000           99.999827 40:  Instruction
+    evs_op_3             0.006967             100.000000           0.000072 40:
+    Compile              evs_op_1             0.005083             51.536044
+    0.000052 40:  Compile              evs_op_2 0.004780             48.463956
+    0.000049
   */
 
   LOG(INFO) << "Usage 2: Nested RecordEvent for HOST";

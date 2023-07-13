@@ -36,18 +36,41 @@ class TestExpandV2OpRank1(OpTest):
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
-        self.enable_cinn = True
+        self.if_enable_cinn()
 
     def init_data(self):
         self.ori_shape = [100]
         self.shape = [100]
         self.expand_times = [1]
 
+    def if_enable_cinn(self):
+        pass
+
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestExpandV2OpRank1_ZeroDim1(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [10]
+        self.expand_times = [10]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
+class TestExpandV2OpRank1_ZeroDim2(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = []
+        self.expand_times = []
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):

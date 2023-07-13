@@ -183,7 +183,6 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
     }
     return;
   }
-
   auto int_axis = axis.to<int64_t>();
   const auto& x_dims = x.dims();
 
@@ -845,6 +844,14 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
   out->set_dtype(alpha.dtype());
 }
 
+void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
+  if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
+
 void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
   out->set_dims(x.dims());
@@ -883,6 +890,11 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   out_w->set_dtype(out_dtype);
   out_v->set_dims(x_dims);
   out_v->set_dtype(out_dtype);
+}
+
+void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void EighInferMeta(const MetaTensor& x,
@@ -1056,7 +1068,7 @@ void ExpandInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto expand_shape = shape.GetData();
 
-  if (expand_shape.size() == 0) {
+  if (expand_shape.empty()) {
     expand_shape = std::vector<int64_t>(x_dims.size(), -1);
   }
 
@@ -3174,7 +3186,7 @@ void ReduceInferMeta(const MetaTensor& x,
                      bool keep_dim,
                      MetaTensor* out) {
   bool reduce_all = false;
-  if (axis.size() == 0) {
+  if (axis.empty()) {
     reduce_all = true;
   }
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
@@ -3397,7 +3409,7 @@ void RollInferMeta(const MetaTensor& x,
                    MetaTensor* out) {
   auto shifts_data = shifts.GetData();
 
-  if (axis.size() != 0) {
+  if (!axis.empty()) {
     PADDLE_ENFORCE_EQ(
         axis.size(),
         shifts_data.size(),
@@ -3582,7 +3594,7 @@ void SliceRawInferMeta(const MetaTensor& input,
   }
 
   out->set_dims(out_dims);
-  if (new_axes.size() > 0 && new_axes[0] != 0) {
+  if (!new_axes.empty() && new_axes[0] != 0) {
     out->share_lod(input);
   }
 }
@@ -3994,7 +4006,7 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
   }
   DDim out_dims(phi::make_ddim(out_dims_vector));
   // generate new shape
-  if (decrease_axis.size() > 0) {
+  if (!decrease_axis.empty()) {
     std::vector<int64_t> new_out_shape;
     for (size_t i = 0; i < decrease_axis.size(); ++i) {
       if (config.is_runtime && infer_flags[i] != -1) {
@@ -4182,7 +4194,7 @@ void TileInferMeta(const MetaTensor& x,
 
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
-  if (repeat_times_data.size() == 0) {
+  if (repeat_times_data.empty()) {
     repeat_times_data = std::vector<int64_t>(x_dims.size(), 1);
   }
 
@@ -5060,6 +5072,46 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
   stats->set_dims(phi::make_ddim({3}));
   values->set_dtype(DataType::FLOAT32);
   values->set_dims(phi::make_ddim({3}));
+}
+
+void QuantForCompressInferMeta(const MetaTensor& x,
+                               int bits,
+                               const std::string& layout,
+                               MetaTensor* out,
+                               MetaTensor* scale) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
+  PADDLE_ENFORCE_GE(
+      x_dims[0],
+      64,
+      phi::errors::OutOfRange("The first dimension of input is out of range "
+                              "(expected at least 64, but got %ld).",
+                              x_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0] % 64,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 64, but got[%d]",
+          x_dims[0]));
+  std::vector<int64_t> dim_scale({x_dims[1]});
+  std::vector<int64_t> dim_out;
+  if (bits == 8) {
+    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
+  } else if (bits == 4) {
+    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
+  } else {
+    phi::errors::InvalidArgument("The bit must be 8 or 4, but got %d", bits);
+  }
+  out->set_dims(phi::make_ddim(dim_out));
+
+  out->set_dtype(DataType::INT8);
+
+  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dtype(DataType::FLOAT32);
 }
 
 }  // namespace phi

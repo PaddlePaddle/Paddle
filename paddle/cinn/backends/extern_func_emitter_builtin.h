@@ -28,7 +28,7 @@ namespace backends {
 
 //! Function names
 
-static const char* extern_tanh_host_repr   = "__cinn_host_tanh_fp32";
+static const char* extern_tanh_host_repr = "__cinn_host_tanh_fp32";
 static const char* extern_tanh_v_host_repr = "__cinn_host_tanh_v";
 
 /**
@@ -36,12 +36,14 @@ static const char* extern_tanh_v_host_repr = "__cinn_host_tanh_v";
  */
 class CodeGenLLVMforEmitter : public CodeGenLLVM {
  public:
-  explicit CodeGenLLVMforEmitter(CodeGenLLVM* x) : CodeGenLLVM(x->m(), x->b(), x->named_vars()) {}
+  explicit CodeGenLLVMforEmitter(CodeGenLLVM* x)
+      : CodeGenLLVM(x->m(), x->b(), x->named_vars()) {}
 };
 
 class ExternFunctionLLVMEmitter : public ExternFunctionEmitter {
  public:
-  explicit ExternFunctionLLVMEmitter(const std::string& fn_name) : fn_name_(fn_name) {}
+  explicit ExternFunctionLLVMEmitter(const std::string& fn_name)
+      : fn_name_(fn_name) {}
 
   void BindCodeGen(void* codegen) override;
   const char* func_name() const override;

@@ -41,6 +41,8 @@ typedef int (*FCINNParallelLambda)(int task_id, int num_task, void* datas);
  *
  * @return 0 when no error is thrown, -1 when failure happens
  */
-int cinn_backend_parallel_launch(FCINNParallelLambda flambda, void* datas, int num_task);
+int cinn_backend_parallel_launch(FCINNParallelLambda flambda,
+                                 void* datas,
+                                 int num_task);
 
 }  // extern "C"

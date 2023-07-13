@@ -25,6 +25,7 @@
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule_error.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
@@ -48,17 +49,18 @@ TEST(IrSchedule, split_and_fuse1) {
 
   auto stages = CreateStages({A, B});
 
-  auto func     = cinn::lang::LowerVec("test_split_and_fuse1", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_split_and_fuse1", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
-  auto fused   = ir_sch.Fuse("B", {0, 1});
+  auto fused = ir_sch.Fuse("B", {0, 1});
   auto splited = ir_sch.Split(fused, {4, -1});
 
   auto loops = ir_sch.GetLoops("B");
-  fused      = ir_sch.Fuse(loops);
-  splited    = ir_sch.Split(fused, {256, -1});
+  fused = ir_sch.Fuse(loops);
+  splited = ir_sch.Split(fused, {256, -1});
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -106,16 +108,18 @@ TEST(IrSchedule, split_and_fuse2) {
 
   auto stages = CreateStages({A, B});
 
-  auto func     = cinn::lang::LowerVec("test_split_and_fuse2", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_split_and_fuse2", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
 
-  auto fused   = ir_sch.Fuse(loops);
+  auto fused = ir_sch.Fuse(loops);
   auto splited = ir_sch.Split(fused, {-1, 20});
-  VLOG(3) << "After split {-1, 20}, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(3) << "After split {-1, 20}, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -153,6 +157,48 @@ void test_split_and_fuse2(void* _args, int32_t num_args)
   ASSERT_EQ(utils::Trim(target_code), utils::Trim(source_code));
 }
 
+void TestSplitThrow() {
+  Context::Global().ResetNameId();
+  Expr M(32);
+  Expr N(32);
+  Expr P(32);
+
+  Target target = common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N});
+  auto B = Compute(
+      {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
+
+  auto stages = CreateStages({A, B});
+
+  auto func = cinn::lang::LowerVec(
+      "test_split_throw", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(
+      mod_expr, -1, false, ir::ScheduleErrorMessageLevel::kGeneral);
+  auto fused = ir_sch.Fuse("B", {0, 1});
+  // statement that cause the exception
+  auto splited = ir_sch.Split(fused, {-1, -1});
+
+  auto loops = ir_sch.GetLoops("B");
+  fused = ir_sch.Fuse(loops);
+  splited = ir_sch.Split(fused, {256, -1});
+
+  Module::Builder builder("module1", target);
+  for (auto& i : func) {
+    builder.AddFunction(i);
+  }
+  auto module = builder.Build();
+  CodeGenC codegen(target);
+  codegen.SetInlineBuiltinCodes(false);
+  auto source_code = codegen.Compile(module, CodeGenC::OutputKind::CImpl);
+}
+TEST(IrSchedule, split_throw) {
+  ASSERT_THROW(TestSplitThrow(), ir::enforce::EnforceNotMet);
+}
+
 TEST(IrSchedule, reorder1) {
   Context::Global().ResetNameId();
   Expr M(32);
@@ -167,14 +213,15 @@ TEST(IrSchedule, reorder1) {
 
   auto stages = CreateStages({A, B});
 
-  auto func     = cinn::lang::LowerVec("test_reorder1", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_reorder1", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
 
   auto splited = ir_sch.Split("B", 0, {-1, 4});
-  splited      = ir_sch.Split("B", 2, {-1, 2});
+  splited = ir_sch.Split("B", 2, {-1, 2});
 
   auto loops = ir_sch.GetLoops("B");
   ir_sch.Reorder({loops[4], loops[0]});
@@ -233,14 +280,15 @@ TEST(IrSchedule, reorder2) {
 
   auto stages = CreateStages({A, B});
 
-  auto func     = cinn::lang::LowerVec("test_reorder2", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_reorder2", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
 
   auto splited = ir_sch.Split("B", 0, {-1, 4});
-  splited      = ir_sch.Split("B", 2, {-1, 2});
+  splited = ir_sch.Split("B", 2, {-1, 2});
 
   ir_sch.Reorder("B", {4, 2, 3, 1, 0});
 
@@ -298,16 +346,17 @@ TEST(IrSchedule, reorder3) {
 
   auto stages = CreateStages({A, B});
 
-  auto func     = cinn::lang::LowerVec("test_reorder3", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_reorder3", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto all_blocks = ir_sch.GetAllBlocks();
-  auto loops      = ir_sch.GetLoops(all_blocks[0]);
+  auto loops = ir_sch.GetLoops(all_blocks[0]);
 
   auto splited = ir_sch.Split(loops[0], {-1, 5});
-  splited      = ir_sch.Split("B", 2, {-1, 2});
+  splited = ir_sch.Split("B", 2, {-1, 2});
 
   ir_sch.Reorder("B", {3, 1, 2, 0, 4});
 
@@ -367,18 +416,19 @@ TEST(IrSchedule, reorder4) {
 
   auto stages = CreateStages({A, B});
 
-  auto func     = cinn::lang::LowerVec("test_reorder4", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_reorder4", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
 
   auto all_blocks = ir_sch.GetAllBlocks();
-  auto block_b    = ir_sch.GetBlock("B");
-  auto loops      = ir_sch.GetLoops(block_b);
+  auto block_b = ir_sch.GetBlock("B");
+  auto loops = ir_sch.GetLoops(block_b);
 
   auto splited = ir_sch.Split("B", 0, {-1, 10});
-  splited      = ir_sch.Split("B", 2, {-1, 5});
+  splited = ir_sch.Split("B", 2, {-1, 5});
 
   ir_sch.Reorder("B", {0, 2, 1, 3, 4});
 
@@ -439,7 +489,8 @@ TEST(IrSchedule, parallel) {
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
   auto stages = CreateStages({A, B});
-  auto func   = cinn::lang::LowerVec("test_parallel", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_parallel", stages, {A, B}, {}, {}, nullptr, target, true);
   CHECK(!func.empty());
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -504,7 +555,8 @@ TEST(IrSchedule, vectorize) {
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
   auto stages = CreateStages({A, B});
-  auto func   = cinn::lang::LowerVec("test_vectorize", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_vectorize", stages, {A, B}, {}, {}, nullptr, target, true);
   CHECK(!func.empty());
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -577,7 +629,8 @@ TEST(IrSchedule, unroll) {
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
   auto stages = CreateStages({A, B});
-  auto func   = cinn::lang::LowerVec("test_unroll", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_unroll", stages, {A, B}, {}, {}, nullptr, target, true);
   CHECK(!func.empty());
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -649,7 +702,8 @@ TEST(IrSchedule, bind) {
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
   auto stages = CreateStages({A, B});
-  auto func   = cinn::lang::LowerVec("test_bind", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_bind", stages, {A, B}, {}, {}, nullptr, target, true);
   CHECK(!func.empty());
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -695,7 +749,8 @@ TEST(IrSchedule, simple_compute_at) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_simple_compute_at", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_simple_compute_at", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -703,11 +758,11 @@ TEST(IrSchedule, simple_compute_at) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
 
-  auto fused   = ir_sch.Fuse("B", {0, 1});
+  auto fused = ir_sch.Fuse("B", {0, 1});
   auto splited = ir_sch.Split(fused, {-1, 1024});
 
-  fused        = ir_sch.Fuse("C", {0, 1});
-  splited      = ir_sch.Split(fused, {-1, 1024});
+  fused = ir_sch.Fuse("C", {0, 1});
+  splited = ir_sch.Split(fused, {-1, 1024});
   auto block_b = ir_sch.GetBlock("B");
   ir_sch.SimpleComputeAt(block_b, splited[1]);
 
@@ -769,7 +824,8 @@ TEST(IrSchedule, compute_at0) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_at0", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_at0", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -777,11 +833,11 @@ TEST(IrSchedule, compute_at0) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
 
-  auto fused   = ir_sch.Fuse("B", {0, 1});
+  auto fused = ir_sch.Fuse("B", {0, 1});
   auto splited = ir_sch.Split(fused, {-1, 1024});
 
-  fused        = ir_sch.Fuse("C", {0, 1});
-  splited      = ir_sch.Split(fused, {-1, 1024});
+  fused = ir_sch.Fuse("C", {0, 1});
+  splited = ir_sch.Split(fused, {-1, 1024});
   auto block_b = ir_sch.GetBlock("B");
   ir_sch.ComputeAt(block_b, splited[1]);
 
@@ -844,7 +900,8 @@ TEST(IrSchedule, compute_at1) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_at1", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_at1", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -853,7 +910,7 @@ TEST(IrSchedule, compute_at1) {
   ir::IRSchedule ir_sch(mod_expr);
 
   auto block_b = ir_sch.GetBlock("B");
-  auto loops   = ir_sch.GetLoops("C");
+  auto loops = ir_sch.GetLoops("C");
 
   ir_sch.ComputeAt(block_b, loops[1]);
 
@@ -915,7 +972,8 @@ TEST(IrSchedule, compute_at2) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_at2", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_at2", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -924,7 +982,7 @@ TEST(IrSchedule, compute_at2) {
   ir::IRSchedule ir_sch(mod_expr);
 
   auto block_b = ir_sch.GetBlock("B");
-  auto loops   = ir_sch.GetLoops("C");
+  auto loops = ir_sch.GetLoops("C");
 
   ir_sch.ComputeAt(block_b, loops[0]);
 
@@ -986,7 +1044,8 @@ TEST(IrSchedule, compute_at3) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_at3", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_at3", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -996,7 +1055,7 @@ TEST(IrSchedule, compute_at3) {
 
   auto block_b = ir_sch.GetBlock("B");
 
-  auto fused   = ir_sch.Fuse("C", {0, 1});
+  auto fused = ir_sch.Fuse("C", {0, 1});
   auto splited = ir_sch.Split(fused, {32, -1});
 
   auto loops = ir_sch.GetLoops("C");
@@ -1066,7 +1125,8 @@ TEST(IrSchedule, compute_at4) {
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("local");
 
-  auto func = cinn::lang::LowerVec("test_compute_at4", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_at4", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -1075,7 +1135,7 @@ TEST(IrSchedule, compute_at4) {
   ir::IRSchedule ir_sch(mod_expr);
 
   auto block_b = ir_sch.GetBlock("B");
-  auto loops   = ir_sch.GetLoops("C");
+  auto loops = ir_sch.GetLoops("C");
 
   ir_sch.ComputeAt(block_b, loops[1]);
 
@@ -1127,7 +1187,8 @@ TEST(IrSchedule, compute_at5) {
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("local");
 
-  auto func = cinn::lang::LowerVec("test_compute_at5", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_at5", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -1136,7 +1197,7 @@ TEST(IrSchedule, compute_at5) {
   ir::IRSchedule ir_sch(mod_expr);
 
   auto block_b = ir_sch.GetBlock("B");
-  auto loops   = ir_sch.GetLoops("C");
+  auto loops = ir_sch.GetLoops("C");
 
   ir_sch.ComputeAt(block_b, loops[0]);
 
@@ -1189,7 +1250,8 @@ TEST(IrSchedule, compute_at6) {
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("local");
 
-  auto func = cinn::lang::LowerVec("test_compute_at6", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_at6", stages, {A, C}, {}, {}, nullptr, target, true);
   CHECK_EQ(func.size(), 1U);
 
   auto ast_expr = func[0]->body;
@@ -1199,7 +1261,7 @@ TEST(IrSchedule, compute_at6) {
 
   auto block_b = ir_sch.GetBlock("B");
 
-  auto fused   = ir_sch.Fuse("C", {0, 1});
+  auto fused = ir_sch.Fuse("C", {0, 1});
   auto splited = ir_sch.Split(fused, {32, -1});
 
   auto loops = ir_sch.GetLoops("C");
@@ -1253,7 +1315,8 @@ TEST(IrSchedule, cache_read1) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_cache_read1", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_cache_read1", stages, {A, C}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1335,7 +1398,8 @@ TEST(IrSchedule, cache_read2) {
 
   auto stages = CreateStages({A, B});
 
-  auto func = cinn::lang::LowerVec("test_cache_read2", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_cache_read2", stages, {A, B}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1351,7 +1415,8 @@ TEST(IrSchedule, cache_read2) {
   auto loops = ir_sch.GetLoops("B");
   ir_sch.ComputeAt(a_cache, loops[1]);
 
-  VLOG(1) << "After CacheRead and ComputeAt, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After CacheRead and ComputeAt, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -1403,7 +1468,8 @@ TEST(IrSchedule, cache_write1) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_cache_write1", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_cache_write1", stages, {A, C}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1417,7 +1483,8 @@ TEST(IrSchedule, cache_write1) {
   auto block_c = ir_sch.GetBlock("C");
   auto c_cache = ir_sch.CacheWrite(block_c, 0, "local");
 
-  VLOG(1) << "After CacheWrite, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After CacheWrite, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -1485,7 +1552,8 @@ TEST(IrSchedule, cache_write2) {
 
   auto stages = CreateStages({A, B});
 
-  auto func = cinn::lang::LowerVec("test_cache_write2", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_cache_write2", stages, {A, B}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1496,10 +1564,11 @@ TEST(IrSchedule, cache_write2) {
 
   auto block_b = ir_sch.GetBlock("B");
   auto b_cache = ir_sch.CacheWrite(block_b, 0, "local");
-  auto loops   = ir_sch.GetLoops("B");
+  auto loops = ir_sch.GetLoops("B");
   ir_sch.ComputeAt(b_cache, loops[1]);
 
-  VLOG(1) << "After CacheWrite and ComputeAt, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After CacheWrite and ComputeAt, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -1554,7 +1623,8 @@ TEST(IrSchedule, cache_read3) {
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("local");
 
-  auto func = cinn::lang::LowerVec("test_cache_read3", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_cache_read3", stages, {A, C}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1634,7 +1704,8 @@ TEST(IrSchedule, cache_write3) {
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("shared");
 
-  auto func = cinn::lang::LowerVec("test_cache_write3", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_cache_write3", stages, {A, C}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1652,7 +1723,8 @@ TEST(IrSchedule, cache_write3) {
   auto loops_b = ir_sch.GetLoops("B");
   ir_sch.SyncThreads(loops_b[0]);
 
-  VLOG(1) << "After CacheWrite, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After CacheWrite, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -1714,7 +1786,8 @@ TEST(IrSchedule, sync_threads) {
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("shared");
 
-  auto func = cinn::lang::LowerVec("test_sync_threads", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_sync_threads", stages, {A, C}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1727,12 +1800,13 @@ TEST(IrSchedule, sync_threads) {
   auto b_cache = ir_sch.CacheWrite(block_b, 0, "local");
   auto block_c = ir_sch.GetBlock("C");
   auto c_cache = ir_sch.CacheWrite(block_c, 0, "local");
-  block_c      = ir_sch.GetBlock("C");
+  block_c = ir_sch.GetBlock("C");
   ir_sch.SyncThreads(block_c, false);
   block_b = ir_sch.GetBlock("B");
   ir_sch.SyncThreads(block_b);
 
-  VLOG(1) << "After CacheWrite and SyncThreads, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After CacheWrite and SyncThreads, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -1787,11 +1861,14 @@ TEST(IrSchedule, cache_write4) {
   Placeholder<float> A("A", {M, N, N});
   Var k(32, "k0");
   auto B = Compute(
-      {M, N}, [&](Var i, Var j) { return lang::ReduceSum(A(i, j, k), {k}); }, "B");
+      {M, N},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, j, k), {k}); },
+      "B");
 
   auto stages = CreateStages({A, B});
 
-  auto func = cinn::lang::LowerVec("test_cache_write4", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_cache_write4", stages, {A, B}, {}, {}, nullptr, target, true);
 
   CHECK_EQ(func.size(), 1U);
 
@@ -1802,9 +1879,10 @@ TEST(IrSchedule, cache_write4) {
 
   auto block_b = ir_sch.GetBlock("B");
   auto b_cache = ir_sch.CacheWrite(block_b, 0, "local");
-  auto loops   = ir_sch.GetLoops("B");
+  auto loops = ir_sch.GetLoops("B");
 
-  VLOG(1) << "After CacheWrite, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After CacheWrite, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -1867,7 +1945,8 @@ TEST(IrSchedule, rfactor) {
       "B");
 
   auto stages = CreateStages({A, B});
-  auto func   = cinn::lang::LowerVec("test_rfactor", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_rfactor", stages, {A, B}, {}, {}, nullptr, target, true);
   CHECK(!func.empty());
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1875,7 +1954,7 @@ TEST(IrSchedule, rfactor) {
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
   CHECK_EQ(loops.size(), 3U);
-  auto new_rf_tensor      = ir_sch.Rfactor(loops[2], 0);
+  auto new_rf_tensor = ir_sch.Rfactor(loops[2], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
   CHECK(new_rf_tensor_ref->buffer.defined());
@@ -1993,7 +2072,8 @@ TEST(IrSchedule, rfactor1) {
       "B");
 
   auto stages = CreateStages({A, B});
-  auto func   = cinn::lang::LowerVec("test_rfactor", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_rfactor", stages, {A, B}, {}, {}, nullptr, target, true);
   CHECK(!func.empty());
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2001,7 +2081,7 @@ TEST(IrSchedule, rfactor1) {
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
   CHECK_EQ(loops.size(), 3U);
-  auto new_rf_tensor      = ir_sch.Rfactor(loops[1], 1);
+  auto new_rf_tensor = ir_sch.Rfactor(loops[1], 1);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
   CHECK(new_rf_tensor_ref->buffer.defined());
@@ -2113,10 +2193,13 @@ TEST(IrSchedule, rfactor2) {
   Placeholder<float> B("B", {K, N});
   Var k(16, "k0");
   auto C = Compute(
-      {M, N}, [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
-  auto func   = cinn::lang::LowerVec("test_rfactor", stages, {A, B, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_rfactor", stages, {A, B, C}, {}, {}, nullptr, target, true);
   CHECK(!func.empty());
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2124,7 +2207,7 @@ TEST(IrSchedule, rfactor2) {
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("C");
   CHECK_EQ(loops.size(), 3U);
-  auto new_rf_tensor      = ir_sch.Rfactor(loops[2], 0);
+  auto new_rf_tensor = ir_sch.Rfactor(loops[2], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
   CHECK(new_rf_tensor_ref->buffer.defined());
@@ -2241,13 +2324,18 @@ TEST(IrSchedule, compute_inline1) {
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); }, "B");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); },
+      "B");
   auto C = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return B(j, i, k) * Expr(2.f); }, "C");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return B(j, i, k) * Expr(2.f); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_inline1", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_inline1", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2256,7 +2344,8 @@ TEST(IrSchedule, compute_inline1) {
 
   auto block_b = ir_sch.GetBlock("B");
   ir_sch.ComputeInline(block_b);
-  VLOG(1) << "After ComputeInline, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After ComputeInline, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
   Module::Builder builder("module1", target);
   for (auto& i : func) {
     builder.AddFunction(i);
@@ -2306,13 +2395,18 @@ TEST(IrSchedule, compute_inline2) {
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); }, "B");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); },
+      "B");
   auto C = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return B(i, j, k) * Expr(2.f); }, "C");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return B(i, j, k) * Expr(2.f); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_inline2", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_inline2", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2320,11 +2414,12 @@ TEST(IrSchedule, compute_inline2) {
   ir::IRSchedule ir_sch(mod_expr);
 
   auto block_b = ir_sch.GetBlock("B");
-  auto loops   = ir_sch.GetLoops("C");
+  auto loops = ir_sch.GetLoops("C");
   ir_sch.ComputeAt(block_b, loops[1]);
   block_b = ir_sch.GetBlock("B");
   ir_sch.ComputeInline(block_b);
-  VLOG(1) << "After ComputeInline, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After ComputeInline, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
   Module::Builder builder("module1", target);
   for (auto& i : func) {
     builder.AddFunction(i);
@@ -2375,14 +2470,19 @@ TEST(IrSchedule, compute_inline3) {
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); }, "B");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); },
+      "B");
   auto C = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return B(j, i, k) * Expr(2.f); }, "C");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return B(j, i, k) * Expr(2.f); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("local");
 
-  auto func = cinn::lang::LowerVec("test_compute_inline3", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_inline3", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2391,7 +2491,8 @@ TEST(IrSchedule, compute_inline3) {
 
   auto block_b = ir_sch.GetBlock("B");
   ir_sch.ComputeInline(block_b);
-  VLOG(1) << "After ComputeInline, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After ComputeInline, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
 
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -2431,14 +2532,19 @@ TEST(IrSchedule, compute_inline4) {
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); }, "B");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); },
+      "B");
   auto C = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return B(i, j, k) * Expr(2.f); }, "C");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return B(i, j, k) * Expr(2.f); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
   stages[B]->SetBuffer("local");
 
-  auto func = cinn::lang::LowerVec("test_compute_inline4", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_inline4", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2446,11 +2552,12 @@ TEST(IrSchedule, compute_inline4) {
   ir::IRSchedule ir_sch(mod_expr);
 
   auto block_b = ir_sch.GetBlock("B");
-  auto loops   = ir_sch.GetLoops("C");
+  auto loops = ir_sch.GetLoops("C");
   ir_sch.ComputeAt(block_b, loops[1]);
   block_b = ir_sch.GetBlock("B");
   ir_sch.ComputeInline(block_b);
-  VLOG(1) << "After ComputeInline, IR is : " << ir_sch.GetModule().GetExprs().at(0);
+  VLOG(1) << "After ComputeInline, IR is : "
+          << ir_sch.GetModule().GetExprs().at(0);
   Module::Builder builder("module1", target);
   for (auto& i : func) {
     builder.AddFunction(i);
@@ -2493,7 +2600,8 @@ TEST(IrSchedule, reverse_compute_inline1) {
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_inline1", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_inline1", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2549,13 +2657,18 @@ TEST(IrSchedule, reverse_compute_inline2) {
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return Expr(1.f) + A(i, j, k); }, "B");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return Expr(1.f) + A(i, j, k); },
+      "B");
   auto C = Compute(
-      {N, M, P}, [&](Var i, Var j, Var k) { return Expr(2.f) * B(j, i, k); }, "C");
+      {N, M, P},
+      [&](Var i, Var j, Var k) { return Expr(2.f) * B(j, i, k); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_compute_inline1", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_compute_inline1", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2613,13 +2726,18 @@ TEST(IrSchedule, copytransform1) {
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); }, "B");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); },
+      "B");
   auto C = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return B(j, i, k) * Expr(2.f); }, "C");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return B(j, i, k) * Expr(2.f); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_copytransform1", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_copytransform1", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2629,12 +2747,12 @@ TEST(IrSchedule, copytransform1) {
   auto block_c = ir_sch.GetBlock("C");
   auto loops_c = ir_sch.GetLoops(block_c);
   auto splited = ir_sch.Split(loops_c[1], {-1, 4});
-  block_c      = ir_sch.GetBlock("C");
-  loops_c      = ir_sch.GetLoops(block_c);
-  splited      = ir_sch.Split(loops_c[0], {-1, 8});
+  block_c = ir_sch.GetBlock("C");
+  loops_c = ir_sch.GetLoops(block_c);
+  splited = ir_sch.Split(loops_c[0], {-1, 8});
 
   auto block_b = ir_sch.GetBlock("B");
-  block_c      = ir_sch.GetBlock("C");
+  block_c = ir_sch.GetBlock("C");
 
   ir_sch.CopyTransformAndLoopInfo(block_b, block_c);
   Module::Builder builder("module1", target);
@@ -2699,13 +2817,18 @@ TEST(IrSchedule, copytransform2) {
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
-      {M, N, P}, [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); }, "B");
+      {M, N, P},
+      [&](Var i, Var j, Var k) { return A(i, j, k) + Expr(1.f); },
+      "B");
   auto C = Compute(
-      {M, M, P}, [&](Var i, Var j, Var k) { return B(i, j, k) * Expr(2.f); }, "C");
+      {M, M, P},
+      [&](Var i, Var j, Var k) { return B(i, j, k) * Expr(2.f); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
 
-  auto func = cinn::lang::LowerVec("test_copytransform2", stages, {A, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_copytransform2", stages, {A, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -2715,12 +2838,12 @@ TEST(IrSchedule, copytransform2) {
   auto block_c = ir_sch.GetBlock("C");
   auto loops_c = ir_sch.GetLoops(block_c);
   auto splited = ir_sch.Split(loops_c[1], {-1, 4});
-  block_c      = ir_sch.GetBlock("C");
-  loops_c      = ir_sch.GetLoops(block_c);
-  splited      = ir_sch.Split(loops_c[0], {-1, 8});
+  block_c = ir_sch.GetBlock("C");
+  loops_c = ir_sch.GetLoops(block_c);
+  splited = ir_sch.Split(loops_c[0], {-1, 8});
 
   auto block_b = ir_sch.GetBlock("B");
-  block_c      = ir_sch.GetBlock("C");
+  block_c = ir_sch.GetBlock("C");
   ir_sch.CopyTransformAndLoopInfo(block_b, block_c);
   Module::Builder builder("module1", target);
   for (auto& i : func) {
@@ -2780,16 +2903,22 @@ TEST(IrSchedule, Annotate) {
   auto B = Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  auto funcs = cinn::lang::LowerVec(
-      "test_annotate", CreateStages({A, B}), {A, B}, {}, {}, nullptr, common::DefaultHostTarget(), true);
+  auto funcs = cinn::lang::LowerVec("test_annotate",
+                                    CreateStages({A, B}),
+                                    {A, B},
+                                    {},
+                                    {},
+                                    nullptr,
+                                    common::DefaultHostTarget(),
+                                    true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
-  auto fused   = ir_sch.Fuse("B", {0, 1});
+  auto fused = ir_sch.Fuse("B", {0, 1});
   auto block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k1", int(64));
+  ir_sch.Annotate(block_b, "k1", 64);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k2", bool(true));
+  ir_sch.Annotate(block_b, "k2", true);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k3", float(2.0));
+  ir_sch.Annotate(block_b, "k3", 2.0f);
   block_b = ir_sch.GetBlock("B");
   ir_sch.Annotate(block_b, "k4", std::string("v4"));
   std::string expected_expr = R"ROC({
@@ -2806,7 +2935,8 @@ TEST(IrSchedule, Annotate) {
     }
   }
 })ROC";
-  ASSERT_EQ(utils::GetStreamCnt(ir_sch.GetModule().GetExprs().front()), expected_expr);
+  ASSERT_EQ(utils::GetStreamCnt(ir_sch.GetModule().GetExprs().front()),
+            expected_expr);
 }
 
 TEST(IrSchedule, Unannotate) {
@@ -2817,16 +2947,22 @@ TEST(IrSchedule, Unannotate) {
   auto B = Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  auto funcs = cinn::lang::LowerVec(
-      "test_unannotate", CreateStages({A, B}), {A, B}, {}, {}, nullptr, common::DefaultHostTarget(), true);
+  auto funcs = cinn::lang::LowerVec("test_unannotate",
+                                    CreateStages({A, B}),
+                                    {A, B},
+                                    {},
+                                    {},
+                                    nullptr,
+                                    common::DefaultHostTarget(),
+                                    true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
-  auto fused   = ir_sch.Fuse("B", {0, 1});
+  auto fused = ir_sch.Fuse("B", {0, 1});
   auto block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k1", int(64));
+  ir_sch.Annotate(block_b, "k1", 64);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k2", bool(true));
+  ir_sch.Annotate(block_b, "k2", true);
   block_b = ir_sch.GetBlock("B");
-  ir_sch.Annotate(block_b, "k3", float(2.0));
+  ir_sch.Annotate(block_b, "k3", 2.0f);
   block_b = ir_sch.GetBlock("B");
   ir_sch.Annotate(block_b, "k4", std::string("v4"));
   block_b = ir_sch.GetBlock("B");
@@ -2850,7 +2986,8 @@ TEST(IrSchedule, Unannotate) {
     }
   }
 })ROC";
-  ASSERT_EQ(utils::GetStreamCnt(ir_sch.GetModule().GetExprs().front()), expected_expr);
+  ASSERT_EQ(utils::GetStreamCnt(ir_sch.GetModule().GetExprs().front()),
+            expected_expr);
 }
 
 TEST(IrSchedule, ComplexIndices) {
@@ -2865,14 +3002,22 @@ TEST(IrSchedule, ComplexIndices) {
 
   poly::StageMap stages = CreateStages({B});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestIrSchedule_ReduceSum", stages, {A, B}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestIrSchedule_ReduceSum",
+                     stages,
+                     {A, B},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
   VLOG(3) << "Lowered Expr:" << ir_sch.GetModule().GetExprs().front();
 
   auto loops_b = ir_sch.GetLoops("B");
   CHECK_EQ(loops_b.size(), 2);
   ir_sch.Split("B", 0, {8, -1});
-  ir_sch.Split("B", 2, {32, -1});  // after first splited, loops size has added to 3
+  ir_sch.Split(
+      "B", 2, {32, -1});  // after first splited, loops size has added to 3
   VLOG(3) << "Splited Expr:" << ir_sch.GetModule().GetExprs().front();
 
   CHECK_EQ(ir_sch.GetLoops("B").size(), 4);
@@ -2880,22 +3025,29 @@ TEST(IrSchedule, ComplexIndices) {
   VLOG(3) << "Reordered Expr:\n" << ir_sch.GetModule().GetExprs().front();
 
   auto block_b = ir_sch.GetBlock("B");
-  auto a_cache = ir_sch.CacheRead(block_b, 1, "shared");  // actually the read_buffer A should be indexed by 0
+  auto a_cache = ir_sch.CacheRead(
+      block_b,
+      1,
+      "shared");  // actually the read_buffer A should be indexed by 0
   VLOG(3) << "CacheRead-A Expr:\n" << ir_sch.GetModule().GetExprs().front();
 
   loops_b = ir_sch.GetLoops("B");
   ir_sch.ComputeAt(a_cache, loops_b[0]);
-  VLOG(3) << "A_cache-ComputeAt-B Expr:\n" << ir_sch.GetModule().GetExprs().front();
+  VLOG(3) << "A_cache-ComputeAt-B Expr:\n"
+          << ir_sch.GetModule().GetExprs().front();
 
-  block_b      = ir_sch.GetBlock("B");
+  block_b = ir_sch.GetBlock("B");
   auto b_cache = ir_sch.CacheWrite(block_b, 0, "local");
   VLOG(3) << "CacheWrite-B Expr:\n" << ir_sch.GetModule().GetExprs().front();
 
   auto loops_b_cache =
-      ir_sch.GetLoops(b_cache.As<ir::ScheduleBlockRealize>()->schedule_block.As<ir::ScheduleBlock>()->name);
+      ir_sch.GetLoops(b_cache.As<ir::ScheduleBlockRealize>()
+                          ->schedule_block.As<ir::ScheduleBlock>()
+                          ->name);
   block_b = ir_sch.GetBlock("B");
   ir_sch.ReverseComputeAt(block_b, loops_b_cache[1]);
-  VLOG(3) << "B-ReverseComputeAt-B_cache Expr:\n" << ir_sch.GetModule().GetExprs().front();
+  VLOG(3) << "B-ReverseComputeAt-B_cache Expr:\n"
+          << ir_sch.GetModule().GetExprs().front();
 
   Module::Builder builder("module1", target);
   for (auto& i : funcs) {
@@ -2955,11 +3107,17 @@ TEST(IrSchedule, SamplePerfectTile) {
       {M}, [&](Expr i) { return A(i) + 1; }, "B");
   poly::StageMap stages = CreateStages({A, B});
 
-  auto funcs = cinn::lang::LowerVec(
-      "test_sampleperfecttile", stages, {A, B}, {}, {}, nullptr, common::DefaultHostTarget(), true);
+  auto funcs = cinn::lang::LowerVec("test_sampleperfecttile",
+                                    stages,
+                                    {A, B},
+                                    {},
+                                    {},
+                                    nullptr,
+                                    common::DefaultHostTarget(),
+                                    true);
 
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
-  auto loops_b             = ir_sch.GetLoops("B");
+  auto loops_b = ir_sch.GetLoops("B");
   std::vector<Expr> result = ir_sch.SamplePerfectTile(loops_b[0], 3, 64);
   ASSERT_EQ(result.size(), 3);
 }
@@ -2974,14 +3132,20 @@ TEST(IrSchedule, GetChildBlocks) {
       {M, N, K}, [&A](Var i, Var j, Var k) { return A(i, j, k); }, "B");
   auto C = Compute(
       {M, N, K}, [&B](Var i, Var j, Var k) { return B(i, j, k); }, "C");
-  auto funcs = cinn::lang::LowerVec(
-      "test_getchildblocks", CreateStages({A, B, C}), {A, C}, {}, {}, nullptr, common::DefaultHostTarget(), true);
+  auto funcs = cinn::lang::LowerVec("test_getchildblocks",
+                                    CreateStages({A, B, C}),
+                                    {A, C},
+                                    {},
+                                    {},
+                                    nullptr,
+                                    common::DefaultHostTarget(),
+                                    true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
 
   auto block_b = ir_sch.GetBlock("B");
-  auto loops   = ir_sch.GetLoops("C");
+  auto loops = ir_sch.GetLoops("C");
   ir_sch.ComputeAt(block_b, loops[1]);
-  loops           = ir_sch.GetLoops("B");
+  loops = ir_sch.GetLoops("B");
   auto root_block = ir_sch.GetRootBlock(loops[1]);
 
   std::string expected_expr = R"ROC(ScheduleBlock(B)
@@ -2994,7 +3158,8 @@ TEST(IrSchedule, GetChildBlocks) {
   i0_0, i1_0, i2_0 = axis.bind(i, j, k)
   C[i0_0, i1_0, i2_0] = B[i0_0, i1_0, i2_0]
 })ROC";
-  ASSERT_EQ(utils::GetStreamCnt(ir_sch.GetChildBlocks(root_block)), expected_expr);
+  ASSERT_EQ(utils::GetStreamCnt(ir_sch.GetChildBlocks(root_block)),
+            expected_expr);
 }
 
 TEST(IrSchedule, SampleCategorical) {
@@ -3007,11 +3172,18 @@ TEST(IrSchedule, SampleCategorical) {
       {M, N, P}, [&](Var i, Var j, Var k) { return A(i, j, k); }, "B");
   poly::StageMap stages = CreateStages({A, B});
   std::vector<int> decision;
-  auto funcs = cinn::lang::LowerVec(
-      "test_samplecategorical", stages, {A, B}, {}, {}, nullptr, common::DefaultHostTarget(), true);
+  auto funcs = cinn::lang::LowerVec("test_samplecategorical",
+                                    stages,
+                                    {A, B},
+                                    {},
+                                    {},
+                                    nullptr,
+                                    common::DefaultHostTarget(),
+                                    true);
 
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
-  Expr result = ir_sch.SampleCategorical({1, 2, 3}, {1.0, 2.0, 3.0}, {decision});
+  Expr result =
+      ir_sch.SampleCategorical({1, 2, 3}, {1.0, 2.0, 3.0}, {decision});
   ASSERT_EQ(result.type(), Int(32));
 }
 

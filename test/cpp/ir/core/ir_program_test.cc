@@ -174,9 +174,9 @@ TEST(program_test, program) {
   // (8) Def SetParameterOp(c, "c")
   auto op4 = builder.Build<ir::SetParameterOp>(op3->result(0), "c");
 
-  EXPECT_EQ(op4->operand(0).type().dialect().id(), paddle_dialect->id());
+  EXPECT_EQ(op4->op_operand(0).type().dialect().id(), paddle_dialect->id());
   Interface *c_interface =
-      op4->operand(0).type().dialect().GetRegisteredInterface<Interface>();
+      op4->op_operand(0).type().dialect().GetRegisteredInterface<Interface>();
   //   ir::Parameter *parameter_c =
   //       c_interface->VariableToParameter(variable_c.get());
   std::unique_ptr<ir::Parameter> parameter_c =
@@ -203,7 +203,7 @@ TEST(program_test, slice_combine_test) {
   // (2) Create an empty program object
   ir::Program program(ctx);
   //   ir::Program *program = new ir::Program();
-  EXPECT_EQ(program.block()->size() == 0, true);
+  EXPECT_EQ(program.block()->empty(), true);
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);

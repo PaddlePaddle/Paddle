@@ -49,12 +49,14 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope),
+      scope_(scope),
       ir_program_(std::move(ir_prog)) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
   //    &&interpreter::BlockCanBeStaticBuilt(block);
+  static_build_ = true;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -62,20 +64,18 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
+  if (execution_config_.create_local_scope) {
+    auto local_scope = &scope_->NewScope();
+    local_scope_ = local_scope;
+    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+            << "; local scope: " << local_scope_;
+  }
+  // TODO(zhangbo): delete var_scope
+  var_scope_.SetLocalScope(local_scope_);
+
   execution_config_.AnalyzeThreadPoolConfig(place,
                                             ir_program_->block()->size());
   execution_config_.Log(/*log_level=*/8);
-
-  if (execution_config_.create_local_scope) {
-    auto local_scope = &var_scope_.GetMutableScope()->NewScope();
-    local_scope_ = local_scope;
-  }
-
-  // force use outer scope for now
-  local_scope_ = scope;
-  static_build_ = true;
-
-  var_scope_.SetLocalScope(local_scope_);
 
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
@@ -116,7 +116,9 @@ void NewIRInterpreter::RunImpl() {
   //   &&
   //       (sync_op_num_ == 0)) {
   VLOG(4) << "Tracing Instruction List";
+
   TraceInstructionList(vec_instruction_);
+
   //   } else {
   //     VLOG(4) << "Non-tracing";
   //     // For the program that only run once, it is no need to
@@ -183,12 +185,13 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     ::ir::BuildScope(
-        ir_program_->block(), local_scope_, &value_2_var_name_map_);
+        *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
                                  ir_program_->block(),
                                  &op_func_nodes,
+                                 scope_,
                                  local_scope_,
                                  value_2_var_name_map_,
                                  execution_config_);
@@ -210,8 +213,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 
   // return Fetch Tensors
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+  Scope* inner_scope = InnerScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -285,6 +287,8 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   }
 }
 
+const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
+
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
   VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << src
@@ -319,8 +323,7 @@ std::shared_ptr<interpreter::AsyncWorkQueue> NewIRInterpreter::GetWorkQueue() {
 }
 
 void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+  Scope* inner_scope = InnerScope();
   VariableValueMap ins_map;
   for (auto& var_name_item : instr_node->Inputs()) {
     std::vector<Variable*> input_vars;
@@ -347,9 +350,8 @@ void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   if (instr_node->OpBase()->Type() == "cinn_launch" ||
       instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
                                                                  // in kernel
-    Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                         : var_scope_.GetMutableScope();
-    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+    Scope* inner_scope = InnerScope();
+    instr_node->ResetContextWithScope(ins_map, outs_map, *inner_scope);
   } else {
     instr_node->ResetContext(ins_map, outs_map);
   }
@@ -378,8 +380,7 @@ void NewIRInterpreter::BuildInplace() {
     }
   }
 
-  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                       : var_scope_.GetMutableScope();
+  Scope* local_scope = InnerScope();
   std::vector<std::vector<size_t>> input_var2op(var_scope_.VarSize());
   for (Instruction& instr : vec_instruction_) {
     for (auto& item : instr.Inputs()) {
@@ -776,7 +777,7 @@ void NewIRInterpreter::BuildSkipShareLoDInfo() {
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
         if (var->IsType<phi::DenseTensor>()) {
-          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
+          if (!var->Get<phi::DenseTensor>().lod().empty()) {
             can_skip_lod = false;
             break;
           }
@@ -797,8 +798,7 @@ void NewIRInterpreter::BuildSkipShareLoDInfo() {
 void NewIRInterpreter::RunOperator(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                       : var_scope_.GetMutableScope();
+  Scope* local_scope = InnerScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
@@ -938,15 +938,6 @@ void NewIRInterpreter::RunOperator(const Instruction& instr_node) {
 }
 
 void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
-  VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-          << " name:" << instr_node.OpBase()->Type() << " type:"
-          << (instr_node.KernelType() == OpFuncType::kCpuSync
-                  ? "kCpuSync"
-                  : (instr_node.KernelType() == OpFuncType::kGpuSync
-                         ? "kGpuSync"
-                         : "kGpuAsync"))
-          << " runs on " << platform::GetCurrentThreadName();
-
   OperatorBase* op = nullptr;
   if (instr_node.OpBaseValid()) {
     op = instr_node.OpBase();
@@ -963,7 +954,7 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
       VLOG(5) << "run new ir selected kernel";
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
       VLOG(5) << "begin to run op " << op_func_node->phi_op_name_;
-      op_func_node->infer_shape_interface_->infer_shape_(
+      op_func_node->infer_meta_interface_->infer_meta_(
           &(op_func_node->infer_meta_context_));
       VLOG(5) << "after run infer meta";
       (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
@@ -976,16 +967,19 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
 
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
-    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_
+                 << " raises an EnforceNotMet exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
-    LOG(WARNING) << op->Type() << " raises an exception "
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_ << " raises an exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
-    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_
+                 << " raises an unknown exception";
     exception_holder_.Catch(std::current_exception());
   }
 }
@@ -1054,7 +1048,7 @@ void NewIRInterpreter::ExecuteInstructionList(
             if (cancel) {
               break;
             }
-            VLOG(0) << "deps:\n" << GetDepsString();
+            VLOG(6) << "deps:\n" << GetDepsString();
             times++;
           }
           return times;
@@ -1159,7 +1153,8 @@ void NewIRInterpreter::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
-  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+  if (instr.DeviceContext().GetPlace().GetType() ==
+      phi::AllocationType::CUSTOM) {
     return;
   }
   platform::RecordEvent record(
@@ -1343,6 +1338,10 @@ void NewIRInterpreter::SetFeedVarsInplaceSkip(
 
 bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
+Scope* NewIRInterpreter::InnerScope() {
+  return local_scope_ != nullptr ? local_scope_ : scope_;
+}
+
 // Note(zhangbo):
 // (1) What is "Trace"?
 // The OP execute scheduling rule adopted by Interpretercore by default is a
@@ -1377,8 +1376,9 @@ void NewIRInterpreter::TraceInstructionList(
     }
   }
 
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    auto instr_id = trace_execute_order_[idx];
+  // TODO(phlrain) use orignal order for now, use better dependecy
+  for (size_t instr_id = 0; instr_id < vec_instruction_.size(); ++instr_id) {
+    /// auto instr_id = trace_execute_order_[idx];
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);

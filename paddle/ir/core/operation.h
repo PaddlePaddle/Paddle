@@ -17,6 +17,7 @@
 #include <ostream>
 #include <vector>
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/macros.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
@@ -53,17 +54,26 @@ class IR_API alignas(8) Operation final {
 
   OpResult result(uint32_t index) const;
 
-  OpOperand operand(uint32_t index) const;
+  OpOperand op_operand(uint32_t index) const;
+
+  Value operand(uint32_t index) const;
 
   /// Returns the region held by this operation at position 'index'.
   Region &region(unsigned index);
+  const Region &region(unsigned index) const;
 
-  void Print(std::ostream &os);
+  void Print(std::ostream &os) const;
 
   const AttributeMap &attributes() const { return attributes_; }
 
-  void SetAttribute(const std::string &key, Attribute value) {
+  void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
+  }
+
+  Attribute attribute(const std::string &key) const;
+
+  bool HasAttribute(const std::string &key) const {
+    return attributes_.find(key) != attributes_.end();
   }
 
   ir::OpInfo info() const { return info_; }
@@ -110,7 +120,10 @@ class IR_API alignas(8) Operation final {
     ReplaceAllUsesWith(std::vector<Value>{value});
   }
 
+  void Verify();
+
  private:
+  DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,
             ir::OpInfo op_info,
             uint32_t num_results,

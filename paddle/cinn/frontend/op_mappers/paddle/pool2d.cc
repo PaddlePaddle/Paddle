@@ -19,28 +19,35 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void Pool2dOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Pool2dOpMapper(const paddle::cpp::OpDesc& op_desc,
+                    const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
   CHECK(op_desc.HasAttr("pooling_type"));
-  auto pooling_type = utils::GetAttrOrDefault<std::string>(op_desc, "pooling_type");
+  auto pooling_type =
+      utils::GetAttrOrDefault<std::string>(op_desc, "pooling_type");
   CHECK(op_desc.HasAttr("ksize"));
   auto ksize = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ksize");
 
-  auto strides      = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "strides", {1, 1});
-  auto padding_size = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "paddings", {0, 0});
+  auto strides =
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "strides", {1, 1});
+  auto padding_size =
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "paddings", {0, 0});
 
-  auto ceil_mode         = utils::GetAttrOrDefault<bool>(op_desc, "ceil_mode", false);
-  auto exclusive         = utils::GetAttrOrDefault<bool>(op_desc, "exclusive", true);
-  auto global_pooling    = utils::GetAttrOrDefault<bool>(op_desc, "global_pooling", false);
-  auto data_format       = utils::GetAttrOrDefault<std::string>(op_desc, "data_format", "NCHW");
-  auto adaptive          = utils::GetAttrOrDefault<bool>(op_desc, "adaptive", false);
-  auto padding_algorithm = utils::GetAttrOrDefault<std::string>(op_desc, "padding_algorithm", "EXPLICIT");
-  auto x                 = ctx.GetVar(x_name);
-  auto out               = ctx.Builder()->Pool2d(x,
+  auto ceil_mode = utils::GetAttrOrDefault<bool>(op_desc, "ceil_mode", false);
+  auto exclusive = utils::GetAttrOrDefault<bool>(op_desc, "exclusive", true);
+  auto global_pooling =
+      utils::GetAttrOrDefault<bool>(op_desc, "global_pooling", false);
+  auto data_format =
+      utils::GetAttrOrDefault<std::string>(op_desc, "data_format", "NCHW");
+  auto adaptive = utils::GetAttrOrDefault<bool>(op_desc, "adaptive", false);
+  auto padding_algorithm = utils::GetAttrOrDefault<std::string>(
+      op_desc, "padding_algorithm", "EXPLICIT");
+  auto x = ctx.GetVar(x_name);
+  auto out = ctx.Builder()->Pool2d(x,
                                    pooling_type,
                                    ksize,
                                    strides,
@@ -56,7 +63,8 @@ void Pool2dOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& c
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void Pool2dGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Pool2dGradOpMapper(const paddle::cpp::OpDesc& op_desc,
+                        const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Input("Out").size(), 1UL);
@@ -68,22 +76,28 @@ void Pool2dGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContex
   auto dx_name = op_desc.Output(paddle::GradVarName("X")).front();
 
   CHECK(op_desc.HasAttr("pooling_type"));
-  auto pooling_type = utils::GetAttrOrDefault<std::string>(op_desc, "pooling_type");
+  auto pooling_type =
+      utils::GetAttrOrDefault<std::string>(op_desc, "pooling_type");
   CHECK(op_desc.HasAttr("ksize"));
   auto ksize = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ksize");
 
-  auto strides      = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "strides", {1, 1});
-  auto padding_size = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "paddings", {0, 0});
+  auto strides =
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "strides", {1, 1});
+  auto padding_size =
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "paddings", {0, 0});
 
-  auto ceil_mode         = utils::GetAttrOrDefault<bool>(op_desc, "ceil_mode", false);
-  auto exclusive         = utils::GetAttrOrDefault<bool>(op_desc, "exclusive", true);
-  auto global_pooling    = utils::GetAttrOrDefault<bool>(op_desc, "global_pooling", false);
-  auto data_format       = utils::GetAttrOrDefault<std::string>(op_desc, "data_format", "NCHW");
-  auto adaptive          = utils::GetAttrOrDefault<bool>(op_desc, "adaptive", false);
-  auto padding_algorithm = utils::GetAttrOrDefault<std::string>(op_desc, "padding_algorithm", "EXPLICIT");
+  auto ceil_mode = utils::GetAttrOrDefault<bool>(op_desc, "ceil_mode", false);
+  auto exclusive = utils::GetAttrOrDefault<bool>(op_desc, "exclusive", true);
+  auto global_pooling =
+      utils::GetAttrOrDefault<bool>(op_desc, "global_pooling", false);
+  auto data_format =
+      utils::GetAttrOrDefault<std::string>(op_desc, "data_format", "NCHW");
+  auto adaptive = utils::GetAttrOrDefault<bool>(op_desc, "adaptive", false);
+  auto padding_algorithm = utils::GetAttrOrDefault<std::string>(
+      op_desc, "padding_algorithm", "EXPLICIT");
 
-  auto x  = ctx.GetVar(x_name);
-  auto y  = ctx.GetVar(y_name);
+  auto x = ctx.GetVar(x_name);
+  auto y = ctx.GetVar(y_name);
   auto dy = ctx.GetVar(dy_name);
 
   auto out = ctx.Builder()->Pool2dGrad(x,
@@ -109,7 +123,9 @@ void Pool2dGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContex
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_pool2d) {
-  CINN_REGISTER_OP_MAPPER(pool2d, cinn::frontend::paddle_mappers::Pool2dOpMapper)
-  CINN_REGISTER_OP_MAPPER(pool2d_grad, cinn::frontend::paddle_mappers::Pool2dGradOpMapper)
+  CINN_REGISTER_OP_MAPPER(pool2d,
+                          cinn::frontend::paddle_mappers::Pool2dOpMapper)
+  CINN_REGISTER_OP_MAPPER(pool2d_grad,
+                          cinn::frontend::paddle_mappers::Pool2dGradOpMapper)
   return true;
 }

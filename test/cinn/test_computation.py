@@ -14,20 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import paddle.static as static
-from cinn.frontend import *
-from cinn import Target
-from cinn.framework import *
-import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.common import *
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
+from cinn.frontend import Computation, NetBuilder
+
+import paddle
+from paddle import fluid, static
 
 assert len(sys.argv) == 3
 enable_gpu = sys.argv.pop()
@@ -48,7 +43,8 @@ class TestNetBuilder(unittest.TestCase):
         b = static.data(name='B', shape=[24, 56, 56], dtype='float32')
         c = paddle.add(a, b)
         d = paddle.nn.initializer.NumpyArrayInitializer(
-            np.array(inputdata[2]).reshape((144, 24, 1, 1)).astype('float32'))
+            np.array(inputdata[2]).reshape((144, 24, 1, 1)).astype('float32')
+        )
         res = static.nn.conv2d(
             input=c,
             num_filters=144,
@@ -56,7 +52,8 @@ class TestNetBuilder(unittest.TestCase):
             stride=1,
             padding=0,
             dilation=1,
-            param_attr=d)
+            param_attr=d,
+        )
 
         exe = static.Executor(paddle.CPUPlace())
         exe.run(static.default_startup_program())
@@ -91,7 +88,7 @@ class TestNetBuilder(unittest.TestCase):
 
         edata_paddle = self.get_paddle_result([A_data, B_data, D_data])
 
-        self.assertTrue(np.allclose(edata_cinn, edata_paddle, atol=1e-5))
+        np.testing.assert_allclose(edata_cinn, edata_paddle, atol=1e-5)
 
 
 class TestCompilePaddleModel(unittest.TestCase):
@@ -105,7 +102,8 @@ class TestCompilePaddleModel(unittest.TestCase):
         A_shape = [4, 30]
         A_data = np.random.random(A_shape).astype("float32")
         computation = Computation.compile_paddle_model(
-            self.target, naive_model_dir, ["A"], [A_shape], False)
+            self.target, naive_model_dir, ["A"], [A_shape], False
+        )
 
         A_tensor = computation.get_tensor("A")
         A_tensor.from_numpy(A_data, self.target)
@@ -123,7 +121,7 @@ class TestCompilePaddleModel(unittest.TestCase):
         paddle_out = paddle_predictor.run([data])
         res_paddle = paddle_out[0].as_ndarray()
 
-        self.assertTrue(np.allclose(res_cinn, res_paddle, atol=1e-5))
+        np.testing.assert_allclose(res_cinn, res_paddle, atol=1e-5)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,8 @@
 // limitations under the License.
 
 /**
- * \file This file defines some functions and macros to help register the extern functions into JIT.
+ * \file This file defines some functions and macros to help register the extern
+ * functions into JIT.
  */
 #pragma once
 
@@ -33,45 +34,59 @@
 #include "paddle/cinn/common/macros.h"
 
 /**
- * Helper to register an external function into CINN, including the prototype, the function address.
+ * Helper to register an external function into CINN, including the prototype,
+ * the function address.
  * @param fn__: name of the function
  * @param target__: the Target.
  */
 #define REGISTER_EXTERN_FUNC_HELPER(fn__, target__) \
-  ::cinn::backends::RegisterExternFunction(#fn__, target__, reinterpret_cast<void*>(fn__))
+  ::cinn::backends::RegisterExternFunction(         \
+      #fn__, target__, reinterpret_cast<void*>(fn__))
 
-#define REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__) ::cinn::backends::RegisterExternFunction(#fn__, target__)
+#define REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__) \
+  ::cinn::backends::RegisterExternFunction(#fn__, target__)
 
 /**
  * Register an external function with one input and one output.
  */
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT(fn__, target__, in_type__, out_type__) \
-  REGISTER_EXTERN_FUNC_HELPER(fn__, target__).SetRetType<out_type__>().AddInputType<in_type__>().End()
+  REGISTER_EXTERN_FUNC_HELPER(fn__, target__)                                  \
+      .SetRetType<out_type__>()                                                \
+      .AddInputType<in_type__>()                                               \
+      .End()
 
 /**
  * Register an external function with one input and one output.
  */
-#define REGISTER_EXTERN_FUNC_2_IN_1_OUT(fn__, target__, in_type1__, in_type2__, out_type__) \
-  REGISTER_EXTERN_FUNC_HELPER(fn__, target__)                                               \
-      .SetRetType<out_type__>()                                                             \
-      .AddInputType<in_type1__>()                                                           \
-      .AddInputType<in_type2__>()                                                           \
+#define REGISTER_EXTERN_FUNC_2_IN_1_OUT(                \
+    fn__, target__, in_type1__, in_type2__, out_type__) \
+  REGISTER_EXTERN_FUNC_HELPER(fn__, target__)           \
+      .SetRetType<out_type__>()                         \
+      .AddInputType<in_type1__>()                       \
+      .AddInputType<in_type2__>()                       \
       .End()
 
 /**
- * Register a sourced function(No function address, called in generated source code).
+ * Register a sourced function(No function address, called in generated source
+ * code).
  */
-#define REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(fn__, target__, in_type__, out_type__) \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__).SetRetType<out_type__>().AddInputType<in_type__>().End()
+#define REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(      \
+    fn__, target__, in_type__, out_type__)           \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__) \
+      .SetRetType<out_type__>()                      \
+      .AddInputType<in_type__>()                     \
+      .End()
 
 /**
- * Register a sourced function(No function address, called in generated source code).
+ * Register a sourced function(No function address, called in generated source
+ * code).
  */
-#define REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(fn__, target__, in_type1__, in_type2__, out_type__) \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__)                                               \
-      .SetRetType<out_type__>()                                                                    \
-      .AddInputType<in_type1__>()                                                                  \
-      .AddInputType<in_type2__>()                                                                  \
+#define REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(         \
+    fn__, target__, in_type1__, in_type2__, out_type__) \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(fn__, target__)    \
+      .SetRetType<out_type__>()                         \
+      .AddInputType<in_type1__>()                       \
+      .AddInputType<in_type2__>()                       \
       .End()
 
 namespace cinn {
@@ -99,8 +114,13 @@ struct RegisterExternFunction {
    * @param target Target of the function.
    * @param fn_ptr Address of the function, not valid if leave as null.
    */
-  RegisterExternFunction(const std::string& fn_name, Target target, void* fn_ptr = nullptr)
-      : fn_name_(fn_name), target_(target), fn_ptr_(fn_ptr), fn_proto_builder_(fn_name) {}
+  RegisterExternFunction(const std::string& fn_name,
+                         Target target,
+                         void* fn_ptr = nullptr)
+      : fn_name_(fn_name),
+        target_(target),
+        fn_ptr_(fn_ptr),
+        fn_proto_builder_(fn_name) {}
 
   /**
    * Add an input type.
@@ -140,7 +160,8 @@ struct RegisterExternFunction {
    * @param handle The handle to help inference the shape.
    * @return itself.
    */
-  RegisterExternFunction& SetShapeInference(FunctionProto::shape_inference_t handle) {
+  RegisterExternFunction& SetShapeInference(
+      FunctionProto::shape_inference_t handle) {
     fn_proto_builder_.SetShapeInference(handle);
     return *this;
   }

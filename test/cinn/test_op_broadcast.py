@@ -15,17 +15,8 @@
 # limitations under the License.
 
 import unittest
-import math
-import numpy as np
-import cinn
-from cinn import frontend
-from cinn import runtime
-from cinn import lang
+
 from cinn import framework
-from cinn import ir
-from cinn import common
-from cinn.poly import create_stages
-import logging
 from test_utils import SingleOpTester
 
 
@@ -37,8 +28,9 @@ class OpTest_add_0(SingleOpTester):
     def test_op(self):
         attrs = framework.NodeAttr()
         attrs.set_attr("axis", 0)
-        self.to_test_op([[100, 32], [100, 32]], [[100, 32]], "elementwise_add",
-                        attrs)
+        self.to_test_op(
+            [[100, 32], [100, 32]], [[100, 32]], "elementwise_add", attrs
+        )
 
 
 class OpTest_add_1(SingleOpTester):
@@ -60,8 +52,9 @@ class OpTest_mul_0(SingleOpTester):
     def test_op(self):
         attrs = framework.NodeAttr()
         attrs.set_attr("axis", 0)
-        self.to_test_op([[100, 32], [100, 32]], [[100, 32]], "elementwise_mul",
-                        attrs)
+        self.to_test_op(
+            [[100, 32], [100, 32]], [[100, 32]], "elementwise_mul", attrs
+        )
 
 
 class OpTest_mul_1(SingleOpTester):

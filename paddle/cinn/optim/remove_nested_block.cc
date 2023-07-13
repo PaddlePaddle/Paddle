@@ -33,7 +33,8 @@ Expr GetExprInsideBlock(Expr op) {
   return node;
 }
 
-// This will remove the nested blocks, but it will also remove the block outside the forloop's body.
+// This will remove the nested blocks, but it will also remove the block outside
+// the forloop's body.
 struct NestedBlockSimplifer : public ir::IRMutator<Expr*> {
   void operator()(ir::Expr* expr) { Visit(expr); }
 
@@ -67,7 +68,8 @@ struct NestedBlockRemover : public ir::IRMutator<Expr*> {
       auto* block = it->As<ir::Block>();
       if (block) {
         detect_nested = true;
-        new_exprs.insert(std::end(new_exprs), block->stmts.begin(), block->stmts.end());
+        new_exprs.insert(
+            std::end(new_exprs), block->stmts.begin(), block->stmts.end());
       } else {
         new_exprs.push_back(*it);
       }

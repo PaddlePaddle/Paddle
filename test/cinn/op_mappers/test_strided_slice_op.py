@@ -15,8 +15,9 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_mapper_test import OpMapperTest, logger
+
+from op_mapper_test import OpMapperTest
+
 import paddle
 
 
@@ -38,7 +39,8 @@ class TestStridedSliceOp(OpMapperTest):
         inputs = paddle.static.data(
             name='inputs',
             shape=self.feed_data['inputs'].shape,
-            dtype=self.feed_data['inputs'].dtype)
+            dtype=self.feed_data['inputs'].dtype,
+        )
         return {'Input': [inputs]}
 
     def set_op_attrs(self):
@@ -47,7 +49,7 @@ class TestStridedSliceOp(OpMapperTest):
             "starts": self.starts,
             "ends": self.ends,
             "strides": self.strides,
-            "infer_flags": self.infer_flags
+            "infer_flags": self.infer_flags,
         }
 
     def set_op_outputs(self):

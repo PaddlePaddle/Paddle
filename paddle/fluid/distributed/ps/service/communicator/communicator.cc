@@ -43,7 +43,7 @@ Communicator::Communicator() {}
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
-  if (flags.size() < 1) {
+  if (flags.empty()) {
     flags.push_back("-max_body_size=314217728");
     flags.push_back("-bthread_concurrency=40");
     flags.push_back("-socket_max_unwritten_bytes=2048000000");
@@ -654,7 +654,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   bool batch_size_consist = true;
   for (auto *input : *inputs) {
     int cur_batch_size =
-        input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
+        !input->lod().empty() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else if (batch_size != cur_batch_size) {
@@ -666,10 +666,10 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   CHECK(batch_size > 0);  // NOLINT
 
   int show_size =
-      shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
+      !shows->lod().empty() ? shows->lod()[0].size() - 1 : shows->dims()[0];
   CHECK(show_size == batch_size || show_size == 1);
   int clk_size =
-      clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
+      !clks->lod().empty() ? clks->lod()[0].size() - 1 : clks->dims()[0];
   CHECK(clk_size == batch_size || clk_size == 1);
 
   CHECK(outputs->size() == inputs->size());
@@ -705,7 +705,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     size_t len = tensor->numel();
     output_len = 0;
 
-    if (tensor->lod().size() > 0) {
+    if (!tensor->lod().empty()) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
         for (size_t j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
@@ -1326,7 +1326,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   platform::RecordEvent record_event("GeoCommunicator->SendSparse",
                                      platform::TracerEventType::Communication,
                                      1);
-  if (sparse_ids.size() == 0) {
+  if (sparse_ids.empty()) {
     return;
   }
   std::string param_name = SplitedGradToParam(varname);

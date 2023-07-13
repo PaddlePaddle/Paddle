@@ -17,10 +17,18 @@
 namespace cinn {
 namespace backends {
 
-void CodeGenCX86::Visit(const ir::Add *op) { VisitBinaryOp(op, op->a(), op->b(), "add"); }
-void CodeGenCX86::Visit(const ir::Sub *op) { VisitBinaryOp(op, op->a(), op->b(), "sub"); }
-void CodeGenCX86::Visit(const ir::Mul *op) { VisitBinaryOp(op, op->a(), op->b(), "mul"); }
-void CodeGenCX86::Visit(const ir::Div *op) { VisitBinaryOp(op, op->a(), op->b(), "div"); }
+void CodeGenCX86::Visit(const ir::Add *op) {
+  VisitBinaryOp(op, op->a(), op->b(), "add");
+}
+void CodeGenCX86::Visit(const ir::Sub *op) {
+  VisitBinaryOp(op, op->a(), op->b(), "sub");
+}
+void CodeGenCX86::Visit(const ir::Mul *op) {
+  VisitBinaryOp(op, op->a(), op->b(), "mul");
+}
+void CodeGenCX86::Visit(const ir::Div *op) {
+  VisitBinaryOp(op, op->a(), op->b(), "div");
+}
 
 void CodeGenCX86::Visit(const ir::Load *op) {
   Expr dense_strided_ramp = detail::StridedRampBase(op->index(), 1);
@@ -86,7 +94,7 @@ void CodeGenCX86::Visit(const ir::Store *op) {
 }
 
 void CodeGenCX86::PrintVecInputArgument(const Expr *op) {
-  int bits          = op->type().bits() * op->type().lanes();
+  int bits = op->type().bits() * op->type().lanes();
   auto *broadcast_n = op->As<ir::Broadcast>();
 
   if (op->type().lanes() == 1 || broadcast_n) {

@@ -47,11 +47,19 @@ TEST(GenerateCode_Cpu, Argmax_Keep) {
 
   lang::Placeholder<float> in("in", {n, in_c, h, w});
   poly::StageMap stages = poly::CreateStages({in});
-  ir::Tensor res        = Argmax(in, target, stages, axis, true, "test_argmax_in").at(0);
+  ir::Tensor res =
+      Argmax(in, target, stages, axis, true, "test_argmax_in").at(0);
   stages->InsertLazily(res);
 
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestGenerateCodeCpu_Argmax_Keep", stages, {in, res}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestGenerateCodeCpu_Argmax_Keep",
+                     stages,
+                     {in, res},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
 
   VLOG(6) << "Expr before CPU codegen:";
   VLOG(6) << funcs[0]->body;
@@ -63,7 +71,8 @@ TEST(GenerateCode_Cpu, Argmax_Keep) {
 
   backends::CodeGenCX86 codegen(target, backends::CodeGenCX86::Feature::AVX512);
   codegen.SetInlineBuiltinCodes(false);
-  std::string code   = codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+  std::string code =
+      codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
   auto target_source = R"ROC(
 #include <cinn_runtime.h>
 #include <stdio.h>

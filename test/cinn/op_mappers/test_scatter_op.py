@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
 import random
 import unittest
+
+import numpy as np
 from op_mapper_test import OpMapperTest
+
+import paddle
 
 
 class TestScatterOp(OpMapperTest):
@@ -27,13 +29,10 @@ class TestScatterOp(OpMapperTest):
         dim1 = 10
         x_data = self.random([dim0, dim1], "float32")
         ids_data = np.random.randint(
-            0, dim0, [random.randint(1, 5)], dtype=np.int32)
+            0, dim0, [random.randint(1, 5)], dtype=np.int32
+        )
         updates_data = self.random([len(ids_data), dim1], "float32")
-        self.feed_data = {
-            'x': x_data,
-            'ids': ids_data,
-            'updates': updates_data
-        }
+        self.feed_data = {'x': x_data, 'ids': ids_data, 'updates': updates_data}
 
     def set_op_type(self):
         return "scatter"
@@ -42,15 +41,18 @@ class TestScatterOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         ids = paddle.static.data(
             name='ids',
             shape=self.feed_data['ids'].shape,
-            dtype=self.feed_data['ids'].dtype)
+            dtype=self.feed_data['ids'].dtype,
+        )
         updates = paddle.static.data(
             name='updates',
             shape=self.feed_data['updates'].shape,
-            dtype=self.feed_data['updates'].dtype)
+            dtype=self.feed_data['updates'].dtype,
+        )
         return {'X': [x], 'Ids': [ids], 'Updates': [updates]}
 
     def set_op_attrs(self):
@@ -69,15 +71,12 @@ class TestScatterOpOverWrite(TestScatterOp):
         dim1 = 10
         x_data = self.random([dim0, dim1], "float32")
         ids_data = np.random.randint(
-            0, dim0, [random.randint(1, 10)], dtype=np.int32)
+            0, dim0, [random.randint(1, 10)], dtype=np.int32
+        )
         # remove duplicate elements, because paddle has undetermined behavior for duplicate elements
         ids_data = np.unique(ids_data)
         updates_data = self.random([len(ids_data), dim1], "float32")
-        self.feed_data = {
-            'x': x_data,
-            'ids': ids_data,
-            'updates': updates_data
-        }
+        self.feed_data = {'x': x_data, 'ids': ids_data, 'updates': updates_data}
 
     def set_op_attrs(self):
         return {'overwrite': True}
