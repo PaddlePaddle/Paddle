@@ -57,6 +57,10 @@ DEFINE_bool(cinn_use_op_fusion,
             BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
             "Whether to use op fusion pass.");
 
+DEFINE_bool(general_fusion_merge_pass,
+            BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
+            "Whether to use general fusion_merge pass.");
+
 DEFINE_bool(cinn_use_common_subexpression_elimination,
             BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                         false),
