@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
 import unittest
 import warnings
 
@@ -46,9 +45,7 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             self.assertEqual(data_np[0][0], -1)
             self.assertNotEqual(var2[0][0].numpy(), -1)
 
-            np.testing.assert_array_compare(
-                operator.__ne__, var2.numpy(), data_np
-            )
+            assert not np.array_equal(var2.numpy(), data_np)
 
 
 if __name__ == '__main__':

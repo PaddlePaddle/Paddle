@@ -291,11 +291,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             np.testing.assert_array_equal(
                 linear2_origin, linear2.weight.numpy()
             )
-            import operator
 
-            np.testing.assert_array_compare(
-                operator.__ne__, linear_origin, linear.weight.numpy()
-            )
+            assert not np.array_equal(linear_origin, linear.weight.numpy())
 
     def test_auto_prune9(self):
         with fluid.dygraph.guard():

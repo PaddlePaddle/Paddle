@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
 import unittest
 
 import numpy as np
@@ -130,17 +129,11 @@ class AMPTest(unittest.TestCase):
                 else:
                     self.assertFalse(found_inf)
 
-                    np.testing.assert_array_compare(
-                        operator.__ne__, weight_, pre_weight_
-                    )
+                    assert not np.array_equal(weight_, pre_weight_)
 
-                    np.testing.assert_array_compare(
-                        operator.__ne__, moment1_, pre_moment1_
-                    )
+                    assert not np.array_equal(moment1_, pre_moment1_)
 
-                    np.testing.assert_array_compare(
-                        operator.__ne__, beta_pow1_, pre_beta_pow1_
-                    )
+                    assert not np.array_equal(beta_pow1_, pre_beta_pow1_)
                 pre_weight_, pre_moment1_, pre_beta_pow1_ = (
                     weight_,
                     moment1_,
