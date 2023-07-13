@@ -20,9 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(convert_all_blocks);
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 #ifdef PADDLE_WITH_CINN
 DECLARE_bool(use_cinn);
 #endif
@@ -231,7 +232,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
             "but received strategy_.trainer_id_ = %d.",
             strategy_.trainer_id_));
 
-    if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
+    if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty()) {
       PADDLE_ENFORCE_LT(
           static_cast<size_t>(strategy_.trainer_id_),
           strategy_.trainers_endpoints_.size(),

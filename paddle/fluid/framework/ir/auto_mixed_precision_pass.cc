@@ -137,8 +137,9 @@ void DoInsertCastOp(Graph* graph,
   if (cache->count(var_node) == 0) {
     // insert cast op between var_node and op_node
     std::string cast_input_name = var_node->Var()->Name();
-    std::string cast_output_name =
-        var_node->Var()->Name() + "_cast.tmp_" + std::to_string((*suffix)++);
+    std::string cast_output_name = var_node->Var()->Name() +
+                                   "_cast_auto_mixed.tmp_" +
+                                   std::to_string((*suffix)++);
     framework::OpDesc cast_op_desc(block_desc);
     update_cast_desc(cast_op_desc,
                      cast_input_name,
@@ -187,8 +188,10 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "c_softmax_with_cross_entropy",
       "cross_entropy",
       "cross_entropy2",
+#ifndef PADDLE_WITH_XPU
       // slower than fp32
       "conv2d_transpose",
+#endif
       // default fp32 can avoid return inf when the sum value large than 65504
       "reduce_sum",
   });
@@ -479,7 +482,9 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         auto op_type = op_node->Op()->Type();
 
         if (GetOpOriginalType(op_type) == "fetch") continue;
-        if (op_node->Op()->HasAttr("sub_block")) continue;
+        if (op_node->Op()->HasAttr("sub_block") &&
+            GetOpOriginalType(op_type) != "tensorrt_engine")
+          continue;
 
         for (auto* var_node : op_node->outputs) {
           CHECK_EQ(var_node->IsVar(), true);
@@ -507,6 +512,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
+            GetOpOriginalType(op_type) != "tensorrt_engine" &&
             !KernelSupportPrecision(
                 GetOpOriginalType(op_type), backend_, phi::DataType::FLOAT32)) {
           for (auto* out_var_node : op_node->outputs) {

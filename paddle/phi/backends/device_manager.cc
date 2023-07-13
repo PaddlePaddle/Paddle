@@ -343,8 +343,9 @@ std::vector<std::string> DeviceManager::GetAllCustomDeviceList() {
 }
 
 bool DeviceManager::HasDeviceType(const std::string& device_type) {
-  auto dev_impl = GetDeviceInterfaceWithType(device_type);
-  return dev_impl != nullptr;
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
+  auto& dev_impl_map = Instance().device_impl_map_;
+  return dev_impl_map.find(device_type) != dev_impl_map.end();
 }
 
 bool DeviceManager::IsCustom(const std::string& device_type) {
@@ -596,6 +597,30 @@ void DeviceManager::CCLRecv(const std::string& device_type,
   dev_impl->CCLRecv(recvbuf, num, data_type, src_rank, ccl_comm, stream);
 }
 
+void DeviceManager::CCLAllToAll(const std::string& device_type,
+                                const void** send_buf,
+                                const size_t* send_count,
+                                const ccl::CCLDataType* send_dtype,
+                                void** recv_buf,
+                                const size_t* recv_count,
+                                const ccl::CCLDataType* recv_dtype,
+                                size_t rank,
+                                size_t nranks,
+                                const ccl::CCLComm& comm,
+                                const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLAllToAll(send_buf,
+                        send_count,
+                        send_dtype,
+                        recv_buf,
+                        recv_count,
+                        recv_dtype,
+                        rank,
+                        nranks,
+                        comm,
+                        stream);
+}
+
 // profiler
 void DeviceManager::ProfilerInitialize(const std::string& dev_type,
                                        phi::TraceEventCollector* collector,
@@ -646,11 +671,11 @@ DeviceManager& DeviceManager::Instance() {
   return platform_manager;
 }
 
-void DeviceManager::Clear() {
-  // TODO(wangran16): fix coredump when using npu plugin
-
-  // Instance().device_map_.clear();
-  // Instance().device_impl_map_.clear();
+void DeviceManager::Release() {
+  stream::Stream::ReleaseAll();
+  event::Event::ReleaseAll();
+  Instance().device_map_.clear();
+  Instance().device_impl_map_.clear();
 }
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {

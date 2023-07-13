@@ -32,8 +32,9 @@ LoD ToAbsOffset(const LoD &in) {
 }
 
 void AppendLoD(LoD *lod, const LoD &lod_length) {
-  PADDLE_ENFORCE(
-      lod->empty() || lod->size() == lod_length.size(),
+  PADDLE_ENFORCE_EQ(
+      (lod->empty() || lod->size() == lod_length.size()),
+      true,
       phi::errors::InvalidArgument(
           "The input LoD length should be equal to the appended LoD size, but "
           "received input LoD length is %d, actual LoD size is %d.",
@@ -58,7 +59,7 @@ LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
   length_lod.reserve(offset_lod.size());
   for (size_t lvl = 0; lvl < offset_lod.size(); ++lvl) {
     std::vector<size_t> level;
-    if (offset_lod[lvl].size() > 0) {
+    if (!offset_lod[lvl].empty()) {
       level.reserve(offset_lod[lvl].size() - 1);
     }
     for (size_t idx = 0; idx < offset_lod[lvl].size() - 1; ++idx) {

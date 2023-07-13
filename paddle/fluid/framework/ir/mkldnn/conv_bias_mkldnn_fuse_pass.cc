@@ -338,7 +338,7 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                     input_names.end();
 
-    if (has_bias && conv->Op()->Input("Bias").size() > 0) {
+    if (has_bias && !conv->Op()->Input("Bias").empty()) {
       auto conv_bias_names = conv->Op()->Input("Bias");
       // add eltwise bias to existing conv bias
       PADDLE_ENFORCE_EQ(conv_bias_names.size(),

@@ -371,6 +371,11 @@ class OperatorBase {
 
   void SetId(uint64_t id) { id_ = id; }
 
+  using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+  void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
+    hookfuncs_ = hookfuncs;
+  }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -398,6 +403,8 @@ class OperatorBase {
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
+
+  std::vector<HookFunc> hookfuncs_;
 
  private:
   void GenerateTemporaryNames();

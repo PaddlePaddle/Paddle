@@ -45,7 +45,6 @@ class Distribution:
     """
 
     def __init__(self, batch_shape=(), event_shape=()):
-
         self._batch_shape = (
             batch_shape
             if isinstance(batch_shape, tuple)

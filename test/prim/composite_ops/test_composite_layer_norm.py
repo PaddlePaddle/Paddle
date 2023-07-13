@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from utils import SUB_TOLERANCE
+from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 from paddle import _C_ops
@@ -60,7 +60,6 @@ def layer_norm_wrapper(
         return _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
 
     else:
-
         inputs = {}
         inputs['X'] = [x]
         if weight:

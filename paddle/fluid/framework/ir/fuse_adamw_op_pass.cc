@@ -91,7 +91,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
     weight_decay = config.first_coeff;
     use_adamw = true;
   }
-  if (inout_node_vectors[0].size() > 0 && config.replace_adamw) {
+  if (!inout_node_vectors[0].empty() && config.replace_adamw) {
     OpDesc fuse_adamw_op_desc(config.block);
     fuse_adamw_op_desc.SetType("fused_adam");
 
@@ -221,7 +221,7 @@ bool InitAndCheckAttrs(const size_t &found_adamw_count,
     }
   }
 
-  // Check whether with_decay and multi_precision are matched。
+  // Check whether with_decay and multi_precision are matched
   if (config->with_decay !=
           PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("with_decay")) ||
       config->multi_precision !=
@@ -297,7 +297,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
   }
 
   // Remove old op
-  if (config.replace_adamw && (inout_node_vectors[0].size() > 0)) {
+  if (config.replace_adamw && !inout_node_vectors[0].empty()) {
     GraphSafeRemoveNodes(graph, adamw_op_del_set);
   }
 

@@ -30,6 +30,18 @@ void AddActXPUInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* out_max);
 
+void AddLayernormXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int64_t m,
+                              int64_t n,
+                              float epsilon,
+                              MetaTensor* out,
+                              MetaTensor* mean,
+                              MetaTensor* variance,
+                              MetaTensor* z_add);
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -135,4 +147,32 @@ void FusedMultiTransformerXpuInferMeta(
     int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out);
+
+void YoloBoxXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& x_max,
+                         const MetaTensor& grid,
+                         const MetaTensor& stride,
+                         const MetaTensor& anchor_grid,
+                         float offset,
+                         MetaTensor* out,
+                         MetaTensor* out_max);
+
+void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
+                                 const MetaTensor& x_max,
+                                 const MetaTensor& filter,
+                                 const MetaTensor& filter_max,
+                                 const MetaTensor& bias,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& output_padding,
+                                 const IntArray& output_size,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::vector<int>& dilations,
+                                 const std::string& data_format,
+                                 bool has_bias,
+                                 bool with_act,
+                                 const std::string& act_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_max);
 }  // namespace phi

@@ -1334,6 +1334,7 @@ def load(path, **configs):
         1. Load model saved by ``paddle.jit.save`` then performing inference and fine-tune training.
 
         .. code-block:: python
+            :name: code-example1
 
             import numpy as np
             import paddle
@@ -1421,6 +1422,7 @@ def load(path, **configs):
         2. Load model saved by ``paddle.fluid.io.save_inference_model`` then performing and fine-tune training.
 
         .. code-block:: python
+            :name: code-example2
 
             import numpy as np
             import paddle
@@ -1634,7 +1636,7 @@ class TracedLayer:
                 TracedLayer object.
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import paddle
 
@@ -1684,7 +1686,7 @@ class TracedLayer:
             None
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import paddle
 
@@ -1787,7 +1789,7 @@ class TracedLayer:
             None
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import numpy as np
                 import paddle

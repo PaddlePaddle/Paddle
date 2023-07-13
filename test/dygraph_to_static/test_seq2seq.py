@@ -133,7 +133,6 @@ def train(args, attn_model=False):
 
 def infer(args, attn_model=False):
     with fluid.dygraph.guard(place):
-
         if attn_model:
             model = AttentionModel(
                 args.hidden_size,

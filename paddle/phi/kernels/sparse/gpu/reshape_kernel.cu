@@ -26,30 +26,33 @@
 namespace phi {
 namespace sparse {
 
-__global__ void ReshapeCooCudaKernel(const int64_t* x_indices_data,
+template <typename IntT>
+__global__ void ReshapeCooCudaKernel(const IntT* x_indices_data,
                                      const int num_x_sparse_part_dims,
                                      const int num_out_sparse_part_dims,
                                      const int64_t x_nnz,
                                      const int64_t* x_sparse_part_strides,
                                      const int64_t* out_sparse_part_strides,
-                                     int64_t* out_indices_data) {
+                                     IntT* out_indices_data) {
   CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
-    int64_t location = 0;
+    IntT location = 0;
     for (int i = 0; i < num_x_sparse_part_dims; ++i) {
-      location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
+      location += x_indices_data[i * x_nnz + j] *
+                  static_cast<IntT>(x_sparse_part_strides[i]);
     }
     for (int i = 0; i < num_out_sparse_part_dims; ++i) {
-      out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
-      location %= out_sparse_part_strides[i];
+      out_indices_data[i * x_nnz + j] =
+          location / static_cast<IntT>(out_sparse_part_strides[i]);
+      location %= static_cast<IntT>(out_sparse_part_strides[i]);
     }
   }
 }
 
-template <typename T, typename Context>
-void ReshapeCooKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      const phi::IntArray& shape,
-                      SparseCooTensor* out) {
+template <typename T, typename IntT, typename Context>
+void ReshapeCooGPUKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const phi::IntArray& shape,
+                         SparseCooTensor* out) {
   int64_t x_nnz = x.nnz();
   std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
   phi::DDim out_dims = x.dims().reshape(new_shape);
@@ -63,14 +66,14 @@ void ReshapeCooKernel(const Context& dev_ctx,
     out_sparse_part_dims.push_back(out_dims[i]);
   }
 
-  DenseTensor out_indices = Empty<int64_t, Context>(
+  DenseTensor out_indices = Empty<IntT, Context>(
       dev_ctx, {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz});
   DenseTensor out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of out indices
-  const auto* x_indices_data = x.indices().data<int64_t>();
-  auto* out_indices_data = out_indices.data<int64_t>();
+  const auto* x_indices_data = x.indices().data<IntT>();
+  auto* out_indices_data = out_indices.data<IntT>();
   const phi::DDim& x_sparse_part_strides =
       phi::stride(phi::make_ddim(x_sparse_part_dims));
   const phi::DDim& out_sparse_part_strides =
@@ -117,6 +120,17 @@ void ReshapeCooKernel(const Context& dev_ctx,
       destination_x_sparse_part_strides,
       destination_out_sparse_part_strides,
       out_indices_data);
+}
+
+template <typename T, typename Context>
+void ReshapeCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const phi::IntArray& shape,
+                      SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "ReshapeCooGPUKernel", ([&] {
+        ReshapeCooGPUKernel<T, data_t, Context>(dev_ctx, x, shape, out);
+      }));
 }
 
 // just copy from paddle\phi\kernels\sparse\cpu\reshape_kernel.cc

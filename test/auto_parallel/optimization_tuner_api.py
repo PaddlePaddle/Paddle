@@ -85,6 +85,9 @@ def train(fetch):
 
     dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
+    # dp optimization config
+    dp_optimization = dist_strategy.dp_optimization
+    dp_optimization.enable = True
     # sharding config
     sharding = dist_strategy.sharding
     sharding.enable = True

@@ -115,7 +115,7 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 cc_library(
   string_array
   SRCS string_array.cc
-  DEPS utf8proc phi_enforce)
+  DEPS utf8proc phi)
 
 cc_library(
   data_type
@@ -130,7 +130,7 @@ cc_test(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place memory data_type device_context dense_tensor)
+  DEPS place memory data_type device_context phi)
 
 cc_test(
   tensor_test
@@ -166,12 +166,12 @@ cc_test(
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim mixed_vector place tensor framework_proto version)
+  DEPS phi place tensor framework_proto version)
 
 cc_test(
   lod_tensor_test
   SRCS lod_tensor_test.cc
-  DEPS lod_utils lod_tensor memory)
+  DEPS phi lod_tensor memory)
 
 if(WITH_GPU)
   nv_test(
@@ -188,12 +188,12 @@ endif()
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context memory gflags glog)
+  DEPS device_context memory phi glog)
 
 cc_library(
   reader
   SRCS reader.cc
-  DEPS lod_tensor ddim)
+  DEPS lod_tensor phi)
 cc_test(
   reader_test
   SRCS reader_test.cc
@@ -202,15 +202,17 @@ cc_test(
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
-  DEPS threadpool)
+  DEPS phi)
 
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor
-       extended_tensor)
+  DEPS framework_proto scope phi)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
+endif()
+if(WITH_XPU)
+  target_link_libraries(var_type_traits dynload_xpti)
 endif()
 
 # every source file that includes "dnnl.h" must depends on mkldnn
@@ -242,7 +244,7 @@ endif()
 cc_library(
   scope
   SRCS scope.cc
-  DEPS glog threadpool xxhash var_type_traits)
+  DEPS glog phi xxhash var_type_traits)
 cc_library(
   device_worker
   SRCS device_worker.cc
@@ -273,12 +275,12 @@ if(WITH_GPU)
   nv_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context math_function scope)
+    DEPS operator op_registry device_context phi scope)
 elseif(WITH_ROCM)
   hip_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context math_function scope)
+    DEPS operator op_registry device_context phi scope)
 endif()
 
 if(WITH_GPU)
@@ -333,7 +335,7 @@ endif()
 cc_library(
   data_layout_transform
   SRCS data_layout_transform.cc
-  DEPS tensor math_function phi_data_layout_transform)
+  DEPS tensor phi)
 cc_test(
   data_layout_transform_test
   SRCS data_layout_transform_test.cc
@@ -342,14 +344,13 @@ cc_test(
 cc_library(
   data_transform
   SRCS data_transform.cc
-  DEPS math_function
+  DEPS phi
        tensor
        framework_proto
        selected_rows_utils
        data_device_transform
        data_type_transform
-       data_layout_transform
-       phi_data_transform)
+       data_layout_transform)
 
 cc_library(
   attribute
@@ -400,7 +401,7 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
-  DEPS ddim attribute selected_rows_utils)
+  DEPS phi attribute selected_rows_utils)
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn
@@ -433,30 +434,17 @@ if(WITH_XPU)
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
-         dense_tensor
          selected_rows_utils
-         int_array
-         scalar
          place
          phi
          var_type_traits
          op_info
-         xpu_op_list
-         convert_utils)
+         xpu_op_list)
 else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
-    DEPS lod_tensor
-         dense_tensor
-         selected_rows_utils
-         int_array
-         scalar
-         place
-         phi
-         var_type_traits
-         op_info
-         convert_utils)
+    DEPS lod_tensor selected_rows_utils place phi var_type_traits op_info)
 endif()
 
 if(WITH_XPU)
@@ -482,11 +470,10 @@ if(WITH_XPU)
          unused_var_check
          nan_inf_utils
          phi_utils
-         kernel_factory
          infershape_utils
-         op_utils
+         phi
          op_compat_infos
-         get_kerneltype_forvar_utils)
+         type_info)
 else()
   cc_library(
     operator
@@ -509,11 +496,10 @@ else()
          unused_var_check
          nan_inf_utils
          phi_utils
-         kernel_factory
          infershape_utils
-         op_utils
+         phi
          op_compat_infos
-         get_kerneltype_forvar_utils)
+         type_info)
 endif()
 
 cc_test(
@@ -543,7 +529,7 @@ cc_library(
        version
        xxhash
        op_dist_attr
-       scalar
+       phi
        op_version_proto
        op_version_registry)
 
@@ -678,48 +664,42 @@ cc_library(
   SRCS variable_helper.cc
   DEPS lod_tensor)
 
+set(NAIVE_EXECUTOR_DEPS
+    op_registry
+    denormal
+    device_context
+    scope
+    framework_proto
+    glog
+    lod_rank_table
+    feed_fetch_method
+    graph_to_program_pass
+    variable_helper)
+
 if(TENSORRT_FOUND)
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper
-         tensorrt_engine_op)
-else()
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
 endif()
+
+if(WITH_NVTX AND NOT WIN32)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} cuda_profiler)
+endif()
+
+cc_library(
+  naive_executor
+  SRCS naive_executor.cc
+  DEPS ${NAIVE_EXECUTOR_DEPS})
 
 cc_library(
   executor_gc_helper
   SRCS executor_gc_helper.cc
-  DEPS scope
+  DEPS while_op_helper
+       recurrent_op_helper
+       conditional_block_op_helper
+       scope
        proto_desc
        operator
        garbage_collector
-       op_registry
-       while_op_helper
-       recurrent_op_helper
-       conditional_block_op_helper)
+       op_registry)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(
@@ -746,7 +726,9 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS fleet_wrapper
+           recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -754,7 +736,6 @@ if(WITH_DISTRIBUTE)
            glog
            fs
            shell
-           fleet_wrapper
            heter_wrapper
            ps_gpu_wrapper
            box_wrapper
@@ -770,7 +751,6 @@ if(WITH_DISTRIBUTE)
            timer
            monitor
            heter_service_proto
-           fleet_executor
            ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -823,7 +803,8 @@ if(WITH_DISTRIBUTE)
            heter_section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -852,8 +833,7 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor
-           flags)
+           phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -900,7 +880,8 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -921,8 +902,7 @@ if(WITH_DISTRIBUTE)
            graph_to_program_pass
            variable_helper
            timer
-           monitor
-           fleet_executor)
+           monitor)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "")
@@ -961,7 +941,8 @@ elseif(WITH_PSLIB)
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS op_registry
+    DEPS recurrent_op_helper
+         op_registry
          device_context
          scope
          framework_proto
@@ -982,7 +963,6 @@ elseif(WITH_PSLIB)
          variable_helper
          timer
          monitor
-         fleet_executor
          ${BRPC_DEP})
 else()
   cc_library(
@@ -1009,7 +989,8 @@ else()
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS op_registry
+    DEPS recurrent_op_helper
+         op_registry
          device_context
          scope
          framework_proto
@@ -1029,8 +1010,7 @@ else()
          graph_to_program_pass
          variable_helper
          timer
-         monitor
-         fleet_executor)
+         monitor)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper
@@ -1071,7 +1051,7 @@ if(WITH_PSCORE)
            executor
            heter_server
            gloo_wrapper
-           eigen_function
+           phi
            ${RPC_DEPS}
            graph_gpu_wrapper)
   else()
@@ -1088,7 +1068,7 @@ if(WITH_PSCORE)
            executor
            heter_server
            gloo_wrapper
-           eigen_function
+           phi
            ${RPC_DEPS})
   endif()
 else()
@@ -1112,7 +1092,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows device_context)
+  DEPS phi device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1162,12 +1142,11 @@ cc_library(
        phi
        phi_utils
        op_info
-       shape_inference
-       sparse_coo_tensor)
+       shape_inference)
 cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc
-  DEPS infershape_utils infermeta_utils meta_tensor)
+  DEPS infershape_utils phi)
 
 # Get the current working branch
 execute_process(
@@ -1198,12 +1177,15 @@ cc_library(
        operator
        dynamic_loader
        string_helper
-       phi_tensor
-       op_meta_info
-       phi_api
-       tensor_api
-       phi_tensor_operants
-       operants_manager)
+       phi
+       imperative_flag
+       layer)
+
+cc_library(type_info SRCS type_info.cc)
+add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
+if(WITH_MKLDNN)
+  add_dependencies(type_info mkldnn)
+endif()
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc

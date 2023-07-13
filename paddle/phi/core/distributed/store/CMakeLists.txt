@@ -1,18 +1,14 @@
-cc_library(
-  tcp_store
-  SRCS tcp_store.cc tcp_utils.cc socket.cpp store.cc
-  DEPS enforce glog)
+set(STORE_COMMON_SRCS tcp_store.cc tcp_utils.cc socket.cpp store.cc)
 
 if(WITH_GLOO)
-  cc_library(
-    gloo_store
-    SRCS gloo_store.cc
-    DEPS gloo)
+  list(APPEND STORE_COMMON_SRCS gloo_store.cc)
 endif()
+
+collect_srcs(core_srcs SRCS ${STORE_COMMON_SRCS})
 
 if(NOT WIN32)
   cc_test(
     test_c_tcp_store
     SRCS test_tcp_store.cc
-    DEPS tcp_store)
+    DEPS phi)
 endif()

@@ -104,7 +104,6 @@ class TestPrimForward(unittest.TestCase):
 
     @ast_only_test
     def test_cinn_prim_forward(self):
-
         for dtype in self.dtypes:
             if paddle.device.get_device() == "cpu":
                 print("need pass this case")

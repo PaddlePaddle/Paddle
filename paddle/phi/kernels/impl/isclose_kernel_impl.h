@@ -53,19 +53,6 @@ struct GetTensorValue<phi::CPUContext, T> {
 };
 
 template <typename T>
-struct GetTensorValue<phi::GPUContext, T> {
-  T operator()(const phi::GPUContext& dev_ctx,
-               const DenseTensor& tensor) const {
-    const T* data = tensor.data<T>();
-    T value;
-    const auto gpu_place = dev_ctx.GetPlace();
-    memory_utils::Copy(
-        phi::CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
-    return value;
-  }
-};
-
-template <typename T>
 struct IscloseFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& ctx,
                   const DenseTensor& in,
@@ -126,6 +113,19 @@ __global__ void IscloseCUDAKernel(const T* in_data,
     // if (!val) *out_data = false;
   }
 }
+
+template <typename T>
+struct GetTensorValue<phi::GPUContext, T> {
+  T operator()(const phi::GPUContext& dev_ctx,
+               const DenseTensor& tensor) const {
+    const T* data = tensor.data<T>();
+    T value;
+    const auto gpu_place = dev_ctx.GetPlace();
+    memory_utils::Copy(
+        phi::CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
+    return value;
+  }
+};
 
 template <typename T>
 struct IscloseFunctor<phi::GPUContext, T> {

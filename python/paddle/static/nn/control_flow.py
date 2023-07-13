@@ -771,7 +771,6 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     helper = LayerHelper('switch_case', **locals())
 
     def _check_args(branch_index, branch_fns, default):
-
         check_variable_and_dtype(
             branch_index,
             'branch_index',
@@ -897,16 +896,18 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         3. If it is in static graph mode, any tensors or operations created outside
         or inside of ``true_fn`` and ``false_fn`` will be in net building
         regardless of which branch is selected at runtime. This has frequently
-        surprised users who expected a lazy semantics. For example:
+        surprised users who expected a lazy semantics.
 
-        .. code-block:: python
+        Examples:
+            .. code-block:: python
+                :name: code-example-1
 
-            import paddle
+                import paddle
 
-            a = paddle.zeros((1, 1))
-            b = paddle.zeros((1, 1))
-            c = a * b
-            out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
+                a = paddle.zeros((1, 1))
+                b = paddle.zeros((1, 1))
+                c = a * b
+                out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
 
         No matter whether ``a < b`` , ``c = a * b`` will be in net building and
         run. ``a + c`` and ``b * b`` will be in net building, but only one
@@ -934,6 +935,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     Examples:
         .. code-block:: python
+            :name: code-example-2
 
             import paddle
 

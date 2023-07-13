@@ -143,6 +143,9 @@ void StreamAnalyzer::ConstructEvents(
 DeviceContext* StreamAnalyzer::ParseDeviceContext(
     const OpFuncNode& op_func_node) const {
   auto& op = op_func_node.operator_base_;
+  if (op == nullptr) {
+    return op_func_node.dev_ctx_;
+  }
   auto& op_type = op->Type();
   const std::string& execution_stream = op_func_node.execution_stream_;
   const int stream_priority = op_func_node.stream_priority_;
@@ -201,7 +204,9 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 #endif
   }
 
-  SetDeviceCommContext(op.get(), op_func_node.dev_ctx_);
+  if (op != nullptr) {
+    SetDeviceCommContext(op.get(), op_func_node.dev_ctx_);
+  }
   return op_func_node.dev_ctx_;
 }
 
@@ -352,7 +357,7 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
   // can only add event for it with the help of depend_op.
   if (HasDataDependency(instructions[cur_instr_id],
                         instructions[next_instr_id]) ||
-      run_type_info[next_instr_id][DownstreamRunType::kEventRun].size() ||
+      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id].OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;

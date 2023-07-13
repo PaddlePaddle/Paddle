@@ -21,6 +21,9 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops, nn
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+    obtain_optimizer_parameters_list,
+)
 from paddle.fluid import framework
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.dygraph import to_variable
@@ -59,7 +62,7 @@ class MixPrecisionLayer(nn.Layer):
                     name="main_grad@" + param.name,
                 )
             else:
-                param.main_grad.add_(tmp_grad.cast(paddle.float32))
+                param.main_grad.add_(tmp_grad)
 
             tmp_grad._clear_data()
             return None
@@ -77,7 +80,6 @@ class MixPrecisionLayer(nn.Layer):
         include_sublayers=True,
         structured_name_prefix="",
     ):
-
         return self._layers.state_dict(
             destination=destination,
             include_sublayers=include_sublayers,
@@ -86,7 +88,6 @@ class MixPrecisionLayer(nn.Layer):
 
     @framework.deprecate_stat_dict
     def set_state_dict(self, state_dict, use_structured_name=True):
-
         self._layers.set_state_dict(
             state_dict, use_structured_name=use_structured_name
         )
@@ -95,25 +96,11 @@ class MixPrecisionLayer(nn.Layer):
 class MixPrecisionOptimizer:
     def __init__(self, optimizer):
         self._inner_opt = optimizer
-        self._parameter_list = self._obtain_optimizer_parameters_list()
-
-    def _obtain_optimizer_parameters_list(self):
-        if getattr(self._inner_opt, '_param_groups', None) and isinstance(
-            self._inner_opt._param_groups[0], dict
-        ):
-            parameters_list = []
-            for group in self._inner_opt._param_groups:
-                for param in group['params']:
-                    parameters_list.append(param)
-        else:
-            parameters_list = list(self._inner_opt._parameter_list)
-
-        return parameters_list
+        self._parameter_list = obtain_optimizer_parameters_list(optimizer)
 
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
-
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -179,7 +166,6 @@ class MixPrecisionOptimizer:
 
     @framework.dygraph_only
     def clear_grad(self, set_to_zero=True):
-
         param_list = []
         if self._parameter_list is None or not isinstance(
             self._parameter_list[0], dict
