@@ -32,7 +32,7 @@ from paddle.fluid.optimizer import (
 )
 
 # Note(wangzhongpu)
-# In dygraph, don't support DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
+# In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
 
 class MLP(paddle.nn.Layer):

@@ -828,7 +828,7 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.incubate.optimizer.ExponentialMovingAverage(0.999)
+        optimizer = paddle.static.ExponentialMovingAverage(0.999)
         return optimizer
 
     def test_exponentialmoving(self):
