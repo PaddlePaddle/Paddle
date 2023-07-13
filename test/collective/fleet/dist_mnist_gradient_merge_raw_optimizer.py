@@ -68,7 +68,7 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
         test_program = paddle.static.default_main_program().clone(for_test=True)
         optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
         if single_device:
-            optimizer = fluid.optimizer.GradientMergeOptimizer(
+            optimizer = paddle.incubate.optimizer.GradientMergeOptimizer(
                 optimizer,
                 k_steps=strategy.gradient_merge_configs["k_steps"],
                 avg=strategy.gradient_merge_configs["avg"],
