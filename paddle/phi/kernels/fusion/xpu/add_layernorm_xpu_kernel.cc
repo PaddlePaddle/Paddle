@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -28,8 +31,8 @@ void AddLayernormXPUKernel(const Context& ctx,
                            int64_t n,
                            float epsilon,
                            DenseTensor* out,
-                           DenseTensor* mean,
-                           DenseTensor* variance,
+                           //  DenseTensor* mean,
+                           //  DenseTensor* variance,
                            DenseTensor* z_add) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -39,9 +42,9 @@ void AddLayernormXPUKernel(const Context& ctx,
   const float* bias_data = bias.data<float>();
 
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  float* mean_data = ctx.template Alloc<float>(mean);
-  float* variance_data = ctx.template Alloc<float>(variance);
+  LOG(INFO) << "x_shape= 1";
   auto* z_add_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(z_add));
+  LOG(INFO) << "x_shape= 4";
 
   int r = xpu::add_layer_norm_fusion<XPUType>(  // T
       /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
@@ -53,8 +56,10 @@ void AddLayernormXPUKernel(const Context& ctx,
       /* float epsilon */ epsilon,
       /* const float* scale */ scale_data,
       /* const float* bias */ bias_data,
-      /* float* mean */ mean_data,
-      /* float* variance */ variance_data,
+      /* float* mean */ nullptr,
+      /* float* variance */ nullptr,
+      // /* float* mean */ mean_data,
+      // /* float* variance */ variance_data,
       /* T* z_add */ z_add_data);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layernorm_xpu");
 }
