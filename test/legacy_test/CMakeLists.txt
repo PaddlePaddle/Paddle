@@ -1316,7 +1316,8 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2)
+set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2
+                          test_edit_distance_op)
 
 foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
   py_test_modules(
