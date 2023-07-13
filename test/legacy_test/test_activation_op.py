@@ -3295,13 +3295,13 @@ class TestPow_factor_tensor(TestActivation):
             )
 
             np.testing.assert_allclose(
-                res_1, np.power(input, 2), rtol=1e-6, atol=1e-6
+                res_1, np.power(input, 2), rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_2, np.power(input, 3), rtol=1e-6, atol=1e-6
+                res_2, np.power(input, 3), rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_6, np.power(input, 3), rtol=1e-6, atol=1e-6
+                res_6, np.power(input, 3), rtol=1e-5, atol=1e-8
             )
 
 

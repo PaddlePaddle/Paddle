@@ -170,19 +170,19 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
             )
 
             np.testing.assert_allclose(
-                res_1, self.res_1_np, rtol=1e-6, atol=1e-6
+                res_1, self.res_1_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_2, self.res_2_np, rtol=1e-6, atol=1e-6
+                res_2, self.res_2_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_3, self.res_3_np, rtol=1e-6, atol=1e-6
+                res_3, self.res_3_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_4, self.res_4_np, rtol=1e-6, atol=1e-6
+                res_4, self.res_4_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_5, self.res_5_np, rtol=1e-6, atol=1e-6
+                res_5, self.res_5_np, rtol=1e-5, atol=1e-8
             )
 
     def test_dynamic_graph(self):
@@ -216,22 +216,22 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
             )
 
             np.testing.assert_allclose(
-                out_1.numpy(), self.res_1_np, rtol=1e-6, atol=1e-6
+                out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_2.numpy(), self.res_2_np, rtol=1e-6, atol=1e-6
+                out_2.numpy(), self.res_2_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_3.numpy(), self.res_3_np, rtol=1e-6, atol=1e-6
+                out_3.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_4.numpy(), self.res_4_np, rtol=1e-6, atol=1e-6
+                out_4.numpy(), self.res_4_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_5.numpy(), self.res_5_np, rtol=1e-6, atol=1e-6
+                out_5.numpy(), self.res_5_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_6.numpy(), self.res_3_np, rtol=1e-6, atol=1e-6
+                out_6.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
             )
 
 
@@ -302,19 +302,19 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             )
 
             np.testing.assert_allclose(
-                res_1, self.res_1_np, rtol=1e-6, atol=1e-6
+                res_1, self.res_1_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_2, self.res_2_np, rtol=1e-6, atol=1e-6
+                res_2, self.res_2_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_3, self.res_3_np, rtol=1e-6, atol=1e-6
+                res_3, self.res_3_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_4, self.res_4_np, rtol=1e-6, atol=1e-6
+                res_4, self.res_4_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                res_5, self.res_5_np, rtol=1e-6, atol=1e-6
+                res_5, self.res_5_np, rtol=1e-5, atol=1e-8
             )
 
     def test_dynamic_graph(self):
@@ -349,19 +349,19 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             out_5 = adaptive_avg_pool(x=x)
 
             np.testing.assert_allclose(
-                out_1.numpy(), self.res_1_np, rtol=1e-6, atol=1e-6
+                out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_2.numpy(), self.res_2_np, rtol=1e-6, atol=1e-6
+                out_2.numpy(), self.res_2_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_3.numpy(), self.res_3_np, rtol=1e-6, atol=1e-6
+                out_3.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_4.numpy(), self.res_4_np, rtol=1e-6, atol=1e-6
+                out_4.numpy(), self.res_4_np, rtol=1e-5, atol=1e-8
             )
             np.testing.assert_allclose(
-                out_5.numpy(), self.res_5_np, rtol=1e-6, atol=1e-6
+                out_5.numpy(), self.res_5_np, rtol=1e-5, atol=1e-8
             )
 
 
