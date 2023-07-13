@@ -43,6 +43,7 @@ class TestNewIr(unittest.TestCase):
 
 class TestCombineOp(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -63,6 +64,7 @@ class TestCombineOp(unittest.TestCase):
 
 class TestFeedOp(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -90,6 +92,7 @@ class TestFeedOp(unittest.TestCase):
 
 class TestAddGradOp(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
