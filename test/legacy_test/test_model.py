@@ -980,6 +980,11 @@ class TestModelFunction(unittest.TestCase):
             )
             if initial == "fit":
                 model.fit(mnist_data, batch_size=64, verbose=0)
+                print(
+                    "DEBUG test_dygraph_export_deploy_model_about_inputs fit",
+                    time.time() - start,
+                )
+                sys.stdout.flush()
             else:
                 img = np.array(
                     np.random.random((1, 1, 28, 28)), dtype=np.float32
@@ -987,12 +992,32 @@ class TestModelFunction(unittest.TestCase):
                 label = np.array(np.random.rand(1, 1), dtype=np.int64)
                 if initial == "train_batch":
                     model.train_batch([img], [label])
+                    print(
+                        "DEBUG test_dygraph_export_deploy_model_about_inputs train_batch",
+                        time.time() - start,
+                    )
+                    sys.stdout.flush()
                 elif initial == "eval_batch":
                     model.eval_batch([img], [label])
+                    print(
+                        "DEBUG test_dygraph_export_deploy_model_about_inputs eval_batch",
+                        time.time() - start,
+                    )
+                    sys.stdout.flush()
                 else:
                     model.predict_batch([img])
+                    print(
+                        "DEBUG test_dygraph_export_deploy_model_about_inputs predict_batch",
+                        time.time() - start,
+                    )
+                    sys.stdout.flush()
 
             model.save(save_dir, training=False)
+            print(
+                "DEBUG test_dygraph_export_deploy_model_about_inputs model.save",
+                time.time() - start,
+            )
+            sys.stdout.flush()
         shutil.rmtree(save_dir)
         # with inputs, and the type of inputs is InputSpec
         save_dir = os.path.join(
@@ -1006,8 +1031,17 @@ class TestModelFunction(unittest.TestCase):
         optim = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=model.parameters()
         )
+        print(
+            "DEBUG test_dygraph_export_deploy_model_about_inputs optim",
+            time.time() - start,
+        )
+        sys.stdout.flush()
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
+        print(
+            "DEBUG test_dygraph_export_deploy_model_about_inputs save",
+            time.time() - start,
+        )
         shutil.rmtree(save_dir)
         print(
             "DEBUG test_dygraph_export_deploy_model_about_inputs ",
