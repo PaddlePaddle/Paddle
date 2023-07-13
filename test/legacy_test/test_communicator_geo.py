@@ -15,7 +15,7 @@
 import os
 import subprocess
 import sys
-import time
+import tempfile
 import unittest
 
 import numpy
@@ -25,9 +25,9 @@ from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.utils.launch_utils import find_free_ports
-import tempfile
 
 paddle.enable_static()
+
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def net(self):
