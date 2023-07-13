@@ -119,7 +119,7 @@ int32_t MemorySparseTable::Load(const std::string &path,
                  << " not equal to expect_shard_num:" << expect_shard_num;
     return -1;
   }
-  if (file_list.size() == 0) {
+  if (file_list.empty()) {
     LOG(WARNING) << "MemorySparseTable load file is empty, path:" << path;
     return -1;
   }

@@ -95,7 +95,7 @@ void SerializeLodTensor(framework::Variable* var,
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   var_msg->set_type(::paddle::distributed::LOD_TENSOR);
   const framework::LoD lod = tensor->lod();
-  if (lod.size() > 0) {
+  if (!lod.empty()) {
     var_msg->set_lod_level(lod.size());
     for (auto& each : lod) {
       VarMsg::LodData* lod_inner = var_msg->add_lod();

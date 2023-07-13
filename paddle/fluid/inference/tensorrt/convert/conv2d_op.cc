@@ -135,7 +135,7 @@ void ConvertConv2d(TensorRTEngine* engine,
   layer->setStrideNd(nv_strides);
 
   layer->setPrePadding(nv_pre_paddings);
-  if (output_padding.size() > 0) {
+  if (!output_padding.empty()) {
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
   }
