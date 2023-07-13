@@ -634,7 +634,7 @@ def _setitem_for_tensor_array(var, item, value):
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
         value = to_static_variable(value)
-        array_write(x=value, i=item, array=var)
+        return array_write(x=value, i=item, array=var)
     else:
         raise NotImplementedError(
             "Only support __setitem__ by Int/Variable in tensor_array, but gets {}".format(
