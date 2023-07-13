@@ -159,20 +159,13 @@ void HandleForSpecialOp(ir::Operation* op,
   if (op_name == "pd.feed") {
     VLOG(6) << "Handle for pd.feed:";
     auto value = op->result(0);
-    std::string name = "inner_var_" + std::to_string(count++);
-    name_map->emplace(value, name);
-    auto var = CreateVar(value, name, scope, local_scope);
-    // TODO(phlrain): need to update here, support StringTensor
-    auto out_tensor = var->GetMutable<phi::DenseTensor>();
 
-    auto feed_var = scope->Var("feed");
-    VLOG(6) << "Create var: feed in scope " << scope;
+    VLOG(6) << "link feed output to feed in variable" << scope;
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    auto feed_list = feed_var->Get<paddle::framework::FeedList>();
-    auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
-    out_tensor->ShareDataWith(in_tensor);
-    out_tensor->set_lod(in_tensor.lod());
+
+    auto feed_var_name = "feed_" + std::to_string(index);
+    name_map->emplace(value, feed_var_name);
   }
 
   if (op_name == "builtin.combine") {
