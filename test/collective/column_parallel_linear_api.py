@@ -18,6 +18,7 @@ from legacy_test.test_collective_api_base import (
     runtime_main,
 )
 
+from collective.collective_broadcast_api import broadcast
 import paddle
 from paddle import fluid
 from paddle.distributed import fleet
@@ -38,7 +39,7 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
             data = paddle.static.data(
                 name='tindata', shape=[10, 1000], dtype="float32"
             )
-            paddle.distributed.broadcast(data, src=0)
+            broadcast(data, src=0)
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
                     initializer=paddle.nn.initializer.Assign(np_array[:, 0:8]),
