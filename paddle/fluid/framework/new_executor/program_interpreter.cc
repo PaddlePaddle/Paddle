@@ -284,15 +284,14 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(InterpreterBaseImpl* src) {
-  VLOG(8) << "Share BuildResults from InterpreterCore(" << src
-          << ") to InterpreterCore(" << this << ")";
-
   // share op dependency
   dependency_builder_.ShareDependencyFrom(
       reinterpret_cast<ProgramInterpreter*>(src)->GetDependencyBuilder());
   dependecy_count_ =
       reinterpret_cast<ProgramInterpreter*>(src)->GetDependecyCount();
   is_shared_ = true;
+  VLOG(8) << "Share BuildResults from InterpreterCore(" << src
+          << ") to InterpreterCore(" << this << ")";
 }
 
 bool ProgramInterpreter::BuildInplaceCheckVarIsOnlyInput(
@@ -328,6 +327,9 @@ interpreter::DependencyBuilder* ProgramInterpreter::GetDependencyBuilder() {
 }
 
 std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependecyCount() {
+  if (dependecy_count_ == nullptr) {
+    dependecy_count_ = std::make_shared<std::vector<size_t>>();
+  }
   return dependecy_count_;
 }
 
@@ -525,9 +527,9 @@ void ProgramInterpreter::BuildOperatorDependences() {
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
-
+  dependecy_count_ = GetDependecyCount();
   if (!is_shared_) {
-    dependecy_count_ = std::make_shared<std::vector<size_t>>(instr_num, 0);
+    dependecy_count_->assign(instr_num, 0);
   }
 
   auto downstream_map = dependency_builder_.Build(vec_instruction_);

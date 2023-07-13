@@ -65,8 +65,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
     return *op_downstream_map_;
   }
 
-  op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
-  op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
+  std::tie(op_downstream_map_, op_happens_before_) = GetDependency();
 
   instructions_ = &instructions;
   op_num_ = instructions_->size();
@@ -111,6 +110,10 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 std::tuple<std::shared_ptr<std::map<size_t, std::set<size_t>>>,
            std::shared_ptr<std::vector<std::vector<bool>>>>
 DependencyBuilder::GetDependency() {
+  if (op_downstream_map_ == nullptr || op_happens_before_ == nullptr) {
+    op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
+    op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
+  }
   return std::make_tuple(op_downstream_map_, op_happens_before_);
 }
 
