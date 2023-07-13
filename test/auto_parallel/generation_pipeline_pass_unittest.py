@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -155,6 +156,7 @@ class TestGenerationPipeline(unittest.TestCase):
             )
 
         train_dataloader._inner_dataloader.start()
+        os.environ['FLAGS_new_executor_micro_batching'] = 'True'
         try:
             engine._executor.run(
                 engine.main_program, use_program_cache=False, return_numpy=False

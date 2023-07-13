@@ -86,13 +86,13 @@ class Test1F1BPass(unittest.TestCase):
 
     def test_pp_pass(self):
         # pp2 1f1b training with fleet executor
-        os.environ['FLAGS_new_executor_micro_batching'] = 'False'
+        os.environ['FLAGS_new_executor_micro_batching'] = 'True'
         engine_fleet_1f1b = self.get_engine(schedule_mode="1F1B")
         history_fleet_1f1b = engine_fleet_1f1b.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_fleet_1f1b._strategy.pipeline.schedule_mode == "1F1B"
-        assert os.environ.get('FLAGS_new_executor_micro_batching') == "False"
+        assert os.environ.get('FLAGS_new_executor_micro_batching') == "True"
 
         # pp2 fthenb training with standalone executor
         os.environ['FLAGS_new_executor_micro_batching'] = 'True'
