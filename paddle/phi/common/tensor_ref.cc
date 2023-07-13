@@ -41,15 +41,9 @@ std::vector<int64_t> ConvertTensorRefVec2IntArray(
           vec_res.push_back(
               *tensor_ref_list[i].Get()->template data<int32_t>());
         } else {
-          phi::DenseTensor tensor_tmp;
-          phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-          auto dev_ctx = pool.Get(tensor_ref_list[i].Get()->place());
-          phi::Copy(*dev_ctx,
-                    *(tensor_ref_list[i].Get()),
-                    CPUPlace(),
-                    true,
-                    &tensor_tmp);
-          vec_res.push_back(*tensor_tmp.template data<int32_t>());
+          PD_THROW(
+              "Tensor palce error. The place of Tensor in IntArrayBase "
+              "only supports CPU place");
         }
         break;
       case DataType::INT64:
@@ -58,15 +52,9 @@ std::vector<int64_t> ConvertTensorRefVec2IntArray(
           vec_res.push_back(
               *tensor_ref_list[i].Get()->template data<int64_t>());
         } else {
-          phi::DenseTensor tensor_tmp;
-          phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-          auto dev_ctx = pool.Get(tensor_ref_list[i].Get()->place());
-          phi::Copy(*dev_ctx,
-                    *(tensor_ref_list[i].Get()),
-                    CPUPlace(),
-                    true,
-                    &tensor_tmp);
-          vec_res.push_back(*tensor_tmp.template data<int64_t>());
+          PD_THROW(
+              "Tensor palce error. The place of Tensor in IntArrayBase "
+              "only supports CPU place");
         }
         break;
       default:
