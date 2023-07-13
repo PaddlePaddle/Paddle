@@ -2532,7 +2532,17 @@
   int_array:
       sections :
           data_type : int
-          tensor_name : AxesTensor
+  scalar :
+      axis :
+        data_type : int
+        support_tensor : true
+
+- op : split_with_num
+  scalar :
+      axis :
+        data_type : int
+        support_tensor : true
+        tensor_name : AxisTensor
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)

@@ -955,6 +955,104 @@ struct FeedOpTranscriber : public OpTranscriber {
   }
 };
 
+struct SplitOpTranscriber : public OpTranscriber {
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    // input of pslit is [Tensor x, IntArray sections, Scalar(int) axis)]
+
+    VLOG(10) << "[op:split][input] start";
+
+    std::vector<ir::OpResult> op_inputs;
+    // process first input
+    auto x_input_vars = op_desc.Input("X");
+    IR_ENFORCE(x_input_vars.size() == 1, "x input of split MUST be a tensor");
+    auto x_defining_info = (*param_map)[x_input_vars[0]];
+    op_inputs.push_back(x_defining_info.value);
+
+    // process sections
+    int num = paddle::get<int>(op_desc.GetAttr("num"));
+    if (num <= 0) {
+      if (op_desc.HasInput("SectionsTensorList")) {
+        // get SectionsTensorList from input
+
+        auto sec_tensor_list = op_desc.Input("SectionsTensorList");
+        auto* combine_op = InsertCombineOperationForTarget(
+            ctx, param_map, program, sec_tensor_list);
+        op_inputs.push_back(combine_op->result(0));
+      } else {
+        auto& attribute_translator = AttributeTranslator::instance();
+        ir::Attribute new_attr = attribute_translator(
+            "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("sections"));
+        auto sec_defin_op =
+            InsertFullOperationForAttributeInput(ctx, program, new_attr);
+        op_inputs.push_back(sec_defin_op->result(0));
+      }
+    }
+
+    // process axis
+    if (op_desc.HasInput("AxisTensor") &&
+        op_desc.Input("AxisTensor").size() > 0) {
+      // get axis from input
+      auto axis_var_list = op_desc.Input("AxisTensor");
+      IR_ENFORCE(axis_var_list.size() == 1,
+                 "axis tensor input of split MUST be a tensor");
+      auto axis_defining_info = (*param_map)[axis_var_list[0]];
+      op_inputs.push_back(axis_defining_info.value);
+    } else {
+      auto& attribute_translator = AttributeTranslator::instance();
+      ir::Attribute new_attr =
+          attribute_translator("ir::Int32Attribute", op_desc.GetAttr("axis"));
+
+      auto sec_defin_op =
+          InsertFullOperationForAttributeInput(ctx, program, new_attr);
+      op_inputs.push_back(sec_defin_op->result(0));
+    }
+
+    return op_inputs;
+  }
+
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    int num = paddle::get<int>(op_desc.GetAttr("num"));
+    if (num > 0) {
+      ir::AttributeMap attribute_map = {
+          {"num",
+           ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("num"))},
+      };
+
+      return attribute_map;
+    }
+
+    return {};
+  }
+
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    int num = paddle::get<int>(op_desc.GetAttr("num"));
+    std::string target_op_name;
+    if (num > 0) {
+      target_op_name = "pd.split_with_num";
+
+    } else {
+      target_op_name = "pd.split";
+    }
+
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op assign_value should have corresponding OpInfo pd.split");
+    }
+
+    return op_info;
+  }
+};
+
 struct FetchOpTranscriber : public OpTranscriber {
   ir::Operation* operator()(ir::IrContext* ctx,
                             TranslationContext* param_map,
@@ -994,6 +1092,7 @@ OpTranslator::OpTranslator() {
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
+  special_handlers["split"] = SplitOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();

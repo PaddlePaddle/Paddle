@@ -141,5 +141,27 @@ class TestAddGradOp(unittest.TestCase):
         np.testing.assert_array_equal(out[0], gold_res)
 
 
+class TestSplitOp(unittest.TestCase):
+    def test_with_new_ir(self):
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data("x", [6, 2], dtype="float32")
+                out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=0)
+
+            np_a = np.random.rand(6, 2).astype("float32")
+            out = exe.run(
+                main_program,
+                feed={"x": np_a},
+                fetch_list=[out0.name],
+            )
+
+            np.testing.assert_array_equal(out[0], np_a[0:2])
+
+
 if __name__ == "__main__":
     unittest.main()
