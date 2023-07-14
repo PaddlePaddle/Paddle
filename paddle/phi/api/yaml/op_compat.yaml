@@ -1630,6 +1630,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : logsumexp
+  backward : logsumexp_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : lrn
   backward : lrn_grad
   extra :
