@@ -90,10 +90,15 @@
       tensor_name : EpsilonTensor
 
 - op : add (elementwise_add)
-  backward : add_grad (elementwise_add_grad)
+  backward : add_grad (elementwise_add_grad), add_double_grad (elementwise_add_grad_grad), add_triple_grad (elementwise_add_triple_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : add_n (sum)
   inputs:
