@@ -14,4 +14,10 @@
 
 #include "paddle/fluid/ir/dialect/pd_op.h"
 
+namespace paddle {
+namespace dialect {
+
 void PrintOp::Verify() {}
+
+}  // namespace dialect
+}  // namespace paddle
