@@ -64,10 +64,10 @@ Tensor::Tensor(const Place &place) {
          "the `place`, and datatype, shape, layout, etc. is also "
          "required.";
   DefaultAllocator alloc(place);
-  impl_ = std::move(std::make_shared<phi::DenseTensor>(
+  impl_ = std::make_shared<phi::DenseTensor>(
       &alloc,
-      std::move(phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({}), phi::DataLayout::NCHW))));
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({}), phi::DataLayout::NCHW));
 }
 
 Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
@@ -80,11 +80,11 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
          "the `place` and `shape`, and datatype, layout, etc. is also "
          "required.";
   DefaultAllocator alloc(place);
-  impl_ = std::move(std::make_shared<phi::DenseTensor>(
+  impl_ = std::make_shared<phi::DenseTensor>(
       &alloc,
-      std::move(phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                                     phi::make_ddim({shape}),
-                                     phi::DataLayout::NCHW))));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({shape}),
+                           phi::DataLayout::NCHW));
 }
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
@@ -338,11 +338,11 @@ void *Tensor::data() {
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {
-    return Tensor(std::make_shared<phi::DenseTensor>(
-        std::move(phi::DenseTensorUtils::Slice(
+    return Tensor(
+        std::make_shared<phi::DenseTensor>(phi::DenseTensorUtils::Slice(
             *(static_cast<phi::DenseTensor *>(impl_.get())),
             begin_idx,
-            end_idx))));
+            end_idx)));
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support slice operation on DenseTensor now."));
