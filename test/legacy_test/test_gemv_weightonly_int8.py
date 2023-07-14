@@ -82,40 +82,6 @@ class GemvWeightOnlyInt8TestCase(unittest.TestCase):
         )
         return out
 
-    def get_gemv_weightonly_int8_static(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
-                x = paddle.static.data(
-                    "x", self.input.shape, dtype=self.input.dtype
-                )
-                weight = paddle.static.data(
-                    "weight", self.weight.shape, dtype=self.weight.dtype
-                )
-                bias = paddle.static.data(
-                    "bias", self.bias.shape, dtype=self.bias.dtype
-                )
-                weight_scale = paddle.static.data(
-                    "weight_scale",
-                    self.weight_scale.shape,
-                    dtype=self.weight_scale.dtype,
-                )
-
-                out = F.grid_sample(
-                    x, weight, bias, weight_scale, self.act_method
-                )
-        feed_dict = {
-            'x': self.input,
-            'weight': self.weight,
-            'bias': self.bias,
-            "weight_scale": self.weight_scale,
-        }
-        exe = fluid.Executor(paddle.GPUPlace())
-        exe.run(start)
-        (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
-        return out
-
     def test_gemv_weightonly_int8(self):
         out_real = self.get_gemv_weightonly_int8()
         out_expect = self.get_baseline_out()
