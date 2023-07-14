@@ -384,11 +384,18 @@ void InstanceNormInferMeta(const MetaTensor& x,
   y->share_lod(x);
   y->set_dtype(x.dtype());
   y->set_layout(x.layout());
+  phi::DataType x_dtype = x.dtype();
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
   if (saved_mean) {
     saved_mean->set_dims({NxC});
+    saved_mean->set_dtype(param_type);
   }
   if (saved_variance) {
     saved_variance->set_dims({NxC});
+    saved_variance->set_dtype(param_type);
   }
 }
 

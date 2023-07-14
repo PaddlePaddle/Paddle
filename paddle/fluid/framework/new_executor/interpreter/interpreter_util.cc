@@ -957,7 +957,7 @@ void BuildOpFuncList(
 
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
         op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter") {
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -976,6 +976,7 @@ void BuildOpFuncList(
         phi::InferMetaContext,
         phi::MetaTensor,
         phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         false>((*it),
                value_2_name_map,
@@ -1003,6 +1004,7 @@ void BuildOpFuncList(
                           const phi::TensorBase*,
                           phi::TensorBase*,
                           paddle::small_vector<const phi::TensorBase*>,
+                          paddle::small_vector<phi::TensorBase*>,
                           true>((*it),
                                 value_2_name_map,
                                 scope,
