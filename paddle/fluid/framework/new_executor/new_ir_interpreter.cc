@@ -36,6 +36,7 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
 namespace paddle {
@@ -225,6 +226,39 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                             "Cannot fetch data when using CUDA Graph."));
     }
 #endif
+    return fetch_list;
+  } else {
+    return {};
+  }
+}
+
+FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
+                                    bool need_fetch) {
+  SetDeviceId(place_);
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    ::ir::BuildScope(
+        *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
+    BuildInstruction();
+    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+         ++instr_id) {
+      vec_instruction_base_[instr_id]->Run();
+    }
+  } else {
+    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+         ++instr_id) {
+      vec_instruction_base_[instr_id]->Run();
+    }
+  }
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
+  // return Fetch Tensors
+  Scope* inner_scope = InnerScope();
+  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+  if (fetch_var && need_fetch) {
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
     return fetch_list;
   } else {
     return {};
@@ -1477,6 +1511,33 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+}
+
+/// ======================== ///
+///        For new ir        ///
+/// ======================== ///
+
+void NewIRInterpreter::BuildInstruction() {
+  VLOG(0) << "Build Instructions for new ir ... ";
+  vec_instruction_base_.clear();
+  size_t op_idx = 0;
+  for (auto it = ir_program_->block()->begin();
+       it != ir_program_->block()->end();
+       ++it) {
+    VLOG(0) << "Build Instruction for op: " << op_idx;
+    if ((*it)->dialect()->name() == "pd_kernel") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<PhiKernelInstruction>(op_idx++,
+                                                 place_,
+                                                 (*it),
+                                                 scope_,
+                                                 local_scope_,
+                                                 value_2_var_name_map_));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Now only support pd_kernel dialect."));
+    }
+  }
 }
 
 }  // namespace framework
