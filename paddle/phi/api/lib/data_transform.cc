@@ -385,23 +385,48 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
   if (tensor_in) {
     phi::SelectedRows& selected_rows =
         *static_cast<phi::SelectedRows*>(tensor_in.get());
-    if (!transform_flag.NeedTransform() || !selected_rows.initialized() ||
-        (!NeedTransformPlace(
-            selected_rows.place(), target_args_def.backend, transform_flag))) {
+    if ((!transform_flag.NeedTransform() || !selected_rows.initialized() ||
+         (!NeedTransformPlace(selected_rows.place(),
+                              target_args_def.backend,
+                              transform_flag))) &&
+        !NeedTransform2Contiguous(
+            false, selected_rows.value().meta().is_contiguous())) {
       return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
     }
 
-    auto dense_out = TransDataPlace(
-        selected_rows.value(), phi::TransToPhiPlace(target_args_def.backend));
     if (selected_rows.place().GetType() == AllocationType::GPUPINNED) {
-      selected_rows.mutable_value()->ShareBufferWith(dense_out);
+      if (NeedTransform2Contiguous(
+              false, selected_rows.value().meta().is_contiguous())) {
+        auto dense_out = Trans2Contiguous(selected_rows.value());
+        selected_rows.mutable_value()->ShareDataWith(dense_out);
+      }
+      if (transform_flag.NeedTransform() && selected_rows.initialized() &&
+          NeedTransformPlace(
+              selected_rows.place(), target_args_def.backend, transform_flag)) {
+        auto dense_out =
+            TransDataPlace(selected_rows.value(),
+                           phi::TransToPhiPlace(target_args_def.backend));
+        selected_rows.mutable_value()->ShareBufferWith(dense_out);
+      }
       return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
+    } else {
+      auto out_new = std::make_shared<phi::SelectedRows>(
+          selected_rows.rows(), selected_rows.height());
+      if (NeedTransform2Contiguous(
+              false, selected_rows.value().meta().is_contiguous())) {
+        auto dense_out = Trans2Contiguous(selected_rows.value());
+        *out_new->mutable_value() = dense_out;
+      }
+      if (transform_flag.NeedTransform() && selected_rows.initialized() &&
+          NeedTransformPlace(
+              selected_rows.place(), target_args_def.backend, transform_flag)) {
+        auto dense_out =
+            TransDataPlace(selected_rows.value(),
+                           phi::TransToPhiPlace(target_args_def.backend));
+        *out_new->mutable_value() = dense_out;
+      }
+      return out_new;
     }
-
-    auto out_new = std::make_shared<phi::SelectedRows>(selected_rows.rows(),
-                                                       selected_rows.height());
-    *out_new->mutable_value() = dense_out;
-    return out_new;
   }
   PADDLE_THROW(phi::errors::InvalidArgument(
       "The impl() of input tensor is nullptr, it doesn't support for "
@@ -418,6 +443,105 @@ paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
   return paddle::none;
 }
 
+std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const Tensor& input) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in) {
+    phi::SparseCooTensor& sparse_tensor =
+        *static_cast<phi::SparseCooTensor*>(tensor_in.get());
+    if (sparse_tensor.indices().meta().is_contiguous() &&
+        sparse_tensor.values().meta().is_contiguous()) {
+      return std::static_pointer_cast<phi::SparseCooTensor>(tensor_in);
+    }
+
+    if (!sparse_tensor.indices().meta().is_contiguous()) {
+      *sparse_tensor.mutable_indices() =
+          Trans2Contiguous(sparse_tensor.indices());
+    }
+
+    if (!sparse_tensor.values().meta().is_contiguous()) {
+      *sparse_tensor.mutable_values() =
+          Trans2Contiguous(sparse_tensor.values());
+    }
+    return std::static_pointer_cast<phi::SparseCooTensor>(tensor_in);
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "The impl() of input tensor is nullptr, it doesn't support for "
+      "SparseCooTensor data transform now."));
+}
+
+paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const paddle::optional<Tensor>& input) {
+  if (input) {
+    return *PrepareDataForSparseCooTensor(*input);
+  }
+  return paddle::none;
+}
+
+std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const Tensor& input) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in) {
+    phi::SparseCsrTensor& sparse_tensor =
+        *static_cast<phi::SparseCsrTensor*>(tensor_in.get());
+    if (sparse_tensor.crows().meta().is_contiguous() &&
+        sparse_tensor.cols().meta().is_contiguous() &&
+        sparse_tensor.values().meta().is_contiguous()) {
+      return std::static_pointer_cast<phi::SparseCsrTensor>(tensor_in);
+    }
+
+    if (!sparse_tensor.crows().meta().is_contiguous()) {
+      *sparse_tensor.mutable_crows() = Trans2Contiguous(sparse_tensor.crows());
+    }
+
+    if (!sparse_tensor.cols().meta().is_contiguous()) {
+      *sparse_tensor.mutable_cols() = Trans2Contiguous(sparse_tensor.cols());
+    }
+
+    if (!sparse_tensor.values().meta().is_contiguous()) {
+      *sparse_tensor.mutable_values() =
+          Trans2Contiguous(sparse_tensor.values());
+    }
+    return std::static_pointer_cast<phi::SparseCsrTensor>(tensor_in);
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "The impl() of input tensor is nullptr, it doesn't support for "
+      "SparseCsrTensor data transform now."));
+}
+
+paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const paddle::optional<Tensor>& input) {
+  if (input) {
+    return *PrepareDataForSparseCsrTensor(*input);
+  }
+  return paddle::none;
+}
+
+std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const Tensor& input) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in) {
+    phi::DenseTensor& dense_tensor =
+        *static_cast<phi::DenseTensor*>(tensor_in.get());
+    if (dense_tensor.meta().is_contiguous()) {
+      return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
+    }
+
+    return std::make_shared<phi::DenseTensor>(
+        std::move(Trans2Contiguous(dense_tensor)));
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "The impl() of input tensor is nullptr, it doesn't support for "
+      "DenseTensor data transform now."));
+}
+
+paddle::optional<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const paddle::optional<Tensor>& input) {
+  if (input) {
+    return *PrepareDataForDenseTensorInSparse(*input);
+  }
+  return paddle::none;
+}
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out) {

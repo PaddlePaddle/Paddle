@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace paddle {
 namespace experimental {
@@ -109,6 +111,27 @@ paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
+
+// Only support transfering contiguous for SparseCooTensor
+std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous for SparseCsrTensor
+std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous
+std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const Tensor& input);
+
+paddle::optional<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const paddle::optional<Tensor>& input);
 
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
