@@ -2098,6 +2098,12 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : print
+  inputs :
+    in : In
+  outputs :
+    out : Out
+
 - op : prior_box
   inputs :
     {input: Input, image: Image}
@@ -2532,6 +2538,10 @@
     out : Out
 
 - op : split
+  inputs:
+    x : X
+  outputs:
+    out : Out
   int_array:
       sections :
           data_type : int
@@ -2668,6 +2678,10 @@
     attrs : [bool use_mkldnn = false, float beta = 1.0]
 
 - op : sync_batch_norm
+  inputs :
+    {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
+  outputs :
+    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
