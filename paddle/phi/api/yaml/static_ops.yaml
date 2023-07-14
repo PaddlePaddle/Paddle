@@ -407,6 +407,15 @@
     param : [x, axis, keepdim, reduce_all]
   backward : min_grad
 
+- op : minimum
+  args : (Tensor x, Tensor y, int axis = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseRawInferMeta
+  kernel :
+    func : minimum
+  backward : minimum_grad
+
 - op : norm
   args : (Tensor x, int axis, float epsilon=1.0e-10f, bool is_test=false)
   output : Tensor(out), Tensor(norm)
