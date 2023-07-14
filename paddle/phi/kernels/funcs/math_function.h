@@ -117,7 +117,8 @@ struct TensorSetConstantXPU {
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto* begin = tensor_->mutable_data<T>(place_);
+    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto begin = ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
     std::unique_ptr<T[]> data_cpu(new T[numel]);
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
@@ -138,19 +139,20 @@ struct TensorSetConstantXPU<float> {
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto* begin = tensor_->mutable_data<T>(place_);
+    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto begin = ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
     if (((std::is_same<T, float>::value) ||
          (std::is_same<T, phi::dtype::float16>::value)) &&
         (place_ == phi::XPUPlace())) {
       using XPUType = typename XPUTypeTrait<T>::Type;
-      auto* dev_ctx = static_cast<phi::XPUContext*>(
-          phi::DeviceContextPool::Instance().Get(place_));
+      auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
       int r = xpu::constant<XPUType>(dev_ctx->x_context(),
                                      reinterpret_cast<XPUType*>(begin),
                                      numel,
                                      static_cast<XPUType>(value_));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      dev_ctx->Wait();
     } else {
       std::unique_ptr<T[]> data_cpu(new T[numel]);
       std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
