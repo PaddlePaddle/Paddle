@@ -107,26 +107,104 @@ class SparseAPI(ForwardAPI):
         }
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
+        input_types = self.inputs['tensor_type']
+
+        tensor_type_map = {
+            'dense': 'phi::DenseTensor',
+            'sparse_coo': 'phi::SparseCooTensor',
+            'sparse_csr': 'phi::SparseCsrTensor',
+        }
+        inputsname2tensortype = {}
+        for i in range(len(input_names)):
+            inputsname2tensortype[input_names[i]] = input_types[i]
 
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
+        infer_meta = self.infer_meta
+
+        infer_meta_params = (
+            infer_meta['param']
+            if infer_meta['param'] is not None
+            else input_names + attr_names
+        )
+
         kernel_context_code = ""
+        for param in kernel_param:
+            if param in input_names and param not in infer_meta_params:
+                var_name = "    auto " + PREFIX_TENSOR_NAME + param + " = "
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    if inputsname2tensortype[param] == "sparse_coo":
+                        kernel_context_code = (
+                            kernel_context_code
+                            + var_name
+                            + "PrepareDataForSparseCooTensor("
+                            + param
+                            + ");\n"
+                        )
+                    elif inputsname2tensortype[param] == "sparse_csr":
+                        kernel_context_code = (
+                            kernel_context_code
+                            + var_name
+                            + "PrepareDataForSparseCsrTensor("
+                            + param
+                            + ");\n"
+                        )
+                    else:
+                        kernel_context_code = (
+                            kernel_context_code
+                            + var_name
+                            + "PrepareDataForDenseTensorInSparse("
+                            + param
+                            + ");\n"
+                        )
+                elif param in self.optional_vars:
+                    tensor_type = 'phi::DenseTensor'
+                    for name, input_type in zip(input_names, input_types):
+                        if param == name:
+                            tensor_type = tensor_type_map[input_type]
+                            break
+                    optional_var = "paddle::optional<" + tensor_type + ">("
+                    if inputsname2tensortype[param] == "sparse_coo":
+                        kernel_context_code = (
+                            kernel_context_code
+                            + var_name
+                            + "PrepareDataForSparseCooTensor("
+                            + param
+                            + ");\n"
+                        )
+                    elif inputsname2tensortype[param] == "sparse_csr":
+                        kernel_context_code = (
+                            kernel_context_code
+                            + var_name
+                            + "PrepareDataForSparseCsrTensor("
+                            + param
+                            + ");\n"
+                        )
+                    else:
+                        kernel_context_code = (
+                            kernel_context_code
+                            + var_name
+                            + "PrepareDataForDenseTensorInSparse("
+                            + param
+                            + ");\n"
+                        )
+
         for param in kernel_param:
             if param in input_names:
                 if param in self.optional_vars:
                     kernel_context_code = (
                         kernel_context_code
                         + f"""
-    kernel_context.EmplaceBackInput({param} ? {param}->impl().get() : nullptr);"""
+    kernel_context.EmplaceBackInput({param} ? &(*{PREFIX_TENSOR_NAME}{param}) : nullptr);"""
                     )
                 else:
                     kernel_context_code = (
                         kernel_context_code
                         + f"""
-    kernel_context.EmplaceBackInput({param}.impl().get());"""
+    kernel_context.EmplaceBackInput({PREFIX_TENSOR_NAME}{param}.get());"""
                     )
 
                 continue
@@ -167,6 +245,10 @@ class SparseAPI(ForwardAPI):
             else input_names + attr_names
         )
 
+        inputsname2tensortype = {}
+        for i in range(len(input_names)):
+            inputsname2tensortype[input_names[i]] = input_types[i]
+
         create_input_var_code = ""
         tensor_type_map = {
             'dense': 'phi::DenseTensor',
@@ -175,11 +257,32 @@ class SparseAPI(ForwardAPI):
         }
         for param in infer_meta_params:
             if param in input_names:
-                var_name = "auto " + PREFIX_TENSOR_NAME + param + " = "
+                var_name = "    auto " + PREFIX_TENSOR_NAME + param + " = "
                 if self.inputs['input_info'][param] == "const Tensor&":
-                    create_input_var_code = (
-                        create_input_var_code + var_name + param + ".impl();\n"
-                    )
+                    if inputsname2tensortype[param] == "sparse_coo":
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForSparseCooTensor("
+                            + param
+                            + ");\n"
+                        )
+                    elif inputsname2tensortype[param] == "sparse_csr":
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForSparseCsrTensor("
+                            + param
+                            + ");\n"
+                        )
+                    else:
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForDenseTensorInSparse("
+                            + param
+                            + ");\n"
+                        )
                 elif param in self.optional_vars:
                     tensor_type = 'phi::DenseTensor'
                     for name, input_type in zip(input_names, input_types):
@@ -187,20 +290,30 @@ class SparseAPI(ForwardAPI):
                             tensor_type = tensor_type_map[input_type]
                             break
                     optional_var = "paddle::optional<" + tensor_type + ">("
-                    create_input_var_code = (
-                        create_input_var_code
-                        + var_name
-                        + param
-                        + " ? "
-                        + optional_var
-                        + "*static_cast<"
-                        + tensor_type
-                        + "*>((*"
-                        + param
-                        + ").impl().get())) : "
-                        + optional_var
-                        + "paddle::none);\n"
-                    )
+                    if inputsname2tensortype[param] == "sparse_coo":
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForSparseCooTensor("
+                            + param
+                            + ");\n"
+                        )
+                    elif inputsname2tensortype[param] == "sparse_csr":
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForSparseCsrTensor("
+                            + param
+                            + ");\n"
+                        )
+                    else:
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForDenseTensorInSparse("
+                            + param
+                            + ");\n"
+                        )
         return f"""{create_input_var_code}"""
 
     def gen_sparse_kernel_code(self, kernel_name, inplace_flag=False):
