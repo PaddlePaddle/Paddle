@@ -12,21 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
-import numpy as np
-
-import paddle
-from paddle import static
-
-sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
+import numpy as np
 from auto_parallel_gpt_model import (
     GPTForPretraining,
     GPTModel,
     GPTPretrainingCriterion,
 )
+
+import paddle
+from paddle import static
 
 
 def get_gpt_model(

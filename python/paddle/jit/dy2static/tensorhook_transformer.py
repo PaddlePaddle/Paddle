@@ -20,10 +20,10 @@ from .base_transformer import BaseTransformer
 
 
 class RegisterHookTransformer(BaseTransformer):
-    def __init__(self, wrapper_root):
+    def __init__(self, root):
         self.register_hook_pos_map = collections.defaultdict(list)
         self.assignment_pos_map = collections.defaultdict(list)
-        self.root = wrapper_root.node
+        self.root = root
 
     def transform(self):
         """
@@ -49,7 +49,6 @@ class RegisterHookTransformer(BaseTransformer):
         assignment_pos_map = self.assignment_pos_map
 
         for i in range(len(func_def.body) - 1, -1, -1):
-
             body = func_def.body[i]
             # Check if the code body contains the register_hook
             if isinstance(body, gast.Expr):

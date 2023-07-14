@@ -55,7 +55,7 @@ class SplitOpConverter : public OpConverter {
 
     // need infer output_lengths
     if (inputs.find("SectionsTensorList") != inputs.end() &&
-        op_desc.Input("SectionsTensorList").size() >= 1) {
+        !op_desc.Input("SectionsTensorList").empty()) {
       int32_t sections_size = op_desc.Input("SectionsTensorList").size();
       std::vector<nvinfer1::ITensor*> sections_tensors;
       for (int32_t i = 0; i < sections_size; ++i) {

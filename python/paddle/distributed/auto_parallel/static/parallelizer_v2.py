@@ -25,7 +25,7 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import set_grad_var_shape
+from .utils import get_pp_stage, set_grad_var_shape, use_new_executor
 
 
 class Parallelizer:
@@ -37,6 +37,14 @@ class Parallelizer:
         self._pass_context = self._dist_context.pass_context
         self._strategy = self._dist_context.strategy
         self._logger = get_logger(logging.INFO)
+
+    @property
+    def is_train(self):
+        return self._mode == "train"
+
+    @property
+    def is_test(self):
+        return self._mode in ["eval", "predict"]
 
     def parallel_all(self):
         world_process_group = get_world_process_group()
@@ -50,7 +58,7 @@ class Parallelizer:
         serial_main_program = self._dist_context.serial_main_program
         serial_startup_program = self._dist_context.serial_startup_program
         serial_optimizer = self._dist_context.serial_optimizer
-        if self._mode == "train" and serial_optimizer:
+        if self.is_train and serial_optimizer:
             # Generate backward
             serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
@@ -105,13 +113,6 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
-            # Do reshard process
-            time0 = time.time()
-            micro_bsz = (
-                1
-                if not self._strategy.pipeline.enable
-                else self._strategy.pipeline.micro_batch_size
-            )
             set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(
                 dist_main_prog,
@@ -119,7 +120,6 @@ class Parallelizer:
                 rank,
                 self._dist_context,
                 dist_params_grads,
-                micro_bsz,
             )
             resharder.reshard()
             self._logger.debug(
@@ -169,13 +169,19 @@ class Parallelizer:
                 )
             )
             time0 = time.time()
+            # Do reshard process
+            micro_bsz = (
+                1
+                if not self._strategy.pipeline.enable
+                else self._strategy.pipeline.micro_batch_size
+            )
             resharder = Resharder(
                 dist_main_prog,
                 dist_startup_prog,
                 rank,
                 self._dist_context,
                 [],
-                1,
+                micro_bsz,
             )
             resharder.reshard()
             self._logger.debug(
@@ -193,8 +199,9 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
+
         # Clone program for test
-        if self._mode != 'train':
+        if self.is_test:
             pipeline_opt = dist_main_prog._pipeline_opt
             dist_main_prog = dist_main_prog.clone(for_test=True)
             dist_startup_prog = dist_startup_prog.clone(for_test=True)
@@ -265,7 +272,7 @@ class Parallelizer:
 
         # apply quantization pass
         # The pass can be applied when mode must be 'train'
-        if self._mode == 'train' and self._strategy.qat.enable:
+        if self.is_train and self._strategy.qat.enable:
             config = copy.deepcopy(self._strategy.qat.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -284,7 +291,7 @@ class Parallelizer:
 
         # apply recompute pass
         # recompute is then train-only optimization
-        if self._mode == "train" and self._strategy.recompute.enable:
+        if self.is_train and self._strategy.recompute.enable:
             config = copy.deepcopy(self._strategy.recompute.to_dict())
             config["dist_context"] = self._dist_context
             config["no_grad_set"] = None
@@ -305,12 +312,15 @@ class Parallelizer:
             return
 
         # data parallel optimization
-        config = {}
-        config["dist_context"] = self._dist_context
-        config["global_rank"] = rank
-        config["use_sharding"] = self._strategy.sharding.enable
-        dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
-        dp_pass.apply([main_program], [startup_program], self._pass_context)
+        if self._strategy.dp_optimization.enable:
+            config = copy.deepcopy(self._strategy.dp_optimization.to_dict())
+            config["dist_context"] = self._dist_context
+            config["global_rank"] = rank
+            config["use_sharding"] = self._strategy.sharding.enable
+            dp_pass = new_pass(
+                "auto_parallel_data_parallel_optimization", config
+            )
+            dp_pass.apply([main_program], [startup_program], self._pass_context)
 
         if self._strategy.sharding.enable:
             config = copy.deepcopy(self._strategy.sharding.to_dict())
@@ -325,7 +335,7 @@ class Parallelizer:
             )
             params_grads = self._pass_context.get_attr("params_grads")
 
-        if self._mode == "train":
+        if self.is_train:
             # GradClip is train-only optimization
             config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
@@ -348,7 +358,7 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        if self._strategy.pipeline.enable:
+        if self.is_train and self._strategy.pipeline.enable:
             self._strategy.gradient_merge.enable = True
             self._strategy.gradient_merge.k_steps = (
                 self._strategy.pipeline.accumulate_steps
@@ -356,7 +366,7 @@ class Parallelizer:
             self._strategy.gradient_merge.avg = True
 
         # gradient_merge is then train-only optimization
-        if self._mode == "train" and self._strategy.gradient_merge.enable:
+        if self.is_train and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -367,7 +377,7 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        if self._strategy.pipeline.enable:
+        if self._strategy.pipeline.enable and not use_new_executor():
             config = copy.deepcopy(self._strategy.pipeline.to_dict())
             config["dist_context"] = self._dist_context
             auto_parallel_pipeline_pass = new_pass(
@@ -377,10 +387,19 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        if self._mode == "train" and self._strategy.fused_passes.enable:
+        if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
                 new_pass_list = []
                 for op in self._strategy.fused_passes.fused_passes_list:
                     new_pass_list.append(new_pass(op))
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
+
+        if self._strategy.pipeline.enable and use_new_executor():
+            main_program._pipeline_opt = {}
+            main_program._pipeline_opt["standalone_opt"] = {
+                "schedule_mode": self._strategy.pipeline.schedule_mode,
+                "num_micro_batches": self._strategy.pipeline.accumulate_steps,
+                "pp_degree": len(self._dist_context.process_meshes),
+                "pp_stage": get_pp_stage(self._dist_context, rank),
+            }

@@ -19,17 +19,19 @@
 #include <type_traits>
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/attribute_base.h"
+#include "paddle/ir/core/type.h"
 #include "paddle/ir/core/utils.h"
 
 namespace ir {
 
 #define DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(concrete_storage, base_type) \
   struct concrete_storage : public ir::AttributeStorage {                \
-    using ParamKey = bool;                                               \
+    using ParamKey = base_type;                                          \
                                                                          \
     explicit concrete_storage(const ParamKey &key) { data_ = key; }      \
                                                                          \
-    static concrete_storage *Construct(ParamKey key) {                   \
+    static concrete_storage *Construct(const ParamKey &key) {            \
       return new concrete_storage(key);                                  \
     }                                                                    \
                                                                          \
@@ -59,7 +61,7 @@ struct StrAttributeStorage : public AttributeStorage {
 
   ~StrAttributeStorage() { free(data_); }
 
-  static StrAttributeStorage *Construct(ParamKey key) {
+  static StrAttributeStorage *Construct(const ParamKey &key) {
     return new StrAttributeStorage(key);
   }
 
@@ -81,8 +83,9 @@ struct StrAttributeStorage : public AttributeStorage {
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(BoolAttributeStorage, bool);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(FloatAttributeStorage, float);
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(DoubleAttributeStorage, double);
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int32_tAttributeStorage, int32_t);
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int64_tAttributeStorage, int64_t);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int32AttributeStorage, int32_t);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int64AttributeStorage, int64_t);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(PointerAttributeStorage, void *);
 
 struct ArrayAttributeStorage : public AttributeStorage {
   using ParamKey = std::vector<Attribute>;
@@ -98,7 +101,7 @@ struct ArrayAttributeStorage : public AttributeStorage {
 
   ~ArrayAttributeStorage() { free(reinterpret_cast<void *>(data_)); }
 
-  static ArrayAttributeStorage *Construct(ParamKey key) {
+  static ArrayAttributeStorage *Construct(const ParamKey &key) {
     return new ArrayAttributeStorage(key);
   }
 
@@ -127,6 +130,27 @@ struct ArrayAttributeStorage : public AttributeStorage {
  private:
   Attribute *data_ = nullptr;
   size_t length_ = 0;
+};
+
+struct TypeAttributeStorage : public AttributeStorage {
+  using ParamKey = Type;
+
+  explicit TypeAttributeStorage(const ParamKey &key) : value_(key) {}
+
+  static TypeAttributeStorage *Construct(ParamKey key) {
+    return new TypeAttributeStorage(key);
+  }
+
+  static std::size_t HashValue(const ParamKey &key) {
+    return std::hash<Type>()(key);
+  }
+
+  bool operator==(const ParamKey &key) const { return value_ == key; }
+
+  ParamKey GetAsKey() const { return value_; }
+
+ private:
+  Type value_;
 };
 
 }  // namespace ir

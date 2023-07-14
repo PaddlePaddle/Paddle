@@ -25,7 +25,7 @@ class Dialect;
 /// \brief Abstract the properties and behaviors common to all Attribute classes
 /// into an AbstractAttribute class.
 ///
-class AbstractAttribute {
+class IR_API AbstractAttribute {
  public:
   ///
   /// \brief Construct an AbstractAttribute by TypeId directly.
@@ -98,7 +98,7 @@ struct AttributeManager;
 /// directly but parametric attribute should be constructed by Derived
 /// AttributeStorage.
 ///
-class AttributeStorage : public StorageManager::StorageBase {
+class IR_API AttributeStorage : public StorageManager::StorageBase {
   friend StorageManager;
   friend AttributeManager;
 
@@ -141,7 +141,7 @@ class AttributeStorage : public StorageManager::StorageBase {
 /// \brief AttributeManager is a utility class that provides interfaces for get
 /// or unique Attribute instances in IrContext.
 ///
-struct AttributeManager {
+struct IR_API AttributeManager {
   ///
   /// \brief Get a unique instance of Attribute T from IrContext. Note: For a
   /// parametric attribute, if not found in IrContext, it will try to create a
@@ -263,20 +263,4 @@ struct AttributeManager {
     return ir::AttributeManager::template get<concrete_attribute>(ctx,      \
                                                                   args...); \
   }
-
-///
-/// \brief This macro definition is used to register custom Attribute class.
-///
-#define REGISTER_ATTRIBUTE_2_IRCONTEXT(concrete_attribute, dialect)   \
-  ir::AbstractAttribute *abstract_attribute_##concrete_attribute =    \
-      new ir::AbstractAttribute(std::move(                            \
-          ir::AbstractAttribute::get<concrete_attribute>(*dialect))); \
-                                                                      \
-  dialect->ir_context()->RegisterAbstractAttribute(                   \
-      ir::TypeId::get<concrete_attribute>(),                          \
-      abstract_attribute_##concrete_attribute);                       \
-                                                                      \
-  ir::AttributeManager::RegisterAttribute<concrete_attribute>(        \
-      dialect->ir_context());
-
 }  // namespace ir

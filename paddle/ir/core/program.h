@@ -15,14 +15,19 @@
 #pragma once
 
 #include <list>
+#include <ostream>
 #include <unordered_map>
 
+#include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/parameter.h"
 
 namespace ir {
+
+class IrContext;
 ///
 /// \brief Program is an abstraction of model structure, divided into
 /// computational graphs and weights. At the current stage, a computational
@@ -31,31 +36,39 @@ namespace ir {
 /// concepts such as basic blocks, closures, and functions will be introduced to
 /// continuously improve Program's ability to represent computational graphs.
 ///
-class Program {
+class IR_API Program {
  public:
+  using ParameterMap =
+      std::unordered_map<std::string, std::unique_ptr<Parameter>>;
+  explicit Program(IrContext* context);
+  Program(Program&&) = delete;
+  Program(const Program& program) = delete;
+  Program& operator=(const Program&) = delete;
+  Program& operator=(Program&&);
   ~Program();
-
-  Block* block() { return &block_; }
-
   size_t parameters_num() const { return parameters_.size(); }
 
-  ///
-  /// \brief Insert the Operation* constructed by Operation::create(...) into
-  /// this Program. NOTE: At this time, the memory management permission of
-  /// Operation* will be owned by this Program. The user does not need to call
-  /// Operation::destroy() manually
-  ///
-  void InsertOp(Operation* op);
+  ModuleOp module_op() const { return module_; }
 
-  Parameter* GetParameter(std::string name) const;
+  void Print(std::ostream& os) const;
 
-  void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
+  Block* block() { return module_.block(); }
+  const Block* block() const { return module_op().block(); }
+
+  Parameter* GetParameter(const std::string& name) const;
+  void SetParameter(const std::string& name,
+                    std::unique_ptr<Parameter>&& parameter);
+
+  ParameterMap& parameters() { return parameters_; }
+  void set_parameters(ParameterMap&& parameters) {
+    parameters_ = std::move(parameters);
+  }
 
  private:
-  Block block_;
-  std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
+  // computation graph
+  ModuleOp module_;
+  // weight
+  ParameterMap parameters_;
 };
-
-std::ostream& operator<<(std::ostream& os, Program& program);
 
 }  // namespace ir

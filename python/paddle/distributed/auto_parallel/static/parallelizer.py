@@ -143,7 +143,6 @@ class AutoParallelizer:
         no_grad_set,
         callbacks,
     ):
-
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
                 loss,
@@ -158,7 +157,6 @@ class AutoParallelizer:
         return params_grads
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
-
         optimizer = copy.deepcopy(self._optimizer)
         with program_guard(main_program, startup_program):
             optimize_ops = optimizer.apply_gradients(params_grads)
@@ -173,7 +171,6 @@ class AutoParallelizer:
     def _apply_post_optimization_passes(
         self, main_program, startup_program, rank, params_grads
     ):
-
         if self._dist_strategy.sharding:
             config = copy.deepcopy(self._dist_strategy.sharding_configs)
             config["dist_context"] = self._dist_context
@@ -499,21 +496,12 @@ class AutoParallelizer:
                         break
                 if is_pipeline:
                     with paddle.static.program_guard(dist_main_prog):
-                        paddle.distributed.barrier(get_process_group(0))
+                        paddle.distributed.barrier()
 
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
             for process_group in all_process_groups:
-                if len(_g_process_group_map) > 0:
-                    tmp = paddle.to_tensor([1], dtype="int32")
-                    paddle.distributed.all_reduce(
-                        tmp, sync_op=True, group=_g_process_group_map[0]
-                    )
-                    paddle.device.cuda.synchronize()
-
-                if rank not in process_group.ranks:
-                    continue
                 process_group.instantiate()
 
             # Copy distributed info to the default context

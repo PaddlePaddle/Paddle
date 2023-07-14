@@ -23,17 +23,17 @@ namespace phi {
 
 #define ToString(x) #x
 
-template <typename T, typename Context, typename Functor>
+template <typename T, typename U, typename Context, typename Functor>
 void ActivationImpl(const Context& dev_ctx,
                     const DenseTensor& X,
                     DenseTensor* Out,
                     const Functor& functor) {
   PADDLE_ENFORCE_NOT_NULL(Out,
                           errors::NotFound("Output Out should not be nullptr"));
-  dev_ctx.template Alloc<T>(Out);
+  dev_ctx.template Alloc<U>(Out);
   auto x = phi::EigenVector<T>::Flatten(
       GET_DATA_SAFELY(&X, "Input", "X", "Activation"));
-  auto out = phi::EigenVector<T>::Flatten(
+  auto out = phi::EigenVector<U>::Flatten(
       GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
   auto* place = dev_ctx.eigen_device();
   // use 32bit index to speed up computation

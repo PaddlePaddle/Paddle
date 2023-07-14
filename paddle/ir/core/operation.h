@@ -14,18 +14,22 @@
 
 #pragma once
 
-#include <iostream>
+#include <ostream>
+#include <vector>
+#include "paddle/ir/core/block.h"
+#include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/macros.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
-#include "paddle/ir/core/value_impl.h"
 
 namespace ir {
 class OpBase;
 class Program;
-class Block;
+class OpOperand;
+class OpResult;
 
-class alignas(8) Operation final {
+class IR_API alignas(8) Operation final {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -33,31 +37,54 @@ class alignas(8) Operation final {
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  static Operation *create(const std::vector<ir::OpResult> &inputs,
-                           const AttributeMap &attribute,
+  static Operation *Create(const std::vector<ir::OpResult> &inputs,
+                           const AttributeMap &attributes,
                            const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info,
                            size_t num_regions = 0);
-  static Operation *create(OperationArgument &&op_argument);
+  static Operation *Create(OperationArgument &&op_argument);
 
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
-  void destroy();
-
-  Block *parent() const { return parent_; }
+  void Destroy();
 
   IrContext *ir_context() const;
 
-  ir::OpResult GetResultByIndex(uint32_t index) const;
+  Dialect *dialect() const;
 
-  ir::OpOperand GetOperandByIndex(uint32_t index) const;
+  OpResult result(uint32_t index) const;
 
-  std::string print();
+  OpOperand op_operand(uint32_t index) const;
 
-  const AttributeMap &attribute() const { return attribute_; }
+  Value operand(uint32_t index) const;
 
-  ir::OpInfo op_info() const { return op_info_; }
+  /// Returns the region held by this operation at position 'index'.
+  Region &region(unsigned index);
+  const Region &region(unsigned index) const;
+
+  void Print(std::ostream &os) const;
+
+  const AttributeMap &attributes() const { return attributes_; }
+
+  template <typename T>
+  T attribute(const std::string &name) {
+    IR_ENFORCE(attributes().count(name) > 0 && attributes().at(name).isa<T>(),
+               "Attribute is not right.");
+    return attributes().at(name).dyn_cast<T>();
+  }
+
+  void set_attribute(const std::string &key, Attribute value) {
+    attributes_[key] = value;
+  }
+
+  Attribute attribute(const std::string &key) const;
+
+  bool HasAttribute(const std::string &key) const {
+    return attributes_.find(key) != attributes_.end();
+  }
+
+  ir::OpInfo info() const { return info_; }
 
   uint32_t num_results() const { return num_results_; }
 
@@ -65,7 +92,7 @@ class alignas(8) Operation final {
 
   uint32_t num_regions() const { return num_regions_; }
 
-  std::string op_name() const;
+  std::string name() const;
 
   template <typename T>
   T dyn_cast() {
@@ -74,24 +101,37 @@ class alignas(8) Operation final {
 
   template <typename Trait>
   bool HasTrait() const {
-    return op_info_.HasTrait<Trait>();
+    return info_.HasTrait<Trait>();
   }
 
   template <typename Interface>
   bool HasInterface() const {
-    return op_info_.HasInterface<Interface>();
+    return info_.HasInterface<Interface>();
   }
 
-  Program *parent_program() const { return parent_program_; }
+  Block *GetParent() const { return parent_; }
 
-  void set_parent_program(Program *parent_program) {
-    parent_program_ = parent_program;
+  Region *GetParentRegion() const;
+
+  Operation *GetParentOp() const;
+
+  Program *GetParentProgram();
+
+  operator Block::iterator() { return position_; }
+
+  operator Block::const_iterator() const { return position_; }
+
+  /// Replace all uses of results of this operation with the provided 'values'.
+  void ReplaceAllUsesWith(const std::vector<Value> &values);
+
+  inline void ReplaceAllUsesWith(Value value) {
+    ReplaceAllUsesWith(std::vector<Value>{value});
   }
 
-  /// Returns the region held by this operation at position 'index'.
-  Region &GetRegion(unsigned index);
+  void Verify();
 
  private:
+  DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,
             ir::OpInfo op_info,
             uint32_t num_results,
@@ -105,8 +145,9 @@ class alignas(8) Operation final {
     }
   };
 
+  // Allow access to 'SetParent'.
   friend class Block;
-  void set_parent(Block *parent) { parent_ = parent; }
+  void SetParent(Block *parent, const Block::iterator &position);
 
   template <typename T>
   struct CastUtil<
@@ -115,17 +156,17 @@ class alignas(8) Operation final {
     static T call(Operation *op) { return T::dyn_cast(op); }
   };
 
-  AttributeMap attribute_;
+  AttributeMap attributes_;
 
-  OpInfo op_info_;
+  OpInfo info_;
 
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
 
   Region *regions_{nullptr};
-  Program *parent_program_{nullptr};
   Block *parent_{nullptr};
+  Block::iterator position_;
 };
 
 }  // namespace ir

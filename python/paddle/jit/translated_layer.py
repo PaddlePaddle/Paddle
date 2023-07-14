@@ -338,6 +338,7 @@ class _ProgramHolder:
         self._output_descs = []
         self._double_grad_descs = []
         self._persistable_names = []
+        self._grad_var_names = {}
 
         # execution scope
         self._inner_scope = core.Scope()
@@ -350,7 +351,6 @@ class _ProgramHolder:
         self._train_program_desc = self._append_backward_desc(
             self._infer_program_desc
         )
-        self._grad_var_names = {}
 
     # forward:
     @switch_to_static_graph
@@ -896,7 +896,6 @@ def _valid_vars(vars):
 
 
 def _run_dygraph(instance, input, program_holder):
-
     # 1. prepare inputs, outputs, attrs
     input_vars = []
     for i, value in enumerate(input):

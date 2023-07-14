@@ -183,7 +183,7 @@ if(WITH_MKL)
     if(WIN32)
       set(MKLDNN_LIB ${MKLDNN_PATH}/lib/mkldnn.lib)
     else()
-      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libmkldnn.so.0)
+      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libdnnl.so.3)
     endif()
   endif()
 else()
@@ -224,7 +224,7 @@ if(NOT WIN32)
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      phi
+      gflags
       protobuf
       xxhash
       cryptopp
@@ -235,7 +235,7 @@ else()
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      phi
+      gflags_static
       libprotobuf
       xxhash
       cryptopp-static

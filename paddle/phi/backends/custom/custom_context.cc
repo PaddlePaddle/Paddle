@@ -19,11 +19,6 @@ limitations under the License. */
 
 namespace phi {
 
-template <>
-const TypeInfo<DeviceContext>
-    TypeInfoTraits<DeviceContext, CustomContext>::kType =
-        RegisterStaticType<DeviceContext>(CustomContext::name());
-
 struct CustomContext::Impl {
   explicit Impl(const CustomPlace& place) : place_(place) {}
 
@@ -81,7 +76,7 @@ CustomContext::CustomContext(const CustomPlace& place)
   impl_->Init();
 }
 
-CustomContext::~CustomContext() { impl_->Init(); }
+CustomContext::~CustomContext() { impl_.reset(); }
 
 phi::ccl::CCLComm CustomContext::xccl_comm() const {
   return impl_->xccl_comm();

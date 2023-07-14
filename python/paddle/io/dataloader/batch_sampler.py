@@ -133,11 +133,6 @@ class BatchSampler(Sampler):
         ), "batch_size should be a positive integer, but got {}".format(
             batch_size
         )
-        assert batch_size <= len(
-            self.sampler
-        ), "batch_size should not bigger than num of samples, but got {}".format(
-            batch_size
-        )
         self.batch_size = batch_size
         assert isinstance(
             drop_last, bool

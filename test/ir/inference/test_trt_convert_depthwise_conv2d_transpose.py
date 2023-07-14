@@ -72,7 +72,6 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
                         for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
                             for dilations in [[1, 1], [2, 2], [1, 2]]:
                                 for data_format in ['NCHW']:
-
                                     dics = [
                                         {
                                             "data_fromat": data_format,

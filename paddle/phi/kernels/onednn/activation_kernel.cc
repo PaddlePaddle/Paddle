@@ -154,14 +154,13 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, SwishOneDNNFunctor, beta)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
   HardSwishOneDNNFunctor<T> functor;
-  functor(dev_ctx, x, 6, 0, out);
+  functor(dev_ctx, x, 1.0 / 6.0, 1.0 / 2.0, out);
 }
 
 template <typename T, typename Context>
@@ -187,6 +186,14 @@ void Relu6RawKernel(const Context& dev_ctx,
   functor(dev_ctx, x, 0, threshold, out);
 }
 
+template <typename T, typename Context>
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  SwishOneDNNFunctor<T> functor;
+  functor(dev_ctx, x, 1.0, 0, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(round, OneDNN, ONEDNN, phi::RoundKernel, float) {}
@@ -206,5 +213,5 @@ PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)

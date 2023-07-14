@@ -85,7 +85,6 @@ class TestWeightQuantization(unittest.TestCase):
         generate_test_model,
         threshold_rate,
     ):
-
         model_dir = self.download_model(
             model_name, model_data_url, model_data_md5
         )

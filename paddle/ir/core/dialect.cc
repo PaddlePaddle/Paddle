@@ -22,9 +22,8 @@ Dialect::~Dialect() = default;
 
 void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
   VLOG(4) << "Register interface into dialect" << std::endl;
-  auto it = registered_interfaces_.emplace(interface->interface_id(),
-                                           std::move(interface));
-  (void)it;
+  registered_interfaces_.emplace(interface->interface_id(),
+                                 std::move(interface));
 }
 
 DialectInterface::~DialectInterface() = default;

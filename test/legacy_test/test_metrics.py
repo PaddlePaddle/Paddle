@@ -249,7 +249,6 @@ class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
 
 class TestPrecision(unittest.TestCase):
     def test_1d(self):
-
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
 

@@ -30,8 +30,7 @@ def group_case_for_parallel(rootPath):
         'exclusive_card_tests_mem0',
     ]:
         os.system(
-            'cd %s/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_bak/%s --no-check-certificate'
-            % (rootPath, filename)
+            f'cd {rootPath}/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_bak/{filename} --no-check-certificate'
         )
 
     # get nightly tests

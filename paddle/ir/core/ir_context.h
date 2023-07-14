@@ -18,6 +18,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/ir/core/dll_decl.h"
+
 namespace ir {
 class IrContextImpl;
 class StorageManager;
@@ -30,17 +32,23 @@ class InterfaceValue;
 class Type;
 class OpResult;
 class Attribute;
+class Operation;
+
+using OpInfoMap = std::unordered_map<std::string, OpInfo>;
 
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
 /// Type, Attribute and other related data structures.
 ///
-class IrContext {
+class IR_API IrContext {
  public:
   ///
   /// \brief Initializes a new instance of IrContext.
   ///
   static IrContext *Instance();
+
+  IrContext();
+  ~IrContext();
 
   ///
   /// \brief Get an instance of IrContextImpl, a private member of IrContext.
@@ -98,23 +106,24 @@ class IrContext {
   ///
   /// \brief Register an op infomation to IrContext
   ///
-  void RegisterOpInfo(
-      Dialect *dialect,
-      TypeId op_id,
-      const char *name,
-      std::vector<InterfaceValue> &&interface_map,
-      const std::vector<TypeId> &trait_set,
-      size_t attributes_num,
-      const char **attributes_name,
-      void (*verify)(
-          const std::vector<OpResult> &inputs,
-          const std::vector<Type> &outputs,
-          const std::unordered_map<std::string, Attribute> &attributes));
+  void RegisterOpInfo(Dialect *dialect,
+                      TypeId op_id,
+                      const char *name,
+                      std::vector<InterfaceValue> &&interface_map,
+                      const std::vector<TypeId> &trait_set,
+                      size_t attributes_num,
+                      const char **attributes_name,
+                      void (*verify)(Operation *));
 
   ///
   /// \brief Get registered operaiton infomation.
   ///
   OpInfo GetRegisteredOpInfo(const std::string &name);
+
+  ///
+  /// \brief Get registered operaiton infomation map.
+  ///
+  const OpInfoMap &registered_op_info_map();
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,
@@ -178,8 +187,7 @@ class IrContext {
   void operator=(const IrContext &) = delete;
 
  private:
-  IrContext();
-  const std::unique_ptr<IrContextImpl> impl_;
+  IrContextImpl *impl_;
 };
 
 }  // namespace ir

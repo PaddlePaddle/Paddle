@@ -224,6 +224,20 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
           ->SetAllNodesLowerToTrt(use_cuda_graph);
     }
   }
+
+  // some ops are only implemented in paddle-trt,
+  // but not in paddle ,we should revert it.
+  for (auto *op_node : framework::ir::TopologyVarientSort(
+           *graph, static_cast<framework::ir::SortKind>(0))) {
+    if (op_node->Op()->Type() == "matrix_multiply") {
+      auto origin_type =
+          op_node->Op()->GetAttrIfExists<std::string>("original_type");
+      LOG(WARNING) << "matrix_multiply can't enter into paddle-trt,"
+                   << "we will revert to " << origin_type;
+      op_node->Op()->SetType(origin_type);
+      op_node->RenameOp(origin_type);
+    }
+  }
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
@@ -587,14 +601,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
-  if (enable_int8 && calibration_data.size() != 0) {
+  if (enable_int8 && !calibration_data.empty()) {
     calibrator.reset(new tensorrt::TRTInt8Calibrator(calibration_data));
     LOG(INFO) << "RUN Paddle TRT int8 calibration mode...";
   }
   // When in int8 mode and calibration_mode, the program just produce the
   // calibration table data.
   bool calibration_mode =
-      (enable_int8 && calibration_data.size() == 0 && use_calib_mode);
+      (enable_int8 && calibration_data.empty() && use_calib_mode);
   if (calibration_mode) {
     // calibraion mode means generate int8 calibration table data process.
     return calibration_engine_key;
@@ -606,7 +620,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
   // Check trt version for dynamic shape input.
 
-  if (min_input_shape.size() > 0 && TRT_VERSION < 6000) {
+  if (!min_input_shape.empty() && TRT_VERSION < 6000) {
     LOG_FIRST_N(WARNING, 1) << "You are using the dynamic size input mode of "
                                "Paddle-TRT, but we found that the version of "
                                "the TensorRT is less than 6.0, so we use the "

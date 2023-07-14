@@ -209,7 +209,7 @@ class TestModel(unittest.TestCase):
             cls.test_dataset, places=cls.device, batch_size=64
         )
 
-        seed = 333
+        seed = 555
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
@@ -275,7 +275,7 @@ class TestModel(unittest.TestCase):
 
     def fit(self, dynamic, num_replicas=None, rank=None, num_iters=None):
         fluid.enable_dygraph(self.device) if dynamic else None
-        seed = 333
+        seed = 555
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
@@ -341,7 +341,7 @@ class TestModel(unittest.TestCase):
 
     def fit_with_tuple_input(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
-        seed = 333
+        seed = 555
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
