@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
 namespace ir {
@@ -45,6 +46,10 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
+
+  paddle::framework::FetchList BetaRun(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
@@ -178,7 +183,14 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
+  /// ======================== ///
+  ///        For new ir        ///
+  /// ======================== ///
+  void BuildInstruction();
+
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
+
+  std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
   std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
 };
