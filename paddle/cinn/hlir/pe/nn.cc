@@ -646,7 +646,7 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
   return {packed_out, input_pad};
 }
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
 std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
                                            const ir::Tensor &weights,
                                            int pad_h,
@@ -1014,7 +1014,7 @@ std::vector<ir::Tensor> Softmax(const ir::Tensor &A,
   return {out, temp};
 }
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
 std::vector<ir::Tensor> SoftmaxMKLDNN(const ir::Tensor &A,
                                       int axis,
                                       const std::string &output_name) {
