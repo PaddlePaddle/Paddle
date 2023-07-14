@@ -64,6 +64,10 @@ class InferencePassTest(unittest.TestCase):
             for var in self.startup_program.list_vars():
                 if var.name in feeded_var_names:
                     feeded_vars.append(var)
+            print("feeded_var_names")
+            print(feeded_var_names)
+            print("feeded_vars")
+            print(feeded_vars)
             paddle.static.io.save_inference_model(
                 dirname,
                 feeded_vars,
