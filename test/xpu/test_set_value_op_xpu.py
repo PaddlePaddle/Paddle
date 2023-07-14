@@ -174,7 +174,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             if self.in_type == np.float16:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
-                self.dtyper = "bool"
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 

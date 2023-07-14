@@ -21,6 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
+#include "paddle/phi/kernels/xpu/elementwise.h"
 
 namespace phi {
 
@@ -168,28 +169,6 @@ void SetValueImpl(const Context& dev_ctx,
       return;
     }
   }
-
-  // Because strided_slice_view_update does not support the case of stride < 0
-  // temporarily, the coordinates of starts_indices, ends_indices
-  // and strides_indices need to be converted.
-  // This logic may be deleted in the future.
-  bool need_flip = false;
-  for (size_t i = 0; i < RANK; ++i) {
-    if (strides_indices[i] < 0) {
-      if (!need_flip) {
-        need_flip = true;
-      }
-      flip_axis.push_back(i);
-      strides_indices[i] = strides_indices[i] * (-1);
-      ends_indices[i] = starts_indices[i] + 1;
-      starts_indices[i] =
-          starts_indices[i] - (slice_dims[i] - 1) * strides_indices[i];
-    }
-  }
-
-  auto out_shape = phi::vectorize<int>(out->dims());
-  auto slice_shape = phi::vectorize<int>(slice_dims);
-
   // Step 2: Set slice tensor
 
   // - Step 2.1 Set slice tensor with value
@@ -207,28 +186,49 @@ void SetValueImpl(const Context& dev_ctx,
   // is [3], which is right.
 
   CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
-  auto slice_dims_for_assign_vec = vectorize<int64_t>(slice_dims_for_assign);
-  auto value_dims_vec = vectorize<int64_t>(new_value_dims);
-  size_t max_dims =
-      std::max(slice_dims_for_assign.size(), new_value_dims.size());
-  std::vector<int64_t> ext_slice_dims_for_assign(max_dims, 1);
-  std::vector<int64_t> ext_value_dims_vec(max_dims, 1);
-  std::copy(slice_dims_for_assign_vec.begin(),
-            slice_dims_for_assign_vec.end(),
-            ext_slice_dims_for_assign.begin() +
-                (max_dims - slice_dims_for_assign.size()));
-  std::copy(value_dims_vec.begin(),
-            value_dims_vec.end(),
-            ext_value_dims_vec.begin() + (max_dims - value_dims.size()));
 
-  r = xpu::broadcast<XPUType>(dev_ctx.x_context(),
-                              reinterpret_cast<const XPUType*>(value_data),
-                              slice_data,
-                              ext_value_dims_vec,
-                              ext_slice_dims_for_assign);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+  // do broadcasting
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              const XPUType* y, /*unused*/
+              XPUType* z,
+              const std::vector<int>& xshape,
+              const std::vector<int>& zshape) {
+    return xpu::broadcast<XPUType>(ctx, x, z, xshape, zshape);
+  };
+
+  XPUElementwise<T, XPUType>(dev_ctx,
+                             value_data,
+                             new_value_dims,
+                             nullptr,
+                             slice_dims_for_assign,
+                             -1,
+                             reinterpret_cast<T*>(slice_data),
+                             f);
 
   // - Step 2.2 If stride < 0, flip the slice_tensor.
+  // Because strided_slice_view_update does not support the case of stride < 0
+  // temporarily, the coordinates of starts_indices, ends_indices
+  // and strides_indices need to be converted.
+  // This logic may be deleted in the future.
+
+  bool need_flip = false;
+  for (size_t i = 0; i < RANK; ++i) {
+    if (strides_indices[i] < 0) {
+      if (!need_flip) {
+        need_flip = true;
+      }
+      flip_axis.push_back(i);
+      strides_indices[i] = strides_indices[i] * (-1);
+      ends_indices[i] = starts_indices[i] + 1;
+      starts_indices[i] =
+          starts_indices[i] - (slice_dims[i] - 1) * strides_indices[i];
+    }
+  }
+
+  auto out_shape = phi::vectorize<int>(out->dims());
+  auto slice_shape = phi::vectorize<int>(slice_dims);
+
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(slice_data),
