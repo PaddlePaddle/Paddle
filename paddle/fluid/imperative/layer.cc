@@ -535,7 +535,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
     std::cout << "op_name_debug " << op.Type() << " "
               << paddle::experimental::OpId() << " "
               << prepared_op.kernel_key().dtype() << " "
-              << prepared_op.kernel_key().backend() << " fluid op";
+              << prepared_op.kernel_key().backend() << " fluid op" << std::endl;
+  };
   }
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 
