@@ -25,6 +25,8 @@ from paddle.distributed.fleet.base.private_helper_function import (
 )
 from paddle.fluid import core
 
+from ...backup_env import getenv_or_backup
+
 __all__ = []
 
 
@@ -845,7 +847,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
         self._server_endpoints = self._server_endpoints.split(",")
 
-        self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", None)
+        self._worker_endpoints = getenv_or_backup(
+            "PADDLE_TRAINER_ENDPOINTS", None
+        )
         if self._worker_endpoints is not None:
             self._worker_endpoints = self._worker_endpoints.split(",")
         else:
@@ -1067,7 +1071,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         assert self._training_role == "TRAINER"
         self._role = Role.WORKER
-        self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+        self._worker_endpoints = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS")
         self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
         if self._worker_endpoints is None:
             # back to non_distributed execution.
