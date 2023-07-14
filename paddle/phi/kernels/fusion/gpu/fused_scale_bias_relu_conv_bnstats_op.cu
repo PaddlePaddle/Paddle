@@ -258,7 +258,8 @@ void _FusedScaleBiasReluConvBnstatsImpl(
   if (plan_cache.FindPlan(feature_vector, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
+    plan_cache.GetPlanAndWorkspaceSize(
+        feature_vector, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         &data_ptrs,
@@ -458,7 +459,8 @@ void _BNFinalizeImpl(const Context& dev_ctx,
   if (plan_cache.FindPlan(feature_vector, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(feature_vector, &cached_plan, &workspace_size, handle);
+    plan_cache.GetPlanAndWorkspaceSize(
+        feature_vector, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         &data_ptrs,

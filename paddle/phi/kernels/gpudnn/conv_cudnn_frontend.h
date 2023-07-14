@@ -435,7 +435,7 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
   if (plan_cache_bwd_data.FindPlan(op_graph, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache_bwd_data.GetPlan(
+    plan_cache_bwd_data.GetPlanAndWorkspaceSize(
         op_graph, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         workspace_handle,
@@ -509,7 +509,7 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
   if (plan_cache_bwd_filter.FindPlan(op_graph, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache_bwd_filter.GetPlan(
+    plan_cache_bwd_filter.GetPlanAndWorkspaceSize(
         op_graph, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         workspace_handle,

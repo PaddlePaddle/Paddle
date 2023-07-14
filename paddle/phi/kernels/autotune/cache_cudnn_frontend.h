@@ -79,10 +79,10 @@ class CudnnFrontendPlanCache {
     return ret;
   }
 
-  void GetPlan(const cudnn_frontend::feature_vector_t &feature,
-               const cudnn_frontend::ExecutionPlan **plan,
-               int64_t *workspace_size,
-               cudnnHandle_t handle) {
+  void GetPlanAndWorkspaceSize(const cudnn_frontend::feature_vector_t &feature,
+                               const cudnn_frontend::ExecutionPlan **plan,
+                               int64_t *workspace_size,
+                               cudnnHandle_t handle) {
     // Note(tizheng): CUDNNv8 execution plan is not thread-safe.
     // A shared plan being executed by different threads is
     // generally not safe (for now).
@@ -90,11 +90,11 @@ class CudnnFrontendPlanCache {
     auto &local_map = map_[hasher(std::this_thread::get_id())];
 
     auto it = local_map.find(GetExtendedFeature(feature, handle));
-    if (it == local_map.end()) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "[cudnn_frontend] Cached Plan Not Found."));
-      return;
-    }
+    PADDLE_ENFORCE_NE(it,
+                      local_map.end(),
+                      phi::errors::InvalidArgument(
+                          "[cudnn_frontend] Cached Plan Not Found."));
+
     *plan = &(it->second);
     *workspace_size = (*plan)->getWorkspaceSize();
     VLOG(4) << "Cached execution plan found." << (*plan)->getTag()
@@ -133,11 +133,12 @@ class CudnnFrontendPlanCache {
     return FindPlan(op_graph.getFeatureVector(), handle);
   }
 
-  void GetPlan(const cudnn_frontend::OperationGraph &op_graph,
-               const cudnn_frontend::ExecutionPlan **plan,
-               int64_t *workspace_size,
-               cudnnHandle_t handle) {
-    GetPlan(op_graph.getFeatureVector(), plan, workspace_size, handle);
+  void GetPlanAndWorkspaceSize(const cudnn_frontend::OperationGraph &op_graph,
+                               const cudnn_frontend::ExecutionPlan **plan,
+                               int64_t *workspace_size,
+                               cudnnHandle_t handle) {
+    GetPlanAndWorkspaceSize(
+        op_graph.getFeatureVector(), plan, workspace_size, handle);
   }
 
   void InsertPlan(const cudnn_frontend::OperationGraph &op_graph,
