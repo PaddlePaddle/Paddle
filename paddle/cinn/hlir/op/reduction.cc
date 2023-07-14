@@ -167,11 +167,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                                  lang::RetValue *ret) {
     CHECK(!args.empty()) << "The input argument of " << op_name
                          << " schedule is empty! Please check.";
-    CINNValuePack arg_pack = args[0];
 
+    CINNValuePack arg_pack = args[0];
     CHECK_GE(arg_pack.size(), 2UL);
     CHECK_LE(arg_pack.size(), 8UL);
-    CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
     for (int i = 0; i < arg_pack.size(); i++) {
