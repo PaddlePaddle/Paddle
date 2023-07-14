@@ -29,7 +29,7 @@ class Node;
 
 class FuseMomentumOpPass : public FuseOptimizerOpPass {
  private:
-  virtual const std::string GetOpType() const { return "momentum"; }
+  const std::string GetOpType() const override { return "momentum"; }
 
   virtual const std::vector<std::string> GetAuxiliaryVarNames() const {
     return {"Velocity"};

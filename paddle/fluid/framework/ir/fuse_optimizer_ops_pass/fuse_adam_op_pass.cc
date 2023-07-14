@@ -30,7 +30,7 @@ class Node;
 
 class FuseAdamOpPass : public FuseOptimizerOpPass {
  private:
-  const std::string GetOpType() const { return "adam"; }
+  const std::string GetOpType() const override { return "adam"; }
 
   const std::vector<std::string> GetAuxiliaryVarNames() const {
     return {"Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};

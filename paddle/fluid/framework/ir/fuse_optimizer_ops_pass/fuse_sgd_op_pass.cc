@@ -28,7 +28,7 @@ class Node;
 
 class FuseSgdOpPass : public FuseOptimizerOpPass {
  private:
-  virtual const std::string GetOpType() const { return "sgd"; }
+  const std::string GetOpType() const override { return "sgd"; }
 
   virtual const std::vector<std::string> GetAuxiliaryVarNames() const {
     return {};
