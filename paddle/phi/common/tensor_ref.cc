@@ -67,7 +67,7 @@ std::vector<int64_t> ConvertTensorRefVec2IntArray(
     }
   }
 
-  return std::move(vec_res);
+  return vec_res;
 }
 
 }  // namespace phi
