@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/common/pstring.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -797,6 +798,7 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
                             const IntArray& axes,
                             bool keep_dim,
+                            const std::string& mode,
                             MetaTensor* x_grad) {
   auto x_dims = x.dims();
   x_grad->set_dims(x_dims);

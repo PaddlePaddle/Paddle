@@ -16,6 +16,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/pstring.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -330,6 +331,7 @@ void MultinomialInferMeta(const MetaTensor& x,
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
+                        const std::string& mode,
                         MetaTensor* out,
                         MetaTensor* median_index);
 

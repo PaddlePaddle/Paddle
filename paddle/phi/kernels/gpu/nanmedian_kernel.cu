@@ -73,7 +73,9 @@ __global__ void CalcMedianKernel(const T* sort_out_ptr,
                                  const int64_t* sort_indices_ptr,
                                  int64_t* median_val,
                                  T* output,
+                                 T div_factor,
                                  const bool is_odd,
+                                 const bool mode_mean,
                                  const int64_t pre_dim,
                                  const int64_t stride) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
@@ -83,51 +85,14 @@ __global__ void CalcMedianKernel(const T* sort_out_ptr,
       median_val[index * 2 + 1] = sort_indices_ptr[pos];
       output[index] = sort_out_ptr[pos];
     } else {
-      T median_val_left = pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
-      T median_val_right = sort_out_ptr[pos];
-
-      if (median_val_left < median_val_right) {
-        output[index] = median_val_left;
+      if (mode_mean) {
         median_val[index * 2] =
             pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-        median_val[index * 2 + 1] = median_val[index * 2];
-      } else {
-        output[index] = median_val_right;
         median_val[index * 2 + 1] = sort_indices_ptr[pos];
-        median_val[index * 2] = median_val[index * 2 + 1];
-      }
-    }
-  }
-}
 
-template <typename T>
-__global__ void CalcNanmedianKernel(const T* sort_out_ptr,
-                                    const int64_t* sort_indices_ptr,
-                                    int64_t* nan_counts,
-                                    int64_t* median_val,
-                                    T* output,
-                                    const bool is_odd,
-                                    const int64_t pre_dim,
-                                    const int64_t max_valid_num,
-                                    const int64_t stride,
-                                    const T nan_val) {
-  CUDA_KERNEL_LOOP(index, pre_dim) {
-    int64_t pos = static_cast<int64_t>(index * max_valid_num);
-    int64_t nan_cnt = nan_counts[index];
-    if (nan_cnt == stride) {
-      median_val[index * 2] = -1;
-      median_val[index * 2 + 1] = -1;
-      output[index] = nan_val;
-    } else {
-      int64_t nan_k =
-          nan_cnt > 0 ? static_cast<int64_t>(stride - nan_cnt) : max_valid_num;
-      int64_t row_pos = static_cast<int64_t>(nan_k >> 1);
-      pos += row_pos;
-
-      if (nan_k & 1) {
-        median_val[index * 2] = sort_indices_ptr[pos];
-        median_val[index * 2 + 1] = sort_indices_ptr[pos];
-        output[index] = sort_out_ptr[pos];
+        T median_val_left = pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
+        T median_val_right = sort_out_ptr[pos];
+        output[index] = (median_val_left + median_val_right) / div_factor;
       } else {
         T median_val_left = pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
         T median_val_right = sort_out_ptr[pos];
@@ -147,10 +112,71 @@ __global__ void CalcNanmedianKernel(const T* sort_out_ptr,
   }
 }
 
+template <typename T>
+__global__ void CalcNanmedianKernel(const T* sort_out_ptr,
+                                    const int64_t* sort_indices_ptr,
+                                    int64_t* nan_counts,
+                                    int64_t* median_val,
+                                    T* output,
+                                    const bool is_odd,
+                                    const bool mode_mean,
+                                    const int64_t pre_dim,
+                                    const int64_t max_valid_num,
+                                    const int64_t stride,
+                                    const T div_factor,
+                                    const T nan_val) {
+  CUDA_KERNEL_LOOP(index, pre_dim) {
+    int64_t pos = static_cast<int64_t>(index * max_valid_num);
+    int64_t nan_cnt = nan_counts[index];
+    if (nan_cnt == stride) {
+      median_val[index * 2] = -1;
+      median_val[index * 2 + 1] = -1;
+      output[index] = nan_val;
+    } else {
+      int64_t nan_k =
+          nan_cnt > 0 ? static_cast<int64_t>(stride - nan_cnt) : max_valid_num;
+      int64_t row_pos = static_cast<int64_t>(nan_k >> 1);
+      pos += row_pos;
+
+      if (nan_k & 1) {
+        median_val[index * 2] = sort_indices_ptr[pos];
+        median_val[index * 2 + 1] = sort_indices_ptr[pos];
+        output[index] = sort_out_ptr[pos];
+      } else {
+        if (mode_mean) {
+          median_val[index * 2] =
+              pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+          median_val[index * 2 + 1] = sort_indices_ptr[pos];
+          T median_val_left =
+              pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
+          T median_val_right = sort_out_ptr[pos];
+          output[index] = (median_val_left + median_val_right) / div_factor;
+        } else {
+          T median_val_left =
+              pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
+          T median_val_right = sort_out_ptr[pos];
+
+          if (median_val_left < median_val_right) {
+            output[index] = median_val_left;
+            median_val[index * 2] =
+                pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+            median_val[index * 2 + 1] = median_val[index * 2];
+          } else {
+            output[index] = median_val_right;
+            median_val[index * 2 + 1] = sort_indices_ptr[pos];
+            median_val[index * 2] = median_val[index * 2 + 1];
+          }
+        }
+      }
+    }
+  }
+}
+
 template <typename T, typename Context>
 void ProcessMedianKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          bool ignore_nan,
+                         const std::string& mode,
                          DenseTensor* out,
                          DenseTensor* median_index) {
   auto stream = dev_ctx.stream();
@@ -164,6 +190,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   // (pre_dim, stride)
   int64_t stride = x_dim[x_rank - 1];
   int64_t pre_dim = numel / stride;
+  bool mode_mean = mode == "mean" ? true : false;
   int64_t i = 0;
 
   DenseTensor nan_counts, nan_stat;
@@ -241,6 +268,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
                          &sort_out,
                          &sort_indices);
 
+  T div_factor = static_cast<T>(2.0);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
   if (ignore_nan) {
     CalcNanmedianKernel<T>
@@ -251,9 +279,11 @@ void ProcessMedianKernel(const Context& dev_ctx,
             m_data,
             out_data,
             is_ori_odd,
+            mode_mean,
             pre_dim,
             max_valid_num,
             stride,
+            div_factor,
             nan_val);
   } else {
     CalcMedianKernel<T>
@@ -262,7 +292,9 @@ void ProcessMedianKernel(const Context& dev_ctx,
             sort_indices_ptr,
             m_data,
             out_data,
+            div_factor,
             is_ori_odd,
+            mode_mean,
             pre_dim,
             sort_k);
   }
@@ -273,6 +305,7 @@ void NanmedianKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
                      bool keepdim,
+                     const std::string& mode,
                      DenseTensor* out,
                      DenseTensor* median_index) {
   DenseTensor tmp_x;
@@ -285,7 +318,7 @@ void NanmedianKernel(const Context& dev_ctx,
   }
 
   ProcessMedianKernel<T, Context>(
-      dev_ctx, tmp_x, true /*ignore_nan*/, out, median_index);
+      dev_ctx, tmp_x, true /*ignore_nan*/, mode, out, median_index);
 }
 
 }  // namespace phi

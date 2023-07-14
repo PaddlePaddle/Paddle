@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -26,5 +27,6 @@ void NanmedianGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const IntArray& axes,
                          bool keep_dim,
+                         const std::string& mode,
                          DenseTensor* x_grad);
 }  // namespace phi

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
+#include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -343,6 +344,7 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
                             const IntArray& axes,
                             bool keep_dim,
+                            const std::string& mode,
                             MetaTensor* x_grad);
 
 void NllLossGradInferMeta(const MetaTensor& input,
