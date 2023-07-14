@@ -1011,6 +1011,9 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : feed
+  outputs: {out: Out}
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -2096,6 +2099,12 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : print
+  inputs :
+    in : In
+  outputs :
+    out : Out
+
 - op : prior_box
   inputs :
     {input: Input, image: Image}
@@ -2530,10 +2539,24 @@
     out : Out
 
 - op : split
+  inputs:
+    x : X
+  outputs:
+    out : Out
   int_array:
       sections :
           data_type : int
-          tensor_name : AxesTensor
+  scalar :
+      axis :
+        data_type : int
+        support_tensor : true
+
+- op : split_with_num
+  scalar :
+      axis :
+        data_type : int
+        support_tensor : true
+        tensor_name : AxisTensor
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
@@ -2656,6 +2679,10 @@
     attrs : [bool use_mkldnn = false, float beta = 1.0]
 
 - op : sync_batch_norm
+  inputs :
+    {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
+  outputs :
+    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
@@ -2679,7 +2706,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
   inputs :
     x : X
   outputs :

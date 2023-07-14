@@ -1170,6 +1170,38 @@ class Fleet:
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
+    def _get_qat_optimizer(self):
+        # imitate target optimizer retrieval
+        qat_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'qat_init'):
+                qat_optimizer = optimizer
+                break
+
+        if qat_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'qat_init'):
+                qat_optimizer = self.user_defined_optimizer
+
+        assert (
+            qat_optimizer is not None
+        ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        return qat_optimizer
+
+    def qat_init(self, place, scope=None, test_program=None):
+        """
+        Init the qat training, such as insert qdq ops and scale variables.
+
+        Args:
+            place(CUDAPlace): place is used to initialize
+                scale parameters.
+            scope(Scope): The scope is used to find parameters and variables.
+            test_program(Program): The program is used for testing.
+        """
+        qat_optimizer = self._get_qat_optimizer()
+        return qat_optimizer.qat_init(
+            place, scope=scope, test_program=test_program
+        )
+
     def _final_strategy(self):
         if "valid_strategy" not in self._context:
             print(

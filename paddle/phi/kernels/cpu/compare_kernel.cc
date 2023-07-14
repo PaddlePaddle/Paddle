@@ -97,20 +97,6 @@ PD_REGISTER_KERNEL(equal_all,
                      phi::dtype::float16,                 \
                      phi::dtype::bfloat16) {              \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
-  }                                                       \
-  PD_REGISTER_KERNEL(name##_raw,                          \
-                     CPU,                                 \
-                     ALL_LAYOUT,                          \
-                     phi::func##RawKernel,                \
-                     bool,                                \
-                     int16_t,                             \
-                     int,                                 \
-                     int64_t,                             \
-                     float,                               \
-                     double,                              \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16) {              \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
