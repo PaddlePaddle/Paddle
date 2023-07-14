@@ -320,6 +320,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
 
     if in_dynamic_mode():
         out, medians = _C_ops.nanmedian(x, axis, keepdim, mode)
+        medians.stop_gradient = True
         if mode == "min":
             return out, medians[..., 0]
         else:
@@ -342,6 +343,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
             outputs={'Out': out, 'MedianIndex': medians},
             attrs=attrs,
         )
+        medians.stop_gradient = True
         if mode == "min":
             return out, medians[..., 0]
         else:

@@ -482,10 +482,14 @@ class TestNanmedianModeMean(unittest.TestCase):
             def test_duplicated_axis():
                 paddle.nanmedian(x, axis=[1, -1], keepdim=True)
 
+            def test_mode():
+                paddle.nanmedian(x, mode='max')
+
             self.assertRaises(TypeError, test_dtype)
             self.assertRaises(ValueError, test_empty_axis)
             self.assertRaises(ValueError, test_axis_not_in_range)
             self.assertRaises(ValueError, test_duplicated_axis)
+            self.assertRaises(ValueError, test_mode)
 
     def test_dygraph(self):
         paddle.disable_static(place=self.place)
