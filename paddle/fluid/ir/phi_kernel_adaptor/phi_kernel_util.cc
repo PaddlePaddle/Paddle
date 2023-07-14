@@ -254,11 +254,7 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
     }
-    value_2_var_name->emplace(value, param_name);
-    variable_2_var_name->emplace(inner_scope->root()->FindVar(param_name),
-                                 param_name);
-    var_name_2_id->emplace(param_name, var_name_2_id->size());
-    variable_list->push_back(inner_scope->root()->FindVar(param_name));
+    (*value_2_var_name)[value] = param_name;
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -269,10 +265,6 @@ void HandleForSpecialOp(
                           .data();
     auto value = op->result(0);
     value_2_var_name->emplace(value, param_name);
-    variable_2_var_name->emplace(inner_scope->root()->FindVar(param_name),
-                                 param_name);
-    var_name_2_id->emplace(param_name, var_name_2_id->size());
-    variable_list->push_back(inner_scope->root()->FindVar(param_name));
   }
 
   if (op_name == "builtin.slice") {
