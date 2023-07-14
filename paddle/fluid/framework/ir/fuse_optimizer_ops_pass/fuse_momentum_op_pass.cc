@@ -31,16 +31,16 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
  private:
   const std::string GetOpType() const override { return "momentum"; }
 
-  virtual const std::vector<std::string> GetAuxiliaryVarNames() const {
+  const std::vector<std::string> GetAuxiliaryVarNames() const override {
     return {"Velocity"};
   }
 
   // Fuse Momentum Ops
-  virtual ir::Node *FuseOptimizerOps(
+  ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &momentum_ops,
-      ir::Graph *graph) const {
+      ir::Graph *graph) const override {
     PADDLE_ENFORCE_GT(
         momentum_ops.size(),
         static_cast<size_t>(0),
