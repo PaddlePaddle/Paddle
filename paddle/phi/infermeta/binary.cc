@@ -3137,59 +3137,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
   }
 }
 
-void GemvWeightonlyInt8InferMeta(const MetaTensor& x,
-                                 const MetaTensor& weight,
-                                 const MetaTensor& bias,
-                                 const MetaTensor& weight_scale,
-                                 const std::string& act_method,
-                                 MetaTensor* out) {
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
-  auto x_dims_size = x_dims_vec.size();
-  PADDLE_ENFORCE_EQ(
-      x_dims_size,
-      2,
-      phi::errors::InvalidArgument("X dim size should be equal to 2. "));
-
-  std::vector<int64_t> weight_dims_vec = phi::vectorize(weight.dims());
-  auto weight_dims_size = weight_dims_vec.size();
-  PADDLE_ENFORCE_EQ(
-      weight_dims_size,
-      2,
-      phi::errors::InvalidArgument("Weight dim size should be equal to 2. "));
-
-  int64_t m = x_dims_vec[0];
-  PADDLE_ENFORCE_EQ(
-      m, 1, phi::errors::InvalidArgument("GEMV requires M equal to 1. "));
-
-  int64_t k = x_dims_vec[1];
-
-  PADDLE_ENFORCE_EQ(
-      (k % 8),
-      0,
-      phi::errors::InvalidArgument("GEMV requires K can be divided by 8."));
-
-  PADDLE_ENFORCE_EQ(k,
-                    weight_dims_vec[1],
-                    phi::errors::InvalidArgument("GEMV shape is not match"));
-
-  // Note(Author Zhengzekang): Gemv Weightonly Int8's weight layout is ColMajor,
-  // so its shape is: n x k.
-  int64_t n = weight_dims_vec[0];
-  PADDLE_ENFORCE_EQ(
-      n,
-      weight_scale.dims()[0],
-      phi::errors::InvalidArgument("WeightScale size should be equal to n. "));
-
-  std::vector<int64_t> out_dims_vec{m, n};
-
-  auto out_dims = phi::make_ddim(out_dims_vec);
-
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  out->share_lod(x);
-}
-
 void RmsNormInferMeta(const MetaTensor& x,
                       const MetaTensor& weight,
                       const MetaTensor& bias,
