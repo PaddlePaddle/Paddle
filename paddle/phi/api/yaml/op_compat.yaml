@@ -1013,6 +1013,7 @@
 
 - op: fetch
   inputs: {x: X}
+  outputs: {out: Out}
 
 - op : feed
   outputs: {out: Out}
