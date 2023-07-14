@@ -252,7 +252,7 @@ class TestMMHAOp(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        paddle_naive_rmsnorm, paddle_mmha_out = self.check_main(
+        paddle_naive_mmha, paddle_mmha_out = self.check_main(
             self.x,
             self.bias,
             self.src_mask,
@@ -264,7 +264,7 @@ class TestMMHAOp(unittest.TestCase):
         )
         np.testing.assert_allclose(
             paddle_mmha_out[0].numpy(),
-            paddle_naive_rmsnorm[0].numpy(),
+            paddle_naive_mmha[0].numpy(),
             rtol=5e-2,
             atol=5e-2,
         )
@@ -273,7 +273,7 @@ class TestMMHAOp(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        paddle_naive_rmsnorm, paddle_mmha_out = self.check_main(
+        paddle_naive_mmha, paddle_mmha_out = self.check_main(
             self.x_int,
             self.bias,
             self.src_mask,
@@ -285,7 +285,7 @@ class TestMMHAOp(unittest.TestCase):
         )
         np.testing.assert_allclose(
             paddle_mmha_out[0].numpy(),
-            paddle_naive_rmsnorm[0].numpy(),
+            paddle_naive_mmha[0].numpy(),
             rtol=5e-2,
             atol=5e-2,
         )
@@ -294,7 +294,7 @@ class TestMMHAOp(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        paddle_naive_rmsnorm, paddle_mmha_out = self.check_main(
+        paddle_naive_mmha, paddle_mmha_out = self.check_main(
             self.x,
             self.bias,
             self.src_mask,
@@ -306,7 +306,7 @@ class TestMMHAOp(unittest.TestCase):
         )
         np.testing.assert_allclose(
             paddle_mmha_out[0].numpy(),
-            paddle_naive_rmsnorm[1].numpy(),
+            paddle_naive_mmha[1].numpy(),
             rtol=5e-2,
             atol=5e-2,
         )
