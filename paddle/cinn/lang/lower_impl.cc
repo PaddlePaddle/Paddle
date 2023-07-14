@@ -833,12 +833,17 @@ LowerImpl::LowerImpl(const std::string& fn_name,
       temp_tensor_args_(temp_tensor_args),
       target_(target),
       support_ir_schedule_(support_ir_schedule) {
-  std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
-  tensors.insert(
-      std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
-  compu_graph_ = CreateCompGraph(tensors, stages, true /*inline_hide*/);
+  {  // Initialize the graph
+    std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
+    tensors.insert(
+        std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
 
-  VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
+    compu_graph_ = CreateCompGraph(tensors, stages, true /*inline_hide*/);
+
+    VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
+  }
+
+  // Todo: Here insert auto syncthreads() @haoze
 }
 
 }  // namespace detail
