@@ -40,7 +40,8 @@ env_args_mapping = {
     'PADDLE_WITH_GLOO': 'with_gloo',
     'PADDLE_START_PORT': 'start_port',
     'PADDLE_IPS': 'ips',
-    "PADDLE_AUTO_PARALLEL_CONFIG": 'auto_parallel_config',
+    'PADDLE_AUTO_PARALLEL_CONFIG': 'auto_parallel_config',
+    'PADDLE_AUTO_CLUSTER': 'auto_cluster_config',
 }
 
 
@@ -158,6 +159,13 @@ def parse_args():
         type=str,
         default=None,
         help="auto parallel config file absolute path, the file should be json format",
+    )
+
+    base_group.add_argument(
+        "--auto_cluster_config",
+        type=strtobool,
+        default=0,
+        help="auto parallel auto cluster config switch",
     )
 
     base_group.add_argument(
