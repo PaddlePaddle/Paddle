@@ -185,7 +185,12 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    ::ir::BuildScope(*ir_program_->block(), InnerScope(), &value_2_var_name_);
+    ::ir::BuildScope(*ir_program_->block(),
+                     InnerScope(),
+                     &value_2_var_name_,
+                     &variable_2_var_name_,
+                     &var_name_2_id_,
+                     &variable_list_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
@@ -236,7 +241,12 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
-    ::ir::BuildScope(*ir_program_->block(), InnerScope(), &value_2_var_name_);
+    ::ir::BuildScope(*ir_program_->block(),
+                     InnerScope(),
+                     &value_2_var_name_,
+                     &variable_2_var_name_,
+                     &var_name_2_id_,
+                     &variable_list_);
     BuildInstruction();
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
