@@ -20,11 +20,13 @@ from functools import cmp_to_key, reduce
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program, default_startup_program
-
-from ..fluid.framework import in_dygraph_mode
-from . import unique_name
+from paddle.fluid import core, unique_name
+from paddle.fluid.framework import (
+    Parameter,
+    Program,
+    default_startup_program,
+    in_dygraph_mode,
+)
 
 __all__ = []
 

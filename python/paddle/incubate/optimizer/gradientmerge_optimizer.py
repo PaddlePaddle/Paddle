@@ -20,10 +20,9 @@ from paddle.fluid.framework import (
     default_main_program,
     default_startup_program,
     device_guard,
+    in_dygraph_mode,
+    program_guard,
 )
-
-from ..fluid.framework import in_dygraph_mode
-from .framework import program_guard
 
 __all__ = []
 
