@@ -60,10 +60,10 @@ class InferencePassTest(unittest.TestCase):
             # save models as combined to ensure that
             # there won't be too many useless files
             # after finishing a couple of tests.
-            feeded_vars = [
-                self.main_program.global_block().var(name)
-                for name in feeded_var_names
-            ]
+            feeded_vars = []
+            for var in self.startup_program.list_vars():
+                if var.name in feeded_var_names:
+                    feeded_vars.append(var)
             paddle.static.io.save_inference_model(
                 dirname,
                 feeded_vars,
