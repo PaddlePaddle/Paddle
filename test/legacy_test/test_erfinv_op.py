@@ -134,7 +134,6 @@ class TestErfinvBF16Op(OpTest):
         self.gradient = (
             np.sqrt(np.pi) / 2 * np.exp(np.square(out_ref)) * self.grad_out
         )
-        self.grads = [convert_float_to_uint16(self.gradient)]
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out_ref)}
 
@@ -148,7 +147,8 @@ class TestErfinvBF16Op(OpTest):
             place,
             ['X'],
             'Out',
-            user_defined_grads=self.grads,
+            user_defined_grads=[self.gradient],
+            user_defined_grad_outputs=self.grad_out,
         )
 
 
