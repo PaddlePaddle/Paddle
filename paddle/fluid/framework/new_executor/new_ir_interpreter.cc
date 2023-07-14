@@ -185,8 +185,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    ::ir::BuildScope(
-        *ir_program_->block(), InnerScope(), &value_2_var_name_map_);
+    ::ir::BuildScope(*ir_program_->block(), InnerScope(), &value_2_var_name_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
@@ -194,7 +193,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                  &op_func_nodes,
                                  scope_,
                                  local_scope_,
-                                 value_2_var_name_map_,
+                                 value_2_var_name_,
                                  execution_config_);
     // SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -237,8 +236,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
-    ::ir::BuildScope(
-        *ir_program_->block(), scope_, local_scope_, &value_2_var_name_map_);
+    ::ir::BuildScope(*ir_program_->block(), InnerScope(), &value_2_var_name_);
     BuildInstruction();
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
@@ -1526,13 +1524,8 @@ void NewIRInterpreter::BuildInstruction() {
        ++it) {
     VLOG(0) << "Build Instruction for op: " << op_idx;
     if ((*it)->dialect()->name() == "pd_kernel") {
-      vec_instruction_base_.emplace_back(
-          std::make_unique<PhiKernelInstruction>(op_idx++,
-                                                 place_,
-                                                 (*it),
-                                                 scope_,
-                                                 local_scope_,
-                                                 value_2_var_name_map_));
+      vec_instruction_base_.emplace_back(std::make_unique<PhiKernelInstruction>(
+          op_idx++, place_, (*it), scope_, local_scope_, value_2_var_name_));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel dialect."));
