@@ -22,7 +22,6 @@ from .fused_dropout_add import fused_dropout_add
 from .fused_gate_attention import fused_gate_attention
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
 from .rms_norm import rms_norm
-from .norm_helper import norm_helper
 
 
 __all__ = [
