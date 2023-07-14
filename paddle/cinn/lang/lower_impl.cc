@@ -833,7 +833,9 @@ LowerImpl::LowerImpl(const std::string& fn_name,
       temp_tensor_args_(temp_tensor_args),
       target_(target),
       support_ir_schedule_(support_ir_schedule) {
-  {  // Initialize the graph
+  // Todo: Here insert auto syncthreads() @haoze
+
+  {  // Update the graph
     std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
     tensors.insert(
         std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
@@ -842,8 +844,6 @@ LowerImpl::LowerImpl(const std::string& fn_name,
 
     VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
   }
-
-  // Todo: Here insert auto syncthreads() @haoze
 }
 
 }  // namespace detail
