@@ -21,16 +21,10 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
-from paddle.framework import convert_np_dtype_to_dtype_
 
 
 class TrtConvertAssignTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            program_config.ops[i].attrs for i in range(len(program_config.ops))
-        ]
-        if attrs[0]['dtype'] not in [0, 1, 2, 3, 4, 5]:
-            return False
         compile_version = paddle_infer.get_trt_compile_version()
         runtime_version = paddle_infer.get_trt_runtime_version()
         if (
@@ -64,7 +58,6 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
                 np.bool_,
                 np.int32,
                 np.float32,
-                np.float64,
                 np.int64,
             ]:
                 self.has_bool_dtype = dtype == np.bool_
@@ -73,17 +66,13 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
                         "op_type": "assign",
                         "op_inputs": {"X": ["input_data"]},
                         "op_outputs": {"Out": ["assign_output_data0"]},
-                        "op_attrs": {
-                            "dtype": convert_np_dtype_to_dtype_(dtype)
-                        },
+                        "op_attrs": {},
                     },
                     {
                         "op_type": "assign",
                         "op_inputs": {"X": ["assign_output_data0"]},
                         "op_outputs": {"Out": ["assign_output_data1"]},
-                        "op_attrs": {
-                            "dtype": convert_np_dtype_to_dtype_(dtype)
-                        },
+                        "op_attrs": {},
                     },
                 ]
 

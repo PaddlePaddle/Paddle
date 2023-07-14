@@ -25,36 +25,8 @@ class AssignOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(3) << "convert a assign op to tensorrt";
     framework::OpDesc op_desc(op, nullptr);
-
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
-
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
-
-    switch (dtype) {
-      case 0:  // BOOL = 0
-        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
-        layer->getOutput(0)->setType(nvinfer1::DataType::kBOOL);
-        break;
-      case 2:  // INT32 = 2
-      case 3:  // INT64 = 3 there is no int64 in tensorrt subgraph
-        layer->setOutputType(0, nvinfer1::DataType::kINT32);
-        layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
-        break;
-      case 4:  // FP16 = 4
-        layer->setOutputType(0, nvinfer1::DataType::kHALF);
-        layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
-        break;
-      case 5:  // FP32 = 5
-        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
-        layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
-        break;
-      default:
-        LOG(ERROR) << "Nvinfer DataType doesn't support the fluid data type("
-                   << dtype << ") to a nvinfer DataType";
-        break;
-    }
-
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "assign", {output_name}, test_mode);
   }
