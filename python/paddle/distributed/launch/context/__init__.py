@@ -38,6 +38,8 @@ class Context:
 
         if enable_plugin:
             self._enable_plugin()
+        self.max_time_per_task = -1
+        self.run_best = False
 
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
