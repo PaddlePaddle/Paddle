@@ -1977,11 +1977,10 @@
 - op : one_hot (one_hot_v2)
   inputs :
     x : X
-    num_classes : depth
   outputs :
     out : Out
   scalar :
-    num_classes :
+    depth :
       data_type : int
       tensor_name : depth_tensor
 
