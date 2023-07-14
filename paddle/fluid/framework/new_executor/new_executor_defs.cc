@@ -286,5 +286,27 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
+std::shared_ptr<EventInter> Instruction::GetEventToRecord() {
+  if (event_to_record_ == nullptr) {
+    std::shared_ptr<DeviceEvent> device_event = std::make_shared<DeviceEvent>(
+        DeviceContext().GetPlace(), platform::GenerateDeviceEventFlag());
+    event_to_record_ = std::make_shared<EventInter>(
+        id_, device_event, platform::kCUDA /*unused*/);
+  }
+  return event_to_record_;
+}
+
+std::shared_ptr<std::vector<EventInter>> Instruction::GetEventsToWait() {
+  if (events_to_wait_ == nullptr) {
+    events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+  }
+  return events_to_wait_;
+}
+
+void Instruction::ShareEventsFrom(Instruction* src) {
+  events_to_wait_ = src->GetEventsToWait();
+  event_to_record_ = src->GetEventToRecord();
+}
+
 }  // namespace framework
 }  // namespace paddle

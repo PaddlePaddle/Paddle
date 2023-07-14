@@ -50,8 +50,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
-  void ShareBuildResultsFrom(InterpreterBaseImpl* src) override;
-
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -117,10 +115,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
-  // op dependences
-  interpreter::DependencyBuilder* GetDependencyBuilder();
-  std::shared_ptr<std::vector<size_t>> GetDependecyCount();
-
   // scope
   bool HasLocalScope() const;
 
@@ -129,7 +123,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
-  bool is_shared_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned
@@ -170,9 +163,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // var
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
+  // dependecy_count_[i] contains the number of dependencies that the i-th op
   // need to wait
-  std::shared_ptr<std::vector<size_t>> dependecy_count_;
+  std::vector<size_t> dependecy_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;

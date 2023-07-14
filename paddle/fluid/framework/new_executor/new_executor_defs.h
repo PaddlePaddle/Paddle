@@ -35,6 +35,9 @@ using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 using SchedulingPriority = int64_t;
 
+using DeviceContext = platform::DeviceContext;
+using DeviceEvent = platform::DeviceEvent;
+
 constexpr const char* kCoalesceTensor = "coalesce_tensor";
 
 // stream types
@@ -206,11 +209,17 @@ class Instruction {
   void AddEventToWait(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type) {
-    events_to_wait_.emplace_back(instr_id, event, waiter_type);
+    events_to_wait_->emplace_back(instr_id, event, waiter_type);
   }
 
+  std::shared_ptr<EventInter> GetEventToRecord();
+
+  std::shared_ptr<std::vector<EventInter>> GetEventsToWait();
+
+  void ShareEventsFrom(Instruction* src);
+
   const std::vector<EventInter>& EventsToWait() const {
-    return events_to_wait_;
+    return *events_to_wait_;
   }
 
   void AddNextInstrInDifferentThread(size_t id) {
@@ -286,7 +295,7 @@ class Instruction {
   std::vector<size_t> next_instrs_in_same_thread;
 
   std::shared_ptr<EventInter> event_to_record_;
-  std::vector<EventInter> events_to_wait_;
+  std::shared_ptr<std::vector<EventInter>> events_to_wait_;
 
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
