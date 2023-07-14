@@ -3653,6 +3653,42 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   int num_head = x_dims[2];
   int dim_head = x_dims[3];
 
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      errors::InvalidArgument("The dimensions of x must be 4"
+                              "(batch_size, 3, num_head, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[1],
+      3,
+      errors::InvalidArgument("The second dim of input x must be 3, but got %d",
+                              x_dims[1]));
+
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims.size(),
+      5,
+      errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
+                              cache_kv_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims[0],
+      2,
+      errors::InvalidArgument("The first dim of cache_kv must be 2, but got %d",
+                              cache_kv_dims[0]));
+
+  if (rotary_tensor) {
+    PADDLE_ENFORCE_EQ(
+        rotary_tensor.dtype(),
+        DataType::FLOAT32,
+        errors::InvalidArgument(
+            "The dtype of rotary_tensor must be float32, but got %d",
+            rotary_tensor.dtype()));
+  }
+
   if (sequence_lengths) {
     out->set_dims({bsz, num_head, dim_head});
   } else {
@@ -3663,25 +3699,6 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   } else {
     out->set_dtype(x_dtype);
   }
-
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      4,
-      errors::InvalidArgument("The dimensions of x must be 4"
-                              "(batch_size, 3, num_head, dim_head),"
-                              "but received dimensions of"
-                              "Input is [%d]",
-                              x_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      cache_kv_dims.size(),
-      5,
-      errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
-                              cache_kv_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      cache_kv_dims[0],
-      2,
-      errors::InvalidArgument("The first dim of cache_kv must be 2, but got %d",
-                              cache_kv_dims[0]));
 
   cache_kv_out->set_dims(cache_kv_dims);
   cache_kv_out->set_dtype(cache_kv.dtype());
