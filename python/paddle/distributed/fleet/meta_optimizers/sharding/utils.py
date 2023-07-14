@@ -283,14 +283,6 @@ def insert_sync_comm_op(block, insert_idx, ring_id, comm_dep_vars):
     """
     insert sync_comm_op for single var
     """
-    # op_role = get_valid_op_role(block, insert_idx)
-    # block._insert_op_without_sync(
-    #     insert_idx,
-    #     type='c_sync_comm_stream',
-    #     inputs={'X': comm_dep_vars},
-    #     outputs={'Out': comm_dep_vars},
-    #     attrs={'ring_id': ring_id, OP_ROLE_KEY: op_role},
-    # )
     return 1
 
 

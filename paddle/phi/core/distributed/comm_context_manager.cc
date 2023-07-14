@@ -61,19 +61,15 @@ void CommContextManager::CreateNCCLCommContext(
         reinterpret_cast<uint8_t*>(&nccl_id),
         reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
     store->set(unique_key, nccl_id_wrapper);
-    std::cout << "Successfully set store." << std::endl;
   } else {
     const auto& nccl_id_wrapper = store->get(unique_key);
     std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
-    std::cout << "Successfully get store." << std::endl;
   }
 
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
   comm_context_manager.SetStore(store);
-  std::cout << "Successfully SetStore" << std::endl;
   comm_context_manager.Emplace(ring_id, std::move(nccl_comm_context));
-  std::cout << "Successfully Emplace with ring_id: " << ring_id << std::endl;
 }
 #endif
 

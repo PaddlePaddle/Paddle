@@ -271,9 +271,7 @@ def _mp_allreduce(
         )
     else:
         ring_id = 0 if group is None else group.id
-        # op_type = 'mp_allreduce_sum'
         op_type = 'all_reduce'
-        # op_type = 'mp_all_reduce'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
@@ -291,7 +289,6 @@ def _mp_allreduce(
             attrs={
                 'ring_id': ring_id,
                 'reduce_type': 0,
-                # 'use_calc_stream': use_calc_stream,
             },
         )
         return out
