@@ -2,9 +2,6 @@ cc_test(
   test_custom_kernel
   SRCS test_custom_kernel.cc
   DEPS phi)
-if(DEFINED test_custom_kernel)
-  set_tests_properties(test_custom_kernel PROPERTIES LABELS "RUN_TYPE=Ampere")
-endif()
 cc_test(
   test_dense_tensor
   SRCS test_dense_tensor.cc

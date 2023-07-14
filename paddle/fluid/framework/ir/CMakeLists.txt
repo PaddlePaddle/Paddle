@@ -460,10 +460,6 @@ if(WITH_GPU OR WITH_ROCM)
     test_cudnn_placement_pass
     SRCS cudnn_placement_pass_tester.cc
     DEPS cudnn_placement_pass)
-  if(DEFINED test_cudnn_placement_pass)
-    set_tests_properties(test_cudnn_placement_pass PROPERTIES LABELS
-                                                              "RUN_TYPE=Ampere")
-  endif()
 endif()
 if(NOT WIN32)
   cc_test(

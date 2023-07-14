@@ -382,6 +382,3 @@ cc_test(
   init_phi_test
   SRCS init_phi_test.cc
   DEPS phi init_phi)
-if(DEFINED init_phi_test)
-  set_tests_properties(init_phi_test PROPERTIES LABELS "RUN_TYPE=Ampere")
-endif()

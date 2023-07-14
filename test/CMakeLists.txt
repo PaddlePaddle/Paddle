@@ -248,3 +248,8 @@ add_custom_target(build_tests)
 if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
 endif()
+
+set_property(TEST operator_test PROPERTY LABELS "RUN_TYPE=Ampere")
+set_property(TEST init_phi_test PROPERTY LABELS "RUN_TYPE=Ampere")
+set_property(TEST test_cudnn_placement_pass PROPERTY LABELS "RUN_TYPE=Ampere")
+set_property(TEST test_custom_kernel PROPERTY LABELS "RUN_TYPE=Ampere")
