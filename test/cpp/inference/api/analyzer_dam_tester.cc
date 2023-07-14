@@ -248,7 +248,7 @@ void profile(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_dam, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
@@ -303,7 +303,7 @@ TEST(Analyzer_dam, compare_with_dynamic_memory_optim) {
 
 TEST(Analyzer_dam, compare) { compare(); }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_dam, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

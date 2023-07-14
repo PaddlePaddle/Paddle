@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -82,7 +82,7 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
 
       auto &cur_scope = *scopes->front();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       // Executor on being destroyed clears oneDNN cache and resets
       // registered model data layout. This is unwanted for nested
       // Executors (executors declared inside control ops)

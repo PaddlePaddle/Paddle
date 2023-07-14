@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl_debug.h"  // NOLINT
 #endif
 
@@ -51,7 +51,7 @@ void TensorCopyImpl(const TENSOR& src,
   dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   dst->set_mem_desc(src.mem_desc());
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
@@ -70,7 +70,7 @@ void TensorCopyImpl(const TENSOR& src,
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   auto size = src.layout() == DataLayout::ONEDNN
                   ? src.memory_size()
                   : src.numel() * phi::SizeOf(src.dtype());
@@ -311,7 +311,7 @@ void TensorCopySync(const phi::DenseTensor& src,
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (src.layout() == DataLayout::ONEDNN) {
     dst->set_mem_desc(src.mem_desc());
   }

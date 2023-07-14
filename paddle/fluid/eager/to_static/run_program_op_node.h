@@ -477,7 +477,7 @@ inline void RunProgramAPI(
     }
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
 #endif
 }
