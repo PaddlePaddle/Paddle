@@ -41,17 +41,13 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
                               DenseTensor* out_max) {
   using XPUT = typename XPUTypeTrait<T>::Type;
 
-  // The filter will be reshaped in the calculations,
-  // so here use an assignment operation,
-  // that avoids modifying the variable in the Scope.
-  DenseTensor filter_ = filter;
   ctx.template Alloc<T>(out);
   ctx.template Alloc<float>(out_max);
   bool is_nchw;
   is_nchw = (data_format == "NHWC") ? false : true;
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());  // hw
-  DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
@@ -78,7 +74,7 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   int r = xpu::conv2d_transpose_fusion_v2<XPUT, int16_t, XPUT, int16_t>(
       ctx.x_context(),
       reinterpret_cast<const XPUT*>(x.data<T>()),
-      filter_.data<int16_t>(),
+      filter.data<int16_t>(),
       reinterpret_cast<XPUT*>(out->data<T>()),
       batch_size,
       img_yc,
