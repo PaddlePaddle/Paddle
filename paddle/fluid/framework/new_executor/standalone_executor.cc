@@ -109,6 +109,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
 
+    platform::RecordEvent record_event(
+        job_type + "-" + std::to_string(job->MicroBatchId()),
+        platform::TracerEventType::UserDefined,
+        1);
+
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
 

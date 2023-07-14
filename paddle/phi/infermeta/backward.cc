@@ -968,10 +968,10 @@ void RnnGradInferMeta(const MetaTensor& x,
   if (x_grad) {
     UnchangedInferMeta(x, x_grad);
   }
-  if (pre_state_grad.size()) {
+  if (!pre_state_grad.empty()) {
     UnchangedMultiInferMeta(pre_state, pre_state_grad);
   }
-  if (weight_grad_list.size()) {
+  if (!weight_grad_list.empty()) {
     UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }

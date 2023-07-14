@@ -29,7 +29,7 @@ TODO: Documentation of {{op_name}} op.
 {% macro add_input(i, input, op_name) %}{# inline #}
   {% set name = input["fluid_name"] %}
   {% set typename = input["typename"] %}
-AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} op.")
+AddInput("{{name}}", "({{typename}}), input {{i}} of {{op_name}} op.")
   {%- if typename is vec %}
 
     .AsDuplicable()
@@ -49,7 +49,7 @@ AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} 
   {% set name = output["fluid_name"] %}
   {% set typename = output["typename"] %}
   {% set is_intermediate = output["intermediate"] %}
-AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name}} op.")
+AddOutput("{{name}}", "({{typename}}), output {{i}} of {{op_name}} op.")
   {%- if typename is vec %}
 
     .AsDuplicable()

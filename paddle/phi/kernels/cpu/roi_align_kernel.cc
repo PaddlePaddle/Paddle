@@ -192,6 +192,11 @@ void RoiAlignKernel(const Context& dev_ctx,
   int width = in_dims[3];
   int rois_num = boxes.dims()[0];
 
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   auto in_stride = phi::stride(in_dims);
   auto roi_stride = phi::stride(boxes.dims());
   auto out_stride = phi::stride(out->dims());
