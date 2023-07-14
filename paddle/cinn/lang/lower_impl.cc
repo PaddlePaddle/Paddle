@@ -839,8 +839,8 @@ LowerImpl::LowerImpl(const std::string& fn_name,
     std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
     tensors.insert(
         std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
-
     compu_graph_ = CreateCompGraph(tensors, stages, true /*inline_hide*/);
+
     VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
   }
 }
