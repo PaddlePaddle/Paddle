@@ -308,6 +308,9 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
         raise ValueError("Axis list should not be empty.")
 
+    if mode not in ('mean', 'min'):
+        raise ValueError(f"Mode {mode} is not supported. Must be mean or min.")
+
     if axis is None:
         axis = []
     elif isinstance(axis, tuple):
@@ -319,7 +322,8 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
         out, medians = _C_ops.nanmedian(x, axis, keepdim, mode)
         if mode == "min":
             return out, medians[..., 0]
-        return out
+        else:
+            return out
     else:
         check_variable_and_dtype(
             x,
@@ -340,7 +344,8 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
         )
         if mode == "min":
             return out, medians[..., 0]
-        return out
+        else:
+            return out
 
 
 def median(x, axis=None, keepdim=False, name=None):
