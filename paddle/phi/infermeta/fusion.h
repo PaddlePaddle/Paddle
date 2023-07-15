@@ -204,7 +204,6 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
 void FusedScaleBiasReluConvBnstatsInferMeta(
     const MetaTensor& x,
     const MetaTensor& w,
@@ -232,6 +231,5 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
     MetaTensor* saved_var,
     MetaTensor* eq_scale,
     MetaTensor* eq_bias);
-#endif
 
 }  // namespace phi

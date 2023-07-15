@@ -836,7 +836,6 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
 void FusedScaleBiasReluConvBnstatsInferMeta(
     const MetaTensor& x,
     const MetaTensor& w,
@@ -970,6 +969,5 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
   eq_scale->set_dims(c_dims);
   eq_bias->set_dims(c_dims);
 }
-#endif
 
 }  // namespace phi
