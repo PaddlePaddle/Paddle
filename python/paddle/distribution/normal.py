@@ -174,9 +174,9 @@ class Normal(distribution.Distribution):
         name = self.name + '_sample'
         if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = (self.loc + self.scale).shape[0]
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
 
             zero_tmp_shape = paddle.shape(zero_tmp_reshape)
@@ -234,9 +234,10 @@ class Normal(distribution.Distribution):
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
         if -1 in batch_shape:
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape)
+            fill_shape[0] = (self.loc + self.scale).shape[0]
+            fill_dtype = (self.loc + self.scale).dtype
+            zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
         else:
             zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
         return paddle.add(

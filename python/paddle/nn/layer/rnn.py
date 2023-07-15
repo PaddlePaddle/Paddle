@@ -621,14 +621,13 @@ class RNNCellBase(Layer):
             states_dtypes = paddle.utils.map_structure(
                 lambda shape: dtype, states_shapes
             )
-
+        fill_shape = list(shape.shape)
+        fill_shape[0] = batch_ref.shape[batch_dim_idx]
         init_states = paddle.utils.map_structure(
-            lambda shape, dtype: paddle.fluid.layers.fill_constant_batch_size_like(
-                input=batch_ref,
-                shape=shape.shape,
+            lambda shape, dtype: paddle.full(
+                shape=fill_shape,
+                fill_value=init_value,
                 dtype=dtype,
-                value=init_value,
-                input_dim_idx=batch_dim_idx,
             ),
             states_shapes,
             states_dtypes,
@@ -1555,11 +1554,11 @@ class RNNBase(LayerList):
                 -1,
                 self.hidden_size,
             )
+            fill_shape = list(state_shape)
+            fill_shape[1] = inputs.shape[batch_index]
             initial_states = tuple(
                 [
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1
-                    )
+                    paddle.full(fill_shape, 0, dtype)
                     for _ in range(self.state_components)
                 ]
             )
