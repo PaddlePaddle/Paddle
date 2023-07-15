@@ -411,17 +411,15 @@ class StaticRNN:
                 dtype=batch_ref.dtype,
                 persistable=False,
             )
-
+            fill_shape = list(boot_var.shape)
+            fill_shape[init_batch_dim_idx] = init_value.shape[ref_batch_dim_idx]
             parent_block.append_op(
-                type="fill_constant_batch_size_like",
-                inputs={'Input': [batch_ref]},
+                type="fill_constant",
                 outputs={'Out': [boot_var]},
                 attrs={
                     'value': init_value,
-                    'shape': boot_var.shape,
+                    'shape': fill_shape,
                     'dtype': boot_var.dtype,
-                    'input_dim_idx': ref_batch_dim_idx,
-                    'output_dim_idx': init_batch_dim_idx,
                 },
             )
 
