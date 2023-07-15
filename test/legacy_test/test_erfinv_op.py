@@ -151,7 +151,7 @@ class TestErfinvBF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_placed(
+        self.check_grad_with_place(
             place,
             ['X'],
             'Out',
