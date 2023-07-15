@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 from scipy.special import erfinv
 
 import paddle
@@ -128,13 +132,17 @@ class TestErfinvBF16Op(OpTest):
         self.dtype = np.uint16
         self.shape = [11, 17]
         self.datatype = np.float32
-        x = np.random.uniform(-1, 1, size=self.shape).astype(self.datatype)
-        out_ref = erfinv(x).astype(self.datatype)
+        self.input_data = np.random.uniform(-1, 1, size=self.shape).astype(
+            self.datatype
+        )
+        self.inputs = {'X': convert_float_to_uint16(self.input_data)}
+        self.inputs_data = convert_uint16_to_float(self.inputs['X'])
+        out_ref = erfinv(self.input_data)
         self.grad_out = np.ones(self.shape, self.datatype)
         self.gradient = (
             np.sqrt(np.pi) / 2 * np.exp(np.square(out_ref)) * self.grad_out
         )
-        self.inputs = {'X': convert_float_to_uint16(x)}
+
         self.outputs = {'Out': convert_float_to_uint16(out_ref)}
 
     def test_check_output(self):
@@ -143,12 +151,12 @@ class TestErfinvBF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
+        self.check_grad_with_placed(
             place,
             ['X'],
             'Out',
-            user_defined_grads=[convert_float_to_uint16(self.gradient)],
-            user_defined_grad_outputs=convert_float_to_uint16(self.grad_out),
+            user_defined_grads=[self.gradient],
+            user_defined_grad_outputs=self.grad_out,
         )
 
 
