@@ -48,17 +48,23 @@ class ProcessContext:
         log_dir = self._env["PADDLE_LOG_DIR"]
         os.makedirs(log_dir, exist_ok=True)
 
-        rank = int(self._env["PADDLE_TRAINER_ID"])
-        backup_env_path = str(os.path.join(log_dir, f'backup_env.{rank}.json'))
-        envs = {"PADDLE_BACKUP_ENV_PATH": backup_env_path}
+        rank = self._env.get("PADDLE_TRAINER_ID")
+        if rank is not None:
+            rank = int(rank)
+            backup_env_path = str(
+                os.path.join(log_dir, f'backup_env.{rank}.json')
+            )
+            envs = {"PADDLE_BACKUP_ENV_PATH": backup_env_path}
 
-        max_len = int(os.getenv('PADDLE_ENV_LIMIT_LEN', 48000))
-        for k, v in self._env.items():
-            if k not in LIMIT_LEN_ENVS or len(v) < max_len:
-                envs[k] = v
+            max_len = int(os.getenv('PADDLE_ENV_LIMIT_LEN', 48000))
+            for k, v in self._env.items():
+                if k not in LIMIT_LEN_ENVS or len(v) < max_len:
+                    envs[k] = v
 
-        with open(backup_env_path, 'w') as f:
-            json.dump(dict(self._env), f, indent=4, sort_keys=True)
+            with open(backup_env_path, 'w') as f:
+                json.dump(dict(self._env), f, indent=4, sort_keys=True)
+        else:
+            envs = self._env
 
         self._proc = subprocess.Popen(
             self._cmd,
