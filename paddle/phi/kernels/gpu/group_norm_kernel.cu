@@ -82,7 +82,6 @@ struct GroupNormNHWCParams {
   // The inverse of hwc in floats (to compute mean/var).
   float invHWC;
   // The precomputed number of groups per block.
-  int32_t groupsPerBlock;
   // epsilon, Constant for numerical stability
   float eps;
 };
@@ -140,9 +139,10 @@ inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(const phi::dtype::bflo
   sumSq += f2.x * f2.x + f2.y * f2.y;
 }
 
-template <typename T>
+template <typename T, int THREADS_PER_BLOCK>
 __global__ void groupNormNHWCSumSingerChannelKernel(const GroupNormNHWCParams<T> params) {
   // The instance in the batch.
+  __shared__ float2 smem[THREADS_PER_BLOCK];
   int32_t ni = blockIdx.z;
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x;
   if (ci >= params.c) {
@@ -165,8 +165,14 @@ __global__ void groupNormNHWCSumSingerChannelKernel(const GroupNormNHWCParams<T>
     UpdateSum<T, 1>(&params.srcX[offset], sum, sumSq);
   }
 
-  atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci], sum);
-  atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + ci], sumSq);
+  smem[threadIdx.x] = make_float2(sum, sumSq);
+
+  __syncthreads();
+
+  float2 sums = smem[threadIdx.x];
+
+  atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci], sums.x);
+  atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + ci], sums.y);
 }
 
 
@@ -250,7 +256,6 @@ void groupNormNHWCSum(GroupNormNHWCParams<T> params, cudaStream_t stream) {
         break;
       default:
         grid.x = divUp(params.c, 128);
-        params.groupsPerBlock = divUp(128, params.cPerGroup);
         params.cPerBlock = 128;
         groupNormNHWCSumKernel<T, 64, 2><<<grid, 64, 0, stream>>>(params);
     }
@@ -274,32 +279,30 @@ void groupNormNHWCSum(GroupNormNHWCParams<T> params, cudaStream_t stream) {
           break;
         default:
           grid.x = divUp(params.c, 128);
-          params.groupsPerBlock = divUp(128, params.cPerGroup);
           params.cPerBlock = 128;
           groupNormNHWCSumKernel<T, 128, 1><<<grid, 128, 0, stream>>>(params);
       }
     } else {
       switch (params.cPerBlock) {
         case 512:
-          groupNormNHWCSumSingerChannelKernel<T><<<grid, 512, 0, stream>>>(params);
+          groupNormNHWCSumSingerChannelKernel<T, 512><<<grid, 512, 0, stream>>>(params);
           break;
         case 480:
-          groupNormNHWCSumSingerChannelKernel<T><<<grid, 480, 0, stream>>>(params);
+          groupNormNHWCSumSingerChannelKernel<T, 480><<<grid, 480, 0, stream>>>(params);
           break;
         case 320:
-          groupNormNHWCSumSingerChannelKernel<T><<<grid, 320, 0, stream>>>(params);
+          groupNormNHWCSumSingerChannelKernel<T, 320><<<grid, 320, 0, stream>>>(params);
           break;
         case 256:
-          groupNormNHWCSumSingerChannelKernel<T><<<grid, 256, 0, stream>>>(params);
+          groupNormNHWCSumSingerChannelKernel<T, 256><<<grid, 256, 0, stream>>>(params);
           break;
         case 128:
-          groupNormNHWCSumSingerChannelKernel<T><<<grid, 128, 0, stream>>>(params);
+          groupNormNHWCSumSingerChannelKernel<T, 128><<<grid, 128, 0, stream>>>(params);
           break;
         default:
           grid.x = divUp(params.c, 128);
-          params.groupsPerBlock = divUp(128, params.cPerGroup);
           params.cPerBlock = 128;
-          groupNormNHWCSumSingerChannelKernel<T><<<grid, 128, 0, stream>>>(params);
+          groupNormNHWCSumSingerChannelKernel<T, 128><<<grid, 128, 0, stream>>>(params);
       }
     }
   }
@@ -571,7 +574,6 @@ void GroupNormNHWCKernel(
   params_.cPerBlock = cPerBlock;
   params_.hwc = params_.hw * params_.c;
   params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
-  params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
   params_.eps = epsilon;
   auto stream = dev_ctx.stream();
   int Bytes = 2 * sizeof(float) * params_.n * groups;
