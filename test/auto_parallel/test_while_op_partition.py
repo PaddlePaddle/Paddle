@@ -145,9 +145,9 @@ def get_program():
         auto.shard_tensor(label, _g_process_mesh, [None, None, None])
 
         # fill constant bsz like
-        tmp = paddle.fluid.layers.fill_constant_batch_size_like(
-            input=input, shape=[-1, 16, 0, 48], dtype='float32', value=0
-        )
+        fill_shape = [-1, 16, 0, 48]
+        fill_shape[0] = input.shape[0]
+        tmp = paddle.full(shape=fill_shape, fill_value=0, dtype='float32')
         auto.shard_tensor(tmp, _g_process_mesh, [None, 'x', None, None])
 
         # model

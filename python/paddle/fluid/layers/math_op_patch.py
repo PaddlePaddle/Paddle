@@ -117,15 +117,15 @@ def monkey_patch_variable():
             else:
                 out_shape.append(d)
         assert batch_dim != -1
+        fill_shape = list(out_shape)
+        fill_shape[batch_dim] = ref_var.shape[batch_dim]
         block.append_op(
-            type='fill_constant_batch_size_like',
+            type='fill_constant',
             outputs={'Out': [var]},
-            inputs={'Input': [ref_var]},
             attrs={
                 'shape': out_shape,
                 'value': value,
-                'input_dim_idx': batch_dim,
-                'output_dim_idx': batch_dim,
+                'dtype': ref_var.dtype,
             },
             stop_gradient=True,
         )
