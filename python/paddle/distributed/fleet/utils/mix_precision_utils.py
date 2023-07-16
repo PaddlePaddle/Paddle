@@ -21,6 +21,9 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops, nn
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+    obtain_optimizer_parameters_list,
+)
 from paddle.fluid import framework
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.dygraph import to_variable
@@ -93,20 +96,7 @@ class MixPrecisionLayer(nn.Layer):
 class MixPrecisionOptimizer:
     def __init__(self, optimizer):
         self._inner_opt = optimizer
-        self._parameter_list = self._obtain_optimizer_parameters_list()
-
-    def _obtain_optimizer_parameters_list(self):
-        if getattr(self._inner_opt, '_param_groups', None) and isinstance(
-            self._inner_opt._param_groups[0], dict
-        ):
-            parameters_list = []
-            for group in self._inner_opt._param_groups:
-                for param in group['params']:
-                    parameters_list.append(param)
-        else:
-            parameters_list = list(self._inner_opt._parameter_list)
-
-        return parameters_list
+        self._parameter_list = obtain_optimizer_parameters_list(optimizer)
 
     @imperative_base.no_grad
     @framework.dygraph_only

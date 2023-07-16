@@ -298,12 +298,11 @@ class PipelineParallel(MetaParallelBase):
 
         act = HOOK_ACTION.ALL_REDUCE if dp else HOOK_ACTION.REDUCE
 
-        fused_parameter_group = {}
-
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
 
+            fused_parameter_group = {}
             parameter_list = [
                 p for p in model.parameters() if not p.stop_gradient
             ]
@@ -715,10 +714,7 @@ class PipelineParallel(MetaParallelBase):
             for data in micro_batch_data:
                 self._check_micro_batch_data_valid(data)
         elif micro_batch_data is not None:
-            micro_batch_size = micro_batch_data.shape[0]
-            assert (
-                micro_batch_size == self.micro_batch_size
-            ), f"expected micro_batch_size {self.micro_batch_size} but get {micro_batch_size}"
+            assert isinstance(micro_batch_data, paddle.Tensor)
 
     def _broadcast_final_loss(self):
         # Since the last backward run in interleave will set the virtual rank to 0,

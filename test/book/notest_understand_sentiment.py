@@ -20,6 +20,10 @@ import unittest
 
 import numpy as np
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
 
@@ -30,14 +34,14 @@ def convolution_net(
     emb = fluid.layers.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
-    conv_3 = fluid.nets.sequence_conv_pool(
+    conv_3 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=3,
         act="tanh",
         pool_type="sqrt",
     )
-    conv_4 = fluid.nets.sequence_conv_pool(
+    conv_4 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=4,
@@ -80,7 +84,7 @@ def train(
     else:
         raise NotImplementedError()
 
-    adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
+    adagrad = paddle.optimizer.Adagrad(learning_rate=0.002)
     adagrad.minimize(cost)
 
     train_data = paddle.batch(

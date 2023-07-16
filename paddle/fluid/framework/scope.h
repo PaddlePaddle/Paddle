@@ -89,6 +89,8 @@ class Scope {
 
   const Scope* parent() const { return parent_; }
 
+  const Scope* root() const;
+
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 

@@ -112,6 +112,96 @@ TEST(ApplyCastLayerNormPass, basic) {
           cast_num_in_graph));
 }
 
+TEST(ApplyCastCacheKVInitializationPass, basic) {
+  paddle::framework::ProgramDesc program;
+  auto* block = program.MutableBlock(0);
+  auto* shape_in =
+      Data(block, "shape_in", {64, 128}, false, proto::VarType::INT64);
+  auto* shape0_out =
+      Data(block, "shape0_out", {2}, false, proto::VarType::INT32);
+  auto* shape1_out =
+      Data(block, "shape1_out", {2}, false, proto::VarType::INT32);
+  auto* slice0_out =
+      Data(block, "slice0_out", {1}, false, proto::VarType::INT32);
+  auto* slice1_out =
+      Data(block, "slice1_out", {1}, false, proto::VarType::INT32);
+  auto* elementwise_add_in0 =
+      Data(block, "elementwise_add_in0", {1}, false, proto::VarType::INT64);
+  auto* elementwise_add_out =
+      Data(block, "elementwise_add_out", {1}, false, proto::VarType::INT64);
+  auto* scale_out = Data(block, "scale_out", {1}, false, proto::VarType::INT64);
+
+  OpDesc* shape0 = block->AppendOp();
+  shape0->SetType("shape");
+  shape0->SetInput("X", {shape_in->Name()});
+  shape0->SetOutput("Out", {shape0_out->Name()});
+
+  OpDesc* shape1 = block->AppendOp();
+  shape1->SetType("shape");
+  shape1->SetInput("X", {shape_in->Name()});
+  shape1->SetOutput("Out", {shape1_out->Name()});
+
+  OpDesc* slice0 = block->AppendOp();
+  slice0->SetType("slice");
+  slice0->SetInput("X", {shape0_out->Name()});
+  slice0->SetOutput("Out", {slice0_out->Name()});
+
+  OpDesc* slice1 = block->AppendOp();
+  slice1->SetType("slice");
+  slice1->SetInput("X", {shape1_out->Name()});
+  slice1->SetOutput("Out", {slice1_out->Name()});
+
+  auto cast0_out = AddCast(block,
+                           slice1_out,
+                           static_cast<int>(proto::VarType::INT32),
+                           static_cast<int>(proto::VarType::INT64));
+
+  OpDesc* elementwise_add = block->AppendOp();
+  elementwise_add->SetType("elementwise_add");
+  elementwise_add->SetInput("X", {elementwise_add_in0->Name()});
+  elementwise_add->SetInput("Y", {cast0_out->Name()});
+  elementwise_add->SetOutput("Out", {elementwise_add_out->Name()});
+
+  OpDesc* scale = block->AppendOp();
+  scale->SetType("scale");
+  scale->SetInput("X", {elementwise_add_out->Name()});
+  scale->SetOutput("Out", {scale_out->Name()});
+  scale->SetAttr("scale", 1.0f);
+  scale->SetAttr("bias", 64.0f);
+
+  auto* cast1_out = AddCast(block,
+                            scale_out,
+                            static_cast<int>(proto::VarType::INT64),
+                            static_cast<int>(proto::VarType::INT32));
+
+  OpDesc* fill_constant = block->AppendOp();
+  fill_constant->SetType("fill_constant");
+  fill_constant->SetInput("X", {slice0_out->Name()});
+  fill_constant->SetInput("Y", {cast1_out->Name()});
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
+  auto scope = new Scope();
+  graph->Set("__param_scope__", scope);
+  auto pass = PassRegistry::Instance().Get("xpu_delete_cast_op_pass");
+  pass->Apply(graph.get());
+  int shape_num_in_graph = GetOpNum(graph->GetSubGraph(0), "shape");
+  PADDLE_ENFORCE_EQ(
+      GetOpNum(graph->GetSubGraph(0), "shape"),
+      1,
+      platform::errors::PreconditionNotMet("graph should have 1 shape after "
+                                           "xpu_delete_cast_op_pass, "
+                                           "but actually has %d.",
+                                           shape_num_in_graph));
+  int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
+  PADDLE_ENFORCE_EQ(
+      GetOpNum(graph->GetSubGraph(0), "cast"),
+      1,
+      platform::errors::PreconditionNotMet("graph should have 1 cast after "
+                                           "xpu_delete_cast_op_pass, "
+                                           "but actually has %d.",
+                                           cast_num_in_graph));
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

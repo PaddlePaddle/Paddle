@@ -553,6 +553,52 @@ class Optimizer:
                     stop_gradient=True,
                 )
 
+    @framework.dygraph_only
+    def set_lr_scheduler(self, scheduler):
+        """
+        :api_attr: imperative
+
+        Set the LRScheduler of the learning rate manually in the optimizer. If the optimizer already used LRScheduler previously,
+        this API will set it be the new one.
+
+        Args:
+            scheduler (LRScheduler): the LRScheduler of learning rate
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                linear = paddle.nn.Linear(10, 10)
+
+                adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+
+                # set learning rate manually by class LRScheduler
+                scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2,4,6], gamma=0.8)
+                adam.set_lr_scheduler(scheduler)
+                lr = adam.get_lr()
+                print("current lr is {}".format(lr))
+                #    current lr is 0.5
+
+                # set learning rate manually by another LRScheduler
+                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.1, step_size=5, gamma=0.6)
+                adam.set_lr_scheduler(scheduler)
+                lr = adam.get_lr()
+                print("current lr is {}".format(lr))
+                #    current lr is 0.1
+
+        """
+        from paddle.optimizer.lr import LRScheduler
+
+        if not isinstance(scheduler, LRScheduler):
+            raise TypeError(
+                "The type of 'scheduler' in optimizer.set_lr_schduler must be LRScheduler, but received %s."
+                % (type(scheduler))
+            )
+        self._learning_rate = scheduler
+
     def get_lr(self):
         """
         Get current learning rate of optimizer.
@@ -654,8 +700,7 @@ class Optimizer:
         else:
             assert isinstance(self.helper, LayerHelper)
 
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
+            var_name = self._gen_master_weight_var_name(param)
             var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
@@ -675,6 +720,10 @@ class Optimizer:
             )
             self._master_weights[param.name] = var
         return var
+
+    def _gen_master_weight_var_name(self, param):
+        var_name = param.name + "_fp32_master"
+        return unique_name.generate(var_name)
 
     def _create_master_grad(self, grad):
         assert self._is_dtype_fp16_or_bf16(grad.dtype)

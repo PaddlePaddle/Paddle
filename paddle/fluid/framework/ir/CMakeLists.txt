@@ -100,6 +100,7 @@ pass_library(trt_delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_op_device_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
+pass_library(delete_assign_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
 pass_library(delete_concat_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
@@ -184,7 +185,6 @@ if(WITH_MKLDNN)
   pass_library(elementwise_act_onednn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
   pass_library(quant_transpose2_dequant_onednn_fuse_pass inference DIR mkldnn)
   pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
@@ -237,8 +237,12 @@ if(WITH_XPU)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(redundant_onnx_ops_elimination_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(redundant_squeeze_unsqueeze_elimination_pass inference DIR xpu
                DEPS ${XPU_PASS_DEPS})
+  pass_library(conv2d_transpose_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
@@ -263,11 +267,14 @@ if(WITH_XPU)
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(add_layernorm_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(xpu_delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fold_two_squeeze2_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(reduce_ops_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
@@ -423,6 +430,14 @@ cc_test(
   test_delete_op_device_pass
   SRCS delete_op_device_pass_test.cc
   DEPS delete_op_device_pass)
+cc_test(
+  test_delete_assign_op_pass_cc
+  SRCS delete_assign_op_pass_test.cc
+  DEPS delete_assign_op_pass)
+cc_test(
+  test_identity_op_clean_pass_cc
+  SRCS identity_op_clean_pass_test.cc
+  DEPS identity_op_clean_pass)
 cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
