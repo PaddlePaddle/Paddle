@@ -48,7 +48,6 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
-#define ENABLE_BF16
 namespace phi {
 namespace fusion {
 
