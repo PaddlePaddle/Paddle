@@ -979,9 +979,13 @@ class TestModelFunction(unittest.TestCase):
                 optimizer=optim, loss=CrossEntropyLoss(reduction="sum")
             )
             if initial == "fit":
+                print(
+                    "DEBUG test_dygraph_export_deploy_model_about_inputs fit begin",
+                    time.time() - start,
+                )
                 model.fit(mnist_data, batch_size=64, verbose=0)
                 print(
-                    "DEBUG test_dygraph_export_deploy_model_about_inputs fit",
+                    "DEBUG test_dygraph_export_deploy_model_about_inputs fit end",
                     time.time() - start,
                 )
                 sys.stdout.flush()
