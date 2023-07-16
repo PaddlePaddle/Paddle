@@ -3,8 +3,8 @@
 |领域 | 将 xdoctest 引入到飞桨框架工作流中 |
 |---|--------------------------------|
 |提交作者 | megemini (柳顺) |
-|提交时间 | 2023-07-10 |
-|版本号 | V1.0 |
+|提交时间 | 2023-07-16 |
+|版本号 | V1.1 |
 |依赖飞桨版本 | develop 分支 |
 |文件名 | sampcd_processor_readme.md |
 
@@ -305,7 +305,7 @@ def something():
 
     ```
     directive             ::=  "#" "doctest:" directive_option
-    directive_option      ::=  on_or_off directive_option_name env_option?
+    directive_option      ::=  on_or_off directive_option_name [env_option]
     on_or_off             ::=  "+" | "-"
     directive_option_name ::=  "SKIP" | "REQUIRES" | ...
     env_option            ::=  "(" env_entity ("," env_entity)* ")"
@@ -337,6 +337,19 @@ def something():
     - Paddle 与 `xdoctest` 基本一致，指令前缀由 `xdoctest` 改为 `doctest`
 
     也就是说，尽量兼容 python 原生指令样式，并做扩展。
+
+>
+> **参考**
+> `doctest` 的指令定义[如下](https://docs.python.org/3/library/doctest.html#directives):
+> ```
+> directive             ::=  "#" "doctest:" directive_options
+> directive_options     ::=  directive_option ("," directive_option)*
+> directive_option      ::=  on_or_off directive_option_name
+> on_or_off             ::=  "+" | "-"
+> directive_option_name ::=  "DONT_ACCEPT_BLANKLINE" | "NORMALIZE_WHITESPACE" | ...
+> ```
+>
+
 
 - 建议使用 python 的控制台编写并复制代码。
 
@@ -439,3 +452,8 @@ def something():
 ## Paddle docs 需要注意
 
 目前 Paddle docs 对于 `>>> ` 代码的处理是，strip 掉此提示符，然后交给原有代码检查工具进行检测。这种方法在大部分情况下没什么问题，但是，如果代码中有 `requires` 项，则可能检查失败。所以，后续需要修改 Paddle docs 的检查逻辑，建议对于 `>>> ` 直接跳过，与当前 Paddle 的 `sampcd_processor.py` 一致。最后收尾的时候，移除掉 Paddle docs 的代码检查。
+
+# 参考资料
+
+- doctest — Test interactive Python examples, https://docs.python.org/3/library/doctest.html#module-doctest
+- Xdoctest - Execute Doctests, https://xdoctest.readthedocs.io/en/latest/index.html
