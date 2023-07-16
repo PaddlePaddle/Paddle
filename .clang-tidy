@@ -201,6 +201,7 @@ modernize-use-override,
 -performance-trivially-destructible,
 -performance-type-promotion-in-math-fn,
 -performance-unnecessary-copy-initialization,
+cppcoreguidelines-pro-type-cstyle-cast,
 readability-container-size-empty,
 '
 HeaderFilterRegex: '^(paddle/(?!cinn)).*$'
