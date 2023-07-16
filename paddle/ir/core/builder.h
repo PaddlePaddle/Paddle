@@ -104,9 +104,13 @@ class Builder {
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>
   OpTy Build(Args &&...args) {
+    VLOG(0) << "Builder.Build:begin";
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
+    VLOG(0) << "Builder.Build:argument";
     OpTy::Build(*this, argument, std::forward<Args>(args)...);
+    VLOG(0) << "Builder.Build:Build";
     Operation *op = Build(std::move(argument));
+    VLOG(0) << "Builder.Build:op";
     return op->dyn_cast<OpTy>();
   }
 

@@ -52,32 +52,34 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
       var_scope_(scope),
       scope_(scope),
       ir_program_(std::move(ir_prog)) {
-  VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+  VLOG(0) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
   //    &&interpreter::BlockCanBeStaticBuilt(block);
   static_build_ = true;
-
+  VLOG(0) << "New ir interpretercore 1";
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
-
+  VLOG(0) << "New ir interpretercore 2";
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
+  VLOG(0) << "New ir interpretercore 3";
   if (execution_config_.create_local_scope) {
     auto local_scope = &scope_->NewScope();
     local_scope_ = local_scope;
     VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
             << "; local scope: " << local_scope_;
   }
+  VLOG(0) << "New ir interpretercore 4";
   // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
-
+  VLOG(0) << "New ir interpretercore 5";
   execution_config_.AnalyzeThreadPoolConfig(place,
                                             ir_program_->block()->size());
   execution_config_.Log(/*log_level=*/8);
-
+  VLOG(0) << "New ir interpretercore 6";
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
         vec_instruction_[lhs].GetSchedulingPriority();
@@ -88,8 +90,9 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
-
+  VLOG(0) << "New ir interpretercore 7";
   PrepareForCUDAGraphCapture();
+  VLOG(0) << "New ir interpretercore 8";
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -238,30 +241,39 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
 FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                                     bool need_fetch) {
+  VLOG(0) << "New ir beta run 1";
   SetDeviceId(place_);
+  VLOG(0) << "New ir beta run 2";
   if (!is_build_) {
+    VLOG(0) << "New ir beta run 3";
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    VLOG(0) << "New ir beta run 4";
     ::ir::BuildScope(*ir_program_->block(),
                      InnerScope(),
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+    VLOG(0) << "New ir beta run 5";
     BuildInstruction();
+    VLOG(0) << "New ir beta run 6";
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
+      VLOG(0) << "New ir beta run 7";
     }
   } else {
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
+      VLOG(0) << "New ir beta run 8";
     }
   }
+  VLOG(0) << "New ir beta run 9";
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-
+  VLOG(0) << "New ir beta run 10";
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
