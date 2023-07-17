@@ -175,6 +175,10 @@ class Normal(distribution.Distribution):
         if -1 in batch_shape:
             output_shape = shape + batch_shape
             fill_shape = list(batch_shape + shape)
+            print("fill_shape")
+            print(fill_shape)
+            print("(self.loc + self.scale).shape")
+            print((self.loc + self.scale).shape)
             fill_shape[0] = (self.loc + self.scale).shape[0]
             zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)

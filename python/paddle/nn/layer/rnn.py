@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import math
 from collections.abc import Sequence
 from functools import partial, reduce
@@ -622,15 +623,16 @@ class RNNCellBase(Layer):
             states_dtypes = paddle.utils.map_structure(
                 lambda shape: dtype, states_shapes
             )
-        fill_shape = list(shape.shape)
-        fill_shape[0] = batch_ref.shape[batch_dim_idx]
+        fill_shapes = copy.deepcopy(states_shapes)
+        for s in fill_shapes:
+            s.shape[0] = batch_ref.shape[batch_dim_idx]
         init_states = paddle.utils.map_structure(
             lambda shape, dtype: paddle.full(
-                shape=fill_shape,
+                shape=shape,
                 fill_value=init_value,
                 dtype=dtype,
             ),
-            states_shapes,
+            fill_shapes,
             states_dtypes,
         )
         return init_states
@@ -1555,8 +1557,13 @@ class RNNBase(LayerList):
                 -1,
                 self.hidden_size,
             )
+            print("============================")
+            print(state_shape)
+            print(inputs.shape)
             fill_shape = list(state_shape)
             fill_shape[1] = inputs.shape[batch_index]
+            print(batch_index)
+            print("----------------------------")
             initial_states = tuple(
                 [
                     paddle.full(fill_shape, 0, dtype)
