@@ -497,12 +497,8 @@ def pow_(x, y, name=None):
     """
     if isinstance(y, (int, float)):
         return _C_ops.pow_(x, y)
-    elif isinstance(y, (paddle.Tensor, Variable)):
-        return _C_ops.elementwise_pow_(x, y)
     else:
-        raise TypeError(
-            'y must be scalar or tensor type, but received: %s ' % (type(y))
-        )
+        raise TypeError('y must be scalar type, but received: %s ' % (type(y)))
 
 
 OP_NAMEMAPPING = {
@@ -2061,7 +2057,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 @inplace_apis_in_dygraph_only
 def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
-    Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
+    Inplace version of ``addmm`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_label_addmm`.
     """
     input_shape = input.shape
