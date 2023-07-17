@@ -53,11 +53,6 @@ void Conv2dTransposeKernel(const Context& ctx,
                            DenseTensor* out) {
   using XPUT = typename XPUTypeTrait<T>::Type;
 
-  // The filter will be reshaped in the calculations,
-  // so here use an assignment operation,
-  // that avoids modifying the variable in the Scope.
-  DenseTensor filter_ = filter;
-
   ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_EQ(
@@ -67,7 +62,7 @@ void Conv2dTransposeKernel(const Context& ctx,
           ("XPU do support data_format is NCHW in conv_transpose op.")));
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
-  DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
 
   std::vector<int> paddings_ = paddings;
@@ -86,7 +81,7 @@ void Conv2dTransposeKernel(const Context& ctx,
     int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
         ctx.x_context(),
         x.data<float>(),
-        filter_.data<float>(),
+        filter.data<float>(),
         out->data<float>(),
         batch_size,
         img_yc,
@@ -107,7 +102,7 @@ void Conv2dTransposeKernel(const Context& ctx,
     int r = xpu::conv2d_transpose_v2<float, float, float, float>(
         ctx.x_context(),
         x.data<float>(),
-        filter_.data<float>(),
+        filter.data<float>(),
         out->data<float>(),
         batch_size,
         img_yc,
@@ -132,7 +127,7 @@ void Conv2dTransposeKernel(const Context& ctx,
       int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
           ctx.x_context(),
           x.data<float>(),
-          filter_.data<float>(),
+          filter.data<float>(),
           out->data<float>(),
           batch_size,
           img_yc,
@@ -157,7 +152,7 @@ void Conv2dTransposeKernel(const Context& ctx,
       int r = xpu::conv2d_transpose<float, float, float, int_with_ll_t>(
           ctx.x_context(),
           x.data<float>(),
-          filter_.data<float>(),
+          filter.data<float>(),
           out->data<float>(),
           batch_size,
           img_yc,
