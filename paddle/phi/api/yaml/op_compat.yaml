@@ -2507,6 +2507,10 @@
 
 - op : slice
   backward : slice_grad
+  inputs :
+    input : Input
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
