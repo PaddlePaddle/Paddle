@@ -904,7 +904,7 @@
 
 - op : transpose
   args : (Tensor x, int[] perm)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
   kernel :
