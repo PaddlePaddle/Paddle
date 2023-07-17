@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <stdio.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -20,6 +21,63 @@
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 namespace phi {
 namespace fusion {
+template <typename T, typename MPType, int VecSize = 2>
+__global__ void VectorizedFusedRopeWithSinCosGradKernel(
+    phi::Array<const T*, 3> ins_data,
+    phi::Array<const T*, 2> sin_cos_data,
+    int batch_size,
+    int seq_len,
+    int num_heads,
+    int head_dim,
+    phi::Array<T*, 3> outs_data,
+    int num_inputs) {
+  int index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int stride = gridDim.x * blockDim.x * VecSize;
+  int size = batch_size * seq_len * num_heads * head_dim;
+  MPType sin_value[VecSize];
+  MPType cos_value[VecSize];
+  MPType result[VecSize];
+  T store[VecSize];
+  using VecType = phi::AlignedVector<T, VecSize>;
+  constexpr int kVectorsPerThread = VecSize / 2;
+
+  printf("enter VectorizedFusedRopeWithSinCosGradKernel...\n");
+
+  for (; index < size; index += stride) {
+#pragma unroll
+    for (int nx = 0; nx < VecSize; ++nx) {
+      int index_wc = (index + nx) % (seq_len * head_dim);
+      const T* sin_input = sin_cos_data[0] + index_wc;
+      const T* cos_input = sin_cos_data[1] + index_wc;
+
+      sin_value[nx] = static_cast<MPType>(sin_input[0]);
+      cos_value[nx] = static_cast<MPType>(cos_input[0]);
+    }
+
+#pragma unroll
+    for (int iter = 0; iter < 3; iter++) {
+      if (iter > num_inputs) break;
+      const T* input = ins_data[iter] + index;
+      VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
+
+#pragma unroll
+      for (int nx = 0; nx < kVectorsPerThread; ++nx) {
+        int pr_index = nx * 2;
+        int ls_index = pr_index + 1;
+
+        MPType p0 = static_cast<MPType>(input[pr_index]);
+        MPType p1 = static_cast<MPType>(input[ls_index]);
+        result[pr_index] = cos_value[pr_index] * p0 + sin_value[ls_index] * p1;
+        result[ls_index] = cos_value[ls_index] * p1 - sin_value[pr_index] * p0;
+
+        store[pr_index] = static_cast<T>(result[pr_index]);
+        store[ls_index] = static_cast<T>(result[ls_index]);
+      }
+      out[0] = *(reinterpret_cast<VecType*>(store));
+    }
+  }
+}
+
 template <typename T, typename MPType, int VecSize = 2>
 __global__ void VectorizedFusedRopeGradKernel(phi::Array<const T*, 3> ins_data,
                                               int batch_size,
@@ -80,6 +138,8 @@ __global__ void VectorizedFusedRopeGradKernel(phi::Array<const T*, 3> ins_data,
 
 template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
+                         const paddle::optional<DenseTensor>& sin,
+                         const paddle::optional<DenseTensor>& cos,
                          const DenseTensor& dout_q,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
@@ -111,6 +171,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   phi::Array<T*, 3> outs_data;
   phi::Array<const T*, 3> ins_data;
+  phi::Array<const T*, 2> sin_cos_data;
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
@@ -135,15 +196,32 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
-  VectorizedFusedRopeGradKernel<T, MPType, vec_size>
-      <<<grid, block, 0, stream>>>(ins_data,
-                                   batch_size,
-                                   seq_len,
-                                   num_heads,
-                                   head_dim,
-                                   outs_data,
-                                   num_inputs,
-                                   div_c);
+  if (sin.get_ptr() && cos.get_ptr()) {
+    sin_cos_data[0] = sin->data<T>();
+    sin_cos_data[1] = cos->data<T>();
+
+    printf("enter VectorizedFusedRopeWithSinCosGradKernel...\n");
+    VectorizedFusedRopeWithSinCosGradKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs);
+  } else {
+    printf("enter VectorizedFusedRopeGradKernel...\n");
+    VectorizedFusedRopeGradKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  }
 }
 
 }  // namespace fusion

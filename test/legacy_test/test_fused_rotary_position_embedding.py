@@ -82,6 +82,52 @@ def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
     return r_query, r_key, r_value
 
 
+def paddle_fused_rotary_position_embedding_sin_cos(
+    init_q, init_k, init_v, init_sin, init_cos
+):
+    q, k, v = deal_qkv(init_q, init_k, init_v)
+
+    # pos_seq = paddle.arange(0, q.shape[2], 1, dtype="float32")
+    # indices = paddle.arange(0, q.shape[3], 2, dtype="float32")
+
+    # indices = 1 / 10000 ** (indices / q.shape[3])
+    # sinusoid_inp = pos_seq.unsqueeze(1) * indices.unsqueeze(0)
+
+    # sin_sin = np.empty((q.shape[2] * q.shape[3]), dtype=np.float32)
+    # cos_cos = np.empty((q.shape[2] * q.shape[3]), dtype=np.float32)
+    # numpy_array = sinusoid_inp.numpy()
+    # iter_array = np.nditer(numpy_array)
+
+    # i = 0
+
+    # for value in iter_array:
+    # sin_sin[i * 2] = -1 * np.sin(value)
+    # cos_cos[i * 2 + 0] = np.cos(value)
+    # sin_sin[i * 2 + 1] = np.sin(value)
+    # cos_cos[i * 2 + 1] = np.cos(value)
+    # i += 1
+
+    # sin_tensor = paddle.reshape(
+    #     paddle.to_tensor(sin_sin, place=paddle.CPUPlace()),
+    #     [1, 1, q.shape[2], q.shape[3]],
+    # )
+    # cos_tensor = paddle.reshape(
+    #     paddle.to_tensor(cos_cos, place=paddle.CPUPlace()),
+    #     [1, 1, q.shape[2], q.shape[3]],
+    # )
+
+    sin_tensor = init_sin
+    cos_tensor = init_cos
+
+    query = mult_qkv(q, cos_tensor, sin_tensor)
+    value = mult_qkv(v, cos_tensor, sin_tensor)
+    key = mult_qkv(k, cos_tensor, sin_tensor)
+
+    r_query, r_key, r_value = deal_qkv(query, key, value)
+
+    return r_query, r_key, r_value
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
     "core is not compiled with CUDA ",
@@ -92,15 +138,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.dtype = 'float32'
         self.training = True
         self.seed = 1203
-        self.shape_sc = [16, 16]
 
     def get_paddle_tensor(self):
         tmp = paddle.randn(self.shape, self.dtype)
-        tmp.stop_gradient = False
-        return tmp
-
-    def get_paddle_tensor_sin_cos(self):
-        tmp = paddle.randn(self.shape_sc, self.dtype)
         tmp.stop_gradient = False
         return tmp
 
@@ -138,8 +178,40 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tensor_q = self.get_paddle_tensor()
         tensor_k = self.get_paddle_tensor()
         tensor_v = self.get_paddle_tensor()
-        tensor_sin = self.get_paddle_tensor_sin_cos()
-        tensor_cos = self.get_paddle_tensor_sin_cos()
+
+        pos_seq = paddle.arange(0, tensor_q.shape[1], 1, dtype="float32")
+        indices = paddle.arange(0, tensor_q.shape[3], 2, dtype="float32")
+
+        indices = 1 / 10000 ** (indices / tensor_q.shape[3])
+        sinusoid_inp = pos_seq.unsqueeze(1) * indices.unsqueeze(0)
+
+        sin_sin = np.empty(
+            (tensor_q.shape[1] * tensor_q.shape[3]), dtype=np.float32
+        )
+        cos_cos = np.empty(
+            (tensor_q.shape[1] * tensor_q.shape[3]), dtype=np.float32
+        )
+        numpy_array = sinusoid_inp.numpy()
+        iter_array = np.nditer(numpy_array)
+
+        i = 0
+
+        for value in iter_array:
+            sin_sin[i * 2] = -1 * np.sin(value)
+            cos_cos[i * 2 + 0] = np.cos(value)
+            sin_sin[i * 2 + 1] = np.sin(value)
+            cos_cos[i * 2 + 1] = np.cos(value)
+            i += 1
+
+        tensor_sin = paddle.reshape(
+            paddle.to_tensor(sin_sin),
+            [tensor_q.shape[1], tensor_q.shape[3]],
+        )
+        tensor_cos = paddle.reshape(
+            paddle.to_tensor(cos_cos),
+            [tensor_q.shape[1], tensor_q.shape[3]],
+        )
+
         out_q, out_k, out_v = rope_function(
             tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
         )
@@ -157,8 +229,8 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         bw.append(tensor_q)
         bw.append(tensor_k)
         bw.append(tensor_v)
-        bw.append(tensor_sin)
-        bw.append(tensor_cos)
+        # bw.append(tensor_sin)
+        # bw.append(tensor_cos)
 
         return fw, bw
 
@@ -178,10 +250,11 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             )
 
     def test_fused_dropout_add_sin_cos(self):
+        print("enter test_fused_dropout_add_sin_cos............")
         p_fw, p_bw = self.get_forward_backward_sin_cos(
-            paddle_fused_rotary_position_embedding, seed=self.seed
+            paddle_fused_rotary_position_embedding_sin_cos, seed=self.seed
         )
-        f_fw, f_bw = self.get_forward_backward_sin_cos(
+        f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding, seed=self.seed
         )
         for i in range(len(p_fw)):
