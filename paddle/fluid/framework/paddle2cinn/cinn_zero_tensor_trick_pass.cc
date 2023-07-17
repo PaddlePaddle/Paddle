@@ -32,32 +32,6 @@ void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
                                                           "assign_value",
                                                           "gaussian_random",
                                                           "set_value"};
-  // NOTE: Hack squeeze2 0D-Tensor input
-  // If squeeze2 inputs 0D-Tensor and axes, The 0D-Tensor's shape will convert
-  // to 1D-Tensor, which could lead error. We hack squeeze2's axes attribute to
-  // resolve this. Change 0D-Tensor input to 1D-Tensor input and then make
-  // axes->axes[: -1]
-  for (const ir::Node* n : graph->Nodes()) {
-    if (n->IsOp() && n->Op()->Type() == "unsqueeze2") {
-      if (n->Op()->HasAttr("axes")) {
-        auto axes =
-            PADDLE_GET_CONST(std::vector<int32_t>, n->Op()->GetAttr("axes"));
-        for (const ir::Node* var : n->inputs) {
-          if (var->Var() &&
-              var->Var()->GetType() == proto::VarType::LOD_TENSOR) {
-            std::vector<int64_t> shape = var->Var()->GetShape();
-            if (shape.empty()) {
-              axes.pop_back();
-              n->Op()->SetAttr("axes", axes);
-              VLOG(4) << "unsqueeze2 axes dims is full, fix dim -> dim[:-1] to "
-                         "avoid 0D-Tensor input error";
-            }
-          }
-        }
-      }
-    }
-  }
-
   // CINN ops in this white list support 0D-Tensor, wait-list = {"remainder"}
   const std::unordered_set<std::string> white_op_list{"elementwise_add",
                                                       "elementwise_sub",
