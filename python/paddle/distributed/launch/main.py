@@ -299,9 +299,13 @@ def launch():
         import sys
         import time
 
-        from ..auto_tuner.recorder import History_recorder
+        from ..auto_tuner.recorder import HistoryRecorder
         from ..auto_tuner.tuner import AutoTuner
-        from ..auto_tuner.utils import gen_new_args, read_log
+        from ..auto_tuner.utils import (
+            gen_new_args,
+            read_memory_log,
+            read_metric_log,
+        )
         from . import controllers
 
         start_time = time.time()
@@ -341,10 +345,13 @@ def launch():
             client = etcd3.client(host=master_ip, port=port)
             client.delete("best_cfg")
 
+<<<<<<< HEAD
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
         cur_cfg = auto_tuner.search_once()
 
+=======
+>>>>>>> 80c6b1768c (add gbs search, add gpu memory to history csv, add memory detect)
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
         ctx.max_time_per_task = max_time_per_task
@@ -358,9 +365,10 @@ def launch():
 
         is_first_task = True
         # build history recorder
-        recorder = History_recorder()
+        recorder = HistoryRecorder()
 
         job_id = 0
+<<<<<<< HEAD
         if tuner_cfg.get("global_batch_size") == "auto":
             # search and set global batch size
             # adjust micron batch with fixed dp mp pp
@@ -374,12 +382,127 @@ def launch():
                     task_job_id, log_dir, cur_cfg
                 )
             )
-            c = controllers.init(ctx)
-            # set per task timeout
-            signal.signal(signal.SIGALRM, c.not_exit_signal_handler)
-            signal.alarm(max_time_per_task)
-            c.run()
-            # Process generated result
+=======
+        ctx.args.max_restart = -1
+        raw_ctx = copy.deepcopy(ctx)
+
+        # gbs search
+        if (
+            tuner_cfg.get('model_cfg', {}).get('global_batch_size', 'auto')
+            == "auto"
+        ):
+            # adjust micron batch size until out of memory to get best global batch size
+            gbs_tuner_cfg = copy.deepcopy(tuner_cfg)
+            gbs_tuner_cfg["search_algo"] = "gbs"
+            gbs_tuner = AutoTuner(gbs_tuner_cfg)
+
+            gbs_cur_cfg = gbs_tuner.search_once()
+            best_gbs = None
+            while gbs_cur_cfg:
+                ctx = copy.deepcopy(raw_ctx)
+                log_dir = "GBSSearch/GBS{}_DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
+                    gbs_cur_cfg["global_batch_size"],
+                    gbs_cur_cfg["dp_degree"],
+                    gbs_cur_cfg["mp_degree"],
+                    gbs_cur_cfg["pp_degree"],
+                    gbs_cur_cfg["sharding_degree"],
+                    gbs_cur_cfg["sharding_stage"],
+                    gbs_cur_cfg["micro_batch_size"],
+                    gbs_cur_cfg["use_recompute"],
+                    gbs_cur_cfg["recompute_granularity"],
+>>>>>>> 80c6b1768c (add gbs search, add gpu memory to history csv, add memory detect)
+                )
+                ctx.args.log_dir = log_dir
+
+                # every task has own job id
+                job_id += 1
+                task_job_id = "gbs_tuner_" + str(job_id)
+                ctx.args.job_id = task_job_id
+
+                # generate script args of task
+                gbs_new_args = gen_new_args(
+                    raw_args, gbs_cur_cfg, gbs_tuner_cfg
+                )
+                ctx.args.training_script_args = gbs_new_args
+
+                # launch task
+                ctx.logger.info(
+                    "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
+                        task_job_id, log_dir, gbs_cur_cfg
+                    )
+                )
+                c = controllers.init(ctx)
+                c.run()
+
+                # process generated result
+                # TODO diffentiate out of memory and no loss(maybe over time)
+                # TODO integragte memory and metric read
+                mem, err = read_memory_log(
+                    path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
+                )
+                if err:
+                    ctx.logger.warning(
+                        f"Read memory log failed for parameters: {log_dir}"
+                    )
+                    gbs_cur_cfg["max_mem_usage"] = None
+                else:
+                    gbs_cur_cfg["max_mem_usage"] = mem
+
+                metric, err = read_metric_log(
+                    path=ctx.args.log_dir,
+                    file="workerlog.0",
+                    target_metric=gbs_tuner_cfg["metric_cfg"]["name"],
+                )
+                if err:
+                    ctx.logger.warning(
+                        f"Read metric log failed for parameters: {log_dir}, there may be over time or out of memory."
+                    )
+                    # for pruner use
+                    gbs_cur_cfg['time'] = -1
+                    gbs_cur_cfg[gbs_tuner_cfg['metric_cfg']['name']] = None
+                    gbs_cur_cfg["max_mem_usage"] = "out of memory or over time"
+                    # end gbs search
+                    break
+                else:
+                    # for pruner use
+                    gbs_cur_cfg['time'] = metric
+                    gbs_cur_cfg[gbs_tuner_cfg['metric_cfg']['name']] = metric
+
+                # store and update args for next round
+                gbs_cur_cfg["job_id"] = job_id
+                best_gbs = gbs_cur_cfg["global_batch_size"]
+                recorder.add_cfg(**gbs_cur_cfg)
+                c.finalize(exit=False)
+                recorder.store_history("./tuner_gbs_history.csv")
+
+                # new cfgs for next round
+                gbs_new_cfg = gbs_tuner.search_once()
+                gbs_cur_cfg = copy.deepcopy(gbs_new_cfg)
+                gbs_tuner.add_cfg(gbs_cur_cfg)
+
+                # per task launch interval
+                time.sleep(3)
+            # prevent no valid global batch size found
+            if best_gbs is None:
+                raise ValueError(
+                    "No valid global batch size found, check memory or valid search time. cur_tuner_cfg{}".format(
+                        gbs_tuner_cfg
+                    )
+                )
+            # set best global batch size to tuner cfg
+            tuner_cfg["model_cfg"]["global_batch_size"] = best_gbs
+
+            recorder.store_history("./tuner_gbs_history.csv")
+            recorder.clean_history()
+
+            end_time = time.time()
+            ctx.logger.info(
+                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+            )
+        # build AutoTuner to get new config
+        auto_tuner = AutoTuner(tuner_cfg)
+        cur_cfg = auto_tuner.search_once()
+        auto_tuner.add_cfg(cur_cfg)
 
         while cur_cfg:
             ctx = copy.deepcopy(raw_ctx)
@@ -422,7 +545,7 @@ def launch():
             c.run()
 
             # process generated result
-            metric, err = read_log(
+            metric, err = read_metric_log(
                 path=ctx.args.log_dir,
                 file="workerlog.0",
                 target_metric=tuner_cfg["metric_cfg"]["name"],
@@ -436,7 +559,18 @@ def launch():
                 # for pruner use
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
+<<<<<<< HEAD
+=======
 
+            mem, err = read_memory_log(
+                path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
+            )
+            if err:
+                ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
+                break
+            else:
+                cur_cfg["max_mem_usage"] = mem
+>>>>>>> 80c6b1768c (add gbs search, add gpu memory to history csv, add memory detect)
             # record history
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)

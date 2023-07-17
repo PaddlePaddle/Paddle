@@ -19,7 +19,7 @@ from typing import Tuple
 import pandas as pd
 
 
-class History_recorder:
+class HistoryRecorder:
     # NOTE increase extenable ablitity
     def __init__(self) -> None:
         self.history = []
@@ -63,7 +63,9 @@ class History_recorder:
         cols = df.columns.tolist()
         cols.insert(0, cols.pop(cols.index('job_id')))
         df = df.reindex(columns=cols)
-        df = df.drop(columns=['time'])
+        # check if 'time' exists
+        if 'time' in df.columns:
+            df = df.drop(columns=['time'])
         # write to csv
         df.to_csv(self.store_path, index=False)
 
@@ -79,3 +81,7 @@ class History_recorder:
                 reader = csv.reader(f)
                 self.history = list(reader)
         return (self.history, err)
+
+    def clean_history(self) -> None:
+        """Clean history."""
+        self.history = []
