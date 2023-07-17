@@ -398,6 +398,17 @@ def rotate(
             0.0,
         ]
         matrix = paddle.to_tensor(matrix, place=img.place)
+
+        matrix[2] += (
+            matrix[0] * (-rotn_center[0] - post_trans[0])
+            + matrix[1] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[0]
+        )
+        matrix[5] += (
+            matrix[3] * (-rotn_center[0] - post_trans[0])
+            + matrix[4] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[1]
+        )
     else:
         angle = angle / 180 * math.pi
         matrix = paddle.concat(
@@ -410,22 +421,22 @@ def rotate(
                 paddle.zeros([1]),
             ]
         )
-    matrix = paddle.static.setitem(
-        matrix,
-        2,
-        matrix[2]
-        + matrix[0] * (-rotn_center[0] - post_trans[0])
-        + matrix[1] * (-rotn_center[1] - post_trans[1])
-        + rotn_center[0],
-    )
-    matrix = paddle.static.setitem(
-        matrix,
-        5,
-        matrix[5]
-        + matrix[3] * (-rotn_center[0] - post_trans[0])
-        + matrix[4] * (-rotn_center[1] - post_trans[1])
-        + rotn_center[1],
-    )
+        matrix = paddle.static.setitem(
+            matrix,
+            2,
+            matrix[2]
+            + matrix[0] * (-rotn_center[0] - post_trans[0])
+            + matrix[1] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[0],
+        )
+        matrix = paddle.static.setitem(
+            matrix,
+            5,
+            matrix[5]
+            + matrix[3] * (-rotn_center[0] - post_trans[0])
+            + matrix[4] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[1],
+        )
 
     matrix = matrix.reshape((1, 2, 3))
 
@@ -628,7 +639,12 @@ def erase(img, i, j, h, w, v, inplace=False):
     if not inplace:
         img = img.clone()
 
-    img = paddle.static.setitem(img, (..., slice(i, i + h), slice(j, j + w)), v)
+    if paddle.in_dynamic_mode():
+        img[..., i : i + h, j : j + w] = v
+    else:
+        img = paddle.static.setitem(
+            img, (..., slice(i, i + h), slice(j, j + w)), v
+        )
     return img
 
 
