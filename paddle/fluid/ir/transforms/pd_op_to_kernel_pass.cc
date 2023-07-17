@@ -104,7 +104,7 @@ phi::KernelKey GetKernelKey(
                   "Only support DenseTensorType in vector"));
             }
           }
-        } else if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+        } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
           kernel_data_type = TransToPhiDataType(
               type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
                   .dtype());
