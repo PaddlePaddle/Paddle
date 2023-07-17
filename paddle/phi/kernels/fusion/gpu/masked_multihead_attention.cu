@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/fusion/gpu/masked_multihead_attention.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -132,8 +132,13 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000
-                   phi::dtype::bfloat16,
-#endif
+#if CUDA_VERSION >= 11000
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+}
+#else
                    phi::dtype::float16) {
 }
+#endif
+
+#endif  // PADDLE_WITH_HIP

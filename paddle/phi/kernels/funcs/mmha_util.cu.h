@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#ifndef PADDLE_WITH_HIP
 
 #ifndef MMHA_UTIL_CU_H_
 #define MMHA_UTIL_CU_H_
@@ -1705,3 +1706,4 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
 }  // namespace fusion
 }  // namespace phi
 #endif
+#endif  // PADDLE_WITH_HIP
