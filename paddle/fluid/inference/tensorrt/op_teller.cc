@@ -1780,11 +1780,34 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (nbDims * 2 != pad_size) {
         return false;
       }
-      for (int i = 0; i < pad_size - 4; i++) {
-        if (paddings[i] != 0) {
+      // for (int i = 0; i < pad_size - 4; i++) {
+      //   if (paddings[i] != 0) {
+      //     return false;
+      //   }
+      // }
+
+
+      if(pad_size == 8){
+        for (int i = 0; i < 2; i++) {
+          if (paddings[i] != 0) {
+            return false;
+          }
+        }
+        bool flag_nchw = (paddings[2] == 0) && (paddings[3] == 0);
+        bool flag_nhwc = ((paddings[2] != 0) || (paddings[3] != 0)) && ((paddings[6] == 0) && (paddings[7] == 0));
+        if(!(flag_nchw || flag_nhwc)){
           return false;
         }
+      }else{
+        for (int i = 0; i < pad_size - 4; i++) {
+          if (paddings[i] != 0) {
+            return false;
+          }
+        }
       }
+
+
+
     }
 
     if (op_type == "pad3d") {
