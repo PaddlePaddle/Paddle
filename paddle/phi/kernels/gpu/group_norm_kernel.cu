@@ -132,6 +132,7 @@ inline __device__ void UpdateSum<phi::dtype::float16, 2>(
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
     const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
@@ -140,6 +141,7 @@ inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
   *sum += f2.x + f2.y;
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
+#endif
 
 template <typename T, int THREADS_PER_BLOCK>
 __global__ void groupNormNHWCSumSingerChannelKernel(
@@ -396,6 +398,7 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
   }
 }
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     int32_t hwBegin,
@@ -440,6 +443,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
         __float22bfloat162_rn(f2);
   }
 }
+#endif
 
 template <typename T, int THREADS_PER_CHANNEL>
 __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
@@ -962,8 +966,21 @@ class GroupNormCustomKernel<Context, phi::dtype::bfloat16> {
     using T = phi::dtype::bfloat16;
     const auto x_dims = x.dims();
     if (data_layout_str == "NHWC") {
+#ifdef PADDLE_CUDA_BF16
       GroupNormNHWCKernel<Context, T>(
           dev_ctx, x, scale, bias, epsilon, groups, data_layout_str, y);
+#else
+      GroupNormGeneralCaseKernel<Context, T>(dev_ctx,
+                                             x,
+                                             scale,
+                                             bias,
+                                             epsilon,
+                                             groups,
+                                             data_layout_str,
+                                             y,
+                                             mean,
+                                             var);
+#endif
     } else {
       GroupNormGeneralCaseKernel<Context, T>(dev_ctx,
                                              x,
