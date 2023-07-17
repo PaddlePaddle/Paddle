@@ -110,7 +110,7 @@ class Interceptor {
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};
   std::vector<std::shared_ptr<InterpreterCore>> cores_{};
-  std::unique_ptr<framework::GarbageCollector> gc_{nullptr};
+  std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
   Carrier* carrier_;
   TaskLoop* loop_;
