@@ -26,5 +26,11 @@ void FeedWithPlaceKernel(const Context& ctx,
                          DenseTensor* out) {}
 
 }  // namespace phi
-PD_REGISTER_KERNEL(
-    feed_with_place, CPU, ALL_LAYOUT, phi::FeedWithPlaceKernel, float) {}
+PD_REGISTER_KERNEL(feed_with_place,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FeedWithPlaceKernel,
+                   float,
+                   int32_t,
+                   int64_t,
+                   double) {}
