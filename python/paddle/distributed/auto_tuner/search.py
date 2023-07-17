@@ -58,8 +58,8 @@ class GBSSearch(SearchAlgo):
     def __init__(self, tuner_cfg):
         super().__init__(tuner_cfg)
         self.idx = 0
-        self.all_tasks = GBS_search_all(tuner_cfg)
-       
+        self.all_tasks = gbs_search_all(tuner_cfg)
+
     def search_once(self, history_cfgs):
         new_cfg = None
         stop = False

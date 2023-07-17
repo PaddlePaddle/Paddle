@@ -295,7 +295,6 @@ def launch():
     elif ctx.is_auto_tuner_mode():
         import copy
         import json
-        import signal
         import sys
         import time
 
@@ -345,13 +344,6 @@ def launch():
             client = etcd3.client(host=master_ip, port=port)
             client.delete("best_cfg")
 
-<<<<<<< HEAD
-        # build AutoTuner to get new config
-        auto_tuner = AutoTuner(tuner_cfg)
-        cur_cfg = auto_tuner.search_once()
-
-=======
->>>>>>> 80c6b1768c (add gbs search, add gpu memory to history csv, add memory detect)
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
         ctx.max_time_per_task = max_time_per_task
@@ -368,21 +360,6 @@ def launch():
         recorder = HistoryRecorder()
 
         job_id = 0
-<<<<<<< HEAD
-        if tuner_cfg.get("global_batch_size") == "auto":
-            # search and set global batch size
-            # adjust micron batch with fixed dp mp pp
-            GBS_cur_cfg, GBS_cur_cfg  =  micron_search(cur_cfg, tuner_cfg)
-            # generate script args of task
-            new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
-            ctx.args.training_script_args = new_args
-            # launch task
-            ctx.logger.info(
-                "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
-                    task_job_id, log_dir, cur_cfg
-                )
-            )
-=======
         ctx.args.max_restart = -1
         raw_ctx = copy.deepcopy(ctx)
 
@@ -410,7 +387,6 @@ def launch():
                     gbs_cur_cfg["micro_batch_size"],
                     gbs_cur_cfg["use_recompute"],
                     gbs_cur_cfg["recompute_granularity"],
->>>>>>> 80c6b1768c (add gbs search, add gpu memory to history csv, add memory detect)
                 )
                 ctx.args.log_dir = log_dir
 
@@ -455,7 +431,7 @@ def launch():
                 )
                 if err:
                     ctx.logger.warning(
-                        f"Read metric log failed for parameters: {log_dir}, there may be over time or out of memory."
+                        f"Read metric log failed for parameters: {log_dir}, it may be over time or out of memory."
                     )
                     # for pruner use
                     gbs_cur_cfg['time'] = -1
@@ -539,9 +515,6 @@ def launch():
                 )
             )
             c = controllers.init(ctx)
-            # set per task timeout
-            signal.signal(signal.SIGALRM, c.not_exit_signal_handler)
-            signal.alarm(max_time_per_task)
             c.run()
 
             # process generated result
@@ -559,8 +532,6 @@ def launch():
                 # for pruner use
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
-<<<<<<< HEAD
-=======
 
             mem, err = read_memory_log(
                 path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
@@ -570,7 +541,6 @@ def launch():
                 break
             else:
                 cur_cfg["max_mem_usage"] = mem
->>>>>>> 80c6b1768c (add gbs search, add gpu memory to history csv, add memory detect)
             # record history
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)
@@ -592,6 +562,7 @@ def launch():
             # generate a new config
             new_cfg = auto_tuner.search_once()
             cur_cfg = copy.deepcopy(new_cfg)
+            auto_tuner.add_cfg(cur_cfg)
 
             # per task launch interval
             time.sleep(3)
@@ -599,6 +570,7 @@ def launch():
 
         # get best config to run
         best_cfg = None
+        ctx = copy.deepcopy(raw_ctx)
         if nnodes > 1:
             import socket
 
@@ -643,12 +615,11 @@ def launch():
                 )
         assert best_cfg
 
-
         end_time = time.time()
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
-        ctx.status._current_status = None
         new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
+        ctx.run_best = True
         ctx.args.training_script_args = new_args
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")

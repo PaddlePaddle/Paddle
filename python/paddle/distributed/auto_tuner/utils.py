@@ -437,7 +437,7 @@ def gbs_default_candidates(tuner_cfg):
         candidates["sharding_degree"] = [sharding_dgree_candidate]
         candidates["sharding_stage"] = [1]
         candidates["use_recompute"] = [True]
-        candidates["recompute_granularity"] = ["full"]
+        candidates["recompute_granularity"] = [None]
         candidates["micro_batch_size"] = [2**i for i in range(0, 10)]
         candidates["global_batch_size"] = [
             pp_candidate * dp_candidate * e
