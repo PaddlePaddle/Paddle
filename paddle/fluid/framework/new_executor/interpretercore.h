@@ -51,6 +51,9 @@ class InterpreterCore {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true);
 
+  paddle::framework::FetchList BetaRun(
+      const std::vector<std::string>& feed_names, bool need_fetch = true);
+
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
   void ShareGCFrom(std::shared_ptr<InterpreterCore> src);

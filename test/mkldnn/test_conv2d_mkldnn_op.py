@@ -92,7 +92,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             output = np.maximum(output, 0).astype(self.dsttype)
 
         if self.fuse_activation == "relu6":
-            output = np.minimum(np.maximum(output, 0), self.fuse_alpha).astype(
+            output = np.minimum(np.maximum(output, 0), self.fuse_beta).astype(
                 self.dsttype
             )
         if (
@@ -120,7 +120,7 @@ class TestWithbreluFusion(TestConv2DMKLDNNOp):
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.fuse_activation = "relu6"
-        self.fuse_alpha = 6.0
+        self.fuse_beta = 6.0
         self.dsttype = np.float32
 
 
