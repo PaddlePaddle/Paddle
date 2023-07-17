@@ -423,6 +423,8 @@
 - op : cast
   inputs :
     x : X
+  outputs :
+    out : Out
 
 - op : ceil
   backward : ceil_grad
@@ -2267,6 +2269,8 @@
     x : X
   outputs :
     out : Out
+  attrs :
+    repeats : Repeats
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
