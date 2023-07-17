@@ -115,7 +115,7 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-    infer_meta:
+  infer_meta:
     func: AddNInferMeta
     param: [inputs]
   kernel:
@@ -140,7 +140,7 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-    infer_meta:
+  infer_meta:
     func: AddNInferMeta
     param: [inputs]
   kernel:
