@@ -695,13 +695,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* input_var_desc = block->FindVar(input_var_name);
       auto* index_var_desc = block->FindVar(index_var_name);
 
-      // The index input must be int32 datatype.
-      if (index_var_desc->GetDataType() !=
-          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
-        VLOG(3) << "take_along_axis op Index input data type must be int32";
-        return false;
-      }
-
       const auto input_shape = input_var_desc->GetShape();
       const auto index_shape = index_var_desc->GetShape();
       if (input_shape.size() != index_shape.size()) {
@@ -2903,7 +2896,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_groupnorm_act",
       "temporal_shift",
       "grid_sampler",
-      "cumsum"};
+      "cumsum",
+      "assign"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3065,7 +3059,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_groupnorm_act",
       "temporal_shift",
       "grid_sampler",
-      "cumsum"};
+      "cumsum",
+      "assign"};
 };
 
 struct GenericPluginTeller : public Teller {
