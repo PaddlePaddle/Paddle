@@ -22,6 +22,8 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 template <typename T,
@@ -57,9 +59,12 @@ struct LogSoftmaxFunctor {
     const int num_classes = dim_2d[kClassDim];
     const int num_remain = num_classes / axis_dim;
 
+    VLOG(1) << "DEBUG begin LogSoftmaxFunctor";
+
     // Note: To accelerate the performance of CPU scenario, support avx here
     if (num_remain == 1 &&
         phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+      VLOG(1) << "DEBUG begin LogSoftmaxFunctor avx";
       const T* in_data = X->data<T>();
       T* out_data = Y->data<T>();
       for (int bs = 0; bs < batch_size; ++bs) {
@@ -105,6 +110,7 @@ struct LogSoftmaxFunctor {
     // For numerical stability, logits should be shifted by maximum number along
     // axis, calculate shifted_logits into log_softmax tensor for memory reuse.
     if (num_remain == 1) {
+      VLOG(1) << "DEBUG begin LogSoftmaxFunctor num_remain == 1";
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
       log_softmax.device(*context.eigen_device()) =
@@ -113,6 +119,7 @@ struct LogSoftmaxFunctor {
                        .reshape(batch_by_one)
                        .broadcast(one_by_class);
     } else {
+      VLOG(1) << "DEBUG begin LogSoftmaxFunctor num_remain != 1";
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       log_softmax.device(*context.eigen_device()) =
@@ -124,6 +131,7 @@ struct LogSoftmaxFunctor {
                                                   .reshape(batch_classes);
     }
 
+    VLOG(1) << "DEBUG begin LogSoftmaxFunctor minus";
     log_softmax.device(*context.eigen_device()) =
         log_softmax - log_softmax.exp()
                           .eval()

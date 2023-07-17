@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/log_softmax_kernel.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 template <typename T>
@@ -106,7 +108,9 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   // CrossEntropy needs to calculate log(softmax(logits)). However,
   // SoftmaxKernel will cast exp^i to exp^(-64), which leads to unacceptable
   // precision to CrossEntropy.
+  VLOG(1) << "DEBUG begin LogSoftmaxKernel";
   phi::LogSoftmaxKernel<T, Context>(dev_ctx, logits, axis, softmax);
+  VLOG(1) << "DEBUG begin CrossEntropy";
   CrossEntropy<T>(dev_ctx,
                   *softmax,
                   label,
@@ -115,6 +119,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                   ignore_index,
                   axis,
                   loss);
+  VLOG(1) << "DEBUG begin ExpKernel";
   // Call ExpKernel to restore the right softmax value.
   phi::ExpKernel<T, Context>(dev_ctx, *softmax, softmax);
 }
