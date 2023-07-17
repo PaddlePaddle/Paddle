@@ -135,12 +135,9 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    phi::fusion::MMHAKernel,
                    float,
 #if CUDA_VERSION >= 11000
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
-}
-#else
+                   phi::dtype::bfloat16,
+#endif
                    phi::dtype::float16) {
 }
-#endif
 
-#endif  // PADDLE_WITH_HIP
+#endif
