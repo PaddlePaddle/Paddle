@@ -157,7 +157,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     delete local_scope;
   }
-  LOG(INFO) << folded_op_num << " Ops are folded";
+  AddStatis(folded_op_num);
 }
 
 }  // namespace ir

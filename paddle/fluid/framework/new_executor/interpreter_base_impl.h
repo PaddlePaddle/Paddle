@@ -72,6 +72,12 @@ class InterpreterBaseImpl {
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
 
+  // NOTE(zhangbo): This interface is only used for temporary testing and only
+  // for testing during the iteration process of the new IR access actuator
+  // version. It will be deleted in the future.
+  virtual paddle::framework::FetchList BetaRun(
+      const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
+
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
   virtual void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) = 0;
