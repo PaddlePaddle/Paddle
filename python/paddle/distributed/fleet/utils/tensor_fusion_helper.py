@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
 from collections import OrderedDict
 
 import numpy as np
@@ -109,9 +108,6 @@ def obtain_storage(parameters, use_main_grad, clip, dist):
 
 
 def fused_parameters(parameters, use_main_grad):
-    logging.log(
-        '[Tensor Fusion] Fusing tensors into tensor chunks, it may take a while.'
-    )
     # filter for mp's distributed params
     dist = list(filter(lambda x: x.is_distributed, parameters))
     no_dist = list(filter(lambda x: not x.is_distributed, parameters))
