@@ -684,11 +684,13 @@ class TestArgmaxOp(OpTest):
         self.inputs = {
             "x": np.random.randint(-10, 10, []).astype(self.dtype),
         }
+        self.param = (0,)
         self.target_shape = ()
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
-        out = paddle.argmax(x, axis=0)
+        out = paddle.argmax(x, *self.param)
+        out = paddle.cast(out, 'int32')
 
         self.paddle_outputs = [out]
 
@@ -697,7 +699,7 @@ class TestArgmaxOp(OpTest):
         x = builder.create_input(
             cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
         )
-        out = builder.argmax(x, 0)
+        out = builder.argmax(x, *self.param)
 
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
@@ -707,6 +709,42 @@ class TestArgmaxOp(OpTest):
 
     def test_check_results(self):
         self.check_outputs_and_grads()
+
+
+class TestArgmaxOp2(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.param = (-1,)
+        self.target_shape = ()
+
+
+class TestArgmaxOp1D(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = ()
+
+
+class TestArgmaxOp2D(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = (5,)
+
+
+class TestArgmaxOp2DKeepDim(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0, True)
+        self.target_shape = (1, 5)
 
 
 @OpTestTool.skip_if(

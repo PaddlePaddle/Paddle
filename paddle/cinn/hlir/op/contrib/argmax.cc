@@ -230,7 +230,7 @@ std::vector<Type> InferDtypeForArgmax(const std::vector<Type> &inputs_type,
                                       const framework::AttrMapType &attrs) {
   CHECK(!inputs_type.empty())
       << "The input's type size is 0! Please check again.";
-  return {Int(64)};
+  return {Int(32)};
 }
 
 std::vector<std::vector<std::string>> InferLayoutForArgmax(
