@@ -1122,18 +1122,12 @@ struct ShaddowOutputOpTranscriber : public OpTranscriber {
                             TranslationContext* param_map,
                             const OpDesc& op_desc,
                             ir::Program* program) override {
-    auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+    std::vector<ir::OpResult> op_inputs;
+    auto legacy_input_vars = op_desc.Input("x", true);
+    std::cerr << "shaddow " << legacy_input_vars[0] << std::endl;
 
-    auto* op_info_concept =
-        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-    OpInputInfoList input_infos;
-    OpAttributeInfoList attr_infos;
-    OpOutputInfoList output_infos;
-    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
-        op_info_concept->get_op_info_();
-
-    auto op_inputs = this->GenerateOperationInput(
-        ctx, param_map, op_desc, op_info.name(), input_infos, program);
+    auto defining_info = (*param_map)[legacy_input_vars[0]];
+    op_inputs.push_back(defining_info.value);
 
     ir::AttributeMap attribute_map = {
         {"parameter_name",

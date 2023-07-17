@@ -400,7 +400,7 @@ inline void RunProgramAPI(
         op_desc->SetAttr("dtype", 0);
         op_desc->SetAttr("place", 0);
         op_desc->SetAttr("name", name);
-        std::cerr << "name " << name << std::endl;
+        std::cerr << "feed with data name " << name << std::endl;
         op_desc->SetOutput("out", {name});
       }
 
@@ -427,14 +427,16 @@ inline void RunProgramAPI(
         auto op_desc = forward_global_block->AppendOp();
         op_desc->SetType("shaddow_output");
         op_desc->SetAttr("name", name);
-        std::cerr << "name " << name << std::endl;
+        std::cerr << "shaddow output name " << name << std::endl;
         op_desc->SetInput("x", {name});
         op_desc->SetOutput("out", {"@EMPTY@"});
       }
 
       forward_program = forward_global_block->Program();
+      std::cerr << "begine to translator" << std::endl;
       paddle::translator::ProgramTranslator program_translator(forward_program,
                                                                program.get());
+
       program_translator.Translate();
 
       std::cerr << "forward program  " << std::endl;
@@ -593,13 +595,16 @@ inline void RunProgramGradAPI(
 
       // add feed kernel
       for (auto &name : out_grad_names) {
+        if (name == "@EMPTY@") {
+          continue;
+        }
         auto op_desc = backward_global_block->PrependOp();
         op_desc->SetType("feed_with_place");
         op_desc->SetAttr("index", 0);
         op_desc->SetAttr("dtype", 0);
         op_desc->SetAttr("place", 0);
         op_desc->SetAttr("name", name);
-        std::cerr << "name " << name << std::endl;
+        std::cerr << "back ward feed name " << name << std::endl;
         op_desc->SetOutput("out", {name});
       }
       auto output_names = details::GetTensorsName(x_grad);

@@ -75,10 +75,11 @@ void ProgramTranslator::Translate() {
     SetParameterFromSingleBlock(block);
   }
 
-  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
-    const BlockDesc& block = legacy_program_->Block(block_idx);
-    SetStopGradientAttributeForAllValue(block);
-  }
+  // for (size_t block_idx = 0; block_idx < legacy_program_->Size();
+  // block_idx++) {
+  //   const BlockDesc& block = legacy_program_->Block(block_idx);
+  //   SetStopGradientAttributeForAllValue(block);
+  // }
 }
 
 inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
@@ -169,6 +170,12 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
+    if (op->Type() == "shaddow_output") {
+      if (!param_map_.count(op->Input("x")[0])) {
+        std::cerr << "skip shaddow output " << op->Input("x")[0] << std::endl;
+        continue;
+      }
+    }
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
