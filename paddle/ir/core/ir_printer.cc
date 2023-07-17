@@ -85,7 +85,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << s.data();
+    os << s.AsString();
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     os << b.data();
   } else if (auto f = attr.dyn_cast<FloatAttribute>()) {
@@ -99,7 +99,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
-    const auto& vec = arr.data();
+    const auto& vec = arr.AsVector();
     os << "array[";
     PrintInterleave(
         vec.begin(),

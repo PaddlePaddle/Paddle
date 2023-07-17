@@ -45,10 +45,10 @@ void PhiKernelOp::Verify() {
 }
 
 std::string PhiKernelOp::op_name() {
-  return attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
+  return attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
 }
 std::string PhiKernelOp::kernel_name() {
-  return attributes().at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+  return attributes().at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
 }
 phi::KernelKey PhiKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
