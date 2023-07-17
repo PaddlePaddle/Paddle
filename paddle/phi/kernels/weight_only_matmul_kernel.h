@@ -19,6 +19,8 @@ template <typename T, typename Context>
 void WeightOnlyMatmulKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& weight,
+                            const paddle::optional<DenseTensor>& bias,
                             const DenseTensor& weight_scale,
+                            const std::string& quant_method,
                             DenseTensor* out);
 }  // namespace phi

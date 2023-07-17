@@ -18,7 +18,6 @@ namespace phi {
 template <typename T, typename Context>
 void QuantForCompressKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            int bits,
                             const std::string& layout,
                             DenseTensor* out,
                             DenseTensor* scale);

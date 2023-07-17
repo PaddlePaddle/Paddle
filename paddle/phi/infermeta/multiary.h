@@ -137,6 +137,12 @@ void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config);
 
+void AttnMatmulInferMeta(const MetaTensor& x,
+                         const MetaTensor& weight,
+                         const MetaTensor& bias,
+                         const bool transpose_weight,
+                         MetaTensor* out);
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -707,11 +713,15 @@ void FusedMultiHeadAttentionVariableInferMeta(const MetaTensor& query,
 
 void LLMInt8MatmulInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
+                            const MetaTensor& bias,
+                            const MetaTensor& weight_scale,
                             MetaTensor* out);
 
 void WeightOnlyMatmulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
+                               const MetaTensor& bias,
                                const MetaTensor& weight_scale,
+                               const std::string& gemm_method,
                                MetaTensor* out);
 
 void FusedRopeInferMeta(const MetaTensor& q,

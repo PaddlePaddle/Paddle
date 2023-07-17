@@ -29,13 +29,14 @@ inline T xabs(const T x) {
 }
 
 template <typename T>
-void per_channel_scale(float* scale, const T* input, size_t m, size_t n) {
+void per_channel_scale(
+    float* scale, const T* input, size_t m, size_t n, float bound) {
   for (size_t i = 0; i < n; ++i) {
     T max = input[i];
     for (size_t j = 0; j < m; ++j) {
       max = xabs(input[j * n + i]) > max ? xabs(input[j * n + i]) : max;
     }
-    scale[i] = static_cast<float>(max) / 127.0;
+    scale[i] = static_cast<float>(max) / bound;
   }
 }
 
@@ -144,8 +145,7 @@ void add_bias_and_interleave_inplace(int8_t* tensor_ptr, size_t num_elts) {
 template <int quant_bit>
 void permute_B_rows_for_mixed_gemm(int8_t* permuted_quantized_tensor,
                                    const int8_t* quantized_tensor,
-                                   const std::vector<size_t>& shape,
-                                   const int64_t arch_version) {
+                                   const std::vector<size_t>& shape) {
   // We only want to run this step for weight only quant.
   const size_t num_rows = shape.size() == 2 ? shape[0] : shape[1];
   const size_t num_cols = shape.size() == 2 ? shape[1] : shape[2];

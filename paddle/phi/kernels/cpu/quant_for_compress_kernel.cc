@@ -56,48 +56,41 @@ void quant_compute(const DeviceContext& dev_ctx,
   int_processed_2.Resize(out->dims());
   dev_ctx.template Alloc<D>(&int_processed_2);
   D* int_processed_2_data = int_processed_2.data<D>();
-
-  per_channel_scale(scale_data, x_data, m, n);
+  per_channel_scale(scale_data, x_data, m, n, bits == 8 ? 127.0f : 7.0f);
 
   per_channel_quant<T, bits>(x_int_data, x_data, scale_data, m, n);
-  if (layout == "weight_only") {
+  if (layout == "llm.int8") {
+    std::vector<int> axis = {1, 0};
+    funcs::Transpose<DeviceContext, int8_t, 2> trans;
+    trans(dev_ctx, x_int, out, axis);
+  } else {
     permute_B_rows_for_mixed_gemm<bits>(
-        int_processed_data, x_int_data, std::vector<size_t>{m, n}, (int64_t)80);
+        int_processed_data, x_int_data, std::vector<size_t>{m, n});
     subbyte_transpose_impl<bits>(
         int_processed_2_data, int_processed_data, std::vector<size_t>{m, n});
     interleave_column_major_tensor<bits>(
         out_data, int_processed_2_data, std::vector<size_t>{m, n});
     add_bias_and_interleave_inplace<bits>(out_data, num);
-  } else if (layout == "llm.int8") {
-    std::vector<int> axis = {1, 0};
-    funcs::Transpose<DeviceContext, int8_t, 2> trans;
-    trans(dev_ctx, x_int, out, axis);
-  } else {
-    phi::errors::InvalidArgument(
-        "The layout must be weight_only or llm.int8, but got %s", layout);
   }
 }
 
 template <typename T, typename Context>
 void QuantForCompressKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            int bits,
                             const std::string& layout,
                             DenseTensor* out,
                             DenseTensor* scale) {
-  if (bits == 8) {
-    dev_ctx.template Alloc<int8_t>(out);
-    dev_ctx.template Alloc<float>(scale);
+  dev_ctx.template Alloc<int8_t>(out);
+  dev_ctx.template Alloc<float>(scale);
+  if (layout == "weight_only_int8" || layout == "llm.int8") {
     quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, layout);
-  } else if (bits == 4 && layout == "weight_only") {
-    dev_ctx.template Alloc<int8_t>(out);
-    dev_ctx.template Alloc<float>(scale);
+  } else if (layout == "weight_only_int4") {
     quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, layout);
   } else {
     phi::errors::Unimplemented(
-        "The bits only support 8 or weight_only 4, but got[%s] [%d]",
-        layout,
-        bits);
+        "The layout must be in ['weight_only_int8', 'weight_only_int4', "
+        "'llm.int8'], but got[%s]",
+        layout);
   }
   // VLOG(0) << "x: " << x.dtype() << x;
   // VLOG(0) << "out: " << out->dtype() << *out;
@@ -109,4 +102,5 @@ PD_REGISTER_KERNEL(quant_for_compress,
                    CPU,
                    ALL_LAYOUT,
                    phi::QuantForCompressKernel,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

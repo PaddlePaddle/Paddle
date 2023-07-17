@@ -16,22 +16,23 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifndef PADDLE_WITH_HIP
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"
 #endif
 
+DECLARE_double(custom_llm_int8_threshold);
 namespace phi {
 
 template <typename T, typename Context>
 void llm_int8_compute(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& weight,
+                      const paddle::optional<DenseTensor>& bias,
                       const DenseTensor& weight_scale,
-                      const float threshold,
                       DenseTensor* out) {
-#if defined(PADDLE_WITH_HIP)
-  LOG(ERROR) << "Please compile with cublaslt, ROCM platform isn't support it";
-#else
+#if defined(PADDLE_WITH_CUDA)
   DenseTensor cublaslt_workspace;
   cublaslt_workspace.Resize({{3000000}});
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace);
@@ -45,13 +46,21 @@ void llm_int8_compute(const Context& dev_ctx,
                        &weight,
                        &x,
                        &weight_scale,
-                       threshold,
+                       FLAGS_custom_llm_int8_threshold,
                        out,
                        &cublaslt_workspace,
                        "llm_int8_mat_mul",
                        m,
                        k,
                        n);
+  if (bias) {
+    std::vector<const phi::DenseTensor*> ins = {out, &(bias.get())};
+    std::vector<phi::DenseTensor*> outs = {out};
+    phi::funcs::BroadcastKernel<T>(
+        dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
+  }
+#else
+  LOG(ERROR) << "Please compile with cublaslt, ROCM platform isn't support it";
 #endif
 }
 
@@ -59,12 +68,11 @@ template <typename T, typename Context>
 void LLMInt8MatmulKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& weight,
+                         const paddle::optional<DenseTensor>& bias,
                          const DenseTensor& weight_scale,
-                         const float threshold,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  llm_int8_compute<T, Context>(
-      dev_ctx, x, weight, weight_scale, threshold, out);
+  llm_int8_compute<T, Context>(dev_ctx, x, weight, bias, weight_scale, out);
 }
 }  // namespace phi
 
@@ -72,4 +80,5 @@ PD_REGISTER_KERNEL(llm_int8_matmul,
                    GPU,
                    ALL_LAYOUT,
                    phi::LLMInt8MatmulKernel,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

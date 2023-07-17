@@ -415,6 +415,34 @@ void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
   }
 }
 
+void AttnMatmulInferMeta(const MetaTensor& x,
+                         const MetaTensor& weight,
+                         const MetaTensor& bias,
+                         const bool transpose_weight,
+                         MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  auto k_axis = transpose_weight ? 1 : 0;
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[k_axis],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[%d] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[%d](%s)",
+          k_axis,
+          x_dims[x_dims.size() - 1],
+          k_axis,
+          w_dims[1]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = w_dims[transpose_weight ? 0 : 1];
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -3641,6 +3669,40 @@ void FusedRopeInferMeta(const MetaTensor& q,
   }
 }
 
+void LLMInt8MatmulInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            const MetaTensor& bias,
+                            const MetaTensor& weight_scale,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[1],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+          x_dims[x_dims.size() - 1],
+          w_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      weight_scale.dims()[0],
+      w_dims[0],
+      errors::InvalidArgument(
+          "Input(weight_scale) dim[0] and Input(Weight) dim[0] should be euqal."
+          "But received Input(weight_scale) dim[0](%s) != Input(Weight) "
+          "dim[0](%s)",
+          weight_scale.dims()[0],
+          w_dims[0]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = w_dims[0];
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
@@ -3702,36 +3764,19 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dtype(DataType::INT32);
 }
 
-void LLMInt8MatmulInferMeta(const MetaTensor& x,
-                            const MetaTensor& weight,
-                            MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto w_dims = weight.dims();
-  PADDLE_ENFORCE_EQ(
-      w_dims.size(),
-      2UL,
-      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      x_dims[x_dims.size() - 1],
-      w_dims[1],
-      errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
-          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
-          x_dims[x_dims.size() - 1],
-          w_dims[1]));
-  auto out_dims = x_dims;
-  out_dims[out_dims.size() - 1] = w_dims[0];
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-}
-
 void WeightOnlyMatmulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
+                               const MetaTensor& bias,
                                const MetaTensor& weight_scale,
+                               const std::string& quant_method,
                                MetaTensor* out) {
   auto x_dims = x.dims();
   auto w_dims = weight.dims();
   auto n = weight_scale.dims()[0];
+  PADDLE_ENFORCE(
+      quant_method == "weight_only_int8" || quant_method == "weight_only_int4",
+      errors::InvalidArgument(
+          "quant_method must be 'weight_only_int8' or 'weight_only_int4'. "));
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2UL,

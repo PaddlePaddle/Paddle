@@ -19,7 +19,7 @@ template <typename T, typename Context>
 void LLMInt8MatmulKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& weight,
+                         const paddle::optional<DenseTensor>& bias,
                          const DenseTensor& weight_scale,
-                         const float threshold,
                          DenseTensor* out);
 }  // namespace phi
