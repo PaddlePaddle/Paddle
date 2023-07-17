@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace funcs {
 
@@ -101,6 +103,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const int ignore_index,
     const int axis_dim) {
   if (softLabel) {
+    VLOG(1) << "DEBUG begin CrossEntropyFunctor softLabel";
     const int batch_size = prob->dims()[0];
     const int num_classes = prob->dims()[1];
     const int num_remain = num_classes / axis_dim;
@@ -115,6 +118,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
               .reshape(batch_axis_remain)
               .sum(Eigen::DSizes<int, 1>(1)));
   } else {
+    VLOG(1) << "DEBUG begin CrossEntropyFunctor hardLabel";
     HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(
         out, prob, labels, ignore_index, axis_dim);
     phi::VisitDataType(labels->dtype(), functor_impl);

@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 template <typename T>
@@ -88,7 +90,9 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     return;
   }
 
+  VLOG(1) << "DEBUG begin SoftmaxKernel";
   phi::SoftmaxKernel<T, Context>(dev_ctx, logits, axis, softmax);
+  VLOG(1) << "DEBUG begin CrossEntropy";
   CrossEntropy<T>(
       dev_ctx, *softmax, label, soft_label, ignore_index, axis, loss);
 }

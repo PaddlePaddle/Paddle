@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace funcs {
 
@@ -70,6 +72,7 @@ class SoftmaxEigen {
     // For numerical stability, logits should be shifted by maximum number along
     // axis, calculate shifted_logits into softmax tensor for memory reuse.
     if (num_remain == 1) {
+      VLOG(1) << "DEBUG begin SoftmaxFunctor SoftmaxEigen num_remain == 1";
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
       softmax.device(*context.eigen_device()) =
@@ -79,6 +82,7 @@ class SoftmaxEigen {
                         .broadcast(one_by_class))
               .unaryExpr(ValueClip<T>());
     } else {
+      VLOG(1) << "DEBUG begin SoftmaxFunctor SoftmaxEigen num_remain != 1";
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       softmax.device(*context.eigen_device()) =
@@ -91,6 +95,7 @@ class SoftmaxEigen {
               .unaryExpr(ValueClip<T>());
     }
 
+    VLOG(1) << "DEBUG begin SoftmaxFunctor minus";
     softmax.device(*context.eigen_device()) = softmax.exp();
     softmax.device(*context.eigen_device()) =
         (softmax * softmax.reshape(batch_axis_remain)
@@ -245,8 +250,11 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
     const int batch_size = in_dims[kBatchDim];
     const int num_remain = num_classes / axis_dim;
 
+    VLOG(1) << "DEBUG begin SoftmaxFunctor";
+
     if (num_remain == 1 &&
         phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+      VLOG(1) << "DEBUG begin SoftmaxFunctor avx";
       const T* in_data = X->data<T>();
       T* out_data = Y->data<T>();
       for (int bs = 0; bs < batch_size; ++bs) {
@@ -268,6 +276,7 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
         out_data += num_classes;
       }
     } else {
+      VLOG(1) << "DEBUG begin SoftmaxFunctor SoftmaxEigen";
       SoftmaxEigen<DeviceContext, T>()(context, axis_dim, X, Y);
     }
   }
