@@ -11,9 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#ifndef PADDLE_WITH_HIP
-
 #pragma once
 
 #include "paddle/phi/kernels/fusion/gpu/masked_multihead_attention.h"
@@ -47,6 +44,7 @@ void MMHAKernel(const Context& dev_ctx,
                 DenseTensor* out,
                 DenseTensor* cache_kv_out,
                 DenseTensor* beam_cache_offset_out) {
+#ifndef PADDLE_WITH_HIP
   const auto& x_dims = x.dims();
   int bsz = x_dims[0];
   int num_head = x_dims[2];
@@ -125,6 +123,7 @@ void MMHAKernel(const Context& dev_ctx,
                     quant_min_bound);
   }
 }
+#endif  // PADDLE_WITH_HIP
 
 }  // namespace fusion
 }  // namespace phi
@@ -135,9 +134,10 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    phi::fusion::MMHAKernel,
                    float,
 #if CUDA_VERSION >= 11000
-                   phi::dtype::bfloat16,
-#endif
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+}
+#else
                    phi::dtype::float16) {
 }
-
 #endif
