@@ -117,6 +117,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void RecordStreamForGC(const Instruction& instr);
   void CheckGC(const Instruction& instr);
   void ClearLoDTensorArrayInLocalScope();
+  std::shared_ptr<std::map<size_t, std::set<size_t>>> GetLastLiveOps();
 
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
@@ -168,7 +169,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   // last_live_ops_[i] contains the id of operators that last access the i-th
   // var
-  std::map<size_t, std::set<size_t>> last_live_ops_;
+  std::shared_ptr<std::map<size_t, std::set<size_t>>> last_live_ops_;
 
   // dependecy_count_[i] contains the number of dependencies that the i-th op
   // need to wait
