@@ -17,7 +17,7 @@
 namespace paddle {
 namespace dialect {
 
-void PrintOp::Verify() {}
+void AssertOp::Verify() {}
 
 }  // namespace dialect
 }  // namespace paddle

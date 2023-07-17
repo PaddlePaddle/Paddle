@@ -74,6 +74,7 @@
   data_transform: null
   inplace: null
   backward: null
+  custom_verify: true
 
 - name: print
   inputs:
@@ -103,7 +104,6 @@
   data_transform: null
   inplace: null
   backward: null
-  custom_verify: true
 
 - name: add_n_
   inputs:
