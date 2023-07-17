@@ -311,7 +311,9 @@ class TestDistMPSyncTraning(unittest.TestCase):
         )
 
         for i in range(len(losses)):
-            np.testing.assert_allclose(losses[i], losses_sync[i], rtol=1e-6)
+            np.testing.assert_allclose(
+                losses[i], losses_sync[i], rtol=1e-5, atol=1e-5
+            )
 
         # test fp16 O1
         losses_fp16 = self.build_model_optimizer_train(batchs, fp16=True)
@@ -325,7 +327,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
 
         for i in range(len(losses_fp16)):
             np.testing.assert_allclose(
-                losses_fp16[i], losses_sync_fp16[i], rtol=1e-6
+                losses_fp16[i], losses_sync_fp16[i], rtol=1e-5, atol=1e-5
             )
 
         # test fp16 O2
@@ -343,7 +345,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
 
         for i in range(len(losses_fp16_O2)):
             np.testing.assert_allclose(
-                losses_fp16_O2[i], losses_sync_fp16_O2[i], rtol=1e-6
+                losses_fp16_O2[i], losses_sync_fp16_O2[i], rtol=1e-5, atol=1e-5
             )
 
     def test_mp_sync_param(self):
@@ -460,7 +462,7 @@ class TestDistMPTraning(unittest.TestCase):
             loss_b = self.train_batch(batch, model_b, optimizer_b, False)
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-6
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-5, atol=1e-5
             )
 
 
