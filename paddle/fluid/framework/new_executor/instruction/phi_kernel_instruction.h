@@ -38,8 +38,6 @@ class PhiKernelInstruction : public InstructionBase {
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
           variable_2_var_name);
 
-  const std::string& PhiOpName() const { return phi_op_name_; }
-
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
   const phi::KernelContext& KernelContext() const { return kernel_context_; }
@@ -53,6 +51,8 @@ class PhiKernelInstruction : public InstructionBase {
   }
 
   void Run() override;
+
+  const std::string& Name() const override { return phi_op_name_; }
 
  private:
   void InitInputsOutputs(

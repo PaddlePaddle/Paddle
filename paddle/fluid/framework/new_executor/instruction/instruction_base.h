@@ -126,6 +126,8 @@ class InstructionBase {
 
   virtual void Run() = 0;
 
+  virtual const std::string& Name() const = 0;
+
  private:
   size_t id_;
 
