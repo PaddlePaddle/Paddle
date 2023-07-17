@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
@@ -920,6 +921,8 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                   bool trans_x,
                   bool trans_y,
                   bool flag = false) {
+	gpuStream_t stream = ctx.stream();
+	VLOG(3) << "debug matmul_kernel stream " << stream;
 #if CUDA_VERSION >= 11060
     auto* tuner = phi::autotune::MakeMatmulTuner<T>(
         MatMulFunctionImplWithBlas<phi::GPUContext, T>);

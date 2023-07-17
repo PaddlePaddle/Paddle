@@ -128,6 +128,7 @@ template <typename T, typename Context>
 void PRecvKernel(const Context& dev_ctx,
                  int peer,
                  DataType dtype,
+                 const std::vector<int>& out_shape,
                  bool dynamic_shape,
                  DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || \
@@ -142,6 +143,7 @@ void PRecvKernel(const Context& dev_ctx,
     out->Resize(new_dim);
   }
   dev_ctx.Alloc(out, dtype);
+  VLOG(3) << "debug p_recv kernel stream " << stream;
   comm_ctx->Recv(out, out->numel(), peer, stream);
 #else
   PADDLE_THROW(

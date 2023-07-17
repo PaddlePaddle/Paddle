@@ -39,7 +39,7 @@ def _send_in_dygraph(
 def _send_in_static_mode(
     tensor, dst_rank_in_group, group, sync_op, use_calc_stream
 ):
-    op_type = 'p_send2'
+    op_type = 'p_send'
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',

@@ -50,11 +50,13 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace framework {
 namespace interpreter {
 
+class ContextManager;
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 // NOTE(Ruibiao): SingleStreamGuard make some multi-strem op (i.e.,
@@ -636,7 +638,19 @@ void BuildOpFuncList(const platform::Place& place,
 
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
-        SetDeviceCommContext(op, dev_ctx);
+        // TODO for test
+        if (op_type == "p_send" && platform::is_gpu_place(place)) {
+            phi::backends::gpu::GpuStreamSync(reinterpret_cast<const phi::GPUContext*>(dev_ctx)->stream());
+        }
+        if (IsPhiCommOp(op)) {
+            ContextManager& ctx_manager = ContextManager::Instance();
+            int ring_id = op->Attr<int>("ring_id");
+            dev_ctx =
+                ctx_manager.Get(std::to_string(ring_id), place, op_func_node.stream_priority_)
+                .get()
+                .get();
+			SetDeviceCommContext(op, dev_ctx);
+        }
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key = framework::TransPhiKernelKeyToOpKernelType(
@@ -781,6 +795,17 @@ void BuildOpFuncList(const platform::Place& place,
           } else {
             op_func_node.kernel_func_(execution_context);
           }
+        }
+        if (op_type == "p_recv" && platform::is_gpu_place(place)) {
+            phi::backends::gpu::GpuStreamSync(reinterpret_cast<const phi::GPUContext*>(dev_ctx)->stream());
+        }
+        if (FLAGS_benchmark) {
+            dev_ctx->Wait();
+    #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+            PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+            VLOG(4) << "Operator(" << op->Type()
+                << "): context wait and get last error";
+    #endif
         }
 
         // for debug nan/inf
@@ -1102,7 +1127,7 @@ bool IsPhiCommOp(framework::OperatorBase* operator_base) {
 }
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
-                          platform::DeviceContext* dev_ctx) {
+    platform::DeviceContext* dev_ctx) {
   if (IsPhiCommOp(operator_base)) {
     int ring_id = operator_base->Attr<int>("ring_id");
     const auto& comm_context_manager =

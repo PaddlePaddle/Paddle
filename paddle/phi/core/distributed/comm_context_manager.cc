@@ -67,7 +67,7 @@ void CommContextManager::CreateNCCLCommContext(
   }
 
   auto nccl_comm_context =
-      std::make_unique<NCCLCommContext>(rank, size, nccl_id);
+      std::make_unique<NCCLCommContext>(rank, size, nccl_id, ring_id);
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(ring_id, std::move(nccl_comm_context));
 }

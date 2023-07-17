@@ -29,8 +29,9 @@ namespace distributed {
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
-NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
+NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id, int ring_id)
     : CommContext(rank, size) {
+  ring_id_ = ring_id;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
 }
@@ -41,6 +42,7 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root,
                                 gpuStream_t stream) {
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " broadcast begin";
   CommStaticCheck::SameShape(*out_tensor,
                              in_tensor,
                              /*dst_rank*/ rank_,
@@ -57,11 +59,13 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                   root,
                                   nccl_comm_,
                                   stream));
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " broadcast end";
 }
 
 void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 gpuStream_t stream) {
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " allgather begin";
   phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
                                                      in_tensor,
                                                      /*dst_rank*/ rank_,
@@ -80,11 +84,13 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                   ToNCCLDataType(in_tensor.type()),
                                   nccl_comm_,
                                   stream));
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " allgather end";
 }
 void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
                                     ncclRedOp_t reduce_type,
                                     gpuStream_t stream) {
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " reducescatter begin";
   phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
                                                       in_tensor,
                                                       /*dst_rank*/ rank_,
@@ -104,12 +110,15 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                       reduce_type,
                                       nccl_comm_,
                                       stream));
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " reducescatter end";
 }
 
 void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
+  VLOG(3) << "debug ring_id " << ring_id_ << " begin, rank " << GetRank() << " send " << phi::product(in_tensor.dims())
+          << " to " << peer;
   phi::distributed::CommStaticCheck::CheckShape(in_tensor, rank_, size_);
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -123,6 +132,8 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                              peer,
                              nccl_comm_,
                              stream));
+  VLOG(3) << "debug ring_id " << ring_id_ << " end, rank " << GetRank() << " send " << phi::product(in_tensor.dims())
+          << " to " << peer;
   VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
           << " to " << peer;
 }
@@ -131,6 +142,8 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
                            gpuStream_t stream) {
+  VLOG(3) << "debug ring_id " << ring_id_ << " begin, rank " << GetRank() << " recv "
+          << phi::product(out_tensor->dims()) << " from " << peer;
   phi::distributed::CommStaticCheck::CheckShape(*out_tensor, rank_, size_);
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);
@@ -143,6 +156,8 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                              peer,
                              nccl_comm_,
                              stream));
+  VLOG(3) << "debug ring_id " << ring_id_ << " end, rank " << GetRank() << " recv "
+          << phi::product(out_tensor->dims()) << " from " << peer;
   VLOG(3) << "rank " << GetRank() << " recv "
           << phi::product(out_tensor->dims()) << " from " << peer;
 }
@@ -151,6 +166,7 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 ncclRedOp_t reduce_type,
                                 gpuStream_t stream) {
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " allreduce begin";
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ rank_,
@@ -170,6 +186,7 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                   reduce_type,
                                   nccl_comm_,
                                   stream));
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " allreduce end";
 }
 
 void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
@@ -177,6 +194,7 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                              ncclRedOp_t reduce_type,
                              int root,
                              gpuStream_t stream) {
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " reduce begin";
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ root,
@@ -197,6 +215,7 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                root,
                                nccl_comm_,
                                stream));
+  VLOG(3) << "debug ring_id " << ring_id_ << ", rank " << GetRank() << " reduce end";
 }
 
 void NCCLCommContext::GroupStart() {

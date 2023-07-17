@@ -131,7 +131,7 @@ void PSendKernel(const Context& dev_ctx,
   if (dynamic_shape) {
     send_shape_info<Context>(dev_ctx, x, comm_ctx, peer, stream);
   }
-
+  VLOG(3) << "debug p_send kernel stream " << stream;
   comm_ctx->Send(x, x.numel(), peer, stream);
 #else
   PADDLE_THROW(

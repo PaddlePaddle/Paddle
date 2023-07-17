@@ -365,10 +365,10 @@ def _insert_sync_for_fthenb_1f1b(program):
         # insert sync ops
         for index, op in enumerate(list(block.ops)):
             # NOTE: pipeline might hang when dynamic_shape is True
-            if op.type in ['send_v2', 'recv_v2']:
+            if op.type in ['send_v2', 'recv_v2', 'p_send', 'p_recv']:
                 op._set_attr("dynamic_shape", False)
             # set send op on comm stream
-            if op.type == 'send_v2':
+            if op.type in ['send_v2']:
                 # step1: set 'use_calc_stream' False
                 op._set_attr("use_calc_stream", False)
                 op_role = op.attr('op_role')
@@ -412,7 +412,7 @@ def _insert_sync_for_fthenb_1f1b(program):
         offset = 0
         backward_recv_index = None
         for index, op in enumerate(block.ops):
-            if op.type == "recv_v2" and is_backward_op(op):
+            if op.type in ["recv_v2", "p_recv"] and is_backward_op(op):
                 backward_recv_index = index
                 break
         if backward_recv_index is None:

@@ -29,7 +29,7 @@ namespace distributed {
 
 class NCCLCommContext final : public CommContext {
  public:
-  NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
+  NCCLCommContext(int rank, int size, ncclUniqueId nccl_id, int ring_id);
 
   ncclComm_t GetNcclComm();
 
@@ -75,6 +75,7 @@ class NCCLCommContext final : public CommContext {
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
 
   ncclComm_t nccl_comm_;
+  int ring_id_;
 };
 
 }  // namespace distributed

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -45,6 +46,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
     auto dev_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
 
+    VLOG(3) << "debug c_sync_calc_stream stream " << dev_ctx->stream();
     platform::GpuStreamSync(dev_ctx->stream());
 
 #elif defined(PADDLE_WITH_XPU_BKCL)
