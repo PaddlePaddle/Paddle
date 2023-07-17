@@ -545,7 +545,7 @@ const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::Build(
   ops_behind_.assign(op_num_, {});
   op_happens_before_.assign(op_num_, std::vector<bool>(op_num_, false));
 
-  // BuildDownstreamMap();
+  BuildDownstreamMap();
   // VLOG(6) << "Finish BuildDownstreamMap";
 
   // ShrinkDownstreamMap();
@@ -576,6 +576,123 @@ const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::Build(
   is_build_ = true;
 
   return op_downstream_map_;
+}
+
+void IrDependencyBuilder::BuildDownstreamMap() {
+  auto var2min_rw_op =
+      std::map<size_t, std::list<size_t>>();  // # map from variable id to read
+                                              //  write op id.
+  auto var2recent_write_op =
+      std::map<size_t, size_t>();  // # map from variable to recent write op.
+  auto op2dependences =
+      std::map<size_t,
+               std::set<size_t>>();  //# map from op to the dependence list,
+                                     // op must run after the dependence.
+  std::set<size_t>
+      remove_duplicate;  // remove the duplicate between inputs and outputs
+
+  // reserve
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    op2dependences[op_idx] = std::set<size_t>();
+  }
+
+  // auto update_var_min_rw_op =
+  //     [](const std::map<size_t, std::set<size_t>>& op2dependences,
+  //        std::map<size_t, std::list<size_t>>* var2min_rw_op,
+  //        size_t cur_op,
+  //        size_t rw_var) {
+  //       // rw_var is inputs or outputs of cur_op
+  //       // this function update the var2min_rw_op set .
+  //       if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
+  //         (*var2min_rw_op)[rw_var] = std::list<size_t>();
+  //       }
+  //       for (auto dep_op : op2dependences.at(cur_op)) {
+  //         var2min_rw_op->at(rw_var).remove(dep_op);
+  //       }
+  //       var2min_rw_op->at(rw_var).push_back(cur_op);
+  //     };
+
+  // for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+  //   remove_duplicate.clear();
+  //   // step1: update the op2dependences structure
+  //   for (auto& item :
+  //        instructions_->at(op_idx).Inputs()) {  // for all inputs(read only)
+  //     for (auto var : item.second) {
+  //       if (var2recent_write_op.count(var))
+  //         op2dependences[op_idx].insert(var2recent_write_op[var]);
+  //     }
+  //   }
+
+  //   for (auto& item :
+  //        instructions_->at(op_idx).Outputs()) {  // for all write vars
+  //     for (auto var : item.second) {
+  //       if (var2min_rw_op.count(var)) {
+  //         for (auto dep_op : var2min_rw_op[var]) {
+  //           op2dependences[op_idx].insert(dep_op);
+  //         }
+  //       }
+  //     }
+  //   }
+  //   // the original output of inplace op is also change.
+  //   if (!instructions_->at(op_idx).InplaceBackMap().empty()) {
+  //     auto& m = instructions_->at(op_idx).InplaceBackMap();
+  //     for (auto& p : m) {
+  //       auto& var = p.second;
+  //       if (var2min_rw_op.count(var)) {
+  //         for (auto dep_op : var2min_rw_op[var]) {
+  //           op2dependences[op_idx].insert(dep_op);
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   // step2: update 2 var2xxxx data structure
+  //   for (auto& item :
+  //        instructions_->at(op_idx).Outputs()) {  // for all write vars
+  //     for (auto var : item.second) {
+  //       var2recent_write_op[var] = op_idx;
+  //       var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
+  //       remove_duplicate.insert(var);
+  //     }
+  //   }
+
+  //   // NOTE(zhiqiu): The inplace op with `transfer` also changes
+  //   // original output after that so add original output as well
+  //   // original: a->op->a
+  //   // after: a->data_transfer->a'->op->a'->transfer_back->a
+  //   // which means op writes a and a'
+  //   if (!instructions_->at(op_idx).InplaceBackMap().empty()) {
+  //     auto& m = instructions_->at(op_idx).InplaceBackMap();
+  //     for (auto& p : m) {
+  //       auto var = p.second;
+  //       var2recent_write_op[var] = op_idx;
+  //       var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
+  //       remove_duplicate.insert(var);
+  //     }
+  //   }
+
+  //   for (auto& item :
+  //        instructions_->at(op_idx).Inputs()) {  // for all inputs(read only)
+  //     for (auto var : item.second) {
+  //       if (remove_duplicate.count(var) ==
+  //           0) {  // var in input list and in output list, so remove it.
+  //         update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
+  //       }
+  //     }
+  //   }
+  // }
+
+  // // convert op2dependences to downstream_map directly. op2dependences is op
+  // ->
+  // // it's dependences, we want to get op -> [next ops] map, where ops is the
+  // // next instruction of op. The size of downstream != size of op2dependences
+  // // since there are some ops that have no downstream-op.
+  // for (auto& item : op2dependences) {
+  //   size_t op = item.first;
+  //   for (auto dep_op : item.second) {
+  //     AddDownstreamOp(dep_op, op);
+  //   }
+  // }
 }
 
 }  // namespace interpreter
