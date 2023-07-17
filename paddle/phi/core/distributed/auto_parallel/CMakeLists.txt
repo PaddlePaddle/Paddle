@@ -7,4 +7,8 @@ collect_srcs(
   process_mesh.cc
   dist_attr.cc
   dist_mapper.cc
-  dist_tensor.cc)
+  dist_tensor.cc
+  reshard_function.cc
+  reshard_split_functor.cc
+  reshard_utils.cc
+  r_to_s_reshard_function.cc)

@@ -31,7 +31,7 @@ class DistTensor final
  public:
   /// \brief Construct a dist tensor and allocate space.
   /// \param a The allocator used to allocate space.
-  /// \param meta The meta data of dense tensor.
+  /// \param meta The meta data of dist tensor.
   DistTensor(Allocator* a,
              const DenseTensorMeta& meta,
              const std::shared_ptr<TensorDistAttr>& dist_attr)

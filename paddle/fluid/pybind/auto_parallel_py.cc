@@ -22,6 +22,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/utils/optional.h"
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
@@ -47,6 +48,7 @@ using phi::distributed::auto_parallel::Link;
 using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
 using phi::distributed::auto_parallel::ProcessMesh;
+using phi::distributed::auto_parallel::RToSReshardFunction;
 using phi::distributed::auto_parallel::TensorDistAttr;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
@@ -107,6 +109,8 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 }
 
 void BindAutoParallel(py::module *m) {
+  py::class_<RToSReshardFunction>(*m, "RToSReshardFunction").def(py::init<>());
+
   py::class_<ProcessMesh>(*m, "ProcessMesh")
       .def(py::init<>())
       .def(py::init<const std::vector<int64_t> &,
