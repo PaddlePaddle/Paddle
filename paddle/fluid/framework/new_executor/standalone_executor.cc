@@ -61,7 +61,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.create_local_scope = false;
     execution_config.skip_gc_vars = job->SkipGcVars();
 
-    if (FLAGS_enable_new_ir_in_executor) {
+    // TODO(phlrain) we only support cpu for now
+    if (FLAGS_enable_new_ir_in_executor && platform::is_cpu_place(place)) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
       auto kernel_program =
@@ -107,6 +108,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
+
+    platform::RecordEvent record_event(
+        job_type + "-" + std::to_string(job->MicroBatchId()),
+        platform::TracerEventType::UserDefined,
+        1);
 
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();

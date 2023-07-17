@@ -40,7 +40,7 @@ TEST(RemoveIdentity, remove_single) {
   std::vector<std::string> program_passes = {"RemoveIdentity",
                                              "DeadCodeEliminate"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 3);
 }
 
@@ -63,7 +63,7 @@ TEST(RemoveIdentity, remove_branch) {
   std::vector<std::string> output_names = {reduce_sum_1->id, reduce_sum_2->id};
   std::vector<std::string> program_passes = {"RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 1);
 }
 
@@ -92,7 +92,7 @@ TEST(RemoveIdentity, remove_multiple) {
   std::vector<std::string> output_names = {mul_1->id};
   std::vector<std::string> program_passes = {"RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 3);
 }
 
@@ -121,7 +121,7 @@ TEST(RemoveIdentity, cannot_remove_fetch) {
   std::vector<std::string> output_names = {identity_2->id, mul_1->id};
   std::vector<std::string> program_passes = {"RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 1);
 }
 

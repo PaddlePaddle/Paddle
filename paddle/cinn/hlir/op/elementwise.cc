@@ -705,10 +705,6 @@ std::vector<std::vector<int>> InferShapeForSqueeze(
 
   VLOG(4) << "The output calculated in Squeeze: "
           << cinn::utils::Join(output_shape, ", ");
-
-  if (output_shape.size() == 0) {
-    output_shape.push_back(1);
-  }
   return {output_shape};
 }
 
@@ -759,8 +755,8 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
 std::vector<std::vector<int>> InferShapeForExpandDims(
     const std::vector<std::vector<int>> &inputs_shape,
     const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty() && !inputs_shape[0].empty())
-      << "The input's shape size is 0! Please check again.";
+  CHECK(!inputs_shape.empty())
+      << "At least 1 input tensor for expand_dims operator.";
 
   CHECK_EQ(inputs_shape.size(), 1U);
   const std::vector<int> &axes =

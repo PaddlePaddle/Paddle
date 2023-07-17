@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cinn
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cudnn
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 
 
 @OpTestTool.skip_if(

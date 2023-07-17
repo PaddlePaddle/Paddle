@@ -16,9 +16,7 @@
 
 import unittest
 
-import cinn
-from cinn import Target, ir, lang, runtime
-from cinn.common import *
+from cinn.common import Bool, Float, Int, UInt, make_const
 
 
 class TestType(unittest.TestCase):

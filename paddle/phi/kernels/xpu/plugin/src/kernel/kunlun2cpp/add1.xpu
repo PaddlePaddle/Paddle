@@ -1,0 +1,57 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
+
+#include "xpu/kernel/xtdk.h"
+#include "xpu/kernel/xtdk_math.h"
+#include "xpu/kernel/xtdk_simd.h"
+
+namespace xpu2 {
+namespace plugin {
+
+__global__ void add1(const float* x, float* y, int len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 128;
+  __simd__ float local_x[buf_size];
+  __simd__ float local_y[buf_size];
+
+  float32x16_t v_x;
+  float32x16_t v_y;
+  int len_per_loop = 128;
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(x + i, local_x, read_len * sizeof(float));
+    for (int k = 0; k < read_len; k += 16) {
+      v_x = vload_lm_float32x16(local_x + k);
+      v_y = svadd_float32x16(1.0f, v_x);
+      vstore_lm_float32x16((local_y + k), v_y);
+    }
+    mfence();
+    LM2GM(local_y, y + i, read_len * sizeof(float));
+  }
+}
+
+}  // namespace plugin
+}  // namespace xpu2

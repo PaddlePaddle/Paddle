@@ -155,7 +155,7 @@ void Program::Export(const std::vector<std::string>& persistent_vars,
     std::string name = (std::string)varname;
     auto t = scope_->GetTensor(name);
     cinn_buffer_t buffer = *t->buffer();
-    buffer.memory = (uint8_t*)0;
+    buffer.memory = reinterpret_cast<uint8_t*>(0);
     if (std::find(persistent_vars.begin(), persistent_vars.end(), name) !=
         persistent_vars.end()) {
       pvars.emplace_back(t->buffer(),
@@ -206,7 +206,7 @@ void Program::Export(const std::vector<std::string>& persistent_vars,
       tellplaceholder(instplaceholder + findex * 12 + 8, f);
       for (auto& arg : all_args) {
         uintptr_t bufindex = varindex[arg];
-        cinn_pod_value_t v((cinn_buffer_t*)bufindex);
+        cinn_pod_value_t v(reinterpret_cast<cinn_buffer_t*>(bufindex));
         fwrite(&v, sizeof(cinn_pod_value_t), 1, f);
       }
     }
@@ -1643,7 +1643,7 @@ std::shared_ptr<Scope> BuildScope(Target target,
 std::vector<ir::LoweredFunc> GetFuncFromImpl(
     const std::shared_ptr<OpImpl>& impl,
     const common::CINNValuePack& cinn_inputs,
-    std::vector<ir::Tensor>& all_arg_tensors,
+    std::vector<ir::Tensor>& all_arg_tensors,  // NOLINT
     const std::vector<std::string>& input_output_nodes,
     const std::string& node_id,
     const Target& target) {

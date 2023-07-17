@@ -219,6 +219,11 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
+FetchList ProgramInterpreter::BetaRun(
+    const std::vector<std::string>& feed_names, bool need_fetch) {
+  return {};
+}
+
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }
@@ -275,6 +280,7 @@ void ProgramInterpreter::reset_scope(Scope* new_scope) {
   }
 }
 
+const Scope* ProgramInterpreter::local_scope() const { return local_scope_; }
 void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ =
       reinterpret_cast<ProgramInterpreter*>(src)->GetWorkQueue();
@@ -763,7 +769,7 @@ void ProgramInterpreter::BuildSkipShareLoDInfo() {
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
         if (var->IsType<phi::DenseTensor>()) {
-          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
+          if (!var->Get<phi::DenseTensor>().lod().empty()) {
             can_skip_lod = false;
             break;
           }
@@ -1135,7 +1141,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     return;
   }
 
-  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+  if (instr.DeviceContext().GetPlace().GetType() ==
+      phi::AllocationType::CUSTOM) {
     return;
   }
 

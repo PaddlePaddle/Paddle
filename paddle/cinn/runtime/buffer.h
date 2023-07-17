@@ -64,7 +64,7 @@ struct Shape {
 template <typename T>
 class Buffer {
  public:
-  Buffer(const Shape& shape) : shape_(shape) {}
+  explicit Buffer(const Shape& shape) : shape_(shape) {}
 
   //! Allocate the memory in host device.
   void AllocHost() {

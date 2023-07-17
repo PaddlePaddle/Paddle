@@ -7,22 +7,21 @@ set(LLVM_DOWNLOAD_URL
     https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11-glibc2.17.tar.gz)
 set(LLVM_MD5 33c7d3cc6d370585381e8d90bd7c2198)
 
-set(FETCHCONTENT_BASE_DIR ${CINN_THIRD_PARTY_PATH}/llvm)
+set(FETCHCONTENT_BASE_DIR ${THIRD_PARTY_PATH}/llvm)
 set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
   external_llvm
   URL ${LLVM_DOWNLOAD_URL}
   URL_MD5 ${LLVM_MD5}
-  PREFIX ${CINN_THIRD_PARTY_PATH}/llvm SOURCE_DIR
-  ${CINN_THIRD_PARTY_PATH}/install/llvm)
+  PREFIX ${THIRD_PARTY_PATH}/llvm SOURCE_DIR ${THIRD_PARTY_PATH}/install/llvm)
 if(NOT LLVM_PATH)
   FetchContent_GetProperties(external_llvm)
   if(NOT external_llvm_POPULATED)
     FetchContent_Populate(external_llvm)
   endif()
-  set(LLVM_PATH ${CINN_THIRD_PARTY_PATH}/install/llvm)
-  set(LLVM_DIR ${CINN_THIRD_PARTY_PATH}/install/llvm/lib/cmake/llvm)
-  set(MLIR_DIR ${CINN_THIRD_PARTY_PATH}/install/llvm/lib/cmake/mlir)
+  set(LLVM_PATH ${THIRD_PARTY_PATH}/install/llvm)
+  set(LLVM_DIR ${THIRD_PARTY_PATH}/install/llvm/lib/cmake/llvm)
+  set(MLIR_DIR ${THIRD_PARTY_PATH}/install/llvm/lib/cmake/mlir)
 else()
   set(LLVM_DIR ${LLVM_PATH}/lib/cmake/llvm)
   set(MLIR_DIR ${LLVM_PATH}/lib/cmake/mlir)
