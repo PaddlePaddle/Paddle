@@ -55,8 +55,18 @@ class PhiKernelAdaptor {
 
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
-    std::unordered_map<ir::Value, std::string> name_map;
-    BuildScope(*block, scope_, nullptr, &name_map);
+    std::unordered_map<ir::Value, std::string> value_2_var_name;
+    std::unordered_map<const paddle::framework::Variable*, std::string>
+        variable_2_var_name;
+    std::map<std::string, int> var_name_2_id;
+    std::vector<paddle::framework::Variable*> variable_list;
+
+    BuildScope(*block,
+               scope_,
+               &value_2_var_name,
+               &variable_2_var_name,
+               &var_name_2_id,
+               &variable_list);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -88,7 +98,8 @@ class PhiKernelAdaptor {
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>((*it), name_map, scope_, nullptr, op_yaml_info_parser, &ctx);
+          false>(
+          (*it), value_2_var_name, scope_, nullptr, op_yaml_info_parser, &ctx);
 
       infer_meta_impl->infer_meta_(&ctx);
 
@@ -108,12 +119,16 @@ class PhiKernelAdaptor {
                           phi::TensorBase*,
                           paddle::small_vector<const phi::TensorBase*>,
                           paddle::small_vector<phi::TensorBase*>,
-                          true>(
-          (*it), name_map, scope_, nullptr, op_yaml_info_parser, &kernel_ctx);
+                          true>((*it),
+                                value_2_var_name,
+                                scope_,
+                                nullptr,
+                                op_yaml_info_parser,
+                                &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);
-      out_name = name_map[out_value];
+      out_name = value_2_var_name[out_value];
     }
   }
 
