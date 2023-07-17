@@ -203,13 +203,14 @@ void FusedRopeKernel(const Context& dev_ctx,
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
   if (sin.get_ptr() && cos.get_ptr()) {
-    int dims_size = sin.dims().size();
-    PADDLE_ENFORCE_NE(
-        (sin.dims()[dims_size - 1] == head_dim) &&
-            (sin.dims()[dims_size - 2] == seq_len),
-        false,
-        phi::errors::InvalidArgument(
-            "The seq_len and head_dim of sin and cos must be equal with q."));
+    // int dims_size = sin.dims().size();
+    // PADDLE_ENFORCE_NE(
+    //     (sin.dims()[dims_size - 1] == head_dim) &&
+    //         (sin.dims()[dims_size - 2] == seq_len),
+    //     false,
+    //     phi::errors::InvalidArgument(
+    //         "The seq_len and head_dim of sin and cos must be equal with
+    //         q."));
 
     sin_cos_data[0] = sin->data<T>();
     sin_cos_data[1] = cos->data<T>();
