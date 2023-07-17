@@ -255,7 +255,7 @@ def numel(x, name=None):
         return out
 
 
-def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
+def nanmedian(x, axis=None, keepdim=False, mode='mean', name=None):
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -274,11 +274,11 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
         mode (str, optional): Mode for shape[dim] size is even(optional, mean or min).
             If mode is mean, return val is (mid1 + mid2)/2.
             If mode is min, return val is min(mid1, mid2), return index is min val index.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of median along ``axis`` of ``x``. The output dtype is the same as `x`.
@@ -319,10 +319,10 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
         axis = [axis]
 
     if in_dynamic_mode():
-        out, medians = _C_ops.nanmedian(x, axis, keepdim, mode)
-        medians.stop_gradient = True
+        out, indexs = _C_ops.nanmedian(x, axis, keepdim, mode)
+        indexs.stop_gradient = True
         if mode == "min":
-            return out, medians[..., 0]
+            return out, indexs[..., 0]
         else:
             return out
     else:
@@ -336,16 +336,16 @@ def nanmedian(x, axis=None, keepdim=False, name=None, mode='mean'):
         helper = LayerHelper('nanmedian', **locals())
         attrs = {'axis': axis, 'keepdim': keepdim, 'mode': mode}
         out = helper.create_variable_for_type_inference(x.dtype)
-        medians = helper.create_variable_for_type_inference(paddle.int64)
+        indexs = helper.create_variable_for_type_inference(paddle.int64)
         helper.append_op(
             type='nanmedian',
             inputs={'X': x},
-            outputs={'Out': out, 'MedianIndex': medians},
+            outputs={'Out': out, 'MedianIndex': indexs},
             attrs=attrs,
         )
-        medians.stop_gradient = True
+        indexs.stop_gradient = True
         if mode == "min":
-            return out, medians[..., 0]
+            return out, indexs[..., 0]
         else:
             return out
 
