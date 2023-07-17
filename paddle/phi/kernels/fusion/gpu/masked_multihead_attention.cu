@@ -128,13 +128,19 @@ void MMHAKernel(const Context& dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
+#if CUDA_VERSION >= 11000
 PD_REGISTER_KERNEL(masked_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-#if CUDA_VERSION >= 11000
-                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#else
+PD_REGISTER_KERNEL(masked_multihead_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::MMHAKernel,
+                   float,
+                   phi::dtype::float16) {}
 #endif
-                   phi::dtype::float16) {
-}
