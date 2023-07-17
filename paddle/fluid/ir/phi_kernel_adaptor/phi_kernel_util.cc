@@ -171,7 +171,7 @@ void HandleForSpecialOp(
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
-        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
+        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
   }
 
   if (op_name == "pd.fetch") {
@@ -244,7 +244,7 @@ void HandleForSpecialOp(
     auto param_name = op->attributes()
                           .at("parameter_name")
                           .dyn_cast<ir::StrAttribute>()
-                          .data();
+                          .AsString();
 
     auto value = op->operand(0);
     // change opreand name to param_name
@@ -262,7 +262,7 @@ void HandleForSpecialOp(
     auto param_name = op->attributes()
                           .at("parameter_name")
                           .dyn_cast<ir::StrAttribute>()
-                          .data();
+                          .AsString();
     auto value = op->result(0);
     value_2_var_name->emplace(value, param_name);
   }
@@ -306,7 +306,7 @@ void HandleForInplaceOp(
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
-        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
+        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
   }
 
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -356,8 +356,10 @@ void BuildScope(const ir::Block& block,
 
     std::string op_name = op->name();
     if (op->attributes().count("op_name")) {
-      op_name =
-          op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
+      op_name = op->attributes()
+                    .at("op_name")
+                    .dyn_cast<ir::StrAttribute>()
+                    .AsString();
     }
     VLOG(4) << "build op:" << op_name;
 

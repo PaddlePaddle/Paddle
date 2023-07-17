@@ -76,7 +76,8 @@ class PhiKernelAdaptor {
     for (auto it = block->begin(); it != block->end(); ++it) {
       auto attr_map = (*it)->attributes();
 
-      auto op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+      auto op_name =
+          attr_map.at("op_name").dyn_cast<ir::StrAttribute>().AsString();
 
       ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op_name);
 
@@ -104,7 +105,7 @@ class PhiKernelAdaptor {
       infer_meta_impl->infer_meta_(&ctx);
 
       auto kernel_name =
-          attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+          attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
       auto kernel_key = attr_map.at("kernel_key")
                             .dyn_cast<paddle::dialect::KernelAttribute>()
                             .data();

@@ -47,7 +47,7 @@ OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place) {
   // and so that they would be dispatched to host thread.
   auto op_attributes = op->attributes();
   auto op_name =
-      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   if (op_name == kCoalesceTensor &&
       (!platform::is_xpu_place(place) ||
        op->attribute<ir::BoolAttribute>("persist_output").data() == false) &&
@@ -77,7 +77,7 @@ PhiKernelInstruction::PhiKernelInstruction(
     : InstructionBase(id, place) {
   auto op_attributes = op->attributes();
   auto op_name =
-      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
 
   phi_op_name_ = op_name;
@@ -142,7 +142,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process infer meta context";
 
   auto kernel_name =
-      op_attributes.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+      op_attributes.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
   auto kernel_key = op_attributes.at("kernel_key")
                         .dyn_cast<paddle::dialect::KernelAttribute>()
                         .data();

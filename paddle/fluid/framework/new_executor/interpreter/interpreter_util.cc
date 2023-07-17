@@ -952,7 +952,8 @@ void BuildOpFuncList(
     OpFuncNode op_func_node;
     auto attr_map = (*it)->attributes();
 
-    auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+    auto op_name =
+        attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
@@ -986,7 +987,7 @@ void BuildOpFuncList(
                &(op_func_node.infer_meta_context_));
 
     auto kernel_name =
-        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
     auto kernel_key = attr_map.at("kernel_key")
                           .dyn_cast<paddle::dialect::KernelAttribute>()
                           .data();
