@@ -48,7 +48,8 @@ using Attribute = paddle::variant<bool,
                                   DataType,
                                   DataLayout,
                                   Place,
-                                  TensorRef>;
+                                  TensorRef,
+                                  std::vector<TensorRef>>;
 
 using AttributeMap = paddle::flat_hash_map<std::string, Attribute>;
 

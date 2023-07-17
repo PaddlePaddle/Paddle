@@ -478,7 +478,7 @@ def pow(x, y, name=None):
 def pow_(x, y, name=None):
     """
     Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_pow`.
+    Please refer to :ref:`api_paddle_pow`.
     """
     if isinstance(y, (int, float)):
         return _C_ops.pow_(x, y)
@@ -4096,12 +4096,13 @@ def all(x, axis=None, keepdim=False, name=None):
             'keep_dim': keepdim,
             'reduce_all': reduce_all,
         }
-        check_variable_and_dtype(x, 'x', ['bool'], 'all')
-
+        check_variable_and_dtype(
+            x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'all'
+        )
         check_type(axis, 'axis', (int, list, tuple, type(None)), 'all')
 
         helper = LayerHelper('all', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=paddle.bool)
         helper.append_op(
             type='reduce_all',
             inputs={'X': x},
@@ -4170,13 +4171,13 @@ def any(x, axis=None, keepdim=False, name=None):
             'keep_dim': keepdim,
             'reduce_all': reduce_all,
         }
-
-        check_variable_and_dtype(x, 'x', ['bool'], 'any')
-
+        check_variable_and_dtype(
+            x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'any'
+        )
         check_type(axis, 'axis', (int, list, tuple, type(None)), 'any')
 
         helper = LayerHelper('any', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=paddle.bool)
         helper.append_op(
             type='reduce_any',
             inputs={'X': x},
@@ -4464,7 +4465,7 @@ def logit(x, eps=None, name=None):
             \end{array}\right.
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         eps (float, optional):  the epsilon for input clamp bound. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -4512,9 +4513,9 @@ def lerp(x, y, weight, name=None):
             lerp(x, y, weight) = x + weight * (y - x).
 
     Args:
-        x (Tensor): An N-D Tensor with starting points, the data type is float16, float32, float64.
-        y (Tensor): An N-D Tensor with ending points, the data type is float16, float32, float64.
-        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float16, float32, float64.
+        x (Tensor): An N-D Tensor with starting points, the data type is bfloat16, float16, float32, float64.
+        y (Tensor): An N-D Tensor with ending points, the data type is bfloat16, float16, float32, float64.
+        weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is bfloat16, float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4539,13 +4540,16 @@ def lerp(x, y, weight, name=None):
         return _C_ops.lerp(x, y, weight)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'lerp'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
         )
         check_variable_and_dtype(
-            y, 'y', ['float16', 'float32', 'float64'], 'lerp'
+            y, 'y', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
         )
         check_variable_and_dtype(
-            weight, 'weight', ['float16', 'float32', 'float64'], 'lerp'
+            weight,
+            'weight',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'lerp',
         )
 
         helper = LayerHelper('lerp', **locals())

@@ -14,14 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
-import cinn
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
-from op_test import OpTest, OpTestTool
+from cinn.common import Float
+from cinn.frontend import NetBuilder
+from op_test import OpTest
 
 import paddle
 

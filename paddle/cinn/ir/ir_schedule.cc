@@ -33,6 +33,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_operators.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule_error.h"
 #include "paddle/cinn/ir/ir_schedule_util.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
@@ -40,6 +41,8 @@
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
+
+DECLARE_int32(cinn_schedule_error_message_level);
 
 namespace cinn {
 namespace ir {
@@ -50,8 +53,15 @@ namespace ir {
 class ScheduleImpl {
  public:
   ScheduleImpl() = default;
-  explicit ScheduleImpl(const ModuleExpr& module_expr, bool debug_flag = false)
-      : module_expr_(module_expr), debug_flag_(debug_flag) {}
+  explicit ScheduleImpl(const ModuleExpr& module_expr,
+                        bool debug_flag = false,
+                        ScheduleErrorMessageLevel err_msg_level =
+                            ScheduleErrorMessageLevel::kGeneral)
+      : module_expr_(module_expr), debug_flag_(debug_flag) {
+    err_msg_level_ = static_cast<ScheduleErrorMessageLevel>(
+        FLAGS_cinn_schedule_error_message_level ||
+        static_cast<int>(err_msg_level));
+  }
   explicit ScheduleImpl(ModuleExpr&& module_expr)
       : module_expr_(std::move(module_expr)) {}
 
@@ -96,7 +106,7 @@ class ScheduleImpl {
                   int write_buffer_index,
                   const std::string& memory_type);
   void SyncThreads(const Expr& ir_node, bool after_node = true);
-  void SetBuffer(Expr& block,
+  void SetBuffer(Expr& block,  // NOLINT
                  const std::string& memory_type,
                  bool fixed = false);
   Expr Reorder(const std::vector<Expr>& loops);
@@ -114,7 +124,7 @@ class ScheduleImpl {
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
   Expr AddUnitLoop(const Expr& block) const;
   void Annotate(const Expr& block, const std::string& key, const attr_t& value);
-  void Unannotate(Expr& block, const std::string& key);
+  void Unannotate(Expr& block, const std::string& key);  // NOLINT
   void FlattenLoops(const std::vector<Expr>& loops,
                     const bool force_flat = false);
   void CopyTransformAndLoopInfo(const Expr& block, const Expr& block_target);
@@ -129,7 +139,25 @@ class ScheduleImpl {
 
   ModuleExpr module_expr_;
   bool debug_flag_{false};
+  ScheduleErrorMessageLevel err_msg_level_ =
+      ScheduleErrorMessageLevel::kGeneral;
 };
+
+/** \brief A macro that guards the beginning of each implementation of schedule
+ */
+#define CINN_IR_SCHEDULE_BEGIN() try {
+/**
+ * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
+ */
+#define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                    \
+  }                                                                       \
+  catch (const IRScheduleErrorHandler& err_hanlder) {                     \
+    CINN_THROW(err_hanlder.FormatErrorMessage(primitive, err_msg_level)); \
+  }
 
 std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
                                       const std::vector<int>& factors) {
@@ -147,7 +175,10 @@ std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
           << ") at loop:\n"
           << loop;
 
-  auto processed_factors = ValidateFactors(factors, tot_extent);
+  std::vector<int> processed_factors;
+  CINN_IR_SCHEDULE_BEGIN();
+  processed_factors = ValidateFactors(factors, tot_extent, this->module_expr_);
+  CINN_IR_SCHEDULE_END("split", this->err_msg_level_);
   int prod_size = std::accumulate(processed_factors.begin(),
                                   processed_factors.end(),
                                   1,
@@ -1194,7 +1225,6 @@ struct LoopReconstructor : public ir::IRMutator<> {
     return utils::Join(new_var_names, ",");
   }
 
- private:
  public:
   /*! \brief The root block */
   Expr root_;
@@ -1216,7 +1246,7 @@ struct LoopReconstructor : public ir::IRMutator<> {
 
 struct FixLocalBufferSize : public ir::IRMutator<> {
  public:
-  FixLocalBufferSize(const std::string& tensor_name)
+  explicit FixLocalBufferSize(const std::string& tensor_name)
       : tensor_name_(tensor_name) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
@@ -1697,7 +1727,8 @@ void ScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
 
 struct FindBlockParent : public ir::IRMutator<> {
  public:
-  FindBlockParent(const std::string& block_name) : block_name_(block_name) {}
+  explicit FindBlockParent(const std::string& block_name)
+      : block_name_(block_name) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
@@ -2188,7 +2219,7 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   Expr new_loop;
   VLOG(3) << "changed_loop_num is : " << changed_loop_num;
   VLOG(3) << "old_iter_values.size() is : " << old_iter_values.size();
-  if (changed_loop_num >= (int)old_iter_values.size()) {
+  if (changed_loop_num >= static_cast<int>(old_iter_values.size())) {
     new_loop = optim::IRCopy(block);
     new_loop.As<ir::ScheduleBlockRealize>()->iter_values = new_iter_values;
   } else {
@@ -2285,8 +2316,10 @@ IRSchedule::IRSchedule() {}
 
 IRSchedule::IRSchedule(const ModuleExpr& module_expr,
                        utils::LinearRandomEngine::StateType rand_seed,
-                       bool debug_flag) {
-  impl_ = std::make_unique<ScheduleImpl>(module_expr, debug_flag);
+                       bool debug_flag,
+                       ScheduleErrorMessageLevel err_msg_level) {
+  impl_ =
+      std::make_unique<ScheduleImpl>(module_expr, debug_flag, err_msg_level);
   this->InitSeed(rand_seed);
 }
 

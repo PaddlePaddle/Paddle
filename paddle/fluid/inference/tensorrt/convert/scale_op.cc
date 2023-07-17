@@ -60,7 +60,7 @@ class ScaleOpConverter : public OpConverter {
 
       auto scale_inputs = op_desc.Inputs();
       if (scale_inputs.find("ScaleTensor") != scale_inputs.end() &&
-          op_desc.Input("ScaleTensor").size()) {  // has EndsTensor input
+          !op_desc.Input("ScaleTensor").empty()) {  // has EndsTensor input
         has_scale_tensor = true;
         scale_tensor = engine_->GetITensor(op_desc.Input("ScaleTensor")[0]);
         is_scale_1 = false;

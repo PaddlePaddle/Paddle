@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/op/contrib/logical_right_shift.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/nn.h"
@@ -104,12 +105,8 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
         ir::Tensor A = A_expr.as_tensor_ref();
         ir::Tensor B = B_expr.as_tensor_ref();
 
-        std::string tensor_name = UniqName("T_LogicalRightShift_out");
-
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 3U);
-          tensor_name = pack_args[2].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 3U);
+        std::string tensor_name = pack_args[2].operator std::string();
 
         auto out = LogicalRightShift(A, B, target, tensor_name);
         auto stages = CreateStages({out});

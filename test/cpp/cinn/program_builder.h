@@ -40,7 +40,7 @@ struct VariableInfo {
 // variables and attributes
 class ProgramBuilder {
  public:
-  ProgramBuilder(const std::string& name) : builder_(name) {}
+  explicit ProgramBuilder(const std::string& name) : builder_(name) {}
 
   /*
    * \brief Build a frontend::Program with the input variables info and

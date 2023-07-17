@@ -49,7 +49,7 @@ def main():
         predictor.zero_copy_run()
     time2 = time.time()
     total_inference_cost = (time2 - time1) * 1000  # total time cost(ms)
-    print("Average latency : {} ms".format(total_inference_cost / repeat))
+    print(f"Average latency : {total_inference_cost / repeat} ms")
     output_names = predictor.get_output_names()
     output_tensor = predictor.get_output_tensor(output_names[0])
     output_data = output_tensor.copy_to_cpu()

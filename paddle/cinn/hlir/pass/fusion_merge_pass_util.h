@@ -73,8 +73,8 @@ CONDITION_FUNC(is_same_size) {
   return size_0 == size_1;
 }
 
-bool is_const_group(const FusionHelperBase* helper,
-                    const std::shared_ptr<Graph::Group>& group) {
+inline bool is_const_group(const FusionHelperBase* helper,
+                           const std::shared_ptr<Graph::Group>& group) {
   return group->CollectNodes().size() == 1 &&
          helper->IsConstOp(group->CollectNodes()[0]);
 }

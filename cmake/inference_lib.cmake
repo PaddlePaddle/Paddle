@@ -130,17 +130,9 @@ function(copy_part_of_thrid_party TARGET DST)
         add_custom_command(
           TARGET ${TARGET}
           POST_BUILD
-          COMMAND strip -s ${dst_dir}/lib/libmkldnn.so.0
-          COMMENT "striping libmkldnn.so.0")
+          COMMAND strip -s ${dst_dir}/lib/libdnnl.so.3
+          COMMENT "striping libdnnl.so.3")
       endif()
-      add_custom_command(
-        TARGET ${TARGET}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0
-                ${dst_dir}/lib/libdnnl.so.1
-        COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0
-                ${dst_dir}/lib/libdnnl.so.2
-        COMMENT "Make a symbol link of libmkldnn.so.0")
     endif()
   endif()
 
@@ -370,10 +362,6 @@ else()
   set(paddle_inference_c_lib
       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c.*
   )
-endif()
-
-if(WITH_INFERENCE_NVTX AND NOT WIN32)
-  add_definitions(-DPADDLE_WITH_INFERENCE_NVTX)
 endif()
 
 copy(
