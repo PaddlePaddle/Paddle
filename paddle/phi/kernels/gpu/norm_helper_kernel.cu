@@ -17,12 +17,15 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 #include "paddle/phi/kernels/rms_norm_kernel.h"
+#endif
 
 namespace phi {
 
+#ifndef PADDLE_WITH_HIP
 template <typename T>
 class NormHelper {
  public:
@@ -165,6 +168,7 @@ class NormHelper {
       residual_bias_add_layernorm_helper_;
   phi::fusion::AttnLayerNorm<T> layernorm_helper_;
 };
+#endif
 
 template <typename T, typename Context>
 void NormHelperKernel(const Context& dev_ctx,
