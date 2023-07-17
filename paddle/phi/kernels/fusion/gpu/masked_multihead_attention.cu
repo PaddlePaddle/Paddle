@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #ifndef PADDLE_WITH_HIP
+
+#pragma once
+
 #include "paddle/phi/kernels/fusion/gpu/masked_multihead_attention.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
