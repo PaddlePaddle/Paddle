@@ -4096,12 +4096,13 @@ def all(x, axis=None, keepdim=False, name=None):
             'keep_dim': keepdim,
             'reduce_all': reduce_all,
         }
-        check_variable_and_dtype(x, 'x', ['bool'], 'all')
-
+        check_variable_and_dtype(
+            x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'all'
+        )
         check_type(axis, 'axis', (int, list, tuple, type(None)), 'all')
 
         helper = LayerHelper('all', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=paddle.bool)
         helper.append_op(
             type='reduce_all',
             inputs={'X': x},
@@ -4170,13 +4171,13 @@ def any(x, axis=None, keepdim=False, name=None):
             'keep_dim': keepdim,
             'reduce_all': reduce_all,
         }
-
-        check_variable_and_dtype(x, 'x', ['bool'], 'any')
-
+        check_variable_and_dtype(
+            x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'any'
+        )
         check_type(axis, 'axis', (int, list, tuple, type(None)), 'any')
 
         helper = LayerHelper('any', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=paddle.bool)
         helper.append_op(
             type='reduce_any',
             inputs={'X': x},
