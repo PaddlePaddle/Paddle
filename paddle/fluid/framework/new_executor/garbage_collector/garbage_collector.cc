@@ -49,16 +49,16 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   cur_memory_size_ = 0;
 }
 
-std::shared_ptr<InterpreterCoreGarbageCollector>
+std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
     const platform::Place& place,
     const std::vector<Instruction>& vec_instruction) {
   if (platform::is_gpu_place(place)) {
     if (IsInterpretercoreFastGCEnabled()) {
-      return std::shared_ptr<InterpreterCoreGarbageCollector>(
+      return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreFastGarbageCollector());
     } else {
-      return std::shared_ptr<InterpreterCoreGarbageCollector>(
+      return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreEventGarbageCollector(vec_instruction));
     }
   } else if (platform::is_xpu_place(place)) {
@@ -68,13 +68,13 @@ CreateInterpreterCoreGarbageCollector(
     // may cause GC delayed, causing no enough memory problem.
     // TODO(pangyoki): Multi-stream allocator and multi-stream GC
     // are needed to be adapted for XPU.
-    return std::shared_ptr<InterpreterCoreGarbageCollector>(
+    return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreFastGarbageCollector());
   } else if (platform::is_ipu_place(place)) {
-    return std::shared_ptr<InterpreterCoreGarbageCollector>(
+    return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreNoEventGarbageCollector());
   } else {
-    return std::shared_ptr<InterpreterCoreGarbageCollector>(
+    return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreEventGarbageCollector(vec_instruction));
   }
 }

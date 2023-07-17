@@ -94,7 +94,7 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
 
 NewIRInterpreter::~NewIRInterpreter() {
   // cancle gc's thread
-  gc_.reset();
+  gc_.reset(nullptr);
   async_work_queue_.reset();
   VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
 
@@ -367,10 +367,6 @@ std::shared_ptr<interpreter::AsyncWorkQueue> NewIRInterpreter::GetWorkQueue() {
         nullptr);
   }
   return async_work_queue_;
-}
-
-std::shared_ptr<InterpreterCoreGarbageCollector> NewIRInterpreter::GetGC() {
-  return gc_;
 }
 
 void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {

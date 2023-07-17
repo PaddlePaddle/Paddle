@@ -120,9 +120,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
-  // gc
-  std::shared_ptr<InterpreterCoreGarbageCollector> GetGC();
-
   // scope
   bool HasLocalScope() const;
 
@@ -167,7 +164,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
-  std::shared_ptr<InterpreterCoreGarbageCollector> gc_;
+  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
 
   // last_live_ops_[i] contains the id of operators that last access the i-th
   // var
