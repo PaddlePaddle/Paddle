@@ -178,7 +178,7 @@ void Instruction::WaitEvent(const Place& place) const {
 
   VLOG(6) << "Deal StreamWaitEventOrSync for " << this->OpBase()->Type();
 
-  for (const EventInter& event_iter : events_to_wait_) {
+  for (const EventInter& event_iter : *events_to_wait_) {
     platform::RecordEvent record(
         "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_

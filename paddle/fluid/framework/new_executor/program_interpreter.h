@@ -123,6 +123,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
+  bool is_shared_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned
