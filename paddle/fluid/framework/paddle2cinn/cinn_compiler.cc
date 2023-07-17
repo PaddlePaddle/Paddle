@@ -306,7 +306,6 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const Target &target,
     std::int64_t compiled_num,
     void *stream) const {
-  std::cout << "Here we enter compileGraph\n";
   CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
   auto fetch_ids = symbol.GetFetchIds();
