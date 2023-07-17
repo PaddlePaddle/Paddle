@@ -22,8 +22,8 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_copy.h"
 #include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace backends {

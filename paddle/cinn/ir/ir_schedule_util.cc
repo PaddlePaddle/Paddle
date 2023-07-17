@@ -27,11 +27,11 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/collect_ir_nodes.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_copy.h"
 #include "paddle/cinn/ir/ir_operators.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 

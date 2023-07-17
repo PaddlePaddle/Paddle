@@ -19,9 +19,9 @@
 #include <cstdlib>
 
 #include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/ir_copy.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -19,10 +19,10 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/ir/ir_copy.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_schedule.h"
 #include "paddle/cinn/lang/lower.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/type_defs.h"
 
