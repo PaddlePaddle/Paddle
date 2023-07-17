@@ -1573,43 +1573,43 @@ void NewIRInterpreter::BuildInstructionDependences() {
   dependecy_count_ = std::vector<size_t>(instr_num, 0);
   auto downstream_map = ir_dependency_builder_.Build(vec_instruction_base_);
 
-  // for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
-  //   Instruction& cur_instr = vec_instruction_[instr_id];
-  //   const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
+  for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
+    InstructionBase* cur_instr = vec_instruction_base_[instr_id].get();
+    const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
 
-  //   if (FLAGS_new_executor_serial_run) {
-  //     for (size_t next_instr_id : next_instr_ids) {
-  //       cur_instr.AddNextInstrInSameThread(next_instr_id);
-  //     }
-  //   } else {
-  //     if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
-  //       for (size_t next_instr_id : next_instr_ids) {
-  //         if (vec_instruction_[next_instr_id].KernelType() ==
-  //             OpFuncType::kGpuAsync) {
-  //           cur_instr.AddNextInstrInSameThread(next_instr_id);
-  //         } else {
-  //           cur_instr.AddNextInstrInDifferentThread(next_instr_id);
-  //         }
-  //       }
-  //     } else {
-  //       bool has_instr_in_same_thread = false;
-  //       for (size_t next_instr_id : next_instr_ids) {
-  //         if (!has_instr_in_same_thread &&
-  //             vec_instruction_[next_instr_id].KernelType() !=
-  //                 OpFuncType::kGpuAsync) {
-  //           cur_instr.AddNextInstrInSameThread(next_instr_id);
-  //           has_instr_in_same_thread = true;
-  //         } else {
-  //           cur_instr.AddNextInstrInDifferentThread(next_instr_id);
-  //         }
-  //       }
-  //     }
-  //   }
+    if (FLAGS_new_executor_serial_run) {
+      for (size_t next_instr_id : next_instr_ids) {
+        cur_instr->AddNextInstrInSameThread(next_instr_id);
+      }
+    } else {
+      if (cur_instr->KernelType() == OpFuncType::kGpuAsync) {
+        for (size_t next_instr_id : next_instr_ids) {
+          if (vec_instruction_base_[next_instr_id]->KernelType() ==
+              OpFuncType::kGpuAsync) {
+            cur_instr->AddNextInstrInSameThread(next_instr_id);
+          } else {
+            cur_instr->AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      } else {
+        bool has_instr_in_same_thread = false;
+        for (size_t next_instr_id : next_instr_ids) {
+          if (!has_instr_in_same_thread &&
+              vec_instruction_base_[next_instr_id]->KernelType() !=
+                  OpFuncType::kGpuAsync) {
+            cur_instr->AddNextInstrInSameThread(next_instr_id);
+            has_instr_in_same_thread = true;
+          } else {
+            cur_instr->AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      }
+    }
 
-  //   for (size_t next_instr_id : next_instr_ids) {
-  //     ++dependecy_count_[next_instr_id];
-  //   }
-  // }
+    for (size_t next_instr_id : next_instr_ids) {
+      ++dependecy_count_[next_instr_id];
+    }
+  }
 }
 
 }  // namespace framework

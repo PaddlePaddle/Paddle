@@ -649,6 +649,7 @@ void IrDependencyBuilder::BuildDownstreamMap() {
                                               //  write op id.
   auto var2recent_write_op =
       std::map<size_t, size_t>();  // # map from variable to recent write op.
+
   auto op2dependences =
       std::map<size_t,
                std::set<size_t>>();  //# map from op to the dependence list,
@@ -699,19 +700,6 @@ void IrDependencyBuilder::BuildDownstreamMap() {
       }
     }
 
-    //   // the original output of inplace op is also change.
-    //   if (!instructions_->at(op_idx).InplaceBackMap().empty()) {
-    //     auto& m = instructions_->at(op_idx).InplaceBackMap();
-    //     for (auto& p : m) {
-    //       auto& var = p.second;
-    //       if (var2min_rw_op.count(var)) {
-    //         for (auto dep_op : var2min_rw_op[var]) {
-    //           op2dependences[op_idx].insert(dep_op);
-    //         }
-    //       }
-    //     }
-    //   }
-
     // step2: update 2 var2xxxx data structure
     for (auto& item :
          instructions_->at(op_idx)->Outputs()) {  // for all write vars
@@ -721,21 +709,6 @@ void IrDependencyBuilder::BuildDownstreamMap() {
         remove_duplicate.insert(var);
       }
     }
-
-    //   // NOTE(zhiqiu): The inplace op with `transfer` also changes
-    //   // original output after that so add original output as well
-    //   // original: a->op->a
-    //   // after: a->data_transfer->a'->op->a'->transfer_back->a
-    //   // which means op writes a and a'
-    //   if (!instructions_->at(op_idx).InplaceBackMap().empty()) {
-    //     auto& m = instructions_->at(op_idx).InplaceBackMap();
-    //     for (auto& p : m) {
-    //       auto var = p.second;
-    //       var2recent_write_op[var] = op_idx;
-    //       var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
-    //       remove_duplicate.insert(var);
-    //     }
-    //   }
 
     for (auto& item :
          instructions_->at(op_idx)->Inputs()) {  // for all inputs(read only)
@@ -784,18 +757,7 @@ const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::Build(
     AddDependencyForSequentialRun();
   }
 
-  // AddDependencyForCoalesceTensorOp();
-
-  // if (FLAGS_add_dependency_for_communication_op) {
-  //   AddDependencyForCommunicationOp();
-  //   VLOG(6) << "Finish AddDependencyForSequentialRun";
-  // }
-
-  // AddDependencyForRandomOp();
-  // VLOG(6) << "Finish AddDependencyForRandomOp";
-
-  // AddDependencyForReadOp();
-  // VLOG(6) << "Finish AddDependencyForReadOp";
+  // TODO(zhangbo): Add dependency for special op.
 
   VLOG(6) << "Finish build dependency";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
