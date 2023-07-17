@@ -904,7 +904,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 value = paddle.cast(value, dtype)
             inputs['ValueTensor'] = value
 
-        paddle.utils.check_shape(shape)
+        # paddle.utils.check_shape(shape)
         check_dtype(
             dtype,
             'dtype',
