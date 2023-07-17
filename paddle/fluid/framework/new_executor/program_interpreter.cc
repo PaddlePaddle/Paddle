@@ -219,6 +219,11 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
+FetchList ProgramInterpreter::BetaRun(
+    const std::vector<std::string>& feed_names, bool need_fetch) {
+  return {};
+}
+
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }
