@@ -53,7 +53,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
-  void ShareGCFrom(InterpreterBaseImpl* src) override;
+  void ShareBuildResultsFrom(InterpreterBaseImpl* src) override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 

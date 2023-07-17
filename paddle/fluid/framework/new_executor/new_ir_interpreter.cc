@@ -337,10 +337,9 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
-void NewIRInterpreter::ShareGCFrom(InterpreterBaseImpl* src) {
-  gc_ = reinterpret_cast<NewIRInterpreter*>(src)->GetGC();
-  VLOG(8) << "Share GC from InterpreterCore(" << src << ") to InterpreterCore("
-          << this << ")";
+void NewIRInterpreter::ShareBuildResultsFrom(InterpreterBaseImpl* src) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "ShareBuildResultsFrom is not implemented in NewIRInterpreter."));
 }
 
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(

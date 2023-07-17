@@ -56,9 +56,7 @@ class InterpreterCore {
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
-  void ShareGCFrom(std::shared_ptr<InterpreterCore> src);
-
-  void ShareOpDepandencyFrom(std::shared_ptr<InterpreterCore> src);
+  void ShareBuildResultsFrom(std::shared_ptr<InterpreterCore> src);
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
