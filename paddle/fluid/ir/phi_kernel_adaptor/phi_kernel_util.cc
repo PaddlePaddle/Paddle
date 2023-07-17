@@ -208,6 +208,15 @@ void HandleForSpecialOp(
     out_tensor->set_lod(in_tensor.lod());
   }
 
+  if (op_name == "pd.feed_with_place") {
+    VLOG(6) << "Handle for pd.feed_with_place";
+    auto var_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto value = op->result(0);
+    value_2_var_name->emplace(value, var_name);
+  }
+
   if (op_name == "builtin.combine") {
     auto out_value = op->result(0);
 
@@ -255,6 +264,22 @@ void HandleForSpecialOp(
           ->Rename(orig_name, param_name);
     }
     (*value_2_var_name)[value] = param_name;
+  }
+
+  if (op_name == "pd.shaddow_output") {
+    VLOG(6) << "Handle for pd.shaddow_ouptut";
+    auto var_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto value = op->operand(0);
+    // change opreand name to param_name
+    auto orig_name = value_2_var_name->at(value);
+
+    if (inner_scope->root()->FindVar(var_name) == nullptr) {
+      const_cast<paddle::framework::Scope*>(inner_scope->root())
+          ->Rename(orig_name, var_name);
+    }
+    (*value_2_var_name)[value] = var_name;
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -364,7 +389,8 @@ void BuildScope(const ir::Block& block,
 
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
+        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          value_2_var_name,

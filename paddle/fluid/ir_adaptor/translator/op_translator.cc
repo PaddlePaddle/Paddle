@@ -955,6 +955,36 @@ struct FeedOpTranscriber : public OpTranscriber {
   }
 };
 
+struct FeedWithPlaceOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    ir::AttributeMap attribute_map = {
+        {"name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"dtype",
+         paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
+        {"place", paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace())},
+    };
+
+    return attribute_map;
+  }
+
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    return {};
+  }
+};
+
 struct SplitOpTranscriber : public OpTranscriber {
   std::vector<ir::OpResult> GenerateOperationInput(
       ir::IrContext* ctx,
@@ -1087,9 +1117,43 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+struct ShaddowOutputOpTranscriber : public OpTranscriber {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
+    auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+
+    auto* op_info_concept =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    OpInputInfoList input_infos;
+    OpAttributeInfoList attr_infos;
+    OpOutputInfoList output_infos;
+    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+        op_info_concept->get_op_info_();
+
+    auto op_inputs = this->GenerateOperationInput(
+        ctx, param_map, op_desc, op_info.name(), input_infos, program);
+
+    ir::AttributeMap attribute_map = {
+        {"parameter_name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+    };
+
+    auto create_op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
+    ir::Operation* operation =
+        ir::Operation::Create(op_inputs, attribute_map, {}, create_op_info);
+    program->block()->push_back(operation);
+
+    return operation;
+  }
+};
+
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
+  special_handlers["feed_with_place"] = FeedWithPlaceOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
@@ -1098,6 +1162,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["shaddow_output"] = ShaddowOutputOpTranscriber();
 }
 
 }  // namespace translator

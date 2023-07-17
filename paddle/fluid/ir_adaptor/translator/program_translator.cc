@@ -81,10 +81,6 @@ void ProgramTranslator::Translate() {
   }
 }
 
-const TranslationContext& ProgramTranslator::Name2ValueMap() {
-  return param_map_;
-}
-
 inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
                                            const VarDesc* var) {
   auto& type_translator = TypeTranslator::instance();

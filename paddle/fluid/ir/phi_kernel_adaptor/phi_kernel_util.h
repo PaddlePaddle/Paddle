@@ -71,7 +71,7 @@ void BuildPhiContext(
   // inputs include input and mutable attributes
   std::cerr
       << "op name "
-      << op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data()
+      << op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString()
       << std::endl;
 
   auto attr_map = op->attributes();

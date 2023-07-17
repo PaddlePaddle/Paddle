@@ -2203,7 +2203,7 @@
   inplace : (param -> param_out), (master_param -> master_param_out)
 
 - op : shaddow_output
-  args : (Tensor x)
+  args : (Tensor x, str name)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

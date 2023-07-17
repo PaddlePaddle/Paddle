@@ -380,14 +380,32 @@ inline void RunProgramAPI(
       auto ir_ctx = ir::IrContext::Instance();
       auto program = std::make_unique<::ir::Program>(ir_ctx);
 
-      paddle::translator::ProgramTranslator program_translator(forward_program,
-                                                               program.get());
-      program_translator.Translate();
+      std::set<std::string> set_output_names;
+      // TODO(phlrain): no end add all the input
+      for (auto op_desc : forward_program->Block(0).AllOps()) {
+        for (const auto &n : op_desc->Outputs()) {
+          const auto &input_var_names = n.second;
+          for (const auto &var_name : input_var_names) {
+            set_output_names.insert(var_name);
+          }
+        }
+      }
 
-      auto name2value = program_translator.Name2ValueMap();
+      // add fetch with place op to program
+      auto feed_x_name = details::GetTensorsName(x);
+      for (auto &name : feed_x_name) {
+        auto op_desc = forward_global_block->PrependOp();
+        op_desc->SetType("feed_with_place");
+        op_desc->SetAttr("index", 0);
+        op_desc->SetAttr("dtype", 0);
+        op_desc->SetAttr("place", 0);
+        op_desc->SetAttr("name", name);
+        std::cerr << "name " << name << std::endl;
+        op_desc->SetOutput("out", {name});
+      }
 
       std::set<std::string> set_parameter_names;
-
+      // TODO(phlrain): no end add all the input
       for (auto op_desc : backward_program->Block(0).AllOps()) {
         for (const auto &n : op_desc->Inputs()) {
           const auto &input_var_names = n.second;
@@ -402,28 +420,28 @@ inline void RunProgramAPI(
       }
 
       for (auto &name : set_parameter_names) {
-        // std::cerr << "set paramter " << name << std::endl;
-        if (!name2value.count(name)) {
+        if (!set_output_names.count(name)) {
           continue;
         }
-        auto t = name2value.at(name);
 
-        std::string set_parameter_op_name(ir::SetParameterOp::name());
-        ir::OpInfo op_info = ir_ctx->GetRegisteredOpInfo(set_parameter_op_name);
-        std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-            {"parameter_name", ir::StrAttribute::get(ir_ctx, name)},
-        };
-
-        ir::Operation *operation =
-            ir::Operation::Create({t.value}, op_attribute_map, {}, op_info);
-
-        program->block()->push_back(operation);
+        auto op_desc = forward_global_block->AppendOp();
+        op_desc->SetType("shaddow_output");
+        op_desc->SetAttr("name", name);
+        std::cerr << "name " << name << std::endl;
+        op_desc->SetInput("x", {name});
+        op_desc->SetOutput("out", {"@EMPTY@"});
       }
 
+      forward_program = forward_global_block->Program();
+      paddle::translator::ProgramTranslator program_translator(forward_program,
+                                                               program.get());
+      program_translator.Translate();
+
       std::cerr << "forward program  " << std::endl;
-      // program->Print( std::cout );
+      program->Print(std::cout);
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
+      ir_program->Print(std::cout);
     }
 
     interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
@@ -573,13 +591,17 @@ inline void RunProgramGradAPI(
       auto ir_ctx = ir::IrContext::Instance();
       auto program = std::make_unique<::ir::Program>(ir_ctx);
 
-      paddle::translator::ProgramTranslator program_translator(backward_program,
-                                                               program.get());
-      std::cerr << "after translaote" << std::endl;
-      program_translator.Translate();
-
-      auto name2value = program_translator.Name2ValueMap();
-
+      // add feed kernel
+      for (auto &name : out_grad_names) {
+        auto op_desc = backward_global_block->PrependOp();
+        op_desc->SetType("feed_with_place");
+        op_desc->SetAttr("index", 0);
+        op_desc->SetAttr("dtype", 0);
+        op_desc->SetAttr("place", 0);
+        op_desc->SetAttr("name", name);
+        std::cerr << "name " << name << std::endl;
+        op_desc->SetOutput("out", {name});
+      }
       auto output_names = details::GetTensorsName(x_grad);
       auto param_grad_names = details::GetTensorsName(params_grad);
       for (auto &t : output_names) {
@@ -590,19 +612,20 @@ inline void RunProgramGradAPI(
         if (name == "@EMPTY@") {
           continue;
         }
-        auto t = name2value.at(name);
-
-        std::string set_parameter_op_name(ir::SetParameterOp::name());
-        ir::OpInfo op_info = ir_ctx->GetRegisteredOpInfo(set_parameter_op_name);
-        std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-            {"parameter_name", ir::StrAttribute::get(ir_ctx, name)},
-        };
-
-        ir::Operation *operation =
-            ir::Operation::Create({t.value}, op_attribute_map, {}, op_info);
-
-        program->block()->push_back(operation);
+        auto op_desc = backward_global_block->AppendOp();
+        op_desc->SetType("shaddow_output");
+        op_desc->SetAttr("name", name);
+        std::cerr << "name " << name << std::endl;
+        op_desc->SetInput("x", {name});
+        op_desc->SetOutput("out", {"@EMPTY@"});
       }
+
+      backward_program = backward_global_block->Program();
+
+      paddle::translator::ProgramTranslator program_translator(backward_program,
+                                                               program.get());
+      std::cerr << "after translaote" << std::endl;
+      program_translator.Translate();
 
       program->Print(std::cout);
       ir_program.reset(

@@ -74,7 +74,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   }
 
   const std::unordered_map<::ir::Value, std::string>& ValueMape() const {
-    return value_2_var_name_map_;
+    return value_2_var_name_;
   }
 
  private:
