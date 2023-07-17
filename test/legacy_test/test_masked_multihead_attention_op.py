@@ -260,7 +260,7 @@ class TestMMHAOp(unittest.TestCase):
             self.cache_kv_mmha_out,
             None,
             -1,
-            'bfloat16',
+            'float16',
         )
         np.testing.assert_allclose(
             paddle_mmha_out[0].numpy(),
