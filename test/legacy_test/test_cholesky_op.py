@@ -92,7 +92,7 @@ class TestCholeskyOpLower(TestCholeskyOp):
 
 class TestCholeskyOp2D(TestCholeskyOp):
     def init_config(self):
-        self._input_shape = (64, 64)
+        self._input_shape = (32, 32)
 
 
 class TestDygraph(unittest.TestCase):

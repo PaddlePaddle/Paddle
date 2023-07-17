@@ -94,13 +94,9 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
         CHECK(!pack_args.empty())
             << "at least one input tensor for " << op_name << " compute\n";
 
-        std::string tensor_name = UniqName("Reciprocal_out");
-
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
 
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
@@ -110,10 +106,8 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2U);
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2U);
+        tensor_name = pack_args[1].operator std::string();
 
         ir::Tensor out = Reciprocal(tensor_A, tensor_name);
         std::vector<CINNValue> res;
