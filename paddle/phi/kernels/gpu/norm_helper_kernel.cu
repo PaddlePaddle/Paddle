@@ -229,6 +229,7 @@ void NormHelperKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifndef PADDLE_WITH_HIP
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(norm_helper,
                    GPU,
@@ -244,4 +245,12 @@ PD_REGISTER_KERNEL(norm_helper,
                    phi::NormHelperKernel,
                    float,
                    phi::dtype::float16) {}
-#endif
+#endif  // CUDNN_VERSION_MIN
+#else
+PD_REGISTER_KERNEL(norm_helper,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::NormHelperKernel,
+                   float,
+                   phi::dtype::float16) {}
+#endif  // PADDLE_WITH_HIP
