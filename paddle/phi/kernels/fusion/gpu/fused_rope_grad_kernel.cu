@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <stdio.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -40,8 +39,6 @@ __global__ void VectorizedFusedRopeWithSinCosGradKernel(
   T store[VecSize];
   using VecType = phi::AlignedVector<T, VecSize>;
   constexpr int kVectorsPerThread = VecSize / 2;
-
-  printf("enter VectorizedFusedRopeWithSinCosGradKernel...\n");
 
   for (; index < size; index += stride) {
 #pragma unroll
@@ -200,7 +197,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     sin_cos_data[0] = sin->data<T>();
     sin_cos_data[1] = cos->data<T>();
 
-    printf("enter VectorizedFusedRopeWithSinCosGradKernel...\n");
     VectorizedFusedRopeWithSinCosGradKernel<T, MPType, vec_size>
         <<<grid, block, 0, stream>>>(ins_data,
                                      sin_cos_data,
@@ -211,7 +207,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                      outs_data,
                                      num_inputs);
   } else {
-    printf("enter VectorizedFusedRopeGradKernel...\n");
     VectorizedFusedRopeGradKernel<T, MPType, vec_size>
         <<<grid, block, 0, stream>>>(ins_data,
                                      batch_size,
