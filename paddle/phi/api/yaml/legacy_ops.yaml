@@ -25,10 +25,7 @@
 - op : add_n
   args : (Tensor[] inputs)
   output : Tensor
-  infer_meta :
-    func : AddNInferMeta
-  kernel :
-    func : add_n
+  invoke : add_n_impl(inputs)
   backward : add_n_grad
 
 - op : all

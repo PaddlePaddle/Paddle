@@ -1088,6 +1088,26 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+// NOTE, add_n op in legacy ops don't have a kernel, so we use a new op for now
+struct AddNOpTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name =
+        kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
+    if (IsInplace(op_desc)) {
+      target_op_name += "_";
+    } else {
+      target_op_name += "_with_kernel";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+    }
+
+    return op_info;
+  }
+};
+
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
@@ -1099,6 +1119,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["add_n"] = AddNOpTranscriber();
 }
 
 }  // namespace translator
