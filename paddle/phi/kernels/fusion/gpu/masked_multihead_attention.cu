@@ -122,8 +122,8 @@ void MMHAKernel(const Context& dev_ctx,
                     quant_max_bound,
                     quant_min_bound);
   }
-}
 #endif  // PADDLE_WITH_HIP
+}
 
 }  // namespace fusion
 }  // namespace phi
@@ -134,10 +134,7 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    phi::fusion::MMHAKernel,
                    float,
 #if CUDA_VERSION >= 11000
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
-}
-#else
+                   phi::dtype::bfloat16,
+#endif
                    phi::dtype::float16) {
 }
-#endif
