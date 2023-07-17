@@ -232,7 +232,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
             "but received strategy_.trainer_id_ = %d.",
             strategy_.trainer_id_));
 
-    if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
+    if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty()) {
       PADDLE_ENFORCE_LT(
           static_cast<size_t>(strategy_.trainer_id_),
           strategy_.trainers_endpoints_.size(),

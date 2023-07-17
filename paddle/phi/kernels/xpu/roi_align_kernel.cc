@@ -40,7 +40,10 @@ void RoiAlignKernel(const Context& dev_ctx,
 
   int rois_num = boxes.dims()[0];
 
-  if (rois_num == 0) return;
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   DenseTensor roi_batch_id_list;
   roi_batch_id_list.Resize({rois_num});

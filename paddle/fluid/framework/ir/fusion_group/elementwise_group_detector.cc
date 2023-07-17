@@ -35,7 +35,7 @@ static std::unordered_set<std::string>& GetElementwiseOpTypes() {
 
 static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
                           const Node* n) {
-  if (n && n->IsOp() && n->Op() && n->outputs.size() > 0U) {
+  if (n && n->IsOp() && n->Op() && !n->outputs.empty()) {
     auto iter = op_types.find(n->Op()->Type());
     if (iter != op_types.end()) {
       return true;
@@ -58,7 +58,7 @@ static bool IsGradOp(const Node* n) {
 
 static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
                                const std::vector<int64_t>& r) {
-  return l.size() != 0U && r.size() != 0U && l == r;
+  return !l.empty() && !r.empty() && l == r;
 }
 
 bool GroupDetector::CheckPrecondition(const Node* n) {
@@ -131,7 +131,7 @@ bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
     std::vector<std::string> output_names =
         OperationMap::Instance().Get(op->Type()).output_names;
     for (auto& name : output_names) {
-      if (op->Output(name).size() < 1U) {
+      if (op->Output(name).empty()) {
         return false;
       }
     }

@@ -203,7 +203,7 @@ TEST(program_test, slice_combine_test) {
   // (2) Create an empty program object
   ir::Program program(ctx);
   //   ir::Program *program = new ir::Program();
-  EXPECT_EQ(program.block()->size() == 0, true);
+  EXPECT_EQ(program.block()->empty(), true);
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);

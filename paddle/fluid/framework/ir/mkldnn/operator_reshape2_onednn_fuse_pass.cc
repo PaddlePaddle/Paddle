@@ -99,8 +99,7 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
     bool has_shape_tensor_list =
         std::find(names.begin(), names.end(), "ShapeTensorList") != names.end();
 
-    if (has_shape_tensor &&
-        reshape2_op->Op()->Input("ShapeTensor").size() > 0) {
+    if (has_shape_tensor && !reshape2_op->Op()->Input("ShapeTensor").empty()) {
       VLOG(4) << "Cannot fuse " << op_type
               << " and reshape2 because reshape2 dims are specified by "
                  "ShapeTensor!";
@@ -108,7 +107,7 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
     }
 
     if (has_shape_tensor_list &&
-        reshape2_op->Op()->Input("ShapeTensorList").size() > 0) {
+        !reshape2_op->Op()->Input("ShapeTensorList").empty()) {
       VLOG(4) << "Cannot fuse " << op_type
               << " and reshape2 because reshape2 dims are specified by "
                  "ShapeTensorList!";
