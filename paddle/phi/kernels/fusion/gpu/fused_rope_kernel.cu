@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <stdio.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -203,14 +204,29 @@ void FusedRopeKernel(const Context& dev_ctx,
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
   if (sin.get_ptr() && cos.get_ptr()) {
-    // int dims_size = sin.dims().size();
-    // PADDLE_ENFORCE_NE(
-    //     (sin.dims()[dims_size - 1] == head_dim) &&
-    //         (sin.dims()[dims_size - 2] == seq_len),
-    //     false,
-    //     phi::errors::InvalidArgument(
-    //         "The seq_len and head_dim of sin and cos must be equal with
-    //         q."));
+    PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
+                      cos.get_ptr()->dims(),
+                      phi::errors::InvalidArgument(
+                          "The dims of sin and cos must be the same."));
+    auto sin_dims = sin.get_ptr()->dims();
+    int dims_size = sin_dims.size();
+    PADDLE_ENFORCE_NE((dims_size == 2 || dims_size == 4),
+                      false,
+                      phi::errors::InvalidArgument(
+                          "The dims of sin and cos must be 2 or 4."));
+    if (dims_size == 4) {
+      PADDLE_ENFORCE_NE(
+          (sin_dims[0] == 1 && sin_dims[1] == 1),
+          false,
+          phi::errors::InvalidArgument(
+              "The batch_size and num_heads of sin and cos must be 1."));
+    }
+    PADDLE_ENFORCE_NE(
+        (sin_dims[dims_size - 1] == head_dim &&
+         sin_dims[dims_size - 2] == seq_len),
+        false,
+        phi::errors::InvalidArgument("The seq_len and head_dim of sin and cos "
+                                     "must be the same as those of q."));
 
     sin_cos_data[0] = sin->data<T>();
     sin_cos_data[1] = cos->data<T>();

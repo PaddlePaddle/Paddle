@@ -44,6 +44,12 @@ def fused_rotary_position_embedding(q, k, v, sin=None, cos=None):
             k = paddle.randn([1, 1, 4, 10], dtype='float16')
             v = paddle.randn([1, 1, 4, 10], dtype='float16')
             out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
+
+            x = paddle.randn([1, 1, 1, 10], dtype='float16')
+            y = paddle.randn([1, 1, 1, 10], dtype='float16')
+            sin = paddle.sin(x)
+            cos = paddle.cos(y)
+            out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos)
     """
     if in_dynamic_mode():
         return _C_ops.fused_rotary_position_embedding(q, k, v, sin, cos)
