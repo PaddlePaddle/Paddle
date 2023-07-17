@@ -51,7 +51,8 @@ if(UNIX AND NOT APPLE)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
-  list(APPEND ALLOCATOR_SRCS custom_allocator.cc)
+  list(APPEND ALLOCATOR_SRCS custom_allocator.cc
+       stream_safe_custom_device_allocator.cc)
 endif()
 
 if(WITH_XPU)

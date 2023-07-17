@@ -90,10 +90,15 @@
       tensor_name : EpsilonTensor
 
 - op : add (elementwise_add)
-  backward : add_grad (elementwise_add_grad)
+  backward : add_grad (elementwise_add_grad), add_double_grad (elementwise_add_grad_grad), add_triple_grad (elementwise_add_triple_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : add_n (sum)
   inputs:
@@ -1102,9 +1107,15 @@
 
 - op : fmin (elementwise_fmin)
   backward : fmin_grad (elementwise_fmin_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [fmin]
 
 - op : fold
   inputs :
@@ -1341,6 +1352,12 @@
 
 - op : imag
   backward : imag_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : increment
   inputs :
     x : X
   outputs :
@@ -1625,6 +1642,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : logsumexp
+  backward : logsumexp_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : lrn
   backward : lrn_grad
   extra :
@@ -1827,9 +1851,15 @@
 
 - op : minimum (elementwise_min)
   backward : minimum_grad (elementwise_min_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [minimum]
 
 - op : mish
   backward : mish_grad
@@ -2097,6 +2127,12 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : print
+  inputs :
+    in : In
+  outputs :
+    out : Out
 
 - op : prior_box
   inputs :
@@ -2541,6 +2577,10 @@
     out : Out
 
 - op : split
+  inputs:
+    x : X
+  outputs:
+    out : Out
   int_array:
       sections :
           data_type : int
@@ -2677,6 +2717,10 @@
     attrs : [bool use_mkldnn = false, float beta = 1.0]
 
 - op : sync_batch_norm
+  inputs :
+    {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
+  outputs :
+    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
