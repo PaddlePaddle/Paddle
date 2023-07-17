@@ -671,6 +671,60 @@ class TestTransposeOp(OpTest):
 @OpTestTool.skip_if(
     not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
 )
+class TestExpandDimsOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.unsqueeze_dim = [0]
+        self.target_shape = (1,)
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.unsqueeze(x, self.unsqueeze_dim)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("unsqueeze_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.expand_dims(x, self.unsqueeze_dim)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestExpandDimsOp2D(TestExpandDimsOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.unsqueeze_dim = [0, 1]
+        self.target_shape = (
+            1,
+            1,
+        )
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestBroadcastToOp1D(OpTest):
     def setUp(self):
         np.random.seed(2023)
