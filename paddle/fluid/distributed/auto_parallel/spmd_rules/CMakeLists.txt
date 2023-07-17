@@ -1,5 +1,6 @@
-file(GLOB SPMD_SRCS "*.cc")
+file(GLOB spmd_srcs *.cc)
+
 cc_library(
-  spmd_rule
-  SRCS ${SPMD_SRCS}
+  spmd_rules
+  SRCS ${spmd_srcs}
   DEPS phi)

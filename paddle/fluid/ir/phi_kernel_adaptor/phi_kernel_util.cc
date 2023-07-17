@@ -43,10 +43,18 @@
 
 namespace ir {
 
-paddle::framework::Variable* CreateVar(ir::Value value,
-                                       const std::string& name,
-                                       paddle::framework::Scope* scope,
-                                       paddle::framework::Scope* local_scope) {
+using VariableNameMap =
+    std::unordered_map<const paddle::framework::Variable*, std::string>;
+
+paddle::framework::Variable* CreateVar(
+    ir::Value value,
+    paddle::framework::Scope* inner_scope,
+    bool force_persisable,
+    std::unordered_map<ir::Value, std::string>* value_2_var_name,
+    std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name,
+    std::map<std::string, int>* var_name_2_id,
+    std::vector<paddle::framework::Variable*>* variable_list) {
   Operation* def_op = value.GetDefiningOp();
   bool is_persisable = false;
   if (def_op->attributes().count("is_persisable")) {
@@ -55,82 +63,179 @@ paddle::framework::Variable* CreateVar(ir::Value value,
                         .dyn_cast<ir::BoolAttribute>()
                         .data();
   }
-  if (is_persisable) {
-    VLOG(6) << "Create var: " << name << " in scope " << scope->root();
-    return const_cast<paddle::framework::Scope*>(scope->root())->Var(name);
+
+  paddle::framework::Variable* var = nullptr;
+  std::string name = "inner_var_" + std::to_string(variable_2_var_name->size());
+  if (force_persisable || is_persisable) {
+    VLOG(6) << "Create var: " << name << " in scope " << inner_scope->root();
+    var = const_cast<paddle::framework::Scope*>(inner_scope->root())->Var(name);
   } else {
-    VLOG(6) << "Create var: " << name << " in scope " << local_scope;
-    return local_scope->Var(name);
+    VLOG(6) << "Create var: " << name << " in scope " << inner_scope;
+    var = inner_scope->Var(name);
+  }
+  value_2_var_name->emplace(value, name);
+  variable_2_var_name->emplace(var, name);
+  auto id = var_name_2_id->size();
+  var_name_2_id->emplace(name, id);
+  variable_list->push_back(var);
+  PADDLE_ENFORCE_EQ(
+      variable_list->size(),
+      var_name_2_id->size(),
+      paddle::platform::errors::InvalidArgument(
+          "The size of variable_list and var_name_2_id map should be equal"));
+  return var;
+}
+
+void CheckInputVars(
+    ir::Operation* op,
+    const std::string& op_name,
+    const std::unordered_map<ir::Value, std::string>& value_2_var_name) {
+  size_t input_num = op->num_operands();
+  if (input_num > 0) {
+    for (size_t i = 0; i < input_num; ++i) {
+      auto value = op->operand(i);
+      if (value) {
+        PADDLE_ENFORCE_NE(
+            value_2_var_name.find(value),
+            value_2_var_name.end(),
+            phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                op_name));
+      }
+    }
   }
 }
 
-void HandleForSpecialOp(ir::Operation* op,
-                        paddle::framework::Scope* scope,
-                        paddle::framework::Scope* local_scope,
-                        std::unordered_map<ir::Value, std::string>* name_map,
-                        int& count) {  // NOLINT
+void BuildValue(ir::Value value,
+                paddle::framework::Scope* inner_scope,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id,
+                std::vector<paddle::framework::Variable*>* variable_list) {
+  paddle::framework::Variable* var = nullptr;
+  if (value_2_var_name->find(value) != value_2_var_name->end()) {
+    var = inner_scope->FindVar(value_2_var_name->at(value));
+  } else {
+    var = CreateVar(value,
+                    inner_scope,
+                    false,
+                    value_2_var_name,
+                    variable_2_var_name,
+                    var_name_2_id,
+                    variable_list);
+  }
+
+  // Only support DenseTensor or Vector<DenseTensor>
+  if (!value.type()) {
+    var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    var->GetMutable<phi::SelectedRows>();
+  } else if (value.type().isa<ir::VectorType>()) {
+    auto tensor_array = var->GetMutable<paddle::framework::VariableRefArray>();
+    for (size_t i = 0; i < value.type().dyn_cast<ir::VectorType>().size();
+         i++) {
+      PADDLE_ENFORCE(value.type()
+                         .dyn_cast<ir::VectorType>()[i]
+                         .isa<paddle::dialect::AllocatedDenseTensorType>(),
+                     paddle::platform::errors::Fatal(
+                         "Element of VectorType output only support "
+                         "DenseTensorType"));
+      auto var_i = CreateVar(value,
+                             inner_scope,
+                             false,
+                             value_2_var_name,
+                             variable_2_var_name,
+                             var_name_2_id,
+                             variable_list);
+      var_i->GetMutable<phi::DenseTensor>();
+      tensor_array->emplace_back(var_i);
+    }
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType or VectorType"));
+  }
+}
+
+void HandleForSpecialOp(
+    ir::Operation* op,
+    paddle::framework::Scope* inner_scope,
+    std::unordered_map<ir::Value, std::string>* value_2_var_name,
+    std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name,
+    std::map<std::string, int>* var_name_2_id,
+    std::vector<paddle::framework::Variable*>* variable_list) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
         op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
   }
-  size_t input_num = op->num_operands();
 
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
-    VLOG(6) << "Handle for pd.fetch:";
-    for (size_t i = 0; i < input_num; ++i) {
-      auto var = scope->Var("fetch");
-      VLOG(6) << "Create var: fetch in scope " << scope;
-      auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-      int index =
-          op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-      fetch_list->resize(index + 1);
-    }
+    auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
+                   ->Var("fetch");
+    VLOG(6) << "Create var: fetch in scope " << inner_scope->root();
+    auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    fetch_list->resize(index + 1);
   }
 
   if (op_name == "pd.feed") {
-    VLOG(6) << "Handle for pd.feed:";
-    auto ptr = op->result(0);
-    std::string name = "inner_var_" + std::to_string(count++);
-    name_map->emplace(ptr, name);
-    auto var = CreateVar(ptr, name, scope, local_scope);
+    auto value = op->result(0);
+    auto var = CreateVar(value,
+                         inner_scope,
+                         false,
+                         value_2_var_name,
+                         variable_2_var_name,
+                         var_name_2_id,
+                         variable_list);
     // TODO(phlrain): need to update here, support StringTensor
     auto out_tensor = var->GetMutable<phi::DenseTensor>();
 
-    auto feed_var = scope->Var("feed");
-    VLOG(6) << "Create var: feed in scope " << scope;
+    auto feed_var =
+        const_cast<paddle::framework::Scope*>(inner_scope->root())->Var("feed");
+    VLOG(6) << "Create var: feed in scope " << inner_scope->root();
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
     auto feed_list = feed_var->Get<paddle::framework::FeedList>();
     auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
     out_tensor->ShareDataWith(in_tensor);
+    out_tensor->set_lod(in_tensor.lod());
   }
 
   if (op_name == "builtin.combine") {
-    VLOG(6) << "Handle for builtin.combine:";
     auto out_value = op->result(0);
-    std::string name;
-    if (name_map->find(out_value) != name_map->end()) {
-      name = name_map->at(out_value);
+
+    paddle::framework::Variable* var = nullptr;
+    if (value_2_var_name->find(out_value) != value_2_var_name->end()) {
+      var = inner_scope->FindVar(value_2_var_name->at(out_value));
     } else {
-      name = "inner_var_" + std::to_string(count++);
-      name_map->emplace(out_value, name);
+      var = CreateVar(out_value,
+                      inner_scope,
+                      false,
+                      value_2_var_name,
+                      variable_2_var_name,
+                      var_name_2_id,
+                      variable_list);
     }
 
-    auto var = CreateVar(out_value, name, scope, local_scope);
-    auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
-
+    auto tensor_array = var->GetMutable<paddle::framework::VariableRefArray>();
+    // clear tensor array
+    tensor_array->clear();
+    size_t input_num = op->num_operands();
     for (size_t i = 0; i < input_num; ++i) {
-      auto ptr = op->operand(i);
-
+      auto value = op->operand(i);
       PADDLE_ENFORCE_EQ(
-          name_map->count(ptr),
+          value_2_var_name->count(value),
           true,
           phi::errors::PreconditionNotMet("can not found input of combine op"));
       tensor_array->emplace_back(
-          &(CreateVar(ptr, name_map->at(ptr), scope, local_scope)
-                ->Get<phi::DenseTensor>()));
+          inner_scope->FindVar(value_2_var_name->at(value)));
     }
   }
 
@@ -141,12 +246,15 @@ void HandleForSpecialOp(ir::Operation* op,
                           .dyn_cast<ir::StrAttribute>()
                           .data();
 
-    auto in_ptr = op->operand(0);
+    auto value = op->operand(0);
     // change opreand name to param_name
+    auto orig_name = value_2_var_name->at(value);
 
-    auto orig_name = name_map->at(in_ptr);
-    (*name_map)[in_ptr] = param_name;
-    scope->Rename(orig_name, param_name);
+    if (inner_scope->root()->FindVar(param_name) == nullptr) {
+      const_cast<paddle::framework::Scope*>(inner_scope->root())
+          ->Rename(orig_name, param_name);
+    }
+    (*value_2_var_name)[value] = param_name;
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -155,103 +263,147 @@ void HandleForSpecialOp(ir::Operation* op,
                           .at("parameter_name")
                           .dyn_cast<ir::StrAttribute>()
                           .data();
-    auto out_ptr = op->result(0);
-    name_map->emplace(out_ptr, param_name);
+    auto value = op->result(0);
+    value_2_var_name->emplace(value, param_name);
+  }
+
+  if (op_name == "builtin.slice") {
+    VLOG(6) << "Handle for builtin.slice";
+    auto out_value = op->result(0);
+    auto in_value = op->operand(0);
+    PADDLE_ENFORCE_EQ(value_2_var_name->count(in_value),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "input of buildin slice not in name map"));
+
+    int index =
+        op->attributes().at("index").dyn_cast<ir::Int32Attribute>().data();
+    auto in_var = inner_scope->FindVar(value_2_var_name->at(in_value));
+    auto variable_array = in_var->Get<paddle::framework::VariableRefArray>();
+
+    PADDLE_ENFORCE_EQ(
+        variable_2_var_name->count(variable_array[index]),
+        true,
+        phi::errors::PreconditionNotMet("[%d] the variable in build slice "
+                                        "input MUST in variable name map",
+                                        index));
+
+    std::string var_name = variable_2_var_name->at(variable_array[index]);
+    value_2_var_name->emplace(out_value, var_name);
   }
 }
 
-void BuildScope(const ir::Block& block,
-                paddle::framework::Scope* scope,
-                paddle::framework::Scope* local_scope,
-                std::unordered_map<ir::Value, std::string>* name_map) {
-  VLOG(4) << "***** [before build] scope: ******\n"
-          << paddle::framework::GenScopeTreeDebugInfo(
-                 const_cast<paddle::framework::Scope*>(scope->root()));
-  // NOTE(zhiqiu): if use local_scope (local_scope != nullptr), the persistable
-  // is created in scope , and other is created in local_scope.
-  auto inner_local_scope = local_scope != nullptr ? local_scope : scope;
-  VLOG(6) << "Build: scope [" << scope << "] inner_local_scope ["
-          << inner_local_scope << "]";
+void HandleForInplaceOp(
+    ir::Operation* op,
+    paddle::framework::Scope* inner_scope,
+    std::unordered_map<ir::Value, std::string>* value_2_var_name,
+    std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name,
+    std::map<std::string, int>* var_name_2_id,
+    std::vector<paddle::framework::Variable*>* variable_list) {
+  if (op->num_results() < 1) return;
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
+  }
 
-  // int count = name_map->size();
-  int count = name_map->size();
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_());
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    ir::Value value = op->result(i);
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      std::string inplace_name = yaml_parser.InplaceName(value_name);
+      ir::Value inplace_value =
+          op->operand(yaml_parser.InputName2Id().at(inplace_name));
+      std::string var_name = value_2_var_name->at(inplace_value);
+      VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+              << " (var: " << var_name << ")";
+      value_2_var_name->emplace(value, var_name);
+    } else {
+      BuildValue(value,
+                 inner_scope,
+                 value_2_var_name,
+                 variable_2_var_name,
+                 var_name_2_id,
+                 variable_list);
+    }
+  }
+}
+
+// NOTE(zhiqiu): the persistable is created in inner_scope's root, and other is
+// created in inner_scope.
+void BuildScope(const ir::Block& block,
+                paddle::framework::Scope* inner_scope,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id,
+                std::vector<paddle::framework::Variable*>* variable_list) {
+  VLOG(4) << "***** [before build] scope"
+          << "(" << inner_scope << ") ******\n"
+          << paddle::framework::GenScopeTreeDebugInfo(
+                 const_cast<paddle::framework::Scope*>(inner_scope->root()));
+
+  // int count = value_2_var_name->size();
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 
-    auto attr_map = op->attributes();
     std::string op_name = op->name();
-    if (attr_map.count("op_name")) {
-      op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+    if (op->attributes().count("op_name")) {
+      op_name =
+          op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
+    VLOG(4) << "build op:" << op_name;
 
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter") {
-      VLOG(6) << "HandleForSpecialOp: " << op_name;
-      HandleForSpecialOp(op, scope, inner_local_scope, name_map, count);
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+      HandleForSpecialOp(op,
+                         inner_scope,
+                         value_2_var_name,
+                         variable_2_var_name,
+                         var_name_2_id,
+                         variable_list);
       continue;
     }
 
-    size_t input_num = op->num_operands();
-    if (input_num > 0) {
-      for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = op->operand(i);
-        if (ptr) {
-          PADDLE_ENFORCE_NE(
-              name_map->find(ptr),
-              name_map->end(),
-              phi::errors::PreconditionNotMet(
-                  "input should in name map, [%d] 'th input of [%s] op",
-                  i,
-                  op_name));
-        }
-      }
-    }
+    CheckInputVars(op, op_name, *value_2_var_name);
 
-    int out_num = op->num_results();
-    if (out_num > 0) {
-      for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = op->result(i);
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          name = "inner_var_" + std::to_string(count++);
-          name_map->emplace(ptr, name);
-        }
-        auto var = CreateVar(ptr, name, scope, inner_local_scope);
-        // Only support DenseTensor or Vector<DenseTensor>
-        if (!ptr.type()) {
-          var->GetMutable<phi::DenseTensor>();
-        } else if (ptr.type()
-                       .isa<paddle::dialect::AllocatedDenseTensorType>()) {
-          var->GetMutable<phi::DenseTensor>();
-        } else if (ptr.type().isa<ir::VectorType>()) {
-          auto tensor_array =
-              var->GetMutable<paddle::framework::TensorRefArray>();
-          for (size_t i = 0; i < ptr.type().dyn_cast<ir::VectorType>().size();
-               i++) {
-            PADDLE_ENFORCE(
-                ptr.type()
-                    .dyn_cast<ir::VectorType>()[i]
-                    .isa<paddle::dialect::AllocatedDenseTensorType>(),
-                paddle::platform::errors::Fatal(
-                    "Element of VectorType output only support "
-                    "DenseTensorType"));
-            std::string name_i = "inner_var_" + std::to_string(count++);
-            auto var_i = CreateVar(ptr, name_i, scope, inner_local_scope);
-            tensor_array->emplace_back(var_i->GetMutable<phi::DenseTensor>());
-          }
-        } else {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "Output only support DenseTensorType or VectorType"));
-        }
+    if (op->num_results() < 1) continue;
+    if (op->attributes().count("is_inplace") != 0 &&
+        op->attributes()
+            .at("is_inplace")
+            .dyn_cast<ir::BoolAttribute>()
+            .data()) {
+      HandleForInplaceOp(op,
+                         inner_scope,
+                         value_2_var_name,
+                         variable_2_var_name,
+                         var_name_2_id,
+                         variable_list);
+      continue;
+    } else {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        BuildValue(op->result(i),
+                   inner_scope,
+                   value_2_var_name,
+                   variable_2_var_name,
+                   var_name_2_id,
+                   variable_list);
       }
     }
   }
-  VLOG(4) << "***** [after build] scope: ******\n"
+
+  VLOG(4) << "***** [after build] scope"
+          << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
-                 const_cast<paddle::framework::Scope*>(scope->root()));
+                 const_cast<paddle::framework::Scope*>(inner_scope->root()));
 }
 
 }  // namespace ir

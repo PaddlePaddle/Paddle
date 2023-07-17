@@ -187,10 +187,10 @@
   no_need_buffer: null
   data_transform: null
   infer_meta:
-    func: UnchangedInferMeta
+    func: EmbeddingGradSparseInferMeta
     param: [weight]
   kernel:
-    func: [embedding_grad_sparse]
+    func: [embedding_sparse_grad]
     param: [x, weight, out_grad, padding_idx, sparse]
     backend: null
     layout: null
@@ -198,7 +198,7 @@
       ordered: false
       candidates: [weight]
       to_complex_flag: [false]
-    dispatch: {embedding_grad_sparse: null}
+    dispatch: {embedding_sparse_grad: null}
     force_backend: null
   inplace: null
   view: null
