@@ -132,5 +132,8 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+                   phi::dtype::bfloat16,
+#endif
+                   phi::dtype::float16) {
+}
