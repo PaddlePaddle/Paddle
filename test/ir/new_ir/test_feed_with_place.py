@@ -30,6 +30,7 @@ def feed_with_place():
             'index': 0,
             'dtype': 0,
             'place': 0,
+            'name': "x",
         },
     )
     return out
@@ -46,6 +47,8 @@ class TestNewIr(unittest.TestCase):
         with paddle.static.scope_guard(new_scope):
             with paddle.static.program_guard(main_program):
                 out = feed_with_place()
+
+        print(main_program)
 
 
 if __name__ == "__main__":
