@@ -293,104 +293,70 @@ class TestGroupNormFP16Op1(TestGroupNormFP16OP):
         self.dtype = np.float16
 
 
-class TestGroupNormFP16Op2(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.data_format = "NHWC"
-        self.shape = (1, 100, 96, 96)
-        self.attrs['groups'] = 2
-        self.dtype = np.float16
-
-
-class TestGroupNormFP16Op3(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.data_format = "NHWC"
-        self.shape = (1, 128, 96, 96)
-        self.attrs['groups'] = 32
-        self.dtype = np.float16
-
-
-class TestGroupNormFP16Op4(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.data_format = "NCHW"
-        self.shape = (1, 128, 96, 96)
-        self.attrs['groups'] = 32
-        self.dtype = np.float16
-
-
-class TestGroupNormFP16Op5(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.data_format = "NCHW"
-        self.shape = (1, 45, 46, 46)
-        self.attrs['groups'] = 5
-        self.dtype = np.float16
-
-
-class TestGroupNormFP16Op6(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.data_format = "NHWC"
-        self.shape = (1, 45, 46, 46)
-        self.attrs['groups'] = 5
-        self.dtype = np.float16
-
-
-class TestGroupNormFP16Op7(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.data_format = "NHWC"
-        self.shape = (1, 48, 46, 46)
-        self.attrs['groups'] = 8
-        self.dtype = np.float16
-
-
 class TestGroupNormBF16Op1(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['groups'] = 1
 
 
+class TestGroupNormOp2(TestGroupNormOp):
+    def init_test_case(self):
+        self.attrs['groups'] = 4
+
+
+class TestGroupNormFP16Op2(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 4
+        self.dtype = np.float16
+
+
 class TestGroupNormBF16Op2(TestGroupNormBF16Op):
     def init_test_case(self):
-        self.data_format = "NHWC"
-        self.shape = (1, 100, 96, 96)
         self.attrs['groups'] = 4
+
+
+class TestGroupNormFP16Op3(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 32
+        self.shape = (1, 128, 96, 96)
+        self.data_format = "NHWC"
+        self.dtype = np.float16
 
 
 class TestGroupNormBF16Op3(TestGroupNormBF16Op):
     def init_test_case(self):
-        self.data_format = "NHWC"
-        self.shape = (1, 128, 96, 96)
         self.attrs['groups'] = 32
+        self.shape = (1, 128, 96, 96)
+        self.data_format = "NHWC"
+
+
+class TestGroupNormFP16Op4(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 3
+        self.shape = (1, 129, 96, 96)
+        self.data_format = "NHWC"
+        self.dtype = np.float16
 
 
 class TestGroupNormBF16Op4(TestGroupNormBF16Op):
     def init_test_case(self):
-        self.data_format = "NCHW"
-        self.shape = (1, 128, 96, 96)
+        self.attrs['groups'] = 3
+        self.shape = (1, 129, 96, 96)
+        self.data_format = "NHWC"
+
+
+class TestGroupNormFP16Op5(TestGroupNormFP16OP):
+    def init_test_case(self):
         self.attrs['groups'] = 32
+        self.shape = (1, 320, 96, 96)
+        self.data_format = "NHWC"
+        self.dtype = np.float16
 
 
 class TestGroupNormBF16Op5(TestGroupNormBF16Op):
     def init_test_case(self):
-        self.data_format = "NCHW"
-        self.shape = (1, 45, 46, 46)
-        self.attrs['groups'] = 5
-
-
-class TestGroupNormBF16Op6(TestGroupNormBF16Op):
-    def init_test_case(self):
+        self.attrs['groups'] = 32
+        self.shape = (1, 320, 96, 96)
         self.data_format = "NHWC"
-        self.shape = (1, 45, 46, 46)
-        self.attrs['groups'] = 5
-
-
-class TestGroupNormBF16Op7(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.data_format = "NHWC"
-        self.shape = (1, 48, 46, 46)
-        self.attrs['groups'] = 8
-
-
-class TestGroupNormOp2(TestGroupNormOp):
-    def init_test_case(self):
-        self.attrs['groups'] = 4
 
 
 class TestGroupNormOpBigEps1(TestGroupNormOp):
