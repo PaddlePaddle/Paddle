@@ -73,6 +73,22 @@ class Xdoctester(DocTester):
         self.verbose = verbose
         self.config = {**XDOCTEST_CONFIG, **(config or {})}
 
+        # patch xdoctest global_state
+        from xdoctest import global_state
+
+        _debug_xdoctest = debug and verbose > 2
+        global_state.DEBUG = _debug_xdoctest
+        global_state.DEBUG_PARSER = (
+            global_state.DEBUG_PARSER and _debug_xdoctest
+        )
+        global_state.DEBUG_CORE = global_state.DEBUG_CORE and _debug_xdoctest
+        global_state.DEBUG_RUNNER = (
+            global_state.DEBUG_RUNNER and _debug_xdoctest
+        )
+        global_state.DEBUG_DOCTEST = (
+            global_state.DEBUG_DOCTEST and _debug_xdoctest
+        )
+
         self.docstring_parser = functools.partial(
             xdoctest.core.parse_docstr_examples, style=self.style
         )
