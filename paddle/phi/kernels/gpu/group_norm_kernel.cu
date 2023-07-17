@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/group_norm_kernel.h"
 
+#include <cuda_bf16.h>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
