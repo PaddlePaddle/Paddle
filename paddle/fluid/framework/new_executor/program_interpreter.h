@@ -121,10 +121,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
-  // op dependences
-  interpreter::DependencyBuilder* GetDependencyBuilder();
-  std::shared_ptr<std::vector<size_t>> GetDependecyCount();
-
   // scope
   bool HasLocalScope() const;
 
@@ -168,15 +164,15 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
-  std::shared_ptr<InterpreterCoreGarbageCollector> gc_;
+  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
 
   // last_live_ops_[i] contains the id of operators that last access the i-th
   // var
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
+  // dependecy_count_[i] contains the number of dependencies that the i-th op
   // need to wait
-  std::shared_ptr<std::vector<size_t>> dependecy_count_;
+  std::vector<size_t> dependecy_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
