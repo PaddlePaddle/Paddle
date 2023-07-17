@@ -192,7 +192,11 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
+  std::unordered_map<::ir::Value, std::string> value_2_var_name_;
+  std::unordered_map<const paddle::framework::Variable*, std::string>
+      variable_2_var_name_;
+  std::map<std::string, int> var_name_2_id_;
+  std::vector<Variable*> variable_list_;
 };
 
 }  // namespace framework
