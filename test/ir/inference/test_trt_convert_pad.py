@@ -52,6 +52,7 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
                 [0, 0, 0, 0, 1, 2, 3, 4],
                 [0, 0, 1, 1, 1, 1, 1, 1],
                 [0, 0, 0, 0, -1, -1, 1, 1],
+                [0, 0, 0, 6, 0, 6, 0, 0],
             ]:
                 dics = [{"pad_value": pad_value, "paddings": paddings}, {}]
 
@@ -92,6 +93,16 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            if len(program_config.ops[0].attrs['paddings']) == 8:
+                if (
+                    program_config.ops[0].attrs['paddings'][0] == 0
+                    and program_config.ops[0].attrs['paddings'][1] == 0
+                ):
+                    if (
+                        program_config.ops[0].attrs['paddings'][6] == 0
+                        and program_config.ops[0].attrs['paddings'][7] == 0
+                    ):
+                        return 1, 2
             for x in range(len(program_config.ops[0].attrs['paddings']) - 4):
                 if program_config.ops[0].attrs['paddings'][x] != 0:
                     return 0, 3
@@ -125,6 +136,16 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
+            if len(program_config.ops[0].attrs['paddings']) == 8:
+                if (
+                    program_config.ops[0].attrs['paddings'][0] == 0
+                    and program_config.ops[0].attrs['paddings'][1] == 0
+                ):
+                    if (
+                        program_config.ops[0].attrs['paddings'][6] == 0
+                        and program_config.ops[0].attrs['paddings'][7] == 0
+                    ):
+                        return False
             for x in range(len(program_config.ops[0].attrs['paddings']) - 4):
                 if program_config.ops[0].attrs['paddings'][x] != 0:
                     return True
