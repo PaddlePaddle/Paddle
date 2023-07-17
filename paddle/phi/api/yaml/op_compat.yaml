@@ -2791,6 +2791,10 @@
 
 - op : transpose (transpose2)
   backward : transpose_grad (transpose2_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   attrs:
     perm : axis
   extra :
