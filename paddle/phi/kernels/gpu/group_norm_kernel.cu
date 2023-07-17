@@ -33,6 +33,12 @@ static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
 }
 
+__device__ inline float __bfloat162float(const __nv_bfloat16 a);
+
+__device__ inline float2 __bfloat1622float2(const __nv_bfloat162 a);
+
+__host__ __device__ inline __nv_bfloat162 __float22bfloat162_rn(const float2 a);
+
 struct GroupSums {
   // Is it the 1st element of the group?
   int32_t flag;
