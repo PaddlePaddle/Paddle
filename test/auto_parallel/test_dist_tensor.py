@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 
 
 class TestDistTensor(unittest.TestCase):
@@ -25,12 +26,12 @@ class TestDistTensor(unittest.TestCase):
         dist_attr = paddle.fluid.core.TensorDistAttr()
 
         # create dist tensor using numpy
-        dist_tensor_with_numpy = paddle.Tensor(
+        dist_tensor_with_numpy = dist.shard_tensor(
             np.ones(shape, dtype=np.float32), dist_attr=dist_attr
         )
 
         # create dist tensor using tensor
-        dist_tensor_with_tensor = paddle.Tensor(
+        dist_tensor_with_tensor = dist.shard_tensor(
             paddle.ones(shape), dist_attr=dist_attr
         )
 

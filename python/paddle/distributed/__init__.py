@@ -62,7 +62,7 @@ from .communication import (
 )  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
-from .auto_parallel import shard_tensor  # noqa: F401
+from .auto_parallel.api import shard_tensor  # noqa: F401
 
 from .fleet import BoxPSDataset  # noqa: F401
 
@@ -120,4 +120,5 @@ __all__ = [  # noqa
     "reduce_scatter",
     "is_available",
     "get_backend",
+    "shard_tensor",
 ]
