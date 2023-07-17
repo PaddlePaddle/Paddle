@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
 #pragma once
 
 #include "glog/logging.h"
@@ -1256,3 +1257,5 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
 
 }  // namespace fusion
 }  // namespace phi
+
+#endif  // PADDLE_WITH_HIP
