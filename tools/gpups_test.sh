@@ -78,6 +78,7 @@ parallel_list="^init_phi_test$|\
 ^test_top_k_v2_op$"
 
 cd ${work_dir}/build
+
 set +e
 ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4
 EXIT_CODE_1=$?
