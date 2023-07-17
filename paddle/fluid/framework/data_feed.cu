@@ -2365,16 +2365,39 @@ int InsertTable(int gpu_id,
   if (conf.gpu_graph_training) {
     VLOG(2) << "table capacity: " << conf.train_table_cap << ", "
             << h_uniq_node_num << " used";
-    PADDLE_ENFORCE(h_uniq_node_num + len < conf.train_table_cap,
-            "out of table");
     if (h_uniq_node_num + len >= conf.train_table_cap) {
+      if (!conf.sage_mode) {
+        return 1;
+      } else {
+        // Copy unique nodes first.
+        uint64_t copy_len = CopyUniqueNodes(gpu_id,
+                                            table,
+                                            *copy_unique_len_ptr,
+                                            place,
+                                            *d_uniq_node_num,
+                                            host_vec_ptr,
+                                            host_ranks_ptr,
+                                            stream);
+        *copy_unique_len_ptr += copy_len;
+        table->clear(stream);
+        cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
+      }
       return 1;
     }
   } else {
     // used only for sage_mode.
-    PADDLE_ENFORCE(h_uniq_node_num + len < conf.infer_table_cap,
-            "out of table");
     if (h_uniq_node_num + len >= conf.infer_table_cap) {
+      uint64_t copy_len = CopyUniqueNodes(gpu_id,
+                                        table,
+                                        *copy_unique_len_ptr,
+                                        place,
+                                        *d_uniq_node_num,
+                                        host_vec_ptr,
+                                        host_ranks_ptr,
+                                        stream);
+      *copy_unique_len_ptr += copy_len;
+      table->clear(stream);
+      cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
       return 1;
     }
   }

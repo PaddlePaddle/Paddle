@@ -50,9 +50,6 @@ __global__ void insert_kernel(Table* table,
   if (i < len) {
     kv.first = keys[i];
     kv.second = dft_val;  // fake value
-    if (kv.first == 0) {
-      printf("insert dft 0 key, rank=%u\n", kv.second);
-    }
     auto it = table->insert(kv, op, &local_num);
     assert(it != table->end() && "error: insert fails: table is full");
   }
@@ -83,9 +80,6 @@ __global__ void insert_kernel(Table* table,
   if (i < len) {
     kv.first = keys[i];
     kv.second = vals[i];
-    if (kv.first == 0) {
-      printf("insert 0 key, rank=%u\n", kv.second);
-    }
     /*
     auto real = kv.second;
     auto expect = (kv.first / 8) % 2;
