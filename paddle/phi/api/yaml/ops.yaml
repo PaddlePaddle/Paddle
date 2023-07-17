@@ -1974,6 +1974,16 @@
   inplace : (x -> out)
   backward : relu_grad
 
+- op : relu6
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu6
+  backward : relu6_grad
+
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)
   output : Tensor
@@ -2659,13 +2669,3 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
-
-- op : relu6
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : relu6
-  backward : relu6_grad
