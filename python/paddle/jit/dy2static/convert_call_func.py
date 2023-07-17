@@ -119,6 +119,8 @@ def is_unsupported(func):
 
     for m in BUILTIN_LIKELY_MODULES:
         for v in m.__dict__.values():
+            if not callable(v):
+                continue
             func_in_dict = func == v
             if isinstance(func_in_dict, (list, numpy.ndarray)):
                 func_in_dict = numpy.array(func_in_dict).any()
