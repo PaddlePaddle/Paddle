@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 
 #include <queue>
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
@@ -525,6 +526,56 @@ void DependencyBuilder::ShrinkDownstreamMap() {
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
   VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
+}
+
+// /// ======================== ///
+// ///        For new ir        ///
+// /// ======================== ///
+const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::Build(
+    const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
+        instructions) {
+  if (is_build_) {
+    return op_downstream_map_;
+  }
+
+  instructions_ = &instructions;
+  op_num_ = instructions_->size();
+
+  ops_before_.assign(op_num_, {});
+  ops_behind_.assign(op_num_, {});
+  op_happens_before_.assign(op_num_, std::vector<bool>(op_num_, false));
+
+  // BuildDownstreamMap();
+  // VLOG(6) << "Finish BuildDownstreamMap";
+
+  // ShrinkDownstreamMap();
+  // VLOG(6) << "Finish ShrinkDownstreamMap";
+
+  // if (FLAGS_new_executor_sequential_run) {
+  //   AddDependencyForSequentialRun();
+  // }
+
+  // AddDependencyForCoalesceTensorOp();
+
+  // if (FLAGS_add_dependency_for_communication_op) {
+  //   AddDependencyForCommunicationOp();
+  //   VLOG(6) << "Finish AddDependencyForSequentialRun";
+  // }
+
+  // AddDependencyForRandomOp();
+  // VLOG(6) << "Finish AddDependencyForRandomOp";
+
+  // AddDependencyForReadOp();
+  // VLOG(6) << "Finish AddDependencyForReadOp";
+
+  // VLOG(6) << "Finish build dependency";
+  // VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  // VLOG(8) << "downstream_map: " << std::endl
+  //         << StringizeDownstreamMap(op_downstream_map_);
+
+  is_build_ = true;
+
+  return op_downstream_map_;
 }
 
 }  // namespace interpreter

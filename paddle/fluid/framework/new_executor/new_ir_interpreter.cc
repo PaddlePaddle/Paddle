@@ -191,6 +191,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+    VLOG(4) << DebugValueInfo();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
@@ -247,7 +248,9 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+    VLOG(4) << DebugValueInfo();
     BuildInstruction();
+    BuildInstructionDependences();
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
@@ -1541,6 +1544,65 @@ void NewIRInterpreter::BuildInstruction() {
           "Now only support pd_kernel dialect."));
     }
   }
+}
+
+std::string NewIRInterpreter::DebugValueInfo() {
+  std::stringstream os;
+  os << "value info of interpretercore " << this << "\n"
+     << "value -> var_name -> id -> variable*"
+     << "\n";
+  for (auto kv : value_2_var_name_) {
+    os << kv.first.impl() << " -> " << kv.second << " -> "
+       << var_name_2_id_.at(kv.second) << " -> "
+       << InnerScope()->FindVar(kv.second) << "\n";
+  }
+  return os.str();
+}
+
+void NewIRInterpreter::BuildInstructionDependences() {
+  // analysis the dependences between instructions, add next_instr_list to each
+  // instr, and set the dependecy_count_
+  size_t instr_num = vec_instruction_base_.size();
+  dependecy_count_ = std::vector<size_t>(instr_num, 0);
+  auto downstream_map = ir_dependency_builder_.Build(vec_instruction_base_);
+
+  // for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
+  //   Instruction& cur_instr = vec_instruction_[instr_id];
+  //   const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
+
+  //   if (FLAGS_new_executor_serial_run) {
+  //     for (size_t next_instr_id : next_instr_ids) {
+  //       cur_instr.AddNextInstrInSameThread(next_instr_id);
+  //     }
+  //   } else {
+  //     if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+  //       for (size_t next_instr_id : next_instr_ids) {
+  //         if (vec_instruction_[next_instr_id].KernelType() ==
+  //             OpFuncType::kGpuAsync) {
+  //           cur_instr.AddNextInstrInSameThread(next_instr_id);
+  //         } else {
+  //           cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+  //         }
+  //       }
+  //     } else {
+  //       bool has_instr_in_same_thread = false;
+  //       for (size_t next_instr_id : next_instr_ids) {
+  //         if (!has_instr_in_same_thread &&
+  //             vec_instruction_[next_instr_id].KernelType() !=
+  //                 OpFuncType::kGpuAsync) {
+  //           cur_instr.AddNextInstrInSameThread(next_instr_id);
+  //           has_instr_in_same_thread = true;
+  //         } else {
+  //           cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   for (size_t next_instr_id : next_instr_ids) {
+  //     ++dependecy_count_[next_instr_id];
+  //   }
+  // }
 }
 
 }  // namespace framework
