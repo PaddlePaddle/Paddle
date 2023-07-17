@@ -272,6 +272,7 @@ struct V_vec_<bfloat16, 8> {
 };
 #endif  // ENABLE_BF16
 
+#ifdef ENABLE_BF16
 inline __device__ __nv_bfloat162 bf16hmul2(const __nv_bfloat162 x,
                                            const __nv_bfloat162 y) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
@@ -294,6 +295,7 @@ inline __device__ __nv_bfloat16 bf16hmul(const __nv_bfloat16 x,
   return __hmul(x, y);
 #endif
 }
+#endif  // ENABLE_BF16
 
 inline __device__ float half_to_float(uint16_t h) {
   float f;
@@ -987,6 +989,7 @@ inline __device__ Float4_ fma(float a, Float4_ b, Float4_ c) {
   return d;
 }
 
+#ifdef ENABLE_BF16
 inline __device__ __nv_bfloat162 fma(float a, float2 b, __nv_bfloat162 c) {
   return bf16hfma2(__float2bfloat162_rn(a), float22bf162(b), c);
 }
@@ -997,6 +1000,7 @@ inline __device__ bf16_4_t fma(float a, Float4_ b, bf16_4_t c) {
   d.y = fma(a, b.y, c.y);
   return d;
 }
+#endif  // ENABLE_BF16
 
 inline __device__ uint32_t h0_h0(uint16_t a) {
   uint32_t b;

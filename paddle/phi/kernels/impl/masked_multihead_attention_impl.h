@@ -121,6 +121,7 @@ struct V_vec_acum_fp32_<uint4> {
   using Type = Float8_;
 };
 
+#ifdef ENABLE_BF16
 template <>
 struct V_vec_acum_fp32_<__nv_bfloat162> {
   using Type = float2;
@@ -133,6 +134,7 @@ template <>
 struct V_vec_acum_fp32_<bf16_8_t> {
   using Type = Float8_;
 };
+#endif  // ENABLE_BF16
 
 #endif
 
