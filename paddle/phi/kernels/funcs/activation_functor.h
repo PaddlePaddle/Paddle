@@ -116,7 +116,10 @@ template <typename T>
 struct SinFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Sine<T>());
+    // Note(GGBond8488): Since Eigen3.3, Behavior like {A = (B * A).cwiseAbs()}
+    // will give wrong result, details see
+    // http://eigen.tuxfamily.org/dox/group__TopicAliasing.html
+    out.device(d) = x.unaryExpr(Sine<T>()).eval();
   }
 };
 
@@ -448,7 +451,7 @@ template <typename T>
 struct CosFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Cosine<T>());
+    out.device(d) = x.unaryExpr(Cosine<T>()).eval();
   }
 };
 
@@ -762,7 +765,10 @@ template <typename T>
 struct TanFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Tangent<T>());
+    // Note(GGBond8488): Since Eigen3.3, Behavior like {A = (B * A).cwiseAbs()}
+    // will give wrong result, details see
+    // http://eigen.tuxfamily.org/dox/group__TopicAliasing.html
+    out.device(d) = x.unaryExpr(Tangent<T>()).eval();
   }
 };
 
@@ -795,7 +801,7 @@ template <typename T>
 struct SinhFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Sinh<T>());
+    out.device(d) = x.unaryExpr(Sinh<T>()).eval();
   }
 };
 
@@ -804,7 +810,7 @@ template <typename T>
 struct CoshFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Cosh<T>());
+    out.device(d) = x.unaryExpr(Cosh<T>()).eval();
   }
 };
 
@@ -855,7 +861,7 @@ template <typename T>
 struct AcosFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Acos<T>());
+    out.device(d) = x.unaryExpr(Acos<T>()).eval();
   }
 };
 
@@ -892,7 +898,7 @@ template <typename T>
 struct AsinFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Asin<T>());
+    out.device(d) = x.unaryExpr(Asin<T>()).eval();
   }
 };
 
@@ -929,7 +935,7 @@ template <typename T>
 struct AtanFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Atan<T>());
+    out.device(d) = x.unaryExpr(Atan<T>()).eval();
   }
 };
 
@@ -977,7 +983,7 @@ template <typename T>
 struct AcoshFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Acosh<T>());
+    out.device(d) = x.unaryExpr(Acosh<T>()).eval();
   }
 };
 
@@ -1014,7 +1020,7 @@ template <typename T>
 struct AsinhFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Asinh<T>());
+    out.device(d) = x.unaryExpr(Asinh<T>()).eval();
   }
 };
 
@@ -1051,7 +1057,7 @@ template <typename T>
 struct AtanhFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Atanh<T>());
+    out.device(d) = x.unaryExpr(Atanh<T>()).eval();
   }
 };
 
