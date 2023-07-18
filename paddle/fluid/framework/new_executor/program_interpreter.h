@@ -61,6 +61,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
+  const std::vector<Instruction>& GetVecInstruction() const override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -177,10 +179,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // var
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  // dependecy_count_[i] contains the number of dependencies that the i-th op
+  // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
   // need to wait
-  std::vector<size_t> dependecy_count_;
-
+  std::shared_ptr<std::vector<size_t>> dependecy_count_;
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
 

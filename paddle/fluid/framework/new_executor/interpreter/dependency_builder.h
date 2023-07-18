@@ -48,10 +48,10 @@ class DependencyBuilder {
 
   bool OpHappensBefore(size_t prior_op_idx, size_t posterior_op_idx) const {
     PADDLE_ENFORCE_GE(
-        op_happens_before_.size(),
+        op_happens_before_->size(),
         0,
         phi::errors::Unavailable("op_happen_before is not yet built"));
-    return op_happens_before_.at(prior_op_idx).at(posterior_op_idx);
+    return op_happens_before_->at(prior_op_idx).at(posterior_op_idx);
   }
 
   void ShareDependencyFrom(const DependencyBuilder& src);
@@ -81,13 +81,13 @@ class DependencyBuilder {
   std::vector<std::vector<size_t>> ops_behind_;
 
   // op_downstream_map_ is the mapping from op to its downstream-op set, that is
-  // to say, op_downstream_map_[i] == {a, b, c} means op[a], op[b] and op[c]
+  // to say, (*op_downstream_map_)[i] == {a, b, c} means op[a], op[b] and op[c]
   // depend on op[i] directly.
-  std::map<size_t, std::set<size_t>> op_downstream_map_;
+  std::shared_ptr<std::map<size_t, std::set<size_t>>> op_downstream_map_;
 
   // op_happens_before_ is a matrix form of ops_before_ and ops_behind_, it is
   // used to speed up the query.
-  std::vector<std::vector<bool>> op_happens_before_;
+  std::shared_ptr<std::vector<std::vector<bool>>> op_happens_before_;
 };
 
 }  // namespace interpreter

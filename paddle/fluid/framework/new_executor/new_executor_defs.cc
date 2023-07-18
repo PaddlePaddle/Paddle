@@ -149,6 +149,15 @@ void VariableScope::CheckExist(const std::string& name) const {
       platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
+Instruction::Instruction() : is_artificial_(false) {
+  std::shared_ptr<DeviceEvent> device_event = std::make_shared<DeviceEvent>(
+      DeviceContext().GetPlace(), platform::GenerateDeviceEventFlag());
+  event_to_record_ = std::make_shared<EventInter>(
+      id_, device_event, platform::kCUDA /*unused*/);
+
+  events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+}
+
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
@@ -156,6 +165,33 @@ Instruction::Instruction(size_t id,
       id_(id),
       op_func_node_(op_func_node),
       dev_ctx_(dev_ctx) {
+  if (op_func_node.operator_base_ != nullptr &&
+      op_func_node.operator_base_->Type() == "depend") {
+    is_artificial_ = true;
+  }
+
+  if (op_func_node_.infer_meta_interface_ != nullptr) {
+    pre_define_context_ = true;
+  }
+  PADDLE_ENFORCE_GE(id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "Required id >= 0, but received id = %d", id));
+
+  std::shared_ptr<DeviceEvent> device_event = std::make_shared<DeviceEvent>(
+      DeviceContext().GetPlace(), platform::GenerateDeviceEventFlag());
+  event_to_record_ = std::make_shared<EventInter>(
+      id_, device_event, platform::kCUDA /*unused*/);
+
+  events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+}
+
+void Instruction::SetVar(size_t id,
+                         OpFuncNode&& op_func_node,
+                         const platform::DeviceContext& dev_ctx) {
+  id_ = id;
+  op_func_node_ = op_func_node;
+  dev_ctx_ = dev_ctx;
   if (op_func_node.operator_base_ != nullptr &&
       op_func_node.operator_base_->Type() == "depend") {
     is_artificial_ = true;
@@ -286,26 +322,17 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
-std::shared_ptr<EventInter> Instruction::GetEventToRecord() {
-  if (event_to_record_ == nullptr) {
-    std::shared_ptr<DeviceEvent> device_event = std::make_shared<DeviceEvent>(
-        DeviceContext().GetPlace(), platform::GenerateDeviceEventFlag());
-    event_to_record_ = std::make_shared<EventInter>(
-        id_, device_event, platform::kCUDA /*unused*/);
-  }
+std::shared_ptr<EventInter> Instruction::GetEventToRecord() const {
   return event_to_record_;
 }
 
-std::shared_ptr<std::vector<EventInter>> Instruction::GetEventsToWait() {
-  if (events_to_wait_ == nullptr) {
-    events_to_wait_ = std::make_shared<std::vector<EventInter>>();
-  }
+std::shared_ptr<std::vector<EventInter>> Instruction::GetEventsToWait() const {
   return events_to_wait_;
 }
 
-void Instruction::ShareEventsFrom(Instruction* src) {
-  events_to_wait_ = src->GetEventsToWait();
-  event_to_record_ = src->GetEventToRecord();
+void Instruction::ShareEventsFrom(const Instruction& src) {
+  event_to_record_ = src.GetEventToRecord();
+  events_to_wait_ = src.GetEventsToWait();
 }
 
 }  // namespace framework

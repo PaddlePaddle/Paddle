@@ -104,6 +104,8 @@ class InterpreterBaseImpl {
       const = 0;
 
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
+
+  virtual const std::vector<Instruction>& GetVecInstruction() const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

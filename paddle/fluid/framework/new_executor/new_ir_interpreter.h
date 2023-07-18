@@ -60,6 +60,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
+  const std::vector<Instruction>& GetVecInstruction() const override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;

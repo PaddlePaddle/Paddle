@@ -185,6 +185,8 @@ struct OpFuncNode {
 
 class Instruction {
  public:
+  Instruction();
+
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
@@ -212,11 +214,15 @@ class Instruction {
     events_to_wait_->emplace_back(instr_id, event, waiter_type);
   }
 
-  std::shared_ptr<EventInter> GetEventToRecord();
+  std::shared_ptr<EventInter> GetEventToRecord() const;
 
-  std::shared_ptr<std::vector<EventInter>> GetEventsToWait();
+  std::shared_ptr<std::vector<EventInter>> GetEventsToWait() const;
 
-  void ShareEventsFrom(Instruction* src);
+  void ShareEventsFrom(const Instruction& src);
+
+  void SetVar(size_t id,
+              OpFuncNode&& op_func_node,
+              const platform::DeviceContext& dev_ctx);
 
   const std::vector<EventInter>& EventsToWait() const {
     return *events_to_wait_;
