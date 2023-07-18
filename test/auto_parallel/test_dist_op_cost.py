@@ -76,7 +76,7 @@ class TestDistOpCost(unittest.TestCase):
                     x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None]
                 )
                 fill_shape = [2, 8]
-                fill_shape[0] = x.shape[0]
+                fill_shape[0] = paddle.shape(x)[0].item()
                 tmp = paddle.full(fill_shape, 1, dtype='float32')
                 weight_attr = paddle.ParamAttr()
                 linear = paddle.nn.Linear(8, 1, weight_attr=weight_attr)
@@ -138,7 +138,7 @@ class TestDistOpCost(unittest.TestCase):
                 )
                 # embedding
                 fill_shape = [4]
-                fill_shape[0] = x.shape[0]
+                fill_shape[0] = paddle.shape(x)[0].item()
                 tmp = paddle.full(shape=fill_shape, value=1, dtype='int32')
                 embedding = paddle.nn.Embedding(10, 8)
                 out = embedding(tmp)
@@ -246,7 +246,7 @@ class TestDistOpCost(unittest.TestCase):
                 )
                 # embedding
                 fill_shape = [4]
-                fill_shape[0] = x.shape[0]
+                fill_shape[0] = paddle.shape(x)[0].item()
                 tmp = paddle.full(shape=fill_shape, value=1, dtype='int32')
                 embedding = paddle.nn.Embedding(10, 8)
                 out = embedding(tmp)
@@ -354,7 +354,7 @@ class TestDistOpCost(unittest.TestCase):
                 )
                 # embedding
                 fill_shape = [4]
-                fill_shape[0] = x.shape[0]
+                fill_shape[0] = paddle.shape(x)[0].item()
                 tmp = paddle.full(shape=fill_shape, value=1, dtype='int32')
                 embedding = paddle.nn.Embedding(10, 8)
                 out = embedding(tmp)

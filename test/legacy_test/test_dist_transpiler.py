@@ -423,12 +423,12 @@ class TestFakeInit(TranspilerTest):
         neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
         fill_shape = [-1, 1]
-        fill_shape[0] = true_logits[0]
+        fill_shape[0] = paddle.shape(true_logits)[0].item()
         label_ones = paddle.full(
             shape=fill_shape, fill_value=1.0, dtype='float32'
         )
         fill_shape = [-1, neg_num]
-        fill_shape[0] = true_logits[0]
+        fill_shape[0] = paddle.shape(true_logits)[0].item()
         label_zeros = paddle.full(
             shape=fill_shape, fill_value=0.0, dtype='float32'
         )

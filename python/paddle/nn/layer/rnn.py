@@ -623,11 +623,10 @@ class RNNCellBase(Layer):
                 lambda shape: dtype, states_shapes
             )
         fill_shapes = copy.deepcopy(states_shapes)
-        for s in fill_shapes:
-            s.shape[0] = batch_ref.shape[batch_dim_idx]
+        fill_shapes.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
         init_states = paddle.utils.map_structure(
             lambda shape, dtype: paddle.full(
-                shape=shape,
+                shape=shape.shape,
                 fill_value=init_value,
                 dtype=dtype,
             ),
@@ -1556,13 +1555,15 @@ class RNNBase(LayerList):
                 -1,
                 self.hidden_size,
             )
-            print("============================")
+
+            fill_shape = list(state_shape)
+            fill_shape[1] = paddle.shape(inputs)[batch_index].item()
+            print("==================")
+            print(paddle.shape(inputs)[batch_index].item())
+            print(fill_shape)
             print(state_shape)
             print(inputs.shape)
-            fill_shape = list(state_shape)
-            fill_shape[1] = inputs.shape[batch_index]
-            print(batch_index)
-            print("----------------------------")
+            print("==================")
             initial_states = tuple(
                 [
                     paddle.full(fill_shape, 0, dtype)

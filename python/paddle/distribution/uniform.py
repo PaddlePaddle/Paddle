@@ -161,7 +161,7 @@ class Uniform(distribution.Distribution):
         if -1 in batch_shape:
             output_shape = shape + batch_shape
             fill_shape = list(batch_shape + shape)
-            fill_shape[0] = (self.low + self.high).shape[0]
+            fill_shape[0] = paddle.shape(self.low + self.high)[0].item()
             zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,

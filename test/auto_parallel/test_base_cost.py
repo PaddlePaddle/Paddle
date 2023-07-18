@@ -102,7 +102,7 @@ def mlp_forward(train_program, start_program):
             name="label", shape=[batch_size, 1], dtype='float32'
         )
         fill_shape = [batch_size]
-        fill_shape[0] = input.shape[0]
+        fill_shape[0] = paddle.shape(input)[0].item()
         fill_constant_out = paddle.full(fill_shape, 1, dtype="int32")
         embedding = paddle.nn.Embedding(10, hidden_size, sparse=True)
         embedding_out = embedding(fill_constant_out)
