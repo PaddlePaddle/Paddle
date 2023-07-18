@@ -218,13 +218,14 @@ void IrPrinter::PrintAttributeMap(const Operation* op) {
   std::vector<std::pair<std::string, Attribute>> tmp;
   AttributeMap op_attribute_map = op->attributes();
   for (auto x : op_attribute_map) tmp.push_back({x.first, x.second});
+
   sort(tmp.begin(),
        tmp.end(),
        [](std::pair<std::string, Attribute> a,
-          std::pair<std::string, Attribute> b) {
-    return a.first < b.first;
-  });
+          std::pair<std::string, Attribute> b) { return a.first < b.first; });
+
   os << " {";
+
   PrintInterleave(
       tmp.begin(),
       tmp.end(),
