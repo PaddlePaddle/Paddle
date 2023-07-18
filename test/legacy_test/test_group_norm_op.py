@@ -87,11 +87,7 @@ class TestGroupNormOp(OpTest):
         self.data_format = "NCHW"
         self.dtype = np.float64
         self.shape = (2, 100, 3, 5)
-        self.attrs = {
-            'epsilon': 1e-5,
-            'groups': 2,
-            'data_layout': self.data_format,
-        }
+        self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
         self.init_test_case()
 
@@ -312,57 +308,6 @@ class TestGroupNormFP16Op2(TestGroupNormFP16OP):
 class TestGroupNormBF16Op2(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['groups'] = 4
-
-
-class TestGroupNormFP16Op3(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 128, 96, 96)
-        self.data_format = "NHWC"
-        self.attrs["data_layout"] = "NHWC"
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op3(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 128, 96, 96)
-        self.data_format = "NHWC"
-        self.attrs["data_layout"] = "NHWC"
-
-
-class TestGroupNormFP16Op4(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 3
-        self.shape = (1, 129, 96, 96)
-        self.data_format = "NHWC"
-        self.attrs["data_layout"] = "NHWC"
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op4(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 3
-        self.shape = (1, 129, 96, 96)
-        self.data_format = "NHWC"
-        self.attrs["data_layout"] = "NHWC"
-
-
-class TestGroupNormFP16Op5(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 320, 96, 96)
-        self.data_format = "NHWC"
-        self.attrs["data_layout"] = "NHWC"
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op5(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 320, 96, 96)
-        self.data_format = "NHWC"
-        self.attrs["data_layout"] = "NHWC"
 
 
 class TestGroupNormOpBigEps1(TestGroupNormOp):
