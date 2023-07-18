@@ -529,14 +529,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
 class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   ReduceGlooTask(int rank,
-                 const std::shared_ptr<gloo::Context>& context,
+                 phi::distributed::GlooCommContext* comm_context,
                  std::vector<phi::DenseTensor>& inputs,   // NOLINT
                  std::vector<phi::DenseTensor>& outputs,  // NOLINT
                  ReduceOp reduce_op,
                  int dst,
                  uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::REDUCE),
-        _context(context),
+        _comm_context(comm_context),
         _inputs(inputs),
         _outputs(outputs),
         _reduce_op(reduce_op),
@@ -546,7 +546,7 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
   void Run() override { _do_reduce(_inputs, _outputs, _dst); }
 
  private:
-  std::shared_ptr<gloo::Context> _context;
+  phi::distributed::GlooCommContext* _comm_context;
   std::vector<phi::DenseTensor> _inputs;
   std::vector<phi::DenseTensor> _outputs;
   const ReduceOp _reduce_op;
@@ -569,14 +569,8 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
   void _do_reduce(std::vector<phi::DenseTensor>& inputs,   // NOLINT
                   std::vector<phi::DenseTensor>& outputs,  // NOLINT
                   int dst) {
-    const auto& dtype = inputs[0].dtype();
-    gloo::ReduceOptions opts(_context);
-    GENERATE_FUNC(dtype, set_input, opts, inputs[0]);
-    GENERATE_FUNC(dtype, set_output, opts, outputs[0]);
-    opts.setReduceFunction(_get_function(dtype, _reduce_op));
-    opts.setTag(_tag);
-    opts.setRoot(dst);
-    gloo::reduce(opts);
+    _comm_context->Reduce(
+        &(outputs[0]), inputs[0], static_cast<int>(_reduce_op), _dst, _tag);
   }
 };
 
@@ -588,11 +582,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
 ) {
   std::shared_ptr<ReduceGlooTask> task;
   auto tag = next_tag();
-  auto context = get_context();
+  auto comm_context = this->GetCommContext();
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   task = std::make_shared<ReduceGlooTask>(rank_,
-                                          context,
+                                          comm_context,
                                           in_wrapper,
                                           out_wrapper,
                                           opts.reduce_op,

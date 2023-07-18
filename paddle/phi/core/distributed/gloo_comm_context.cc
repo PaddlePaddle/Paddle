@@ -86,9 +86,11 @@ void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
 void GlooCommContext::Reduce(phi::DenseTensor* out_tensor,
                              const phi::DenseTensor& in_tensor,
                              int reduce_type,
-                             int root) {
+                             int root,
+                             uint32_t tag) {
   gloo::ReduceOptions opts(gloo_context_);
   opts.setRoot(root);
+  opts.setTag(tag);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);

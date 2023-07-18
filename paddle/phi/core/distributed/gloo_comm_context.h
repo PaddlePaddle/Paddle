@@ -43,7 +43,8 @@ class GlooCommContext final : public CommContext {
   void Reduce(phi::DenseTensor* out_tensor,
               const phi::DenseTensor& in_tensor,
               int reduce_type,
-              int root);
+              int root,
+              uint32_t tag = 0);
 
   void AllGather(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor);
