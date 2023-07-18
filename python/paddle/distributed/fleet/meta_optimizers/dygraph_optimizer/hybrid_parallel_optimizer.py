@@ -48,7 +48,6 @@ class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
         self._clip = clip
         self._hcg = hcg
-        self.not_sharding_stage1 = True
         self._vpp_chunk_num = None
         self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
             os.getenv('FLAGS_force_align_vpp_grad_sum_order', '0')
@@ -87,6 +86,7 @@ class HybridParallelClipGrad:
         for p, g in params_grads:
             if g is None:
                 continue
+
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
                 hasattr(p, 'is_firstly_shared')
                 and getattr(p, 'is_firstly_shared', True)
