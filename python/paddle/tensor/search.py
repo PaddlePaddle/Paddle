@@ -1131,13 +1131,14 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     return values, indices
 
 
-def top_p_sampling(x, ps, seed=None, name=None):
+def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
     """
     Get the TopP scores and ids.
 
     Args:
         x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
         ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
+        threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
         seed(int, optional): the random seed,
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1149,10 +1150,10 @@ def top_p_sampling(x, ps, seed=None, name=None):
         seed = -1
 
     if in_dygraph_mode():
-        return _C_ops.top_p_sampling(x, ps, seed)
+        return _C_ops.top_p_sampling(x, ps, threshold, seed)
 
-    inputs = {"x": [x], "ps": [ps]}
-    attrs = {"seed": seed}
+    inputs = {"x": x, "ps": ps, "threshold": threshold}
+    attrs = {"random_seed": seed}
 
     helper = LayerHelper('top_p_sampling', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1160,7 +1161,7 @@ def top_p_sampling(x, ps, seed=None, name=None):
     helper.append_op(
         type='top_p_sampling',
         inputs=inputs,
-        outputs={'out': [out], 'ids': [ids]},
+        outputs={'out': out, 'ids': ids},
         attrs=attrs,
     )
     return out, ids
