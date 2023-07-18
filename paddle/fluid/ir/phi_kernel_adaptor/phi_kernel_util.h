@@ -174,10 +174,10 @@ void BuildPhiContext(ir::Operation* op,
     } else if (attr_type_name == "ir::BoolAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
     } else if (attr_type_name == "ir::StrAttribute") {
-      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::StrAttribute>().data());
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::StrAttribute>().AsString());
     } else if (attr_type_name ==
                "ir::ArrayAttribute<paddle::dialect::ScalarAttribute>") {
-      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().AsVector();
       std::vector<phi::Scalar> vec_res;
       if (array_list.size() > 0) {
         PADDLE_ENFORCE_EQ(
@@ -193,7 +193,7 @@ void BuildPhiContext(ir::Operation* op,
       }
       ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int32Attribute>") {
-      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().AsVector();
       std::vector<int32_t> vec_res;
       if (array_list.size() > 0) {
         PADDLE_ENFORCE_EQ(
@@ -208,7 +208,7 @@ void BuildPhiContext(ir::Operation* op,
       }
       ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::FloatAttribute>") {
-      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().AsVector();
       std::vector<float> vec_res;
       if (array_list.size() > 0) {
         if (array_list[0].isa<ir::FloatAttribute>()) {
@@ -224,7 +224,7 @@ void BuildPhiContext(ir::Operation* op,
       }
       ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
-      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().AsVector();
 
       std::vector<int64_t> vec_res;
       if (array_list.size() > 0) {
@@ -241,7 +241,7 @@ void BuildPhiContext(ir::Operation* op,
       }
       ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
-      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().AsVector();
 
       std::vector<int64_t> vec_res;
       if (array_list.size() > 0) {
@@ -272,7 +272,7 @@ void BuildPhiContext(ir::Operation* op,
 
   // TODO(phlrain): use var type instead of op name
   if (op->attributes().count("op_name") &&
-      (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
+      (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString() ==
        "pd.fetch")) {
     // process fetch op
     auto fetch_var = inner_scope->FindVar("fetch");

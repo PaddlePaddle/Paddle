@@ -93,7 +93,7 @@ const std::map<std::string, int>& OpYamlInfoParser::OutputName2Id() const {
 }
 
 bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
-  auto inplace_info = std::get<3>(op_info_tuple_).inplace;
+  auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
   for (size_t i = 0; i < inplace_info.size(); i++) {
     if (out_name == inplace_info[i].first) {
       return true;
@@ -104,7 +104,7 @@ bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
 
 const std::string& OpYamlInfoParser::InplaceName(
     const std::string& out_name) const {
-  auto inplace_info = std::get<3>(op_info_tuple_).inplace;
+  auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
   for (size_t i = 0; i < inplace_info.size(); i++) {
     if (out_name == inplace_info[i].first) {
       return inplace_info[i].second;

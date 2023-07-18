@@ -543,10 +543,13 @@ def gen_build_func_str(
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
+    GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE = """
+  {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<ir::StrAttribute>().AsString();
+"""
     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().size(); i++) {{
-    {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>()[i].dyn_cast<{inner_type}>().data());
+    {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{data_name}());
   }}
 """
     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
@@ -566,11 +569,15 @@ def gen_build_func_str(
             #     attr_type = "std::vector<int>"
             if "ir::ArrayAttribute" in op_attribute_type_list[idx]:
                 inner_type = op_attribute_type_list[idx][19:-1]
+                data_name = "data"
+                if inner_type == "ir::StrAttribute":
+                    data_name = "AsString"
                 get_attributes_str += (
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                         inner_type=inner_type,
+                        data_name=data_name,
                     )
                 )
             elif (
@@ -591,6 +598,14 @@ def gen_build_func_str(
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
+                    )
+                )
+            elif "ir::StrAttribute" in op_attribute_type_list[idx]:
+                get_attributes_str += (
+                    GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+                        attr_type=attr_type,
+                        attribute_name=op_attribute_name_list[idx],
+                        attr_ir_type=op_attribute_type_list[idx],
                     )
                 )
             else:

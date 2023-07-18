@@ -237,7 +237,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : elementwise_pow
-  inplace: (x -> out)
   backward : elementwise_pow_grad
 
 - op : embedding
@@ -904,7 +903,7 @@
 
 - op : transpose
   args : (Tensor x, int[] perm)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
   kernel :
