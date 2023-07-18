@@ -14,7 +14,6 @@
 
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
-^test_conv3d_transpose_part2_op$|\
 ^test_conv3d_op$"
 
 parallel_list="^init_phi_test$|\

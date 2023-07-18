@@ -2193,7 +2193,10 @@ function parallel_test_base_gpups() {
     ========================================
 EOF
         ut_startTime_s=`date +%s`
-        ctest -L "RUN_TYPE=GPUPS" --timeout 120
+        set +e
+        bash ${PADDLE_ROOT}/tools/gpups_test.sh
+        EXIT_CODE=$?
+        set -e
         ut_endTime_s=`date +%s`
         echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
 
