@@ -137,24 +137,30 @@ class InstructionBase {
 
   // dist attrs：lower value, higher priority
   int stream_priority_{0};
+
   SchedulingPriority scheduling_priority_{0};
+
   std::string execution_stream_{kDefaultStream};
 
   platform::DeviceContext* dev_ctx_;  // not owned
 
   std::vector<size_t> next_instrs_in_different_thread_;
+
   std::vector<size_t> next_instrs_in_same_thread_;
 
   std::shared_ptr<EventInter> event_to_record_;
+
   std::vector<EventInter> events_to_wait_;
 
   std::vector<size_t> gc_check_vars_;
 
   std::vector<std::pair<Variable*, Variable*>>
       vec_inplace_in_to_out_;  // If not use share data, need this ?
+
   std::map<int, int> inplace_back_map_;
 
   std::unordered_map<ir::Value, std::vector<int>> input_index_;
+
   std::unordered_map<ir::Value, std::vector<int>> output_index_;
 };
 

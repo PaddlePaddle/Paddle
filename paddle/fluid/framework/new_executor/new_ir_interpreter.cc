@@ -193,6 +193,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &variable_list_);
     VLOG(4) << DebugValueInfo();
 
+    // NOTE(zhangbo): Iterative version, gradually replacing BuildOpFuncList()
+    // and Convert()
+    BuildInstruction();
+    BuildInstructionDependences();
+
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
                                  ir_program_->block(),
@@ -1537,6 +1542,18 @@ void NewIRInterpreter::BuildInstruction() {
        ++it) {
     VLOG(0) << "Build Instruction for op: " << op_idx;
     if ((*it)->dialect()->name() == "pd_kernel") {
+      auto op_name = (*it)
+                         ->attributes()
+                         .at("op_name")
+                         .dyn_cast<::ir::StrAttribute>()
+                         .data();
+      if (op_name == "builtin.combine" || op_name == "builtin.slice" ||
+          op_name == "pd.feed" || op_name == "pd.fetch" ||
+          op_name == "builtin.set_parameter" ||
+          op_name == "builtin.get_parameter") {
+        VLOG(6) << "skip process " << op_name;
+        continue;
+      }
       vec_instruction_base_.emplace_back(
           std::make_unique<PhiKernelInstruction>(op_idx++,
                                                  place_,

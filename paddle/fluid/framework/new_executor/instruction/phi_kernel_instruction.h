@@ -55,7 +55,7 @@ class PhiKernelInstruction : public InstructionBase {
   const std::string& Name() const override { return phi_op_name_; }
 
  private:
-  void InitInputsOutputs(
+  void InitInputsOutputsIds(
       ::ir::Operation* op,
       Scope* inner_scope,
       const std::unordered_map<::ir::Value, std::string>& value_2_var_name,

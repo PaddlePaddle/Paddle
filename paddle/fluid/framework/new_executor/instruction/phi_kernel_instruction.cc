@@ -84,14 +84,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
 
   phi_op_name_ = op_name;
-
-  if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-      op_name == "builtin.set_parameter" ||
-      op_name == "builtin.get_parameter") {
-    VLOG(6) << "skip process " << op_name;
-    SetArtificial(true);
-    return;
-  }
+  VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
 
   // Todo: support paddle::dialect::DistAttribute
   //   if (op_attributes.count("dist_attr") != 0) {
@@ -127,10 +120,17 @@ PhiKernelInstruction::PhiKernelInstruction(
 
   infer_meta_interface_ =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
+  VLOG(6) << "finish process infer_meta_interface_";
+
   auto yaml_interface =
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+  PADDLE_ENFORCE_NOT_NULL(
+      yaml_interface,
+      phi::errors::PreconditionNotMet(
+          "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_());
+  VLOG(6) << "finish process yaml_info_parser";
 
   ::ir::BuildPhiContext<
       phi::InferMetaContext,
@@ -178,7 +178,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process device context";
 
   Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-  InitInputsOutputs(
+  InitInputsOutputsIds(
       op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";
 }
@@ -204,7 +204,7 @@ std::vector<int> GetValueIds(
   return ids;
 }
 
-void PhiKernelInstruction::InitInputsOutputs(
+void PhiKernelInstruction::InitInputsOutputsIds(
     ::ir::Operation* op,
     Scope* inner_scope,
     const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
