@@ -52,6 +52,7 @@ from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
 from . import parallel_helper
+from .backup_env import getenv_or_backup
 
 __all__ = []
 
@@ -723,7 +724,7 @@ class ParallelEnv:
                 selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
                 self._device_id = int(selected_xpus[0])
 
-        self._trainer_endpoints = os.getenv(
+        self._trainer_endpoints = getenv_or_backup(
             "PADDLE_TRAINER_ENDPOINTS", ""
         ).split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
@@ -898,7 +899,7 @@ def _is_cpuonly(backend):
 
 
 def _check_var_exists(var_name):
-    var = os.environ.get(var_name, None)
+    var = getenv_or_backup(var_name, None)
     if var is None:
         raise ValueError(
             "paddle.distributed initialize error, "
@@ -1081,7 +1082,9 @@ def init_parallel_env():
         if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
-            endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+            endpoints = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS").split(',')[
+                0
+            ]
         assert endpoints, (
             "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
             "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "

@@ -273,11 +273,11 @@ class PipelineParallel(MetaParallelBase):
             else HOOK_ACTION.REDUCE
         )
 
-        fused_parameter_group = {}
-
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
+
+            fused_parameter_group = {}
 
             parameter_list = [
                 p for p in model.parameters() if not p.stop_gradient

@@ -495,8 +495,9 @@ def _to_name_str(var):
 
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
+    from ..distributed.backup_env import getenv_or_backup
 
-    trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
     fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
     cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
