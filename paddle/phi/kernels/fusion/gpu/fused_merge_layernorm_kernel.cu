@@ -198,6 +198,8 @@ void MergeLayernormKernel(const Context &dev_ctx,
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The MergeLayernorm TRT Plugin's input type should be float or half."));
   }
+  
+  out->Resize({batch, x_dim[1] / 4, x_dim[2] * 4});
 }
 
 }  // namespace fusion
@@ -208,6 +210,7 @@ PD_REGISTER_KERNEL(merge_layernorm,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::MergeLayernormKernel,
+                   float,
                    phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(merge_layernorm,
