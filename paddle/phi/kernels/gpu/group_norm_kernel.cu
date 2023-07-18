@@ -32,8 +32,9 @@ static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
 static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
 }
-
+#ifdef PADDLE_CUDA_BF16
 #ifdef __CUDA_NO_BFLOAT162_OPERATORS__
+
 __host__ __device__ inline float __internal_bfloat162float(const uint16 h) {
   float f;
 #if defined(__CUDA_ARCH__)
@@ -49,9 +50,6 @@ __host__ __device__ inline float __internal_bfloat162float(const uint16 h) {
   return f;
 }
 
-#endif
-
-#ifdef __CUDA_NO_BFLOAT162_OPERATORS__
 __host__ __device__ inline float2 __bfloat1622float2(const __nv_bfloat162 a) {
   float hi_float;
   float lo_float;
@@ -59,9 +57,7 @@ __host__ __device__ inline float2 __bfloat1622float2(const __nv_bfloat162 a) {
   hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
   return make_float2(lo_float, hi_float);
 }
-#endif
 
-#ifdef __CUDA_NO_BFLOAT162_OPERATORS__
 __host__ __device__ inline __nv_bfloat162 __floats2bfloat162_rn(const float a,
                                                                 const float b) {
   __nv_bfloat162 val;
@@ -77,14 +73,14 @@ __host__ __device__ inline __nv_bfloat162 __floats2bfloat162_rn(const float a,
 #endif
   return val;
 }
-#endif
 
-#ifdef __CUDA_NO_BFLOAT162_OPERATORS__
 __host__ __device__ inline __nv_bfloat162 __float22bfloat162_rn(
     const float2 a) {
   __nv_bfloat162 val = __floats2bfloat162_rn(a.x, a.y);
   return val;
 }
+
+#endif
 #endif
 
 struct GroupSums {
@@ -186,7 +182,7 @@ inline __device__ void UpdateSum<phi::dtype::float16, 2>(
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
 
-#ifndef __CUDA_NO_BFLOAT162_OPERATORS__
+#ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
     const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
@@ -452,7 +448,7 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
   }
 }
 
-#ifndef __CUDA_NO_BFLOAT162_OPERATORS__
+#ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     int32_t hwBegin,
@@ -1020,7 +1016,7 @@ class GroupNormCustomKernel<Context, phi::dtype::bfloat16> {
     using T = phi::dtype::bfloat16;
     const auto x_dims = x.dims();
     if (data_layout_str == "NHWC") {
-#ifndef __CUDA_NO_BFLOAT162_OPERATORS__
+#ifdef PADDLE_CUDA_BF16
       GroupNormNHWCKernel<Context, T>(
           dev_ctx, x, scale, bias, epsilon, groups, data_layout_str, y);
 #else
