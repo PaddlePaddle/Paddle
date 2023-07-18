@@ -65,7 +65,6 @@ phi::KernelKey GetKernelKey(
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
-
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
@@ -84,12 +83,36 @@ phi::KernelKey GetKernelKey(
       } else if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
+        auto type = map_value_pair.at(op->operand(in_index)).type();
 
-        dialect::DenseTensorType type =
-            op->operand(in_index)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>();
-        kernel_data_type = TransToPhiDataType(type.dtype());
+        if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          kernel_data_type = TransToPhiDataType(
+              type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                  .dtype());
+        } else if (type.isa<ir::VectorType>()) {
+          auto vec_data = type.dyn_cast<ir::VectorType>().data();
+          if (vec_data.size() == 0) {
+            kernel_data_type = phi::DataType::UNDEFINED;
+          } else {
+            if (vec_data[0].isa<paddle::dialect::AllocatedDenseTensorType>()) {
+              kernel_data_type = TransToPhiDataType(
+                  vec_data[0]
+                      .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                      .dtype());
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "Only support DenseTensorType in vector"));
+            }
+          }
+        } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+          kernel_data_type = TransToPhiDataType(
+              type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                  .dtype());
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Only support DenseTensorType, SelectedRows, VectorType"));
+        }
+
       } else {
         PADDLE_ENFORCE_EQ(attr_map.count(slot_name),
                           true,
@@ -146,7 +169,6 @@ phi::KernelKey GetKernelKey(
       if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
         continue;
       }
-
       auto input_tmp = op->operand(i);
       // NOTE: if not input_tmp, it's an optional input
       if (!input_tmp) {
