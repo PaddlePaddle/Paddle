@@ -171,7 +171,7 @@ Checks: '
 -modernize-deprecated-ios-base-aliases,
 -modernize-loop-convert,
 -modernize-make-shared,
--modernize-make-unique,
+modernize-make-unique,
 -modernize-pass-by-value,
 -modernize-raw-string-literal,
 -modernize-redundant-void-arg,
