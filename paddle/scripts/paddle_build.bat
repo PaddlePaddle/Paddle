@@ -109,6 +109,7 @@ if "%WITH_PYTHON%" == "ON" (
     pip install pyyaml
     pip install wget
     pip install -r %work_dir%\python\requirements.txt
+    pip install --upgrade pip
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
