@@ -53,6 +53,9 @@ def TopPProcess(probs, top_p):
     return next_scores, next_tokens
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+)
 class TestTopPAPI(unittest.TestCase):
     def setUp(self):
         self.topp = 0.0
@@ -74,7 +77,7 @@ class TestTopPAPI(unittest.TestCase):
             ).reshape((-1, 1))
             # test case for basic test case 1
             paddle_result = paddle.top_p_sampling(
-                input_tensor, topp_tensor, self.seed
+                input_tensor, topp_tensor, seed=self.seed
             )
             ref_res = TopPProcess(input_tensor, self.topp)
 
@@ -98,7 +101,9 @@ class TestTopPAPI(unittest.TestCase):
             topp_tensor = paddle.static.data(
                 name="topp", shape=[6, 1], dtype=self.dtype
             )
-            result = paddle.top_p_sampling(input_tensor, topp_tensor, self.seed)
+            result = paddle.top_p_sampling(
+                input_tensor, topp_tensor, seed=self.seed
+            )
             ref_res = TopPProcess(input_tensor, self.topp)
             exe = paddle.static.Executor(place)
             input_data = np.random.rand(6, 1030).astype(self.dtype)

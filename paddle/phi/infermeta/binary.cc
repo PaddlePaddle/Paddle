@@ -2848,6 +2848,7 @@ void TriangularSolveInferMeta(const MetaTensor& x,
 
 void TopPSamplingInferMeta(const MetaTensor& x,
                            const MetaTensor& ps,
+                           const MetaTensor& threshold,
                            int random_seed,
                            MetaTensor* out,
                            MetaTensor* ids) {
