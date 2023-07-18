@@ -65,7 +65,7 @@ paddle::framework::Variable* CreateVar(
   }
 
   paddle::framework::Variable* var = nullptr;
-  std::string name = "inner_var_" + std::to_string(variable_2_var_name->size());
+  std::string name = "inner_var_" + std::to_string(inner_scope->Size());
   if (force_persisable || is_persisable) {
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope->root();
     var = const_cast<paddle::framework::Scope*>(inner_scope->root())->Var(name);
