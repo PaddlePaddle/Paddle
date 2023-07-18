@@ -33,9 +33,9 @@ static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
 }
 #ifdef PADDLE_CUDA_BF16
-#ifdef __CUDA_NO_BFLOAT162_OPERATORS__
+// #ifdef __CUDA_NO_BFLOAT162_OPERATORS__
 
-__host__ __device__ inline float __internal_bfloat162float(const uint16 h) {
+__host__ __device__ inline float __internal_bfloat162float(const uint16_t h) {
   float f;
 #if defined(__CUDA_ARCH__)
   asm("{ mov.b32 %0, {0,%1};}\n" : "=f"(f) : "h"(h));
@@ -80,7 +80,7 @@ __host__ __device__ inline __nv_bfloat162 __float22bfloat162_rn(
   return val;
 }
 
-#endif
+// #endif
 #endif
 
 struct GroupSums {
@@ -187,7 +187,7 @@ template <>
 inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
     const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
   __nv_bfloat162 h2 = *reinterpret_cast<__nv_bfloat162 const*>(srcX);
-  float2 f2 = __bfloat1622float2(h2);
+  float2 f2 = phi::__bfloat1622float2(h2);
   *sum += f2.x + f2.y;
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
@@ -458,9 +458,9 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
-  gammaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  gammaF2 = phi::__bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.gamma) + ci));
-  betaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  betaF2 = phi::__bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
@@ -473,7 +473,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
         *reinterpret_cast<__nv_bfloat162 const*>(&params.srcX[offset]);
 
     // Extract the two half values.
-    float2 f2 = __bfloat1622float2(h2);
+    float2 f2 = phi::__bfloat1622float2(h2);
 
     // Normalize the channels.
     f2.x = (f2.x - mean) * invStdDev;
@@ -490,7 +490,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     }
     // Store the scaled values.
     *reinterpret_cast<__nv_bfloat162*>(&params.dst[offset]) =
-        __float22bfloat162_rn(f2);
+        phi::__float22bfloat162_rn(f2);
   }
 }
 #endif
