@@ -57,7 +57,7 @@ void LambKernel(const Context& dev_ctx,
             "When multi_precision=False, T and MT must be the same type."));
   }
   bool cpu_skip_update = false;
-  if (skip_update && skip_update->IsInitialized()) {
+  if (skip_update && skip_update->initialized()) {
     if (skip_update->place().GetType() == phi::AllocationType::CPU) {
       cpu_skip_update = *(skip_update->data<bool>());
     } else {

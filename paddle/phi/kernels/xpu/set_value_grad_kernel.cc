@@ -61,7 +61,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                       DenseTensor* value_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(
-      out_grad.IsInitialized(),
+      out_grad.initialized(),
       true,
       errors::PermissionDenied(
           "The input of `set_value_grad`(out_grad) has not been initialized"));

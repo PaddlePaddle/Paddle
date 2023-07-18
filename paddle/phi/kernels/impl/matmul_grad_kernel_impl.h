@@ -981,10 +981,10 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (out_d_dout_dims != dout_help.dims()) {
         out_d_dout->Resize(dout_help.dims());
       }
-      if (ddx && !ddx_conj.IsInitialized()) {
+      if (ddx && !ddx_conj.initialized()) {
         ddx_conj = Conj<T>(dev_ctx, ddx_help);
       }
-      if (ddy && !ddy_conj.IsInitialized()) {
+      if (ddy && !ddy_conj.initialized()) {
         ddy_conj = Conj<T>(dev_ctx, ddy_help);
       }
     }
@@ -1003,7 +1003,7 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (out_d_ddy_dims != y_help.dims()) {
         out_d_ddy->Resize(y_help.dims());
       }
-      if (!dout_conj.IsInitialized()) {
+      if (!dout_conj.initialized()) {
         dout_conj = Conj<T>(dev_ctx, dout_help);
       }
       x_conj = Conj<T>(dev_ctx, x_help);
@@ -1409,16 +1409,16 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       }
     }
 
-    if (out_d_dout && !out_d_dout->IsInitialized()) {
+    if (out_d_dout && !out_d_dout->initialized()) {
       FullLikeKernel<T, Context>(
           dev_ctx, dout, Scalar(0.0), dout.dtype(), out_d_dout);
     }
 
-    if (out_d_ddx && !out_d_ddx->IsInitialized()) {
+    if (out_d_ddx && !out_d_ddx->initialized()) {
       FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), out_d_ddx);
     }
 
-    if (out_d_ddy && !out_d_ddy->IsInitialized()) {
+    if (out_d_ddy && !out_d_ddy->initialized()) {
       FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), out_d_ddy);
     }
   } else {

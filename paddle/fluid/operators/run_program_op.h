@@ -66,7 +66,7 @@ static void CheckInputVarStatus(const Variable &var,
                         var_name,
                         platform::demangle(framework::ToTypeName(var.Type()))));
   PADDLE_ENFORCE_EQ(
-      var.Get<phi::DenseTensor>().IsInitialized(),
+      var.Get<phi::DenseTensor>().initialized(),
       true,
       platform::errors::InvalidArgument("The tensor in input variable %s of "
                                         "RunProgram(Grad)Op "
@@ -88,7 +88,7 @@ static void CheckOutputVarStatus(const Variable &src_var,
             "%s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
-    PADDLE_ENFORCE_EQ(src_var.Get<phi::DenseTensor>().IsInitialized(),
+    PADDLE_ENFORCE_EQ(src_var.Get<phi::DenseTensor>().initialized(),
                       true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
@@ -105,7 +105,7 @@ static void CheckOutputVarStatus(const Variable &src_var,
             "wrong type. Expect type is SelectedRows, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
-    PADDLE_ENFORCE_EQ(src_var.Get<phi::SelectedRows>().value().IsInitialized(),
+    PADDLE_ENFORCE_EQ(src_var.Get<phi::SelectedRows>().value().initialized(),
                       true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "

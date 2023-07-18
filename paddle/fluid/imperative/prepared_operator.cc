@@ -91,7 +91,7 @@ void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
         continue;
       }
       const auto* tensor = GetTensorFromVar(var->Var());
-      if (tensor && tensor->IsInitialized()) {
+      if (tensor && tensor->initialized()) {
         VLOG(6) << "Transform " << framework::DataTypeToString(var->DataType())
                 << " var `" << var->Name() << "` to "
                 << framework::DataTypeToString(var->ForwardDataType())

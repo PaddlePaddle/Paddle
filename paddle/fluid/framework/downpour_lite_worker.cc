@@ -497,7 +497,7 @@ void DownpourLiteWorker::TrainFiles() {
               tensor = selected_rows->mutable_value();
               len = tensor->numel();
             }
-            if (!tensor->IsInitialized()) {
+            if (!tensor->initialized()) {
               continue;
             }
             s += param + ":" + std::to_string(len) + ":";

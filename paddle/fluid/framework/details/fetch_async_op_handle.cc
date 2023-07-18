@@ -51,7 +51,7 @@ static void CheckTensorAttrs(const phi::DenseTensor *tensor,
                              const DDim &dims,
                              const LoD &lod,
                              const size_t offset) {
-  if (tensor->numel() && tensor->IsInitialized()) {
+  if (tensor->numel() && tensor->initialized()) {
     // step1: check type
     PADDLE_ENFORCE_EQ(
         type,
@@ -133,7 +133,7 @@ static void CheckTensorAttrs(const phi::DenseTensor *tensor,
 static void TransData(const phi::DenseTensor *src_item,
                       phi::DenseTensor *dst_item,
                       const platform::DeviceContext &ctx) {
-  if (src_item->IsInitialized() && src_item->numel() > 0) {
+  if (src_item->initialized() && src_item->numel() > 0) {
     if (platform::is_gpu_place(src_item->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       TensorCopy(*src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
@@ -156,7 +156,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   framework::DDim check_dim;
 
   for (auto *t : src_lodtensors) {
-    if (t->numel() && t->IsInitialized()) {
+    if (t->numel() && t->initialized()) {
       check_dim = t->dims();
       new_type = paddle::framework::TransToProtoVarType(t->dtype());
       new_layout = t->layout();
@@ -179,7 +179,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   } else {
     bool find_first_dims = false;
     for (auto *t : src_lodtensors) {
-      if (t->numel() && t->IsInitialized()) {
+      if (t->numel() && t->initialized()) {
         if (!find_first_dims) {
           new_dim = t->dims();
           find_first_dims = true;

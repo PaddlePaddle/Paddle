@@ -156,7 +156,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   const auto* master_param =
       IsMultiPrecision ? master_param_opt.get_ptr() : nullptr;
   const auto* skip_update = skip_update_opt.get_ptr();
-  const bool* skip_update_flag = skip_update && skip_update->IsInitialized()
+  const bool* skip_update_flag = skip_update && skip_update->initialized()
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&

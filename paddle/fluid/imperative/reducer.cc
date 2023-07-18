@@ -362,7 +362,7 @@ void Reducer::InitializeDenseGroups(
                           var_name));
 
     auto lod_tensor = var->MutableVar()->GetMutable<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(),
+    PADDLE_ENFORCE_EQ(lod_tensor->initialized(),
                       true,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", var_name));
@@ -737,7 +737,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     } else {
       // TODO(shenliang03): maybe save the memory
       // by avoiding tensor construction
-      if (!group_tensor.IsInitialized()) {
+      if (!group_tensor.initialized()) {
         group_tensor.Resize({static_cast<int64_t>(length)});
         group_tensor.mutable_data(place_,
                                   framework::TransToPhiDataType(group.dtype_));
@@ -984,11 +984,11 @@ bool Reducer::HasGrad(size_t var_index) {
 
   const auto &var = grad_var->Var();
   if (var.IsType<phi::DenseTensor>()) {
-    if (var.Get<phi::DenseTensor>().IsInitialized()) {
+    if (var.Get<phi::DenseTensor>().initialized()) {
       return true;
     }
   } else if (var.IsType<phi::SelectedRows>()) {
-    if (var.Get<phi::SelectedRows>().value().IsInitialized()) {
+    if (var.Get<phi::SelectedRows>().value().initialized()) {
       return true;
     }
   } else {

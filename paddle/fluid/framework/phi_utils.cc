@@ -321,7 +321,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
       data_type = tensor.dtype();
       if (data_type == phi::DataType::INT64) {
         const auto& tensor = var->Get<phi::DenseTensor>();
-        if (tensor.IsInitialized() &&
+        if (tensor.initialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
@@ -331,7 +331,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
         }
       } else if (data_type == phi::DataType::INT32) {
         const auto& tensor = var->Get<phi::DenseTensor>();
-        if (tensor.IsInitialized() &&
+        if (tensor.initialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);

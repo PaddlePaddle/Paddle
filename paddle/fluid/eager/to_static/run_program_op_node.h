@@ -64,7 +64,7 @@ static void CheckInputVarStatus(const Tensor &tensor) {
                         tensor.name()));
 
   PADDLE_ENFORCE_EQ(
-      static_cast<phi::DenseTensor *>(tensor.impl().get())->IsInitialized(),
+      static_cast<phi::DenseTensor *>(tensor.impl().get())->initialized(),
       true,
       paddle::platform::errors::InvalidArgument(
           "The tensor in input tensor %s of "
@@ -90,7 +90,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is DenseTensor",
                           name));
-    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
+    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "The tensor in output tensor %s get from "

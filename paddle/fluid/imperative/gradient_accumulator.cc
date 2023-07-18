@@ -645,7 +645,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     }
   } else {
     if (!dst_var->Var().IsInitialized() ||
-        !dst_var->Var().Get<phi::DenseTensor>().IsInitialized()) {
+        !dst_var->Var().Get<phi::DenseTensor>().initialized()) {
       VLOG(6) << "Set StopGradient Grad: " << dst_var->Name() << " as zero ";
       auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       if (!dst_var->Var().IsInitialized()) {
@@ -785,7 +785,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     }
   } else {
     if (!dst_var->Var().IsInitialized() ||
-        !dst_var->Var().Get<phi::DenseTensor>().IsInitialized()) {
+        !dst_var->Var().Get<phi::DenseTensor>().initialized()) {
       VLOG(6) << "Set StopGradient Grad: " << var->Name() << " as zero";
       auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       if (!dst_var->Var().IsInitialized()) {

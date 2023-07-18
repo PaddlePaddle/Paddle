@@ -156,7 +156,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         tensor = inner_var->GetMutable<phi::DenseTensor>();
       }
 
-      if (tensor && !tensor->IsInitialized()) {
+      if (tensor && !tensor->initialized()) {
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(op.place());
         // NOTE(zhiqiu): since grad variable is ungenerated, so the dtype is not
         // correct. var->DataType() returns the default dtype, which is float32.
@@ -340,7 +340,7 @@ static bool IsInputCanInplace(const std::shared_ptr<VariableWrapper>& var) {
   auto* inner_var = var->MutableVar();
   if (inner_var->IsInitialized() && inner_var->IsType<phi::DenseTensor>()) {
     auto tensor = inner_var->GetMutable<phi::DenseTensor>();
-    if (tensor->IsInitialized()) {
+    if (tensor->initialized()) {
       return true;
     }
   }

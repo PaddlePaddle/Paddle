@@ -137,7 +137,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto* input : inputs) {
-      if (input->IsInitialized() && input->numel() > 0) {
+      if (input->initialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;

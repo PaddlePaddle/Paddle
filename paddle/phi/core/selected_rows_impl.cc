@@ -176,7 +176,7 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
                            bool auto_grown,
                            bool is_test) {
   PADDLE_ENFORCE_EQ(
-      value->IsInitialized(),
+      value->initialized(),
       true,
       phi::errors::InvalidArgument("The value tensor is not initialized."));
   if (ids.numel() == 0) {

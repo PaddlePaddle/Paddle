@@ -114,7 +114,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     // var.tensor.holder will be delete instead of variable. So we need exam the
     // IsInitialized().
     if (out_grad_var == nullptr ||
-        !out_grad_var->Get<phi::DenseTensor>().IsInitialized()) {
+        !out_grad_var->Get<phi::DenseTensor>().initialized()) {
       VLOG(5) << "Using fill constant 0 as starting gradient";
       auto in_var_name = Input("X");
       auto *in_var = scope.FindVar(in_var_name);

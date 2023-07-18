@@ -120,8 +120,8 @@ void CompareOpResult(Variable* test_out, Variable* expected_out) {
                                     platform::CPUPlace(),
                                     &expected_tensor);
 
-  ASSERT_TRUE(test_tensor.IsInitialized());
-  ASSERT_TRUE(expected_tensor.IsInitialized());
+  ASSERT_TRUE(test_tensor.initialized());
+  ASSERT_TRUE(expected_tensor.initialized());
   ASSERT_EQ(test_tensor.dims(), expected_tensor.dims());
   const auto* test_data = test_tensor.data<DataType>();
   const auto* expected_data = expected_tensor.data<DataType>();

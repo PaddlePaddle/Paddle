@@ -56,7 +56,7 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
       idx_vec.push_back(i);
     }
     int64_t seed_int = 0;
-    if (seed->IsInitialized()) {
+    if (seed->initialized()) {
       seed_int = *seed->data<int64_t>();
     } else {
       seed_int = context.Attr<int>("startup_seed");

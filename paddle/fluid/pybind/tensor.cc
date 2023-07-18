@@ -221,7 +221,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_slice", &phi::DenseTensor::Slice)
       .def("_numel", &phi::DenseTensor::numel)
       .def("_is_initialized",
-           [](const phi::DenseTensor &self) { return self.IsInitialized(); })
+           [](const phi::DenseTensor &self) { return self.initialized(); })
       .def("_get_dims",
            [](const phi::DenseTensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
@@ -661,7 +661,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](const phi::DenseTensor &self,
               paddle::framework::proto::VarType::Type type) {
              phi::DenseTensor dst;
-             if (self.IsInitialized() && self.numel() > 0) {
+             if (self.initialized() && self.numel() > 0) {
                TransDataType(self, type, &dst);
              }
              return dst;
@@ -670,7 +670,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](const phi::DenseTensor &self, const platform::Place &place) {
              // follow fetch_op's inplementation
              phi::DenseTensor dst;
-             if (self.IsInitialized() && self.numel() > 0) {
+             if (self.initialized() && self.numel() > 0) {
                TensorCopySync(self, place, &dst);
              } else {
                // Not copy, if the src tensor is empty.
@@ -728,7 +728,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
        )DOC")
       .def("_share_cuda",
            [](phi::DenseTensor self) {
-             if (!self.IsInitialized() || self.numel() == 0)
+             if (!self.initialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0.  could not pass "
                    "to shared memory. ");
@@ -832,7 +832,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #endif
       .def("_share_filename",
            [](phi::DenseTensor &self) {
-             if (!self.IsInitialized() || self.numel() == 0)
+             if (!self.initialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0. could not pass to "
                    "shared memory. ");

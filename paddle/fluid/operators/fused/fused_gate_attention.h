@@ -221,7 +221,7 @@ struct GateAttentionConfig {
   }
 
   phi::DenseTensor* GetQKVOut() {
-    if (!qkv_out.IsInitialized()) {
+    if (!qkv_out.initialized()) {
       qkv_out.Resize(qkv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "qkv_out", &qkv_out);
     }
@@ -229,7 +229,7 @@ struct GateAttentionConfig {
   }
 
   phi::DenseTensor* GetQueryOut() {
-    if (!query_out.IsInitialized()) {
+    if (!query_out.initialized()) {
       query_out.Resize(q_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "query_out", &query_out);
     }
@@ -237,7 +237,7 @@ struct GateAttentionConfig {
   }
 
   phi::DenseTensor* GetKeyOut() {
-    if (!key_out.IsInitialized()) {
+    if (!key_out.initialized()) {
       key_out.Resize(kv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "key_out", &key_out);
     }
@@ -245,7 +245,7 @@ struct GateAttentionConfig {
   }
 
   phi::DenseTensor* GetValueOut() {
-    if (!value_out.IsInitialized()) {
+    if (!value_out.initialized()) {
       value_out.Resize(kv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "value_out", &value_out);
     }
@@ -257,7 +257,7 @@ struct GateAttentionConfig {
     int softmax_dim = m_size;
     if (!softmax_out || phi::UseCudnnSoftmax<T>(dev_ctx, softmax_dim, true)) {
       // Not sure whether cudnn softmax can execute inplace.
-      if (!qkv_out.IsInitialized()) {
+      if (!qkv_out.initialized()) {
         qk_out.Resize(qk_out_dims);
         AllocWithDebugInfo<T>(dev_ctx, "qk_out", &qk_out);
       }
@@ -274,7 +274,7 @@ struct GateAttentionConfig {
       gate_out->Resize(qktv_out_dims);
       return gate_out;
     } else {
-      if (!qktv_out.IsInitialized()) {
+      if (!qktv_out.initialized()) {
         qktv_out.Resize(qktv_out_dims);
         AllocWithDebugInfo<T>(dev_ctx, "qktv_out", &qktv_out);
       }
@@ -283,19 +283,19 @@ struct GateAttentionConfig {
   }
 
   void ClearQKVOut() {
-    if (qkv_out.IsInitialized()) {
+    if (qkv_out.initialized()) {
       qkv_out.clear();
     }
   }
 
   void ClearQKOut() {
-    if (qk_out.IsInitialized()) {
+    if (qk_out.initialized()) {
       qk_out.clear();
     }
   }
 
   void ClearQKTVOut() {
-    if (qktv_out.IsInitialized()) {
+    if (qktv_out.initialized()) {
       qktv_out.clear();
     }
   }
@@ -335,7 +335,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
                                use_flash_attn) {}
 
   phi::DenseTensor* GetQKVOutGrad() {
-    if (!qkv_out_grad.IsInitialized()) {
+    if (!qkv_out_grad.initialized()) {
       qkv_out_grad.Resize(this->qkv_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "qkv_out_grad", &qkv_out_grad);
     }
@@ -343,7 +343,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
   }
 
   phi::DenseTensor* GetQueryOutGrad() {
-    if (!query_out_grad.IsInitialized()) {
+    if (!query_out_grad.initialized()) {
       query_out_grad.Resize(this->q_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "query_out_grad", &query_out_grad);
     }
@@ -351,7 +351,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
   }
 
   phi::DenseTensor* GetKeyOutGrad() {
-    if (!key_out_grad.IsInitialized()) {
+    if (!key_out_grad.initialized()) {
       key_out_grad.Resize(this->kv_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "key_out_grad", &key_out_grad);
     }
@@ -359,7 +359,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
   }
 
   phi::DenseTensor* GetValueOutGrad() {
-    if (!value_out_grad.IsInitialized()) {
+    if (!value_out_grad.initialized()) {
       value_out_grad.Resize(this->kv_out_dims);
       AllocWithDebugInfo<T>(this->dev_ctx, "value_out_grad", &value_out_grad);
     }
@@ -371,7 +371,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
     int softmax_dim = this->m_size;
     if (!softmax_out_grad ||
         phi::UseCudnnSoftmax<T>(this->dev_ctx, softmax_dim, true)) {
-      if (!qk_out_grad.IsInitialized()) {
+      if (!qk_out_grad.initialized()) {
         qk_out_grad.Resize(this->qk_out_dims);
         AllocWithDebugInfo<T>(this->dev_ctx, "qk_out_grad", &qk_out_grad);
       }

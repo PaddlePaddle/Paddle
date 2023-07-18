@@ -659,8 +659,8 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
       ctx.template device_context<DeviceContext>(), N);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
-  if (x->IsInitialized()) x_data = x->data<T>();
-  if (y->IsInitialized()) y_data = y->data<T>();
+  if (x->initialized()) x_data = x->data<T>();
+  if (y->initialized()) y_data = y->data<T>();
 
   for_range(FusedElemwiseAndActGradNoBroadcast<T,
                                                DX_OP,
@@ -1266,8 +1266,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
-  if (x->IsInitialized()) x_data = x->data<T>();
-  if (y->IsInitialized()) y_data = y->data<T>();
+  if (x->initialized()) x_data = x->data<T>();
+  if (y->initialized()) y_data = y->data<T>();
   if (post == 1) {
     int h = pre;
     int w = n;

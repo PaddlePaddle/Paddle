@@ -112,7 +112,7 @@ class VariableWrapper {
         PADDLE_THROW(platform::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
       }
-      if (tensor && tensor->IsInitialized()) {
+      if (tensor && tensor->initialized()) {
         is_empty = false;
       }
     }
@@ -170,7 +170,7 @@ class VariableWrapper {
         return data_type_;
       }
     }
-    if (tensor && tensor->IsInitialized()) {
+    if (tensor && tensor->initialized()) {
       return framework::TransToProtoVarType(tensor->dtype());
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
@@ -205,7 +205,7 @@ class VariableWrapper {
         return place;
       }
     }
-    if (tensor && tensor->IsInitialized()) {
+    if (tensor && tensor->initialized()) {
       return tensor->place();
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";

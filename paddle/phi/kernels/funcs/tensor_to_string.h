@@ -56,7 +56,7 @@ static std::vector<T> ToVector(const T *x,
 
 template <typename T>
 static std::vector<T> ToVector(const DenseTensor &src) {
-  if (!src.IsInitialized()) {
+  if (!src.initialized()) {
     return {};
   }
   return ToVector(src.template data<T>(), src.numel(), src.place());

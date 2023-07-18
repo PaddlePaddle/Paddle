@@ -798,7 +798,7 @@ void ParallelExecutor::BCastParamsToDevices(
     }
 
     auto &main_tensor = main_var->Get<phi::DenseTensor>();
-    if (!main_tensor.IsInitialized()) {
+    if (!main_tensor.initialized()) {
       VLOG(3) << "one in var not inited, return!";
       continue;
     }

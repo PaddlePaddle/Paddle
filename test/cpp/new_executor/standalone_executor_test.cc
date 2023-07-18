@@ -223,7 +223,7 @@ TEST(InterpreterCore, skip_gc_vars) {
         for (const std::string& var_name : vars) {
           ASSERT_EQ(local_scope->FindVar(var_name)
                         ->GetMutable<phi::DenseTensor>()
-                        ->IsInitialized(),
+                        ->initialized(),
                     is_skip_gc);
         }
       };

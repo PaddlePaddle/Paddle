@@ -62,7 +62,7 @@ class ConditionalOp : public framework::OperatorBase {
 
   bool ScalarCondition(const std::vector<const phi::DenseTensor *> &ips) const {
     PADDLE_ENFORCE_EQ(
-        ips.size() == 1UL && ips[0]->IsInitialized(),
+        ips.size() == 1UL && ips[0]->initialized(),
         true,
         platform::errors::InvalidArgument(
             "condition should have one initialized input as condition"));

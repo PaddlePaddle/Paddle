@@ -63,7 +63,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       platform::errors::NotFound("Variable %s is not found in scopes.",
                                  in_var_handle.name()));
   phi::DenseTensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
-  if (UNLIKELY(!in_tensor.IsInitialized())) {
+  if (UNLIKELY(!in_tensor.initialized())) {
     VLOG(3) << "in var " << in_var_handle.name() << "not inited, return!";
     return;
   }

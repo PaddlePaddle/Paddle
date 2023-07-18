@@ -71,7 +71,7 @@ class AssignFunctor {
  private:
   void copy_tensor(const phi::DenseTensor &lod_tensor,
                    phi::DenseTensor *out) const {
-    if (!lod_tensor.IsInitialized()) return;
+    if (!lod_tensor.initialized()) return;
     auto &out_tensor = *out;
     paddle::framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());

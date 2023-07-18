@@ -81,10 +81,10 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
     platform::Place place = dev_place;
     int64_t batch_size = in_true.dims()[0] + in_false.dims()[0];
-    auto data_type = in_true.IsInitialized() ? in_true.type() : in_false.type();
+    auto data_type = in_true.initialized() ? in_true.type() : in_false.type();
     int rank;
     framework::DDim in_dims;
-    if (in_true.IsInitialized()) {
+    if (in_true.initialized()) {
       rank = in_true.dims().size();
       in_dims = phi::slice_ddim(in_true.dims(), 1, rank);
     } else {

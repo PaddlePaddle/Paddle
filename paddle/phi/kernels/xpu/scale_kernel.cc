@@ -35,7 +35,7 @@ void ScaleKernel(const Context& dev_ctx,
                                    " expected %s, but got %s.",
                                    x.dims().to_str().c_str(),
                                    out->dims().to_str().c_str()));
-  if (x.numel() == 0 || !x.IsInitialized()) {
+  if (x.numel() == 0 || !x.initialized()) {
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;

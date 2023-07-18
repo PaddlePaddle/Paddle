@@ -650,7 +650,7 @@ void StridedSliceGradCompute(const Context& dev_ctx,
     } else {
       d_out_tensor.Resize(dim);
 
-      if (!d_out_tensor.IsInitialized()) {
+      if (!d_out_tensor.initialized()) {
         dev_ctx.template Alloc<T>(&d_out_tensor);
       }
 

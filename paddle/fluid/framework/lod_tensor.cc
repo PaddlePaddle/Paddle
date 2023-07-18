@@ -432,7 +432,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
   proto::VarType::Type new_type = proto::VarType::FP32;
   phi::DataLayout new_layout = lod_tensors[0]->layout();
   for (auto *t : lod_tensors) {
-    if (t->numel() && t->IsInitialized()) {
+    if (t->numel() && t->initialized()) {
       new_dim = t->dims();
       new_type = framework::TransToProtoVarType(t->dtype());
       new_layout = t->layout();
@@ -445,7 +445,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
 
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
-    if (t->numel() && t->IsInitialized()) {
+    if (t->numel() && t->initialized()) {
       PADDLE_ENFORCE_EQ(
           new_type,
           framework::TransToProtoVarType(t->dtype()),

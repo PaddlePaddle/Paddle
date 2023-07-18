@@ -244,7 +244,7 @@ TEST(VariableCompatTensor, MemberFunction) {
   EXPECT_EQ(var_tensor.Type(),
             static_cast<int>(paddle::framework::proto::VarType::VOCAB));
   // test valid and initialized
-  EXPECT_TRUE(var_tensor.IsInitialized());
+  EXPECT_TRUE(var_tensor.initialized());
   EXPECT_TRUE(var_tensor.valid());
   EXPECT_TRUE(var_tensor.initialized());
   // test name
@@ -306,5 +306,5 @@ TEST(VariableCompatTensor, MemberFunction) {
   EXPECT_TRUE(caught_exception);
   // test Clear
   var_tensor.Clear();
-  EXPECT_FALSE(var_tensor.IsInitialized());
+  EXPECT_FALSE(var_tensor.initialized());
 }

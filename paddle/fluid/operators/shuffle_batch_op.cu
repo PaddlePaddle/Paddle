@@ -101,7 +101,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     shuffleidx->Resize(phi::make_ddim({elem_size}));
 
     int64_t seed_int = 0;
-    if (seed->IsInitialized()) {
+    if (seed->initialized()) {
       const auto &seed_place = seed->place();
       if (platform::is_gpu_place(seed_place)) {
         // NOTE: We have overwritten GetKernelTypeForVar, so seed_place would

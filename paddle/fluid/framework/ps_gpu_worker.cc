@@ -423,7 +423,7 @@ void PSGPUWorker::TrainFiles() {
         continue;
       }
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-      if (tensor == nullptr || !tensor->IsInitialized()) {
+      if (tensor == nullptr || !tensor->initialized()) {
         continue;
       }
       if (framework::TensorContainsInf(*tensor) ||

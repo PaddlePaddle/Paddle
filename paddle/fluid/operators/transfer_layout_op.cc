@@ -50,15 +50,15 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
     if (in_tensor->layout() != DataLayout::ONEDNN) {
-      PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
+      PADDLE_ENFORCE_EQ(in_tensor->initialized(),
                         true,
                         platform::errors::PreconditionNotMet(
                             "The tensor of Input(X) is not initialized."));
     }
     auto place =
-        in_tensor->IsInitialized() ? in_tensor->place() : platform::CPUPlace();
-    phi::DataType dtype = in_tensor->IsInitialized() ? in_tensor->dtype()
-                                                     : phi::DataType::FLOAT32;
+        in_tensor->initialized() ? in_tensor->place() : platform::CPUPlace();
+    phi::DataType dtype =
+        in_tensor->initialized() ? in_tensor->dtype() : phi::DataType::FLOAT32;
     return phi::KernelKey(phi::TransToProtoVarType(dtype), place);
   }
 

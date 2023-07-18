@@ -34,15 +34,15 @@ static constexpr double kMB = 1 / (1024 * 1024);
 static void GetTensors(Variable *var,
                        std::unordered_set<phi::DenseTensor *> *tensor_set) {
   if (var->IsType<phi::DenseTensor>() &&
-      var->Get<phi::DenseTensor>().IsInitialized()) {
+      var->Get<phi::DenseTensor>().initialized()) {
     tensor_set->insert(var->GetMutable<phi::DenseTensor>());
   } else if (var->IsType<phi::SelectedRows>() &&
-             var->Get<phi::SelectedRows>().value().IsInitialized()) {
+             var->Get<phi::SelectedRows>().value().initialized()) {
     tensor_set->insert(var->GetMutable<phi::SelectedRows>()->mutable_value());
   } else if (var->IsType<LoDTensorArray>()) {
     auto *tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto &t : *tensor_arr) {
-      if (t.IsInitialized()) {
+      if (t.initialized()) {
         tensor_set->insert(&t);
       }
     }

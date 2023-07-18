@@ -371,7 +371,7 @@ class TracedGradOp {
               : var_wrapper->MutableVar()
                     ->GetMutable<phi::SelectedRows>()
                     ->mutable_value();
-      if (!tensor->IsInitialized()) {
+      if (!tensor->initialized()) {
         return var_wrapper;
       }
     }

@@ -40,7 +40,7 @@ void ScaleKernel(const Context& dev_ctx,
   // TODO(chenweihang): now the eigen function here need the dtype of scale,
   // eigen_x, bias should be same, so here need cast for two scalar arg,
   // maybe we declare that the type of scale and bias is T?
-  if (x.numel() <= 0 || (!x.IsInitialized())) {
+  if (x.numel() <= 0 || (!x.initialized())) {
     return;
   }
   phi::funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(

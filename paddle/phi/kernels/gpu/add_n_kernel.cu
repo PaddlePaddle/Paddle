@@ -106,18 +106,18 @@ void AddNKernel(const Context &dev_ctx,
     auto &in_1 = *(static_cast<const DenseTensor *>(x[1]));
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
-    if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
+    if (length_0 && length_1 && in_0.initialized() && in_1.initialized()) {
       using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
       auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MPType>();
       result.device(place) = (in_0_e + in_1_e).template cast<T>();
-    } else if (length_0 && in_0.IsInitialized()) {
+    } else if (length_0 && in_0.initialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_0);
-    } else if (length_1 && in_1.IsInitialized()) {
+    } else if (length_1 && in_1.initialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_1);
@@ -139,7 +139,7 @@ void AddNKernel(const Context &dev_ctx,
     if (DenseTensor::classof(x[i])) {
       auto &in_i = *(static_cast<const DenseTensor *>(x[i]));
       lod_length = in_i.numel();
-      if (lod_length && in_i.IsInitialized()) {
+      if (lod_length && in_i.initialized()) {
         in_data.emplace_back(in_i.data<T>());
       }
     } else if (SelectedRows::classof(x[i])) {

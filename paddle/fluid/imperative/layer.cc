@@ -101,7 +101,7 @@ static std::string DebugString(
     } else if (var.IsType<phi::DenseTensor>()) {
       auto& tensor = var.Get<phi::DenseTensor>();
       ss << "LoDTensor<";
-      if (tensor.IsInitialized()) {
+      if (tensor.initialized()) {
         ss << framework::DataTypeToString(
                   framework::TransToProtoVarType(tensor.dtype()))
            << ", ";
@@ -116,7 +116,7 @@ static std::string DebugString(
       auto& selected_rows = var.Get<phi::SelectedRows>();
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
-      if (tensor.IsInitialized()) {
+      if (tensor.initialized()) {
         ss << framework::DataTypeToString(
                   framework::TransToProtoVarType(tensor.dtype()))
            << ", ";
@@ -227,7 +227,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
   if (grad_var_) {
     if (grad_var_->Var().IsType<phi::SelectedRows>()) {
       auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::SelectedRows>();
-      if (grad_t->mutable_value()->IsInitialized()) {
+      if (grad_t->mutable_value()->initialized()) {
 #ifdef PADDLE_WITH_MKLDNN
         if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
@@ -238,7 +238,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
       platform::RecordEvent record_event(
           "ClearGradient", platform::TracerEventType::UserDefined, 2);
       auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
-      if (grad_t->IsInitialized()) {
+      if (grad_t->initialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
@@ -370,7 +370,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   if (src.Var().IsType<phi::DenseTensor>()) {
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
     auto* dst_tensor = MutableVar()->GetMutable<phi::DenseTensor>();
-    if (dst_tensor && dst_tensor->IsInitialized()) {
+    if (dst_tensor && dst_tensor->initialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(),
                         src_tensor.dims(),
                         platform::errors::PreconditionNotMet(
@@ -399,7 +399,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
 
     auto& src_tensor = src_selected_rows.value();
     auto* dst_tensor = dst_selected_rows->mutable_value();
-    if (dst_tensor && dst_tensor->IsInitialized()) {
+    if (dst_tensor && dst_tensor->initialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(),
                         src_tensor.dims(),
                         platform::errors::PreconditionNotMet(
@@ -450,7 +450,7 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
+    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
                       true,
                       platform::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));

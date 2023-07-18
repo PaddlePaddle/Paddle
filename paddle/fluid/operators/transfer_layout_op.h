@@ -63,7 +63,7 @@ class TransferLayoutFunctor {
     auto in_layout = static_cast<DataLayout>(src_layout_);
     auto *tensor_out = out_->GetMutable<phi::DenseTensor>();
     VLOG(4) << in_layout << "->" << out_layout << " " << in_tensor.layout();
-    if (!in_tensor.IsInitialized() && in_layout == DataLayout::ONEDNN &&
+    if (!in_tensor.initialized() && in_layout == DataLayout::ONEDNN &&
         out_layout == DataLayout::kNHWC) {
       tensor_out->Resize(in_tensor.dims());
       tensor_out->set_layout(out_layout);

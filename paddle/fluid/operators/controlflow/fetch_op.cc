@@ -26,7 +26,7 @@ namespace operators {
 static void DataCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
                      phi::DenseTensor *dst_item) {
-  if (src_item.IsInitialized() && src_item.numel() > 0) {
+  if (src_item.initialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == phi::DataLayout::ONEDNN) {

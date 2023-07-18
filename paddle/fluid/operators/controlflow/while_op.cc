@@ -424,7 +424,7 @@ class WhileGradOp : public framework::OperatorBase {
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto &og_outside = *scope.FindVar(outside_og_name);
           if (og_outside.IsType<phi::DenseTensor>() &&
-              !og_outside.GetMutable<phi::DenseTensor>()->IsInitialized()) {
+              !og_outside.GetMutable<phi::DenseTensor>()->initialized()) {
             auto *var_desc = parent_block->FindVarRecursive(outside_og_name);
             PADDLE_ENFORCE_NOT_NULL(var_desc,
                                     platform::errors::PreconditionNotMet(
@@ -467,7 +467,7 @@ class WhileGradOp : public framework::OperatorBase {
           VLOG(8) << outside_og_name << " size = " << outside_array->size();
 
           for (size_t j = 0; j < inside_array.size(); ++j) {
-            if (!outside_array->at(j).IsInitialized()) {
+            if (!outside_array->at(j).initialized()) {
               outside_array->at(j).Resize({0});
             }
             VLOG(8) << j << " " << outside_array->at(j).numel();
@@ -617,7 +617,7 @@ class WhileGradOp : public framework::OperatorBase {
     auto from_var = source.FindVar(name);
     auto to_var = dest.FindVar(name);
     if (from_var->IsType<phi::DenseTensor>()) {
-      if (from_var->Get<phi::DenseTensor>().IsInitialized()) {
+      if (from_var->Get<phi::DenseTensor>().initialized()) {
         to_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
             from_var->Get<phi::DenseTensor>());
       }
@@ -627,7 +627,7 @@ class WhileGradOp : public framework::OperatorBase {
       to_arr->clear();
       to_arr->resize(from_arr->size());
       for (size_t i = 0; i < to_arr->size(); ++i) {
-        if (from_arr->at(i).IsInitialized()) {
+        if (from_arr->at(i).initialized()) {
           to_arr->at(i).ShareDataWith(from_arr->at(i));
         }
       }

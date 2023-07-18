@@ -45,7 +45,7 @@ void PrintVar(framework::Scope* scope,
             << " does not exist in your scope";
     return;
   }
-  if (!tensor->IsInitialized()) {
+  if (!tensor->initialized()) {
     VLOG(0) << "tensor of variable " << var_name
             << " does not initialized in your scope";
     return;

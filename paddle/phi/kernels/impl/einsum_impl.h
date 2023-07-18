@@ -586,7 +586,7 @@ DenseTensor PerformContraction(
     // reduction
     DenseTensor trans_t;
     if (use_cache && cache[operand_idx] != nullptr &&
-        cache[operand_idx]->IsInitialized()) {
+        cache[operand_idx]->initialized()) {
       trans_t.ShareBufferWith(*(cache[operand_idx]));
       VLOG(5) << "Cache Used!";
     } else {

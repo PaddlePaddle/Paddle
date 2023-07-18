@@ -99,7 +99,7 @@ void MemcpyKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int dst_place_type,
                   DenseTensor* out) {
-  if (!x.IsInitialized()) {
+  if (!x.initialized()) {
     return;
   }
   PADDLE_ENFORCE_GE(

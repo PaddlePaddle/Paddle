@@ -183,7 +183,7 @@ class RandomCropKernel : public framework::OpKernel<T> {
     int64_t seed = 0;
     auto& seed_tensor = GET_DATA_SAFELY(
         ctx.Input<phi::DenseTensor>("Seed"), "Input", "Seed", "RandomCrop");
-    if (seed_tensor.IsInitialized()) {
+    if (seed_tensor.initialized()) {
       if (platform::is_cpu_place(seed_tensor.place())) {
         seed = *seed_tensor.template data<int64_t>();
       } else {

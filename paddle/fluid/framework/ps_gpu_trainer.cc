@@ -393,7 +393,7 @@ void PSGPUTrainer::Finalize() {
       continue;
     }
     phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
-    if (root_tensor == nullptr || !root_tensor->IsInitialized()) {
+    if (root_tensor == nullptr || !root_tensor->initialized()) {
       continue;
     }
     for (size_t j = 0; j < places_.size(); j++) {
@@ -405,7 +405,7 @@ void PSGPUTrainer::Finalize() {
       }
       phi::DenseTensor* thread_tensor =
           thread_var->GetMutable<phi::DenseTensor>();
-      if (thread_tensor == nullptr || !thread_tensor->IsInitialized()) {
+      if (thread_tensor == nullptr || !thread_tensor->initialized()) {
         continue;
       }
 #define MergeCallback(cpp_type, proto_type)                                    \

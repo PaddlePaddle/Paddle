@@ -731,35 +731,35 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
           }
         }
       }
-      if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
+      if (out_tensor_d_x && !out_tensor_d_x->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_x);
       }
-      if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
+      if (out_tensor_d_y && !out_tensor_d_y->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_y->dtype(),
                                          out_tensor_d_y);
       }
-      if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
+      if (out_tensor_d_dout && !out_tensor_d_dout->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_dout,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_dout->dtype(),
                                          out_tensor_d_dout);
       }
-      if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
+      if (out_tensor_d_ddx && !out_tensor_d_ddx->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_ddx);
       }
-      if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
+      if (out_tensor_d_ddy && !out_tensor_d_ddy->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(T(0.0, 0.0)),
@@ -953,35 +953,35 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
       }
     }
 
-    if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
+    if (out_tensor_d_x && !out_tensor_d_x->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_x,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_x->dtype(),
                                        out_tensor_d_x);
     }
-    if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
+    if (out_tensor_d_y && !out_tensor_d_y->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_y,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_y->dtype(),
                                        out_tensor_d_y);
     }
-    if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
+    if (out_tensor_d_dout && !out_tensor_d_dout->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_dout,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_dout->dtype(),
                                        out_tensor_d_dout);
     }
-    if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
+    if (out_tensor_d_ddx && !out_tensor_d_ddx->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_x,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_x->dtype(),
                                        out_tensor_d_ddx);
     }
-    if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
+    if (out_tensor_d_ddy && !out_tensor_d_ddy->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_y,
                                        Scalar(T(0.0, 0.0)),
@@ -1112,35 +1112,35 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
           }
         }
       }
-      if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
+      if (out_tensor_d_x && !out_tensor_d_x->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(0.0),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_x);
       }
-      if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
+      if (out_tensor_d_y && !out_tensor_d_y->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(0.0),
                                          in_tensor_y->dtype(),
                                          out_tensor_d_y);
       }
-      if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
+      if (out_tensor_d_dout && !out_tensor_d_dout->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_dout,
                                          Scalar(0.0),
                                          in_tensor_dout->dtype(),
                                          out_tensor_d_dout);
       }
-      if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
+      if (out_tensor_d_ddx && !out_tensor_d_ddx->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(0.0),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_ddx);
       }
-      if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
+      if (out_tensor_d_ddy && !out_tensor_d_ddy->initialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(0.0),
@@ -1318,29 +1318,29 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
       }
     }
 
-    if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
+    if (out_tensor_d_x && !out_tensor_d_x->initialized()) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *in_tensor_x, Scalar(0.0), in_tensor_x->dtype(), out_tensor_d_x);
     }
-    if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
+    if (out_tensor_d_y && !out_tensor_d_y->initialized()) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *in_tensor_y, Scalar(0.0), in_tensor_y->dtype(), out_tensor_d_y);
     }
-    if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
+    if (out_tensor_d_dout && !out_tensor_d_dout->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_dout,
                                        Scalar(0.0),
                                        in_tensor_dout->dtype(),
                                        out_tensor_d_dout);
     }
-    if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
+    if (out_tensor_d_ddx && !out_tensor_d_ddx->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_x,
                                        Scalar(0.0),
                                        in_tensor_x->dtype(),
                                        out_tensor_d_ddx);
     }
-    if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
+    if (out_tensor_d_ddy && !out_tensor_d_ddy->initialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_y,
                                        Scalar(0.0),

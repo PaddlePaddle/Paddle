@@ -1137,7 +1137,7 @@ void BindImperative(py::module *m_ptr) {
           [](std::shared_ptr<imperative::VarBase> &self, const py::args &args) {
             const auto &tensor = self->Var().Get<phi::DenseTensor>();
             PADDLE_ENFORCE_EQ(
-                tensor.IsInitialized(),
+                tensor.initialized(),
                 true,
                 platform::errors::InvalidArgument(
                     "Tensor of %s is Empty, please check if it has no data.",
@@ -1232,7 +1232,7 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::VarBase &self) -> py::array {
             const auto &tensor = self.MutableVar()->Get<phi::DenseTensor>();
             PADDLE_ENFORCE_EQ(
-                tensor.IsInitialized(),
+                tensor.initialized(),
                 true,
                 platform::errors::InvalidArgument(
                     "Tensor of %s is Empty, please check if it has no data.",
@@ -1287,7 +1287,7 @@ void BindImperative(py::module *m_ptr) {
             if (self.Var().IsType<phi::DenseTensor>()) {
               const auto &origin_tensor = self.Var().Get<phi::DenseTensor>();
               PADDLE_ENFORCE_EQ(
-                  origin_tensor.IsInitialized(),
+                  origin_tensor.initialized(),
                   true,
                   platform::errors::InvalidArgument(
                       "Tensor %s has not been initialized!", self.Name()));
@@ -1304,7 +1304,7 @@ void BindImperative(py::module *m_ptr) {
               const auto &origin_selected_rows =
                   self.Var().Get<phi::SelectedRows>();
               PADDLE_ENFORCE_EQ(
-                  origin_selected_rows.value().IsInitialized(),
+                  origin_selected_rows.value().initialized(),
                   true,
                   platform::errors::InvalidArgument(
                       "Tensor %s has not been initialized!", self.Name()));
@@ -1393,7 +1393,7 @@ void BindImperative(py::module *m_ptr) {
           "clone",
           [](std::shared_ptr<imperative::VarBase> &self) {
             const auto &tensor = self->Var().Get<phi::DenseTensor>();
-            PADDLE_ENFORCE_EQ(tensor.IsInitialized(),
+            PADDLE_ENFORCE_EQ(tensor.initialized(),
                               true,
                               platform::errors::InvalidArgument(
                                   "%s has not been initialized", self->Name()));
@@ -1486,7 +1486,7 @@ void BindImperative(py::module *m_ptr) {
                             ->GetMutable<phi::SelectedRows>()
                             ->mutable_value();
 
-              if (tensor->IsInitialized()) {
+              if (tensor->initialized()) {
                 return grad_var;
               }
             }
@@ -1910,7 +1910,7 @@ void BindImperative(py::module *m_ptr) {
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
              PADDLE_ENFORCE_EQ(
-                 t->IsInitialized(),
+                 t->initialized(),
                  true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self->Name()));
@@ -1920,7 +1920,7 @@ void BindImperative(py::module *m_ptr) {
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
              PADDLE_ENFORCE_EQ(
-                 t->IsInitialized(),
+                 t->initialized(),
                  true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self->Name()));
@@ -1932,7 +1932,7 @@ void BindImperative(py::module *m_ptr) {
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
              PADDLE_ENFORCE_EQ(
-                 src->IsInitialized(),
+                 src->initialized(),
                  true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self->Name()));
@@ -1944,7 +1944,7 @@ void BindImperative(py::module *m_ptr) {
               std::shared_ptr<imperative::VarBase> &dst) {
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
-             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+             if (!src->initialized() || !dst_->initialized()) {
                return false;
              }
              return dst_->IsSharedBufferWith(*src);
@@ -1955,7 +1955,7 @@ void BindImperative(py::module *m_ptr) {
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
              PADDLE_ENFORCE_EQ(
-                 src->IsInitialized(),
+                 src->initialized(),
                  true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self->Name()));
@@ -1968,7 +1968,7 @@ void BindImperative(py::module *m_ptr) {
               std::shared_ptr<imperative::VarBase> &dst) {
              auto *src = self->MutableVar()->GetMutable<phi::DenseTensor>();
              auto *dst_ = dst->MutableVar()->GetMutable<phi::DenseTensor>();
-             if (!src->IsInitialized() || !dst_->IsInitialized()) {
+             if (!src->initialized() || !dst_->initialized()) {
                return false;
              }
              return dst_->IsSharedBufferWith(*src);
@@ -1979,7 +1979,7 @@ void BindImperative(py::module *m_ptr) {
               int64_t end_idx) {
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
              PADDLE_ENFORCE_EQ(
-                 t->IsInitialized(),
+                 t->initialized(),
                  true,
                  platform::errors::InvalidArgument(
                      "Tensor %s has not been initialized!", self->Name()));

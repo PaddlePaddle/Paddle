@@ -240,11 +240,11 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
     if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
-      return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
+      return GetLoDTensorOrSelectedRowsValueFromVar(*var)->initialized();
     } else if (var->IsType<LoDTensorArray>()) {
       return static_cast<const phi::DenseTensor*>(
                  &(var->Get<LoDTensorArray>()[0]))
-          ->IsInitialized();
+          ->initialized();
     }
   }
   return false;
@@ -525,7 +525,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           bool is_transferred = false;
           std::string new_var_name;
           // special case
-          if (!tensor_in->IsInitialized()) {
+          if (!tensor_in->initialized()) {
             if (should_skip_input) {
 #ifdef PADDLE_WITH_MKLDNN
               // Var without buffer may be needed
@@ -780,7 +780,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       auto* grad_tensor =
           framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
       // skip nullptr tensor
-      if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
+      if (grad_tensor == nullptr || !grad_tensor->initialized()) {
         VLOG(3) << "skip with grad_tensor not IsInitialized";
         continue;
       }

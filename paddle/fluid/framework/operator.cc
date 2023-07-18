@@ -116,13 +116,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.initialized())) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.initialized())) {
       return "uninited";
     } else {
       return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
@@ -147,13 +147,13 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.initialized())) {
       return "";
     }
     return to_string(tensor.place());
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.initialized())) {
       return "uninited";
     } else {
       return to_string(tensor.place());
@@ -2406,7 +2406,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       auto* grad_tensor =
           GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
       // skip nullptr tensor
-      if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
+      if (grad_tensor == nullptr || !grad_tensor->initialized()) {
         continue;
       }
       // only focus on complex dtype now
@@ -2532,7 +2532,7 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
-      if (!tensor_in->IsInitialized()) {
+      if (!tensor_in->initialized()) {
         continue;
       }
 
@@ -2783,7 +2783,7 @@ void OperatorWithKernel::ParseInputDataType(
     } else if (var->IsType<LoDTensorArray>()) {
       auto t_arr = &var->Get<LoDTensorArray>();
       for (size_t j = 0; j < t_arr->size(); j++) {
-        if (t_arr->at(j).IsInitialized()) {
+        if (t_arr->at(j).initialized()) {
           t = &(t_arr->at(j));
         }
       }
@@ -2834,13 +2834,13 @@ void OperatorWithKernel::ParseMultiInputDataType(
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = &var->Get<LoDTensorArray>();
         for (size_t j = 0; j < t_arr->size(); j++) {
-          if (t_arr->at(j).IsInitialized()) {
+          if (t_arr->at(j).initialized()) {
             t = &(t_arr->at(j));
           }
         }
       }
       if (t != nullptr) {
-        PADDLE_ENFORCE_EQ(t->IsInitialized(),
+        PADDLE_ENFORCE_EQ(t->initialized(),
                           true,
                           platform::errors::InvalidArgument(
                               "The %s Op's Input Variable `%s` "
@@ -2936,7 +2936,7 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
                               "The phi::DenseTensor of variable %s is nullptr "
                               "when promote complex types."));
   PADDLE_ENFORCE_EQ(
-      t->IsInitialized(),
+      t->initialized(),
       true,
       platform::errors::InvalidArgument(
           "The phi::DenseTensor in the %s Op's Input Variable %s(%s) is "

@@ -275,7 +275,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     auto input_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(input_var->GetTensorBase());
     PADDLE_ENFORCE_EQ(
-        input_dense_tensor->IsInitialized(),
+        input_dense_tensor->initialized(),
         true,
         paddle::platform::errors::InvalidArgument(
             "DenseTensor %s has not been initialized!", input_var->name()));

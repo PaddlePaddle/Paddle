@@ -67,7 +67,7 @@ static void CallPythonFunc(py::object *callable,
   py::gil_scoped_acquire guard;
   py::tuple in_args(ins.size());
   for (size_t i = 0; i < ins.size(); ++i) {
-    in_args[i] = ins[i].IsInitialized() ? py::cast(ins[i]) : py::cast(nullptr);
+    in_args[i] = ins[i].initialized() ? py::cast(ins[i]) : py::cast(nullptr);
   }
 
   auto ret = (*callable)(*in_args);
@@ -319,7 +319,7 @@ class PyFuncOp : public framework::OperatorBase {
         continue;
       }
       auto &in_tensor = in_var->Get<phi::DenseTensor>();
-      if (!in_tensor.IsInitialized()) {
+      if (!in_tensor.initialized()) {
         continue;
       }
       if (platform::is_gpu_place(in_tensor.place())) {

@@ -34,7 +34,7 @@ namespace operators {
 static void DeepCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
                      phi::DenseTensor *dst_item) {
-  if (src_item.IsInitialized()) {
+  if (src_item.initialized()) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == phi::DataLayout::ONEDNN) {
@@ -74,7 +74,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
       const std::string &var_name,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
-    if (!tensor.IsInitialized()) {
+    if (!tensor.initialized()) {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
                             expected_kernel_type.dtype());
@@ -93,7 +93,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
 
     if (fetch_var->IsType<phi::DenseTensor>()) {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
-      if (!src_item.IsInitialized()) {
+      if (!src_item.initialized()) {
         return phi::KernelKey(framework::proto::VarType::FP32,
                               platform::CPUPlace());
       }
@@ -105,7 +105,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
       }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
-      if (src_item.empty() || !src_item[0].IsInitialized()) {
+      if (src_item.empty() || !src_item[0].initialized()) {
         return phi::KernelKey(framework::proto::VarType::FP32,
                               platform::CPUPlace());
       }
@@ -153,7 +153,7 @@ class FetchV2Kernel {
 
     if (fetch_var->IsType<phi::DenseTensor>()) {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
-      if (!src_item.IsInitialized()) {
+      if (!src_item.initialized()) {
         return;
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));

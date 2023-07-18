@@ -165,7 +165,7 @@ static void ParseIndexingSlice(phi::DenseTensor* tensor,
     }
   });
   PADDLE_ENFORCE_EQ(
-      tensor->IsInitialized(),
+      tensor->initialized(),
       true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
   const auto& shape = tensor->dims();

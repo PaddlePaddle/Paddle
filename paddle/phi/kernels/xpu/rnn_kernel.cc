@@ -39,7 +39,7 @@ void RnnKernel(const Context& dev_ctx,
                DenseTensor* dropout_state,
                std::vector<DenseTensor*> state,
                DenseTensor* reserve) {
-  if (dropout_state->IsInitialized()) {
+  if (dropout_state->initialized()) {
     if (dropout_state->numel() != out->numel()) dropout_state->clear();
   }
 

@@ -141,7 +141,7 @@ class SliceOp : public framework::OperatorWithKernel {
     if (in_var->IsType<phi::DenseTensor>()) {
       auto &in_tensor = in_var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
-          in_tensor.IsInitialized(),
+          in_tensor.initialized(),
           true,
           platform::errors::InvalidArgument(
               "The tensor Input (Input) of Slice op is not initialized."));

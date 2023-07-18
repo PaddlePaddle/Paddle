@@ -336,7 +336,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
                                  const framework::Scope &cur_scope,
                                  const phi::DenseTensor &input_tensor,
                                  phi::DenseTensor *outside_tensor) const {
-    if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
+    if (!input_tensor.initialized() || input_tensor.numel() == 0) {
       return;
     }
     VLOG(4) << "Assigning zero to " << outside_tensor;

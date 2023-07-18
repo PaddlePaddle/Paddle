@@ -407,7 +407,7 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
   auto dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
   if (dense_tensor) {
-    return ToPyObject(dense_tensor->IsInitialized());
+    return ToPyObject(dense_tensor->initialized());
   } else {
     return ToPyObject(false);
   }
@@ -596,7 +596,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     if (grad->is_selected_rows()) {
       auto selected_rows =
           std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
-      if (selected_rows->mutable_value()->IsInitialized()) {
+      if (selected_rows->mutable_value()->initialized()) {
         selected_rows->mutable_rows()->clear();
         selected_rows->mutable_value()->clear();
       }
@@ -797,13 +797,13 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
   }
   if (self->tensor.is_dense_tensor()) {
     auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-    VLOG(6) << "tensor: " << tensor->IsInitialized();
+    VLOG(6) << "tensor: " << tensor->initialized();
     return ToPyObject(tensor);
   } else if (self->tensor.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     auto* tensor = static_cast<phi::distributed::auto_parallel::DistTensor*>(
         self->tensor.impl().get());
-    VLOG(6) << "dist tensor: " << tensor->IsInitialized();
+    VLOG(6) << "dist tensor: " << tensor->initialized();
     return ToPyObject(tensor);
 #else
     RETURN_PY_NONE
@@ -847,7 +847,7 @@ static PyObject* tensor_method__get_tensor_from_selected_rows(
 
   auto* dense_tensor =
       static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-  VLOG(4) << "dense_tensor: " << dense_tensor->IsInitialized();
+  VLOG(4) << "dense_tensor: " << dense_tensor->initialized();
 
   auto t = paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
   t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
@@ -1018,7 +1018,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
                               "%s is not a DenseTensor.", self->tensor.name()));
   const auto& tensor = *ptr;
   PADDLE_ENFORCE_EQ(
-      tensor.IsInitialized(),
+      tensor.initialized(),
       true,
       platform::errors::InvalidArgument(
           "Tensor of %s is Empty, please check if it has no data.",
@@ -1896,7 +1896,7 @@ static PyObject* tensor__offset(TensorObject* self,
   EAGER_TRY
   auto t = std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
   PADDLE_ENFORCE_EQ(
-      t->IsInitialized(),
+      t->initialized(),
       true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         self->tensor.name()));

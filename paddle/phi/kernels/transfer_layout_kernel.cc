@@ -131,7 +131,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     oss << "[";
     oss << "layout:" << x.layout() << " ,";
     oss << "dims:" << x.dims() << " ,";
-    if (x.IsInitialized()) oss << "place:" << x.place();
+    if (x.initialized()) oss << "place:" << x.place();
     oss << "]";
 
     return oss.str();
@@ -141,7 +141,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
 
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
-  if (!x.IsInitialized() && src_layout == DataLayout::ONEDNN &&
+  if (!x.initialized() && src_layout == DataLayout::ONEDNN &&
       dst_layout == DataLayout::NHWC) {
     VLOG(4) << src_layout << "->" << dst_layout << " " << x.layout();
     out->Resize(x.dims());

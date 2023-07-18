@@ -105,7 +105,7 @@ void AddNArrayKernel(const Context& dev_ctx,
   bool in_place = true;
   if (x.size() > 0 && x[0]->size() == out->size()) {
     for (size_t i = 0; i < out->size(); i++) {
-      if (x[0]->at(i).IsInitialized() &&
+      if (x[0]->at(i).initialized() &&
           out->at(i).data() != x[0]->at(i).data()) {
         in_place = false;
         break;
@@ -119,11 +119,11 @@ void AddNArrayKernel(const Context& dev_ctx,
     auto* in_array = x.at(i);
 
     for (size_t j = 0; j < in_array->size(); ++j) {
-      if (in_array->at(j).IsInitialized() && (in_array->at(j).numel() != 0)) {
+      if (in_array->at(j).initialized() && (in_array->at(j).numel() != 0)) {
         if (j >= out->size()) {
           out->resize(j + 1);
         }
-        if (!out->at(j).IsInitialized() || (out->at(j).numel() == 0)) {
+        if (!out->at(j).initialized() || (out->at(j).numel() == 0)) {
           Copy<Context>(dev_ctx,
                         in_array->at(j),
                         in_array->at(j).place(),

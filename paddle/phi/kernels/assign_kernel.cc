@@ -32,7 +32,7 @@ void AssignRawKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& x,
                      DenseTensor* out) {
   if (x) {
-    if (!x->IsInitialized()) {
+    if (!x->initialized()) {
       return;
     }
     auto& x_tensor = *x.get_ptr();

@@ -196,7 +196,7 @@ static phi::DenseTensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
                                                 phi::DenseTensor *origin,
                                                 phi::DenseTensor *fused_out,
                                                 size_t numel_offset) {
-  PADDLE_ENFORCE_EQ(origin->IsInitialized(),
+  PADDLE_ENFORCE_EQ(origin->initialized(),
                     true,
                     platform::errors::InvalidArgument(
                         "The tensor to be cast should be initialized."));
@@ -230,7 +230,7 @@ static phi::DenseTensor CopyAndShareBufferForInitedTensor(
     size_t numel_offset,
     gpuStream_t stream) {
   PADDLE_ENFORCE_EQ(
-      origin->IsInitialized(),
+      origin->initialized(),
       true,
       platform::errors::InvalidArgument(
           "The tensor to be copied and shared data should be initialized."));
@@ -276,7 +276,7 @@ static void ShareBufferForNonInitedTensor(phi::DenseTensor *origin,
                                           size_t numel_offset,
                                           const framework::DDim &dims) {
   PADDLE_ENFORCE_EQ(
-      origin->IsInitialized(),
+      origin->initialized(),
       false,
       platform::errors::InvalidArgument(
           "The tensor to be shared data should not be initialized."));
@@ -386,7 +386,7 @@ class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
             p,
             platform::errors::InvalidArgument(
                 "The %d-th parameter should not be nullptr.", i));
-        PADDLE_ENFORCE_EQ(p->IsInitialized(),
+        PADDLE_ENFORCE_EQ(p->initialized(),
                           true,
                           platform::errors::InvalidArgument(
                               "The %d-th parameter should be initialized.", i));
@@ -420,7 +420,7 @@ class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
                               "The %d-th Input(Param) have no elements."));
 
         void *g_data = nullptr;
-        if (g->IsInitialized()) {
+        if (g->initialized()) {
           PADDLE_ENFORCE_EQ(g->dtype(),
                             dtype,
                             platform::errors::InvalidArgument(
@@ -451,8 +451,8 @@ class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
 
         VLOG(10) << "Found " << dtype << " parameter " << i << " shape=["
                  << p_out->dims() << "] numel=" << numel
-                 << " grad.IsInitialized()="
-                 << (g_out->IsInitialized() ? "true" : "false");
+                 << " grad.initialized()="
+                 << (g_out->initialized() ? "true" : "false");
 
         info->param_t = p_out;
         info->grad_t = g_out;
@@ -580,7 +580,7 @@ class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
                         sliced_tensor.data<float>(),
                         platform::errors::InvalidArgument(
                             "Invalid master weight tensor pointer."));
-      if (info.grad_t->IsInitialized()) {
+      if (info.grad_t->initialized()) {
         CopyAndShareBufferForInitedTensor(
             info.grad_t, fp32_g_t, info.numel_offset, stream);
       } else {
@@ -610,7 +610,7 @@ class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
                         platform::errors::InvalidArgument(
                             "Invalid master weight tensor pointer."));
 
-      if (info.grad_t->IsInitialized()) {
+      if (info.grad_t->initialized()) {
         CopyAndShareBufferForInitedTensor(
             info.grad_t, fp16_g_t, info.numel_offset, stream);
       } else {
@@ -769,7 +769,7 @@ class DistributedFusedLambInitOpKernel<T, phi::GPUContext>
         ctx.Output<phi::DenseTensor>("FP16ShardFusedParamOffsets"));
 
     auto *global_scale = ctx.Output<phi::DenseTensor>("GlobalScale");
-    if (!global_scale->IsInitialized()) {
+    if (!global_scale->initialized()) {
       TensorFillConstant<float>(dev_ctx, global_scale, {1}, 1.0f);
     }
     VLOG(10) << "Init global scale ends";

@@ -92,7 +92,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
   for (size_t i = 0; i < x.size(); i++) {
     auto& tensor = *(x[i]);
     PADDLE_ENFORCE_EQ(
-        tensor.IsInitialized(),
+        tensor.initialized(),
         true,
         phi::errors::InvalidArgument(
             "The Tensor with Index (%d) to be saved is not initialized.", i));

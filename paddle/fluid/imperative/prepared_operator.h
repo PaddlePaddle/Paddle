@@ -85,7 +85,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
       auto& template_var = name_pair.second[i];
       SetForwardDataTypeOfGradVar(template_var);
       const auto* tensor = GetTensorFromVar(template_var->Var());
-      if (tensor && tensor->IsInitialized() && (tensor->memory_size() != 0)) {
+      if (tensor && tensor->initialized() && (tensor->memory_size() != 0)) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
         if (!framework::NeedTransform(
@@ -659,7 +659,7 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       auto& var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
-      if (tensor_in && tensor_in->IsInitialized() &&
+      if (tensor_in && tensor_in->initialized() &&
           (tensor_in->memory_size() != 0)) {
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
           continue;

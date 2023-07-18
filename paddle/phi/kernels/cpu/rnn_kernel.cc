@@ -834,7 +834,7 @@ void RnnKernel(const Context& dev_ctx,
                std::vector<DenseTensor*> state,
                DenseTensor* reserve) {
   if (!is_test) {
-    if (dropout_state->IsInitialized()) {
+    if (dropout_state->initialized()) {
       if (dropout_state->numel() != out->numel()) dropout_state->clear();
     }
     const auto& out_dim = out->dims();

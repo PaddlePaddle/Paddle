@@ -145,7 +145,7 @@ void MatrixPowerFunction(const DenseTensor* X,
   while (new_n > 0) {
     bit = new_n & 0x1;
     new_n >>= 1;
-    if (z.IsInitialized()) {
+    if (z.initialized()) {
       blas.MatMul(z,
                   no_trans_desc,
                   z,

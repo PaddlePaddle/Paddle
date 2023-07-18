@@ -26,8 +26,6 @@ public:
  */
 explicit DenseTensor(phi::DataType dtype);
 
-inline bool IsInitialized() const { return holder_ != nullptr; }
-
 template <typename T>
 T* mutable_data(const phi::Place& place, size_t requested_size = 0);
 

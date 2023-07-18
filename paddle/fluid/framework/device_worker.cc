@@ -294,7 +294,7 @@ void DeviceWorker::DumpField(const Scope& scope,
         continue;
       }
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-      if (!tensor->IsInitialized()) {
+      if (!tensor->initialized()) {
         VLOG(0) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
@@ -342,7 +342,7 @@ void DeviceWorker::DumpField(const Scope& scope,
         continue;
       }
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-      if (!tensor->IsInitialized()) {
+      if (!tensor->initialized()) {
         VLOG(0) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
@@ -425,7 +425,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       continue;
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    if (!tensor->IsInitialized()) {
+    if (!tensor->initialized()) {
       VLOG(0) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";
       continue;

@@ -54,7 +54,7 @@ class SumOp : public framework::OperatorWithKernel {
                                        x_vars_name[idx]));
         auto tensor =
             framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
-        if (!tensor->IsInitialized()) {
+        if (!tensor->initialized()) {
           continue;
         }
         if (dtype == -1) {
@@ -91,7 +91,7 @@ class SumOp : public framework::OperatorWithKernel {
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
         auto& value = var->Get<phi::SelectedRows>().value();
-        if (value.IsInitialized()) {
+        if (value.initialized()) {
           return phi::KernelKey(framework::TransToProtoVarType(value.dtype()),
                                 ctx.GetPlace());
         }
@@ -102,7 +102,7 @@ class SumOp : public framework::OperatorWithKernel {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
-          if (each.numel() != 0 && each.IsInitialized()) {
+          if (each.numel() != 0 && each.initialized()) {
             return phi::KernelKey(framework::TransToProtoVarType(each.dtype()),
                                   ctx.GetPlace());
           }

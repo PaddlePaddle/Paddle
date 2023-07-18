@@ -85,7 +85,7 @@ class DistTensor final
     return value_->holder_ && value_->holder_->ptr();
   }
 
-  bool IsInitialized() const { return value_->holder_ != nullptr; }
+  bool defined() const { return value_->holder_ != nullptr; }
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
