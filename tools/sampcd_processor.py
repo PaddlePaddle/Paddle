@@ -21,8 +21,6 @@ for example, you can run cpu version testing like this:
     python sampcd_processor.py cpu
 
 """
-import argparse
-import inspect
 import logging
 import multiprocessing
 import os
@@ -32,6 +30,17 @@ import shutil
 import subprocess
 import sys
 import time
+
+from sampcd_processor_utils import ENV_KEY_TEST_CAPACITY  # noqa: F401
+from sampcd_processor_utils import (
+    API_DIFF_SPEC_FN,
+    extract_code_blocks_from_docstr,
+    get_full_api_from_pr_spec,
+    get_incrementapi,
+    parse_args,
+    run_doctest,
+)
+from sampcd_processor_xdoctest import Xdoctester
 
 logger = logging.getLogger()
 if logger.handlers:
@@ -47,12 +56,8 @@ RUN_ON_DEVICE = 'cpu'
 SAMPLE_CODE_TEST_CAPACITY = set()
 GPU_ID = 0
 whl_error = []
-API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
-API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
-API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 SAMPLECODE_TEMPDIR = 'samplecode_temp'
 ENV_KEY_CODES_FRONTEND = 'CODES_INSERTED_INTO_FRONTEND'
-ENV_KEY_TEST_CAPACITY = 'SAMPLE_CODE_TEST_CAPACITY'
 SUMMARY_INFO = {
     'success': [],
     'failed': [],
@@ -104,117 +109,6 @@ def find_last_future_line_end(cbstr):
         return lastmo.end()
     else:
         return None
-
-
-def extract_code_blocks_from_docstr(docstr):
-    """
-    extract code-blocks from the given docstring.
-
-    DON'T include the multiline-string definition in code-blocks.
-    The *Examples* section must be the last.
-
-    Args:
-        docstr(str): docstring
-    Return:
-        code_blocks: A list of code-blocks, indent removed.
-                     element {'name': the code-block's name, 'id': sequence id.
-                              'codes': codes, 'required': 'gpu'}
-    """
-    code_blocks = []
-
-    mo = re.search(r"Examples:", docstr)
-    if mo is None:
-        return code_blocks
-    ds_list = docstr[mo.start() :].replace("\t", '    ').split("\n")
-    lastlineindex = len(ds_list) - 1
-
-    cb_start_pat = re.compile(r"code-block::\s*python")
-    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
-    cb_required_pat = re.compile(r"^\s*#\s*require[s|d]\s*:\s*(\S+)\s*$")
-
-    cb_info = {}
-    cb_info['cb_started'] = False
-    cb_info['cb_cur'] = []
-    cb_info['cb_cur_indent'] = -1
-    cb_info['cb_cur_name'] = None
-    cb_info['cb_cur_seq_id'] = 0
-    cb_info['cb_required'] = None
-
-    def _cb_started():
-        # nonlocal cb_started, cb_cur_name, cb_required, cb_cur_seq_id
-        cb_info['cb_started'] = True
-        cb_info['cb_cur_seq_id'] += 1
-        cb_info['cb_cur_name'] = None
-        cb_info['cb_required'] = None
-
-    def _append_code_block():
-        # nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
-        code_blocks.append(
-            {
-                'codes': inspect.cleandoc("\n" + "\n".join(cb_info['cb_cur'])),
-                'name': cb_info['cb_cur_name'],
-                'id': cb_info['cb_cur_seq_id'],
-                'required': cb_info['cb_required'],
-            }
-        )
-
-    for lineno, linecont in enumerate(ds_list):
-        if re.search(cb_start_pat, linecont):
-            if not cb_info['cb_started']:
-                _cb_started()
-                continue
-            else:
-                # cur block end
-                if len(cb_info['cb_cur']):
-                    _append_code_block()
-                _cb_started()  # another block started
-                cb_info['cb_cur_indent'] = -1
-                cb_info['cb_cur'] = []
-        else:
-            if cb_info['cb_started']:
-                # handle the code-block directive's options
-                mo_p = cb_param_pat.match(linecont)
-                if mo_p:
-                    if mo_p.group(1) == 'name':
-                        cb_info['cb_cur_name'] = mo_p.group(2)
-                    continue
-                # read the required directive
-                mo_r = cb_required_pat.match(linecont)
-                if mo_r:
-                    cb_info['cb_required'] = mo_r.group(1)
-                # docstring end
-                if lineno == lastlineindex:
-                    mo = re.search(r"\S", linecont)
-                    if (
-                        mo is not None
-                        and cb_info['cb_cur_indent'] <= mo.start()
-                    ):
-                        cb_info['cb_cur'].append(linecont)
-                    if len(cb_info['cb_cur']):
-                        _append_code_block()
-                    break
-                # check indent for cur block start and end.
-                mo = re.search(r"\S", linecont)
-                if mo is None:
-                    continue
-                if cb_info['cb_cur_indent'] < 0:
-                    # find the first non empty line
-                    cb_info['cb_cur_indent'] = mo.start()
-                    cb_info['cb_cur'].append(linecont)
-                else:
-                    if cb_info['cb_cur_indent'] <= mo.start():
-                        cb_info['cb_cur'].append(linecont)
-                    else:
-                        if linecont[mo.start()] == '#':
-                            continue
-                        else:
-                            # block end
-                            if len(cb_info['cb_cur']):
-                                _append_code_block()
-                            cb_info['cb_started'] = False
-                            cb_info['cb_cur_indent'] = -1
-                            cb_info['cb_cur'] = []
-    return code_blocks
 
 
 def get_test_capacity():
@@ -325,6 +219,15 @@ def insert_codes_into_codeblock(codeblock, apiname='not-specified'):
         return inserted_codes_f + cb + inserted_codes_b
 
 
+def is_ps_wrapped_codeblock(codeblock):
+    """If the codeblock is wrapped by PS1(>>> ),
+    we skip test and use xdoctest instead.
+    """
+    codes = codeblock['codes']
+    match_obj = re.search(r"\n>>>\s?", "\n" + codes)
+    return match_obj is not None
+
+
 def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     """
     Extract sample codes from __doc__, and write them to files.
@@ -368,6 +271,15 @@ Please use '.. code-block:: python' to format the sample code."""
 
     sample_code_filenames = []
     for y, cb in enumerate(codeblocks):
+        if is_ps_wrapped_codeblock(cb):
+            SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
+            logger.info(
+                '{}\' code block (name:{}, id:{}) is wrapped by PS1(>>> ), which will be tested by xdoctest.'.format(
+                    name, cb['name'], cb['id']
+                )
+            )
+            continue
+
         matched = is_required_match(cb['required'], name)
         # matched has three states:
         # True - please execute it;
@@ -513,175 +425,6 @@ def get_filenames(full_test=False):
     return all_sample_code_filenames
 
 
-def get_api_md5(path):
-    """
-    read the api spec file, and scratch the md5sum value of every api's docstring.
-
-    Args:
-        path: the api spec file. ATTENTION the path relative
-
-    Returns:
-        api_md5(dict): key is the api's real fullname, value is the md5sum.
-    """
-    api_md5 = {}
-    API_spec = os.path.abspath(os.path.join(os.getcwd(), "..", path))
-    if not os.path.isfile(API_spec):
-        return api_md5
-    pat = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
-    patArgSpec = re.compile(
-        r'^(paddle[^,]+)\s+\(ArgSpec.*document\W*([0-9a-z]{32})'
-    )
-    with open(API_spec) as f:
-        for line in f.readlines():
-            mo = pat.search(line)
-            if not mo:
-                mo = patArgSpec.search(line)
-            if mo:
-                api_md5[mo.group(1)] = mo.group(2)
-    return api_md5
-
-
-def get_full_api():
-    """
-    get all the apis
-    """
-    global API_DIFF_SPEC_FN  # readonly
-    from print_signatures import get_all_api_from_modulelist
-
-    member_dict = get_all_api_from_modulelist()
-    with open(API_DIFF_SPEC_FN, 'w') as f:
-        f.write("\n".join(member_dict.keys()))
-
-
-def get_full_api_by_walk():
-    """
-    get all the apis
-    """
-    global API_DIFF_SPEC_FN  # readonly
-    from print_signatures import get_all_api
-
-    apilist = get_all_api()
-    with open(API_DIFF_SPEC_FN, 'w') as f:
-        f.write("\n".join([ai[0] for ai in apilist]))
-
-
-def get_full_api_from_pr_spec():
-    """
-    get all the apis
-    """
-    global API_PR_SPEC_FN, API_DIFF_SPEC_FN  # readonly
-    pr_api = get_api_md5(API_PR_SPEC_FN)
-    if len(pr_api):
-        with open(API_DIFF_SPEC_FN, 'w') as f:
-            f.write("\n".join(pr_api.keys()))
-    else:
-        get_full_api_by_walk()
-
-
-def get_incrementapi():
-    '''
-    this function will get the apis that difference between API_DEV.spec and API_PR.spec.
-    '''
-    global API_DEV_SPEC_FN, API_PR_SPEC_FN, API_DIFF_SPEC_FN  # readonly
-    dev_api = get_api_md5(API_DEV_SPEC_FN)
-    pr_api = get_api_md5(API_PR_SPEC_FN)
-    with open(API_DIFF_SPEC_FN, 'w') as f:
-        for key in pr_api:
-            if key in dev_api:
-                if dev_api[key] != pr_api[key]:
-                    logger.debug(
-                        "%s in dev is %s, different from pr's %s",
-                        key,
-                        dev_api[key],
-                        pr_api[key],
-                    )
-                    f.write(key)
-                    f.write('\n')
-            else:
-                logger.debug("%s is not in dev", key)
-                f.write(key)
-                f.write('\n')
-
-
-def exec_gen_doc():
-    result = True
-    cmd = ["bash", "document_preview.sh"]
-    logger.info("----exec gen_doc----")
-    start_time = time.time()
-    subprc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    output, error = subprc.communicate()
-    msg = "".join(output.decode(encoding='utf-8'))
-    err = "".join(error.decode(encoding='utf-8'))
-    end_time = time.time()
-
-    if subprc.returncode != 0:
-        logger.info("----gen_doc msg----")
-        logger.info(msg)
-        logger.error("----gen_doc error msg----")
-        logger.error(err)
-        logger.error("----exec gen_doc failed----")
-        result = False
-    else:
-        logger.info("----gen_doc msg----")
-        logger.info(msg)
-        logger.info("----exec gen_doc success----")
-
-    for fn in [
-        '/docs/en/develop/index_en.html',
-        '/docs/zh/develop/index_cn.html',
-    ]:
-        if os.path.exists(fn):
-            logger.info('%s exists.', fn)
-        else:
-            logger.error('%s not exists.', fn)
-
-    # msg is the returned code execution report
-    return result, msg, end_time - start_time
-
-
-arguments = [
-    # flags, dest, type, default, help
-    ['--gpu_id', 'gpu_id', int, 0, 'GPU device id to use [0]'],
-    ['--logf', 'logf', str, None, 'file for logging'],
-    ['--threads', 'threads', int, 0, 'sub processes number'],
-]
-
-
-def parse_args():
-    """
-    Parse input arguments
-    """
-    global arguments
-    parser = argparse.ArgumentParser(description='run Sample Code Test')
-    # parser.add_argument('--cpu', dest='cpu_mode', action="store_true",
-    #                     help='Use CPU mode (overrides --gpu)')
-    # parser.add_argument('--gpu', dest='gpu_mode', action="store_true")
-    parser.add_argument('--debug', dest='debug', action="store_true")
-    parser.add_argument('--full-test', dest='full_test', action="store_true")
-    parser.add_argument('mode', type=str, help='run on device', default='cpu')
-    parser.add_argument(
-        '--build-doc',
-        dest='build_doc',
-        action='store_true',
-        help='build doc if need.',
-    )
-    for item in arguments:
-        parser.add_argument(
-            item[0], dest=item[1], help=item[4], type=item[2], default=item[3]
-        )
-
-    if len(sys.argv) == 1:
-        args = parser.parse_args(['cpu'])
-        return args
-    #    parser.print_help()
-    #    sys.exit(1)
-
-    args = parser.parse_args()
-    return args
-
-
 if __name__ == '__main__':
     args = parse_args()
     if args.debug:
@@ -722,96 +465,107 @@ if __name__ == '__main__':
     filenames = get_filenames(args.full_test)
     if len(filenames) == 0 and len(whl_error) == 0:
         logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
-        sys.exit(0)
-    logger.info("API_PR is diff from API_DEV: %s", filenames)
+        # not exit if no filenames, we should do xdoctest later.
+        # sys.exit(0)
 
-    threads = multiprocessing.cpu_count()
-    if args.threads:
-        threads = args.threads
-    po = multiprocessing.Pool(threads)
-    results = po.map_async(execute_samplecode, filenames.keys())
-    po.close()
-    po.join()
+        # delete temp files
+        if not args.debug:
+            shutil.rmtree(SAMPLECODE_TEMPDIR)
 
-    result = results.get()
-
-    # delete temp files
-    if not args.debug:
-        shutil.rmtree(SAMPLECODE_TEMPDIR)
-
-    stdout_handler = logging.StreamHandler(stream=sys.stdout)
-    logger.addHandler(stdout_handler)
-    logger.info("----------------End of the Check--------------------")
-    if len(whl_error) != 0:
-        logger.info("%s is not in whl.", whl_error)
-        logger.info("")
-        logger.info("Please check the whl package and API_PR.spec!")
-        logger.info("You can follow these steps in order to generate API.spec:")
-        logger.info("1. cd ${paddle_path}, compile paddle;")
-        logger.info("2. pip install build/python/dist/(build whl package);")
-        logger.info(
-            "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
-        )
-        for temp in result:
-            if not temp[0]:
-                logger.info(
-                    "In addition, mistakes found in sample codes: %s", temp[1]
-                )
-        logger.info("----------------------------------------------------")
-        sys.exit(1)
     else:
-        timeovered_test = {}
-        for temp in result:
-            if not temp[0]:
-                logger.info(
-                    "In addition, mistakes found in sample codes: %s", temp[1]
-                )
-                SUMMARY_INFO['failed'].append(temp[1])
-            else:
-                SUMMARY_INFO['success'].append(temp[1])
-            if temp[3] > 10:
-                timeovered_test[temp[1]] = temp[3]
+        logger.info("API_PR is diff from API_DEV: %s", filenames)
 
-        if len(timeovered_test):
+        threads = multiprocessing.cpu_count()
+        if args.threads:
+            threads = args.threads
+        po = multiprocessing.Pool(threads)
+        results = po.map_async(execute_samplecode, filenames.keys())
+        po.close()
+        po.join()
+
+        result = results.get()
+
+        # delete temp files
+        if not args.debug:
+            shutil.rmtree(SAMPLECODE_TEMPDIR)
+
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        logger.addHandler(stdout_handler)
+        logger.info("----------------End of the Check--------------------")
+        if len(whl_error) != 0:
+            logger.info("%s is not in whl.", whl_error)
+            logger.info("")
+            logger.info("Please check the whl package and API_PR.spec!")
             logger.info(
-                "%d sample codes ran time over 10s", len(timeovered_test)
+                "You can follow these steps in order to generate API.spec:"
             )
-            if args.debug:
-                for k, v in timeovered_test.items():
-                    logger.info(f'{k} - {v}s')
-        if len(SUMMARY_INFO['success']):
+            logger.info("1. cd ${paddle_path}, compile paddle;")
+            logger.info("2. pip install build/python/dist/(build whl package);")
             logger.info(
-                "%d sample codes ran success", len(SUMMARY_INFO['success'])
+                "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
             )
-        for k, v in SUMMARY_INFO.items():
-            if k not in ['success', 'failed', 'skiptest', 'nocodes']:
-                logger.info(
-                    "%d sample codes required not match for %s", len(v), k
-                )
-        if len(SUMMARY_INFO['skiptest']):
-            logger.info(
-                "%d sample codes skipped", len(SUMMARY_INFO['skiptest'])
-            )
-            if args.debug:
-                logger.info('\n'.join(SUMMARY_INFO['skiptest']))
-        if len(SUMMARY_INFO['nocodes']):
-            logger.info(
-                "%d apis don't have sample codes", len(SUMMARY_INFO['nocodes'])
-            )
-            if args.debug:
-                logger.info('\n'.join(SUMMARY_INFO['nocodes']))
-        if len(SUMMARY_INFO['failed']):
-            logger.info(
-                "%d sample codes ran failed", len(SUMMARY_INFO['failed'])
-            )
-            logger.info('\n'.join(SUMMARY_INFO['failed']))
-            logger.info(
-                "Mistakes found in sample codes. Please recheck the sample codes."
-            )
+            for temp in result:
+                if not temp[0]:
+                    logger.info(
+                        "In addition, mistakes found in sample codes: %s",
+                        temp[1],
+                    )
+            logger.info("----------------------------------------------------")
             sys.exit(1)
+        else:
+            timeovered_test = {}
+            for temp in result:
+                if not temp[0]:
+                    logger.info(
+                        "In addition, mistakes found in sample codes: %s",
+                        temp[1],
+                    )
+                    SUMMARY_INFO['failed'].append(temp[1])
+                else:
+                    SUMMARY_INFO['success'].append(temp[1])
+                if temp[3] > 10:
+                    timeovered_test[temp[1]] = temp[3]
 
-    logger.info("Sample code check is successful!")
+            if len(timeovered_test):
+                logger.info(
+                    "%d sample codes ran time over 10s", len(timeovered_test)
+                )
+                if args.debug:
+                    for k, v in timeovered_test.items():
+                        logger.info(f'{k} - {v}s')
+            if len(SUMMARY_INFO['success']):
+                logger.info(
+                    "%d sample codes ran success", len(SUMMARY_INFO['success'])
+                )
+            for k, v in SUMMARY_INFO.items():
+                if k not in ['success', 'failed', 'skiptest', 'nocodes']:
+                    logger.info(
+                        "%d sample codes required not match for %s", len(v), k
+                    )
+            if len(SUMMARY_INFO['skiptest']):
+                logger.info(
+                    "%d sample codes skipped", len(SUMMARY_INFO['skiptest'])
+                )
+                if args.debug:
+                    logger.info('\n'.join(SUMMARY_INFO['skiptest']))
+            if len(SUMMARY_INFO['nocodes']):
+                logger.info(
+                    "%d apis don't have sample codes",
+                    len(SUMMARY_INFO['nocodes']),
+                )
+                if args.debug:
+                    logger.info('\n'.join(SUMMARY_INFO['nocodes']))
+            if len(SUMMARY_INFO['failed']):
+                logger.info(
+                    "%d sample codes ran failed", len(SUMMARY_INFO['failed'])
+                )
+                logger.info('\n'.join(SUMMARY_INFO['failed']))
+                logger.info(
+                    "Mistakes found in sample codes. Please recheck the sample codes."
+                )
+                sys.exit(1)
 
-    if args.mode == "cpu":
-        # As cpu mode is also run with the GPU whl, so skip it in gpu mode.
-        exec_gen_doc()
+        logger.info("Sample code check is successful!")
+
+    # run xdoctest
+    run_doctest(args, doctester=Xdoctester(debug=args.debug))
