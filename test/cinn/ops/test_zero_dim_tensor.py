@@ -677,6 +677,82 @@ class TestCastOp(OpTest):
 @OpTestTool.skip_if(
     not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
 )
+class TestArgmaxOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.argmax(x, *self.param)
+        out = paddle.cast(out, 'int32')
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("squeeze_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.argmax(x, *self.param)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestArgmaxOp2(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.param = (-1,)
+        self.target_shape = ()
+
+
+class TestArgmaxOp1D(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = ()
+
+
+class TestArgmaxOp2D(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = (5,)
+
+
+class TestArgmaxOp2DKeepDim(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0, True)
+        self.target_shape = (1, 5)
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestTransposeOp(OpTest):
     def setUp(self):
         np.random.seed(2023)
