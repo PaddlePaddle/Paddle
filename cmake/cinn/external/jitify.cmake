@@ -13,8 +13,10 @@ set(JITIFY_URL https://github.com/NVIDIA/jitify.git)
 set(JITIFY_TAG 57de649139c866eb83acacfe50c92ad7c6278776)
 
 if(NOT EXISTS ${JITIFY_SOURCE_DIR})
-  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${JITIFY_TAG}
-                          ${JITIFY_URL} ${JITIFY_SOURCE_DIR})
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone ${JITIFY_URL}
+                          ${JITIFY_SOURCE_DIR})
+  execute_process(COMMAND ${GIT_EXECUTABLE} -C ${JITIFY_SOURCE_DIR} checkout -q
+                          ${JITIFY_TAG})
 else()
   # check git tag
   execute_process(
