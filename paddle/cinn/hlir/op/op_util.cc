@@ -34,9 +34,11 @@ CINNSchedule GetElementwiseScheduleFunc(
     common::CINNValuePack arg_pack = args[0];
     CHECK_GT(arg_pack.size(), 0U)
         << "arg_pack.size() must contains at least one element.";
-    // NOTE(Aurelius84): For NewIrCompiler, the outputs of Compute are
+    // TODO(Aurelius84): For NewIrCompiler, the outputs of Compute are
     // tensor_ref and not Expr.
-    if (!arg_pack[0].is_tensor()) {
+    bool is_tensor_stages = arg_pack.size() == 2U && arg_pack[0].is_tensor() &&
+                            arg_pack[1].is_stagemap();
+    if (!is_tensor_stages) {
       std::vector<Expr> vec_ast;
       for (int i = 0; i < arg_pack.size(); i++) {
         if (arg_pack[i].is_expr()) {
