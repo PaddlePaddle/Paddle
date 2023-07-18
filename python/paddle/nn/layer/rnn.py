@@ -1559,12 +1559,6 @@ class RNNBase(LayerList):
 
             fill_shape = list(state_shape)
             fill_shape[1] = paddle.shape(inputs)[batch_index].item()
-            print("==================")
-            print(paddle.shape(inputs)[batch_index].item())
-            print(fill_shape)
-            print(state_shape)
-            print(inputs.shape)
-            print("==================")
             initial_states = tuple(
                 [
                     paddle.full(fill_shape, 0, dtype)
