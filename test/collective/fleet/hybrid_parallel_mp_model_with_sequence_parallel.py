@@ -62,7 +62,7 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
         return logits
 
 
-class SimpleMPNet(paddle.nn.Layer):
+class SimpleSPNet(paddle.nn.Layer):
     def __init__(
         self,
         vocab_size,
@@ -81,6 +81,12 @@ class SimpleMPNet(paddle.nn.Layer):
         else:
             init_fc1_data = np_fc1[:, (inner_size // 2) :]
             init_fc2_data = np_fc2[(inner_size // 2) :, :]
+
+        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            vocab_size,
+            hidden_size,
+            weight_attr=paddle.nn.initializer.Constant(value=0.5),
+        )
 
         self.linear1 = spu.ColumnSequenceParallelLinear(
             hidden_size,
@@ -119,18 +125,21 @@ class SimpleMPNet(paddle.nn.Layer):
         spu.mark_as_sequence_parallel_parameter(self.norm.weight)
         spu.mark_as_sequence_parallel_parameter(self.norm.bias)
 
-        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            vocab_size,
-            hidden_size,
-            weight_attr=paddle.nn.initializer.Constant(value=0.5),
-        )
+        spu.register_sequence_parallel_allreduce_hooks(self, 1, False)
 
     def forward(self, x):
         x = self.embedding(x)
+
+        x = paddle.transpose(x, perm=[1, 0, 2])
+        x = spu.ScatterOp.apply(x)
+
         x = self.linear1(x)
         x = self.linear2(x)
         x = self.norm(x)
         x = self.linear3(x)
+
+        x = paddle.transpose(x, perm=[1, 0, 2])
+
         x = parallel_matmul(x, self.embedding.weight, False)
         return x
 
@@ -181,8 +190,6 @@ class SimpleDPNet(paddle.nn.Layer):
             weight_attr=paddle.nn.initializer.Constant(value=0.5),
         )
 
-        spu.register_sequence_parallel_allreduce_hooks(self, 1, False)
-
     def forward(self, x):
         x = self.embedding(x)
         x = self.linear1(x)
@@ -193,7 +200,7 @@ class SimpleDPNet(paddle.nn.Layer):
         return x
 
 
-class TestDistMPSyncTraning(unittest.TestCase):
+class TestDistSPSyncTraning(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -232,7 +239,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
-        model = SimpleMPNet(
+        model = SimpleSPNet(
             vocab_size,
             hidden_size,
             inner_size,
@@ -363,7 +370,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
         )
 
 
-class TestDistMPSyncModelTraning(TestDistMPSyncTraning):
+class TestDistSPSyncModelTraning(TestDistSPSyncTraning):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -383,7 +390,7 @@ class TestDistMPSyncModelTraning(TestDistMPSyncTraning):
         fleet.init(is_collective=True, strategy=strategy)
 
 
-class TestDistMPTraning(unittest.TestCase):
+class TestDistSPTraning(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -420,7 +427,7 @@ class TestDistMPTraning(unittest.TestCase):
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
-        model_a = SimpleMPNet(
+        model_a = SimpleSPNet(
             vocab_size,
             hidden_size,
             inner_size,
