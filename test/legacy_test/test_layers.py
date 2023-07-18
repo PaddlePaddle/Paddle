@@ -453,7 +453,7 @@ class TestLayer(LayerTest):
             dy_ret1 = conv2d1(base.to_variable(images))
             dy_ret2 = conv2d2(base.to_variable(images))
 
-            assert not np.array_equal(dy_ret1.numpy(), dy_ret2.numpy())
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv2d1_weight_np = conv2d1.weight.numpy()
             conv2d1_bias = conv2d1.bias
@@ -638,8 +638,8 @@ class TestLayer(LayerTest):
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
-        np.testing.assert_allclose(static_rlt2[0], static_rlt)
-        np.testing.assert_allclose(dy_rlt_value[0], static_rlt)
+        self.assertTrue(np.allclose(static_rlt2[0], static_rlt))
+        self.assertTrue(np.allclose(dy_rlt_value[0], static_rlt))
 
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")
@@ -758,7 +758,7 @@ class TestLayer(LayerTest):
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
 
-            assert not np.array_equal(dy_ret1.numpy(), dy_ret2.numpy())
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv3d1_weight_np = conv3d1.weight.numpy()
             conv3d1_bias = conv3d1.bias
@@ -1009,7 +1009,7 @@ class TestLayer(LayerTest):
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
 
-            assert not np.array_equal(dy_ret1.numpy(), dy_ret2.numpy())
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv3d1_weight_np = conv3d1.weight.numpy()
             conv3d1_bias = conv3d1.bias

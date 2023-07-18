@@ -705,9 +705,7 @@ class TestCycleGANModel(unittest.TestCase):
         if not fluid.is_compiled_with_cuda():
             assert_func = np.testing.assert_array_equal
 
-        assert_func(
-            dy_out, st_out, err_msg=f"dy_out:\n {dy_out}\n st_out:\n{st_out}"
-        )
+        assert_func(dy_out, st_out)
 
 
 if __name__ == "__main__":

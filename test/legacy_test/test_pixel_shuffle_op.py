@@ -272,6 +272,7 @@ class TestPixelShuffleAPI(unittest.TestCase):
                 fetch_list=out_2,
                 use_prune=True,
             )
+            # exe.run output maybe squeeze.
             res_1 = res_1[0] if len(res_1) == 1 else res_1
             res_2 = res_2[0] if len(res_2) == 1 else res_2
 

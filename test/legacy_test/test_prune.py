@@ -319,7 +319,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
 
-                assert not np.array_equal(weight_init, weight)  # weight changed
+                self.assertFalse(
+                    np.array_equal(weight_init, weight)
+                )  # weight changed
 
     def test_prune_compiled_program(self):
         program = framework.Program()
@@ -350,7 +352,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
 
-                assert not np.array_equal(weight_init, weight)  # weight changed
+                self.assertFalse(
+                    np.array_equal(weight_init, weight)
+                )  # weight changed
 
     def test_prune_feed_without_optimizer(self):
         program = framework.Program()

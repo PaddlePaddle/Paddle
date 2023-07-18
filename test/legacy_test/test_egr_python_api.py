@@ -845,7 +845,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
 
         new_arr = np.random.rand(4, 16, 16, 32).astype('float32')
 
-        assert not np.array_equal(egr_tensor.numpy(), new_arr)
+        self.assertFalse(np.array_equal(egr_tensor.numpy(), new_arr))
 
         egr_tensor.set_value(new_arr)
         self.assertEqual(egr_tensor.stop_gradient, True)
@@ -966,7 +966,7 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         ori_place = linear.weight.place
         new_weight = np.ones([1, 3]).astype('float32')
 
-        assert not np.array_equal(linear.weight.numpy(), new_weight)
+        self.assertFalse(np.array_equal(linear.weight.numpy(), new_weight))
 
         linear.weight.set_value(new_weight)
         np.testing.assert_array_equal(linear.weight.numpy(), new_weight)
