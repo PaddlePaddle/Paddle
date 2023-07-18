@@ -912,7 +912,7 @@ void ParallelExecutor::BCastParamsToDevices(
               BKCL_SUCCESS,
               platform::errors::Unavailable("bkcl_broadcast failed"));
         }
-        bkcl_ctx->WaitAll();
+        bkcl_ctxs->WaitAll();
       }
 #else
       PADDLE_THROW(
