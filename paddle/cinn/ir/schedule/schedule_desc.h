@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/schedule_desc.pb.h"
+#include "paddle/cinn/ir/schedule/schedule_desc.pb.h"
 #include "paddle/cinn/utils/registry.h"
 #include "paddle/cinn/utils/type_defs.h"
 
