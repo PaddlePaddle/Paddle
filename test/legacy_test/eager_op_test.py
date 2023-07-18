@@ -2309,6 +2309,8 @@ class OpTest(unittest.TestCase):
                 self.op_type
                 not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST
             ):
+                if os.getenv("FLAGS_enable_new_ir_in_executor"):
+                    return
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):

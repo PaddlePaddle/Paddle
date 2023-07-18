@@ -977,7 +977,8 @@ struct SplitOpTranscriber : public OpTranscriber {
     // process sections
     int num = paddle::get<int>(op_desc.GetAttr("num"));
     if (num <= 0) {
-      if (op_desc.HasInput("SectionsTensorList")) {
+      if (op_desc.HasInput("SectionsTensorList") &&
+          op_desc.Input("SectionsTensorList").size() > 0) {
         // get SectionsTensorList from input
 
         auto sec_tensor_list = op_desc.Input("SectionsTensorList");
@@ -989,7 +990,7 @@ struct SplitOpTranscriber : public OpTranscriber {
         ir::Attribute new_attr = attribute_translator(
             "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("sections"));
         auto sec_defin_op =
-            InsertFullOperationForAttributeInput(ctx, program, new_attr);
+            InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
         op_inputs.push_back(sec_defin_op->result(0));
       }
     }
@@ -1087,6 +1088,26 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+// NOTE, add_n op in legacy ops don't have a kernel, so we use a new op for now
+struct AddNOpTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name =
+        kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
+    if (IsInplace(op_desc)) {
+      target_op_name += "_";
+    } else {
+      target_op_name += "_with_kernel";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+    }
+
+    return op_info;
+  }
+};
+
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
@@ -1098,6 +1119,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["add_n"] = AddNOpTranscriber();
 }
 
 }  // namespace translator
