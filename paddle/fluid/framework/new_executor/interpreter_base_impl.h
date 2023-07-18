@@ -98,9 +98,6 @@ class InterpreterBaseImpl {
   virtual const platform::Place& GetPlace() const = 0;
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
-
-  virtual const std::unordered_map<::ir::Value, std::string>& ValueMape()
-      const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

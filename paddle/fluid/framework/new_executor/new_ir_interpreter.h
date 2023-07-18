@@ -73,10 +73,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
-  const std::unordered_map<::ir::Value, std::string>& ValueMape() const {
-    return value_2_var_name_;
-  }
-
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);

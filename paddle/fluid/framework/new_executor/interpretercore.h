@@ -74,10 +74,6 @@ class InterpreterCore {
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
-  const std::unordered_map<::ir::Value, std::string>& ValueMape() const {
-    return impl_->ValueMape();
-  }
-
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 
