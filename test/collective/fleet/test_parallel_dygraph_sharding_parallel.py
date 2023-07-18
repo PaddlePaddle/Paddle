@@ -28,6 +28,7 @@ class TestHybridParallel(TestMultipleGpus):
         # test shard grad allreduce
         os.environ["FLAGS_shard_use_reduce"] = "0"
         os.environ["FLAGS_shard_norm_align_dp"] = "1"
+        self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
 
     def test_hybrid_parallel_sharding_state_dict(self):
         self.run_mnist_2gpu('hybrid_parallel_sharding_state_dict.py')
