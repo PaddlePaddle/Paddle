@@ -126,9 +126,6 @@ def OpNameNormalizerInitialization(
                     backward_op, op_compat_item["scalar"]
                 )
 
-    # special op mappings
-    op_name_mappings["fetch_v2"] = "fetch"
-
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:
         op_compat_definition = op_name_normailzer_template.render(
