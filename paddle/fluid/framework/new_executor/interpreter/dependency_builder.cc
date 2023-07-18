@@ -59,6 +59,12 @@ const std::string StringizeDownstreamMap(
   return oss.str();
 }
 
+DependencyBuilder::DependencyBuilder()
+    : is_build_(false), instructions_(nullptr) {
+  op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
+  op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
+}
+
 const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
     const std::vector<Instruction>& instructions) {
   if (is_build_) {
@@ -102,7 +108,18 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   is_build_ = true;
 
-  return op_downstream_map_;
+  return *op_downstream_map_;
+}
+
+std::tuple<std::shared_ptr<std::map<size_t, std::set<size_t>>>,
+           std::shared_ptr<std::vector<std::vector<bool>>>>
+DependencyBuilder::GetDependency() const {
+  return std::make_tuple(op_downstream_map_, op_happens_before_);
+}
+
+void DependencyBuilder::ShareDependencyFrom(const DependencyBuilder& src) {
+  std::tie(op_downstream_map_, op_happens_before_) = src.GetDependency();
+  is_build_ = true;
 }
 
 const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()

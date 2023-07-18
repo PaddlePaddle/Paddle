@@ -110,10 +110,10 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     // first job to other jobs. The shared build result includes op dependency,
     // event analyzer, thread scheduling and GC.
     for (const auto& pair : type_to_id) {
-      const auto& idx = pair.second;
-      for (size_t i = 1; i < idx.size(); ++i) {
-        interpretercores_[idx[i]]->ShareBuildResultsFrom(
-            interpretercores_[idx[0]]);
+      const auto& ids = pair.second;
+      for (size_t i = 1; i < ids.size(); ++i) {
+        interpretercores_[ids[i]]->ShareBuildResultsFrom(
+            interpretercores_[ids[0]]);
       }
     }
   }

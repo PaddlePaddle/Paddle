@@ -337,9 +337,22 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
-void NewIRInterpreter::ShareBuildResultsFrom(InterpreterBaseImpl* src) {
+void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "ShareBuildResultsFrom is not implemented in NewIRInterpreter."));
+}
+
+// op dependences
+const interpreter::DependencyBuilder& NewIRInterpreter::GetDependencyBuilder()
+    const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in NewIRInterpreter."));
+}
+
+std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
+    const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyCount is not implemented in NewIRInterpreter."));
 }
 
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
