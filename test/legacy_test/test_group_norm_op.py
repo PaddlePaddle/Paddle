@@ -319,6 +319,7 @@ class TestGroupNormFP16Op3(TestGroupNormFP16OP):
         self.attrs['groups'] = 32
         self.shape = (1, 128, 96, 96)
         self.data_format = "NHWC"
+        self.attrs["data_layout"] = "NHWC"
         self.dtype = np.float16
 
 
@@ -327,6 +328,7 @@ class TestGroupNormBF16Op3(TestGroupNormBF16Op):
         self.attrs['groups'] = 32
         self.shape = (1, 128, 96, 96)
         self.data_format = "NHWC"
+        self.attrs["data_layout"] = "NHWC"
 
 
 class TestGroupNormFP16Op4(TestGroupNormFP16OP):
@@ -334,6 +336,7 @@ class TestGroupNormFP16Op4(TestGroupNormFP16OP):
         self.attrs['groups'] = 3
         self.shape = (1, 129, 96, 96)
         self.data_format = "NHWC"
+        self.attrs["data_layout"] = "NHWC"
         self.dtype = np.float16
 
 
@@ -342,6 +345,7 @@ class TestGroupNormBF16Op4(TestGroupNormBF16Op):
         self.attrs['groups'] = 3
         self.shape = (1, 129, 96, 96)
         self.data_format = "NHWC"
+        self.attrs["data_layout"] = "NHWC"
 
 
 class TestGroupNormFP16Op5(TestGroupNormFP16OP):
@@ -349,6 +353,7 @@ class TestGroupNormFP16Op5(TestGroupNormFP16OP):
         self.attrs['groups'] = 32
         self.shape = (1, 320, 96, 96)
         self.data_format = "NHWC"
+        self.attrs["data_layout"] = "NHWC"
         self.dtype = np.float16
 
 
@@ -357,6 +362,7 @@ class TestGroupNormBF16Op5(TestGroupNormBF16Op):
         self.attrs['groups'] = 32
         self.shape = (1, 320, 96, 96)
         self.data_format = "NHWC"
+        self.attrs["data_layout"] = "NHWC"
 
 
 class TestGroupNormOpBigEps1(TestGroupNormOp):
