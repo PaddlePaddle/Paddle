@@ -40,6 +40,9 @@ from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
 
 __all__ = []
 
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
+logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
+
 
 # assume only the first stage and last stage need data, and data consumption is ordred
 # to be replaced by real micro dataset from reader
@@ -295,8 +298,12 @@ class PipelineParallel(MetaParallelBase):
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
-
-        act = HOOK_ACTION.ALL_REDUCE if dp else HOOK_ACTION.REDUCE
+        # Note: after sharding change to reduce operation, here need to be cleared
+        act = (
+            HOOK_ACTION.ALL_REDUCE
+            if (dp or not g_shard_use_reduce)
+            else HOOK_ACTION.REDUCE
+        )
 
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
