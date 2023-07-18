@@ -365,7 +365,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              // Disabled due to topology-dependent speed-up
              "fc_mkldnn_pass",
              "fc_act_mkldnn_fuse_pass",
-             "fc_elementwise_add_mkldnn_fuse_pass",   //
              "self_attention_fuse_pass",              //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_onednn_fuse_pass",  //
@@ -400,7 +399,6 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
   if (!use_mkldnn_bfloat16_) {
     passes_.push_back("fc_mkldnn_pass");
     passes_.push_back("fc_act_mkldnn_fuse_pass");
-    passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
 
     passes_.push_back("cpu_bfloat16_placement_pass");
     passes_.push_back("cpu_bfloat16_pass");
@@ -456,7 +454,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("repeated_fc_relu_fuse_pass");
     passes_.push_back("fc_mkldnn_pass");
     passes_.push_back("fc_act_mkldnn_fuse_pass");
-    passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_mkldnn_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");
     passes_.push_back("softplus_activation_onednn_fuse_pass");
@@ -491,9 +488,7 @@ void CpuPassStrategy::DisableMkldnnFcPasses() {
 
 void CpuPassStrategy::EraseFcMkldnnPasses() {
   std::vector<std::string> fc_passes_to_erase(
-      {"fc_mkldnn_pass",
-       "fc_act_mkldnn_fuse_pass",
-       "fc_elementwise_add_mkldnn_fuse_pass"});
+      {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
   for (const auto &pass : fc_passes_to_erase) {
     int idx = GetPassIndex(pass);
     if (idx != -1) {
