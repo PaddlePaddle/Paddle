@@ -43,6 +43,7 @@
 namespace ir {
 void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
                 std::unordered_map<ir::Value, std::string>* value_2_var_name,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,

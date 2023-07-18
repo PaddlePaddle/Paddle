@@ -185,8 +185,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    std::stringstream ss;
+    ss << this;
     ::ir::BuildScope(*ir_program_->block(),
                      InnerScope(),
+                     ss.str(),
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
@@ -247,8 +250,11 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    std::stringstream ss;
+    ss << this;
     ::ir::BuildScope(*ir_program_->block(),
                      InnerScope(),
+                     ss.str(),
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
@@ -1546,7 +1552,7 @@ void NewIRInterpreter::BuildInstruction() {
                          ->attributes()
                          .at("op_name")
                          .dyn_cast<::ir::StrAttribute>()
-                         .data();
+                         .AsString();
       if (op_name == "builtin.combine" || op_name == "builtin.slice" ||
           op_name == "pd.feed" || op_name == "pd.fetch" ||
           op_name == "builtin.set_parameter" ||
