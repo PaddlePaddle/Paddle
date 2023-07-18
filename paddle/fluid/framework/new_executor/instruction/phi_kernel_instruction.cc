@@ -256,10 +256,10 @@ void PhiKernelInstruction::InitInputsOutputsIds(
 }
 
 void PhiKernelInstruction::Run() {
-  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   infer_meta_interface_->infer_meta_(&(infer_meta_context_));
-  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
+  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   (*(phi_kernel_))(&(kernel_context_));
+  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
 }
 
 }  // namespace framework

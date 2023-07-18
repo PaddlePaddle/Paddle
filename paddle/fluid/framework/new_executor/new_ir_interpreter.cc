@@ -198,8 +198,8 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
     // NOTE(zhangbo): Iterative version, gradually replacing BuildOpFuncList()
     // and Convert()
-    BuildInstruction();
-    BuildInstructionDependences();
+    // BuildInstruction();
+    // BuildInstructionDependences();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
