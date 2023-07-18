@@ -1325,6 +1325,13 @@
   outputs :
     out : Out
 
+- op : hsigmoid_loss(hierarchical_sigmoid)
+  backward: hsigmoid_loss_grad(hierarchical_sigmoid_grad)
+  inputs:
+   {x: X, w: W, label: Label, bias: Bias, path: PathTable, code: PathCode}
+  outputs:
+   {out: Out, pre_out: PreOut, w_out: W_Out}
+
 - op : huber_loss
   backward : huber_loss_grad
   inputs :

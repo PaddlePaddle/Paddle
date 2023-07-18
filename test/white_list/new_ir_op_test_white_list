@@ -81,6 +81,7 @@ test_graph_send_ue_recv_op
 test_grid_sampler_op
 test_group_norm_op
 test_histogram_op
+test_histogram_op.py
 test_huber_loss_op
 test_i0e_op
 test_i0_op
