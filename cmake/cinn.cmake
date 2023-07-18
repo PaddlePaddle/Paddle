@@ -302,7 +302,8 @@ if(PUBLISH_LIBS)
       ${CMAKE_BINARY_DIR}/paddle/cinn/auto_schedule/libauto_schedule_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libauto_schedule_proto.a
     COMMAND
-      cmake -E copy ${CMAKE_BINARY_DIR}/paddle/cinn/ir/libschedule_desc_proto.a
+      cmake -E copy
+      ${CMAKE_BINARY_DIR}/paddle/cinn/ir/schedule/libschedule_desc_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libschedule_desc_proto.a
     COMMENT "distribute libcinncore_static.a and related header files." DEPENDS
             cinncore_static)
