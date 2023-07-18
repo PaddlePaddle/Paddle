@@ -33,7 +33,7 @@ namespace interpreter {
 
 class DependencyBuilder {
  public:
-  DependencyBuilder() : is_build_(false), instructions_(nullptr) {}
+  DependencyBuilder();
 
   // build op dependencies and return the mapping from op to its downstream-op
   // set
@@ -42,7 +42,7 @@ class DependencyBuilder {
 
   std::tuple<std::shared_ptr<std::map<size_t, std::set<size_t>>>,
              std::shared_ptr<std::vector<std::vector<bool>>>>
-  GetDependency();
+  GetDependency() const;
 
   const std::map<size_t, std::set<size_t>>& OpDownstreamMap() const;
 
@@ -54,7 +54,7 @@ class DependencyBuilder {
     return op_happens_before_->at(prior_op_idx).at(posterior_op_idx);
   }
 
-  void ShareDependencyFrom(DependencyBuilder* src);
+  void ShareDependencyFrom(const DependencyBuilder& src);
 
  private:
   void AddDependencyForCoalesceTensorOp();

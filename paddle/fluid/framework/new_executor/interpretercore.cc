@@ -83,7 +83,8 @@ void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
 
 void InterpreterCore::ShareBuildResultsFrom(
     std::shared_ptr<InterpreterCore> src) {
-  impl_->ShareBuildResultsFrom(const_cast<InterpreterBaseImpl*>(src->Impl()));
+  // ShareBuildResultsFrom required const InterpreterBaseImpl& src as input
+  impl_->ShareBuildResultsFrom(*src->Impl());
 }
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {

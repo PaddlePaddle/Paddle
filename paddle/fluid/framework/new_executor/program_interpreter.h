@@ -54,7 +54,12 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
-  void ShareBuildResultsFrom(InterpreterBaseImpl* src) override;
+  void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  // op dependences
+  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
+
+  std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
@@ -121,10 +126,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
-  // op dependences
-  interpreter::DependencyBuilder* GetDependencyBuilder();
-  std::shared_ptr<std::vector<size_t>> GetDependecyCount();
-
   // scope
   bool HasLocalScope() const;
 
@@ -133,6 +134,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
+  // Note(sonder): share the op dependency, event analyzer,
+  // thread scheduling and GC.
   bool is_shared_{false};
 
   const platform::Place place_;
