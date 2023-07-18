@@ -1048,8 +1048,6 @@
       data_type : float
       support_tensor : true
 
-- op : fill_constant
-
 - op : fill_diagonal
   backward : fill_diagonal_grad
   inputs :
@@ -1157,6 +1155,8 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
