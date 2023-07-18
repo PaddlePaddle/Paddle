@@ -78,7 +78,7 @@ ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """
   PADDLE_ENFORCE(attributes.count("{attribute_name}")>0 && attributes.at("{attribute_name}").isa<ir::ArrayAttribute>(),
                  phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().size(); i++) {{
-    PADDLE_ENFORCE(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>()[i].isa<{standard}>(),
+    PADDLE_ENFORCE(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().at(i).isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   }}"""
 OUTPUT_TYPE_CHECK_TEMPLATE = """
