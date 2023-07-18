@@ -198,7 +198,7 @@ void MergeLayernormKernel(const Context &dev_ctx,
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The MergeLayernorm TRT Plugin's input type should be float or half."));
   }
-  
+
   out->Resize({batch, x_dim[1] / 4, x_dim[2] * 4});
 }
 
