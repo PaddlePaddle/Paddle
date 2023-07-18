@@ -18,6 +18,7 @@
 #include <gloo/allgather.h>
 #include <gloo/allreduce.h>
 #include <gloo/broadcast.h>
+#include <gloo/gather.h>
 #include <gloo/reduce.h>
 #include <gloo/types.h>
 
@@ -96,6 +97,21 @@ void GlooCommContext::Reduce(phi::DenseTensor* out_tensor,
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   GENERATE_FUNC(dtype, SetReduceFunc, &opts, reduce_type);
   gloo::reduce(opts);
+}
+
+void GlooCommContext::Gather(phi::DenseTensor* out_tensor,
+                             const phi::DenseTensor& in_tensor,
+                             int src,
+                             uint32_t tag) {
+  gloo::GatherOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  opts.setTag(tag);
+  opts.setRoot(src);
+  GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
+  if (rank_ == src) {
+    GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  }
+  gloo::gather(opts);
 }
 
 }  // namespace distributed

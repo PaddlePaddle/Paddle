@@ -671,13 +671,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
 class GatherGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   GatherGlooTask(int rank,
-                 const std::shared_ptr<gloo::Context>& context,
+                 phi::distributed::GlooCommContext* comm_context,
                  const phi::DenseTensor& input,  // NOLINT
                  phi::DenseTensor* output,       // NOLINT
                  int src,
                  uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, {input}, CommType::GATHER),
-        _context(context),
+        _comm_context(comm_context),
         _input(input),
         _output(*output),
         _src(src),
@@ -686,7 +686,7 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
   void Run() override { _do_gather(_input, _output, _src); }
 
  private:
-  std::shared_ptr<gloo::Context> _context;
+  phi::distributed::GlooCommContext* _comm_context;
   phi::DenseTensor _input;
   phi::DenseTensor _output;
   int _src;
@@ -695,16 +695,7 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
   void _do_gather(phi::DenseTensor& in,   // NOLINT
                   phi::DenseTensor& out,  // NOLINT
                   int src) {
-    const auto& dtype = in.dtype();
-    gloo::GatherOptions opts(_context);
-    if (rank_ == src) {
-      GENERATE_FUNC(dtype, set_output, opts, out);
-    }
-    GENERATE_FUNC(dtype, set_input, opts, in);
-
-    opts.setRoot(src);
-    opts.setTag(_tag);
-    gloo::gather(opts);
+    _comm_context->Gather(&(out), in, src, _tag);
   }
 };
 
@@ -720,9 +711,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
       platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
   std::shared_ptr<GatherGlooTask> task;
   auto tag = next_tag();
-  auto context = get_context();
+  auto comm_context = this->GetCommContext();
   task = std::make_shared<GatherGlooTask>(
-      rank_, context, in_tensor, out_tensor, opts.root_rank, tag);
+      rank_, comm_context, in_tensor, out_tensor, opts.root_rank, tag);
   task->Run();
   return task;
 }
