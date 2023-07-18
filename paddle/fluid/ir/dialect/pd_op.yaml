@@ -9,6 +9,7 @@
   data_transform: null
   inplace: null
   backward: null
+
 - name: fetch
   inputs:
   - typename: Tensor
@@ -128,6 +129,31 @@
     force_backend: null
   backward: add_n_grad
 
+- name: add_n_with_kernel
+  inputs:
+  - typename: Tensor[]
+    name: inputs
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  backward: add_n_grad
+
 - name: write_to_array
   inputs:
   - typename: Tensor
@@ -155,18 +181,6 @@
     no_need_buffer: false
     data_transform: {}
   attrs: []
-  outputs:
-  - {typename: 'Tensor', name: out, optional: false, intermediate: false}
-  no_need_buffer: null
-  data_transform: null
-
-- name: py_func_
-  inputs:
-  -  {typename: 'Tensor', name: x, optional: false, no_need_buffer: false, data_transform: {}}
-  attrs:
-  - {typename: 'int', name: forward_callable_id, default_value: '0'}
-  - {typename: 'int', name: backward_callable_id, default_value: '-1'}
-  - {typename: 'str[]', name: backward_skip_vars, default_value: '{}'}
   outputs:
   - {typename: 'Tensor', name: out, optional: false, intermediate: false}
   no_need_buffer: null

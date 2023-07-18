@@ -27,8 +27,8 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

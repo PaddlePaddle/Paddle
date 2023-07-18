@@ -236,7 +236,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : elementwise_pow
-  inplace: (x -> out)
   backward : elementwise_pow_grad
 
 - op : embedding
