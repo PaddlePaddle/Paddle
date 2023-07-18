@@ -75,23 +75,21 @@ void Conv2dXPUKernelImpl(const Context& ctx,
 
   const XPUTypeOut* branch_data = nullptr;
   auto* branch_tensor = branch.get_ptr();
-  DenseTensor branch_tensor_t;
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
   if (branch_tensor != nullptr) {
     if (branch_tensor->dtype() == out->dtype()) {
       branch_data =
           reinterpret_cast<const XPUTypeOut*>(branch_tensor->data<T_OUT>());
     } else {
-      branch_tensor_t.Resize(branch_tensor->dims());
-      auto* branch_data_new = reinterpret_cast<XPUTypeOut*>(
-          ctx.template Alloc<T_OUT>(&branch_tensor_t));
-      auto* branch_data_raw =
-          reinterpret_cast<const XPUTypeX*>(branch_tensor->data<T_X>());
-      int r = xpu::cast<XPUTypeX, XPUTypeOut>(ctx.x_context(),
-                                              branch_data_raw,
-                                              branch_data_new,
-                                              branch_tensor->numel());
+      auto branch_data_temp =
+          RAII_GUARD.alloc_l3_or_gm<XPUTypeOut>(branch_tensor->numel());
+      int r = xpu::cast<XPUTypeX, XPUTypeOut>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUTypeX*>(branch_tensor->data<T_X>()),
+          branch_data_temp,
+          branch_tensor->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-      branch_data = branch_data_new;
+      branch_data = branch_data_temp;
     }
   }
   const float* branch_max_data = branch_max.get_ptr() == nullptr
