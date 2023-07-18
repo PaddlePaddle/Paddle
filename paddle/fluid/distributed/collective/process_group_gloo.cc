@@ -189,9 +189,7 @@ ProcessGroupGloo::ProcessGroupGloo(
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
-  auto prefix_store =
-      ::gloo::rendezvous::PrefixStore(std::to_string(gid), *_store);
-  _context->connectFullMesh(prefix_store, options->device);
+  _context->connectFullMesh(*_store, options->device);
 }
 
 class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
