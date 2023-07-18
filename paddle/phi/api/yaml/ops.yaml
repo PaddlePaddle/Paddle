@@ -13,6 +13,7 @@
   kernel :
     func : abs
     data_type : x
+  inplace: (x -> out)
   backward : abs_grad
 
 - op : accuracy
@@ -26,20 +27,22 @@
 
 - op : acos
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : acos
+  inplace: (x -> out)
   backward : acos_grad
 
 - op : acosh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : acosh
+  inplace: (x -> out)
   backward : acosh_grad
 
 - op : adagrad_
@@ -90,12 +93,13 @@
 
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : AddmmInferMeta
   kernel :
     func : addmm
     data_type : x
+  inplace: (input -> out)
   backward : addmm_grad
 
 - op : affine_grid
@@ -176,34 +180,37 @@
 
 - op : asin
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : asin
+  inplace: (x -> out)
   backward : asin_grad
 
 - op : asinh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : asinh
+  inplace: (x -> out)
   backward : asinh_grad
 
 - op : atan
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : atan
+  inplace: (x -> out)
   backward : atan_grad
 
 - op : atan2
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : Atan2InferMeta
   kernel :
@@ -212,11 +219,12 @@
 
 - op : atanh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : atanh
+  inplace: (x -> out)
   backward : atanh_grad
 
 - op : auc
@@ -524,20 +532,22 @@
 
 - op : cos
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : cos
+  inplace: (x -> out)
   backward : cos_grad
 
 - op : cosh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : cosh
+  inplace: (x -> out)
   backward : cosh_grad
 
 - op : crop
@@ -756,11 +766,12 @@
 
 - op : erf
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : erf
+  inplace : (x -> out)
   backward : erf_grad
 
 - op : erfinv
@@ -806,12 +817,13 @@
 
 - op : expm1
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : expm1
+  inplace: (x -> out)
   backward : expm1_grad
 
 - op : fft_c2c
@@ -2250,20 +2262,22 @@
 
 - op : sin
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : sin
+  inplace: (x -> out)
   backward : sin_grad
 
 - op : sinh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : sinh
+  inplace: (x -> out)
   backward : sinh_grad
 
 - op : slogdet
@@ -2409,11 +2423,12 @@
 
 - op : tan
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : tan
+  inplace: (x -> out)
   backward : tan_grad
 
 - op : tanh
