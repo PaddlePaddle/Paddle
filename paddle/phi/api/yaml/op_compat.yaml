@@ -266,6 +266,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assert
+  inputs :
+    {cond : kCond, data : kData}
+  attrs:
+    { summarize : kSummarize}
+
 - op : assign
   backward : assign_grad
   inputs :
