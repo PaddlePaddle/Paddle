@@ -44,9 +44,13 @@ std::string DumpToString(const T &entity) {
   // return "\033[33m" + buffer + "\033[0m"; // Green
 }
 
-inline llvm::StringRef AsStringRef(absl::string_view str) { return llvm::StringRef(str.data(), str.size()); }
+inline llvm::StringRef AsStringRef(absl::string_view str) {
+  return llvm::StringRef(str.data(), str.size());
+}
 
-llvm::Type *CinnTypeToLLVMType(common::Type t, llvm::Module *m, bool is_vec = false);
+llvm::Type *CinnTypeToLLVMType(common::Type t,
+                               llvm::Module *m,
+                               bool is_vec = false);
 
 template <typename T>
 llvm::Type *llvm_type_of(llvm::Module *m);

@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/optim/if_simplify.h"
 
-#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 
 namespace cinn::optim {
 
@@ -24,7 +24,7 @@ struct Mutator : public ir::IRMutator<> {
   using ir::IRMutator<>::Visit;
 
   void Visit(const ir::IfThenElse* op, Expr* expr) {
-    auto* condition_int  = op->condition.As<ir::IntImm>();
+    auto* condition_int = op->condition.As<ir::IntImm>();
     auto* condition_uint = op->condition.As<ir::UIntImm>();
     int64_t value;
     if (condition_int || condition_uint) {

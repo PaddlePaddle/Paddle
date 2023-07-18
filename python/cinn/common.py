@@ -12,9 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.common import make_const
-from .core_api.common import Target
-from .core_api.common import Type
-from .core_api.common import CINNValue
-from .core_api.common import Void, Int, UInt, Float, Bool, String
-from .core_api.common import *
+from .core_api.common import (  # noqa: F401
+    BFloat16,
+    Bool,
+    CINNValue,
+    CINNValuePack,
+    DefaultHostTarget,
+    DefaultNVGPUTarget,
+    DefaultTarget,
+    Float,
+    Float16,
+    Int,
+    RefCount,
+    Shared_CINNValuePack_,
+    String,
+    Target,
+    Type,
+    UInt,
+    Void,
+    _CINNValuePack_,
+    get_target,
+    is_compiled_with_cuda,
+    is_compiled_with_cudnn,
+    make_const,
+    reset_name_id,
+    set_target,
+    type_of,
+)

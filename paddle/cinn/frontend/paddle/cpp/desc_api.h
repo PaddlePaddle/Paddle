@@ -25,46 +25,47 @@ namespace cinn::frontend::paddle::cpp {
 /*
  * Compatible interfaces for all the different kinds of XXXDesc. All the XXXDesc
  * classes should implement this.
- * ref to: https://github.com/PaddlePaddle/Paddle/blob/v2.4.1/paddle/fluid/framework/framework.proto#L118
+ * ref to:
+ * https://github.com/PaddlePaddle/Paddle/blob/v2.4.1/paddle/fluid/framework/framework.proto#L118
  */
 class VarDescAPI {
  public:
   enum class Type {
     // Pod Types
-    BOOL  = 0,
+    BOOL = 0,
     INT16 = 1,
     INT32 = 2,
     INT64 = 3,
-    FP16  = 4,
-    FP32  = 5,
-    FP64  = 6,
+    FP16 = 4,
+    FP32 = 5,
+    FP64 = 6,
     // Tensor<size_t> is used in C++.
-    SIZE_T     = 19,
-    UINT8      = 20,
-    INT8       = 21,
-    BF16       = 22,
-    COMPLEX64  = 23,
+    SIZE_T = 19,
+    UINT8 = 20,
+    INT8 = 21,
+    BF16 = 22,
+    COMPLEX64 = 23,
     COMPLEX128 = 24,
 
     // Other types that may need additional descriptions
-    LOD_TENSOR       = 7,
-    SELECTED_ROWS    = 8,
-    FEED_MINIBATCH   = 9,
-    FETCH_LIST       = 10,
-    STEP_SCOPES      = 11,
-    LOD_RANK_TABLE   = 12,
+    LOD_TENSOR = 7,
+    SELECTED_ROWS = 8,
+    FEED_MINIBATCH = 9,
+    FETCH_LIST = 10,
+    STEP_SCOPES = 11,
+    LOD_RANK_TABLE = 12,
     LOD_TENSOR_ARRAY = 13,
-    PLACE_LIST       = 14,
-    READER           = 15,
+    PLACE_LIST = 14,
+    READER = 15,
     // Any runtime decided variable type is raw
     // raw variables should manage their own allocations
     // in operators like nccl_op
-    RAW   = 17,
+    RAW = 17,
     TUPLE = 18,
 
-    STRING    = 25,
-    STRINGS   = 26,
-    VOCAB     = 27,
+    STRING = 25,
+    STRINGS = 26,
+    VOCAB = 27,
     FEED_LIST = 28,
     // The data type of phi::StringTensor
     PSTRING = 29,
@@ -103,26 +104,27 @@ class VarDescAPI {
 class OpDescAPI {
  public:
   // The AttrType is used to make the proto::AttrType portable.
-  // ref to https://github.com/PaddlePaddle/Paddle/blob/v2.4.1/paddle/fluid/framework/framework.proto#L25
+  // ref to
+  // https://github.com/PaddlePaddle/Paddle/blob/v2.4.1/paddle/fluid/framework/framework.proto#L25
   enum class AttrType {
-    INT      = 0,
-    FLOAT    = 1,
-    STRING   = 2,
-    INTS     = 3,
-    FLOATS   = 4,
-    STRINGS  = 5,
-    BOOLEAN  = 6,
+    INT = 0,
+    FLOAT = 1,
+    STRING = 2,
+    INTS = 3,
+    FLOATS = 4,
+    STRINGS = 5,
+    BOOLEAN = 6,
     BOOLEANS = 7,
-    BLOCK    = 8,
-    LONG     = 9,
-    BLOCKS   = 10,
-    LONGS    = 11,
+    BLOCK = 8,
+    LONG = 9,
+    BLOCKS = 10,
+    LONGS = 11,
     FLOAT64S = 12,
-    VAR      = 13,
-    VARS     = 14,
-    FLOAT64  = 15,
-    SCALAR   = 16,
-    SCALARS  = 17
+    VAR = 13,
+    VARS = 14,
+    FLOAT64 = 15,
+    SCALAR = 16,
+    SCALARS = 17
   };
 
   virtual ~OpDescAPI() = default;
@@ -140,8 +142,10 @@ class OpDescAPI {
   /// Get parameters.
   virtual std::vector<std::string> OutputArgumentNames() const = 0;
   /// Set a input given the parameter and arguments.
-  virtual void SetInput(const std::string& param, const std::vector<std::string>& args)  = 0;
-  virtual void SetOutput(const std::string& param, const std::vector<std::string>& args) = 0;
+  virtual void SetInput(const std::string& param,
+                        const std::vector<std::string>& args) = 0;
+  virtual void SetOutput(const std::string& param,
+                         const std::vector<std::string>& args) = 0;
   /// Tell whether this desc has an attribute.
   virtual bool HasAttr(const std::string& name) const = 0;
 

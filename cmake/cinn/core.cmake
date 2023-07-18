@@ -32,7 +32,7 @@ function(cinn_cc_library TARGET_NAME)
              ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
       endif()
     endforeach()
-  else(cinn_cc_library_SRCS)
+  else()
     if(cinn_cc_library_DEPS)
       cinn_merge_static_libs(${TARGET_NAME} ${cinn_cc_library_DEPS})
     else()
@@ -41,7 +41,7 @@ function(cinn_cc_library TARGET_NAME)
           "Please specify source files or libraries in cinn_cc_library(${TARGET_NAME} ...)."
       )
     endif()
-  endif(cinn_cc_library_SRCS)
+  endif()
 
   if((NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
      AND (NOT ("${TARGET_NAME}" STREQUAL "utils"))
@@ -52,7 +52,7 @@ function(cinn_cc_library TARGET_NAME)
     (NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
     AND (NOT ("${TARGET_NAME}" STREQUAL "utils"))
     AND (NOT ("${TARGET_NAME}" STREQUAL "lib")))
-endfunction(cinn_cc_library)
+endfunction()
 
 list(APPEND CMAKE_CTEST_ARGUMENTS)
 
@@ -65,7 +65,7 @@ function(remove_gflags TARGET_NAME)
 endfunction()
 
 function(cinn_cc_test TARGET_NAME)
-  if(WITH_TESTING AND CINN_ONLY)
+  if(WITH_TESTING)
     set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
@@ -116,17 +116,17 @@ function(cinn_nv_library TARGET_NAME)
                ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-    else(cinn_nv_library_SRCS)
+    else()
       if(cinn_nv_library_DEPS)
         cinn_merge_static_libs(${TARGET_NAME} ${cinn_nv_library_DEPS})
       else()
         message(FATAL
                 "Please specify source file or library in cinn_nv_library.")
       endif()
-    endif(cinn_nv_library_SRCS)
+    endif()
     target_link_libraries(${TARGET_NAME} Threads::Threads)
   endif()
-endfunction(cinn_nv_library)
+endfunction()
 
 function(cinn_nv_binary TARGET_NAME)
   if(WITH_GPU)
@@ -142,16 +142,17 @@ function(cinn_nv_binary TARGET_NAME)
       common_link(${TARGET_NAME})
     endif()
   endif()
-endfunction(cinn_nv_binary)
+endfunction()
 
 function(cinn_nv_test TARGET_NAME)
-  if(WITH_GPU AND WITH_TESTING AND CINN_ONLY)
+  if(WITH_GPU AND WITH_TESTING)
     set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cinn_nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS} OPTIONS "-std=c++${CMAKE_CUDA_STANDARD}")
+    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS} OPTIONS
+                        "-std=c++${CMAKE_CUDA_STANDARD}")
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(
       ${TARGET_NAME}
@@ -181,11 +182,11 @@ function(cinn_nv_test TARGET_NAME)
     endif()
     remove_gflags(${TARGET_NAME})
   endif()
-endfunction(cinn_nv_test)
+endfunction()
 
 # Add dependency that TARGET will depend on test result of DEP, this function executes the DEP during make.
 function(add_run_test_dependency TARGET_NAME DEP_NAME)
-  if(WITH_TESTING AND CINN_ONLY)
+  if(WITH_TESTING)
     set(custom_target_name ${TARGET_NAME}_TEST_OUTPUT_DEPENDENCY_ON_${DEP_NAME})
     add_custom_target(
       ${custom_target_name}
@@ -195,8 +196,8 @@ function(add_run_test_dependency TARGET_NAME DEP_NAME)
       COMMAND cd ${CMAKE_BINARY_DIR}
       DEPENDS ${DEP_NAME})
     add_dependencies(${TARGET_NAME} ${DEP_NAME} ${custom_target_name})
-  endif(WITH_TESTING AND CINN_ONLY)
-endfunction(add_run_test_dependency)
+  endif()
+endfunction()
 
 # find all third_party modules is used for paddle static library
 # for reduce the dependency when building the inference libs.
@@ -211,7 +212,7 @@ function(find_fluid_thirdparties TARGET_NAME)
     set(fluid_third_partys ${fluid_third_partys} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY "${fluid_third_partys}")
   endif()
-endfunction(find_fluid_thirdparties)
+endfunction()
 
 function(cinn_merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
@@ -255,7 +256,7 @@ function(cinn_merge_static_libs TARGET_NAME)
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o
               "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles})
-  endif(APPLE)
+  endif()
   if(LINUX
   )# general UNIX: use "ar" to extract objects and re-add to a common lib
     set(target_DIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.dir)
@@ -303,7 +304,7 @@ function(cinn_merge_static_libs TARGET_NAME)
       COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
       COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
       WORKING_DIRECTORY ${target_DIR})
-  endif(LINUX)
+  endif()
   if(WIN32)
 
     # windows do not support gcc/nvcc combined compiling. Use msvc lib.exe to merge libs.
@@ -336,8 +337,8 @@ function(cinn_merge_static_libs TARGET_NAME)
         lib
         /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib
         ${libfiles})
-  endif(WIN32)
-endfunction(cinn_merge_static_libs)
+  endif()
+endfunction()
 
 # Modification of standard 'protobuf_generate_cpp()' with protobuf-lite support
 # Usage:
@@ -432,6 +433,28 @@ function(download_and_uncompress INSTALL_DIR URL FILENAME)
     INSTALL_COMMAND "")
 endfunction()
 
+set(fusion_pass_file
+    ${CMAKE_CURRENT_BINARY_DIR}/paddle/cinn/hlir/pass/use_general_pass.h
+    CACHE INTERNAL "use_general_pass.h file")
+file(
+  WRITE ${fusion_pass_file}
+  "#include \"paddle/cinn/common/macros.h\" // Generated by the paddle/cinn/hlir/pass/CMakeLists.txt.  DO NOT EDIT!\n\n"
+)
+
+function(find_fusion_pass_register FILENAME ADD_PATH PATTERN)
+  # set op_name to OUTPUT
+  file(READ ${FILENAME} CONTENT)
+  string(REGEX MATCHALL "${PATTERN}\\([a-zA-Z0-9_]*," fusion_pass_patterns
+               "${CONTENT}")
+  if(NOT fusion_pass_patterns STREQUAL "")
+    foreach(pass_pattern ${fusion_pass_patterns})
+      string(REPLACE "${PATTERN}(" "" pass_pattern "${pass_pattern}")
+      string(REPLACE "," "" pass_pattern "${pass_pattern}")
+      file(APPEND ${ADD_PATH} "USE_FUSION_PASS(${pass_pattern});\n")
+    endforeach()
+  endif()
+endfunction()
+
 function(gather_srcs SRC_GROUP)
   set(options)
   set(oneValueArgs)
@@ -441,6 +464,8 @@ function(gather_srcs SRC_GROUP)
     set(${SRC_GROUP}
         "${${SRC_GROUP}};${CMAKE_CURRENT_SOURCE_DIR}/${cpp}"
         CACHE INTERNAL "")
+    find_fusion_pass_register("${CMAKE_CURRENT_SOURCE_DIR}/${cpp}"
+                              ${fusion_pass_file} "CINN_REGISTER_FUSION_PASS")
   endforeach()
 endfunction()
 

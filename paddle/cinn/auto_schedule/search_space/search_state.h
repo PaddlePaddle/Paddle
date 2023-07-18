@@ -20,9 +20,9 @@
 
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
-#include "paddle/cinn/ir/ir_compare.h"
-#include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/ir_compare.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -35,7 +35,9 @@ class SearchState : public common::Shared<_SearchState_> {
  public:
   SearchState() = default;
   // create a new SearchState
-  explicit SearchState(ir::IRSchedule ir_sch, float cost = NOT_INIT_COST, const std::vector<AutoGenRule*>& rules = {});
+  explicit SearchState(ir::IRSchedule ir_sch,
+                       float cost = NOT_INIT_COST,
+                       const std::vector<AutoGenRule*>& rules = {});
 
   // Constant standing for a cost not being initialized
   static constexpr float NOT_INIT_COST = std::numeric_limits<float>::max();
@@ -62,12 +64,14 @@ struct _SearchState_ : public common::Object {
   static constexpr char* __type_info__ = "auto_schedule_state";
 };
 
-// SearchStateHash hash functor that visits every AST node and combine their hash of node_type in dfs order
+// SearchStateHash hash functor that visits every AST node and combine their
+// hash of node_type in dfs order
 struct SearchStateHash {
   size_t operator()(const SearchState& s) const;
 };
 
-// SearchStateHash equal functor, use ir::IrEqualVisitor to compare their AST struct and fields
+// SearchStateHash equal functor, use ir::IrEqualVisitor to compare their AST
+// struct and fields
 struct SearchStateEqual {
   bool operator()(const SearchState& lhs, const SearchState& rhs) const;
 };

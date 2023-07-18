@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
@@ -27,7 +27,7 @@ namespace auto_schedule {
 SkipRule::SkipRule(const common::Target& target) : AutoGenRule(target) {}
 
 RuleApplyType SkipRule::Init(ir::IRSchedule* ir_schedule) {
-  ir_schedule_    = ir_schedule;
+  ir_schedule_ = ir_schedule;
   num_applicable_ = 1;
   return RuleApplyType::kApply;
 }

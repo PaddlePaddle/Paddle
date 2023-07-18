@@ -39,7 +39,9 @@ class Graph : public cinn::common::Graph {
     std::unordered_set<std::string> fetch_var_ids;
     Initialize(prog, fetch_var_ids, target);
   }
-  Graph(const frontend::Program& prog, const std::unordered_set<std::string>& fetch_var_ids, const Target& target) {
+  Graph(const frontend::Program& prog,
+        const std::unordered_set<std::string>& fetch_var_ids,
+        const Target& target) {
     Initialize(prog, fetch_var_ids, target);
   }
 
@@ -56,6 +58,13 @@ class Graph : public cinn::common::Graph {
 
   std::vector<std::vector<Node*>> groups;
   struct Group {
+    Group() = default;
+
+    explicit Group(const Graph* graph) : graph_(graph) {}
+
+    // The graph that group belongs to.
+    const Graph* graph_ = nullptr;
+
     // distance to last group.
     int depth{0};
     int max_depth{0};
@@ -79,38 +88,51 @@ class Graph : public cinn::common::Graph {
     // master node for schedule
     std::unordered_set<Node*> master_nodes;
 
+    // fused sub-groups, used for fusion merge pass
+    std::vector<std::shared_ptr<Group>> fused_sub_groups;
+    // if as sub-group, used for belong groups.
+    std::unordered_set<std::shared_ptr<Group>> belong_groups;
+
+    // for op lowering.
+    std::vector<std::string> input_names;
+    std::vector<std::string> output_names;
+
     struct SharedGroupHasher {
       size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
         return std::hash<uint64_t>()(reinterpret_cast<uint64_t>(group.get()));
       }
     };
     struct SharedGroupComparator {
-      bool operator()(const std::shared_ptr<Group>& first, const std::shared_ptr<Group>& second) const noexcept {
+      bool operator()(const std::shared_ptr<Group>& first,
+                      const std::shared_ptr<Group>& second) const noexcept {
         return first.get() == second.get();
       }
     };
-    // input groups
-    std::unordered_set<std::shared_ptr<Group>, SharedGroupHasher, SharedGroupComparator> producer_groups;
-    // output grous
-    std::unordered_set<std::shared_ptr<Group>, SharedGroupHasher, SharedGroupComparator> consumer_groups;
-    // fused sub-groups, used for fusion merge pass
-    std::vector<std::shared_ptr<Group>> fused_sub_groups;
-    // if as sub-group, used for belong groups.
-    std::unordered_set<std::shared_ptr<Group>, SharedGroupHasher, SharedGroupComparator> belong_groups;
-
-    // for op lowering.
-    std::vector<std::string> input_names;
-    std::vector<std::string> output_names;
 
     std::vector<Node*> CollectNodes() {
       if (fused_sub_groups.size()) {
         std::vector<Node*> tmp_nodes;
         for (auto& group : fused_sub_groups) {
-          tmp_nodes.insert(tmp_nodes.end(), group->nodes.begin(), group->nodes.end());
+          tmp_nodes.insert(
+              tmp_nodes.end(), group->nodes.begin(), group->nodes.end());
         }
         return tmp_nodes;
       } else {
         return nodes;
+      }
+    }
+
+    void WalkNodes(const std::function<void(const Node*)>& VisitNode) const {
+      if (fused_sub_groups.size()) {
+        for (auto& group : fused_sub_groups) {
+          for (const auto* node : group->nodes) {
+            VisitNode(node);
+          }
+        }
+      } else {
+        for (const auto* node : nodes) {
+          VisitNode(node);
+        }
       }
     }
 
@@ -126,10 +148,55 @@ class Graph : public cinn::common::Graph {
     std::unordered_set<NodeData*> GetOutputNodeDatas();
 
     std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+   public:
+    const std::unordered_set<std::shared_ptr<Group>,
+                             SharedGroupHasher,
+                             SharedGroupComparator>&
+    producer_groups() const {
+      return producer_groups_;
+    }
+
+    const std::unordered_set<std::shared_ptr<Group>,
+                             SharedGroupHasher,
+                             SharedGroupComparator>&
+    consumer_groups() const {
+      return consumer_groups_;
+    }
+
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>*
+    mut_producer_groups() {
+      return &producer_groups_;
+    }
+
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>*
+    mut_consumer_groups() {
+      return &consumer_groups_;
+    }
+
+    hlir::framework::OpPatternKind kind() const { return op_pattern_kind; }
+
+   private:
+    // input groups
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>
+        producer_groups_;
+    // output grous
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>
+        consumer_groups_;
   };
   std::vector<std::shared_ptr<Group>> fusion_groups;
 
-  void RegisterNode(size_t key, Node* node) { this->common::Graph::RegisterNode(key, node->as<common::GraphNode>()); }
+  void RegisterNode(size_t key, Node* node) {
+    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+  }
   void RegisterNode(size_t key, NodeData* node) {
     this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
   }
@@ -149,7 +216,8 @@ class Graph : public cinn::common::Graph {
   template <typename T>
   inline const T& GetAttrs(const std::string& attr_name) const {
     auto it = attrs.find(attr_name);
-    CHECK(it != attrs.end()) << "Cannot find attribute [" << attr_name << "] in the graph";
+    CHECK(it != attrs.end())
+        << "Cannot find attribute [" << attr_name << "] in the graph";
     return absl::any_cast<const T&>(*it->second);
   }
 
@@ -162,7 +230,8 @@ class Graph : public cinn::common::Graph {
   template <typename T>
   inline T& GetMutableAttrs(const std::string& attr_name) {
     auto it = attrs.find(attr_name);
-    CHECK(it != attrs.end()) << "Cannot find attribute [" << attr_name << "] in the graph";
+    CHECK(it != attrs.end())
+        << "Cannot find attribute [" << attr_name << "] in the graph";
     return absl::any_cast<T&>(*it->second);
   }
 
@@ -179,45 +248,56 @@ class Graph : public cinn::common::Graph {
   /**
    * \brief Debug the grouped graph according to fusion_groups.
    */
-  std::string DebugGroupedGraph(const std::unordered_set<std::string>& fetch_var_ids = {});
-  std::string DebugGroupedGraph(const std::vector<Node*>& group,
-                                const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string DebugGroupedGraph(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string DebugGroupedGraph(
+      const std::vector<Node*>& group,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
-   * \brief Debug the grouped graph with GraphViz dot format according to fusion_groups.
+   * \brief Debug the grouped graph with GraphViz dot format according to
+   * fusion_groups.
    */
-  std::string VisualizeGraph(const std::unordered_set<std::string>& fetch_var_ids = {});
-  std::vector<std::string> VisualizeGroups(const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string VisualizeGraph(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::vector<std::string> VisualizeGroups(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
    * \brief Genereate the python test code for group test
    */
-  std::string GenerateGroupPythonCode(const std::vector<Node*>& group,
-                                      const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string GenerateGroupPythonCode(
+      const std::vector<Node*>& group,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
    * \brief Visualize the grouped graph according to fusion_groups.
    */
-  void VisualizeGroupedGraph(const std::unordered_set<std::string>& fetch_var_ids = {});
+  void VisualizeGroupedGraph(
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
    * \brief Visualize the grouped graph according to user specified groups.
    */
-  void VisualizeGroupedGraph(const std::vector<std::vector<Node*>>& groups,
-                             const std::unordered_set<std::string>& fetch_var_ids = {});
+  void VisualizeGroupedGraph(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   void SaveSourceCode(const std::string& code);
   void SavePTXCode(const std::string& ptx);
 
  private:
-  std::string DebugGroupedGraph(const std::vector<std::vector<Node*>>& groups,
-                                const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string DebugGroupedGraph(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
-  std::string VisualizeGraph(const std::vector<std::vector<Node*>>& groups,
-                             const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::string VisualizeGraph(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
-  std::vector<std::string> VisualizeGroups(const std::vector<std::vector<Node*>>& groups,
-                                           const std::unordered_set<std::string>& fetch_var_ids = {});
+  std::vector<std::string> VisualizeGroups(
+      const std::vector<std::vector<Node*>>& groups,
+      const std::unordered_set<std::string>& fetch_var_ids = {});
 
   std::vector<std::vector<Node*>> FusionGroupsToGroups();
 

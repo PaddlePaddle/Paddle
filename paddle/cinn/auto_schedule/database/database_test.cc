@@ -20,7 +20,7 @@
 
 #include "paddle/cinn/auto_schedule/auto_schedule.pb.h"
 #include "paddle/cinn/auto_schedule/search_space/search_state.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -57,8 +57,10 @@ TEST_F(TestDatabase, GetTopK) {
   ASSERT_TRUE(test_db.GetTopK("k5", 2).empty());
   ASSERT_EQ(test_db.GetTopK("k4", 3).size(), 1);
 
-  test_db.AddRecord(TuningRecord("k4", SearchState(ir::IRSchedule(), 1.2), 2.0));
-  test_db.AddRecord(TuningRecord("k4", SearchState(ir::IRSchedule(), 1.0), 3.0));
+  test_db.AddRecord(
+      TuningRecord("k4", SearchState(ir::IRSchedule(), 1.2), 2.0));
+  test_db.AddRecord(
+      TuningRecord("k4", SearchState(ir::IRSchedule(), 1.0), 3.0));
 
   auto records = test_db.GetTopK("k4", 3);
   ASSERT_EQ(records.size(), 2);

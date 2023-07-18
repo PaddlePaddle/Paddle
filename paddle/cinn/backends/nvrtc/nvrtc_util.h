@@ -36,7 +36,8 @@ class Compiler {
   /**
    * Compile the \p code and get PTX string.
    * @param code The CUDA source code.
-   * @param include_headers Whether to include the headers of CUDA and CINN runtime modules.
+   * @param include_headers Whether to include the headers of CUDA and CINN
+   * runtime modules.
    * @return Compiled PTX code string.
    */
   std::string operator()(const std::string& code, bool include_headers = true);
@@ -67,7 +68,8 @@ class Compiler {
   std::string CompileCudaSource(const std::string& code, bool include_headers);
 
   /**
-   * whether to compile the source code into cubin, only works with cuda version > 11.1
+   * whether to compile the source code into cubin, only works with cuda version
+   * > 11.1
    */
   bool compile_to_cubin_{false};
 

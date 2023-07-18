@@ -49,7 +49,8 @@ class AutoTuner {
   AutoTuner(const common::Target& target, hlir::framework::Graph* graph);
 
   // Initialize tuner with specific config and auxiliary objects.
-  void Initialize(const Config& config, hlir::framework::GraphCompiler* graph_compiler);
+  void Initialize(const Config& config,
+                  hlir::framework::GraphCompiler* graph_compiler);
 
   // Perform the tuning process and return the final result
   TuningResult Tune(const TuningOptions& options);

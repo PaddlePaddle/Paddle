@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/pass.h"
@@ -20,9 +22,11 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-void InferShape(framework::Node* node,
-                absl::flat_hash_map<std::string, common::Type>& dtype_dict,
-                absl::flat_hash_map<std::string, framework::shape_t>& shape_dict);
+void InferShape(
+    framework::Node* node,
+    absl::flat_hash_map<std::string, common::Type>& dtype_dict,  // NOLINT
+    absl::flat_hash_map<std::string, framework::shape_t>&
+        shape_dict);  // NOLINT
 
 }  // namespace pass
 }  // namespace hlir

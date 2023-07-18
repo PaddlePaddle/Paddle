@@ -34,16 +34,21 @@ DECLARE_bool(cinn_ir_schedule);
 namespace cinn {
 namespace auto_schedule {
 
-std::vector<TuneTask> CreateTasks(hlir::framework::Graph* graph, const common::Target& target) {
+std::vector<TuneTask> CreateTasks(hlir::framework::Graph* graph,
+                                  const common::Target& target) {
   // create tasks
   TaskCreator task_creator;
   std::vector<TuneTask> tasks = task_creator.CreateTuneTaskOpLevel(graph);
 
-  const auto& dtype_dict = graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>("inferdtype");
-  const auto& shape_dict = graph->GetAttrs<absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
+  const auto& dtype_dict =
+      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+          "inferdtype");
+  const auto& shape_dict = graph->GetAttrs<
+      absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
 
   std::unique_ptr<hlir::framework::OpLowerer> op_lowerer =
-      std::make_unique<hlir::framework::OpLowerer>(dtype_dict, shape_dict, target);
+      std::make_unique<hlir::framework::OpLowerer>(
+          dtype_dict, shape_dict, target);
   for (TuneTask& task : tasks) {
     task.Initialize(shape_dict, dtype_dict, op_lowerer.get());
     VLOG(3) << "Add a task with serialized_key:\n" << task.serialized_key;
@@ -52,7 +57,8 @@ std::vector<TuneTask> CreateTasks(hlir::framework::Graph* graph, const common::T
   return tasks;
 }
 
-std::shared_ptr<hlir::framework::Graph> CreateAddProgram(const common::Target& target) {
+std::shared_ptr<hlir::framework::Graph> CreateAddProgram(
+    const common::Target& target) {
   frontend::NetBuilder builder("test");
 
   auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "A");
@@ -64,7 +70,7 @@ std::shared_ptr<hlir::framework::Graph> CreateAddProgram(const common::Target& t
 
 TEST(TestTaskRegistry, basic) {
   FLAGS_auto_schedule_use_cost_model = true;
-  FLAGS_cinn_ir_schedule             = true;
+  FLAGS_cinn_ir_schedule = true;
 
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();
@@ -72,7 +78,7 @@ TEST(TestTaskRegistry, basic) {
   Target target = common::DefaultHostTarget();
 #endif
   std::shared_ptr<hlir::framework::Graph> graph = CreateAddProgram(target);
-  std::vector<TuneTask> tasks                   = CreateTasks(graph.get(), target);
+  std::vector<TuneTask> tasks = CreateTasks(graph.get(), target);
 
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
 
@@ -89,8 +95,10 @@ TEST(TestTaskRegistry, basic) {
 
     ASSERT_EQ(new_expr.GetExprs().size(), module_exprs[i].GetExprs().size());
     for (int j = 0; j < new_expr.GetExprs().size(); ++j) {
-      VLOG(3) << "expr " << j << " of task " << key << " : " << new_expr.GetExprs().at(j);
-      ASSERT_EQ(utils::GetStreamCnt(new_expr.GetExprs().at(j)), utils::GetStreamCnt(module_exprs[i].GetExprs().at(j)));
+      VLOG(3) << "expr " << j << " of task " << key << " : "
+              << new_expr.GetExprs().at(j);
+      ASSERT_EQ(utils::GetStreamCnt(new_expr.GetExprs().at(j)),
+                utils::GetStreamCnt(module_exprs[i].GetExprs().at(j)));
     }
   }
 

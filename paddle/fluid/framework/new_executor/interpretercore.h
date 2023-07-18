@@ -51,6 +51,9 @@ class InterpreterCore {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true);
 
+  paddle::framework::FetchList BetaRun(
+      const std::vector<std::string>& feed_names, bool need_fetch = true);
+
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
@@ -64,6 +67,8 @@ class InterpreterCore {
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);
+
+  const Scope* local_scope() const;
 
   const platform::Place& GetPlace() const;
 

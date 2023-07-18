@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/buffer.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -31,7 +31,8 @@ TEST(Call, basic) {
   Placeholder<float> x("x", {M, Expr(10)});
   Placeholder<float> y("y", {M, Expr(10)});
 
-  std::vector<ReturnType> return_types({{Float(32), std::vector<Expr>{{M, Expr(20)}}, "C"}});
+  std::vector<ReturnType> return_types(
+      {{Float(32), std::vector<Expr>{{M, Expr(20)}}, "C"}});
   auto tensors = CallLowered("lowered_fun0", {Expr(x), Expr(y)}, return_types);
 }
 

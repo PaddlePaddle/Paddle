@@ -17,8 +17,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -82,7 +82,8 @@ struct FoldCINNCallArgumentsMutator : public ir::IRMutator<> {
     std::vector<Expr> write_args;
     for (auto& arg : call->read_args) {
       if (arg.as_tensor()) {
-        CHECK(arg.as_tensor()->buffer.defined()) << "arg tensor [" << arg.as_tensor()->name << "] not has buffer";
+        CHECK(arg.as_tensor()->buffer.defined())
+            << "arg tensor [" << arg.as_tensor()->name << "] not has buffer";
         read_args.push_back(arg.as_tensor()->buffer);
       } else {
         read_args.push_back(arg);
@@ -97,7 +98,7 @@ struct FoldCINNCallArgumentsMutator : public ir::IRMutator<> {
       }
     }
 
-    call->read_args  = read_args;
+    call->read_args = read_args;
     call->write_args = write_args;
   }
 

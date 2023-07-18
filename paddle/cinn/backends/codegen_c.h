@@ -22,9 +22,9 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/intrinsic_ops.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
@@ -76,7 +76,9 @@ class CodeGenC : public ir::IrPrinter {
     os() << ")";
   }
 
-  void PrintShape(const std::vector<Expr>& shape, char leftb = '{', char rightb = '}');
+  void PrintShape(const std::vector<Expr>& shape,
+                  char leftb = '{',
+                  char rightb = '}');
 
   virtual void PrintIncludes();
   void PrintBuiltinCodes();
@@ -101,7 +103,8 @@ class CodeGenC : public ir::IrPrinter {
   NODETY_FORALL(__DEFINE_VISIT)
 #undef __DEFINE_VISIT
 
-#define __DEFINE_VISIT(op__) void Visit(const ir::intrinsics::op__* op) override;
+#define __DEFINE_VISIT(op__) \
+  void Visit(const ir::intrinsics::op__* op) override;
   INTRINSIC_KIND_FOR_EACH(__DEFINE_VISIT)
 #undef __DEFINE_VISIT
 

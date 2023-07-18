@@ -31,50 +31,62 @@ namespace cinn {
 namespace frontend {
 
 // Transform paddle model to CINN fronted::Program object.
-// The paddle model is readed from __model__ file in model_dir, the PaddleModelConvertor
-// will run each op's kernel registered in OpMapper, each kernel will add instruction in
-// NetBuilder, after running all op of model, it will invoke its Build function and
-// finally return the complete fronted::Program object.
-// Note that if anyone op not registered, the program will failed and aborted.
+// The paddle model is readed from __model__ file in model_dir, the
+// PaddleModelConvertor will run each op's kernel registered in OpMapper, each
+// kernel will add instruction in NetBuilder, after running all op of model, it
+// will invoke its Build function and finally return the complete
+// fronted::Program object. Note that if anyone op not registered, the program
+// will failed and aborted.
 class PaddleModelConvertor {
  public:
   PaddleModelConvertor();
 
   PaddleModelConvertor(const common::Target& target,
-                       std::shared_ptr<NetBuilder> builder           = nullptr,
+                       std::shared_ptr<NetBuilder> builder = nullptr,
                        std::shared_ptr<hlir::framework::Scope> scope = nullptr);
 
   // prepare feed variable before run CINN op
-  void PrepareRun(const paddle::cpp::BlockDesc& block_desc, OpMapperContext* ctx);
+  void PrepareRun(const paddle::cpp::BlockDesc& block_desc,
+                  OpMapperContext* ctx);
 
-  // RunOp accept OpDesc and global run context then run it's kernel registered in OpMapper.
-  static void RunOp(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx);
-
-  static void RunOp(const std::string& op_type,
-                    const std::map<std::string, std::vector<std::string>>& inputs,
-                    const std::map<std::string, std::vector<std::string>>& outputs,
-                    const std::map<std::string, cinn::utils::Attribute>& attrs,
+  // RunOp accept OpDesc and global run context then run it's kernel registered
+  // in OpMapper.
+  static void RunOp(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx);
+
+  static void RunOp(
+      const std::string& op_type,
+      const std::map<std::string, std::vector<std::string>>& inputs,
+      const std::map<std::string, std::vector<std::string>>& outputs,
+      const std::map<std::string, cinn::utils::Attribute>& attrs,
+      const OpMapperContext& ctx);
 
   void RunOp(const std::string& op_type,
              const std::map<std::string, std::vector<std::string>>& inputs,
              const std::map<std::string, std::vector<std::string>>& outputs,
              const std::map<std::string, cinn::utils::Attribute>& attrs);
 
-  void CreateInput(const std::string& dtype, const cinn::utils::ShapeType& shape, const std::string& name);
+  void CreateInput(const std::string& dtype,
+                   const cinn::utils::ShapeType& shape,
+                   const std::string& name);
 
   Program operator()();
 
-  // operator() accept the modle's directory, and return the fronted::Program object.
-  Program LoadModel(const std::string& model_dir,
-                    bool is_combined                                                  = false,
-                    const std::unordered_map<std::string, std::vector<int64_t>>& feed = {});
+  // operator() accept the modle's directory, and return the fronted::Program
+  // object.
+  Program LoadModel(
+      const std::string& model_dir,
+      bool is_combined = false,
+      const std::unordered_map<std::string, std::vector<int64_t>>& feed = {});
 
   // return the internal variable map
-  const std::unordered_map<std::string, Variable>& var_map() const { return var_map_; }
+  const std::unordered_map<std::string, Variable>& var_map() const {
+    return var_map_;
+  }
 
   // return the map from the variable name in paddle model to cinn program.
-  const std::unordered_map<std::string, std::string>& var_model_to_program_map() const {
+  const std::unordered_map<std::string, std::string>& var_model_to_program_map()
+      const {
     return var_model_to_program_map_;
   }
 

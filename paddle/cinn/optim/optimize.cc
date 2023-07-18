@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/optim/optimize.h"
 
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_schedule_util.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/call_arg_list_to_pod_value.h"
 #include "paddle/cinn/optim/cast_bool_to_int8.h"
 #include "paddle/cinn/optim/cast_simplify.h"
@@ -42,7 +42,10 @@ DECLARE_bool(cinn_ir_schedule);
 namespace cinn {
 namespace optim {
 
-Expr Optimize(Expr e, Target target, bool runtime_debug_info, bool remove_gpu_for_loops) {
+Expr Optimize(Expr e,
+              Target target,
+              bool runtime_debug_info,
+              bool remove_gpu_for_loops) {
   CHECK(e.defined());
   auto copied = IRCopy(e);
 

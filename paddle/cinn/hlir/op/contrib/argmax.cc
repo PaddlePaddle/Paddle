@@ -30,7 +30,7 @@
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
@@ -52,7 +52,7 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
                                const bool &keep_dims,
                                const std::string &name) {
   auto shape = in_tensor->shape;
-  auto ndim  = shape.size();
+  auto ndim = shape.size();
   CHECK_GT(ndim, 0) << "tensor's dim must be more than 0";
 
   int pos_axis = axis;
@@ -64,7 +64,8 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
 
   std::vector<Expr> output_shape;
   for (int i = 0; i < shape.size(); ++i) {
-    CHECK(shape[i].is_constant()) << "Input tensor's shape should be constant value.";
+    CHECK(shape[i].is_constant())
+        << "Input tensor's shape should be constant value.";
     if (pos_axis == i) {
       if (keep_dims) {
         output_shape.push_back(Expr(1));
@@ -77,8 +78,9 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
     output_shape.push_back(Expr(1));
   }
 
-  auto sort_index = ArgSort(in_tensor, target, stages, pos_axis, false, name + "_index");
-  auto res        = Compute(
+  auto sort_index =
+      ArgSort(in_tensor, target, stages, pos_axis, false, name + "_index");
+  auto res = Compute(
       output_shape,
       [=](const std::vector<Expr> &indices) {
         std::vector<Expr> eval_indices(indices);
@@ -94,11 +96,12 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
   return {res, sort_index.at(0), sort_index.at(1)};
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForArgmax(const framework::NodeAttr &attrs,
-                                                         const std::vector<Tensor> &inputs,
-                                                         const std::vector<Type> &out_type,
-                                                         const std::vector<std::vector<int>> &output_shapes,
-                                                         const Target &target) {
+std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
+    const framework::NodeAttr &attrs,
+    const std::vector<Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<int>> &output_shapes,
+    const Target &target) {
   int axis;
   bool keep_dims = false;
 
@@ -111,62 +114,65 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(const framework::NodeAt
     keep_dims = absl::get<bool>(attrs.attr_store.at("keep_dim"));
   }
 
-  framework::CINNCompute argmax_compute([=](lang::Args args, lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of argmax compute is empty! Please check.";
-    common::CINNValuePack pack_args = args[0];
-    std::string tensor_name         = UniqName("Argmax_out");
-    CHECK_GE(pack_args.size(), 1U) << "There should be 1 input args for argmax compute";
-    Expr in_expr = pack_args[0];
-    CHECK(in_expr.as_tensor());
-    Tensor in_tensor = in_expr.as_tensor_ref();
-    auto stages      = CreateStages({in_tensor});
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 2U);
-      CHECK(pack_args[1].is_string());
-      tensor_name = pack_args[1].operator std::string();
-    }
-    std::vector<ir::Tensor> out_tensor = Argmax(in_tensor, target, stages, axis, keep_dims, tensor_name);
+  framework::CINNCompute argmax_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input argument of argmax compute is empty! Please check.";
+        common::CINNValuePack pack_args = args[0];
+        std::string tensor_name = UniqName("Argmax_out");
+        CHECK_GE(pack_args.size(), 1U)
+            << "There should be 1 input args for argmax compute";
+        Expr in_expr = pack_args[0];
+        CHECK(in_expr.as_tensor());
+        Tensor in_tensor = in_expr.as_tensor_ref();
+        auto stages = CreateStages({in_tensor});
+        CHECK_EQ(pack_args.size(), 2U);
+        CHECK(pack_args[1].is_string());
+        tensor_name = pack_args[1].operator std::string();
+        std::vector<ir::Tensor> out_tensor =
+            Argmax(in_tensor, target, stages, axis, keep_dims, tensor_name);
 
-    stages->InsertLazily(out_tensor[0]);
-    std::vector<CINNValue> cinn_values{
-        CINNValue(out_tensor[0]), CINNValue(out_tensor[1]), CINNValue(out_tensor[2]), CINNValue(stages)};
-    *ret = common::CINNValuePack{cinn_values};
-  });
+        stages->InsertLazily(out_tensor[0]);
+        std::vector<CINNValue> cinn_values{CINNValue(out_tensor[0]),
+                                           CINNValue(out_tensor[1]),
+                                           CINNValue(out_tensor[2]),
+                                           CINNValue(stages)};
+        *ret = common::CINNValuePack{cinn_values};
+      });
 
-  framework::CINNSchedule argmax_schedule([=](lang::Args args, lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of argmax_schedule is empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        }
+  framework::CINNSchedule argmax_schedule([=](lang::Args args,
+                                              lang::RetValue *ret) {
+    CHECK(!args.empty())
+        << "The input argument of argmax_schedule is empty! Please check.\n";
+    common::CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      auto blocks = ir_sch.GetAllBlocks();
-      // TODO: It needs to be rewritten according to the reduction_max operator to improve performance.
-      // Do not use local variables, because the size will exceed the limit.
-      ir_sch.SetBuffer(blocks[0], "local");
-      ir_sch.SetBuffer(blocks[1], "local");
-
-      long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
-      if (prod_size > 1 && target.arch == Target::Arch::X86) {
-        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-      }
-      std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = common::CINNValuePack{res};
-    } else {
-      CHECK(!args.empty()) << "The input argument of arange_schedule is empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
-      Expr out                       = arg_pack[0];
-      CHECK(out.as_tensor());
-      *ret = arg_pack;
     }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    auto blocks = ir_sch.GetAllBlocks();
+    // TODO(zhhsplendid): It needs to be rewritten according to the
+    // reduction_max operator to improve performance. Do not use local
+    // variables, because the size will exceed the limit.
+    ir_sch.SetBuffer(blocks[0], "local");
+    ir_sch.SetBuffer(blocks[1], "local");
+
+    int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                        output_shapes[0].end(),
+                                        1,
+                                        std::multiplies<int>());
+    if (prod_size > 1 && target.arch == Target::Arch::X86) {
+      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
+    }
+    std::vector<common::CINNValue> res{
+        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -175,21 +181,27 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(const framework::NodeAt
   return strategy;
 }
 
-std::vector<shape_t> InferShapeForArgmax(const std::vector<shape_t> &inputs_shape,
-                                         const framework::AttrMapType &attrs) {
-  CHECK(inputs_shape.size() == 1UL);
+std::vector<shape_t> InferShapeForArgmax(
+    const std::vector<shape_t> &inputs_shape,
+    const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_shape.size(), 1UL);
   auto ndim = inputs_shape[0].size();
-  CHECK_GT(ndim, 0) << "tensor's dim must be more than 0";
   int axis;
   bool keep_dim;
 
   CHECK(attrs.find("axis") != attrs.end());
   axis = absl::get<int>(attrs.at("axis"));
-  if (axis < 0) {
-    axis = static_cast<int>(ndim) + axis;
+  if (ndim > 0) {
+    if (axis < 0) {
+      axis = static_cast<int>(ndim) + axis;
+    }
+    CHECK_LT(axis, ndim) << "Axis must be less than tensor's dim";
+    CHECK_GE(axis, 0) << "Axis must be more than 0";
+  } else {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
   }
-  CHECK_LT(axis, ndim) << "Axis must be less than tensor's dim";
-  CHECK_GE(axis, 0) << "Axis must be more than 0";
 
   CHECK(attrs.find("keep_dim") != attrs.end());
   keep_dim = absl::get<bool>(attrs.at("keep_dim"));
@@ -208,26 +220,28 @@ std::vector<shape_t> InferShapeForArgmax(const std::vector<shape_t> &inputs_shap
   if (keep_dim) {
     CHECK_EQ(ndim, out_shapes.size());
   } else {
-    CHECK_EQ(ndim - 1, out_shapes.size());
-  }
-  if (out_shapes.empty()) {
-    out_shapes.push_back(1);
+    CHECK(ndim - 1 == out_shapes.size() || ndim == 0 && out_shapes.empty());
   }
 
   return {out_shapes};
 }
 
-std::vector<Type> InferDtypeForArgmax(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty()) << "The input's type size is 0! Please check again.";
+std::vector<Type> InferDtypeForArgmax(const std::vector<Type> &inputs_type,
+                                      const framework::AttrMapType &attrs) {
+  CHECK(!inputs_type.empty())
+      << "The input's type size is 0! Please check again.";
   return {Int(32)};
 }
 
-std::vector<std::vector<std::string>> InferLayoutForArgmax(const std::vector<framework::shape_t> &input_shapes,
-                                                           const std::vector<std::string> &input_layouts,
-                                                           const framework::NodeAttr &attrs,
-                                                           const Target &target) {
-  CHECK_EQ(input_shapes.size(), 1U) << "The input's shape size is not 1! Please check again.";
-  CHECK_EQ(input_layouts.size(), 1U) << "The input's layout size is not 1! Please check again.";
+std::vector<std::vector<std::string>> InferLayoutForArgmax(
+    const std::vector<framework::shape_t> &input_shapes,
+    const std::vector<std::string> &input_layouts,
+    const framework::NodeAttr &attrs,
+    const Target &target) {
+  CHECK_EQ(input_shapes.size(), 1U)
+      << "The input's shape size is not 1! Please check again.";
+  CHECK_EQ(input_layouts.size(), 1U)
+      << "The input's layout size is not 1! Please check again.";
   return {input_layouts, input_layouts};
 }
 }  // namespace op
@@ -239,10 +253,14 @@ CINN_REGISTER_HELPER(argmax_ops) {
       .describe("This operator implements the op argmax.")
       .set_num_inputs(1)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForArgmax)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForArgmax))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForArgmax))
-      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForArgmax)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForArgmax))
+      .set_attr("inferdtype",
+                MakeOpFunction(cinn::hlir::op::InferDtypeForArgmax))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
 
   return true;

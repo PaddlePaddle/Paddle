@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 
-#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/poly/ast_gen.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -28,7 +28,7 @@ struct Mutator : public ir::IRMutator<> {
   void Visit(const ir::_Var_* op, Expr* expr) override {
     if (utils::Startswith(op->name, poly::kIslParamConstPrefix)) {
       std::string value = op->name.substr(strlen(poly::kIslParamConstPrefix));
-      *expr             = Expr(std::stoi(value));
+      *expr = Expr(std::stoi(value));
     }
   }
 };

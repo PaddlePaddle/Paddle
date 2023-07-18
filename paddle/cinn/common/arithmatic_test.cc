@@ -20,8 +20,8 @@
 
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -43,10 +43,10 @@ TEST(GiNaC, simplify) {
 TEST(GiNaC, diff) {
   using namespace GiNaC;  // NOLINT
   symbol x("x"), y("y");
-  ex e  = (x + 1);
+  ex e = (x + 1);
   ex e1 = (y + 1);
 
-  e  = diff(e, x);
+  e = diff(e, x);
   e1 = diff(e1, x);
   LOG(INFO) << "e: " << eval(e);
   LOG(INFO) << "e1: " << eval(e1);

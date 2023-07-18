@@ -24,6 +24,7 @@ void FetchKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
   phi::Copy(dev_ctx, x, phi::CPUPlace(), true, out);
+  out->set_lod(x.lod());
 }
 }  // namespace phi
 PD_REGISTER_KERNEL(fetch,
@@ -34,6 +35,11 @@ PD_REGISTER_KERNEL(fetch,
                    double,
                    int,
                    int64_t,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    bool) {}

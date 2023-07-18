@@ -317,7 +317,9 @@ def create_test_bf16_class(parent):
             numeric_grads = self.get_numeric_grad(place, 'X')
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
-                    place, {'X'}, ['Out'], user_defined_grads=[numeric_grads]
+                    place,
+                    {'X'},
+                    ['Out'],
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")

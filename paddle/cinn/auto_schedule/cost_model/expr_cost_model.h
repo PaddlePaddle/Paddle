@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/cinn/auto_schedule/cost_model/xgb_cost_model.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -29,7 +29,8 @@ namespace auto_schedule {
  */
 class ExprCostModel : public XgbCostModel {
  public:
-  virtual float Predict(const ir::ModuleExpr& sample, const common::Target& target) const;
+  virtual float Predict(const ir::ModuleExpr& sample,
+                        const common::Target& target) const;
   void Train(const std::vector<const ir::ModuleExpr*>& samples,
              const std::vector<float>& labels,
              const common::Target& target);

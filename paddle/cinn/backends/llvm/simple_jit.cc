@@ -37,7 +37,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
@@ -49,7 +49,8 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
     LOG(INFO) << "fn:\n" << DumpToString(fn);
   }
    */
-  CHECK(!llvm::verifyModule(*module, &llvm::errs())) << "Transformation resulted in an invalid module\n\nmodule:\n";
+  CHECK(!llvm::verifyModule(*module, &llvm::errs()))
+      << "Transformation resulted in an invalid module\n\nmodule:\n";
 
   bool debug = false;
   if (optimize) {
@@ -63,16 +64,20 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
     pass_builder.registerCGSCCAnalyses(cgscc_analysis_manager);
     pass_builder.registerFunctionAnalyses(function_analysis_manager);
     pass_builder.registerLoopAnalyses(loop_analysis_manager);
-    pass_builder.crossRegisterProxies(
-        loop_analysis_manager, function_analysis_manager, cgscc_analysis_manager, module_analysis_manager);
+    pass_builder.crossRegisterProxies(loop_analysis_manager,
+                                      function_analysis_manager,
+                                      cgscc_analysis_manager,
+                                      module_analysis_manager);
 
     llvm::ModulePassManager module_pass_manager =
-        pass_builder.buildPerModuleDefaultPipeline(llvm::PassBuilder::OptimizationLevel::O3);
+        pass_builder.buildPerModuleDefaultPipeline(
+            llvm::PassBuilder::OptimizationLevel::O3);
     module_pass_manager.run(*module, module_analysis_manager);
   }
 
   VLOG(3) << "jit target: " << jit_->getDataLayout().getStringRepresentation();
-  VLOG(3) << "module target: " << module->getDataLayout().getStringRepresentation();
+  VLOG(3) << "module target: "
+          << module->getDataLayout().getStringRepresentation();
 
   llvm::orc::ThreadSafeModule tsm(std::move(module), context_);
   llvm::cantFail(jit_->addIRModule(std::move(tsm)));
@@ -97,21 +102,24 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
   CHECK(jit_) << "JIT create failed";
 
   auto proc_symbols_generator = llvm::cantFail(
-      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(jit_->getDataLayout().getGlobalPrefix()));
+      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+          jit_->getDataLayout().getGlobalPrefix()));
   jit_->getMainJITDylib().addGenerator(std::move(proc_symbols_generator));
 
-  llvm::orc::MangleAndInterner mangle(jit_->getExecutionSession(), jit_->getDataLayout());
+  llvm::orc::MangleAndInterner mangle(jit_->getExecutionSession(),
+                                      jit_->getDataLayout());
 
   for (auto &item : GlobalSymbolRegistry::Global().All()) {
     VLOG(2) << "Insert [" << item.first << "] to SimpleJIT";
     llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
-        {{mangle(item.first), {llvm::pointerToJITTargetAddress(item.second), llvm::JITSymbolFlags::None}}})));
+        {{mangle(item.first),
+          {llvm::pointerToJITTargetAddress(item.second),
+           llvm::JITSymbolFlags::None}}})));
   }
 }
 
 template <typename CodeGenT>
 void SimpleJIT::Link(ir::Module module, bool optimize) {
-  VLOG(-1) << "dddddd";
   std::string runtime_ir(backends::kRuntimeLlvmIr);
   llvm::SMDiagnostic error;
   auto m = llvm::parseAssemblyString(runtime_ir, error, context());
@@ -119,21 +127,16 @@ void SimpleJIT::Link(ir::Module module, bool optimize) {
   auto b = std::make_unique<llvm::IRBuilder<>>(context());
 
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
-  VLOG(-1) << "dddddd";
   ir_emitter->Compile(module);
-  VLOG(-1) << "dddddd";
 
-  VLOG(-1) << "dddddd";
   CHECK(!llvm::verifyModule(*m, &llvm::errs())) << "Invalid module found";
-  VLOG(-1) << "dddddd";
 
-  VLOG(-1) << "dddddd";
   AddModule(std::move(m), optimize);
-  VLOG(-1) << "dddddd";
 }
 
 template void SimpleJIT::Link<CodeGenLLVM>(ir::Module module, bool optimize);
-template void SimpleJIT::Link<CodeGenCUDA_Host>(ir::Module module, bool optimize);
+template void SimpleJIT::Link<CodeGenCUDA_Host>(ir::Module module,
+                                                bool optimize);
 
 }  // namespace backends
 

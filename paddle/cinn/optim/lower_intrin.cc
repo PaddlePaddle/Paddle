@@ -19,8 +19,8 @@
 #include "paddle/cinn/backends/llvm/llvm_intrin_rule.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/intrinsic_ops.h"
-#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/registry.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 
 namespace cinn {
 namespace optim {
@@ -44,9 +44,17 @@ void LowerIntrin(Expr *e, Target target) {
       Expr ret;
       if (node->type().is_float()) {
         if (const ir::Mul *mul = node->b().As<ir::Mul>()) {
-          ret = ir::Call::Make(node->type(), "fma", {mul->a(), mul->b(), node->a()}, {}, ir::CallType::Intrinsic);
+          ret = ir::Call::Make(node->type(),
+                               "fma",
+                               {mul->a(), mul->b(), node->a()},
+                               {},
+                               ir::CallType::Intrinsic);
         } else if (const ir::Mul *mul = node->a().As<ir::Mul>()) {
-          ret = ir::Call::Make(node->type(), "fma", {mul->a(), mul->b(), node->b()}, {}, ir::CallType::Intrinsic);
+          ret = ir::Call::Make(node->type(),
+                               "fma",
+                               {mul->a(), mul->b(), node->b()},
+                               {},
+                               ir::CallType::Intrinsic);
         }
         if (ret.defined()) {
           ir::IRMutator<>::Visit(&ret, &ret);

@@ -22,8 +22,8 @@ namespace cinn {
 namespace optim {
 
 /**
- * \brief Rewrite the Call Nodes marked type as CINN, pack their arguments into `void*, int` so that they can trigger a
- * `LoweredFunc`.
+ * \brief Rewrite the Call Nodes marked type as CINN, pack their arguments into
+ * `void*, int` so that they can trigger a `LoweredFunc`.
  *
  * For example, input the IR
  * \code

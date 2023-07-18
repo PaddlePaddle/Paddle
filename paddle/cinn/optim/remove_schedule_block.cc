@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/optim/remove_schedule_block.h"
 
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -30,11 +30,11 @@ struct ScheduleBlockRemover : public ir::IRMutator<Expr*> {
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
     CHECK(node);
-    auto& iter_values    = node->iter_values;
+    auto& iter_values = node->iter_values;
     auto* schedule_block = node->schedule_block.As<ir::ScheduleBlock>();
     CHECK(schedule_block);
     auto& iter_vars = schedule_block->iter_vars;
-    Expr body       = schedule_block->body;
+    Expr body = schedule_block->body;
     CHECK_EQ(iter_vars.size(), iter_values.size());
     for (int i = 0; i < iter_vars.size(); i++) {
       optim::ReplaceVarWithExpr(&body, iter_vars[i], iter_values[i]);

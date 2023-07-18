@@ -27,8 +27,8 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -36,11 +36,14 @@ namespace auto_schedule {
 class TuneTask {
  public:
   TuneTask() = default;
-  TuneTask(std::shared_ptr<hlir::framework::Graph::Group> group) : subgraph(group) {}
+  explicit TuneTask(std::shared_ptr<hlir::framework::Graph::Group> group)
+      : subgraph(group) {}
   // Initialize a task
-  void Initialize(const absl::flat_hash_map<std::string, hlir::framework::shape_t>& shape_dict,
-                  const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict,
-                  hlir::framework::OpLowerer* lower_handler);
+  void Initialize(
+      const absl::flat_hash_map<std::string, hlir::framework::shape_t>&
+          shape_dict,
+      const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict,
+      hlir::framework::OpLowerer* lower_handler);
   // Extract bodies in lowered_funcs() and return
   std::vector<ir::Expr> GetLoweredFuncBodyExprs() const;
 
@@ -55,14 +58,16 @@ class TuneTask {
   std::vector<ir::LoweredFunc> lowered_funcs;
   // names of the output arguments of lowered_funcs_
   std::unordered_set<std::string> output_names;
-  // serialized string of this task, it contains struct,shape,dtype,input/output variable name
-  // of the subgraph and can be further used to hash
+  // serialized string of this task, it contains struct,shape,dtype,input/output
+  // variable name of the subgraph and can be further used to hash
   std::string serialized_key;
 
  private:
   // Serialize this task as a string contains specific fields of it
-  std::string SerializeToString(const absl::flat_hash_map<std::string, hlir::framework::shape_t>& shape_dict,
-                                const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict);
+  std::string SerializeToString(
+      const absl::flat_hash_map<std::string, hlir::framework::shape_t>&
+          shape_dict,
+      const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict);
 };
 
 }  // namespace auto_schedule

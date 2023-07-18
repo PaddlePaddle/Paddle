@@ -35,7 +35,9 @@ struct PlaceholderOp : public _Operation_ {
   //! The data type of the input.
   Type dtype;
 
-  static Operation Make(const std::string &name, const std::vector<Expr> &shape, Type dtype);
+  static Operation Make(const std::string &name,
+                        const std::vector<Expr> &shape,
+                        Type dtype);
 
   const char *func_type() const override;
 
@@ -53,7 +55,8 @@ struct CallOp : public _Operation_ {
   const std::vector<Expr> &write_args() const;
   std::vector<Expr> args() const;
 
-  //! A reference to the target LoweredFunc if this CallOp calls an generated LoweredFunc.
+  //! A reference to the target LoweredFunc if this CallOp calls an generated
+  //! LoweredFunc.
   Expr func;
 
   // the offset int the tuple of return values.
@@ -117,9 +120,9 @@ struct ComputeOp : public _Operation_ {
                         ComputeOp::handle_t handle,
                         const std::vector<Expr> &shape,
                         const std::vector<Expr> &domain,
-                        const std::vector<Var> &reduce_axis           = {},
+                        const std::vector<Var> &reduce_axis = {},
                         const std::map<std::string, IrNodeRef> &attrs = {},
-                        const std::string &tag                        = "");
+                        const std::string &tag = "");
 
   const char *func_type() const override;
 

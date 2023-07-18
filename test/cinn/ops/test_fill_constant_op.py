@@ -14,16 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestFillConstantOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -44,7 +46,7 @@ class TestFillConstantOp(OpTest):
                         self.value = eval(f"{dtype}(0)")
 
     def build_paddle_program(self, target):
-        if self.dtype == None:
+        if self.dtype is None:
             x = np.full(self.shape, self.value)
             x = paddle.to_tensor(x)
         else:
@@ -54,11 +56,10 @@ class TestFillConstantOp(OpTest):
 
     def build_cinn_program(self, target):
         builder = NetBuilder("fill_constant")
-        if self.dtype == None:
+        if self.dtype is None:
             x = builder.fill_constant(self.shape, self.value, "out")
         else:
-            x = builder.fill_constant(self.shape, self.value, "out",
-                                      self.dtype)
+            x = builder.fill_constant(self.shape, self.value, "out", self.dtype)
 
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [], [], [x])
@@ -106,14 +107,10 @@ class TestFillConstantOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "value": 123.456
-            },
+            {"value": 123.456},
         ]
 
 
@@ -136,32 +133,16 @@ class TestFillConstantOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "uint8"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "bool"},
+            {"dtype": "uint8"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [
-            {
-                "value": 123.456
-            },
+            {"value": 123.456},
         ]
 
 
@@ -184,20 +165,12 @@ class TestFillConstantOpValue(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": None
-            },
+            {"dtype": None},
         ]
         self.attrs = [
-            {
-                "value": bool(True)
-            },
-            {
-                "value": int(123)
-            },
-            {
-                "value": float(123.456)
-            },
+            {"value": bool(True)},
+            {"value": int(123)},
+            {"value": float(123.456)},
         ]
 
 
@@ -220,35 +193,17 @@ class TestFillConstantOpStrValue(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "bool"
-            },
-            {
-                "dtype": "uint8"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "bool"},
+            {"dtype": "uint8"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [
-            {
-                "value": "1024"
-            },
-            {
-                "value": "0.12345678987654321"
-            },
+            {"value": "1024"},
+            {"value": "0.12345678987654321"},
         ]
 
 

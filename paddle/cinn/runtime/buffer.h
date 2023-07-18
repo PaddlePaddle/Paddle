@@ -64,7 +64,7 @@ struct Shape {
 template <typename T>
 class Buffer {
  public:
-  Buffer(const Shape& shape) : shape_(shape) {}
+  explicit Buffer(const Shape& shape) : shape_(shape) {}
 
   //! Allocate the memory in host device.
   void AllocHost() {
@@ -88,7 +88,8 @@ class Buffer {
   }
   T& operator()(int i0, int i1, int i2) {
     CHECK_EQ(shape_.ndims(), 3);
-    return static_cast<T*>(data_)[i0 * shape_[1] * shape_[2] + i1 * shape_[2] + i2];
+    return static_cast<T*>(
+        data_)[i0 * shape_[1] * shape_[2] + i1 * shape_[2] + i2];
   }
 
  private:
