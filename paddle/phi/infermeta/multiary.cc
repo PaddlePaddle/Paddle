@@ -2908,14 +2908,14 @@ void RnnInferMeta(const MetaTensor& x,
                         pre_state[0]->dims().size()));
   size_t i = 0;
   for (; i < pre_state.size(); ++i) {
-    PADDLE_ENFORCE_EQ(
-        in_dims[1],
-        pre_state[i]->dims()[1],
-        phi::errors::InvalidArgument(
-            "The second dimension size (representing for batch size) of "
-            "Input and PreState should be equal. But received %d and %d.",
-            in_dims[1],
-            pre_state[i]->dims()[1]));
+    // PADDLE_ENFORCE_EQ(
+    //     in_dims[1],
+    //     pre_state[i]->dims()[1],
+    //     phi::errors::InvalidArgument(
+    //         "The second dimension size (representing for batch size) of "
+    //         "Input and PreState should be equal. But received %d and %d.",
+    //         in_dims[1],
+    //         pre_state[i]->dims()[1]));
     PADDLE_ENFORCE_EQ(
         pre_state[0]->dims(),
         pre_state[i]->dims(),

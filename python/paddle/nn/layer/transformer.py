@@ -22,12 +22,12 @@ import numpy as np
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
 
+from ...fluid import layers
 from ... import tensor
 from ...framework import ParamAttr
 from .. import functional as F
 from .common import Dropout, Linear
 from .container import LayerList
-from .layers import Layer
 from .norm import LayerNorm
 
 __all__ = []
@@ -342,7 +342,7 @@ class MultiHeadAttention(Layer):
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
             fill_shape = [-1, self.num_heads, 0, self.head_dim]
-            fill_shape[0] = key.shape[0]
+            fill_shape[0] = paddle.shape(key)[0].item()
             k = paddle.full(fill_shape, 0, key.dtype)
             v = paddle.full(fill_shape, 0, key.dtype)
             return self.Cache(k, v)

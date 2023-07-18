@@ -146,7 +146,7 @@ def get_program():
 
         # fill constant bsz like
         fill_shape = [-1, 16, 0, 48]
-        fill_shape[0] = input.shape[0]
+        fill_shape[0] = paddle.shape(input)[0].item()
         tmp = paddle.full(shape=fill_shape, fill_value=0, dtype='float32')
         auto.shard_tensor(tmp, _g_process_mesh, [None, 'x', None, None])
 
