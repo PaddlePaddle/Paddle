@@ -307,6 +307,9 @@ class OpInfoParser:
         self.inplace_map = self.parse_op_inplace_info()
         self.view_map = self.parse_op_view_info()
 
+        # parse has_custom_verify
+        self.custom_verify = self.parse_custom_verify()
+
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
             type_list
@@ -315,6 +318,11 @@ class OpInfoParser:
             assert len(type_list) == len(
                 optional_list
             ), "type list size != optional list size."
+
+    def parse_custom_verify(self):
+        if 'custom_verify' in self.op_yaml_item:
+            return self.op_yaml_item['custom_verify']
+        return False
 
     def parse_op_phi_name(self):
         if (self.parse_op_inplace_info() is None) and (
@@ -980,17 +988,19 @@ def OpGenerator(
             )
 
             # generate op verify function str
-            op_verify_str = gen_verify_func_str(
-                op_class_name,
-                op_input_type_list,
-                op_input_optional_list,
-                op_mutable_attribute_name_list,
-                op_mutable_attribute_type_list,
-                op_non_mutable_attribute_name_list,
-                op_non_mutable_attribute_type_list,
-                op_output_type_list,
-                op_output_optional_list,
-            )
+            op_verify_str = ''
+            if not op_info.custom_verify:
+                op_verify_str = gen_verify_func_str(
+                    op_class_name,
+                    op_input_type_list,
+                    op_input_optional_list,
+                    op_mutable_attribute_name_list,
+                    op_mutable_attribute_type_list,
+                    op_non_mutable_attribute_name_list,
+                    op_non_mutable_attribute_type_list,
+                    op_output_type_list,
+                    op_output_optional_list,
+                )
 
             op_infer_meta_str = gen_op_infer_meta_str(op_info, op_class_name)
 
