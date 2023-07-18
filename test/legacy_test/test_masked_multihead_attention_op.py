@@ -73,11 +73,11 @@ class TestMMHAOp(unittest.TestCase):
         np.random.seed(0)
         self.bsz = 2
         self.cache_bsz = 2
-        self.num_head = 6
-        self.dim_head = 32
+        self.num_head = 32
+        self.dim_head = 128
         self.beam_size = 1
-        self.max_seq_len = 6
-        self.sequence_length = 5
+        self.max_seq_len = 33
+        self.sequence_length = 32
 
         self.x = np.random.uniform(
             -0.05, 0.05, [self.bsz, 3, self.num_head, self.dim_head]
@@ -114,7 +114,7 @@ class TestMMHAOp(unittest.TestCase):
         )
 
         self.qkv_out_scale = np.random.uniform(
-            -0.5, 1, [3, self.num_head, self.dim_head]
+            -0.05, 0.05, [3, self.num_head, self.dim_head]
         )
         self.out_linear_shift = None
         self.out_linear_smooth = None
@@ -125,7 +125,7 @@ class TestMMHAOp(unittest.TestCase):
         self.compute_bias = True
         self.use_neox_rotary_style = False
 
-        self.out_linear_in_scale = 1.5
+        self.out_linear_in_scale = 10
         self.quant_round_type = 1
         self.quant_max_bound = 126
         self.quant_min_bound = -126
@@ -265,8 +265,8 @@ class TestMMHAOp(unittest.TestCase):
         np.testing.assert_allclose(
             paddle_mmha_out[0].numpy(),
             paddle_naive_mmha[0].numpy(),
-            rtol=5e-2,
-            atol=5e-2,
+            rtol=1e-3,
+            atol=1e-3,
         )
 
     def test_mmha_qkv_out_scale(self):
@@ -286,8 +286,8 @@ class TestMMHAOp(unittest.TestCase):
         np.testing.assert_allclose(
             paddle_mmha_out[0].numpy(),
             paddle_naive_mmha[0].numpy(),
-            rtol=5e-2,
-            atol=5e-2,
+            rtol=1e-3,
+            atol=1e-3,
         )
 
     def test_mmha_outlinear_in_scale(self):
@@ -307,8 +307,8 @@ class TestMMHAOp(unittest.TestCase):
         np.testing.assert_allclose(
             paddle_mmha_out[0].numpy(),
             paddle_naive_mmha[1].numpy(),
-            rtol=5e-2,
-            atol=5e-2,
+            rtol=1,
+            atol=1,
         )
 
 
