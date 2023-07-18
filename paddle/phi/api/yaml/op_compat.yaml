@@ -1048,6 +1048,8 @@
       data_type : float
       support_tensor : true
 
+- op : fill_constant
+
 - op : fill_diagonal
   backward : fill_diagonal_grad
   inputs :
