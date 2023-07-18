@@ -101,10 +101,13 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
                 data = np.random.random(shape).astype("float32")
                 res_1 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=6
-                )[0]
+                )
                 res_2 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=2
-                )[0]
+                )
+
+                res_1 = res_1[0] if len(res_1) == 1 else res_1
+                res_2 = res_2[0] if len(res_2) == 1 else res_2
 
                 gn1 = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
                 gn2 = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
