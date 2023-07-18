@@ -32,13 +32,32 @@ namespace auto_parallel {
 
 constexpr const char* kDefault = "default";
 
+enum class ReduceType : std::uint8_t {
+  SUM = 0,
+  AVG,
+  MAX,
+  MIN,
+  PRODUCT,
+  ANY,
+  ALL
+};
+static const char* ReduceTypeStrings[] = {
+    "SUM", "AVG", "MAX", "MIN", "PRODUCT", "ANY", "ALL"};
+
+struct _Partial_ {
+  std::string to_string() const;
+
+  int64_t dim_{-1};
+  ReduceType type_{ReduceType::SUM};
+};
+
 class TensorDistAttr {
  public:
   TensorDistAttr() = default;
 
   explicit TensorDistAttr(const std::vector<int64_t>& tensor_shape);
 
-  TensorDistAttr(const TensorDistAttr& tensor);
+  TensorDistAttr(const TensorDistAttr& dist_attr);
 
   TensorDistAttr& operator=(const TensorDistAttr& dist_attr);
 
@@ -51,6 +70,10 @@ class TensorDistAttr {
   const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
+
+  std::set<_Partial_>& partial_status() const { return partial_status_; }
+
+  void set_partial_status(const std::set<_Partial_>& partial_status);
 
   void set_default_dims_mapping(const std::vector<int64_t>& tensor_shape);
 
@@ -89,11 +112,16 @@ class TensorDistAttr {
 
   bool verify_annotated(const std::map<std::string, bool>& annotated) const;
 
+  bool verify_partial_status() const;
+
   bool verify(const std::vector<int64_t>& tensor_shape) const;
 
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
+  // in partial-support-stage-I partial will always be a runtime attribute,
+  // there is not need to serialize it. support the partial serialization in
+  // future partial-support-stage-II.
   void from_proto(const TensorDistAttrProto& proto);
 
   TensorDistAttrProto to_proto() const;
@@ -109,6 +137,7 @@ class TensorDistAttr {
   int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
+  std::set<_Partial_> partial_status_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
