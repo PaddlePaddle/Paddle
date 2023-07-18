@@ -420,6 +420,12 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : cast
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : ceil
   backward : ceil_grad
   inputs :
@@ -2267,6 +2273,14 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : repeat_interleave
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    repeats : Repeats
+
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
   inputs:
@@ -2514,6 +2528,10 @@
 
 - op : slice
   backward : slice_grad
+  inputs :
+    input : Input
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
