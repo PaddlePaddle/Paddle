@@ -23,13 +23,13 @@
 #include <type_traits>
 
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/registry.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/pybind/bind.h"

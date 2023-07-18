@@ -17,11 +17,11 @@
 #include <set>
 
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/collect_ir_nodes.h"
 #include "paddle/cinn/ir/intrinsic_ops.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 
 namespace cinn {
 namespace ir {
