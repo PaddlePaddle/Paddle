@@ -99,6 +99,11 @@ class NewIRCompiler final {
       inputs.push_back(temp);
       cinn_inputs.push_back(common::CINNValue(temp));
     }
+    for (auto out_name : OpGetOutputNames(op)) {
+      cinn_inputs.push_back(
+          common::CINNValue(op.name().substr(3) + "_" + out_name));
+    }
+
     VLOG(4) << "inputs.size(): " << inputs.size();
 
     // step 2: Deal with OpResult

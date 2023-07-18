@@ -10,4 +10,6 @@ if(WITH_TESTING AND WITH_CINN)
     phi
     gtest
     glog)
+  set_tests_properties(test_graph_compiler_new_ir PROPERTIES LABELS
+                                                             "RUN_TYPE=CINN")
 endif()
