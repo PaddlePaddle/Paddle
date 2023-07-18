@@ -58,6 +58,8 @@ struct Masked_multihead_attention_params {
   const T *qkv;
   // bias, [3, num_head, dim_head]
   T *qkv_bias;
+  // [bsz, seq_len]
+  const int *cum_offsets;
   // TODO(wangxi): optimize with input_lengths and max_input_len?
   // [bsz, 1, 1, time_step(cache_seq_length)+1]
   const T *attn_mask;
@@ -87,6 +89,7 @@ struct Masked_multihead_attention_params {
   int cache_batch_size;
   int num_head;
   int timestep;  // cache_seq_length
+  int seq_len;
   int max_seq_length;
 
   // 1.f / sqrt(Dh)
@@ -397,6 +400,9 @@ __global__ void masked_multihead_attention_kernel(
   const int hi = blockIdx.x;
   const int bhi = bi * params.num_head + hi;
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
+  const int ti =
+      params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
+  const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
   const int tid = threadIdx.x;
 
   const int bi_seq_len_offset = bi * params.max_seq_length;
@@ -820,10 +826,12 @@ __global__ void masked_multihead_attention_kernel(
     //                    out);
     V_vec tmp_out;
     convert_from_float(tmp_out, out);
-    store_func.template store<V_vec>(tmp_out, bhi * Dh + vi);
+    store_func.template store<V_vec>(tmp_out,
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #else
     // *reinterpret_cast<V_vec *>(&params.out[bhi * Dh + vi]) = out;
-    store_func.template store<V_vec>(out, bhi * Dh + vi);
+    store_func.template store<V_vec>(out,
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
   }
 

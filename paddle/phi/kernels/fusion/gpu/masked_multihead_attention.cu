@@ -24,6 +24,7 @@ void MMHAKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const paddle::optional<DenseTensor>& bias,
                 const paddle::optional<DenseTensor>& src_mask,
+                const paddle::optional<DenseTensor>& cum_offsets,
                 const paddle::optional<DenseTensor>& sequence_lengths,
                 const paddle::optional<DenseTensor>& rotary_tensor,
                 const paddle::optional<DenseTensor>& beam_cache_offset,
@@ -31,7 +32,7 @@ void MMHAKernel(const Context& dev_ctx,
                 const paddle::optional<DenseTensor>& qkv_out_scale,
                 const paddle::optional<DenseTensor>& out_linear_shift,
                 const paddle::optional<DenseTensor>& out_linear_smooth,
-                int beam_size,
+                int seq_len,
                 int rotary_emb_dims,
                 const bool mask_broadcast_num_heads,
                 const bool compute_bias,
@@ -69,6 +70,13 @@ void MMHAKernel(const Context& dev_ctx,
   if (sequence_lengths) {
     params.sequence_lengths = sequence_lengths->data<int>();
   }
+
+  if (cum_offsets) {
+    params.cum_offsets = cum_offsets->data<int>();
+  } else {
+    params.cum_offsets = nullptr;
+  }
+
   if (rotary_emb_dims > 0) {
     params.rotary_emb = rotary_tensor->data<float>();
   } else {
@@ -77,6 +85,7 @@ void MMHAKernel(const Context& dev_ctx,
 
   if (beam_cache_offset) {
     params.beam_cache_offset = beam_cache_offset->data<int>();
+    params.beam_width = beam_cache_offset->dims()[1];
   }
 
   params.add_qkv_bias = compute_bias;
@@ -88,9 +97,9 @@ void MMHAKernel(const Context& dev_ctx,
 
   params.batch_size = bsz;
   params.cache_batch_size = cache_bsz;
-  params.beam_width = beam_size;
   params.num_head = num_head;
   params.timestep = timestep;
+  params.seq_len = seq_len;
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;

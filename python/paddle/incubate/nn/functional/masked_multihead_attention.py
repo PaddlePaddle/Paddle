@@ -21,6 +21,7 @@ def masked_multihead_attention(
     x,
     bias=None,
     src_mask=None,
+    cum_offsets=None,
     sequence_lengths=None,
     rotary_tensor=None,
     beam_cache_offset=None,
@@ -28,7 +29,7 @@ def masked_multihead_attention(
     qkv_out_scale=None,
     out_linear_shift=None,
     out_linear_smooth=None,
-    beam_size=1,
+    seq_len=1,
     rotary_emb_dims=0,
     mask_broadcast_num_heads=True,
     compute_bias=False,
@@ -61,6 +62,7 @@ def masked_multihead_attention(
         x (Tensor): The input tensor could be 4-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3, num\_head, dim\_head]`.
         bias (Tensor, optional): The bias tensor of qkv, the shape is `[3, num\_head, dim\_head]`.
         src_mask (Tensor): The src_mask tensor, the shape is `[batch\_size, 1, 1, sequence\_length]`.
+        cum_offsets (Tensor, optional): The cum_offsets tensor, the shape is `[batch\_size, 1]`.
         sequence_lengths (Tensor, optional): The sequence_lengths tensor, the shape is `[batch\_size, 1]`.
         rotary_tensor (Tensor, optional): The rotary_tensor tensor, the dtype must be float. the shape is `[batch\_size, 1, 1, sequence\_length, dim\_head]`.
         beam_cache_offset (Tensor, optional): The beam_cache_offset tensor, the shape is `[batch\_size, beam\_size, max\_seq\_len + max\_dec\_len]`.
@@ -68,7 +70,7 @@ def masked_multihead_attention(
         qkv_out_scale (Tensor, optional): The qkv_out_scale tensor, the shape is `[3, num\_head, dim\_head]]`.
         out_linear_shift (Tensor, optional): The out_linear_shift tensor.
         out_linear_smooth (Tensor, optional): The out_linear_smooth tensor.
-        beam_size (int, optional): The beam_size of beam search. Default 1.
+        seq_len (int, optional): The seq_len. Default 1.
         rotary_emb_dims (int, optional): The rotary_emb_dims. Default 0.
         mask_broadcast_num_heads (bool, optional): A flag indicating whether broadcast is needed of src_mask num_head dim or not. Default True.
         compute_bias (bool, optional): A flag indicating whether bias is computed or not. Default False.
@@ -110,6 +112,7 @@ def masked_multihead_attention(
             x,
             bias,
             src_mask,
+            cum_offsets,
             sequence_lengths,
             rotary_tensor,
             beam_cache_offset,
@@ -117,7 +120,7 @@ def masked_multihead_attention(
             qkv_out_scale,
             out_linear_shift,
             out_linear_smooth,
-            beam_size,
+            seq_len,
             rotary_emb_dims,
             mask_broadcast_num_heads,
             compute_bias,
@@ -140,6 +143,8 @@ def masked_multihead_attention(
         inputs['bias'] = bias
     if src_mask:
         inputs['src_mask'] = src_mask
+    if cum_offsets:
+        inputs['cum_offsets'] = cum_offsets
     if sequence_lengths:
         inputs['sequence_lengths'] = sequence_lengths
     if rotary_tensor:
@@ -163,7 +168,7 @@ def masked_multihead_attention(
         inputs=inputs,
         outputs=outputs,
         attrs={
-            'beam_size': beam_size,
+            'seq_len': seq_len,
             'rotary_emb_dims': rotary_emb_dims,
             'mask_broadcast_num_heads': mask_broadcast_num_heads,
             'compute_bias': compute_bias,

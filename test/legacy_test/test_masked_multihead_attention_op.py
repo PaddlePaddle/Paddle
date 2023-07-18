@@ -25,6 +25,7 @@ def mmha_wrapper(
     x,
     bias,
     src_mask,
+    cum_offsets,
     sequence_lengths,
     rotary_tensor,
     beam_cache_offset,
@@ -32,7 +33,7 @@ def mmha_wrapper(
     qkv_out_scale,
     out_linear_shift,
     out_linear_smooth,
-    beam_size,
+    seq_len,
     rotary_emb_dims,
     mask_broadcast_num_heads,
     compute_bias,
@@ -46,6 +47,7 @@ def mmha_wrapper(
         x,
         bias,
         src_mask,
+        cum_offsets,
         sequence_lengths,
         rotary_tensor,
         beam_cache_offset,
@@ -53,7 +55,7 @@ def mmha_wrapper(
         qkv_out_scale,
         out_linear_shift,
         out_linear_smooth,
-        beam_size,
+        seq_len,
         rotary_emb_dims,
         mask_broadcast_num_heads,
         compute_bias,
@@ -91,6 +93,7 @@ class TestMMHAOp(unittest.TestCase):
         )
         self.src_mask = np.zeros([self.bsz, 1, 1, self.sequence_length + 1])
 
+        self.cum_offsets = None
         self.sequence_lengths = None
         self.rotary_tensor = None
         self.beam_cache_offset = None
@@ -119,7 +122,7 @@ class TestMMHAOp(unittest.TestCase):
         self.out_linear_shift = None
         self.out_linear_smooth = None
 
-        self.beam_size = 1
+        self.seq_len = 1
         self.rotary_emb_dims = 0
         self.mask_broadcast_num_heads = True
         self.compute_bias = True
@@ -150,7 +153,7 @@ class TestMMHAOp(unittest.TestCase):
         src_mask,
         cache_kv_out,
         qkv_out_scale,
-        beam_size,
+        seq_len,
         mask_broadcast_num_heads,
         compute_bias,
         out_linear_in_scale,
@@ -215,7 +218,7 @@ class TestMMHAOp(unittest.TestCase):
             src_mask,
             cache_kv_out,
             qkv_out_scale,
-            self.beam_size,
+            self.seq_len,
             self.mask_broadcast_num_heads,
             self.compute_bias,
             out_linear_in_scale,
@@ -231,11 +234,12 @@ class TestMMHAOp(unittest.TestCase):
             None,
             None,
             None,
+            None,
             cache_kv_mmha_out,
             qkv_out_scale,
             None,
             None,
-            self.beam_size,
+            self.seq_len,
             self.rotary_emb_dims,
             self.mask_broadcast_num_heads,
             self.compute_bias,
