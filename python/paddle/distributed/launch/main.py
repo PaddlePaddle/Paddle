@@ -295,7 +295,6 @@ def launch():
     elif ctx.is_auto_tuner_mode():
         import copy
         import json
-        import signal
         import sys
         import time
 
@@ -304,6 +303,7 @@ def launch():
         from ..auto_tuner.utils import gen_new_args, read_log
         from . import controllers
 
+        start_time = time.time()
         # read user defined tuner config json
         try:
             with open(ctx.args.auto_tuner_json, "r") as f:
@@ -326,24 +326,48 @@ def launch():
             gpus_per_node = len(ctx.args.devices.split(","))
         nnodes = ctx.args.nnodes
         if isinstance(nnodes, str):
-            tuner_cfg["nodes"] = int(nnodes.split(":")[0])
+            nnodes = int(nnodes.split(":")[0])
         else:
-            tuner_cfg["nodes"] = int(nnodes)
+            nnodes = int(nnodes)
+        tuner_cfg["nodes"] = nnodes
         tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
+
+        if nnodes > 1:
+            import etcd3
+
+            assert "etcd://" in ctx.args.master
+            master_ip, port = ctx.args.master.strip("etcd://").split(':')
+            client = etcd3.client(host=master_ip, port=port)
+            client.delete("best_cfg")
 
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
         cur_cfg = auto_tuner.search_once()
+        auto_tuner.add_cfg(cur_cfg)
 
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
+        ctx.max_time_per_task = max_time_per_task
 
+        # warmup
+        warmup_time = (
+            max_time_per_task
+            if "warmup_time" not in tuner_cfg
+            else tuner_cfg.get("warmup_time")
+        )
+
+        is_first_task = True
         # build history recorder
         recorder = History_recorder()
 
         job_id = 0
+        ctx.args.max_restart = -1
+        raw_ctx = copy.deepcopy(ctx)
         while cur_cfg:
-            ctx.status._current_status = None
+            ctx = copy.deepcopy(raw_ctx)
+            if is_first_task:
+                ctx.max_time_per_task = warmup_time
+            is_first_task = False
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
                 cur_cfg["dp_degree"],
@@ -373,14 +397,10 @@ def launch():
                     task_job_id, log_dir, cur_cfg
                 )
             )
-
             c = controllers.init(ctx)
-            # set per task timeout
-            signal.signal(signal.SIGALRM, c.not_exit_signal_handler)
-            signal.alarm(max_time_per_task)
             c.run()
 
-            # Process generated result
+            # process generated result
             metric, err = read_log(
                 path=ctx.args.log_dir,
                 file="workerlog.0",
@@ -388,12 +408,15 @@ def launch():
             )
             if err:
                 ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
-                cur_cfg['time'] = None  # for pruner use.
+                # for pruner use
+                cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
             else:
-                cur_cfg['time'] = metric  # for pruner use.
+                # for pruner use
+                cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
-                # record history
+
+            # record history
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)
             cur_best_cfgs, err = recorder.get_best(
@@ -409,18 +432,78 @@ def launch():
                 ctx.logger.info(
                     "Get best config failed. Currently there are no appropriate configs."
                 )
+            c.finalize(exit=False)
 
+            # generate a new config
             new_cfg = auto_tuner.search_once()
-            if new_cfg:
-                c.finalize(exit=False)
-            else:
-                c.finalize(exit=True)
+            cur_cfg = copy.deepcopy(new_cfg)
+            auto_tuner.add_cfg(cur_cfg)
 
             # per task launch interval
-            time.sleep(5)
-
-            cur_cfg = copy.deepcopy(new_cfg)
+            time.sleep(3)
         recorder.store_history()
+
+        # get best config to run
+        best_cfg = None
+        ctx = copy.deepcopy(raw_ctx)
+        if nnodes > 1:
+            import socket
+
+            ip = None
+            try:
+                hostname = socket.gethostname()
+                ip = socket.gethostbyname(socket.getfqdn(hostname))
+            except:
+                ip = '127.0.0.1'
+            if ip == master_ip:
+                best_cfg, err = recorder.get_best(
+                    metric=tuner_cfg['metric_cfg']['name'],
+                    direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                )
+                if err:
+                    raise ValueError(
+                        "Get best config failed. Currently there are no appropriate configs."
+                    )
+                data = json.dumps(best_cfg)
+                while not client.put("best_cfg", data):
+                    time.sleep(1)
+                    continue
+            else:
+                for i in range(10):
+                    try:
+                        data = client.get("best_cfg")[0].decode()
+                        best_cfg = json.loads(data)
+                    except Exception as e:
+                        ctx.logger.warning(e)
+                        time.sleep(2)
+                    if best_cfg:
+                        break
+                assert best_cfg
+        else:
+            best_cfg, err = recorder.get_best(
+                metric=tuner_cfg['metric_cfg']['name'],
+                direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+            )
+            if err:
+                raise ValueError(
+                    "Get best config failed. Currently there are no appropriate configs."
+                )
+        assert best_cfg
+
+        end_time = time.time()
+        ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
+        # launch best cfg
+        new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
+        ctx.run_best = True
+        ctx.args.training_script_args = new_args
+        ctx.args.job_id = "best_cfg"
+        ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
+        ctx.args.log_dir = "best_cfg"
+        # run best cfg
+        c = controllers.init(ctx)
+        c.run()
+        c.finalize(exit=True)
+
     else:
         from . import controllers
 
