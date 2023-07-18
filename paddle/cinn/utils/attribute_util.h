@@ -34,7 +34,7 @@ Attribute ConvertAttribute(const ::ir::Attribute& src_attr) {
   } else if (src_attr.isa<::ir::Int32Attribute>()) {
     dst_attr = src_attr.dyn_cast<::ir::Int32Attribute>().data();
   } else if (src_attr.isa<::ir::StrAttribute>()) {
-    dst_attr = src_attr.dyn_cast<::ir::StrAttribute>().data();
+    dst_attr = src_attr.dyn_cast<::ir::StrAttribute>().AsString();
   } else if (src_attr.isa<::ir::Int64Attribute>()) {
     dst_attr = src_attr.dyn_cast<::ir::Int64Attribute>().data();
   } else if (src_attr.isa<::ir::DoubleAttribute>()) {
