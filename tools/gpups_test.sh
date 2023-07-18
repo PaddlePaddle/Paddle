@@ -99,7 +99,7 @@ ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1
 EXIT_CODE_2=$?
 set -e
 
-if [ "${EXIT_CODE_1}" != "0" ] && [ "${EXIT_CODE_2}" != "0" ];then
+if [ "${EXIT_CODE_1}" != "0" ] || [ "${EXIT_CODE_2}" != "0" ];then
   echo "Sorry, some tests failed."
   exit 8
 fi
