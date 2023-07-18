@@ -19,10 +19,9 @@ import os
 import unittest
 from itertools import product
 
-import cinn
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import Int, is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 
 import paddle

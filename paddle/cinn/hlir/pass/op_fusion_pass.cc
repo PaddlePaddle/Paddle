@@ -49,7 +49,7 @@ class OpFusionPassHelper : public FusionHelperBase {
       auto node = graph_node->safe_as<Node>();
       if (node) {
         nodes_.push_back(node);
-        auto group = std::make_shared<Graph::Group>();
+        auto group = std::make_shared<Graph::Group>(graph);
         // init group
         group->nodes.push_back(node);
         group->nodes_set.insert(node);
@@ -101,14 +101,14 @@ class OpFusionPassHelper : public FusionHelperBase {
     for (auto& consumer : fusion_groups) {
       for (auto& input_node : consumer->input_nodes) {
         auto& producer = fusion_groups_[input_node.first];
-        consumer->producer_groups.insert(producer);
-        producer->consumer_groups.insert(consumer);
+        consumer->mut_producer_groups()->insert(producer);
+        producer->mut_consumer_groups()->insert(consumer);
       }
     }
 
     // init group depth.
     for (auto& group : fusion_groups) {
-      for (auto& consumer : group->consumer_groups) {
+      for (const auto& consumer : group->consumer_groups()) {
         // update depth.
         group->depth = std::max(group->depth, consumer->depth + 1);
       }
@@ -376,10 +376,10 @@ void OpFusionPassInternal(Graph* graph) {
 
   for (auto& group : graph->fusion_groups) {
     VLOG(3) << "Group Id : " << group->group_id;
-    for (auto& producer : group->producer_groups) {
+    for (const auto& producer : group->producer_groups()) {
       VLOG(3) << "  producer group -> " << producer->group_id;
     }
-    for (auto& consumer : group->consumer_groups) {
+    for (const auto& consumer : group->consumer_groups()) {
       VLOG(3) << "  consumer group -> " << consumer->group_id;
     }
   }

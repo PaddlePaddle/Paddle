@@ -16,9 +16,12 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/elementwise_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
 
 // TODO(ljz) Automatic this process in cmake file.
 namespace paddle {
@@ -27,6 +30,18 @@ namespace auto_parallel {
 
 // matmul rule
 REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
+
+// reduction rules
+REGISTER_SPMD_RULE(all, ReductionSPMDRule);
+REGISTER_SPMD_RULE(amax, ReductionSPMDRule);
+REGISTER_SPMD_RULE(amin, ReductionSPMDRule);
+REGISTER_SPMD_RULE(any, ReductionSPMDRule);
+REGISTER_SPMD_RULE(frobenius_norm, ReductionSPMDRule);
+REGISTER_SPMD_RULE(max, ReductionSPMDRule);
+REGISTER_SPMD_RULE(mean, ReductionSPMDRule);
+REGISTER_SPMD_RULE(min, ReductionSPMDRule);
+REGISTER_SPMD_RULE(prod, ReductionSPMDRule);
+REGISTER_SPMD_RULE(sum, ReductionSPMDRule);
 
 // elementwise rule
 REGISTER_SPMD_RULE(add, ElementwiseSPMDRule);
@@ -121,6 +136,14 @@ REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
 
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
+
+// embedding rule
+REGISTER_SPMD_RULE(embedding, EmbeddingSPMDRule);
+REGISTER_SPMD_RULE(lookup_table_v2, EmbeddingSPMDRule);
+
+// softmax rule
+REGISTER_SPMD_RULE(softmax, SoftmaxSPMDRule);
+REGISTER_SPMD_RULE(log_softmax, SoftmaxSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

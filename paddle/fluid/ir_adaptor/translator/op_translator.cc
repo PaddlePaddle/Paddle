@@ -90,7 +90,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
   bool inplace = false;
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
-  if (input_names.size() == 0 || output_names.size() == 0) {
+  if (input_names.empty() || output_names.empty()) {
     return inplace;
   }
 
@@ -103,7 +103,7 @@ inline bool IsInplace(const OpDesc& op_desc) {
                         output_names.end(),
                         std::back_inserter(name_intersection));
 
-  if (name_intersection.size() > 0) {
+  if (!name_intersection.empty()) {
     std::string redundant_variables = std::accumulate(
         std::next(name_intersection.begin()),
         name_intersection.end(),
@@ -330,10 +330,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
   std::set<std::string> yaml_input_set;
   for (const auto& info : input_infos) {
-    if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
-      continue;
-    }
-
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
@@ -381,12 +377,11 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     std::vector<std::string> legacy_input_vars;
     // return empty OpResult if this arg is optional and not shown in OpDesc
-    // TODO(lyk): HasInput doesnot consider variadic attribute
     if (op_desc.HasInput(legacy_input_name, true)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
-    if (legacy_input_vars.size() == 0) {
+    if (legacy_input_vars.empty()) {
       if (info.optional) {
         op_inputs.push_back(ir::OpResult(nullptr));
         continue;
@@ -395,7 +390,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << legacy_input_name << " " << legacy_input_vars.size();
 
-    if (legacy_input_vars.size() == 0 && mutable_attributes != nullptr &&
+    if (legacy_input_vars.empty() && mutable_attributes != nullptr &&
         mutable_attributes->count(info.name) != 0) {
       const auto& candidate_var_names =
           op_normalizer.GetMutableAttributeInfos(op_desc.Type(), info.name);
@@ -405,7 +400,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
                  << var_name << "]";
         if (op_desc.HasInput(var_name)) {
           legacy_input_vars = op_desc.Input(var_name, true);
-          if (legacy_input_vars.size() == 0) continue;
+          if (legacy_input_vars.empty()) continue;
           found_candidate_var = true;
           break;
         }
@@ -436,6 +431,10 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     // if src type is Tensor
     if (!is_vector) {
+      IR_ENFORCE(legacy_input_vars.size() == 1u,
+                 "Input %s not found when parsing op %s",
+                 info.name,
+                 op_desc.Type());
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 
@@ -512,7 +511,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << "[" << op_desc.Type() << "]" << info.name << " :"
                << info.type_name << " " << legacy_output_name << " "
                << legacy_output_vars.size();
-      if (legacy_output_vars.size() == 0) {
+      if (legacy_output_vars.empty()) {
         op_output_types.push_back(ir::Type(nullptr));
         continue;
       }
@@ -623,6 +622,7 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
           generated_by_vector = false;
         }
       }
+
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
       idx_in_vector++;
@@ -855,7 +855,7 @@ ir::OpResult TranslateDropOutStateIn(ir::IrContext* ctx,
     legacy_output_vars = op_desc.Output(legacy_output_name);
   }
 
-  if (legacy_output_vars.size() == 0) {
+  if (legacy_output_vars.empty()) {
     VLOG(3) << "[input translating] not find output variable: DropoutState";
     return ir::OpResult(nullptr);
   }
@@ -894,6 +894,41 @@ struct RnnOpTranscriber : public OpTranscriber {
   };
 };
 
+struct EmbeddingGradOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(ir::IrContext* ctx,
+                                  ir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "padding_idx") {
+      (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
+    } else if (info.name == "sparse") {
+      (*attribute_map)[info.name] = ir::BoolAttribute::get(ctx, false);
+    }
+  }
+
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name =
+        kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
+
+    bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
+
+    if (is_sparse) {
+      target_op_name = "pd.embedding_grad_sparse";
+    } else {
+      target_op_name = "pd.embedding_grad_dense";
+    }
+    VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
+            << target_op_name;
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               target_op_name);
+    }
+
+    return op_info;
+  }
+};
+
 struct FeedOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
@@ -917,6 +952,104 @@ struct FeedOpTranscriber : public OpTranscriber {
       const OpInputInfoList& input_infos,
       ir::Program* program) override {
     return {};
+  }
+};
+
+struct SplitOpTranscriber : public OpTranscriber {
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    // input of pslit is [Tensor x, IntArray sections, Scalar(int) axis)]
+
+    VLOG(10) << "[op:split][input] start";
+
+    std::vector<ir::OpResult> op_inputs;
+    // process first input
+    auto x_input_vars = op_desc.Input("X");
+    IR_ENFORCE(x_input_vars.size() == 1, "x input of split MUST be a tensor");
+    auto x_defining_info = (*param_map)[x_input_vars[0]];
+    op_inputs.push_back(x_defining_info.value);
+
+    // process sections
+    int num = paddle::get<int>(op_desc.GetAttr("num"));
+    if (num <= 0) {
+      if (op_desc.HasInput("SectionsTensorList")) {
+        // get SectionsTensorList from input
+
+        auto sec_tensor_list = op_desc.Input("SectionsTensorList");
+        auto* combine_op = InsertCombineOperationForTarget(
+            ctx, param_map, program, sec_tensor_list);
+        op_inputs.push_back(combine_op->result(0));
+      } else {
+        auto& attribute_translator = AttributeTranslator::instance();
+        ir::Attribute new_attr = attribute_translator(
+            "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("sections"));
+        auto sec_defin_op =
+            InsertFullOperationForAttributeInput(ctx, program, new_attr);
+        op_inputs.push_back(sec_defin_op->result(0));
+      }
+    }
+
+    // process axis
+    if (op_desc.HasInput("AxisTensor") &&
+        op_desc.Input("AxisTensor").size() > 0) {
+      // get axis from input
+      auto axis_var_list = op_desc.Input("AxisTensor");
+      IR_ENFORCE(axis_var_list.size() == 1,
+                 "axis tensor input of split MUST be a tensor");
+      auto axis_defining_info = (*param_map)[axis_var_list[0]];
+      op_inputs.push_back(axis_defining_info.value);
+    } else {
+      auto& attribute_translator = AttributeTranslator::instance();
+      ir::Attribute new_attr =
+          attribute_translator("ir::Int32Attribute", op_desc.GetAttr("axis"));
+
+      auto sec_defin_op =
+          InsertFullOperationForAttributeInput(ctx, program, new_attr);
+      op_inputs.push_back(sec_defin_op->result(0));
+    }
+
+    return op_inputs;
+  }
+
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    int num = paddle::get<int>(op_desc.GetAttr("num"));
+    if (num > 0) {
+      ir::AttributeMap attribute_map = {
+          {"num",
+           ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("num"))},
+      };
+
+      return attribute_map;
+    }
+
+    return {};
+  }
+
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    int num = paddle::get<int>(op_desc.GetAttr("num"));
+    std::string target_op_name;
+    if (num > 0) {
+      target_op_name = "pd.split_with_num";
+
+    } else {
+      target_op_name = "pd.split";
+    }
+
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op assign_value should have corresponding OpInfo pd.split");
+    }
+
+    return op_info;
   }
 };
 
@@ -959,7 +1092,9 @@ OpTranslator::OpTranslator() {
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
+  special_handlers["split"] = SplitOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
+  special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();

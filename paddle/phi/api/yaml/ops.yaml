@@ -100,7 +100,7 @@
 
 - op : affine_grid
   args : (Tensor input, IntArray output_shape={}, bool align_corners=true)
-  output : Tensor
+  output : Tensor(output)
   infer_meta :
     func : AffineGridInferMeta
     param : [input, output_shape, align_corners]
@@ -941,6 +941,16 @@
     func : fmax
   backward : fmax_grad
 
+- op : fmin
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param: [x, y]
+  kernel :
+    func : fmin
+  backward : fmin_grad
+
 - op : fold
   args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
   output: Tensor(out)
@@ -1367,14 +1377,14 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
-- op : llm_int8_mat_mul
+- op : llm_int8_matmul
   args : (Tensor x, Tensor weight, Tensor weight_scale, float threshold=6.0)
   output : Tensor(out)
   infer_meta :
-    func : LLMInt8MatMulInferMeta
+    func : LLMInt8MatmulInferMeta
     param : [x, weight]
   kernel :
-    func : llm_int8_mat_mul
+    func : llm_int8_matmul
     data_type : x
 
 - op : log
@@ -1994,6 +2004,16 @@
     data_type : x
   backward : reverse_grad
 
+- op : rms_norm
+  args : (Tensor x, Tensor weight, Tensor bias, float epsilon, int begin_norm_axis)
+  output : Tensor(out)
+  infer_meta :
+    func : RmsNormInferMeta
+  kernel :
+    func : rms_norm
+    data_type : x
+  optional : bias
+
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)
   output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out), Tensor(master_param_outs)
@@ -2602,14 +2622,13 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
-- op : weight_only_mat_mul
+- op : weight_only_matmul
   args : (Tensor x, Tensor weight, Tensor weight_scale)
   output : Tensor(out)
   infer_meta :
-    func : WeightOnlyMatMulInferMeta
-    param : [x, weight]
+    func : WeightOnlyMatmulInferMeta
   kernel :
-    func : weight_only_mat_mul
+    func : weight_only_matmul
     data_type : x
 
 - op : weighted_sample_neighbors
