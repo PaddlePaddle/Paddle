@@ -68,6 +68,11 @@ class DygraphShardingOptimizer:
         self.tensor_fusion = strategy.hybrid_configs[
             'sharding_configs'
         ].tensor_fusion
+        pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
+        if self.tensor_fusion:
+            assert (
+                not pp_overlap
+            ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
 
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
