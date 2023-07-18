@@ -166,11 +166,6 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     float eps = PADDLE_GET_CONST(float, l_norm->Op()->GetAttr("epsilon"));
     int begin_norm_axis =
         PADDLE_GET_CONST(int, l_norm->Op()->GetAttr("begin_norm_axis"));
-    auto layer_norm_x_dims = ele_out->Var()->GetShape();
-    auto layer_norm_x_mat_dims =
-        phi::flatten_to_2d(phi::make_ddim(layer_norm_x_dims), begin_norm_axis);
-    int64_t m = layer_norm_x_mat_dims[0];
-    int64_t n = layer_norm_x_mat_dims[1];
 
     std::string fused_op_out_name;
     fused_op_out_name = norm_out->Name();
@@ -182,14 +177,9 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     fused_op_desc.SetInput("y", {add_y->Name()});
     fused_op_desc.SetInput("scale", {norm_scale->Name()});
     fused_op_desc.SetInput("bias", {norm_bias->Name()});
-    fused_op_desc.SetAttr("m", m);
-    fused_op_desc.SetAttr("n", n);
     fused_op_desc.SetAttr("epsilon", eps);
+    fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     fused_op_desc.SetOutput("out", {fused_op_out_name});
-    fused_op_desc.SetOutput("mean", {norm_mean->Name()});
-    fused_op_desc.SetOutput("variance", {norm_variance->Name()});
-    fused_op_desc.SetOutput("z_add", {ele_out->Name()});
-
     // relink fused op
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
     IR_NODE_LINK_TO(add_x, fused_op);
@@ -197,11 +187,7 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     IR_NODE_LINK_TO(norm_scale, fused_op);
     IR_NODE_LINK_TO(norm_bias, fused_op);
     IR_NODE_LINK_TO(fused_op, norm_out);
-    IR_NODE_LINK_TO(fused_op, ele_out);
-    IR_NODE_LINK_TO(fused_op, norm_mean);
-    IR_NODE_LINK_TO(fused_op, norm_variance);
-
-    delete_nodes.insert({ele_add, l_norm});
+    delete_nodes.insert({ele_add, l_norm, ele_out, norm_mean, norm_variance});
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };

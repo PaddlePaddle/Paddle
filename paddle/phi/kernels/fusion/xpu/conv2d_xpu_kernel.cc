@@ -113,9 +113,5 @@ void Conv2dXPUKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_xpu,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::fusion::Conv2dXPUKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    conv2d_xpu, XPU, ALL_LAYOUT, phi::fusion::Conv2dXPUKernel, float) {}
