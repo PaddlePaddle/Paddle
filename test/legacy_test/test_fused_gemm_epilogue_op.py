@@ -22,6 +22,7 @@ import paddle
 from paddle.fluid import core
 from paddle.incubate.nn.functional import fused_linear_activation
 
+
 def is_fused_gemm_epilogue_supported():
     if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
         return hasattr(core.eager.ops, 'fused_gemm_epilogue')
@@ -590,9 +591,11 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         out1 = fused_linear_activation(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'none'
         )
+
         out2 = fused_linear_activation(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'relu'
         )
+
         out3 = fused_linear_activation(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'gelu'
         )
