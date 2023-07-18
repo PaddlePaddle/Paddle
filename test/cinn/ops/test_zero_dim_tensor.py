@@ -575,6 +575,9 @@ create_unit_test(TestUnaryOp, "abs", paddle.abs, "builder.abs")
 create_unit_test(
     TestUnaryOp, "reciprocal", paddle.reciprocal, "builder.reciprocal"
 )
+create_unit_test(
+    TestUnaryOp, "softmax", paddle.nn.functional.softmax, "builder.softmax"
+)
 
 
 # acosh requires input value > 1.0, specific init_input instead of using create_unit_test
@@ -1110,6 +1113,44 @@ class TestMatmulOp(OpTest):
         res = self.get_cinn_output(
             prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
         )
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestFlipOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.flip(x, axis=[])
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("flip_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.flip(x, [])
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
         self.assertEqual(res[0].shape, self.target_shape)
