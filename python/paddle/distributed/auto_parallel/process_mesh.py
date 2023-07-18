@@ -163,6 +163,13 @@ class ProcessMesh(core.ProcessMesh):
         return self._mesh
 
     @property
+    def dim_names(self):
+        """
+        Get the underlying dimension names of ProcessMesh.
+        """
+        return self._dim_names
+
+    @property
     def unique_id(self):
         """
         Get the unique id of ProcessMesh.

@@ -13,6 +13,61 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.framework import core
+
+# There are the auto parallel API of the unified version of dynamic and static mode.
+# Some APIs have the same name with the previous APIs implementation, which are
+# a temporary state, and the APIs here will eventually be used.
+
+
+class DistAttr(core.TensorDistAttr):
+    """
+    DistAttr specifies how tensors are distributed or sliced on ProcessMesh.
+
+    Args:
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        sharding_specs(list[str|None]): The specification describing how to shard the Tensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.distributed as dist
+
+        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+        print(dist_attr)
+    """
+
+    def __init__(self, mesh, sharding_specs):
+        # 1. inputs checking
+        if not isinstance(mesh, ProcessMesh):
+            raise ValueError(
+                "The mesh must be an instance of paddle.distributed.ProcessMesh."
+            )
+        if not isinstance(sharding_specs, list):
+            raise ValueError("The sharding_specs must be an instance of list.")
+        assert all(
+            isinstance(dim_name, str) or dim_name is None
+            for dim_name in sharding_specs
+        ), 'The dimension name in sharding_specs must be an instance of str.'
+
+        assert len(sharding_specs) == len(
+            list(mesh.mesh.shape)
+        ), "The length of sharding_specs must be same as the shape of the mesh."
+
+        dims_mapping = [
+            mesh.dim_names.index(dim_name) if dim_name is not None else -1
+            for dim_name in sharding_specs
+        ]
+
+        # 2. init core.TensorDistAttr
+        core.TensorDistAttr.__init__(self)
+        self.process_mesh = mesh
+        self.dims_mapping = dims_mapping
 
 
 def shard_tensor(
@@ -48,7 +103,7 @@ def shard_tensor(
         import paddle.distributed as dist
 
         mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(sharding_specs==['x', 'y'], mesh=mesh)
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
         # dense tensor
         a = paddle.to_tensor([[1,2,3],
