@@ -21,105 +21,91 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-namespace patterns {
+class Graph;
 
-// pre_op -> useless_op_in -> useless_op -> useless_op_out
-// ->
-// pre_op -> useless_op_out
-struct FindUselessOpPattern : public PatternBase {
-  FindUselessOpPattern(PDPattern* pattern, const std::string& name_scope);
+void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("identity_scale_op_clean", graph);
 
-  // declare operator node's name
-  PATTERN_DECL_NODE(useless_op_in);
-  PATTERN_DECL_NODE(useless_op);
-  PATTERN_DECL_NODE(useless_op_out);
-};
-
-FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
-                                           const std::string& name_scope)
-    : PatternBase(pattern, name_scope, name_scope) {
-  auto* useless_op_in = pattern->NewNode(useless_op_in_repr())
-                            ->assert_is_var()
-                            ->assert_var_not_persistable()
-                            ->assert_has_n_outputs(1)
-                            ->assert_more([](Node* x) {
-                              for (auto* op : x->inputs) {
-                                CHECK_EQ(op->IsOp(), true);
-                                const auto& op_type = op->Op()->Type();
-                                if (op_type == "conditional_block" ||
-                                    op_type == "while" || op_type == "feed") {
-                                  return false;
-                                }
-                              }
-                              return true;
-                            });
+  // pre_op -> useless_op_in -> useless_op -> useless_op_out
+  // ->
+  // pre_op -> useless_op_out
+  GraphPatternDetector detector;
+  auto useless_op_in =
+      detector.mutable_pattern()
+          ->NewNode("useless_op_in")
+          ->assert_has_n_outputs(1)
+          ->assert_var_not_persistable()
+          ->assert_more([](Node* x) {
+            for (auto* op : x->inputs) {
+              auto op_type = op->Op()->Type();
+              if (op_type == "conditional_block" || op_type == "while") {
+                return false;
+              }
+            }
+            return true;
+          });
 
   // This useless_op must have only one input and one output!
-  auto* useless_op =
-      pattern->NewNode(useless_op_repr())
-          ->assert_is_op()
+  auto useless_op =
+      detector.mutable_pattern()
+          ->NewNode("useless_op")
           ->assert_has_n_inputs(1)
           ->assert_has_n_outputs(1)
           ->assert_more([](Node* x) {
-            const auto& op_type = x->Op()->Type();
-            if (op_type == "scale") {
+            if (!x->IsOp()) {
+              return false;
+            }
+            if (x->Op()->Type() == "scale") {
               auto scale = x->Op()->GetAttrIfExists<float>("scale");
               auto bias = x->Op()->GetAttrIfExists<float>("bias");
-              return bias == 0.f && scale == 1.f;
-            } else if (op_type == "cast") {
+              if (bias == 0 && scale == 1) {
+                return true;
+              }
+            }
+            if (x->Op()->Type() == "cast") {
               auto in_dtype = x->Op()->GetAttrIfExists<int>("in_dtype");
               auto out_dtype = x->Op()->GetAttrIfExists<int>("out_dtype");
-              return in_dtype == out_dtype;
-            } else if (op_type == "c_identity") {
+              if (in_dtype == out_dtype) {
+                return true;
+              }
+            }
+            if (x->Op()->Type() == "c_identity") {
               return true;
-            } else if (op_type == "assign") {
-              const auto& in_name = x->Op()->Input("X")[0];
-              const auto& out_name = x->Op()->Output("Out")[0];
-              return in_name == out_name;
-            } else if (op_type == "concat") {
-              return x->Op()->Input("X").size() == 1;
             }
             // you can add more cases here.
             return false;
           });
-
-  auto* useless_op_out =
-      pattern->NewNode(useless_op_out_repr())->assert_is_var();
+  auto useless_op_out = detector.mutable_pattern()->NewNode("useless_op_out");
 
   useless_op->LinksFrom({useless_op_in}).LinksTo({useless_op_out});
-}
 
-}  // namespace patterns
-
-void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
-  Init(name_scope_, graph);
-
-  GraphPatternDetector gpd;
-  patterns::FindUselessOpPattern pattern(gpd.mutable_pattern(), name_scope_);
-
-  int found_count = 0;
+  int found_subgraph_count = 0;
   GraphPatternDetector::handle_t handler =
       [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
-        GET_IR_NODE_FROM_SUBGRAPH(useless_op_in, useless_op_in, pattern);
-        GET_IR_NODE_FROM_SUBGRAPH(useless_op, useless_op, pattern);
-        GET_IR_NODE_FROM_SUBGRAPH(useless_op_out, useless_op_out, pattern);
-        CHECK_EQ(useless_op_in->IsVar(), true);
-        CHECK_EQ(useless_op_out->IsVar(), true);
-        CHECK_EQ(useless_op->IsOp(), true);
+        Node* useless_op_var = subgraph.at(useless_op);
+        Node* useless_op_in_var = subgraph.at(useless_op_in);
+        Node* useless_op_out_var = subgraph.at(useless_op_out);
+        const std::string useless_op_in_name = useless_op_in_var->Name();
+        const std::string useless_op_out_name = useless_op_out_var->Name();
 
-        for (auto* prev_op : useless_op_in->inputs) {
-          CHECK_EQ(prev_op->IsOp(), true);
-          prev_op->Op()->RenameOutput(useless_op_in->Var()->Name(),
-                                      useless_op_out->Var()->Name());
-          IR_NODE_LINK_TO(prev_op, useless_op_out);
-        }
+        if (useless_op_in_var->inputs.size() != 1L) return;
+        auto pre_op_node = useless_op_in_var->inputs[0];
 
-        GraphSafeRemoveNodes(graph, {useless_op_in, useless_op});
-        found_count++;
+        // Link pre_op directly to scale_out
+        auto* pre_op_desc = pre_op_node->Op();
+        IR_NODE_LINK_TO(pre_op_node, useless_op_out_var);
+        // Modify pre_op_desc
+        pre_op_desc->RenameOutput(useless_op_in_var->Name(),
+                                  useless_op_out_var->Name());
+
+        // Remove nodes in graph
+        GraphSafeRemoveNodes(graph, {useless_op_in_var, useless_op_var});
+
+        found_subgraph_count++;
       };
 
-  gpd(graph, handler);
-  AddStatis(found_count);
+  detector(graph, handler);
+  AddStatis(found_subgraph_count);
 }
 
 }  // namespace ir
