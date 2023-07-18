@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 from collections import OrderedDict
 
 import numpy as np
@@ -30,6 +31,7 @@ align = {
 
 
 def assign_group_by_size(parameters, group_size=256 * 1024 * 1024):
+    # TODO(Yuang Liu): make pp_utils/utils use this tensor fusion helper
     is_sparse_gradient = [False] * len(parameters)
 
     group_indices = core.eager_assign_group_by_size(
@@ -107,74 +109,61 @@ def obtain_storage(parameters, use_main_grad, clip, dist):
     return storage
 
 
-def fused_parameters(parameters, use_main_grad):
-    # filter for mp's distributed params
-    dist = list(filter(lambda x: x.is_distributed, parameters))
-    no_dist = list(filter(lambda x: not x.is_distributed, parameters))
-
-    # filter for different dtype
-    fp32_dist = list(filter(lambda x: x.dtype == paddle.float32, dist))
-    fp32_no_dist = list(filter(lambda x: x.dtype == paddle.float32, no_dist))
-    no_fp32_dist = list(filter(lambda x: x.dtype != paddle.float32, dist))
-    no_fp32_no_dist = list(filter(lambda x: x.dtype != paddle.float32, no_dist))
-
-    # no fp32 param's dtype should be the same
-    all_no_fp32_param = no_fp32_dist + no_fp32_no_dist
-    no_fp32_dtype = None
-    for p in all_no_fp32_param:
-        if no_fp32_dtype is None:
-            no_fp32_dtype = p.dtype
+def filter_params(params, is_fp32, is_distributed, need_clip):
+    params = list(
+        filter(
+            lambda x: x.is_distributed
+            if is_distributed
+            else (not x.is_distributed),
+            params,
+        )
+    )
+    params = list(
+        filter(
+            lambda x: getattr(x, 'need_clip', True)
+            if need_clip
+            else (not getattr(x, 'need_clip', True)),
+            params,
+        )
+    )
+    params = list(
+        filter(
+            lambda x: x.dtype == paddle.float32
+            if is_fp32
+            else x.dtype != paddle.float32,
+            params,
+        )
+    )
+    dtype = None
+    for p in params:
+        if dtype is None:
+            dtype = p.dtype
         else:
-            assert (
-                p.dtype == no_fp32_dtype
-            ), "Tensor fusion only support two different param dtypes."
+            assert dtype == p.dtype
 
-    # filter for need clip
-    fp32_dist_clip = list(
-        filter(lambda x: getattr(x, 'need_clip', True), fp32_dist)
-    )
-    fp32_no_dist_clip = list(
-        filter(lambda x: getattr(x, 'need_clip', True), fp32_no_dist)
-    )
-    no_fp32_dist_clip = list(
-        filter(lambda x: getattr(x, 'need_clip', True), no_fp32_dist)
-    )
-    no_fp32_no_dist_clip = list(
-        filter(lambda x: getattr(x, 'need_clip', True), no_fp32_no_dist)
-    )
-    fp32_dist_no_clip = list(
-        filter(lambda x: not getattr(x, 'need_clip', True), fp32_dist)
-    )
-    fp32_no_dist_no_clip = list(
-        filter(lambda x: not getattr(x, 'need_clip', True), fp32_no_dist)
-    )
-    no_fp32_dist_no_clip = list(
-        filter(lambda x: not getattr(x, 'need_clip', True), no_fp32_dist)
-    )
-    no_fp32_no_dist_no_clip = list(
-        filter(lambda x: not getattr(x, 'need_clip', True), no_fp32_no_dist)
-    )
+    return params, dtype
 
-    param_groups = [
-        fp32_dist_clip,
-        fp32_no_dist_clip,
-        no_fp32_dist_clip,
-        no_fp32_no_dist_clip,
-        fp32_dist_no_clip,
-        fp32_no_dist_no_clip,
-        no_fp32_dist_no_clip,
-        no_fp32_no_dist_no_clip,
-    ]
-    attrs = [
-        [paddle.float32, True, True],
-        [paddle.float32, False, True],
-        [no_fp32_dtype, True, True],
-        [no_fp32_dtype, False, True],
-        [paddle.float32, True, False],
-        [paddle.float32, False, False],
-        [no_fp32_dtype, True, False],
-        [no_fp32_dtype, False, False],
-    ]
+
+def fused_parameters(parameters, use_main_grad):
+    param_groups = []
+    attrs = []
+
+    is_fp32 = [True, False]
+    is_distributed = [True, False]
+    need_clip = [True, False]
+
+    no_fp32_dtype = None
+    for fp32, dist, clip in itertools.product(
+        is_fp32, is_distributed, need_clip
+    ):
+        params, dtype = filter_params(parameters, fp32, dist, clip)
+        if not fp32:
+            if no_fp32_dtype is None:
+                no_fp32_dtype = dtype
+            else:
+                assert no_fp32_dtype == dtype
+        attrs.append([dtype, dist, clip])
+        param_groups.append(params)
 
     decay_fused = []
     all_fused = []
@@ -188,8 +177,14 @@ def fused_parameters(parameters, use_main_grad):
             else:
                 other_params.append(param)
 
-        decay = obtain_storage(decay_params, use_main_grad, attr[2], attr[1])
-        other = obtain_storage(other_params, use_main_grad, attr[2], attr[1])
+        is_distributed = attr[1]
+        need_clip = attr[2]
+        decay = obtain_storage(
+            decay_params, use_main_grad, need_clip, is_distributed
+        )
+        other = obtain_storage(
+            other_params, use_main_grad, need_clip, is_distributed
+        )
         decay_fused += decay
         all_fused += decay
         all_fused += other
