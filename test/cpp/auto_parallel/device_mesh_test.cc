@@ -20,6 +20,7 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
+namespace tests {
 
 TEST(DeviceMesh, Ctor) {
   std::vector<int64_t> shape = {2, 3};
@@ -88,6 +89,7 @@ TEST(DeviceMesh, Ctor) {
   EXPECT_EQ(device_mesh, new_device_mesh);
 }
 
+}  // namespace tests
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

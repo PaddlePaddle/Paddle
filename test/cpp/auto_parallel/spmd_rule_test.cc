@@ -24,6 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
+namespace tests {
 
 TEST(MatmulSPMDRule, Ctor) {
   // build input data class
@@ -296,6 +297,7 @@ TEST(LayerNormSPMDRule, Ctor) {
   VLOG(4) << "test2 done.";
 }
 
+}  // namespace tests
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle
