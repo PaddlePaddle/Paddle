@@ -39,12 +39,9 @@ CINNSchedule GetElementwiseScheduleFunc(
     if (!arg_pack[0].is_tensor()) {
       std::vector<Expr> vec_ast;
       for (int i = 0; i < arg_pack.size(); i++) {
-        VLOG(1) << "is_tensor: " << arg_pack[i].is_tensor();
-        if (i == 0 || arg_pack[i].is_expr()) {
+        if (arg_pack[i].is_expr()) {
           Expr temp = arg_pack[i];
           vec_ast.emplace_back(temp);
-        } else {
-          VLOG(1) << "arg_pack is not expr";
         }
       }
       CHECK(!vec_ast.empty());
