@@ -160,7 +160,7 @@ def fused_parameters(parameters, use_main_grad):
         if not fp32:
             if no_fp32_dtype is None:
                 no_fp32_dtype = dtype
-            else:
+            elif dtype is not None:
                 assert no_fp32_dtype == dtype
         attrs.append([dtype, dist, clip])
         param_groups.append(params)
