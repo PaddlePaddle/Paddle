@@ -549,9 +549,11 @@ void FusedScaleBiasReluConvBnstatsKernel(
                         "FLAGS_cudnn_deterministic True at same time."));
   // check optional inputs
   if (fuse_prologue) {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         scale && bias,
-        "\"scale\" and \"bias\" must be provided when fuse_prologue = true.");
+        true,
+        phi::errors::InvalidArgument("\"scale\" and \"bias\" must be provided "
+                                     "when fuse_prologue = true."));
   }
 
   // alloc output variables
