@@ -43,6 +43,7 @@ __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
 template <>
 __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
     half halves[4], int8_t signed_chars[4]) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   uint32_t* h = reinterpret_cast<uint32_t*>(halves);
   uint32_t i8s = *reinterpret_cast<uint32_t*>(signed_chars);
 
@@ -63,6 +64,7 @@ __device__ inline void fast_cvt_4_packed_signed_i8s_to_2_half2s(
   asm volatile("sub.f16x2 %0, %1, %2;\n"
                : "=r"(h[1])
                : "r"(h[1]), "r"(I8s_TO_F16s_MAGIC_NUM));
+#endif
 }
 
 // Specialization for fast cast from BF16 -> int8

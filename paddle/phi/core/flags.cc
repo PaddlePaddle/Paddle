@@ -1216,9 +1216,12 @@ PHI_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
 
 /**
- * Use cublaslt in attn_gemm
+ * Use cublaslt in llm_int8_matmul
  */
-PHI_DEFINE_EXPORTED_double(custom_llm_int8_threshold, 6.0, "");
+PHI_DEFINE_EXPORTED_double(custom_llm_int8_threshold,
+                           6.0,
+                           "the threshold of compute with dequant dtype in "
+                           "llm.int8 matmul, default 6.0");
 
 /**
  * CI related FLAG

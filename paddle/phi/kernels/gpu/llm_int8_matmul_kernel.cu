@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
 #include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"
+PHI_DECLARE_double(custom_llm_int8_threshold);
 #endif
 
-DECLARE_double(custom_llm_int8_threshold);
 namespace phi {
 
 template <typename T, typename Context>
@@ -32,7 +32,7 @@ void llm_int8_compute(const Context& dev_ctx,
                       const paddle::optional<DenseTensor>& bias,
                       const DenseTensor& weight_scale,
                       DenseTensor* out) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
   DenseTensor cublaslt_workspace;
   cublaslt_workspace.Resize({{3000000}});
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace);
@@ -60,7 +60,8 @@ void llm_int8_compute(const Context& dev_ctx,
         dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
   }
 #else
-  LOG(ERROR) << "Please compile with cublaslt, ROCM platform isn't support it";
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "llm_int8_matmul op needs paddle with cuda and cuda version >= 11.2"));
 #endif
 }
 
