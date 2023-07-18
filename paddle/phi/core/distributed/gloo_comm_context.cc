@@ -41,7 +41,8 @@ GlooCommContext::GlooCommContext(
 
 void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
-                                int root) {
+                                int root,
+                                uint32_t tag) {
   // gloo only uses CPU now
   CommStaticCheck::SameShape(*out_tensor,
                              in_tensor,
@@ -56,6 +57,7 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
     GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   }
   opts.setRoot(root);
+  opts.setTag(tag);
   gloo::broadcast(opts);
 }
 
