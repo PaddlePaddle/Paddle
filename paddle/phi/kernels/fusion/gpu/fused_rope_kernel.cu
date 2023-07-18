@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <stdio.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -45,9 +44,12 @@ __global__ void VectorizedFusedRopeWithSinCosKernel(
   for (; index < size; index += stride) {
 #pragma unroll
     for (int nx = 0; nx < VecSize; ++nx) {
-      int index_wc = (index + nx) % (seq_len * head_dim);
-      const T* sin_input = sin_cos_data[0] + index_wc;
-      const T* cos_input = sin_cos_data[1] + index_wc;
+      int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+      int pos_seq = index_wc / (num_heads * head_dim);
+      int pos_head = index_wc % head_dim;
+      int index_sc = pos_seq * head_dim + pos_head;
+      const T* sin_input = sin_cos_data[0] + index_sc;
+      const T* cos_input = sin_cos_data[1] + index_sc;
 
       sin_value[nx] = static_cast<MPType>(sin_input[0]);
       cos_value[nx] = static_cast<MPType>(cos_input[0]);
