@@ -38,7 +38,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace ir {

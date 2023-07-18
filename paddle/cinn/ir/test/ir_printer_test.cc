@@ -12,18 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/ir_verify.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 
 #include <gtest/gtest.h>
 
-#include "paddle/cinn/ir/ir_operators.h"
+#include <sstream>
 
-namespace cinn::ir {
-
-TEST(IrVerify, basic) {
-  Expr a(1);
-  Expr b(1);
-  IrVerify(a + b);
-}
-
-}  // namespace cinn::ir
+namespace cinn {
+namespace ir {}  // namespace ir
+}  // namespace cinn

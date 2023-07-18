@@ -30,7 +30,7 @@
 #include "paddle/cinn/auto_schedule/search_space/rule_sampler.h"
 #include "paddle/cinn/auto_schedule/task/tune_task.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/runtime/flags.h"
 

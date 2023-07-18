@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/optim/cast_simplify.h"
 
-#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 
 namespace cinn::optim {
 

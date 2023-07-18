@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/ir_compare.h"
+#include "paddle/cinn/ir/utils/ir_compare.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
