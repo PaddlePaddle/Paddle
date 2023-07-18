@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/tensor.h"
+#include <gtest/gtest.h>
 
 namespace cinn {
-namespace ir {}  // namespace ir
+namespace ir {
+
+TEST(ir_operators, test) {
+  Expr a(1);
+  Expr b = a + 1;
+}
+
+}  // namespace ir
 }  // namespace cinn

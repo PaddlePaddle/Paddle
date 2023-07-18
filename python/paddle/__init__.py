@@ -203,14 +203,21 @@ from .tensor.manipulation import index_put  # noqa: F401
 from .tensor.manipulation import index_put_  # noqa: F401
 from .tensor.manipulation import unflatten  # noqa: F401
 from .tensor.math import abs  # noqa: F401
+from .tensor.math import abs_  # noqa: F401
 from .tensor.math import acos  # noqa: F401
+from .tensor.math import acos_  # noqa: F401
 from .tensor.math import asin  # noqa: F401
+from .tensor.math import asin_  # noqa: F401
 from .tensor.math import atan  # noqa: F401
+from .tensor.math import atan_  # noqa: F401
 from .tensor.math import atan2  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
+from .tensor.math import cos_  # noqa: F401
 from .tensor.math import tan  # noqa: F401
+from .tensor.math import tan_  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
+from .tensor.math import cosh_  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import cummax  # noqa: F401
 from .tensor.math import cummin  # noqa: F401
@@ -219,6 +226,7 @@ from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
+from .tensor.math import expm1_  # noqa: F401
 from .tensor.math import floor  # noqa: F401
 from .tensor.math import increment  # noqa: F401
 from .tensor.math import log  # noqa: F401
@@ -235,9 +243,12 @@ from .tensor.math import rsqrt  # noqa: F401
 from .tensor.math import scale  # noqa: F401
 from .tensor.math import sign  # noqa: F401
 from .tensor.math import sin  # noqa: F401
+from .tensor.math import sin_  # noqa: F401
 from .tensor.math import sinh  # noqa: F401
+from .tensor.math import sinh_  # noqa: F401
 from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
+from .tensor.math import square_  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nan_to_num  # noqa: F401
@@ -269,7 +280,9 @@ from .tensor.math import logaddexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
 from .tensor.math import erf  # noqa: F401
+from .tensor.math import erf_  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
+from .tensor.math import addmm_  # noqa: F401
 from .tensor.math import clip  # noqa: F401
 from .tensor.math import trace  # noqa: F401
 from .tensor.math import diagonal  # noqa: F401
@@ -285,8 +298,11 @@ from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
 from .tensor.math import acosh  # noqa: F401
+from .tensor.math import acosh_  # noqa: F401
 from .tensor.math import asinh  # noqa: F401
+from .tensor.math import asinh_  # noqa: F401
 from .tensor.math import atanh  # noqa: F401
+from .tensor.math import atanh_  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
 from .tensor.math import erfinv  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
@@ -431,6 +447,7 @@ __all__ = [  # noqa
     'complex64',
     'complex128',
     'addmm',
+    'addmm_',
     'allclose',
     'isclose',
     't',
@@ -468,7 +485,9 @@ __all__ = [  # noqa
     'where',
     'log1p',
     'cos',
+    'cos_',
     'tan',
+    'tan_',
     'mean',
     'mode',
     'mv',
@@ -543,6 +562,7 @@ __all__ = [  # noqa
     'less_equal',
     'triu',
     'sin',
+    'sin_',
     'dist',
     'cdist',
     'unbind',
@@ -560,6 +580,7 @@ __all__ = [  # noqa
     'is_grad_enabled',
     'mod',
     'abs',
+    'abs_',
     'tril',
     'pow',
     'pow_',
@@ -571,12 +592,15 @@ __all__ = [  # noqa
     'matmul',
     'seed',
     'acos',
+    'acos_',
     'logical_xor',
     'exp',
     'expm1',
+    'expm1_',
     'bernoulli',
     'poisson',
     'sinh',
+    'sinh_',
     'round',
     'DataParallel',
     'argmin',
@@ -590,9 +614,11 @@ __all__ = [  # noqa
     'inner',
     'outer',
     'square',
+    'square_',
     'divide',
     'ceil',
     'atan',
+    'atan_',
     'atan2',
     'rad2deg',
     'deg2rad',
@@ -618,6 +644,7 @@ __all__ = [  # noqa
     'dot',
     'increment',
     'erf',
+    'erf_',
     'bmm',
     'chunk',
     'tolist',
