@@ -2382,7 +2382,6 @@ int InsertTable(int gpu_id,
         table->clear(stream);
         cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
       }
-      return 1;
     }
   } else {
     // used only for sage_mode.
@@ -2398,7 +2397,6 @@ int InsertTable(int gpu_id,
       *copy_unique_len_ptr += copy_len;
       table->clear(stream);
       cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), stream);
-      return 1;
     }
   }
 
