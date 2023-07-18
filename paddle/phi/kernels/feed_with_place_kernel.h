@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -23,5 +22,10 @@ void FeedWithPlaceKernel(const Context& ctx,
                          int64_t index,
                          phi::DataType data_type,
                          DenseTensor* out);
+
+template <typename T, typename Context>
+void ShaddowFeedKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       DenseTensor* out);
 
 }  // namespace phi

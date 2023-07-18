@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fetch_kernel.h"
+#include "paddle/phi/kernels/feed_with_place_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
 
 namespace phi {
 
@@ -28,3 +29,12 @@ void FeedWithPlaceKernel(const Context& ctx,
 }  // namespace phi
 PD_REGISTER_KERNEL(
     feed_with_place, CPU, ALL_LAYOUT, phi::FeedWithPlaceKernel, float) {}
+
+PD_REGISTER_KERNEL(shaddow_feed,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ShaddowFeedKernel,
+                   float,
+                   int32_t,
+                   int64_t,
+                   double) {}

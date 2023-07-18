@@ -11,16 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#pragma once
 
-#include "paddle/ir/core/program.h"
-#include "paddle/phi/common/place.h"
+#include "paddle/phi/kernels/feed_with_place_kernel.h"
 
-namespace paddle {
-namespace dialect {
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
 
-std::unique_ptr<ir::Program> PdOpLowerToKernelPass(
-    ir::Program* prog, phi::Place place = phi::CPUPlace());
-
-}  // namespace dialect
-}  // namespace paddle
+PD_REGISTER_KERNEL(shaddow_feed,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ShaddowFeedKernel,
+                   float,
+                   int32_t,
+                   int64_t,
+                   double) {}

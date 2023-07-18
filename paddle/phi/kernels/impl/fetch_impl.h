@@ -11,16 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
-#include "paddle/ir/core/program.h"
-#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 
-namespace paddle {
-namespace dialect {
+namespace phi {
 
-std::unique_ptr<ir::Program> PdOpLowerToKernelPass(
-    ir::Program* prog, phi::Place place = phi::CPUPlace());
+template <typename T, typename Context>
+void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  phi::Copy(ctx, x, phi::CPUPlace(), true, out);
+}
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace phi
