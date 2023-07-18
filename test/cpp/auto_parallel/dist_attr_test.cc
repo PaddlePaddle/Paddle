@@ -26,7 +26,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
-namespace tests {
 
 using paddle::framework::BlockDesc;
 using paddle::framework::OpDesc;
@@ -171,7 +170,6 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(mul_dist_attr, new_mul_dist_attr);
 }
 
-}  // namespace tests
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi
