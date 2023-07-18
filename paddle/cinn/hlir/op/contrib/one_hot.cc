@@ -34,7 +34,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
@@ -194,12 +194,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     ir::Tensor on_value = on_value_expr.as_tensor_ref();
     ir::Tensor off_value = off_value_expr.as_tensor_ref();
 
-    std::string tensor_name = common::UniqName("T_OneHot_out");
-
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 4U);
-      tensor_name = pack_args[3].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 4U);
+    std::string tensor_name = pack_args[3].operator std::string();
 
     ir::Tensor out = OneHot(indices,
                             on_value,

@@ -21,8 +21,8 @@
 #include <set>
 #include <unordered_set>
 
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_verify.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_nested_block.h"
 
