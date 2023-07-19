@@ -38,7 +38,7 @@ class DialectInterface;
 /// compilers only need to combine existing dialects and add their own
 /// extensions or customizations.
 ///
-class Dialect {
+class IR_API Dialect {
  public:
   Dialect(std::string name, IrContext *context, TypeId id);
 
@@ -100,7 +100,7 @@ class Dialect {
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
                                  ConcreteOp::attributes_name,
-                                 ConcreteOp::Verify);
+                                 ConcreteOp::VerifyInvariants);
   }
 
   void RegisterOp(const std::string &name, OpInfoImpl *op_info);
@@ -145,7 +145,7 @@ class Dialect {
     IR_THROW("dialect has no registered attribute printing hook");
   }
 
-  virtual void PrintOperation(Operation *op,
+  virtual void PrintOperation(const Operation *op,
                               IrPrinter &printer) const;  // NOLINT
 
  private:

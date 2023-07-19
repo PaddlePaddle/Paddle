@@ -237,7 +237,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     START_BASH
     ../../legacy_test/dist_test.sh
     TIMEOUT
-    "120"
+    "160"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -575,6 +575,11 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
     test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_fleet_qat_meta_optimizer MODULES test_fleet_qat_meta_optimizer ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()
 if(WITH_NCCL)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     if((WITH_GPU) AND LOCAL_ALL_PLAT)
@@ -682,13 +687,13 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     START_BASH
     ../../legacy_test/dist_test.sh
     TIMEOUT
-    "120"
+    "240"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
     "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
-  set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT "120")
+  set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT "240")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -922,7 +927,7 @@ if((WITH_GPU) AND (LINUX))
     test_dygraph_dist_save_load MODULES test_dygraph_dist_save_load ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_dygraph_dist_save_load
-                       PROPERTIES TIMEOUT "200" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(

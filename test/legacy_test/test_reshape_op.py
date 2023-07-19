@@ -86,6 +86,10 @@ class TestReshapeOp_ZeroDim3(OpTest):
         self.infered_shape = ()
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestReshapeBF16Op(OpTest):
     def setUp(self):
         self.init_data()

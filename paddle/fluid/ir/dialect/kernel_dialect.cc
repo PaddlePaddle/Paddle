@@ -22,10 +22,14 @@
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/kernel_type_storage.h"
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/ir/core/dialect_interface.h"
 #include "paddle/phi/core/dense_tensor.h"
+
+REGISTER_FILE_SYMBOLS(kernel_dialect);
 
 namespace paddle {
 namespace dialect {
@@ -37,6 +41,7 @@ PaddleKernelDialect::PaddleKernelDialect(ir::IrContext *context)
 
 void PaddleKernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
+  RegisterTypes<paddle::dialect::AllocatedSelectedRowsType>();
   RegisterOps<dialect::PhiKernelOp>();
 
   RegisterAttributes<paddle::dialect::KernelAttribute>();
@@ -66,3 +71,5 @@ void PaddleKernelDialect::PrintAttribute(ir::Attribute attr,
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleKernelDialect)

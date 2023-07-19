@@ -120,12 +120,14 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_RANK": f"{i}",
                 "PADDLE_NNODES": f"{len(ips)}",
                 # compatible env
-                "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": job_endpoints[i + rank_offset],
                 "PADDLE_TRAINER_ID": f"{i + rank_offset}",
                 "PADDLE_TRAINERS_NUM": f"{len(job_endpoints)}",
                 "PADDLE_RANK_IN_NODE": str(i),
             }
+            if len(",".join(job_endpoints)) < 120 * 1024:
+                e.update({"PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints)})
+
             if self._tuner_run_mode is not None:
                 e.update(
                     {
@@ -213,12 +215,14 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_RANK": f"{i}",
                 "PADDLE_NNODES": f"{self.job.replicas}",
                 # compatible env
-                "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
                 "PADDLE_TRAINER_ID": f"{i + rank_offset}",
                 "PADDLE_TRAINERS_NUM": f"{global_size}",
                 "PADDLE_RANK_IN_NODE": str(i),
             }
+            if len(",".join(job_endpoints)) < 120 * 1024:
+                e.update({"PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints)})
+
             if self._tuner_run_mode is not None:
                 e.update(
                     {
@@ -278,6 +282,13 @@ class CollectiveElasticController(CollectiveController):
                 self.job.replicas = replicas
             else:
                 self.ctx.logger.warning(f"peer not ready {self.job}")
+                if self.ctx.is_auto_tuner_mode():
+                    self.ctx.logger.info(
+                        "Failed to start peer, auto tuner exit."
+                    )
+                    import sys
+
+                    sys.exit(-1)
                 break
 
             self.ctx.logger.debug(f"Run {self.job}")

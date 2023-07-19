@@ -90,9 +90,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
-    bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
-                               argument->min_input_shape().size() > 0 &&
-                               argument->optim_input_shape().size() > 0) ||
+    bool with_dynamic_shape = (!argument->max_input_shape().empty() &&
+                               !argument->min_input_shape().empty() &&
+                               !argument->optim_input_shape().empty()) ||
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
@@ -272,6 +272,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("xpu_l3_ptr", new void *(argument->xpu_l3_ptr()));
       pass->Set("xpu_l3_autotune_size",
                 new size_t(argument->xpu_l3_autotune_size()));
+      pass->Set("xpu_context_gm_size",
+                new int(argument->xpu_context_gm_size()));
+      pass->Set("xpu_context", new void *(argument->xpu_context()));
       pass->Set("xpu_stream", new void *(argument->xpu_stream()));
       pass->Set("xpu_conv_autotune_level",
                 new int(argument->xpu_conv_autotune_level()));

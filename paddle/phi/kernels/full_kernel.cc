@@ -27,7 +27,7 @@ void FullBatchSizeLikeKernel(const Context& dev_ctx,
                              int x_batch_size_dim,
                              int out_batch_size_dim,
                              DenseTensor* out) {
-  if (x.lod().size() && x_batch_size_dim == 0) {
+  if (!x.lod().empty() && x_batch_size_dim == 0) {
     // set the correct batch size for the LoDTensor.
     auto odims = out->dims();
     odims[out_batch_size_dim] = static_cast<int>(x.lod().back().size()) - 1;

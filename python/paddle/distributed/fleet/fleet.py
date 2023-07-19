@@ -272,20 +272,7 @@ class Fleet:
 
         self.strategy_compiler = StrategyCompiler()
 
-        if self._role_maker._is_non_distributed() and self._is_collective:
-            if paddle.framework.core.is_compiled_with_cuda():
-                gpus_num = paddle.framework.core.get_cuda_device_count()
-                if gpus_num != 1:
-                    raise ValueError(
-                        "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
-                    )
-
         if in_dynamic_mode():
-            if self.worker_num() == 1:
-                # if worker_num is 1, should construct default topology & hcg
-                self._topology = tp.CommunicateTopology()
-                self._hcg = tp.HybridCommunicateGroup(self._topology)
-                return
             if parallel_helper._is_parallel_ctx_initialized():
                 logger.warning(
                     "The dygraph parallel environment has been initialized."
@@ -1182,6 +1169,38 @@ class Fleet:
         """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
+
+    def _get_qat_optimizer(self):
+        # imitate target optimizer retrieval
+        qat_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'qat_init'):
+                qat_optimizer = optimizer
+                break
+
+        if qat_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'qat_init'):
+                qat_optimizer = self.user_defined_optimizer
+
+        assert (
+            qat_optimizer is not None
+        ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        return qat_optimizer
+
+    def qat_init(self, place, scope=None, test_program=None):
+        """
+        Init the qat training, such as insert qdq ops and scale variables.
+
+        Args:
+            place(CUDAPlace): place is used to initialize
+                scale parameters.
+            scope(Scope): The scope is used to find parameters and variables.
+            test_program(Program): The program is used for testing.
+        """
+        qat_optimizer = self._get_qat_optimizer()
+        return qat_optimizer.qat_init(
+            place, scope=scope, test_program=test_program
+        )
 
     def _final_strategy(self):
         if "valid_strategy" not in self._context:

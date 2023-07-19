@@ -15,38 +15,34 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/ir/dialect/kernel_dialect.h"
+#include "paddle/fluid/ir/dialect/kernel_op.h"
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/utils.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/phi/infermeta/binary.h"
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
-
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/framework/variable_helper.h"
-
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-
-#include "paddle/fluid/platform/init.h"
-
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "test/cpp/ir/core/phi_kernel_adaptor.h"
-
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/ir/dialect/kernel_dialect.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -90,6 +86,24 @@ TEST(program_test, program) {
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);
   EXPECT_EQ(res3, true);
+
+  EXPECT_EQ(kernel_program->block()->size(), 3u);
+  EXPECT_EQ(kernel_program->block()
+                ->front()
+                ->dyn_cast<paddle::dialect::PhiKernelOp>()
+                .op_name(),
+            "pd.full");
+  EXPECT_EQ(kernel_program->block()
+                ->front()
+                ->dyn_cast<paddle::dialect::PhiKernelOp>()
+                .kernel_name(),
+            "full");
+  EXPECT_EQ(kernel_program->block()
+                ->front()
+                ->dyn_cast<paddle::dialect::PhiKernelOp>()
+                .kernel_key()
+                .dtype(),
+            phi::DataType::FLOAT32);
 }
 
 TEST(dialect_attr, attr) {

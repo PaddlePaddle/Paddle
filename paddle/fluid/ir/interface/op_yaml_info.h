@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/ir/core/op_base.h"
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
@@ -50,3 +50,5 @@ class OpYamlInfoInterface : public ir::OpInterfaceBase<OpYamlInfoInterface> {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)

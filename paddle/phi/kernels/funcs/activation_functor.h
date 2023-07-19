@@ -116,7 +116,10 @@ template <typename T>
 struct SinFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Sine<T>());
+    // Note(GGBond8488): Since Eigen3.3, Behavior like {A = (B * A).cwiseAbs()}
+    // will give wrong result, details see
+    // http://eigen.tuxfamily.org/dox/group__TopicAliasing.html
+    out.device(d) = x.unaryExpr(Sine<T>()).eval();
   }
 };
 
@@ -448,7 +451,7 @@ template <typename T>
 struct CosFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Cosine<T>());
+    out.device(d) = x.unaryExpr(Cosine<T>()).eval();
   }
 };
 
@@ -762,7 +765,10 @@ template <typename T>
 struct TanFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Tangent<T>());
+    // Note(GGBond8488): Since Eigen3.3, Behavior like {A = (B * A).cwiseAbs()}
+    // will give wrong result, details see
+    // http://eigen.tuxfamily.org/dox/group__TopicAliasing.html
+    out.device(d) = x.unaryExpr(Tangent<T>()).eval();
   }
 };
 
@@ -795,7 +801,7 @@ template <typename T>
 struct SinhFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Sinh<T>());
+    out.device(d) = x.unaryExpr(Sinh<T>()).eval();
   }
 };
 
@@ -804,7 +810,7 @@ template <typename T>
 struct CoshFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Cosh<T>());
+    out.device(d) = x.unaryExpr(Cosh<T>()).eval();
   }
 };
 
@@ -855,7 +861,7 @@ template <typename T>
 struct AcosFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Acos<T>());
+    out.device(d) = x.unaryExpr(Acos<T>()).eval();
   }
 };
 
@@ -892,7 +898,7 @@ template <typename T>
 struct AsinFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Asin<T>());
+    out.device(d) = x.unaryExpr(Asin<T>()).eval();
   }
 };
 
@@ -929,7 +935,7 @@ template <typename T>
 struct AtanFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Atan<T>());
+    out.device(d) = x.unaryExpr(Atan<T>()).eval();
   }
 };
 
@@ -977,7 +983,7 @@ template <typename T>
 struct AcoshFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Acosh<T>());
+    out.device(d) = x.unaryExpr(Acosh<T>()).eval();
   }
 };
 
@@ -1014,7 +1020,7 @@ template <typename T>
 struct AsinhFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Asinh<T>());
+    out.device(d) = x.unaryExpr(Asinh<T>()).eval();
   }
 };
 
@@ -1051,7 +1057,7 @@ template <typename T>
 struct AtanhFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Atanh<T>());
+    out.device(d) = x.unaryExpr(Atanh<T>()).eval();
   }
 };
 
@@ -1074,9 +1080,11 @@ struct AtanhGradFunctor : public BaseActivationFunctor<T> {
 // exp(x) = e^x
 template <typename T>
 struct ExpFunctor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.exp();
+    out.device(d) = x.template cast<U>().exp();
   }
 };
 
@@ -1099,9 +1107,11 @@ struct ExpGradFunctor : public BaseActivationFunctor<T> {
 // expm1(x) = e^x - 1
 template <typename T>
 struct Expm1Functor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.expm1();
+    out.device(d) = x.template cast<U>().expm1();
   }
 };
 
@@ -2668,8 +2678,10 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaExpFunctor : public BaseActivationFunctor<T> {
   // exp(x) = expf(x)
-  __device__ __forceinline__ T operator()(const T x) const {
-    return static_cast<T>(expf(static_cast<float>(x)));
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
+  __device__ __forceinline__ U operator()(const T x) const {
+    return static_cast<U>(expf(static_cast<float>(x)));
   }
 };
 
@@ -2781,12 +2793,19 @@ struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaExpm1Functor : public BaseActivationFunctor<T> {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
+  // expm1(x) = expm1f(x)
+  __device__ __forceinline__ U operator()(const T x) const {
+    return static_cast<U>(::expm1f(static_cast<float>(x)));
+  }
+};
+
+template <>
+struct CudaExpm1Functor<double> : public BaseActivationFunctor<double> {
   // expm1(x) = expm1(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(expm1(x));
+  __device__ __forceinline__ double operator()(const double x) const {
+    return ::expm1(x);
   }
 };
 
@@ -3910,7 +3929,7 @@ template <typename T>
 struct CudaSwishFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
-  float beta;
+  float beta = 1.0;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}};

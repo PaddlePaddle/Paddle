@@ -403,10 +403,9 @@ struct XPUMishFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T, typename Context>
-void SwishRawKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    float beta,
-                    DenseTensor* out) {
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   int r = xpu::swish(dev_ctx.x_context(),
@@ -414,6 +413,16 @@ void SwishRawKernel(const Context& dev_ctx,
                      reinterpret_cast<XPUType*>(out->data<T>()),
                      x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+}
+
+template <typename T, typename Context>
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  XPURelu6Functor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = 6.0;
+  ActivationXPUImpl<T, Context, XPURelu6Functor<T>>(dev_ctx, x, out, functor);
 }
 
 template <typename T>
@@ -505,10 +514,6 @@ DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
                                             XPULeakyReluFunctor,
                                             alpha)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6Raw,
-                                            XPURelu6Functor,
-                                            threshold)
-
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
                                             XPUSoftplusFunctor,
                                             beta,
@@ -542,12 +547,8 @@ PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(swish_raw,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SwishRawKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    swish, XPU, ALL_LAYOUT, phi::SwishKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(hard_sigmoid,
                    XPU,
                    ALL_LAYOUT,
@@ -572,12 +573,8 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(relu6_raw,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::Relu6RawKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::dtype::float16) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}

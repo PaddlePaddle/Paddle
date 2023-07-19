@@ -243,6 +243,8 @@ paddle_infer::PlaceType ToPaddleInferPlace(
     return paddle_infer::PlaceType::kCPU;
   } else if (allocation_type == phi::AllocationType::GPU) {
     return paddle_infer::PlaceType::kGPU;
+  } else if (allocation_type == phi::AllocationType::XPU) {
+    return paddle_infer::PlaceType::kXPU;
   } else {
     return paddle_infer::PlaceType::kCPU;
   }
@@ -1009,6 +1011,8 @@ void BindXpuConfig(py::module *m) {
       .def_readwrite("l3_ptr", &XpuConfig::l3_ptr)
       .def_readwrite("l3_size", &XpuConfig::l3_size)
       .def_readwrite("l3_autotune_size", &XpuConfig::l3_autotune_size)
+      .def_readwrite("context_gm_size", &XpuConfig::context_gm_size)
+      .def_readwrite("context", &XpuConfig::context)
       .def_readwrite("stream", &XpuConfig::stream)
       .def_readwrite("conv_autotune_level", &XpuConfig::conv_autotune_level)
       .def_readwrite("conv_autotune_file", &XpuConfig::conv_autotune_file)

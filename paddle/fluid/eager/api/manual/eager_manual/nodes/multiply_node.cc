@@ -20,6 +20,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/utils.h"
@@ -58,8 +59,8 @@ MultiplyGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(2);
   for (int i = 0; i < 2; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =
@@ -268,8 +269,8 @@ MultiplyDoubleGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(3);
   for (int i = 0; i < 3; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =
@@ -484,8 +485,8 @@ MultiplyGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(2);
   for (int i = 0; i < 2; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =

@@ -34,7 +34,7 @@ namespace detail {
 class PassAdaptor;
 }
 
-class PassManager {
+class IR_API PassManager {
  public:
   explicit PassManager(IrContext *context, uint8_t opt_level = 2);
 
@@ -110,7 +110,8 @@ class PassManager {
     // TODO(liuyuanle): Add flags to control printing behavior.
   };
 
-  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> config);
+  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> option =
+                            std::make_unique<IRPrinterOption>());
 
   void EnablePassTiming(bool print_module = true);
 
