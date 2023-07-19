@@ -1179,6 +1179,7 @@ OpTranslator::OpTranslator() {
   special_handlers["rnn"] = RnnOpTranscriber();
   special_handlers["shaddow_output"] = ShaddowOutputOpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["sum"] = AddNOpTranscriber();
 }
 
 }  // namespace translator
