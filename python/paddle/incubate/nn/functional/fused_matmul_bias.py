@@ -126,7 +126,7 @@ def fused_linear_activation(
             x = paddle.randn([3, 4])
             weight = paddle.randn([4, 5])
             bias = paddle.randn([5])
-            out = fused_linear_activation(x, weight, bias, "none")
+            out = fused_linear_activation(x, weight, bias)
             print(out.shape) # [3, 5]
     """
     if activation is None:
