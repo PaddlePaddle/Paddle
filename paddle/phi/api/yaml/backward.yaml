@@ -1740,6 +1740,17 @@
     func : reciprocal_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : relu6_grad
+  forward : relu6 (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : relu6_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : relu_double_grad
   forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor out, Tensor grad_x_grad)

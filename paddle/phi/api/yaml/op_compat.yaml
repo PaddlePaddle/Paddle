@@ -2251,7 +2251,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, float threshold = 6.0]
 
 - op : remainder (elementwise_mod)
   inputs :
