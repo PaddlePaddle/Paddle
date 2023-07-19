@@ -41,7 +41,7 @@ enum class ReduceType : std::uint8_t {
   ANY,
   ALL
 };
-static const char* ReduceTypeStrings[] = {
+constexpr const char* ReduceTypeStrings[] = {
     "SUM", "AVG", "MAX", "MIN", "PRODUCT", "ANY", "ALL"};
 
 struct _Partial_ {
@@ -71,9 +71,12 @@ class TensorDistAttr {
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
-  std::set<_Partial_>& partial_status() const { return partial_status_; }
+  const std::set<_Partial_>& partial_status() const { return partial_status_; }
 
   void set_partial_status(const std::set<_Partial_>& partial_status);
+
+  void set_partial_status(const std::vector<int64_t>& dims,
+                          const ReduceType& type = ReduceType::SUM);
 
   void set_default_dims_mapping(const std::vector<int64_t>& tensor_shape);
 
@@ -118,6 +121,7 @@ class TensorDistAttr {
 
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
+  std::string partial_status_string() const;
 
   // in partial-support-stage-I partial will always be a runtime attribute,
   // there is not need to serialize it. support the partial serialization in

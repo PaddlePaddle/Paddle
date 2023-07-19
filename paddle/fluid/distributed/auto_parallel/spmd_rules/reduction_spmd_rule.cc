@@ -88,13 +88,15 @@ ReductionSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
       CopyTensorDistAttrForOutput(input_specs[0].dist_attr());
   output_dist_attr.set_dims_mapping(output_dims_mapping);
 
-  std::vector<TensorDistAttr> output_dist_attrs;
-  output_dist_attrs.emplace_back(output_dist_attr);
-
   // step2.4: handle partial
   // Step2.4.1 Output Partial
   std::vector<int64_t> partial_on_dims =
       ResoluteOutputPartialDimension(axis_to_dim_map, output_axes);
+  output_dist_attr.set_partial_status(
+      partial_on_dims /*, handle reduce_type in future  */);
+
+  std::vector<TensorDistAttr> output_dist_attrs;
+  output_dist_attrs.emplace_back(output_dist_attr);
 
   // Step2.4.2  handle input tensor partial (TODO)
   // If the op is a linear op, i.e. `linearity` is true, it supports

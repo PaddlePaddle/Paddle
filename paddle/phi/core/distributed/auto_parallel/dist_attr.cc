@@ -85,6 +85,13 @@ void TensorDistAttr::set_partial_status(
   partial_status_ = partial_status;
 }
 
+void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
+                                        const ReduceType& type) {
+  for (const auto& dim : dims) {
+    partial_status_.emplace(dim, type);
+  }
+}
+
 void TensorDistAttr::set_default_dims_mapping(
     const std::vector<int64_t>& tensor_shape) {
   if (!tensor_shape.empty()) {
@@ -188,12 +195,12 @@ bool TensorDistAttr::verify_annotated(
 
 bool TensorDistAttr::verify_partial_status() const {
   VLOG(4) << "[TensorDistAttr verify_partial_status] "
-          << partial_status_.to_string();
-  for (auto* itr : partial_status_) {
-    if (itr->dim_ < 0 || itr->dim_ >= process_mesh_.ndim()) {
+          << partial_status_string();
+  for (auto& itr : partial_status_) {
+    if (itr.dim_ < 0 || itr.dim_ >= process_mesh_.ndim()) {
       return false;
     }
-    if (itr->type_ < ReduceType::SUM || itr->type_ <= ReduceType::ALL) {
+    if (itr.type_ < ReduceType::SUM || itr.type_ <= ReduceType::ALL) {
       return false;
     }
   }
@@ -229,7 +236,7 @@ std::string TensorDistAttr::to_string() const {
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
   dist_str += "annotated: [" + str_join(annotated_) + "], ";
-  dist_str += "partial: " + partial_status_.to_string() + ".}";
+  dist_str += "partial: " + partial_status_string() + ".}";
   return dist_str;
 }
 
@@ -311,8 +318,8 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
 
 std::string TensorDistAttr::partial_status_string() const {
   std::string partial_status_str = "[";
-  for (auto* itr : partial_status_) {
-    partial_str += itr->to_string() + ", ";
+  for (auto& itr : partial_status_) {
+    partial_status_str += itr.to_string() + ", ";
   }
   partial_status_str += "]";
   return partial_status_str;
@@ -320,8 +327,8 @@ std::string TensorDistAttr::partial_status_string() const {
 
 std::string _Partial_::to_string() const {
   std::string partial_str = "";
-  partial_str = "Partial(dims:" + std::to_string(mesh_dim_) + ", " +
-                ReduceTypeStrings[static_cast<int>(reduce_type_)] + ")";
+  partial_str = "Partial(dims:" + std::to_string(dim_) + ", " +
+                ReduceTypeStrings[static_cast<int>(type_)] + ")";
   return partial_str;
 }
 
