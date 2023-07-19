@@ -87,10 +87,6 @@ void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   GENERATE_FUNC(dtype, SetReduceFunc, &opts, reduce_type);
-  gloo::AllreduceOptions::Func fn;
-  GENERATE_FUNC(
-      dtype, _get_function_impl, fn, static_cast<ReduceOp>(reduce_type));
-  opts.setReduceFunction(fn);
   gloo::allreduce(opts);
 }
 

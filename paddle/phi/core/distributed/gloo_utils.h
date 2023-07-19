@@ -150,36 +150,6 @@ void SetReduceFunc(P* opts, int reduce_type) {
 // env preparation
 std::shared_ptr<gloo::transport::Device> CreateGlooDevice();
 
-enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
-
-typedef void (*reduce_func)(void*, const void*, const void*, size_t);
-
-template <typename T>
-reduce_func get_function(const ReduceOp& r) {
-  switch (r) {
-    case ReduceOp::SUM:
-      return reduce_func(&::gloo::sum<T>);
-    case ReduceOp::PRODUCT:
-      return reduce_func(&::gloo::product<T>);
-    case ReduceOp::MIN:
-      return reduce_func(&::gloo::min<T>);
-    case ReduceOp::MAX:
-      return reduce_func(&::gloo::max<T>);
-    case ReduceOp::AVG:
-      VLOG(0) << "Error: Unsupported ReduceOp::AVG.";
-      exit(-1);
-  }
-
-  VLOG(0) << "Error: Unknown ReduceOp.";
-  exit(-1);
-}
-
-template <typename T>
-void _get_function_impl(gloo::AllreduceOptions::Func& fn,  // NOLINT
-                        const ReduceOp op) {
-  fn = get_function<T>(op);
-}
-
 constexpr uint8_t kSendRecvSlotPrefix = 0x08;
 
 class SendRecvOptions {

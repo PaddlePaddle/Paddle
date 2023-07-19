@@ -24,15 +24,10 @@
 #include <unistd.h>
 #endif
 
-#include <gloo/broadcast.h>
-#include <gloo/gather.h>
 #include <gloo/reduce.h>
-#include <gloo/scatter.h>
 
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/distributed/collective/gloo_send_recv.h"
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
@@ -99,28 +94,6 @@ namespace distributed {
       exit(-1);                              \
   }
 #endif
-
-typedef void (*reduce_func)(void*, const void*, const void*, size_t);
-
-template <typename T>
-reduce_func get_function(const ReduceOp& r) {
-  switch (r) {
-    case ReduceOp::SUM:
-      return reduce_func(&::gloo::sum<T>);
-    case ReduceOp::PRODUCT:
-      return reduce_func(&::gloo::product<T>);
-    case ReduceOp::MIN:
-      return reduce_func(&::gloo::min<T>);
-    case ReduceOp::MAX:
-      return reduce_func(&::gloo::max<T>);
-    case ReduceOp::AVG:
-      VLOG(0) << "Error: Unsupported ReduceOp::AVG.";
-      exit(-1);
-  }
-
-  VLOG(0) << "Error: Unknown ReduceOp.";
-  exit(-1);
-}
 
 template <typename T>
 T* get_data(phi::DenseTensor& tensor) {  // NOLINT
@@ -366,19 +339,6 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
   const ReduceOp _reduce_op;
   uint32_t _tag;
 
-  gloo::AllreduceOptions::Func _get_function(const phi::DataType type,
-                                             const ReduceOp op) {
-    gloo::AllreduceOptions::Func fn;
-    GENERATE_FUNC(type, _get_function_impl, fn, op);
-    return fn;
-  }
-
-  template <typename T>
-  void _get_function_impl(gloo::AllreduceOptions::Func& fn,  // NOLINT
-                          const ReduceOp op) {
-    fn = get_function<T>(op);
-  }
-
   void _do_allreduce(std::vector<phi::DenseTensor>& ins,     // NOLINT
                      std::vector<phi::DenseTensor>& outs) {  // NOLINT
     _comm_context->AllReduce(
@@ -524,19 +484,6 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
   const ReduceOp _reduce_op;
   int _dst;
   uint32_t _tag;
-
-  gloo::ReduceOptions::Func _get_function(const phi::DataType type,
-                                          const ReduceOp op) {
-    gloo::ReduceOptions::Func fn;
-    GENERATE_FUNC(type, _get_function_impl, fn, op);
-    return fn;
-  }
-
-  template <typename T>
-  void _get_function_impl(gloo::ReduceOptions::Func& fn,  // NOLINT
-                          const ReduceOp op) {
-    fn = get_function<T>(op);
-  }
 
   void _do_reduce(std::vector<phi::DenseTensor>& inputs,   // NOLINT
                   std::vector<phi::DenseTensor>& outputs,  // NOLINT
