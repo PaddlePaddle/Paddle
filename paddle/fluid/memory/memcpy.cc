@@ -491,7 +491,7 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
   if (UNLIKELY(num == 0)) return;
   platform::SetDeviceId(src_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
-          << dst_place << " by thream(" << stream << ")";
+          << dst_place << " by stream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned",
                                        platform::TracerEventType::UserDefined,
@@ -533,7 +533,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
 
   platform::SetDeviceId(dst_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
-          << dst_place << " by thream(" << stream << ")";
+          << dst_place << " by stream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU",
                                        platform::TracerEventType::UserDefined,
