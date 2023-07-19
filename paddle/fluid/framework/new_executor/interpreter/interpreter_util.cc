@@ -1104,6 +1104,29 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
   }
 }
 
+void SetDeviceCommContext(::ir::Operation* op,
+                          platform::DeviceContext* dev_ctx) {
+  auto op_attributes = op->attributes();
+  if (op_attributes.count("ring_id") != 0) {
+    int ring_id =
+        op_attributes.at("ring_id").dyn_cast<::ir::Int32Attribute>().data();
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(ring_id)) {
+      auto comm_context = comm_context_manager.Get(ring_id);
+      if (!dev_ctx->GetCommContext()) {
+        dev_ctx->SetCommContext(comm_context);
+      }
+    } else {
+      VLOG(3) << "op: "
+              << op_attributes.at("op_name")
+                     .dyn_cast<::ir::StrAttribute>()
+                     .AsString()
+              << ", ring_id: " << ring_id << ", get comm_context failed!";
+    }
+  }
+}
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

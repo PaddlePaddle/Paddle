@@ -532,8 +532,7 @@ void DependencyBuilder::ShrinkDownstreamMap() {
 ///        For new ir        ///
 /// ======================== ///
 const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::Build(
-    const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
-        instructions) {
+    const std::vector<paddle::framework::InstructionBase*>& instructions) {
   if (is_build_) {
     return op_downstream_map_;
   }

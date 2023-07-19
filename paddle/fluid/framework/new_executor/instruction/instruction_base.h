@@ -107,22 +107,23 @@ class InstructionBase {
   std::map<int, int>& GetMutableInplaceBackMap() { return inplace_back_map_; }
   const std::map<int, int>& GetInplaceBackMap() { return inplace_back_map_; }
 
-  const std::unordered_map<ir::Value, std::vector<int>>& Inputs() const {
+  const std::unordered_map<::ir::Value, std::vector<int>>& Inputs() const {
     return input_index_;
   }
-  std::unordered_map<ir::Value, std::vector<int>>& GetMutableInputs() {
+  std::unordered_map<::ir::Value, std::vector<int>>& GetMutableInputs() {
     return input_index_;
   }
-  void SetInputs(const std::unordered_map<ir::Value, std::vector<int>>& inputs);
+  void SetInputs(
+      const std::unordered_map<::ir::Value, std::vector<int>>& inputs);
 
-  const std::unordered_map<ir::Value, std::vector<int>>& Outputs() const {
+  const std::unordered_map<::ir::Value, std::vector<int>>& Outputs() const {
     return output_index_;
   }
-  std::unordered_map<ir::Value, std::vector<int>>& GetMutableOutputs() {
+  std::unordered_map<::ir::Value, std::vector<int>>& GetMutableOutputs() {
     return output_index_;
   }
   void SetOutputs(
-      const std::unordered_map<ir::Value, std::vector<int>>& outputs);
+      const std::unordered_map<::ir::Value, std::vector<int>>& outputs);
 
   virtual void Run() = 0;
 
@@ -159,9 +160,9 @@ class InstructionBase {
 
   std::map<int, int> inplace_back_map_;
 
-  std::unordered_map<ir::Value, std::vector<int>> input_index_;
+  std::unordered_map<::ir::Value, std::vector<int>> input_index_;
 
-  std::unordered_map<ir::Value, std::vector<int>> output_index_;
+  std::unordered_map<::ir::Value, std::vector<int>> output_index_;
 };
 
 }  // namespace framework

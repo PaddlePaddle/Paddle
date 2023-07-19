@@ -51,7 +51,8 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
-      ir_program_(std::move(ir_prog)) {
+      ir_program_(std::move(ir_prog)),
+      ir_stream_analyzer_(place) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
@@ -97,6 +98,10 @@ NewIRInterpreter::~NewIRInterpreter() {
   gc_.reset(nullptr);
   async_work_queue_.reset();
   VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
+
+  for (InstructionBase* instr : vec_instruction_base_) {
+    delete instr;
+  }
 
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
@@ -1561,14 +1566,14 @@ void NewIRInterpreter::BuildInstruction() {
         continue;
       }
       vec_instruction_base_.emplace_back(
-          std::make_unique<PhiKernelInstruction>(op_idx++,
-                                                 place_,
-                                                 (*it),
-                                                 scope_,
-                                                 local_scope_,
-                                                 value_2_var_name_,
-                                                 var_name_2_id_,
-                                                 variable_2_var_name_));
+          new PhiKernelInstruction(op_idx++,
+                                   place_,
+                                   (*it),
+                                   scope_,
+                                   local_scope_,
+                                   value_2_var_name_,
+                                   var_name_2_id_,
+                                   variable_2_var_name_));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel dialect."));
@@ -1597,7 +1602,7 @@ void NewIRInterpreter::BuildInstructionDependences() {
   auto downstream_map = ir_dependency_builder_.Build(vec_instruction_base_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
-    InstructionBase* cur_instr = vec_instruction_base_[instr_id].get();
+    InstructionBase* cur_instr = vec_instruction_base_[instr_id];
     const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
 
     if (FLAGS_new_executor_serial_run) {

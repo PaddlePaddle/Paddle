@@ -78,6 +78,56 @@ class StreamAnalyzer {
   const Place place_;
 };
 
+/// ======================== ///
+///        For new ir        ///
+/// ======================== ///
+class IrStreamAnalyzer {
+ public:
+  using DeviceContext = platform::DeviceContext;
+  using Place = platform::Place;
+
+  explicit IrStreamAnalyzer(const Place& place) : place_(place) {}
+
+  ~IrStreamAnalyzer() {}
+
+  void ConstructEvents(std::vector<Instruction>* instructions) const;
+
+  platform::DeviceType GetWaiterType(const Instruction& instr) const;
+
+ private:
+  bool HasDataDependency(const Instruction& cur_instr,
+                         const Instruction& next_instr) const;
+
+  void AnalyseAllEventInfo(
+      const std::vector<Instruction>& instructions,
+      const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+          event_info) const;
+
+  void AnalyseAllRunType(
+      const std::vector<Instruction>& instructions,
+      const std::map<size_t, std::set<size_t>>& downstream_map,
+      std::vector<std::vector<std::vector<size_t>>>* run_type_info) const;
+
+  void AnalyseEventInfoForTwoInstructions(
+      const std::vector<Instruction>& instructions,
+      const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
+      const size_t cur_instr_id,
+      const size_t next_instr_id,
+      std::set<size_t>* waiter_instr_ids,
+      std::set<size_t>* visited_next_instr_id) const;
+
+  void ShrinkEventInfo(
+      const DependencyBuilder& dependency_builder,
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+          event_info_map) const;
+
+  DownstreamRunType AnalyseRunTypeForTwoInstructions(
+      const Instruction& cur_instr, const Instruction& next_instr) const;
+
+  const Place place_;
+};
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

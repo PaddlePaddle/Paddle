@@ -85,9 +85,9 @@ class DependencyBuilder {
   std::vector<std::vector<bool>> op_happens_before_;
 };
 
-// /// ======================== ///
-// ///        For new ir        ///
-// /// ======================== ///
+/// ======================== ///
+///        For new ir        ///
+/// ======================== ///
 class IrDependencyBuilder {
  public:
   IrDependencyBuilder() : is_build_(false), instructions_(nullptr) {}
@@ -95,8 +95,7 @@ class IrDependencyBuilder {
   // build op dependencies and return the mapping from op to its downstream-op
   // set
   const std::map<size_t, std::set<size_t>>& Build(
-      const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
-          instructions);
+      const std::vector<paddle::framework::InstructionBase*>& instructions);
 
   const std::map<size_t, std::set<size_t>>& OpDownstreamMap() const;
 
@@ -122,7 +121,7 @@ class IrDependencyBuilder {
   void ShrinkDownstreamMap();
 
   bool is_build_;
-  const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>*
+  const std::vector<paddle::framework::InstructionBase*>*
       instructions_;  // not_own
   size_t op_num_;
 
