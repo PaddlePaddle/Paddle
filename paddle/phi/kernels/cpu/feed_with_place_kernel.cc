@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,8 +27,15 @@ void FeedWithPlaceKernel(const Context& ctx,
                          DenseTensor* out) {}
 
 }  // namespace phi
-PD_REGISTER_KERNEL(
-    feed_with_place, CPU, ALL_LAYOUT, phi::FeedWithPlaceKernel, float) {}
+
+PD_REGISTER_KERNEL(feed_with_place,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FeedWithPlaceKernel,
+                   float,
+                   int32_t,
+                   int64_t,
+                   double) {}
 
 PD_REGISTER_KERNEL(shaddow_feed,
                    CPU,
