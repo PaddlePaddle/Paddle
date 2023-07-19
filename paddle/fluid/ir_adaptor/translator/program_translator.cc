@@ -181,6 +181,10 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
+          if (!defining_op_result) {
+            std::cerr << "skip here" << std::endl;
+            continue;
+          }
           ir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
@@ -216,7 +220,15 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
       continue;
     }
     ir::OpResult value = value_info.value;
+    if (!value) {
+      std::cerr << "skip" << std::endl;
+      continue;
+    }
     auto* defining_op = value.owner();
+    if (defining_op == nullptr) {
+      std::cerr << "skip defin op" << std::endl;
+      continue;
+    }
     VLOG(8) << "[op translated][stop gradient]" << var_name
             << " from: " << defining_op->name();
     std::vector<ir::Attribute> stop_gradients;

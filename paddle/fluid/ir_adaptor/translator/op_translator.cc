@@ -610,7 +610,9 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
                << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
 
       ir::OpResult value = operation->result(idx);
+      std::cerr << "11" << std::endl;
       bool generated_by_vector = value.type().isa<ir::VectorType>();
+      std::cerr << "22" << std::endl;
 
       // Specially process TensorArray, this because we cannot distinguish it
       // with Vector<DenseTensor> by other conditions but we cannot support it
@@ -663,6 +665,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
 
   VLOG(4) << "[general op][" << op_desc.Type() << "] opearation insertion end.";
   this->RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
+  std::cerr << "fin 1" << std::endl;
 
   return operation;
 }

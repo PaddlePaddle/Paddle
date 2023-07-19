@@ -19,11 +19,10 @@ import numpy as np
 
 import paddle
 
-paddle.enable_static()
-
 
 class TestNewIr(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -44,6 +43,7 @@ class TestNewIr(unittest.TestCase):
 
 class TestCombineOp(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -64,6 +64,7 @@ class TestCombineOp(unittest.TestCase):
 
 class TestFeedOp(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -91,6 +92,7 @@ class TestFeedOp(unittest.TestCase):
 
 class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -113,6 +115,7 @@ class TestSelectedRows(unittest.TestCase):
 
 class TestAddGradOp(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -143,6 +146,7 @@ class TestAddGradOp(unittest.TestCase):
 
 class TestSplitOp(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -161,6 +165,19 @@ class TestSplitOp(unittest.TestCase):
             )
 
             np.testing.assert_array_equal(out[0], np_a[0:2])
+
+
+class TestJitSaveOp(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+
+        linear = paddle.nn.Linear(10, 10)
+        path = "example_model/linear"
+        paddle.jit.save(
+            linear,
+            path,
+            input_spec=[paddle.static.InputSpec([10, 10], 'float32', 'x')],
+        )
 
 
 if __name__ == "__main__":
