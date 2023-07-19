@@ -56,6 +56,18 @@ class GlooCommContext final : public CommContext {
               int src,
               uint32_t tag = 0);
 
+  void Scatter(phi::DenseTensor* out_tensor,
+               const phi::DenseTensor& in_tensor,
+               int src,
+               int size,
+               uint32_t tag = 0);
+
+  void Barrier();
+
+  void Send(const phi::DenseTensor& in_tensor, int dst, uint32_t tag = 0);
+
+  void Recv(phi::DenseTensor* out_tensor, int src, uint32_t tag = 0);
+
  private:
   DISABLE_COPY_AND_ASSIGN(GlooCommContext);
 

@@ -20,8 +20,10 @@
 #include <gloo/broadcast.h>
 #include <gloo/gather.h>
 #include <gloo/reduce.h>
+#include <gloo/scatter.h>
 #include <gloo/types.h>
 
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
@@ -85,6 +87,10 @@ void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   GENERATE_FUNC(dtype, SetReduceFunc, &opts, reduce_type);
+  gloo::AllreduceOptions::Func fn;
+  GENERATE_FUNC(
+      dtype, _get_function_impl, fn, static_cast<ReduceOp>(reduce_type));
+  opts.setReduceFunction(fn);
   gloo::allreduce(opts);
 }
 
@@ -116,6 +122,51 @@ void GlooCommContext::Gather(phi::DenseTensor* out_tensor,
     GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   }
   gloo::gather(opts);
+}
+
+void GlooCommContext::Scatter(phi::DenseTensor* out_tensor,
+                              const phi::DenseTensor& in_tensor,
+                              int src,
+                              int size,
+                              uint32_t tag) {
+  gloo::ScatterOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  if (rank_ == src) {
+    GENERATE_FUNC(dtype, SetInputForScatter, &opts, in_tensor, size);
+  }
+  GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  opts.setRoot(src);
+  opts.setTag(tag);
+  gloo::scatter(opts);
+}
+
+void GlooCommContext::Barrier() {
+  gloo::BarrierOptions opts(gloo_context_);
+  gloo::barrier(opts);
+}
+
+void GlooCommContext::Send(const phi::DenseTensor& in_tensor,
+                           int dst,
+                           uint32_t tag) {
+  SendRecvOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
+  opts.setSrc(gloo_context_.get()->rank);
+  opts.setDst(dst);
+  opts.setTag(tag);
+  send_recv(&opts);
+}
+
+void GlooCommContext::Recv(phi::DenseTensor* out_tensor,
+                           int src,
+                           uint32_t tag) {
+  SendRecvOptions opts(gloo_context_);
+  const auto& dtype = out_tensor->dtype();
+  GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  opts.setSrc(src);
+  opts.setDst(gloo_context_.get()->rank);
+  opts.setTag(tag);
+  send_recv(&opts);
 }
 
 }  // namespace distributed
