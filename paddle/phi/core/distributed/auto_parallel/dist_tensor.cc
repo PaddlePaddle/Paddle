@@ -26,10 +26,11 @@ void* DistTensor::AllocateFrom(Allocator* allocator,
 }
 
 const Place& DistTensor::place() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      value_->holder_,
+  PADDLE_ENFORCE_EQ(
+      value_ && value_->holder_,
+      true,
       phi::errors::PreconditionNotMet(
-          "Tensor not initialized yet when DenseTensor::place() is called."));
+          "Tensor not initialized yet when DistTensor::place() is called."));
   return value_->holder_->place();
 }
 
@@ -55,13 +56,7 @@ void DistTensor::set_meta(const DenseTensorMeta& meta) {
       true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
-  meta_.dims = meta.dims;
-  meta_.dtype = meta.dtype;
-  meta_.is_scalar = meta.is_scalar;
-  meta_.layout = meta.layout;
-  meta_.lod = meta.lod;
-  meta_.offset = meta.offset;
-  meta_.use_gpudnn = meta.use_gpudnn;
+  meta_ = meta;
 }
 
 }  // namespace auto_parallel

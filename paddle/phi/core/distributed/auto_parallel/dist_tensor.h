@@ -82,10 +82,10 @@ class DistTensor final
   /// \brief Test whether the storage is allocated.
   /// \return Whether the storage is allocated.
   bool initialized() const override {
-    return value_->holder_ && value_->holder_->ptr();
+    return value_ && value_->holder_ && value_->holder_->ptr();
   }
 
-  bool IsInitialized() const { return value_->holder_ != nullptr; }
+  bool defined() const { return value_ && value_->holder_; }
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
