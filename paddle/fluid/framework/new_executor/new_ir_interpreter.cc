@@ -1425,8 +1425,6 @@ void NewIRInterpreter::TraceInstructionList(
     /// auto instr_id = trace_execute_order_[idx];
     auto& instr_node = vec_instruction_.at(instr_id);
 
-    std::cerr << "run " << instr_id << "\t" << instr_node.OpFunc()->phi_op_name_
-              << std::endl;
     RunInstruction(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
