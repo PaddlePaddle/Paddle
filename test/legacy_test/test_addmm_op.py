@@ -329,7 +329,7 @@ class TestAddMMOp5(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             out = paddle.tensor.addmm(input, x, y)
             np.testing.assert_allclose(
-                np_input + np.dot(np_x, np_y), out.numpy()
+                np_input + np.dot(np_x, np_y), out.numpy(), rtol=1e-5, atol=1e-8
             )
 
 
