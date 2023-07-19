@@ -24,9 +24,9 @@ from paddle.fluid.dygraph import base as imperative_base
 
 from ...utils.log_util import logger
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
 logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
 
 if g_shard_norm_align_dp:
