@@ -65,7 +65,7 @@ paddle::framework::Variable* CreateVar(
   }
 
   paddle::framework::Variable* var = nullptr;
-  std::string name = "inner_var_" + std::to_string(variable_2_var_name->size());
+  std::string name = "inner_var_" + std::to_string(inner_scope->Size());
   if (force_persisable || is_persisable) {
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope->root();
     var = const_cast<paddle::framework::Scope*>(inner_scope->root())->Var(name);
@@ -187,25 +187,13 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.feed") {
     auto value = op->result(0);
-    auto var = CreateVar(value,
-                         inner_scope,
-                         false,
-                         value_2_var_name,
-                         variable_2_var_name,
-                         var_name_2_id,
-                         variable_list);
-    // TODO(phlrain): need to update here, support StringTensor
-    auto out_tensor = var->GetMutable<phi::DenseTensor>();
+    VLOG(6) << "link feed output to feed in variable" << inner_scope;
 
-    auto feed_var =
-        const_cast<paddle::framework::Scope*>(inner_scope->root())->Var("feed");
-    VLOG(6) << "Create var: feed in scope " << inner_scope->root();
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    auto feed_list = feed_var->Get<paddle::framework::FeedList>();
-    auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
-    out_tensor->ShareDataWith(in_tensor);
-    out_tensor->set_lod(in_tensor.lod());
+
+    auto feed_var_name = "feed_" + std::to_string(index);
+    value_2_var_name->emplace(value, feed_var_name);
   }
 
   if (op_name == "builtin.combine") {
