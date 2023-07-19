@@ -32,11 +32,22 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-
 namespace paddle {
 namespace dialect {
 
 const int init_on_gpu_threashold = 1000;
+
+std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
+    {"DataType::FLOAT16", phi::DataType::FLOAT16},
+    {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
+    {"DataType::FLOAT32", phi::DataType::FLOAT32},
+    {"DataType::FLOAT64", phi::DataType::FLOAT64},
+    {"DataType::INT16", phi::DataType::INT16},
+    {"DataType::INT32", phi::DataType::INT32},
+    {"DataType::INT64", phi::DataType::INT64},
+    {"DataType::INT8", phi::DataType::INT8},
+    {"DataType::BOOL", phi::DataType::BOOL},
+};
 
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
@@ -54,7 +65,6 @@ phi::KernelKey GetKernelKey(
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
-
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
@@ -62,20 +72,47 @@ phi::KernelKey GetKernelKey(
     auto attr_map = op->attributes();
     auto& data_type_info = op_info_parser->OpRuntimeInfo().kernel_key_dtype;
 
-    if (data_type_info.size() > 0 && data_type_info[0] != "") {
+    if (!data_type_info.empty() && !data_type_info[0].empty()) {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
       auto& input_map = op_info_parser->InputName2Id();
 
-      if (input_map.count(slot_name)) {
+      auto find_it = Str2PhiDataType.find(slot_name);
+      if (find_it != Str2PhiDataType.end()) {
+        kernel_data_type = find_it->second;
+      } else if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
+        auto type = map_value_pair.at(op->operand(in_index)).type();
 
-        dialect::DenseTensorType type =
-            op->operand(in_index)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>();
-        kernel_data_type = TransToPhiDataType(type.dtype());
+        if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          kernel_data_type = TransToPhiDataType(
+              type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                  .dtype());
+        } else if (type.isa<ir::VectorType>()) {
+          auto vec_data = type.dyn_cast<ir::VectorType>().data();
+          if (vec_data.size() == 0) {
+            kernel_data_type = phi::DataType::UNDEFINED;
+          } else {
+            if (vec_data[0].isa<paddle::dialect::AllocatedDenseTensorType>()) {
+              kernel_data_type = TransToPhiDataType(
+                  vec_data[0]
+                      .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                      .dtype());
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "Only support DenseTensorType in vector"));
+            }
+          }
+        } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+          kernel_data_type = TransToPhiDataType(
+              type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                  .dtype());
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Only support DenseTensorType, SelectedRows, VectorType"));
+        }
+
       } else {
         PADDLE_ENFORCE_EQ(attr_map.count(slot_name),
                           true,
@@ -132,7 +169,6 @@ phi::KernelKey GetKernelKey(
       if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
         continue;
       }
-
       auto input_tmp = op->operand(i);
       // NOTE: if not input_tmp, it's an optional input
       if (!input_tmp) {
@@ -252,6 +288,13 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
           ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
           op_output_types.push_back(t1);
+        } else if (result_type.isa<dialect::SelectedRowsType>()) {
+          auto allocated_selected_rows_dtype =
+              paddle::dialect::AllocatedSelectedRowsType::get(
+                  ctx,
+                  phi::TransToPhiPlace(kernel_key.backend()),
+                  result_type.dyn_cast<dialect::SelectedRowsType>());
+          op_output_types.push_back(allocated_selected_rows_dtype);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
               "Result type only support DenseTensorType and VectorType"));
@@ -322,6 +365,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
             // [ todo need update here, support combine data transfomer]
+          } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
+            // do nothing here
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support allocated dense tensor type for now"));

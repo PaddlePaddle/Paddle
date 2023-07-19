@@ -1,4 +1,5 @@
 add_subdirectory(garbage_collector)
+add_subdirectory(instruction)
 add_subdirectory(interpreter)
 add_subdirectory(workqueue)
 
@@ -14,6 +15,7 @@ set(STANDALONE_EXECUTOR_DEPS
     pd_op_to_kernel_pass
     phi_kernel_adaptor
     program_translator
+    instruction_base
     ir)
 
 cc_library(

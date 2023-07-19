@@ -79,7 +79,7 @@ void SliceKernel(const Context& dev_ctx,
 
   std::vector<int64_t> new_out_dims(slice_dims.size() - decrease_axis.size());
 
-  if (new_out_dims.size() == 0) {
+  if (new_out_dims.empty()) {
     new_out_dims.emplace_back(1);
   } else {
     for (const auto& axis : decrease_axis) {
