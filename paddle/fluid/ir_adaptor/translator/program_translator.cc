@@ -179,12 +179,9 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         bool need_set_parameter_op = (parameter_name_mappings_.find(var_name) !=
                                       parameter_name_mappings_.end());
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
+        need_set_parameter_op &= (param_map_.count(var_name) != 0);
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
-          if (!defining_op_result) {
-            std::cerr << "skip here" << std::endl;
-            continue;
-          }
           ir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
@@ -221,14 +218,14 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
     ir::OpResult value = value_info.value;
     if (!value) {
-      std::cerr << "skip" << std::endl;
-      continue;
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "Value of [%s] can not ber None", var_name));
     }
     auto* defining_op = value.owner();
-    if (defining_op == nullptr) {
-      std::cerr << "skip defin op" << std::endl;
-      continue;
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        defining_op,
+        phi::errors::PreconditionNotMet(
+            "Defining operator of [%s] can not be nullptr", var_name));
     VLOG(8) << "[op translated][stop gradient]" << var_name
             << " from: " << defining_op->name();
     std::vector<ir::Attribute> stop_gradients;
