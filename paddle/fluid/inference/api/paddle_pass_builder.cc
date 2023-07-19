@@ -106,9 +106,11 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_multihead_matmul_fuse_pass_v3",            //
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
+#ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
       "trt_flash_multihead_matmul_fuse_pass",  //
       "trt_cross_multihead_matmul_fuse_pass",  //
+#endif
 #endif
       "vit_attention_fuse_pass",              //
       "trt_qk_multihead_matmul_fuse_pass",    //
