@@ -23,8 +23,8 @@
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -39,7 +39,8 @@ void TuneTask::Initialize(
   op_lowerer = lower_handler;
 
   // Set lowered_funcs and analyze output names.
-  this->lowered_funcs = op_lowerer->LowerWithoutSchedule(subgraph);
+  this->lowered_funcs = op_lowerer->Lower(
+      subgraph, /*apply_op_schedule = */ false, /*apply_group_schedule=*/false);
   this->output_names = GetOutputNamesFromLoweredFunc(this->lowered_funcs);
   this->serialized_key = SerializeToString(shape_dict, dtype_dict);
 }

@@ -60,7 +60,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     bool has_scale_input_attr =
         (resize_inputs.find("Scale") != resize_inputs.end());
     bool has_scale_input =
-        has_scale_input_attr && (op_desc.Input("Scale").size() > 0);
+        has_scale_input_attr && (!op_desc.Input("Scale").empty());
     if (has_scale_input) {
       auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
       auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
@@ -90,7 +90,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     nvinfer1::ITensor* outsize_tensor = nullptr;
     if (engine_->with_dynamic_shape() &&
         resize_inputs.find("OutSize") != resize_inputs.end()) {
-      if (op_desc.Input("OutSize").size() >= 1) {
+      if (!op_desc.Input("OutSize").empty()) {
         outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
       }
     }

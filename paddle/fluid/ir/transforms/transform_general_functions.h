@@ -16,6 +16,7 @@
 
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/parameter.h"
+#include "paddle/ir/core/type.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
@@ -24,15 +25,16 @@
 namespace ir {
 
 /**
- * @brief Get the parameter from a value.
+ * @brief Get the [name, parameter] pair of pararmeter from a value.
  *
  * @note The value must be a output of a GetParameterOp.
  *
  * @param ir::Value
  *
- * @return ir::Parameter*
+ * @return std::pair<std::string, ir::Parameter*>
  */
-ir::Parameter* GetParameterFromValue(ir::Value value);
+
+std::pair<std::string, ir::Parameter*> GetParameterFromValue(ir::Value value);
 
 /**
  * @brief Get tensor's shape from a value.
@@ -44,36 +46,33 @@ ir::Parameter* GetParameterFromValue(ir::Value value);
 const phi::DDim& GetShapeFromValue(ir::Value value);
 
 /**
+ * @brief Get tensor's data type from a value.
+ *
+ * @param ir::Value
+ *
+ * @return ir::Type
+ */
+ir::Type GetDataTypeFromValue(ir::Value value);
+
+/**
  * @brief Get an operation that defines the specific input of the operation.
  *
- * @param Operation*
+ * @param Operation* pointer to an operation
+ * @param uint32_t index of operand of the operation
  *
  * @return Operation*
  */
-template <uint32_t Index = 0>
-Operation* GetDefiningOpForInput(Operation* op) {
-  PADDLE_ENFORCE_EQ(
-      Index < op->num_operands(),
-      true,
-      phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand(Index).GetDefiningOp();
-}
+Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
 
 /**
  * @brief Get an operation that is the first to use the specific output of the
  * operation.
  *
- * @param Operation*
- *
+ * @param Operation* pointer to an operation
+ * @param uint32_t index of result of the operation
+
  * @return Operation*
  */
-template <uint32_t Index = 0>
-Operation* GetFirstUseOperationForOutput(Operation* op) {
-  PADDLE_ENFORCE_EQ(
-      Index < op->num_results(),
-      true,
-      phi::errors::InvalidArgument("Output op result's index must be valid."));
-  return op->result(Index).first_use().owner();
-}
+Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index);
 
 }  // namespace ir

@@ -834,8 +834,7 @@ class TestListIndex(unittest.TestCase):
             name='value', shape=value_np.shape, dtype='float32'
         )
 
-        x[index] = value
-        y = x
+        y = paddle.static.setitem(x, index, value)
         place = paddle.fluid.CPUPlace()
 
         prog = paddle.static.default_main_program()
@@ -1032,9 +1031,8 @@ class TestListIndex(unittest.TestCase):
                     name='index_2', shape=index2.shape, dtype='int32'
                 )
 
-                x1[index_1, index_2] = value
-                x2[index_1] = value
-
+                x1_out = paddle.static.setitem(x1, (index_1, index_2), value)
+                x2_out = paddle.static.setitem(x2, index_1, value)
                 place = (
                     paddle.fluid.CPUPlace()
                     if not paddle.fluid.core.is_compiled_with_cuda()
@@ -1045,7 +1043,7 @@ class TestListIndex(unittest.TestCase):
                 exe = paddle.static.Executor(place)
 
                 exe.run(paddle.static.default_startup_program())
-                fetch_list = [x1.name, x2.name]
+                fetch_list = [x1_out.name, x2_out.name]
 
                 setitem_pp = exe.run(
                     prog,
@@ -1114,10 +1112,10 @@ class TestListIndex(unittest.TestCase):
                     name='x2', shape=array.shape, dtype='float32'
                 )
 
-                x1[index_mod1, index_mod2] = 1
-                x2[index_mod1] = 2.5
-                y1 = x1[index_mod2, index_mod1]
-                y2 = x2[index_mod2]
+                x1_out = paddle.static.setitem(x1, (index_mod1, index_mod2), 1)
+                x2_out = paddle.static.setitem(x2, index_mod1, 2.5)
+                y1 = x1_out[index_mod2, index_mod1]
+                y2 = x2_out[index_mod2]
                 place = (
                     paddle.fluid.CPUPlace()
                     if not paddle.fluid.core.is_compiled_with_cuda()
@@ -1127,7 +1125,7 @@ class TestListIndex(unittest.TestCase):
                 prog = paddle.static.default_main_program()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
-                fetch_list = [x1.name, x2.name, y1.name, y2.name]
+                fetch_list = [x1_out.name, x2_out.name, y1.name, y2.name]
 
                 setitem_pp = exe.run(
                     prog,

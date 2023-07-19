@@ -38,6 +38,21 @@ CustomTracer::~CustomTracer() {
 #endif
 }
 
+std::unordered_map<std::string, std::unique_ptr<CustomTracer>>&
+CustomTracer::GetMap() {
+  static std::unordered_map<std::string, std::unique_ptr<CustomTracer>>
+      instance;
+  return instance;
+}
+
+void CustomTracer::Release() {
+  auto& pool = GetMap();
+  for (auto& item : pool) {
+    item.second.reset();
+  }
+  pool.clear();
+}
+
 void CustomTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::UNINITED || state_ == TracerState::STOPED,

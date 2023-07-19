@@ -127,6 +127,7 @@ else:
         yield
 
 libs_path = '${CMAKE_BINARY_DIR}/python/cinn/libs'
+os.makedirs(libs_path, exist_ok=True)
 
 cinnlibs = []
 package_data = {'cinn': ['core_api.so'], 'cinn.libs': []}
@@ -136,7 +137,7 @@ if '${WITH_MKL}' == 'ON':
     cinnlibs.append('${MKLML_IOMP_LIB}')
 
 if '${WITH_MKLDNN}' == 'ON':
-    cinnlibs.append('${MKLDNN_SHARED_LIB_2}')
+    cinnlibs.append('${MKLDNN_SHARED_LIB}')
 
 if '${WITH_GPU}' == 'ON':
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')

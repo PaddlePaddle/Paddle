@@ -67,22 +67,12 @@ class SPMDRuleBase {
   inline const T ExtractAttr(
       const std::string& name,
       const paddle::framework::AttributeMap& attrs) const {
-    auto& attr = GetAttr(name, attrs);
-
-    // In order to get bool attr properly
-    framework::proto::AttrType attr_type =
-        static_cast<framework::proto::AttrType>(attr.index() - 1);
-    if (attr_type == framework::proto::AttrType::INT) {
-      if (std::is_same<bool, T>::value) {
-        return static_cast<bool>(PADDLE_GET_CONST(int, attr));
-      }
-    }
-
-    return PADDLE_GET_CONST(T, attr);
+    auto attr = GetAttr(name, attrs);
+    return *paddle::framework::ExtractAttribute<T>(name)(attr);
   }
 
-  const Attribute& GetAttr(const std::string& name,
-                           const paddle::framework::AttributeMap& attrs) const {
+  Attribute GetAttr(const std::string& name,
+                    const paddle::framework::AttributeMap& attrs) const {
     auto iter = attrs.find(name);
     PADDLE_ENFORCE_NE(iter,
                       attrs.end(),
@@ -95,8 +85,9 @@ class SPMDRuleBase {
 // Merge sharding specification (dims mapping) of given tensors.
 // The same axes of different tensors will be merged.
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
-    const std::vector<std::pair<const std::string, const std::vector<int64_t>>>&
-        tensor_axes_to_dim_pairs);
+    const std::vector<std::pair<std::string, std::vector<int64_t>>>&
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts = true);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A repicated dimension could be merged by any sharded dimension.
@@ -132,6 +123,27 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
 // Return a NEW TensorDistAttr whose dims mapping is consist of "-1"
 // (unsharded).
 TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr);
+
+// Check whether the given DistTensorSpec objects are valid. For each
+// DistTensorSpec, the rank of its dimsmapping must be equal to the rank of its
+// corresponding tensor shape. the parameter op_name is used for logging error
+// message.
+void VerifySpecs(const std::vector<DistTensorSpec>& specs,
+                 const std::string& op_name);
+
+// Get dimsmapping for the given tensors. Return the pair of each
+// tensor's einsum notation and the corresponding dimsmapping.
+std::vector<std::pair<std::string, std::vector<int64_t>>>
+GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
+                       const std::vector<DistTensorSpec>& specs);
+
+// Get dims mapping for the given axes according to sharding information of
+// the annotated axes after inferring forward or backward. The parameter axis
+// stores the axes of the tensor. "1" is a special axis, for the axis "1", set
+// its dims mapping to -1.
+std::vector<int64_t> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map);
 
 // The static map that stores and initializes all the registered SPMD rules.
 class SPMDRuleMap {

@@ -1363,7 +1363,6 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
 
     def _test(self, value):
         paddle.disable_static()
-        self.assertEqual(self.tensor_x.inplace_version, 0)
 
         id_origin = id(self.tensor_x)
         index_1 = paddle.to_tensor(np.array([True, False, False, False]))
@@ -1380,13 +1379,11 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
 
         index_2 = paddle.to_tensor(np.array([False, True, False, False]))
         self.tensor_x[index_2] = value
-
         np.testing.assert_array_equal(self.tensor_x[1].numpy(), result)
         self.assertEqual(id_origin, id(self.tensor_x))
 
         index_3 = paddle.to_tensor(np.array([True, True, True, True]))
         self.tensor_x[index_3] = value
-
         np.testing.assert_array_equal(self.tensor_x[3].numpy(), result)
         self.assertEqual(id_origin, id(self.tensor_x))
 
