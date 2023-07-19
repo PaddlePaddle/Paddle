@@ -31,6 +31,7 @@ from ...utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    fused_parameters,
 )
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
@@ -92,33 +93,72 @@ class DygraphShardingOptimizer:
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
+        strategy = fleet.fleet._user_defined_strategy
+        self.tensor_fusion = strategy.hybrid_configs[
+            'sharding_configs'
+        ].tensor_fusion
+        pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
+        if self.tensor_fusion:
+            assert (
+                not pp_overlap
+            ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
+
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
-        if self._using_param_groups:
-            param_groups = [
-                {"params": []} for _ in range(len(optimizer._param_groups))
-            ]
-            for idx, pg in enumerate(optimizer._param_groups):
-                param_groups[idx].update(
-                    {k: v for k, v in pg.items() if k != 'params'}
-                )
-            for param in self._rank2params[self._sharding_rank]:
-                group_id = self._param_2_group_id[id(param)]
-                param_groups[group_id]['params'].append(param)
+        if not self.tensor_fusion:
+            if self._using_param_groups:
+                param_groups = [
+                    {"params": []} for _ in range(len(optimizer._param_groups))
+                ]
+                for idx, pg in enumerate(optimizer._param_groups):
+                    param_groups[idx].update(
+                        {k: v for k, v in pg.items() if k != 'params'}
+                    )
+                for param in self._rank2params[self._sharding_rank]:
+                    group_id = self._param_2_group_id[id(param)]
+                    param_groups[group_id]['params'].append(param)
 
-            self._set_inner_opt_attr('_param_groups', param_groups)
-            self._set_inner_opt_attr(
-                '_parameter_list', self._rank2params[self._sharding_rank]
-            )
-            self._param_groups = self._parameter_list
+                self._set_inner_opt_attr('_param_groups', param_groups)
+                self._set_inner_opt_attr(
+                    '_parameter_list', self._rank2params[self._sharding_rank]
+                )
+                self._param_groups = self._parameter_list
+            else:
+                self._set_inner_opt_attr(
+                    '_param_groups', self._rank2params[self._sharding_rank]
+                )
+                self._set_inner_opt_attr(
+                    '_parameter_list', self._rank2params[self._sharding_rank]
+                )
+
         else:
-            self._set_inner_opt_attr(
-                '_param_groups', self._rank2params[self._sharding_rank]
+            self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
+            self._rank2decay = {}
+            self._rank2fused = {}
+            self._tensor_fusion()
+
+            decay_params = [
+                p.name for p in self._rank2decay[self._sharding_rank]
+            ]
+            all_params = self._rank2fused[self._sharding_rank]
+            apply_decay_param_fun = lambda x: x in decay_params
+
+            params = []
+            for v in self._rank2fused.values():
+                params += v
+            self._parameter_list = params
+            self._param_groups = params
+
+            self._set_inner_opt_attr('_parameter_list', all_params)
+            self._set_inner_opt_attr('_param_groups', all_params)
+            origin_decay_param_fun = getattr(
+                self._inner_opt, '_apply_decay_param_fun', None
             )
-            self._set_inner_opt_attr(
-                '_parameter_list', self._rank2params[self._sharding_rank]
-            )
+            if origin_decay_param_fun is not None:
+                self._set_inner_opt_attr(
+                    '_apply_decay_param_fun', apply_decay_param_fun
+                )
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -133,7 +173,25 @@ class DygraphShardingOptimizer:
                     p.main_grad._clear()
                     p.main_grad = None
             elif not hasattr(p, "main_grad"):
-                p.clear_gradient(set_to_zero)
+                if self.tensor_fusion:
+                    if set_to_zero:
+                        p.grad.zero_()
+                    else:
+                        p.grad._clear()
+                        p.grad = None
+                else:
+                    p.clear_gradient(set_to_zero)
+
+    def _tensor_fusion(self):
+        for i in range(self._sharding_world_size):
+            params = self._rank2params[i]
+            decay_fused, all_fused = fused_parameters(
+                params, self._use_main_grad
+            )
+            self._rank2decay[i] = decay_fused
+            self._rank2fused[i] = all_fused
+            for p in all_fused:
+                self._param2rank[p.name] = i
 
     def filter_parameters(self, parameter_list, hcg):
         sharding_parallel_rank = hcg.get_sharding_parallel_rank()
@@ -236,7 +294,12 @@ class DygraphShardingOptimizer:
 
         with framework.no_grad():
             # TODO detach not need (?)
-            for rank, params in self._rank2params.items():
+            valid_rank_to_params = (
+                self._rank2params
+                if not self.tensor_fusion
+                else self._rank2fused
+            )
+            for rank, params in valid_rank_to_params.items():
                 for param in params:
                     paddle.distributed.broadcast(
                         param,
@@ -309,9 +372,14 @@ class DygraphShardingOptimizer:
                 params_grads = self._inner_opt._grad_clip(params_grads)
                 # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
                 self._set_inner_opt_attr('_grad_clip', None)
-            update_param_names = [
-                p.name for p in self._rank2params[self._sharding_rank]
-            ]
+
+            rank_params = (
+                self._rank2params[self._sharding_rank]
+                if not self.tensor_fusion
+                else self._rank2fused[self._sharding_rank]
+            )
+            update_param_names = [p.name for p in rank_params]
+
             update_params_grads = [
                 (p, g) for p, g in params_grads if p.name in update_param_names
             ]

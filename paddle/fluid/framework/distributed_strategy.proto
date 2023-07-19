@@ -69,8 +69,8 @@ message PpConfig {
 
 message DygraphShardingConfig {
   optional bool split_param = 1 [ default = false ];
+  optional bool tensor_fusion = 2 [ default = false ];
 }
-
 
 message HybridConfig {
   optional int32 dp_degree = 1 [ default = -1 ];

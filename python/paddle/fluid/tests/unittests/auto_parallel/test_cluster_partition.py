@@ -14,6 +14,8 @@
 
 import unittest
 
+from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+
 
 class TestClusterPartition(unittest.TestCase):
     def test_cluster_partition(self):
@@ -28,6 +30,18 @@ class TestClusterPartition(unittest.TestCase):
             m = cluster[1]
             device_mesh = ClusterPartitionUtil.partition_cluster(n, m)
             device_meshes.append(device_mesh)
+
+
+class TestHybridParallel(TestMultipleGpus):
+    # check sharding logic as well as the accuracy with single mode
+    def test_hybrid_parallel_sharding_logic(self):
+        self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
+
+    def test_hybrid_parallel_sharding_tensor_fusion(self):
+        self.run_mnist_2gpu('hybrid_parallel_sharding_model_with_fusion.py')
+
+    def test_hybrid_parallel_sharding_state_dict(self):
+        self.run_mnist_2gpu('hybrid_parallel_sharding_state_dict.py')
 
 
 if __name__ == "__main__":

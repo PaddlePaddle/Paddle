@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import itertools
 import weakref
 from collections import OrderedDict
 
@@ -24,6 +24,7 @@ from paddle.framework import base as imperative_base
 alignment = {
     "gpu": 256,
 }
+
 align = {
     paddle.float16.value: 2,
     paddle.bfloat16.value: 2,
@@ -42,12 +43,13 @@ class HOOK_ACTION:
 def flatten_dense_tensors(parameters, use_main_grad=False, release_grad=False):
     from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_storage import (
         GradStorage,
+        ParamStorage,
     )
 
     _buffer_size = 0
     _param2align = {}
     _param2offset = {}
-    dtype = paddle.float32 if use_main_grad else parameters[0].dtype
+    dtype = parameters[0].dtype
 
     for param in parameters:
         assert param.trainable, "param must be trainable..."
@@ -62,10 +64,15 @@ def flatten_dense_tensors(parameters, use_main_grad=False, release_grad=False):
     if release_grad:
         return None, _buffer_size, _param2offset
 
+    param_storage = ParamStorage(size=_buffer_size, dtype=dtype, device="gpu")
+
+    param_storage.add_rank_params(parameters, _param2align)
+
     # process gradient
+    grad_dtype = paddle.float32 if use_main_grad else dtype
     grad_storage = GradStorage(
         size=_buffer_size,
-        dtype=dtype,
+        dtype=grad_dtype,
         device="gpu",
         destination="0",
         parm2align=_param2align,
@@ -74,7 +81,19 @@ def flatten_dense_tensors(parameters, use_main_grad=False, release_grad=False):
     for param in parameters:
         grad_storage.add_grad(param, _param2align[param.name])
 
-    return grad_storage.buffer, _buffer_size, _param2offset
+    param_storage.warp_buffer()
+    grad_storage.warp_buffer()
+
+    if not use_main_grad:
+        # param_storage --> grad_storage
+        param_storage.buffer._copy_gradient_from(grad_storage.buffer)
+    else:
+        param_storage.buffer.main_grad = grad_storage.buffer
+    param_storage.buffer.stop_gradient = False
+
+    return param_storage, grad_storage
+
+    # return grad_storage.buffer, _buffer_size, _param2offset
 
 
 class ShardingGradView:
@@ -496,3 +515,102 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
         var_groups.setdefault(group_idx, []).append(var)
 
     return var_groups
+
+
+def obtain_storage(parameters, use_main_grad, clip, dist):
+    if len(parameters) < 1:
+        return []
+
+    var_groups = assign_group_by_size(parameters)
+    storage = []
+    for group_idx, parameters in var_groups.items():
+        param_storage, grad_storage = flatten_dense_tensors(
+            parameters, use_main_grad
+        )
+        param_storage.buffer.need_clip = clip
+        param_storage.buffer.is_distributed = dist
+        storage.append(param_storage.buffer)
+    return storage
+
+
+def filter_params(params, is_fp32, is_distributed, need_clip):
+    params = list(
+        filter(
+            lambda x: x.is_distributed
+            if is_distributed
+            else (not x.is_distributed),
+            params,
+        )
+    )
+    params = list(
+        filter(
+            lambda x: getattr(x, 'need_clip', True)
+            if need_clip
+            else (not getattr(x, 'need_clip', True)),
+            params,
+        )
+    )
+    params = list(
+        filter(
+            lambda x: x.dtype == paddle.float32
+            if is_fp32
+            else x.dtype != paddle.float32,
+            params,
+        )
+    )
+    dtype = None
+    for p in params:
+        if dtype is None:
+            dtype = p.dtype
+        else:
+            assert dtype == p.dtype
+
+    return params, dtype
+
+
+def fused_parameters(parameters, use_main_grad):
+    param_groups = []
+    attrs = []
+
+    is_fp32 = [True, False]
+    is_distributed = [True, False]
+    need_clip = [True, False]
+
+    no_fp32_dtype = None
+    for fp32, dist, clip in itertools.product(
+        is_fp32, is_distributed, need_clip
+    ):
+        params, dtype = filter_params(parameters, fp32, dist, clip)
+        if not fp32:
+            if no_fp32_dtype is None:
+                no_fp32_dtype = dtype
+            elif dtype is not None:
+                assert no_fp32_dtype == dtype
+        attrs.append([dtype, dist, clip])
+        param_groups.append(params)
+
+    decay_fused = []
+    all_fused = []
+    for params, attr in zip(param_groups, attrs):
+        decay_params = []
+        other_params = []
+
+        for param in params:
+            if not any(nd in param.name for nd in ["bias", "norm", "b_0"]):
+                decay_params.append(param)
+            else:
+                other_params.append(param)
+
+        is_distributed = attr[1]
+        need_clip = attr[2]
+        decay = obtain_storage(
+            decay_params, use_main_grad, need_clip, is_distributed
+        )
+        other = obtain_storage(
+            other_params, use_main_grad, need_clip, is_distributed
+        )
+        decay_fused += decay
+        all_fused += decay
+        all_fused += other
+
+    return decay_fused, all_fused
