@@ -1125,6 +1125,36 @@ class ParametersRecorder:
         return id(program)
 
 
+class ParametersMap:
+    def __init__(self):
+        self.params_dict = {}
+
+    @synchronized
+    def add(self, program, id, param):
+        """use the default_program as key, append param the parameter list."""
+        key = self._program_hash(program)
+        if key not in self.params_dict:
+            self.params_dict[key] = {}
+
+        params = self.params_dict[key]
+        params[id] = param
+
+    def get(self, program, id):
+        params = self.params_dict.get(self._program_hash(program))
+        if params is None:
+            return None
+        if id in params.keys():
+            return params[id]
+        return None
+
+    def _program_hash(self, program):
+        """
+        because program is not deleted while calling from_func_spec.
+        so it's ok to use id(program)
+        """
+        return id(program)
+
+
 class FallbackProgramLayer:
     __slots__ = [
         '_instance',
@@ -1386,6 +1416,7 @@ class ProgramTranslator:
         self._initialized = True
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
+        self._params_map = ParametersMap()
         self.enable_to_static = True
 
     def enable(self, enable_to_static):

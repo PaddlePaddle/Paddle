@@ -18,6 +18,8 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
 
+from ..fluid.variable_index import _setitem_impl_
+
 __all__ = []
 
 
@@ -342,3 +344,28 @@ class InputSpec:
 
     def __ne__(self, other):
         return not self == other
+
+
+def setitem(x, index, value):
+    """
+    x(Tensor): input Tensor.
+    index(Scalar|Tuple|List|Tensor): Where should be set value.
+    value(Scalar|Tensor): The value which is going to be set.
+
+    [How to write index?]
+    1. ':' -> slice(),
+       (1) a[:]=v -> setitem(a, slice(None,None,None), v)
+       (2) a[1::2] -> setitem(a, slice(1,None,2), v)
+
+    2. if there are multiple indexes for axes, use TUPLE (Not LIST) to pack them.
+       (1) a[1, 2]=v -> setitem(a, (1, 2), v)
+       (2) a[[1,2],[2,3]]=v -> setitem(a, ([1,2],[2,3]), v)
+       (3) a[1,:, 3] = v -> setitem(a, (1, slice(None,None,None),3), v)
+       (4) a[1, ..., 2]=v -> setitem(a, (1, ..., 2), v)
+
+    3. You can always use TUPLE as index input， even there is only one index.
+       (1) a[Tensor([10,10])]=v -> setitem(a, (Tensor([10,10]),), v)
+       (2) a[1] = v -> setitem(a, (1,), v)
+    """
+
+    return _setitem_impl_(x, index, value)
