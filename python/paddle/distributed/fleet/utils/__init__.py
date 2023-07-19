@@ -23,6 +23,7 @@ from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
 from . import tensor_parallel_utils  # noqa: F401
 from . import mix_precision_utils  # noqa: F401
+from . import sequence_parallel_utils
 
 
 __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]  # noqa
