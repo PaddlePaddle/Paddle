@@ -484,7 +484,8 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 }
 
 template <typename T, typename Context>
-void BatchNormGradCudaFunctor(const Context &ctx,
+void BatchNormGradCudaFunctor(
+    const Context &ctx,
     const DenseTensor &x,
     const DenseTensor &scale,
     const DenseTensor &bias,
