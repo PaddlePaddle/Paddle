@@ -22,7 +22,7 @@ from .fused_dropout_add import fused_dropout_add
 from .fused_gate_attention import fused_gate_attention
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
 from .rms_norm import rms_norm
-
+from .masked_multiquery_attention import masked_multiquery_attention
 
 __all__ = [
     'fused_multi_head_attention',
@@ -35,4 +35,5 @@ __all__ = [
     'fused_dropout_add',
     'fused_rotary_position_embedding',
     "rms_norm",
+    "masked_multiquery_attention",
 ]

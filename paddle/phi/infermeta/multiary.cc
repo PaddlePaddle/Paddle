@@ -3754,5 +3754,126 @@ void WeightOnlyMatmulInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void MaskedMultiqueryAttentionInferMeta(const MetaTensor& x,
+                                        const MetaTensor& kv_input,
+                                        const MetaTensor& bias,
+                                        const MetaTensor& src_mask,
+                                        const MetaTensor& sequence_lengths,
+                                        const MetaTensor& rotary_tensor,
+                                        const MetaTensor& beam_cache_offset,
+                                        const MetaTensor& cache_kv,
+                                        const MetaTensor& qkv_out_scale,
+                                        const MetaTensor& out_linear_shift,
+                                        const MetaTensor& out_linear_smooth,
+                                        int beam_size,
+                                        int rotary_emb_dims,
+                                        const bool split_kv,
+                                        const int head_kv,
+                                        const bool mask_broadcast_num_heads,
+                                        const bool compute_bias,
+                                        const bool use_neox_rotary_style,
+                                        const float out_linear_in_scale,
+                                        const int quant_round_type,
+                                        const float quant_max_bound,
+                                        const float quant_min_bound,
+                                        MetaTensor* out,
+                                        MetaTensor* cache_kv_out,
+                                        MetaTensor* beam_cache_offset_out) {
+  auto x_dims = x.dims();
+  auto cache_kv_dims = cache_kv.dims();
+  auto x_dtype = x.dtype();
+  int bsz = x_dims[0];
+  int num_head=0;
+  if(split_kv){
+    num_head = x_dims[1];
+  }
+  else{
+    num_head = x_dims[1]-head_kv*2;
+  } 
+  int dim_head = x_dims[2];
+
+  if (sequence_lengths) {
+    out->set_dims({bsz, num_head, dim_head});
+  } else {
+    out->set_dims({bsz, 1, num_head, dim_head});
+  }
+  if (out_linear_in_scale > 0) {
+    out->set_dtype(DataType::INT8);
+  } else {
+    out->set_dtype(x_dtype);
+  }
+  
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims.size(),
+      5,
+      errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
+                              cache_kv_dims.size()));
+  
+  if(split_kv){
+      auto kv_input_dims = kv_input.dims();
+      PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      3,
+      errors::InvalidArgument("The dimensions of x must be 3"
+                              "(batch_size, num_head_q, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              x_dims.size()));
+      PADDLE_ENFORCE_EQ(
+      kv_input_dims.size(),
+      3,
+      errors::InvalidArgument("The dimensions of kv_input must be 3"
+                              "(batch_size, num_head_kv*2, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              kv_input_dims.size()));
+      PADDLE_ENFORCE_EQ(
+      kv_input_dims[1],
+      head_kv*2,
+      errors::InvalidArgument("The second dimensions of kv_input must equall to head_kv,but got %d",
+                              kv_input_dims[1]));
+  }
+  else{
+      PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      3,
+      errors::InvalidArgument("The dimensions of x must be 3"
+                              "(batch_size, num_head_q+2*num_head_kv, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              x_dims.size()));
+      PADDLE_ENFORCE_GT(
+        num_head,
+        0,
+         errors::InvalidArgument("The head number of q must greater than zero,but got %d",
+                              num_head)
+      );
+  }
+
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims.size(),
+      5,
+      errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
+                              cache_kv_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims[0],
+      2,
+      errors::InvalidArgument("The first dim of cache_kv must be 2, but got %d",
+                              cache_kv_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims[2],
+      head_kv,
+      errors::InvalidArgument("The third dim of cache_kv must equal to head_kv, but got %d",
+                              cache_kv_dims[2]));
+  cache_kv_out->set_dims(cache_kv_dims);
+  cache_kv_out->set_dtype(cache_kv.dtype());
+
+  if (beam_cache_offset) {
+    beam_cache_offset_out->set_dims(beam_cache_offset.dims());
+    beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
+  }
+}
+
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
