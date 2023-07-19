@@ -134,7 +134,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
-  // Note(sonder): share the op dependency, 
+  // Note(sonder): share the op dependency,
   // event analyzer, thread scheduling and GC.
   bool is_shared_{false};
 
