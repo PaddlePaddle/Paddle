@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/cinn/ir/scheduel/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace ir {

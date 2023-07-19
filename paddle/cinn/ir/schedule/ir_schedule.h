@@ -23,8 +23,8 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/utils/error.h"
-#include "paddle/cinn/utils/ir_mutator.h"
 #include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {

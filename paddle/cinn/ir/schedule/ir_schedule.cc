@@ -58,8 +58,7 @@ class ScheduleImpl {
                             utils::ErrorMessageLevel::kGeneral)
       : module_expr_(module_expr), debug_flag_(debug_flag) {
     err_msg_level_ = static_cast<utils::ErrorMessageLevel>(
-        FLAGS_cinn_schedule_error_message_level ||
-        static_cast<int>(err_msg_level));
+        FLAGS_cinn_error_message_level || static_cast<int>(err_msg_level));
   }
   explicit ScheduleImpl(ModuleExpr&& module_expr)
       : module_expr_(std::move(module_expr)) {}
