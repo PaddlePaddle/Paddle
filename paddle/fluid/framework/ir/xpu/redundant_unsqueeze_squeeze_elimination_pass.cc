@@ -270,7 +270,7 @@ void RedundantOnnxOpsEliminationPass::FoldGatherSqueeze2Ops(
 
     bool flag = true;
     auto x_shape = x->Var()->GetShape();
-    auto x_rank = x_shape.size();
+    auto x_rank = static_cast<int>(x_shape.size());
     std::vector<int> unsqueeze_axes_attr = PADDLE_GET_CONST(
         std::vector<int>, unsqueeze2_op->Op()->GetAttr("axes"));
     auto unsqueeze_axes = unsqueeze_axes_attr.front();
