@@ -222,8 +222,8 @@ void IrPrinter::PrintAttributeMap(const Operation* op) {
   os << " {";
   
   PrintInterleave(
-      tmp.begin(),
-      tmp.end(),
+      order_attributes.begin(),
+      order_attributes.end(),
       [this](std::pair<std::string, Attribute> it) {
         this->os << it.first;
         this->os << ":";
