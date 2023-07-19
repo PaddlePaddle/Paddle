@@ -125,6 +125,19 @@ class LRScheduler:
 
         Returns:
             None
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                value = paddle.arange(26, dtype='float32')
+                a = paddle.reshape(value, [2, 13])
+                linear = paddle.nn.Linear(13, 5)
+                adadelta = paddle.optimizer.Adadelta(learning_rate=0.0003, epsilon=1e-06, rho=0.95,
+                                            parameters = linear.parameters())
+                out = linear(a)
+                out.backward()
+                adadelta.step()
+                adadelta.clear_grad()
 
         Examples:
             .. code-block:: python
