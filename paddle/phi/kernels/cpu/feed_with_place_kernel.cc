@@ -34,7 +34,10 @@ PD_REGISTER_KERNEL(shaddow_feed,
                    CPU,
                    ALL_LAYOUT,
                    phi::ShaddowFeedKernel,
-                   float,
+                   bool float,
                    int32_t,
                    int64_t,
-                   double) {}
+                   double phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

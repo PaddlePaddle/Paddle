@@ -29,7 +29,7 @@ void ShaddowFeedKernel(const Context& ctx,
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {
-    phi::Copy(ctx, x, ctx.GetPlace(), true, out);
+    phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
   }
 }
 
