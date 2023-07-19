@@ -26,8 +26,7 @@ namespace paddle2cinn {
 
 void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
   // fix shape attr of these ops
-  const std::unordered_set<std::string> op_cases_fix_attr{"fill_constant",
-                                                          "uniform_random",
+  const std::unordered_set<std::string> op_cases_fix_attr{"uniform_random",
                                                           "expand_v2",
                                                           "assign_value",
                                                           "gaussian_random",
