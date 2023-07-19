@@ -350,26 +350,18 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
-class TestGroupNormFP16Op_With_NHWC(TestGroupNormOp):
+class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
     def init_test_case(self):
         self.attrs['groups'] = 4
+        self.shape = (1, 128, 56, 56)
         self.data_format = "NHWC"
         self.dtype = np.float16
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
-class TestGroupNormBF16Op_With_NHWC(TestGroupNormOp):
+class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['groups'] = 4
+        self.shape = (1, 128, 56, 56)
         self.data_format = "NHWC"
         self.dtype = np.uint16
 
