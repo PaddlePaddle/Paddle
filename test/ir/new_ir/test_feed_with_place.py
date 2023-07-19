@@ -48,8 +48,6 @@ class TestNewIr(unittest.TestCase):
             with paddle.static.program_guard(main_program):
                 out = feed_with_place()
 
-        print(main_program)
-
 
 if __name__ == "__main__":
     paddle.enable_static()
