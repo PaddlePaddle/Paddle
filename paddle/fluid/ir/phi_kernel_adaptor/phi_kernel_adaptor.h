@@ -60,9 +60,12 @@ class PhiKernelAdaptor {
         variable_2_var_name;
     std::map<std::string, int> var_name_2_id;
     std::vector<paddle::framework::Variable*> variable_list;
+    std::stringstream ss;
+    ss << this;
 
     BuildScope(*block,
                scope_,
+               ss.str(),
                &value_2_var_name,
                &variable_2_var_name,
                &var_name_2_id,

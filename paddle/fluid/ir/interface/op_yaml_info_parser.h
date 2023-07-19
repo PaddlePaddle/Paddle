@@ -35,6 +35,7 @@ class OpYamlInfoParser {
   const std::vector<std::string>& AttrParams(bool is_kernel = false) const;
   const OpRunTimeInfo& OpRuntimeInfo() const;
   const std::map<std::string, int>& InputName2Id() const;
+  const std::map<std::string, int>& OutputName2Id() const;
 
   const std::vector<std::string>& InputNames() const {
     return input_name_list_;
@@ -69,6 +70,7 @@ class OpYamlInfoParser {
   std::map<std::string, OpAttributeInfo> attr_info_;
 
   // output info
+  std::map<std::string, int> output_name2id_;
   std::vector<std::string> output_name_list_;
   std::map<std::string, OpOutputInfo> output_info_;
 

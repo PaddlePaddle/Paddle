@@ -43,6 +43,7 @@
 namespace ir {
 void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
                 std::unordered_map<ir::Value, std::string>* value_2_var_name,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
@@ -55,15 +56,12 @@ template <typename Context,
           typename InListType,
           typename OutListType,
           bool is_kernel>
-void BuildPhiContext(
-    ir::Operation* op,
-    const std::unordered_map<ir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    Context* ctx,
-    std::map<std::string, std::vector<int>>* input_map = nullptr,
-    std::map<std::string, std::vector<int>>* output_map = nullptr) {
+void BuildPhiContext(ir::Operation* op,
+                     const std::unordered_map<ir::Value, std::string>& name_map,
+                     paddle::framework::Scope* scope,
+                     paddle::framework::Scope* local_scope,
+                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                     Context* ctx) {
   paddle::framework::Scope* inner_scope =
       local_scope != nullptr ? local_scope : scope;
   VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
@@ -120,17 +118,6 @@ void BuildPhiContext(
       ir::Value ptr = op->operand(name2id.at(t));
 
       auto in_var_name = name_map.at(ptr);
-      if (input_map != nullptr) {
-        // only deal with single input for now, [todo] need support multi input
-        // like concat
-        // TODO(phlrain): OpFuncNode need input_index and output_index,
-        // construct input_index and output_here,  should remove input_index and
-        // output_index from OpFuncNode Each in_var_name named "inner_var_" +
-        // index, len("inner_var_") = 10
-
-        size_t tmp_id = std::atol(in_var_name.substr(4, 100).c_str());
-        (*input_map)[std::to_string(name2id.at(t))].push_back(tmp_id);
-      }
 
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
@@ -323,18 +310,6 @@ void BuildPhiContext(
       } else {
         PADDLE_THROW(
             phi::errors::Unimplemented("only support DenseTensor and vector "));
-      }
-
-      if (output_map != nullptr) {
-        // only deal with single input for now, [todo] need support multi input
-        // like concat
-        // TODO(phlrain): OpFuncNode need input_index and output_index,
-        // construct input_index and output_here,  should remove input_index and
-        // output_index from OpFuncNode Each in_var_name named "inner_var_" +
-        // index, len("inner_var_") = 10
-
-        size_t tmp_id = std::atol(name.substr(4, 100).c_str());
-        (*output_map)["out"].push_back(tmp_id);
       }
     }
   }
