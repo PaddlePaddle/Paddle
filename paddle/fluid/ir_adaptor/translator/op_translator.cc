@@ -60,12 +60,14 @@ using OpAttributeInfo = dialect::OpAttributeInfo;
 using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
 using OpOutputInfo = dialect::OpOutputInfo;
 using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-using InputHandleFn = std::function<ir::OpResult(ir::IrContext*,
-                                                 TranslationContext*,
-                                                 const OpDesc&,
-                                                 const std::string&,
-                                                 const OpInputInfo&,
-                                                 ir::Program*)>;
+using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
+                                                  TranslationContext*,
+                                                  const OpDesc&,
+                                                  const std::string&,
+                                                  const OpInputInfo&,
+                                                  ir::Program*)>;
+using AttributeHandlerFn = std::function<ir::Attribute(
+    ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 constexpr char kTargetDialectPrefix[] = "pd.";
 constexpr char kEmptyVarName[] = "@EMPTY@";
 
@@ -291,7 +293,12 @@ struct OpTranscriber {
                                      const OpOutputMapping& arg_to_idx);
 
  public:
-  virtual InputHandleFn GetSpecialInputHandlers(std::string input_name) {
+  virtual InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) {
+    return nullptr;
+  }
+  virtual AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& input_name) {
     return nullptr;
   }
 };
@@ -560,6 +567,12 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   ir::AttributeMap attribute_map = {};
 
   for (const auto& info : op_attr_infos) {
+    if (auto handler = this->GetSpecialAttributeHandlers(info.name)) {
+      auto new_attr = handler(ctx, op_desc, info);
+      attribute_map[info.name] = new_attr;
+      continue;
+    }
+
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
 
@@ -886,7 +899,8 @@ ir::OpResult TranslateDropOutStateIn(ir::IrContext* ctx,
 
 // `rnn` has an aditional input in dynamic graph
 struct RnnOpTranscriber : public OpTranscriber {
-  InputHandleFn GetSpecialInputHandlers(std::string input_name) override {
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
     if (input_name != "dropout_state_in") {
       return nullptr;
     }
@@ -1087,6 +1101,36 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+ir::Attribute TranslateReduceAll(ir::IrContext* ctx,
+                                 const OpDesc& op_desc,
+                                 const OpAttributeInfo& attr_info) {
+  bool reduce_all = false;
+  if (op_desc.HasAttr("reduce_all")) {
+    reduce_all = paddle::get<bool>(op_desc.GetAttr("reduce_all"));
+  }
+
+  if (reduce_all) {
+    return ir::ArrayAttribute::get(ctx, std::vector<ir::Attribute>{});
+  }
+
+  auto& attribute_translator = AttributeTranslator::instance();
+  auto& op_normalizer = OpNameNormalizer::instance();
+  auto legacy_attr_name =
+      op_normalizer.GetLegacyAttrName(op_desc.Type(), attr_info.name);
+  paddle::framework::Attribute dims = op_desc.GetAttr(legacy_attr_name);
+  return attribute_translator(attr_info.type_name, dims);
+}
+
+struct ReduceOpTranscriber : public OpTranscriber {
+  AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& input_name) override {
+    if (input_name != "axis") {
+      return nullptr;
+    }
+    return TranslateReduceAll;
+  }
+};
+
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
@@ -1098,6 +1142,8 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["reduce_all"] = ReduceOpTranscriber();
+  special_handlers["reduce_any"] = ReduceOpTranscriber();
 }
 
 }  // namespace translator
