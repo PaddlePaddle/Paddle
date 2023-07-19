@@ -16,7 +16,7 @@
 
 namespace paddle {
 namespace dialect {
-const phi::IntArray IntArrayAttribute::data() const {
+const phi::IntArray& IntArrayAttribute::data() const {
   return storage()->GetAsKey();
 }
 
