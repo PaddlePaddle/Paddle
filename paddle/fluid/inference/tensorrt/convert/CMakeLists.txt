@@ -107,6 +107,7 @@ list(
   cumsum_op.cc
   temporal_shift_op.cc
   einsum_op.cc
+  unbind_op.cc
   assign_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
