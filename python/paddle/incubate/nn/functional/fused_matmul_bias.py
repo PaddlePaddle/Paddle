@@ -112,7 +112,7 @@ def fused_linear_activation(
         weight (Tensor): the weight Tensor to be multiplied. Its rank must be 2.
         bias (Tensor): the input bias Tensor, the bias is added to the matrix multiplication result.
         transpose_weight (bool): Whether to transpose :math:`weight` before multiplication.
-        activation(str|None): Activation function, Currently, the available activation functions are limited to GELU (Gaussian Error Linear Unit) and ReLU (Rectified Linear Unit). These activation functions are applied to the output of the bias add.
+        activation(str|None): Activation function, Currently, the available activation functions are limited to "gelu" (Gaussian Error Linear Unit) and "relu" (Rectified Linear Unit). These activation functions are applied to the output of the bias add.
     Returns:
         Tensor: the output Tensor.
 
@@ -126,7 +126,7 @@ def fused_linear_activation(
             x = paddle.randn([3, 4])
             weight = paddle.randn([4, 5])
             bias = paddle.randn([5])
-            out = fused_linear_activation(x, weight, bias, none)
+            out = fused_linear_activation(x, weight, bias, "none")
             print(out.shape) # [3, 5]
     """
     if activation is None:
