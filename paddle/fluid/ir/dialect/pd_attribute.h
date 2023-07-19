@@ -62,7 +62,7 @@ class DataTypeAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
-  const phi::DataType data() const;
+  const phi::DataType& data() const;
 };
 
 class PlaceAttribute : public ir::Attribute {
