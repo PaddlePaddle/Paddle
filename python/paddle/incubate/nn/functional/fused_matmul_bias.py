@@ -17,7 +17,6 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.linalg import matmul
 
-
 def fused_matmul_bias(
     x, y, bias=None, transpose_x=False, transpose_y=False, name=None
 ):
@@ -126,12 +125,14 @@ def fused_linear_activation(
             x = paddle.randn([3, 4])
             weight = paddle.randn([4, 5])
             bias = paddle.randn([5])
-            out = fused_linear_activation(x, weight, bias)
+            out = fused_linear_activation(x, weight, bias, none)
             print(out.shape) # [3, 5]
     """
+    if activation is None:
+        activation = "none"
 
     if in_dynamic_mode():
-        return _legacy_C_ops.fused_gemm_epilogue(
+        return core.eager.ops.fused_gemm_epilogue.fused_gemm_epilogue(
             x,
             y,
             bias,
@@ -142,6 +143,7 @@ def fused_linear_activation(
             'activation',
             activation,
         )
+
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
