@@ -22,7 +22,7 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
 from paddle.distributed.fleet import auto
 
 
-class TestEmbeddingSPMDRule(unittest.TestCase):
+class TestCrossEntropyWithSoftmaxSPMDRule(unittest.TestCase):
     def setUp(self):
         self.rule1 = get_spmd_rule("cross_entropy_with_softmax")
 
