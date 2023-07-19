@@ -1158,6 +1158,8 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 

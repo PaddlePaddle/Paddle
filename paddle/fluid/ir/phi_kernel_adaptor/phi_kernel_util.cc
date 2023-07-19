@@ -49,6 +49,7 @@ using VariableNameMap =
 paddle::framework::Variable* CreateVar(
     ir::Value value,
     paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
     bool force_persisable,
     std::unordered_map<ir::Value, std::string>* value_2_var_name,
     std::unordered_map<const paddle::framework::Variable*, std::string>*
@@ -65,7 +66,10 @@ paddle::framework::Variable* CreateVar(
   }
 
   paddle::framework::Variable* var = nullptr;
+
   std::string name = "inner_var_" + std::to_string(inner_scope->Size());
+  VLOG(6) << "var_name_prefix is: " << var_name_prefix;
+
   if (force_persisable || is_persisable) {
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope->root();
     var = const_cast<paddle::framework::Scope*>(inner_scope->root())->Var(name);
@@ -109,6 +113,7 @@ void CheckInputVars(
 
 void BuildValue(ir::Value value,
                 paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
                 std::unordered_map<ir::Value, std::string>* value_2_var_name,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
@@ -120,6 +125,7 @@ void BuildValue(ir::Value value,
   } else {
     var = CreateVar(value,
                     inner_scope,
+                    var_name_prefix,
                     false,
                     value_2_var_name,
                     variable_2_var_name,
@@ -146,6 +152,7 @@ void BuildValue(ir::Value value,
                          "DenseTensorType"));
       auto var_i = CreateVar(value,
                              inner_scope,
+                             var_name_prefix,
                              false,
                              value_2_var_name,
                              variable_2_var_name,
@@ -163,6 +170,7 @@ void BuildValue(ir::Value value,
 void HandleForSpecialOp(
     ir::Operation* op,
     paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
     std::unordered_map<ir::Value, std::string>* value_2_var_name,
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
@@ -189,6 +197,7 @@ void HandleForSpecialOp(
     auto value = op->result(0);
     auto var = CreateVar(value,
                          inner_scope,
+                         var_name_prefix,
                          false,
                          value_2_var_name,
                          variable_2_var_name,
@@ -226,6 +235,7 @@ void HandleForSpecialOp(
     } else {
       var = CreateVar(out_value,
                       inner_scope,
+                      var_name_prefix,
                       false,
                       value_2_var_name,
                       variable_2_var_name,
@@ -321,6 +331,7 @@ void HandleForSpecialOp(
 void HandleForInplaceOp(
     ir::Operation* op,
     paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
     std::unordered_map<ir::Value, std::string>* value_2_var_name,
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
@@ -353,6 +364,7 @@ void HandleForInplaceOp(
     } else {
       BuildValue(value,
                  inner_scope,
+                 var_name_prefix,
                  value_2_var_name,
                  variable_2_var_name,
                  var_name_2_id,
@@ -365,6 +377,7 @@ void HandleForInplaceOp(
 // created in inner_scope.
 void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
                 std::unordered_map<ir::Value, std::string>* value_2_var_name,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
@@ -393,6 +406,7 @@ void BuildScope(const ir::Block& block,
         op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
+                         var_name_prefix,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
@@ -410,6 +424,7 @@ void BuildScope(const ir::Block& block,
             .data()) {
       HandleForInplaceOp(op,
                          inner_scope,
+                         var_name_prefix,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
@@ -419,6 +434,7 @@ void BuildScope(const ir::Block& block,
       for (size_t i = 0; i < op->num_results(); ++i) {
         BuildValue(op->result(i),
                    inner_scope,
+                   var_name_prefix,
                    value_2_var_name,
                    variable_2_var_name,
                    var_name_2_id,
