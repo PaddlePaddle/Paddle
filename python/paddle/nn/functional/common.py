@@ -404,6 +404,7 @@ def interpolate(
         )
 
     if isinstance(size, Variable):
+        size = size.cast("int32")  # static mode only support int32
         if size.ndim != 1:
             raise ValueError(
                 f"If size is a tensor, it's rank must be 1, but received {size.ndim}."
