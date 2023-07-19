@@ -45,7 +45,7 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
 
 
 def flatten_dense_tensors(
-    parameters, use_main_grad=False, fuse_grad=True, warp_buffer=False
+    parameters, use_main_grad=False, fuse_param=True, warp_buffer=False
 ):
     from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_storage import (
         GradStorage,
@@ -65,7 +65,7 @@ def flatten_dense_tensors(
         _buffer_size += np.prod(param.shape) + align_
         _param2align[param.name] = align_
 
-    if fuse_grad:
+    if fuse_param:
         param_storage = ParamStorage(
             size=_buffer_size, dtype=dtype, device="gpu"
         )
@@ -85,11 +85,11 @@ def flatten_dense_tensors(
         grad_storage.add_grad(param, _param2align[param.name])
 
     if warp_buffer:
-        if fuse_grad:
+        if fuse_param:
             param_storage.warp_buffer()
         grad_storage.warp_buffer()
 
-    if fuse_grad:
+    if fuse_param:
         if not use_main_grad:
             # param_storage --> grad_storage
             param_storage.buffer._copy_gradient_from(grad_storage.buffer)
@@ -111,7 +111,7 @@ def obtain_storage(parameters, use_main_grad, clip, dist):
         param_storage, grad_storage = flatten_dense_tensors(
             parameters,
             use_main_grad=use_main_grad,
-            fuse_grad=True,
+            fuse_param=True,
             warp_buffer=True,
         )
         param_storage.buffer.need_clip = clip

@@ -148,7 +148,7 @@ class FusedCommBuffer:
         self.grad_storage = flatten_dense_tensors(
             self._params,
             use_main_grad=self.use_main_grad,
-            fuse_grad=False,
+            fuse_param=False,
             warp_buffer=False,
         ).buffer
 
