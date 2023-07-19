@@ -970,7 +970,9 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=self._acc_steps,
+            acc_step=1
+            if self._strategy.pipeline.enable
+            else self._acc_steps,  # lr update once every local batch
         )
 
         cbks.on_begin('train')
