@@ -2936,7 +2936,7 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
                               "The phi::DenseTensor of variable %s is nullptr "
                               "when promote complex types."));
   PADDLE_ENFORCE_EQ(
-      t->initialized(),
+      t->defined(),
       true,
       platform::errors::InvalidArgument(
           "The phi::DenseTensor in the %s Op's Input Variable %s(%s) is "
