@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 namespace paddle {
 namespace experimental {
@@ -220,8 +223,21 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
   if (tensor_in) {
-    phi::DenseTensor& dense_tensor =
-        *static_cast<phi::DenseTensor*>(tensor_in.get());
+    phi::DenseTensor* dense_tensor_ptr = nullptr;
+#ifdef PADDLE_WITH_DISTRIBUTE
+    if (phi::distributed::auto_parallel::DistTensor::classof(tensor_in.get())) {
+      phi::distributed::auto_parallel::DistTensor* dist_tensor_ptr =
+          static_cast<phi::distributed::auto_parallel::DistTensor*>(
+              tensor_in.get());
+      dense_tensor_ptr = dist_tensor_ptr->mutable_value();
+    } else {
+#else
+    dense_tensor_ptr = static_cast<phi::DenseTensor*>(tensor_in.get());
+#endif
+#ifdef PADDLE_WITH_DISTRIBUTE
+    }
+#endif
+    phi::DenseTensor& dense_tensor = *dense_tensor_ptr;
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&

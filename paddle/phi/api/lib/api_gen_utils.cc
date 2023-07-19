@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
+
 namespace paddle {
 namespace experimental {
 
@@ -184,10 +189,23 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 /* ------------------ for output ----------------------- */
 
-phi::DenseTensor* SetKernelOutput(Tensor* out) {
+phi::DenseTensor* SetKernelOutput(Tensor* out, bool for_auto_parallel) {
   if (out) {
     if (out->impl() == nullptr) {
-      out->set_impl(std::make_shared<phi::DenseTensor>());
+      if (for_auto_parallel) {
+        // TODO(chenweihang): polish code, now all dist case are nullptr
+        // TODO(chenweihang): polish code, dist_attr is null
+        auto dense_t = std::make_shared<phi::DenseTensor>();
+        auto dist_attr =
+            std::make_shared<phi::distributed::auto_parallel::TensorDistAttr>();
+        auto dist_t =
+            std::make_shared<phi::distributed::auto_parallel::DistTensor>(
+                dense_t, dist_attr);
+        out->set_impl(dist_t);
+        return dist_t->mutable_value();
+      } else {
+        out->set_impl(std::make_shared<phi::DenseTensor>());
+      }
     }
     return static_cast<phi::DenseTensor*>(out->impl().get());
   }
@@ -195,7 +213,8 @@ phi::DenseTensor* SetKernelOutput(Tensor* out) {
 }
 
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
-                                               std::vector<Tensor>* out) {
+                                               std::vector<Tensor>* out,
+                                               bool for_auto_parallel) {
   out->reserve(out_size);
   std::vector<phi::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {

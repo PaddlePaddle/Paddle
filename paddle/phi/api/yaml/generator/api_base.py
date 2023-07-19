@@ -1278,6 +1278,103 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
   }}
 """
 
+    def gene_auto_parallel_branch(self, kernel_name, code_indent, inplace_flag):
+        # 1. If condition, as long as one input is a DistTensor, enter this branch
+        # TODO(chenwiehang): only support Tensor and optional<Tensor>
+        used_inputs = []
+        for name in self.inputs['names']:
+            if (
+                self.inputs['input_info'][name] == "const Tensor&"
+                or self.inputs['input_info'][name]
+                == "const paddle::optional<Tensor&>"
+            ):
+                used_inputs.append(name)
+        if len(used_inputs) == 0:
+            return ""
+        condition_code = ""
+        if len(used_inputs) > 1:
+            condition_code += f"{used_inputs[0]}.is_dist_tensor()"
+            for name in used_inputs[1:]:
+                if name in self.optional_vars:
+                    condition_code += (
+                        f" || (!{name} || {name}->is_dist_tensor())"
+                    )
+                else:
+                    condition_code += f" || {name}.is_dist_tensor()"
+        else:
+            condition_code += f"{used_inputs[0]}.is_dist_tensor()"
+
+        # 2. TODO(chenweihang): generate InferSPMD code later
+        # InferSPMD contains global InferShape part
+        # infer_spmd_code = f""
+
+        # 3. Kernel Selection
+        kernel_selection_code = f"""
+{code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+{code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
+{code_indent}  const auto& kernel = kernel_result.kernel;
+{code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
+{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);"""
+
+        # 4. Prepare Data
+        # TODO(chenweihang): generate Reshard code later, and maybe we should
+        # split original PrepareData part to TransformPlaceAndDtype and
+        # TransformLayout, then insert Reshard part, result like:
+        # TransformPlaceAndDtype->Reshard->TransformLayout
+        (
+            prepare_input_tensors_code,
+            kernel_args,
+            kernel_signature,
+        ) = self.get_kernel_args(code_indent=code_indent)
+
+        # 5. Dist Output Creation
+        out_tensor_type_list = None
+        (
+            outputs_args,
+            kernel_output_names,
+            output_creation_code,
+        ) = self.gene_output(
+            self.outputs['types'],
+            out_tensor_type_list,
+            code_indent,
+            inplace_flag,
+            auto_parallel_flag=True,
+        )
+
+        # 6. Local InferMeta
+        local_infermeta_code = self.gene_infer_meta(
+            kernel_output_names, code_indent
+        )
+
+        # 6. Kernel Call
+        fallback_kernel_output_trans = ""
+        for kernel_out in outputs_args:
+            fallback_kernel_output_trans += f"""
+{code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+        kernel_call_code = f"""
+{code_indent}  using kernel_signature = {kernel_signature};
+{code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+{code_indent}  (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{fallback_kernel_output_trans}
+{self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
+{code_indent}  }}"""
+
+        # 7. Return
+        return_code = self.gene_return_code()
+
+        return f"""
+  if ({condition_code}) {{
+    {kernel_selection_code}
+    {prepare_input_tensors_code}
+    {output_creation_code}
+    {local_infermeta_code}
+    {kernel_call_code}
+    {return_code}
+  }}
+"""
+
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
@@ -1303,6 +1400,13 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
 """
             )
         else:
+            # auto parallel branch, all apis contains this branch default
+            # now only work for the ops contains single kernel
+            if len(self.inputs['names']) > 0:
+                api_code += self.gene_auto_parallel_branch(
+                    self.kernel['func'][0], '  ', inplace_flag
+                )
+
             return (
                 api_code
                 + self.gen_kernel_code(self.kernel['func'][0], '', inplace_flag)

@@ -87,10 +87,11 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 /* ------------------ for output ----------------------- */
 
-phi::DenseTensor* SetKernelOutput(Tensor* out);
+phi::DenseTensor* SetKernelOutput(Tensor* out, bool for_auto_parallel = false);
 
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
-                                               std::vector<Tensor>* out);
+                                               std::vector<Tensor>* out,
+                                               bool for_auto_parallel = false);
 
 std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
     size_t out_size, std::vector<Tensor>* out);

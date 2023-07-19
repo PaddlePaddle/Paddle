@@ -171,6 +171,7 @@ class ForwardAPI(BaseAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
+        auto_parallel_flag=False,
     ):
         kernel_output = []
         output_names = []
@@ -197,18 +198,32 @@ class ForwardAPI(BaseAPI):
                 assert (
                     self.outputs['out_size_expr'][0] is not None
                 ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
-                output_create = (
-                    output_create
-                    + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
-                )
+                if auto_parallel_flag is True:
+                    output_create = (
+                        output_create
+                        + f"""
+    {code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output, true);"""
+                    )
+                else:
+                    output_create = (
+                        output_create
+                        + f"""
+    {code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
+                    )
 
             else:
-                output_create = (
-                    output_create
-                    + f"""
-{code_indent}  auto kernel_out = {set_out_func}(&api_output);"""
-                )
+                if auto_parallel_flag is True:
+                    output_create = (
+                        output_create
+                        + f"""
+    {code_indent}  auto kernel_out = {set_out_func}(&api_output, true);"""
+                    )
+                else:
+                    output_create = (
+                        output_create
+                        + f"""
+    {code_indent}  auto kernel_out = {set_out_func}(&api_output);"""
+                    )
 
             if (
                 not inplace_flag
