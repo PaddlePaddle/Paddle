@@ -17,13 +17,13 @@
 
 #include <gloo/allgather.h>
 #include <gloo/allreduce.h>
+#include <gloo/barrier.h>
 #include <gloo/broadcast.h>
 #include <gloo/gather.h>
 #include <gloo/reduce.h>
 #include <gloo/scatter.h>
 #include <gloo/types.h>
 
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
