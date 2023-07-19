@@ -35,8 +35,8 @@ void SetFeedVariable(Scope* scope,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
+  VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
   if (FLAGS_enable_new_ir_in_executor) {
-    VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
     // shared data with input tensor
     auto inner_var_name = var_name + "_" + std::to_string(index);
     auto feed_ele = scope->Var(inner_var_name);
@@ -49,7 +49,6 @@ void SetFeedVariable(Scope* scope,
     // set lod
     val->set_lod(input.lod());
   } else {
-    VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
     Variable* g_feed_value = scope->Var(var_name);
     auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
     if (index >= feed_inputs.size()) {

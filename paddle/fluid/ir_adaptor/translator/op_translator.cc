@@ -303,7 +303,7 @@ ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
   if (IsInplace(op_desc)) {
     target_op_name += "_";
   }
-  VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
+  VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
           << target_op_name;
   auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
@@ -963,7 +963,7 @@ struct SplitOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
       ir::Program* program) override {
-    // input of pslit is [Tensor x, IntArray sections, Scalar(int) axis)]
+    // input of split is [Tensor x, IntArray sections, Scalar(int) axis)]
 
     VLOG(10) << "[op:split][input] start";
 
@@ -1108,6 +1108,55 @@ struct AddNOpTranscriber : public OpTranscriber {
   }
 };
 
+ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
+                                          TranslationContext* param_map,
+                                          const OpDesc& op_desc,
+                                          const std::string& normalized_op_name,
+                                          const OpInputInfo& input_info,
+                                          ir::Program* program) {
+  const std::string legacy_attr_name = "depth";
+  const std::string legacy_tensor_name = "depth_tensor";
+  std::vector<std::string> legacy_vars;
+  if (op_desc.HasInput(legacy_tensor_name) &&
+      op_desc.Input(legacy_tensor_name).size() > 0) {
+    legacy_vars = op_desc.Input(legacy_tensor_name);
+    IR_ENFORCE(legacy_vars.size() == 1,
+               "depth_tensor input of one hot MUST be a tensor");
+    auto var_name = legacy_vars[0];
+    IR_ENFORCE(legacy_vars.size() == 1,
+               "depth_tensor input of one hot MUST be a tensor");
+    auto defining_info = param_map->find(legacy_vars[0]);
+    IR_ENFORCE(defining_info != param_map->end(),
+               "%s should be existed in one_hot_v2 as input depth_tensor.",
+               legacy_vars[0]);
+    return defining_info->second.value;
+  }
+
+  auto& attribute_translator = AttributeTranslator::instance();
+  if (!op_desc.HasAttr(legacy_attr_name)) {
+    IR_THROW("Op %s arg %s should not be zero size",
+             op_desc.Type(),
+             legacy_attr_name);
+  }
+  paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
+  VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+           << " name: " << legacy_attr_name << " " << legacy_attr.index();
+  ir::Attribute new_attr = attribute_translator(legacy_attr);
+
+  ir::Operation* defining_op =
+      InsertFullOperationForAttributeInput(ctx, program, new_attr);
+  return defining_op->result(0);
+}
+
+struct OneHotTranscriber : public OpTranscriber {
+  InputHandleFn GetSpecialInputHandlers(std::string input_name) override {
+    if (input_name != "num_classes") {
+      return nullptr;
+    }
+    return TranslateNumClassesForOneHot;
+  };
+};
+
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
@@ -1119,6 +1168,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
 }
 

@@ -73,7 +73,10 @@ PhiKernelInstruction::PhiKernelInstruction(
     ir::Operation* op,
     Scope* scope,
     Scope* local_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_name_map)
+    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+    const std::map<std::string, int>& var_name_2_id,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name)
     : InstructionBase(id, place) {
   auto op_attributes = op->attributes();
   auto op_name =
@@ -81,14 +84,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
 
   phi_op_name_ = op_name;
-
-  if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-      op_name == "builtin.set_parameter" ||
-      op_name == "builtin.get_parameter") {
-    VLOG(6) << "skip process " << op_name;
-    SetArtificial(true);
-    return;
-  }
+  VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
 
   // Todo: support paddle::dialect::DistAttribute
   //   if (op_attributes.count("dist_attr") != 0) {
@@ -117,15 +113,24 @@ PhiKernelInstruction::PhiKernelInstruction(
   //       op_func_node.scheduling_priority_ = 1;
   //     }
   //   }
+  VLOG(6) << "finish process dist attributes";
 
   SetKernelType(AnalyseOpFuncType(op, place));
+  VLOG(6) << "finish process analyse kernel type";
 
   infer_meta_interface_ =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
+  VLOG(6) << "finish process infer_meta_interface_";
+
   auto yaml_interface =
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+  PADDLE_ENFORCE_NOT_NULL(
+      yaml_interface,
+      phi::errors::PreconditionNotMet(
+          "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_());
+  VLOG(6) << "finish process yaml_info_parser";
 
   ::ir::BuildPhiContext<
       phi::InferMetaContext,
@@ -134,7 +139,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
       paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
       false>(op,
-             value_2_name_map,
+             value_2_var_name,
              scope,
              local_scope,
              yaml_info_parser,
@@ -159,13 +164,11 @@ PhiKernelInstruction::PhiKernelInstruction(
                         paddle::small_vector<const phi::TensorBase*>,
                         paddle::small_vector<phi::TensorBase*>,
                         true>(op,
-                              value_2_name_map,
+                              value_2_var_name,
                               scope,
                               local_scope,
                               yaml_info_parser,
-                              &kernel_context_,
-                              &(GetMutableInputs()),
-                              &(GetMutableOutputs()));
+                              &kernel_context_);
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
   VLOG(6) << "finish process kernel context";
@@ -173,13 +176,90 @@ PhiKernelInstruction::PhiKernelInstruction(
   SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
   VLOG(6) << "finish process device context";
+
+  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
+  InitInputsOutputsIds(
+      op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
+  VLOG(6) << "finish process inputs outputs index";
+}
+
+std::vector<int> GetValueIds(
+    ir::Value value,
+    Scope* inner_scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+    const std::map<std::string, int>& var_name_2_id,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name) {
+  std::vector<int> ids;
+  std::string var_name = value_2_var_name.at(value);
+  ids.push_back(var_name_2_id.at(var_name));
+  // NOTE(zhangbo): Value maybe a VariableRefArray
+  auto var = inner_scope->FindVar(var_name);
+  if (var->IsType<paddle::framework::VariableRefArray>()) {
+    auto& var_array = var->Get<paddle::framework::VariableRefArray>();
+    for (size_t i = 0; i < var_array.size(); ++i) {
+      ids.push_back(var_name_2_id.at(variable_2_var_name.at(var_array[i])));
+    }
+  }
+  return ids;
+}
+
+void PhiKernelInstruction::InitInputsOutputsIds(
+    ::ir::Operation* op,
+    Scope* inner_scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+    const std::map<std::string, int>& var_name_2_id,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name) {
+  std::unordered_map<ir::Value, std::vector<int>> inputs;
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    ir::Value value = op->operand(i);
+    if (value) {
+      PADDLE_ENFORCE_NE(
+          value_2_var_name.find(value),
+          value_2_var_name.end(),
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              phi_op_name_));
+      std::vector<int> inputs_id = GetValueIds(value,
+                                               inner_scope,
+                                               value_2_var_name,
+                                               var_name_2_id,
+                                               variable_2_var_name);
+      inputs.emplace(value, inputs_id);
+    }
+  }
+  SetInputs(inputs);
+  VLOG(8) << "finish process inputs_index";
+  std::unordered_map<ir::Value, std::vector<int>> outputs;
+  for (size_t i = 0; i < op->num_results(); i++) {
+    ir::Value value = op->result(i);
+    if (value) {
+      PADDLE_ENFORCE_NE(
+          value_2_var_name.find(value),
+          value_2_var_name.end(),
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              phi_op_name_));
+      std::vector<int> outputs_id = GetValueIds(value,
+                                                inner_scope,
+                                                value_2_var_name,
+                                                var_name_2_id,
+                                                variable_2_var_name);
+      outputs.emplace(value, outputs_id);
+    }
+  }
+  SetOutputs(outputs);
+  VLOG(8) << "finish process outputs_index";
 }
 
 void PhiKernelInstruction::Run() {
-  VLOG(5) << "Run op " << phi_op_name_ << " infer meta.";
   infer_meta_interface_->infer_meta_(&(infer_meta_context_));
-  VLOG(5) << "Run op " << phi_op_name_ << " kernel.";
+  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   (*(phi_kernel_))(&(kernel_context_));
+  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
 }
 
 }  // namespace framework

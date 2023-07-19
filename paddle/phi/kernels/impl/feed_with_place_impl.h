@@ -23,7 +23,6 @@ template <typename T, typename Context>
 void ShaddowFeedKernel(const Context& ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
-  std::cerr << "out dim" << out->dims() << std::endl;
   ctx.template Alloc<T>(out);
   if (x.place() == out->place()) {
     out->ShareDataWith(x);
