@@ -27,7 +27,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/optim/collect_undefined_vars.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 

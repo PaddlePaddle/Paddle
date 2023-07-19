@@ -350,7 +350,6 @@ void BuildScope(const ir::Block& block,
           << paddle::framework::GenScopeTreeDebugInfo(
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
 
-  // int count = value_2_var_name->size();
   for (auto it = block.begin(); it != block.end(); ++it) {
     ir::Operation* op = *it;
 

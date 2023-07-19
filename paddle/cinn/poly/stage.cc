@@ -22,12 +22,12 @@
 #include <utility>
 
 #include "paddle/cinn/common/axis.h"
-#include "paddle/cinn/ir/collect_ir_nodes.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/ir_replace.h"
