@@ -268,9 +268,9 @@
 
 - op : assert
   inputs :
-    {cond : kCond, data : kData}
-  attrs:
-    { summarize : kSummarize}
+    {cond : Cond, data : Data}
+  # attrs:
+  #   { summarize : summarize}
 
 - op : assign
   backward : assign_grad
