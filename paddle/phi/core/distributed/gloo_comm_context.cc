@@ -63,11 +63,13 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
 }
 
 void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor) {
+                                const phi::DenseTensor& in_tensor,
+                                uint32_t tag) {
   // gloo only uses CPU now
 
   gloo::AllgatherOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
+  opts.setTag(tag);
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   gloo::allgather(opts);
@@ -75,8 +77,10 @@ void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
 
 void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
-                                int reduce_type) {
+                                int reduce_type,
+                                uint32_t tag) {
   gloo::AllreduceOptions opts(gloo_context_);
+  opts.setTag(tag);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);

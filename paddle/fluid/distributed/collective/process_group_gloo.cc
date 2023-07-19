@@ -358,13 +358,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
 class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   AllreduceGlooTask(int rank,
-                    const std::shared_ptr<gloo::Context>& context,
+                    phi::distributed::GlooCommContext* comm_context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
                     ReduceOp reduce_op,
                     uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLREDUCE),
-        _context(context),
+        _comm_context(comm_context),
         _inputs(inputs),
         _outputs(outputs),
         _reduce_op(reduce_op),
@@ -373,7 +373,7 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
   void Run() override { _do_allreduce(_inputs, _outputs); }
 
  private:
-  std::shared_ptr<gloo::Context> _context;
+  phi::distributed::GlooCommContext* _comm_context;
   std::vector<phi::DenseTensor> _inputs;
   std::vector<phi::DenseTensor> _outputs;
   const ReduceOp _reduce_op;
@@ -394,13 +394,8 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
 
   void _do_allreduce(std::vector<phi::DenseTensor>& ins,     // NOLINT
                      std::vector<phi::DenseTensor>& outs) {  // NOLINT
-    const auto& dtype = ins[0].dtype();
-    gloo::AllreduceOptions opts(_context);
-    GENERATE_FUNC(dtype, set_inputs, opts, ins);
-    GENERATE_FUNC(dtype, set_outputs, opts, outs);
-    opts.setReduceFunction(_get_function(dtype, _reduce_op));
-    opts.setTag(_tag);
-    gloo::allreduce(opts);
+    _comm_context->AllReduce(
+        &(outs[0]), ins[0], static_cast<int>(_reduce_op), _tag);
   }
 };
 
@@ -428,9 +423,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
     bool sync_op) {
   auto tag = next_tag();
   std::shared_ptr<GlooTask> task;
-  auto context = get_context();
+  auto comm_context = this->GetCommContext();
   task = std::make_shared<AllreduceGlooTask>(
-      rank_, context, inputs, outputs, opts.reduce_op, tag);
+      rank_, comm_context, inputs, outputs, opts.reduce_op, tag);
   task->Run();
   return task;
 }
@@ -465,12 +460,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Barrier(
 class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   AllgatherGlooTask(int rank,
-                    const std::shared_ptr<gloo::Context>& context,
+                    phi::distributed::GlooCommContext* comm_context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
                     uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLGATHER),
-        _context(context),
+        _comm_context(comm_context),
         _inputs(inputs),
         _outputs(outputs),
         _tag(tag) {}
@@ -478,19 +473,14 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
   void Run() override { _do_allgather(_inputs, _outputs); }
 
  private:
-  std::shared_ptr<gloo::Context> _context;
+  phi::distributed::GlooCommContext* _comm_context;
   std::vector<phi::DenseTensor> _inputs;
   std::vector<phi::DenseTensor> _outputs;
   uint32_t _tag;
 
   void _do_allgather(std::vector<phi::DenseTensor>& in,     // NOLINT
                      std::vector<phi::DenseTensor>& out) {  // NOLINT
-    const auto& dtype = in[0].dtype();
-    gloo::AllgatherOptions opts(_context);
-    GENERATE_FUNC(dtype, set_input, opts, in[0]);
-    GENERATE_FUNC(dtype, set_output, opts, out[0]);
-    opts.setTag(_tag);
-    gloo::allgather(opts);
+    _comm_context->AllGather(&(out[0]), in[0], _tag);
   }
 };
 
@@ -517,9 +507,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     bool sync_op) {
   std::shared_ptr<AllgatherGlooTask> task;
   auto tag = next_tag();
-  auto context = get_context();
+  auto comm_context = this->GetCommContext();
   task = std::make_shared<AllgatherGlooTask>(
-      rank_, context, in_tensors, out_tensors, tag);
+      rank_, comm_context, in_tensors, out_tensors, tag);
   task->Run();
   return task;
 }

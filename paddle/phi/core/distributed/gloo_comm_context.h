@@ -39,7 +39,8 @@ class GlooCommContext final : public CommContext {
                  uint32_t tag = 0);
   void AllReduce(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
-                 int reduce_type);
+                 int reduce_type,
+                 uint32_t tag = 0);
   void Reduce(phi::DenseTensor* out_tensor,
               const phi::DenseTensor& in_tensor,
               int reduce_type,
@@ -47,7 +48,8 @@ class GlooCommContext final : public CommContext {
               uint32_t tag = 0);
 
   void AllGather(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor);
+                 const phi::DenseTensor& in_tensor,
+                 uint32_t tag = 0);
 
   void Gather(phi::DenseTensor* out_tensor,
               const phi::DenseTensor& in_tensor,
