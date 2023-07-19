@@ -36,7 +36,11 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
-from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    assign_group_by_size,
+)
+
+from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer
 
 __all__ = []
 
