@@ -552,8 +552,11 @@ void FusedScaleBiasReluConvBnstatsKernel(
     PADDLE_ENFORCE_EQ(
         scale && bias,
         true,
-        phi::errors::InvalidArgument("\"scale\" and \"bias\" must be provided "
-                                     "when fuse_prologue = true."));
+        phi::errors::InvalidArgument(
+            "\"scale\" and \"bias\" must be provided "
+            "when fuse_prologue = true. Got scale = %d; bias = %d.",
+            scale,
+            bias));
   }
 
   // alloc output variables
