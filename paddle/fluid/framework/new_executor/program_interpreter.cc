@@ -295,8 +295,8 @@ void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
   dependecy_count_ = src.GetDependencyCount();
   is_shared_ = true;
-  VLOG(8) << "Share BuildResults from InterpreterCore("
-          << &src << ") to InterpreterCore(" << this << ")";
+  VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
+          << ") to InterpreterCore(" << this << ")";
 }
 
 bool ProgramInterpreter::BuildInplaceCheckVarIsOnlyInput(
