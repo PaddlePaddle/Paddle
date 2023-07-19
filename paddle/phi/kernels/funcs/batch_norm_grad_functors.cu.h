@@ -42,7 +42,7 @@ template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T, int BlockDim, phi::DataLayout layout>
-static __global__ LAUNCH_BOUNDS(BlockDim) void KeBNBackwardScaleBias(
+static __global__ LAUNCH_BOUNDS(BlockDim) void KeBNBackwardScaleBiasFunctor(
     const T *dy,
     const T *x,
     const BatchNormParamType<T> *mean,
@@ -1032,7 +1032,7 @@ void BatchNormGradCudaFunctor(const Context &ctx,
                     d_x->data<T>());
           }
           if (d_scale && d_bias) {
-            KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
+            KeBNBackwardScaleBiasFunctor<T, block, phi::DataLayout::kNHWC>
                 <<<grid2, block, 0, stream>>>(
                     d_y->data<T>(),
                     x.data<T>(),
@@ -1060,7 +1060,7 @@ void BatchNormGradCudaFunctor(const Context &ctx,
                     d_x->data<T>());
           }
           if (d_scale && d_bias) {
-            KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
+            KeBNBackwardScaleBiasFunctor<T, block, phi::DataLayout::kNCHW>
                 <<<grid2, block, 0, stream>>>(
                     d_y->data<T>(),
                     x.data<T>(),
@@ -1089,7 +1089,7 @@ void BatchNormGradCudaFunctor(const Context &ctx,
                   d_x->data<T>());
         }
         if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
+          KeBNBackwardScaleBiasFunctor<T, block, phi::DataLayout::kNHWC>
               <<<grid2, block, 0, stream>>>(
                   d_y->data<T>(),
                   x.data<T>(),
@@ -1161,7 +1161,7 @@ void BatchNormGradCudaFunctor(const Context &ctx,
                                             d_x->data<T>());
         }
         if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
+          KeBNBackwardScaleBiasFunctor<T, block, phi::DataLayout::kNHWC>
               <<<grid2, block, 0, stream>>>(
                   d_y->data<T>(),
                   x.data<T>(),
@@ -1187,7 +1187,7 @@ void BatchNormGradCudaFunctor(const Context &ctx,
                                             d_x->data<T>());
         }
         if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
+          KeBNBackwardScaleBiasFunctor<T, block, phi::DataLayout::kNCHW>
               <<<grid2, block, 0, stream>>>(
                   d_y->data<T>(),
                   x.data<T>(),
