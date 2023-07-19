@@ -17,6 +17,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.linalg import matmul
 
+
 def fused_matmul_bias(
     x, y, bias=None, transpose_x=False, transpose_y=False, name=None
 ):
@@ -132,7 +133,7 @@ def fused_linear_activation(
         activation = "none"
 
     if in_dynamic_mode():
-        return core.eager.ops.fused_gemm_epilogue.fused_gemm_epilogue(
+        return _legacy_C_ops.fused_gemm_epilogue(
             x,
             y,
             bias,
@@ -156,4 +157,5 @@ def fused_linear_activation(
             'activation': activation,
         },
     )
+
     return out
