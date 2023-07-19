@@ -105,6 +105,7 @@ if %ERRORLEVEL% NEQ 0 (
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
+    python -m pip install --upgrade pip
     pip install wheel
     pip install pyyaml
     pip install wget
