@@ -515,7 +515,7 @@ class PipelineParallel(MetaParallelBase):
         if self._comm_overlap:
             assert len(self._comm_buffers) > 0
             for buffer in self._comm_buffers:
-                buffer.scale_and_split_grads()
+                buffer.scale_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -1256,7 +1256,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._comm_overlap:
                 assert len(self._comm_buffers) > 0
                 for buffer in self._comm_buffers:
-                    buffer.scale_and_split_grads()
+                    buffer.scale_grads()
 
             if static_scheduler:
                 self._reset_counter()

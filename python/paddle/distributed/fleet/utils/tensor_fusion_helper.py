@@ -247,7 +247,7 @@ class FusedCommBuffer:
         self._task = task
 
     @imperative_base.no_grad
-    def scale_and_split_grads(self):
+    def scale_grads(self):
         assert self._task is not None
         self._task.wait()
 
@@ -273,6 +273,7 @@ def obtain_storage(
 
     var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
     storage = []
+    buffers = []
     for group_idx, parameters in var_groups.items():
         comm_buffer = FusedCommBuffer(
             group_idx,
@@ -292,7 +293,7 @@ def obtain_storage(
             for param in parameters:
                 param._register_backward_hook(bw_hook_func(comm_buffer, param))
 
-    return storage
+    return storage, buffers
 
 
 def filter_params(params, is_fp32, is_distributed, need_clip):
@@ -359,6 +360,7 @@ def fused_parameters(
 
     decay_fused = []
     all_fused = []
+    all_buffers = []
     for params, attr in zip(param_groups, attrs):
         decay_params = []
         other_params = []
@@ -371,7 +373,7 @@ def fused_parameters(
 
         is_distributed = attr[1]
         need_clip = attr[2]
-        decay = obtain_storage(
+        decay, decay_buffers = obtain_storage(
             decay_params,
             use_main_grad,
             need_clip,
@@ -382,7 +384,7 @@ def fused_parameters(
             acc_step,
             comm_overlap,
         )
-        other = obtain_storage(
+        other, other_buffers = obtain_storage(
             other_params,
             use_main_grad,
             need_clip,
@@ -396,5 +398,7 @@ def fused_parameters(
         decay_fused += decay
         all_fused += decay
         all_fused += other
+        all_buffers += decay_buffers
+        all_buffers += other_buffers
 
-    return decay_fused, all_fused
+    return decay_fused, all_fused, all_buffers

@@ -90,6 +90,11 @@ class DygraphShardingOptimizer:
                 not pp_overlap
             ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
 
+        self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
+        self._rank2decay = {}
+        self._rank2fused = {}
+        self._comm_buffers = []
+
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
@@ -101,9 +106,6 @@ class DygraphShardingOptimizer:
                 '_param_groups', self._rank2params[self._sharding_rank]
             )
         else:
-            self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
-            self._rank2decay = {}
-            self._rank2fused = {}
             self._tensor_fusion()
 
             decay_params = [
@@ -155,7 +157,7 @@ class DygraphShardingOptimizer:
         for i in range(self._sharding_world_size):
             params = self._rank2params[i]
             dst = comm_group.ranks[i]
-            decay_fused, all_fused = fused_parameters(
+            decay_fused, all_fused, all_buffer = fused_parameters(
                 params,
                 self._use_main_grad,
                 comm_group,
@@ -163,6 +165,8 @@ class DygraphShardingOptimizer:
                 self.accumulate_steps,
                 self.comm_overlap,
             )
+            if self.comm_overlap:
+                self._comm_buffers.append(all_buffer)
             self._rank2decay[i] = decay_fused
             self._rank2fused[i] = all_fused
             for p in all_fused:
@@ -213,9 +217,8 @@ class DygraphShardingOptimizer:
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
         if self.comm_overlap:
-            logger.debug(
-                "All gradients has already been reduced during backward"
-            )
+            for buffer in self._comm_buffers:
+                buffer.scale_grads()
             return
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
