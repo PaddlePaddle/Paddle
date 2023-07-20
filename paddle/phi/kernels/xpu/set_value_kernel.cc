@@ -14,16 +14,12 @@
 
 #include "paddle/phi/kernels/set_value_kernel.h"
 
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include <algorithm>
+#include <vector>
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
@@ -84,6 +80,14 @@ void SetValueImpl(const Context& dev_ctx,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = in.dims();
+
+  auto new_value_dims = value_dims;
+
+  // support for 0-d tensor
+  if (value_dims.size() == 0) {
+    new_value_dims = {1};
+  }
+
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
@@ -165,11 +169,49 @@ void SetValueImpl(const Context& dev_ctx,
       return;
     }
   }
+  // Step 2: Set slice tensor
 
-  // Because strided_slice does not support the case of stride < 0
+  // - Step 2.1 Set slice tensor with value
+
+  // NOTE(liym27): [ Why resize slice_tensor here? ]
+  // A: When do broadcasting on slice_tensor and value, the shape of
+  // slice_tensor should be decreased dims.
+  // e.g.
+  //  x[:,0] = value
+  // x's shape = [3, 4], value's shape = [3]
+  // We get slice_dims = [3, 1],  decrease_slice_dims = [3]
+  // If do broadcasting on Tensor with shape [3, 1] and [3], the result's
+  // shape is [3, 3], which cross the border;
+  // If do broadcasting on Tensor with shape [3] and [3], the result's shape
+  // is [3], which is right.
+
+  CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
+
+  // do broadcasting
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              const XPUType* y, /*unused*/
+              XPUType* z,
+              const std::vector<int>& xshape,
+              const std::vector<int>& zshape) {
+    return xpu::broadcast<XPUType>(ctx, x, z, xshape, zshape);
+  };
+
+  XPUElementwise<T, XPUType>(dev_ctx,
+                             value_data,
+                             new_value_dims,
+                             nullptr,
+                             slice_dims_for_assign,
+                             -1,
+                             reinterpret_cast<T*>(slice_data),
+                             f);
+
+  // - Step 2.2 If stride < 0, flip the slice_tensor.
+  // Because strided_slice_view_update does not support the case of stride < 0
   // temporarily, the coordinates of starts_indices, ends_indices
   // and strides_indices need to be converted.
   // This logic may be deleted in the future.
+
   bool need_flip = false;
   for (size_t i = 0; i < RANK; ++i) {
     if (strides_indices[i] < 0) {
@@ -186,55 +228,7 @@ void SetValueImpl(const Context& dev_ctx,
 
   auto out_shape = phi::vectorize<int>(out->dims());
   auto slice_shape = phi::vectorize<int>(slice_dims);
-  r = xpu::strided_slice(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUType*>(out->data<T>()),
-                         slice_data,
-                         out_shape,
-                         starts_indices,
-                         ends_indices,
-                         strides_indices);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
 
-  r = xpu::constant(dev_ctx.x_context(), slice_data, slice_numels, XPUType(0));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-
-  // Step 2: Set a tensor with the same shape as out tensor. And its data at
-  // '_index' is the same as value, and data out of '_index' to zero
-
-  // - Step 2.1 Set slice tensor with value
-
-  // NOTE(liym27): [ Why resize slice_tensor here? ]
-  // A: When do broadcasting on slice_tensor and value, the shape of
-  // slice_tensor should be decreased dims.
-  // e.g.
-  //  x[:,0] = value
-  // x's shape = [3, 4], value's shape = [3]
-  // We get slice_dims = [3, 1],  decrease_slice_dims = [3]
-  // If do broadcasting on Tensor with shape [3, 1] and [3], the result's
-  // shape is [3, 3], which cross the border;
-  // If do broadcasting on Tensor with shape [3] and [3], the result's shape
-  // is [3], which is right.
-
-  CheckIsDimsMatch(slice_dims_for_assign, value_dims);
-  // XPUElementwise can do broadcasting
-  auto f = [](xpu::Context* ctx,
-              const XPUType* x,
-              const XPUType* y,
-              XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
-    return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
-  };
-  XPUElementwise<T, XPUType>(dev_ctx,
-                             reinterpret_cast<const T*>(slice_data),
-                             slice_dims_for_assign,
-                             value_data,
-                             value_dims,
-                             -1,
-                             reinterpret_cast<T*>(slice_data),
-                             f);
-
-  // - Step 2.2 If stride < 0, flip the slice_tensor.
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(slice_data),
@@ -392,29 +386,20 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<T> assign_values;
   assign_values.reserve(values.size());
   for (const auto& val : values) {
     assign_values.push_back(val.to<T>());
   }
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   auto value_dims = phi::make_ddim(shape);
-  XPUType* value_data =
-      RAII_GUARD.alloc_l3_or_gm<XPUType>(phi::product(value_dims));
 
-  phi::CPUPlace src_place;
-  auto dst_place = dev_ctx.GetPlace();
-  memory_utils::Copy(dst_place,
-                     value_data,
-                     src_place,
-                     assign_values.data(),
-                     assign_values.size() * sizeof(T));
+  DenseTensor value_tensor;
+  TensorFromVector<T>(assign_values, dev_ctx, &value_tensor);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
-                                 reinterpret_cast<const T*>(value_data),
+                                 value_tensor.data<T>(),
                                  value_dims,
                                  starts,
                                  ends,
@@ -434,7 +419,8 @@ PD_REGISTER_KERNEL(set_value,
                    float,
                    phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(set_value_with_tensor,
                    XPU,

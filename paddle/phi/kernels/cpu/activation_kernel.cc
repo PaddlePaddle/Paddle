@@ -109,7 +109,6 @@ DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold)
-DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6Raw, Relu6Functor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
@@ -150,6 +149,17 @@ void SwishKernel(const Context& dev_ctx,
   ActivationImpl<T, T, Context, funcs::SwishFunctor<T>>(
       dev_ctx, x, out, functor);
 }
+
+template <typename T, typename Context>
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  funcs::Relu6Functor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = 6.0;
+  ActivationImpl<T, T, Context, funcs::Relu6Functor<T>>(
+      dev_ctx, x, out, functor);
+}
 }  // namespace phi
 PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
 
@@ -171,7 +181,6 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardtanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
@@ -212,6 +221,7 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 
 PD_REGISTER_KERNEL(log,
                    CPU,

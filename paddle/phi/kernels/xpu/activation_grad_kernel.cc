@@ -565,6 +565,52 @@ struct XPUSoftPlusGradFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor* x,
+                  const DenseTensor* out,
+                  const DenseTensor* dout,
+                  DenseTensor* dx) const {
+    int64_t len = dx->numel();
+    auto dx_data = dev_ctx.template Alloc<T>(dx);
+    auto dout_data = dout->data<T>();
+    auto x_data = x->data<T>();
+
+    int r = xpu::sin_grad<T>(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(x_data),
+                             reinterpret_cast<const XPUType*>(dout_data),
+                             reinterpret_cast<XPUType*>(dx_data),
+                             len);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin_grad");
+  }
+};
+
+template <typename T>
+struct XPUCosGradFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor* x,
+                  const DenseTensor* out,
+                  const DenseTensor* dout,
+                  DenseTensor* dx) const {
+    int64_t len = dx->numel();
+    auto dx_data = dev_ctx.template Alloc<T>(dx);
+    auto dout_data = dout->data<T>();
+    auto x_data = x->data<T>();
+
+    int r = xpu::cos_grad<T>(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(x_data),
+                             reinterpret_cast<const XPUType*>(dout_data),
+                             reinterpret_cast<XPUType*>(dx_data),
+                             len);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos_grad");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, XPUExpGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, XPUReciprocalGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, XPUSigmoidGradFunctor);
@@ -576,6 +622,8 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, XPURelu6GradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, XPULogGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, XPUSquareGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, XPUSwishGradFunctor);
+DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Sin, XPUSinGradFunctor);
+DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, XPUCosGradFunctor);
 
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                XPUMishGradFunctor,
@@ -664,4 +712,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)
+
 PD_REGISTER_KERNEL(pow_grad, XPU, ALL_LAYOUT, phi::PowGradKernel, float) {}
