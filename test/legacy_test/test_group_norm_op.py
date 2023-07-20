@@ -354,6 +354,8 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.data_format = "NHWC"
+        self.attrs['epsilon'] = 0.5
+        self.shape = (1, 100, 8, 8)
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -365,9 +367,20 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         )
 
     def test_check_grad(self):
-        return True
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place=place,
+            inputs_to_check={'X', 'Scale', 'Bias'},
+            output_names='Y',
+            max_relative_error=0.006,
+        )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestGroupNormBF16Op_With_NHWC(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
@@ -403,12 +416,10 @@ class TestGroupNormBF16Op_With_NHWC(OpTest):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
 
     def test_check_output(self):
-        atol = 1e-2
-        inplace_atol = 1e-2
+        atol = 1
+        rtol = 1e-3
         place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, atol=atol, inplace_atol=inplace_atol
-        )
+        self.check_output_with_place(place, atol=atol, rtol=1e-3)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
