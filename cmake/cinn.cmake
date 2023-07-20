@@ -167,7 +167,7 @@ cinn_cc_library(
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-if(WITH_CINN)
+if(NOT CINN_ONLY)
   add_dependencies(cinnapi phi)
 endif()
 
@@ -219,7 +219,7 @@ function(gen_cinncore LINKTYPE)
     ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-  if(WITH_CINN)
+  if(NOT CINN_ONLY)
     add_dependencies(${CINNCORE_TARGET} phi)
   endif()
 
