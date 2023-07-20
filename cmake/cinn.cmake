@@ -220,7 +220,7 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(WITH_CINN)
-    add_dependencies(cinnapi phi)
+    add_dependencies(${CINNCORE_TARGET} phi)
   endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)
