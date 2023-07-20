@@ -13,13 +13,23 @@
 # limitations under the License.
 
 ######
-
+import os
 from functools import reduce
 
 import paddle
 from paddle import framework
 
 from ...utils.log_util import logger
+
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
+logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
+logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
+
+if g_shard_norm_align_dp:
+    assert (
+        not g_shard_use_reduce
+    ), "g_shard_norm_align_dp is not support if g_shard_use_reduce is true"
 
 
 def _is_trainable(param):
@@ -146,18 +156,22 @@ class DygraphShardingOptimizer:
                 if g_var is not None:
                     g_var.scale_(1.0 / sharding_nrank)
                     param_rank = self._param2rank[param.name]
-                    paddle.distributed.all_reduce(
-                        g_var,
-                        group=hcg.get_sharding_parallel_group(),
-                        sync_op=True,
-                    )
-                    # TODO(pangengzheng): change to reduce operation when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-                    # paddle.distributed.reduce(
-                    #     g_var,
-                    #     dst=hcg.get_sharding_parallel_group().ranks[param_rank],
-                    #     group=hcg.get_sharding_parallel_group(),
-                    #     sync_op=True,
-                    # )
+                    if not g_shard_use_reduce:
+                        paddle.distributed.all_reduce(
+                            g_var,
+                            group=hcg.get_sharding_parallel_group(),
+                            sync_op=True,
+                        )
+                    else:
+                        # TODO(pangengzheng): change to reduce operation when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+                        paddle.distributed.reduce(
+                            g_var,
+                            dst=hcg.get_sharding_parallel_group().ranks[
+                                param_rank
+                            ],
+                            group=hcg.get_sharding_parallel_group(),
+                            sync_op=True,
+                        )
 
     def _sharding_sync_parameters(self):
         """
@@ -233,14 +247,14 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-            if hasattr(self._inner_opt._grad_clip, 'not_sharding_stage1'):
-                self._inner_opt._grad_clip.not_sharding_stage1 = False
-            params_grads = self._inner_opt._grad_clip(params_grads)
-            # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
-            self._set_inner_opt_attr('_grad_clip', None)
-            update_param_names = [
-                p.name for p in self._rank2params[self._sharding_rank]
-            ]
+
+
+            if g_shard_norm_align_dp:
+                params_grads = self._inner_opt._grad_clip(params_grads)
+                # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
+                self._set_inner_opt_attr('_grad_clip', None)
+            rank_params = self._rank2params[self._sharding_rank]
+            update_param_names = [p.name for p in rank_params]
             update_params_grads = [
                 (p, g) for p, g in params_grads if p.name in update_param_names
             ]
@@ -249,8 +263,9 @@ class DygraphShardingOptimizer:
                 startup_program=None,
                 params_grads=update_params_grads,
             )
-            # restore the grad clip
-            self._set_inner_opt_attr('_grad_clip', origin_clip)
+            if g_shard_norm_align_dp:
+                # restore the grad clip
+                self._set_inner_opt_attr('_grad_clip', origin_clip)
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
