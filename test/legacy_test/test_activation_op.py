@@ -546,6 +546,11 @@ class TestTanh(TestActivation, TestParameter):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.tanh(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -554,7 +559,8 @@ class TestTanh(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
+        self.check_grad(['X'], 'Out', check_prim=False)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -567,12 +573,12 @@ class TestTanh(TestActivation, TestParameter):
 
 
 class TestTanh_Complex64(TestTanh):
-    def init_dytpe(self):
+    def init_dtype(self):
         self.dtype = np.complex64
 
 
 class TestTanh_Complex128(TestTanh):
-    def init_dytpe(self):
+    def init_dtype(self):
         self.dtype = np.complex128
 
 
@@ -1576,6 +1582,11 @@ class TestCos(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.cos(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -1617,8 +1628,12 @@ class TestTan(TestActivation):
         self.init_dtype()
         self.init_shape()
 
-        self.dtype = 'float32'
         self.x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.x_np = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -1638,6 +1653,11 @@ class TestTan(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestTan_float32(TestTan):
+    def init_dtype(self):
+        self.dtype = "float32"
 
 
 class TestTan_Complex64(TestTan):
@@ -1738,6 +1758,11 @@ class TestSin(TestActivation, TestParameter):
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.sin(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
