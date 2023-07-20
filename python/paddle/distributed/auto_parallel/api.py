@@ -55,10 +55,6 @@ class DistAttr(core.TensorDistAttr):
             for dim_name in sharding_specs
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
-        assert len(sharding_specs) == len(
-            list(mesh.mesh.shape)
-        ), "The length of sharding_specs must be same as the shape of the mesh."
-
         dims_mapping = [
             mesh.dim_names.index(dim_name) if dim_name is not None else -1
             for dim_name in sharding_specs
@@ -118,6 +114,10 @@ def shard_tensor(
     data = paddle.to_tensor(data)
 
     # 2. create dist tensor
+    assert len(dist_attr.dims_mapping) == len(
+        list(data.shape)
+    ), "The length of sharding_specs must be same as the shape of the input tensor."
+
     if paddle.in_dynamic_mode():
         return paddle.Tensor(data, dist_attr=dist_attr)
     else:
