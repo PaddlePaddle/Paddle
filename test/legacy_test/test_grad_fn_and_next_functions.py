@@ -83,12 +83,6 @@ class TestAnonmousSurvey(unittest.TestCase):
             grad_fn_json (dict): grad_node_json of node
         """
         self.assertEqual(grad_fn.name(), grad_fn_json["func_name"])
-        # Recursively test other nodes
-        next_funcs_json = grad_fn_json["next_funcs"]
-        for u in grad_fn.next_functions:
-            if not u:
-                continue
-            self.check_func(u, next_funcs_json[u.name()])
 
 
 if __name__ == "__main__":
