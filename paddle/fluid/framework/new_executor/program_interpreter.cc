@@ -297,17 +297,19 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
+  // share op dependency
+  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
+  dependecy_count_ = src.GetDependencyCount();
+
   // share events analysis results
   //   const std::vector<Instruction> src_vec_instruction_ =
   //   src.GetVecInstruction(); for (size_t i = 0; i < vec_instruction_.size();
   //   ++i) {
   //     vec_instruction_[i].ShareEventsFrom(src_vec_instruction_[i]);
   //   }
-
-  //   is_shared_ = true;
-  VLOG(8) << "Share BuildResults from InterpreterCore("
-          << const_cast<InterpreterBaseImpl*>(&src) << ") to InterpreterCore("
-          << this << ")";
+  is_shared_ = true;
+  VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
+          << ") to InterpreterCore(" << this << ")";
 }
 
 bool ProgramInterpreter::BuildInplaceCheckVarIsOnlyInput(

@@ -136,8 +136,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
-  // Note(sonder): share the op dependency, event analyzer,
-  // thread scheduling and GC.
+  // Note(sonder): share the op dependency and event analyzer
   bool is_shared_{false};
 
   const platform::Place place_;

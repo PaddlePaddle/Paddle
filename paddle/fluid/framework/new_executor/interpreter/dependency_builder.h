@@ -23,6 +23,7 @@ DECLARE_bool(new_executor_sequential_run);
 
 namespace paddle {
 namespace framework {
+class InstructionBase;
 namespace interpreter {
 
 // DependencyBuilder provides some dependency adding function to handle the
@@ -70,7 +71,8 @@ class DependencyBuilder {
   void ShrinkDownstreamMap();
 
   bool is_build_;
-  const std::vector<Instruction>* instructions_;  // not_own
+  const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>*
+      instructions_;  // not_own
   size_t op_num_;
 
   // ops_behind_ is the adjacency list about op to its posterior-ops, that is to
