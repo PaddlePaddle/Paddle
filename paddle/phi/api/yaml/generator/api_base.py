@@ -1184,6 +1184,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
+        auto_parallel_flag=False,
     ):
         return None, None, None
 
