@@ -757,7 +757,7 @@ class Engine:
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
-        # For now, the completer has to be passed to the planner,
+        # For now, the completer has to be passed to the Parallelizer,
         # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
