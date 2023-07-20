@@ -46,6 +46,8 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
   auto p_dims = dims.Get();
   auto p_strides = strides.GetMutable();
   switch (dims.size()) {
+    case 0:
+      return strides;
     case 1:
       p_strides[0] = 1;
       return strides;
