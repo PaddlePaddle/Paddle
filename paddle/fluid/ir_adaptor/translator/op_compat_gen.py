@@ -28,6 +28,7 @@ env = Environment(
     undefined=StrictUndefined,
     extensions=['jinja2.ext.do'],
 )
+grad_suffix = '_grad'
 
 
 def OpNameNormalizerInitialization(
@@ -86,7 +87,7 @@ def OpNameNormalizerInitialization(
                             attribute_name
                         ].append(v)
 
-        _, legacy_name = insert_new_mappings(op_compat_item["op"])
+        phi_name, legacy_name = insert_new_mappings(op_compat_item["op"])
         legacy_backward_op_names = []
         if "backward" in op_compat_item:
             backward_op_name_mapping_paris = op_compat_item["backward"].split(
@@ -95,6 +96,10 @@ def OpNameNormalizerInitialization(
             for pair in backward_op_name_mapping_paris:
                 _, legacy_backward_op_name = insert_new_mappings(pair)
                 legacy_backward_op_names.append(legacy_backward_op_name)
+        elif phi_name != legacy_name:
+            legacy_backward_op_name = legacy_name + grad_suffix
+            legacy_backward_op_names.append(legacy_backward_op_name)
+            op_name_mappings[legacy_backward_op_name] = phi_name + grad_suffix
 
         if "inputs" in op_compat_item:
             insert_new_arg_mappings(legacy_name, op_compat_item["inputs"])
