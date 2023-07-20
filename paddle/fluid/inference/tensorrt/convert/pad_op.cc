@@ -77,8 +77,7 @@ class PadOpConverter : public OpConverter {
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_,
         Padding,
-        transpose_layer1_out == nullptr ? *const_cast<nvinfer1::ITensor*>(input)
-                                        : *transpose_layer1_out,
+        transpose_layer1_out == nullptr ? *input : *transpose_layer1_out,
         pre_pad,
         post_pad);
 
