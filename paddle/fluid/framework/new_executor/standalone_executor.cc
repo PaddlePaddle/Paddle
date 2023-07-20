@@ -94,28 +94,19 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   const auto& jobs = plan_.JobList();
+  std::map<std::string, size_t> type_to_id;
 
   if (!is_interpretercore_build_result_shared_) {
-    std::map<std::string, std::vector<size_t>> type_to_id;
     for (size_t job_idx = 1; job_idx < jobs.size(); ++job_idx) {
       interpretercores_[job_idx]->ShareWorkQueueFrom(interpretercores_[0]);
       // TODO(Ruibiao): Share other build result, e.g., kernel choosing, data
       // transfer, op dependency, thread scheduling, GC, event analyzer, and so
       // on.
-      type_to_id[jobs[job_idx]->Type()].emplace_back(job_idx);
-    }
-    is_interpretercore_build_result_shared_ = true;
-
-    // Note(sonder): For the same type of job, share the build result of the
-    // first job to other jobs. The shared build result includes op dependency,
-    // event analyzer, thread scheduling and GC.
-    for (const auto& pair : type_to_id) {
-      const auto& ids = pair.second;
-      for (size_t i = 1; i < ids.size(); ++i) {
-        interpretercores_[ids[i]]->ShareBuildResultsFrom(
-            interpretercores_[ids[0]]);
+      if (type_to_id.count(jobs[job_idx]->Type()) == 0) {
+        type_to_id[jobs[job_idx]->Type()] = job_idx;
       }
     }
+    is_interpretercore_build_result_shared_ = true;
   }
 
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
@@ -130,6 +121,13 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
 
+    // Note(sonder): For the same type of job, share the build result of the
+    // first job to other jobs. The shared build result includes op dependency,
+    // event analyzer, thread scheduling and GC.
+    if (type_to_id.count(job_type) && type_to_id[job_type] != job_idx) {
+      interpretercores_[job_idx]->ShareBuildResultsFrom(
+          interpretercores_[type_to_id[job_type]]);
+    }
     interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
   }
 

@@ -182,7 +182,7 @@ struct OpFuncNode {
 
 class Instruction {
  public:
-  Instruction();
+  Instruction() : is_artificial_(false), dev_ctx_(nullptr) {}
 
   Instruction(size_t id,
               OpFuncNode&& op_func_node,

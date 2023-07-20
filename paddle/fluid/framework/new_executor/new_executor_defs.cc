@@ -149,17 +149,6 @@ void VariableScope::CheckExist(const std::string& name) const {
       platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
-Instruction::Instruction() : is_artificial_(false), dev_ctx_(nullptr) {
-  VLOG(8) << "break1 here";
-  std::shared_ptr<DeviceEvent> device_event = std::make_shared<DeviceEvent>(
-      DeviceContext().GetPlace(), platform::GenerateDeviceEventFlag());
-  VLOG(8) << "break2 here";
-  event_to_record_ = std::make_shared<EventInter>(
-      id_, device_event, platform::kCUDA /*unused*/);
-  VLOG(8) << "break3 here";
-  events_to_wait_ = std::make_shared<std::vector<EventInter>>();
-}
-
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
@@ -179,11 +168,6 @@ Instruction::Instruction(size_t id,
                     0,
                     platform::errors::PreconditionNotMet(
                         "Required id >= 0, but received id = %d", id));
-
-  std::shared_ptr<DeviceEvent> device_event = std::make_shared<DeviceEvent>(
-      DeviceContext().GetPlace(), platform::GenerateDeviceEventFlag());
-  event_to_record_ = std::make_shared<EventInter>(
-      id_, device_event, platform::kCUDA /*unused*/);
 
   events_to_wait_ = std::make_shared<std::vector<EventInter>>();
 }
