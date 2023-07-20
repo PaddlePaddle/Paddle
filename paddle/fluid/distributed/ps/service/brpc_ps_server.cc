@@ -311,7 +311,7 @@ int32_t BrpcPsService::PullDense(Table *table,
     return 0;
   }
   CostTimer timer("pserver_server_pull_dense");
-  uint32_t num = *(const uint32_t *)request.params(0).c_str();
+  uint32_t num = *reinterpret_cast<const uint32_t *>(request.params(0).c_str());
 
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * table->ValueAccesor()->GetAccessorInfo().select_size /
@@ -346,12 +346,14 @@ int32_t BrpcPsService::PushDenseParam(Table *table,
   }
   push_buffer.resize(0);
   push_buffer.reserve(req_buffer_size);
-  const char *data = (const char *)cntl->request_attachment().fetch(
-      const_cast<char *>(push_buffer.data()), req_buffer_size);
+  const char *data =
+      reinterpret_cast<const char *>(cntl->request_attachment().fetch(
+          const_cast<char *>(push_buffer.data()), req_buffer_size));
 
-  uint32_t num = *(const uint32_t *)data;
+  uint32_t num = *reinterpret_cast<const uint32_t *>(data);
 
-  const float *values = (const float *)(data + sizeof(uint32_t));
+  const float *values =
+      reinterpret_cast<const float *>(data + sizeof(uint32_t));
   TableContext table_context;
   table_context.value_type = Dense;
   table_context.push_context.values = values;
@@ -383,11 +385,11 @@ int32_t BrpcPsService::PushDense(Table *table,
   |--num--|---valuesData---|
   |--4B---|----------------|
   */
-  uint32_t num = *(const uint32_t *)(request.data().data());
+  uint32_t num = *reinterpret_cast<const uint32_t *>(request.data().data());
   TableContext table_context;
   table_context.value_type = Dense;
   table_context.push_context.values =
-      (const float *)(request.data().data() + sizeof(uint32_t));
+      reinterpret_cast<const float *>(request.data().data() + sizeof(uint32_t));
   table_context.num = num;
   // const float *values = (const float *)(request.data().data() +
   // sizeof(uint32_t));
@@ -446,9 +448,9 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
   |---keysData---|---valuesData---|
   |---8*{num}B---|----------------|
   */
-  const uint64_t *keys = (const uint64_t *)push_data.data();
-  const float *values =
-      (const float *)(push_data.data() + sizeof(uint64_t) * num);
+  const uint64_t *keys = reinterpret_cast<const uint64_t *>(push_data.data());
+  const float *values = reinterpret_cast<const float *>(push_data.data() +
+                                                        sizeof(uint64_t) * num);
 
   TableContext table_context;
   table_context.value_type = Sparse;
@@ -578,9 +580,10 @@ int32_t BrpcPsService::PushSparse(Table *table,
   */
   TableContext table_context;
   table_context.value_type = Sparse;
-  table_context.push_context.keys = (const uint64_t *)push_data.data();
-  table_context.push_context.values =
-      (const float *)(push_data.data() + sizeof(uint64_t) * num);
+  table_context.push_context.keys =
+      reinterpret_cast<const uint64_t *>(push_data.data());
+  table_context.push_context.values = reinterpret_cast<const float *>(
+      push_data.data() + sizeof(uint64_t) * num);
   table_context.num = num;
   // const uint64_t *keys = (const uint64_t *)push_data.data();
   // const float *values = (const float *)(push_data.data() + sizeof(uint64_t) *
@@ -879,8 +882,8 @@ int32_t BrpcPsService::PushGlobalStep(Table *table,
     set_response_code(response, 0, "run_program data is empty");
     return 0;
   }
-  const int64_t *values =
-      (const int64_t *)(request.data().data() + sizeof(uint32_t));
+  const int64_t *values = reinterpret_cast<const int64_t *>(
+      request.data().data() + sizeof(uint32_t));
   auto trainer_id = request.client_id();
 
   TableContext context;
