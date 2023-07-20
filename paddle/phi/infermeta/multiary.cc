@@ -3783,13 +3783,12 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& x,
   auto cache_kv_dims = cache_kv.dims();
   auto x_dtype = x.dtype();
   int bsz = x_dims[0];
-  int num_head=0;
-  if(split_kv){
+  int num_head = 0;
+  if (split_kv) {
     num_head = x_dims[1];
+  } else {
+    num_head = x_dims[1] - head_kv * 2;
   }
-  else{
-    num_head = x_dims[1]-head_kv*2;
-  } 
   int dim_head = x_dims[2];
 
   if (sequence_lengths) {
@@ -3802,52 +3801,52 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& x,
   } else {
     out->set_dtype(x_dtype);
   }
-  
+
   PADDLE_ENFORCE_EQ(
       cache_kv_dims.size(),
       5,
       errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
                               cache_kv_dims.size()));
-  
-  if(split_kv){
-      auto kv_input_dims = kv_input.dims();
-      PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      3,
-      errors::InvalidArgument("The dimensions of x must be 3"
-                              "(batch_size, num_head_q, dim_head),"
-                              "but received dimensions of"
-                              "Input is [%d]",
-                              x_dims.size()));
-      PADDLE_ENFORCE_EQ(
-      kv_input_dims.size(),
-      3,
-      errors::InvalidArgument("The dimensions of kv_input must be 3"
-                              "(batch_size, num_head_kv*2, dim_head),"
-                              "but received dimensions of"
-                              "Input is [%d]",
-                              kv_input_dims.size()));
-      PADDLE_ENFORCE_EQ(
-      kv_input_dims[1],
-      head_kv*2,
-      errors::InvalidArgument("The second dimensions of kv_input must equall to head_kv,but got %d",
-                              kv_input_dims[1]));
-  }
-  else{
-      PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      3,
-      errors::InvalidArgument("The dimensions of x must be 3"
-                              "(batch_size, num_head_q+2*num_head_kv, dim_head),"
-                              "but received dimensions of"
-                              "Input is [%d]",
-                              x_dims.size()));
-      PADDLE_ENFORCE_GT(
+
+  if (split_kv) {
+    auto kv_input_dims = kv_input.dims();
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        3,
+        errors::InvalidArgument("The dimensions of x must be 3"
+                                "(batch_size, num_head_q, dim_head),"
+                                "but received dimensions of"
+                                "Input is [%d]",
+                                x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        kv_input_dims.size(),
+        3,
+        errors::InvalidArgument("The dimensions of kv_input must be 3"
+                                "(batch_size, num_head_kv*2, dim_head),"
+                                "but received dimensions of"
+                                "Input is [%d]",
+                                kv_input_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        kv_input_dims[1],
+        head_kv * 2,
+        errors::InvalidArgument("The second dimensions of kv_input must equall "
+                                "to head_kv,but got %d",
+                                kv_input_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      3,
+                      errors::InvalidArgument(
+                          "The dimensions of x must be 3"
+                          "(batch_size, num_head_q+2*num_head_kv, dim_head),"
+                          "but received dimensions of"
+                          "Input is [%d]",
+                          x_dims.size()));
+    PADDLE_ENFORCE_GT(
         num_head,
         0,
-         errors::InvalidArgument("The head number of q must greater than zero,but got %d",
-                              num_head)
-      );
+        errors::InvalidArgument(
+            "The head number of q must greater than zero,but got %d",
+            num_head));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -3863,8 +3862,9 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       cache_kv_dims[2],
       head_kv,
-      errors::InvalidArgument("The third dim of cache_kv must equal to head_kv, but got %d",
-                              cache_kv_dims[2]));
+      errors::InvalidArgument(
+          "The third dim of cache_kv must equal to head_kv, but got %d",
+          cache_kv_dims[2]));
   cache_kv_out->set_dims(cache_kv_dims);
   cache_kv_out->set_dtype(cache_kv.dtype());
 
@@ -3873,7 +3873,6 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& x,
     beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
   }
 }
-
 
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

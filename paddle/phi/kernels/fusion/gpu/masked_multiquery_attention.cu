@@ -51,14 +51,13 @@ void MMQAKernel(const Context& dev_ctx,
   Masked_multiquery_attention_params<T> params;
   const auto& x_dims = x.dims();
   int bsz = x_dims[0];
-  int num_head=0;
-  if(split_kv){
+  int num_head = 0;
+  if (split_kv) {
     num_head = x_dims[1];
+  } else {
+    num_head = x_dims[1] - head_kv * 2;
   }
-  else{
-    num_head = x_dims[1]-head_kv*2;
-  }
- 
+
   int dim_head = x_dims[2];
   int timestep = src_mask->dims()[3] - 1;
   int cache_bsz = cache_kv.dims()[1];
@@ -75,7 +74,7 @@ void MMQAKernel(const Context& dev_ctx,
   params.cache_kv = const_cast<T*>(cache_kv_out->data<T>());
   params.neox_rotary_style = use_neox_rotary_style;
   params.mask_length = src_mask->dims()[3];
-  
+
   // params.mqa = mqa;
   if (sequence_lengths) {
     params.sequence_lengths = sequence_lengths->data<int>();

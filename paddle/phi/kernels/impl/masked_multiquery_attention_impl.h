@@ -392,11 +392,11 @@ __global__ void masked_multiquery_attention_kernel(
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
-  const int hid = (hi%params.head_kv);
+  const int hid = (hi % params.head_kv);
   const int bhi = bi * params.num_head + hi;
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
   const int tid = threadIdx.x;
-  const int bhi_kv = bi * params.head_kv + hi%params.head_kv;
+  const int bhi_kv = bi * params.head_kv + hi % params.head_kv;
   const int bi_seq_len_offset = bi * params.max_seq_length;
 
   float qk_max = -FLT_MAX;
@@ -408,8 +408,10 @@ __global__ void masked_multiquery_attention_kernel(
 
   // qkv [B, S=1, 3, num_head, head_dim]
   // int q_base_offset = bi * 3 * params.num_head * Dh + hi * Dh;
-  int q_base_offset = bi * (params.num_head+params.head_kv*2) * Dh + hi * Dh;
-  int kv_base_offset = bi * (params.num_head+params.head_kv*2) * Dh + hid * Dh;
+  int q_base_offset =
+      bi * (params.num_head + params.head_kv * 2) * Dh + hi * Dh;
+  int kv_base_offset =
+      bi * (params.num_head + params.head_kv * 2) * Dh + hid * Dh;
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
   // Use block reduction if needed
@@ -442,13 +444,12 @@ __global__ void masked_multiquery_attention_kernel(
     //         ? *reinterpret_cast<const Qk_vec *>(&q_base[qk_offset])
     //         : q;
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-      if(params.split_kv){
-        load_func.template load<Qk_vec>(q, bi * params.num_head* Dh + hi * Dh + tid * QK_VEC_SIZE, false);
-      }
-      else{
+      if (params.split_kv) {
+        load_func.template load<Qk_vec>(
+            q, bi * params.num_head * Dh + hi * Dh + tid * QK_VEC_SIZE, false);
+      } else {
         load_func.template load<Qk_vec>(q, q_offset);
       }
-      
     }
 
     Qk_vec k;
@@ -456,15 +457,16 @@ __global__ void masked_multiquery_attention_kernel(
     // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
     //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
     //         : k;
-    
+
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-      if(params.split_kv){
-        load_func.template load<Qk_vec>(k, bi * (params.head_kv*2) * Dh + hid * Dh + tid * QK_VEC_SIZE, true);
-      }
-      else{
+      if (params.split_kv) {
+        load_func.template load<Qk_vec>(
+            k,
+            bi * (params.head_kv * 2) * Dh + hid * Dh + tid * QK_VEC_SIZE,
+            true);
+      } else {
         load_func.template load<Qk_vec>(k, params.num_head * Dh + k_offset);
       }
-     
     }
 
     if (params.add_qkv_bias) {
@@ -524,31 +526,28 @@ __global__ void masked_multiquery_attention_kernel(
         int k_right_bias_offset = hid * Dh + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
         zero(q_right);
-        // q_right =
-        //     (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-        //         ? *reinterpret_cast<const Qk_vec *>(&q_base[qk_right_offset])
-        //         : q_right;
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-          if(params.split_kv){
-            load_func.template load<Qk_vec>(q, bi * params.num_head* Dh + hi * Dh + right_id * QK_VEC_SIZE, false);
-          }
-          else{
+          if (params.split_kv) {
+            load_func.template load<Qk_vec>(
+                q,
+                bi * params.num_head * Dh + hi * Dh + right_id * QK_VEC_SIZE,
+                false);
+          } else {
             load_func.template load<Qk_vec>(q_right, q_right_offset);
           }
-          // load_func.template load<Qk_vec>(q_right, q_right_offset);
         }
         Qk_vec k_right;
         zero(k_right);
-        // k_right =
-        //     (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-        //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_right_offset])
-        //         : k_right;
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-          if(params.split_kv){
-            load_func.template load<Qk_vec>(k_right, bi * (params.head_kv*2) * Dh + hid * Dh + right_id * QK_VEC_SIZE, true);
-          }
-          else{
-            load_func.template load<Qk_vec>(k_right, params.num_head * Dh + k_rignt_offset);
+          if (params.split_kv) {
+            load_func.template load<Qk_vec>(k_right,
+                                            bi * (params.head_kv * 2) * Dh +
+                                                hid * Dh +
+                                                right_id * QK_VEC_SIZE,
+                                            true);
+          } else {
+            load_func.template load<Qk_vec>(
+                k_right, params.num_head * Dh + k_rignt_offset);
           }
         }
 
@@ -600,7 +599,7 @@ __global__ void masked_multiquery_attention_kernel(
     int offset = bhi_kv * params.max_seq_length * Dh +
                  co * params.max_seq_length * QK_ELTS_IN_16B +
                  act_time_step * QK_ELTS_IN_16B + ci;
-    if (blockIdx.x == 0&&(Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
+    if (blockIdx.x == 0 && (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
       *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
     }
 
@@ -702,7 +701,6 @@ __global__ void masked_multiquery_attention_kernel(
     }
   }
 
-
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
@@ -764,14 +762,13 @@ __global__ void masked_multiquery_attention_kernel(
 
   V_vec_acum out;
   zero(out);
- 
+
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
     for (int ti = vo; ti < act_time_step; ti += V_PER_ITER) {
-      const int beam_offset =
-          beam_offsets
-              ? beam_offsets[ti] * params.head_kv * params.max_seq_length * Dh
-              : 0;
+      const int beam_offset = beam_offsets ? beam_offsets[ti] * params.head_kv *
+                                                 params.max_seq_length * Dh
+                                           : 0;
       V_vec v;
       if (beam_offset) {
         v = *reinterpret_cast<const V_vec *>(
@@ -789,32 +786,29 @@ __global__ void masked_multiquery_attention_kernel(
 #endif
     }
   }
-  
+
   V_vec v_bias;
   zero(v_bias);
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + q_base_offset + vi]);
     V_vec v;
-    if(params.split_kv){
+    if (params.split_kv) {
       load_func.template load<V_vec>(
-        v, params.head_kv * Dh + bi * params.head_kv* 2 * Dh + hid * Dh + vi, true);
-    }
-    else{
+          v,
+          params.head_kv * Dh + bi * params.head_kv * 2 * Dh + hid * Dh + vi,
+          true);
+    } else {
       load_func.template load<V_vec>(
-        v, (params.head_kv+params.num_head) * Dh + kv_base_offset + vi);
+          v, (params.head_kv + params.num_head) * Dh + kv_base_offset + vi);
     }
-    
-    
+
     if (params.add_qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
-          &params.qkv_bias[(params.head_kv+params.num_head) * Dh + hid * Dh + vi]);
+          &params.qkv_bias[(params.head_kv + params.num_head) * Dh + hid * Dh +
+                           vi]);
       v = add(v, v_bias);
     }
-  // if(bi==1&&hi<4){
-  //   printf("step2\n");
-  //   printf("%f\n",v);
-  // }
     *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
@@ -822,17 +816,10 @@ __global__ void masked_multiquery_attention_kernel(
 #else
     out = fma(logits_smem[act_time_step], v, out);
 #endif
-// if(bi==1&&hi<4){
-//     printf("step3\n");
-//     printf("v: %f\n",v);
-//     printf("log :%f\n",logits_smem[act_time_step]);
-//     printf("out :%f\n",out);
-//   }
   }
 
   __syncthreads();
-  
-    
+
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
     for (int active_groups = V_PER_ITER; active_groups >= 2;
@@ -848,23 +835,12 @@ __global__ void masked_multiquery_attention_kernel(
         *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]) = out;
 #endif
       }
-      // if(bi==1&&hi<4){
-      //   printf("step3\n");
-
-      //   printf("out :%f\n",out.x);
-      // }
       __syncthreads();
       if (vo < midpoint && (Dh == Dh_MAX || vi < Dh)) {
         out =
             add(*reinterpret_cast<const V_vec *>(&out_smem[vo * Dh + vi]), out);
-      // if(bi==1&&hi<4){
-      //   printf("step4\n");
-
-      //   printf("out :%f\n",out);
-      // }
       }
       __syncthreads();
-      
     }
   }
 
@@ -921,14 +897,14 @@ inline size_t smem_size_in_bytes(
   size_t smem_sz =                                                        \
       smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);  \
   constexpr auto kernel_fn =                                              \
-      masked_multiquery_attention_kernel<T,                                \
-                                        Dh,                               \
-                                        Dh_MAX,                           \
-                                        THDS_PER_KEY,                     \
-                                        THDS_PER_VALUE,                   \
-                                        THDS_PER_BLOCK,                   \
-                                        decltype(load_func),              \
-                                        decltype(store_func)>;            \
+      masked_multiquery_attention_kernel<T,                               \
+                                         Dh,                              \
+                                         Dh_MAX,                          \
+                                         THDS_PER_KEY,                    \
+                                         THDS_PER_VALUE,                  \
+                                         THDS_PER_BLOCK,                  \
+                                         decltype(load_func),             \
+                                         decltype(store_func)>;           \
   if (smem_sz > 0xc000) {                                                 \
     cudaFuncSetAttribute(                                                 \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
@@ -1028,7 +1004,7 @@ struct MMQALoad {
   explicit MMQALoad(const T *src) : src_(src) {}
 
   template <typename Vec>
-  __device__ void load(Vec &dst, int idx, bool load_kv=false) {
+  __device__ void load(Vec &dst, int idx, bool load_kv = false) {
     dst = *reinterpret_cast<const Vec *>(src_ + idx);
   }
 
@@ -1080,16 +1056,14 @@ struct MMQAStore<T, T, true> {
 
 template <typename T>
 struct MMQALoad<T, true> {
-  MMQALoad(const T *src,const T *src_kv)
-      : src_(src),src_kv_(src_kv){}
+  MMQALoad(const T *src, const T *src_kv) : src_(src), src_kv_(src_kv) {}
 
   template <typename Vec>
-  __device__ void load(Vec &dst, int idx, bool load_kv=false) {
-    if(load_kv)
+  __device__ void load(Vec &dst, int idx, bool load_kv = false) {
+    if (load_kv)
       dst = *reinterpret_cast<const Vec *>(src_kv_ + idx);
     else
       dst = *reinterpret_cast<const Vec *>(src_ + idx);
-    
   }
 
   const T *src_;
@@ -1210,35 +1184,31 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                   const int quant_round_type = 1,
                   const float quant_max_bound = 127.0f,
                   const float quant_min_bound = -127.0f) {
-  
-  if (quant_fmha_out_scale > 0&&params.split_kv) {
-    MMQALoad<T, true> load_func(qkv_tensor.data<T>(),
-                                input_kv->data<T>());
+  if (quant_fmha_out_scale > 0 && params.split_kv) {
+    MMQALoad<T, true> load_func(qkv_tensor.data<T>(), input_kv->data<T>());
     MMQAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
                                     quant_round_type,
                                     quant_fmha_out_scale,
                                     quant_max_bound,
                                     quant_min_bound);
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-  } else if(quant_fmha_out_scale <= 0&&params.split_kv) {
-    MMQALoad<T, true> load_func(qkv_tensor.data<T>(),
-                                input_kv->data<T>());
-    MMQAStore<T> store_func(out_tensor->data<T>()); 
+  } else if (quant_fmha_out_scale <= 0 && params.split_kv) {
+    MMQALoad<T, true> load_func(qkv_tensor.data<T>(), input_kv->data<T>());
+    MMQAStore<T> store_func(out_tensor->data<T>());
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
 
-  }else if(quant_fmha_out_scale > 0&&!params.split_kv){
+  } else if (quant_fmha_out_scale > 0 && !params.split_kv) {
     MMQALoad<T, false> load_func(qkv_tensor.data<T>());
     MMQAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
-                                  quant_round_type,
-                                  quant_fmha_out_scale,
-                                  quant_max_bound,
-                                  quant_min_bound);
+                                    quant_round_type,
+                                    quant_fmha_out_scale,
+                                    quant_max_bound,
+                                    quant_min_bound);
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-  }else{
+  } else {
     MMQALoad<T, false> load_func(qkv_tensor.data<T>());
-    MMQAStore<T> store_func(out_tensor->data<T>()); 
+    MMQAStore<T> store_func(out_tensor->data<T>());
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-
   }
 }
 
@@ -1251,16 +1221,14 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                   int num_head,
                   int dim_head,
                   phi::DenseTensor *out_tensor,
-                  const phi::DenseTensor *input_kv = nullptr, 
+                  const phi::DenseTensor *input_kv = nullptr,
                   const phi::DenseTensor *dequant_qkv_scales = nullptr,
                   const float quant_fmha_out_scale = -1,
                   const int quant_round_type = 1,
                   const float quant_max_bound = 127.0f,
                   const float quant_min_bound = -127.0f) {
-
-  if (quant_fmha_out_scale > 0&&params.split_kv) {
-    MMQALoad<T, true> load_func(qkv_tensor.data<T>(),
-                                input_kv->data<T>());
+  if (quant_fmha_out_scale > 0 && params.split_kv) {
+    MMQALoad<T, true> load_func(qkv_tensor.data<T>(), input_kv->data<T>());
     MMQAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
                                           shift.data<T>(),
                                           smooth.data<T>(),
@@ -1270,34 +1238,32 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                                           quant_max_bound,
                                           quant_min_bound);
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-  } else if(quant_fmha_out_scale <= 0&&params.split_kv) {
-    MMQALoad<T, true> load_func(qkv_tensor.data<T>(),
-                                input_kv->data<T>());
-    MMQAStore<T, T, true> store_func(out_tensor->data<T>(),
-                                      shift.data<T>(),
-                                      smooth.data<T>(),
-                                      num_head * dim_head);
-    fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-
-  }else if(quant_fmha_out_scale > 0&&!params.split_kv){
-    MMQALoad<T, false> load_func(qkv_tensor.data<T>());
-    MMQAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
-                                          shift.data<T>(),
-                                          smooth.data<T>(),
-                                          num_head * dim_head,
-                                          quant_round_type,
-                                          quant_fmha_out_scale,
-                                          quant_max_bound,
-                                          quant_min_bound);
-    fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-  }else{
-    MMQALoad<T, false> load_func(qkv_tensor.data<T>());
+  } else if (quant_fmha_out_scale <= 0 && params.split_kv) {
+    MMQALoad<T, true> load_func(qkv_tensor.data<T>(), input_kv->data<T>());
     MMQAStore<T, T, true> store_func(out_tensor->data<T>(),
                                      shift.data<T>(),
                                      smooth.data<T>(),
                                      num_head * dim_head);
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
 
+  } else if (quant_fmha_out_scale > 0 && !params.split_kv) {
+    MMQALoad<T, false> load_func(qkv_tensor.data<T>());
+    MMQAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
+                                          shift.data<T>(),
+                                          smooth.data<T>(),
+                                          num_head * dim_head,
+                                          quant_round_type,
+                                          quant_fmha_out_scale,
+                                          quant_max_bound,
+                                          quant_min_bound);
+    fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
+  } else {
+    MMQALoad<T, false> load_func(qkv_tensor.data<T>());
+    MMQAStore<T, T, true> store_func(out_tensor->data<T>(),
+                                     shift.data<T>(),
+                                     smooth.data<T>(),
+                                     num_head * dim_head);
+    fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
   }
 }
 

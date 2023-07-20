@@ -32,7 +32,7 @@ def masked_multiquery_attention(
     beam_size=1,
     rotary_emb_dims=0,
     kv_split=False,
-    head_kv =1,
+    head_kv=1,
     mask_broadcast_num_heads=True,
     compute_bias=False,
     use_neox_rotary_style=False,
@@ -61,7 +61,7 @@ def masked_multiquery_attention(
             out = paddle.matmul(product, v).transpose([0, 2, 1, 3])
 
     Args:
-        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32.if q and kv are splited, the shape 
+        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32.if q and kv are splited, the shape
                     is `[batch\_size, num\_head\_q, dim\_head]`.if q and kv are fused, the shape is batch\_size, num\_head\_q + 2 * num_head_kv, dim\_head]
         kv_input(Tensor, optional): The kv Tensor. the shape is '[batch\_size, num\_head\_kv * 2, dim\_head]'.if q and kv are fused, the kv_input is None.
         bias (Tensor, optional): The bias tensor of qkv, the shape is `[3, num\_head, dim\_head]`.
@@ -101,7 +101,7 @@ def masked_multiquery_attention(
 
             # input: [batch_size, 3, num_head, dim_head]
             x = paddle.rand(shape=(2, 32+2, 128), dtype="float32")
-            
+
             # src_mask: [batch_size, 1, 1, sequence_length]
             src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
 

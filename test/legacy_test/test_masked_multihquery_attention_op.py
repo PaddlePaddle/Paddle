@@ -96,10 +96,10 @@ class TestMMHAOp(unittest.TestCase):
         self.v = np.random.uniform(
             -0.05, 0.05, [self.bsz, self.num_head_kv, self.dim_head]
         )
-        self.x =  np.concatenate((self.q, self.k, self.v),axis=1)
+        self.x = np.concatenate((self.q, self.k, self.v), axis=1)
 
         self.bias = np.random.uniform(
-            -0.05, 0.05, [ self.num_head+2*self.num_head_kv, self.dim_head]
+            -0.05, 0.05, [self.num_head + 2 * self.num_head_kv, self.dim_head]
         )
         self.src_mask = np.zeros([self.bsz, 1, 1, self.sequence_length + 1])
         self.sequence_lengths = None
@@ -140,7 +140,6 @@ class TestMMHAOp(unittest.TestCase):
         self.quant_round_type = 1
         self.quant_max_bound = 126
         self.quant_min_bound = -126
-        
 
     def quant_helper(
         self, x, quant_scale, quant_round_type, quant_max_bound, quant_min_bound
@@ -177,39 +176,47 @@ class TestMMHAOp(unittest.TestCase):
         if qkv_out_scale is not None:
             exit()
         else:
-            q = q + bias[0:self.num_head,:]
-            k = k + bias[self.num_head:self.num_head+self.num_head_kv,:]
-            v = v + bias[self.num_head+self.num_head_kv:self.num_head+self.num_head_kv*2,:]
+            q = q + bias[0 : self.num_head, :]
+            k = k + bias[self.num_head : self.num_head + self.num_head_kv, :]
+            v = (
+                v
+                + bias[
+                    self.num_head
+                    + self.num_head_kv : self.num_head
+                    + self.num_head_kv * 2,
+                    :,
+                ]
+            )
 
-        
-        
         cache_k, cache_v = paddle.split(cache_kv_out, 2, axis=0)
-        k=paddle.to_tensor(np.expand_dims(k, axis=2))
-        v=paddle.to_tensor(np.expand_dims(v, axis=2))
-        q=paddle.to_tensor(np.expand_dims(q, axis=2))
+        k = paddle.to_tensor(np.expand_dims(k, axis=2))
+        v = paddle.to_tensor(np.expand_dims(v, axis=2))
+        q = paddle.to_tensor(np.expand_dims(q, axis=2))
         k = paddle.concat([cache_k.squeeze(0), k], axis=2)
         v = paddle.concat([cache_v.squeeze(0), v], axis=2)
         for i in range(self.num_head):
             tmp = paddle.matmul(
-            x=q[:,i,:,:] * (self.dim_head ** -0.5), y=k[:,i%self.num_head_kv,:,:], transpose_y=True
+                x=q[:, i, :, :] * (self.dim_head**-0.5),
+                y=k[:, i % self.num_head_kv, :, :],
+                transpose_y=True,
             )
-            if(i == 0):
+            if i == 0:
                 product = tmp
             else:
-                product = np.concatenate((product, tmp),axis=1)
-        product=np.expand_dims(product, axis=2)
+                product = np.concatenate((product, tmp), axis=1)
+        product = np.expand_dims(product, axis=2)
         product = product + src_mask
-        
+
         product = paddle.nn.functional.softmax(product)
         for i in range(self.num_head):
             tmp = paddle.matmul(
-            product[:,i,:,:],v[:,i%self.num_head_kv,:,:] 
-            )   
-            if(i == 0):
+                product[:, i, :, :], v[:, i % self.num_head_kv, :, :]
+            )
+            if i == 0:
                 out = tmp
             else:
-                out = np.concatenate((out, tmp),axis=1)
-        out=np.expand_dims(out, axis=1)
+                out = np.concatenate((out, tmp), axis=1)
+        out = np.expand_dims(out, axis=1)
         normalized_out = self.quant_helper(
             out,
             out_linear_in_scale,
@@ -232,8 +239,8 @@ class TestMMHAOp(unittest.TestCase):
         out_linear_in_scale,
         dtype,
     ):
-        if(split_kv):
-            kv =  np.concatenate((self.k, self.v),axis=1)
+        if split_kv:
+            kv = np.concatenate((self.k, self.v), axis=1)
             paddle.disable_static()
             self.q = paddle.to_tensor(self.q).cast(dtype)
             self.k = paddle.to_tensor(self.k).cast(dtype)
@@ -243,7 +250,7 @@ class TestMMHAOp(unittest.TestCase):
         else:
             x = paddle.to_tensor(x).cast(dtype)
             kv = None
-            
+
         bias = paddle.to_tensor(bias).cast(dtype)
         src_mask = paddle.to_tensor(src_mask).cast(dtype)
         cache_kv_out = paddle.to_tensor(cache_kv_out).cast(dtype)
@@ -295,7 +302,7 @@ class TestMMHAOp(unittest.TestCase):
             self.mqa,
         )
         paddle.enable_static()
-        
+
         return paddle_naive_mmha_out, paddle_mmha_out
 
     def test_mmha_split_fp16(self):
@@ -320,7 +327,7 @@ class TestMMHAOp(unittest.TestCase):
             rtol=1e-3,
             atol=1e-3,
         )
-        
+
     def test_mmha_fused_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -342,9 +349,7 @@ class TestMMHAOp(unittest.TestCase):
             paddle_naive_rmsnorm[0],
             rtol=1e-3,
             atol=1e-3,
-        )    
-
-   
+        )
 
 
 if __name__ == '__main__':
