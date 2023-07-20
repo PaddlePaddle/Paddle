@@ -1090,7 +1090,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_sigmoid
+    func : hardsigmoid
   backward : hardsigmoid_grad
 
 - op : hardtanh
@@ -1995,6 +1995,16 @@
     func : relu
   inplace : (x -> out)
   backward : relu_grad
+
+- op : relu6
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu6
+  backward : relu6_grad
 
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)
