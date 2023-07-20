@@ -416,10 +416,9 @@ class TestGroupNormBF16Op_With_NHWC(OpTest):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
 
     def test_check_output(self):
-        atol = 1
         rtol = 1e-3
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=atol, rtol=1e-3)
+        self.check_output_with_place(place, rtol=1e-3)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
