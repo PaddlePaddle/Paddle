@@ -90,40 +90,44 @@ class IrStreamAnalyzer {
 
   ~IrStreamAnalyzer() {}
 
-  void ConstructEvents(std::vector<Instruction>* instructions) const;
+  void ConstructEvents(
+      std::vector<paddle::framework::InstructionBase*>* instructions) const;
 
-  platform::DeviceType GetWaiterType(const Instruction& instr) const;
+  platform::DeviceType GetWaiterType(
+      const paddle::framework::InstructionBase* instr) const;
 
  private:
-  bool HasDataDependency(const Instruction& cur_instr,
-                         const Instruction& next_instr) const;
+  void AnalyseAllRunType(
+      const std::vector<paddle::framework::InstructionBase*>& instructions,
+      const std::map<size_t, std::set<size_t>>& downstream_map,
+      std::vector<std::vector<std::vector<size_t>>>* run_type_info) const;
+
+  DownstreamRunType AnalyseRunTypeForTwoInstructions(
+      const paddle::framework::InstructionBase* cur_instr,
+      const paddle::framework::InstructionBase* next_instr) const;
 
   void AnalyseAllEventInfo(
-      const std::vector<Instruction>& instructions,
+      const std::vector<paddle::framework::InstructionBase*>& instructions,
       const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
           event_info) const;
 
-  void AnalyseAllRunType(
-      const std::vector<Instruction>& instructions,
-      const std::map<size_t, std::set<size_t>>& downstream_map,
-      std::vector<std::vector<std::vector<size_t>>>* run_type_info) const;
-
   void AnalyseEventInfoForTwoInstructions(
-      const std::vector<Instruction>& instructions,
+      const std::vector<paddle::framework::InstructionBase*>& instructions,
       const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
       const size_t cur_instr_id,
       const size_t next_instr_id,
       std::set<size_t>* waiter_instr_ids,
       std::set<size_t>* visited_next_instr_id) const;
 
+  bool HasDataDependency(
+      const paddle::framework::InstructionBase* cur_instr,
+      const paddle::framework::InstructionBase* next_instr) const;
+
   void ShrinkEventInfo(
-      const DependencyBuilder& dependency_builder,
+      const IrDependencyBuilder& dependency_builder,
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
           event_info_map) const;
-
-  DownstreamRunType AnalyseRunTypeForTwoInstructions(
-      const Instruction& cur_instr, const Instruction& next_instr) const;
 
   const Place place_;
 };

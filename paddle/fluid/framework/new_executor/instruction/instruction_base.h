@@ -163,6 +163,8 @@ class InstructionBase {
   std::unordered_map<::ir::Value, std::vector<int>> input_index_;
 
   std::unordered_map<::ir::Value, std::vector<int>> output_index_;
+
+  std::unordered_set<::ir::Value> no_need_buffer_;
 };
 
 }  // namespace framework

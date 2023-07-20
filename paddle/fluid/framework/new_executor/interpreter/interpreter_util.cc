@@ -19,6 +19,7 @@
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
@@ -156,6 +157,10 @@ bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
 }
 
+bool IsCpuOp(const paddle::framework::InstructionBase* instr) {
+  return platform::is_cpu_place(instr->DeviceContext().GetPlace());
+}
+
 bool IsGradOp(const std::string& op_name) {
   return paddle::string::ends_with(op_name, "_grad");
 }
@@ -171,6 +176,10 @@ bool IsMemcpyD2H(const Instruction& instr) {
 
 bool IsMemcpyH2D(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyH2D;
+}
+
+bool IsMemcpyH2D(const paddle::framework::InstructionBase* instr) {
+  return instr->Name() == "pd.memcpy_h2d";
 }
 
 bool IsMemcpyOp(const Instruction& instr) {

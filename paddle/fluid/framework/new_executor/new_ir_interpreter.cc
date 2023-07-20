@@ -202,9 +202,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << DebugValueInfo();
 
     // NOTE(zhangbo): Iterative version, gradually replacing BuildOpFuncList()
-    // and Convert()
-    // BuildInstruction();
-    // BuildInstructionDependences();
+    // and Convert() by:
+    // [1] BuildInstruction();
+    // [2] BuildInstructionDependences();
+    // [3] ir_stream_analyzer_.ConstructEvents(&vec_instruction_base_);
+    // [4] GC();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
@@ -267,6 +269,8 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     VLOG(4) << DebugValueInfo();
     BuildInstruction();
     BuildInstructionDependences();
+    ir_stream_analyzer_.ConstructEvents(&vec_instruction_base_);
+
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
@@ -1545,13 +1549,13 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
 /// ======================== ///
 
 void NewIRInterpreter::BuildInstruction() {
-  VLOG(0) << "Build Instructions for new ir ... ";
+  VLOG(6) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
   for (auto it = ir_program_->block()->begin();
        it != ir_program_->block()->end();
        ++it) {
-    VLOG(0) << "Build Instruction for op: " << op_idx;
+    VLOG(6) << "Build Instruction for op: " << op_idx;
     if ((*it)->dialect()->name() == "pd_kernel") {
       auto op_name = (*it)
                          ->attributes()

@@ -768,6 +768,16 @@ void IrDependencyBuilder::AddDependencyForSequentialRun() {
   }
 }
 
+const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::OpDownstreamMap()
+    const {
+  PADDLE_ENFORCE_EQ(
+      is_build_,
+      true,
+      phi::errors::Unavailable(
+          "DependencyBuilder is not yet built, call Build() firstly."));
+  return op_downstream_map_;
+}
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
