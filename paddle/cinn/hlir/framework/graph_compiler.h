@@ -98,10 +98,7 @@ class GraphCompiler final {
   GraphCompiler(Target target,
                 const std::shared_ptr<Scope>& scope,
                 const std::shared_ptr<Graph>& graph)
-      : target_(std::move(target)),
-        scope_(scope),
-        graph_(graph),
-        m_builder_(UniqName("module"), target) {}
+      : target_(std::move(target)), scope_(scope), graph_(graph) {}
 
   struct CompilationResult {
     std::unique_ptr<Program> runtime_program;
@@ -127,44 +124,15 @@ class GraphCompiler final {
   CompilationResult Build(const CompileOptions& options,
                           std::unordered_set<std::string>&& fetch_var_ids = {},
                           void* stream = nullptr);
-  void ExportObject(const std::string& path) { compiler_->ExportObject(path); }
 
   std::unique_ptr<Program> Build(const std::string& code = "");
-
-  std::string GenSourceCode();
-
-  void PrintFunc();
 
   const std::shared_ptr<Scope>& GetScope() const { return scope_; }
 
  private:
-  std::vector<ir::LoweredFunc> GetOpFunc(const std::vector<Node*>& nodes);
+  // instantiate all variables on compile time
+  void InstantiateVariables();
 
-  std::vector<ir::LoweredFunc> GetOpFunc(const Node* node);
-  // Given a node, lower it to LoweredFunc using new ir schedule
-  std::vector<ir::LoweredFunc> GetOpFuncWithIRSchedule(
-      const Node* node,
-      const absl::flat_hash_map<std::string, Type>& type_dict_,
-      const absl::flat_hash_map<std::string, shape_t>& shape_dict_);
-
-  std::string GenOpFuncName(const Node* node) const {
-    return "fn_" + node->id();
-  }
-
-  // append a unique number at the end of the function name to distinguish
-  // different functions from graphs whose structures are same
-  const std::string& GetOrGenFullFuncName(const std::string& prefix);
-
-  // TODO(haozech) add implementation
-  std::vector<std::string> OpGetInputNames(const Node* node) const;
-  // TODO(haozech) add implementation
-  std::vector<std::string> OpGetOutputNames(const Node* node) const;
-
-  std::vector<std::unique_ptr<Instruction>> BuildInstructions(
-      const std::vector<std::vector<Node*>>& groups,
-      const std::vector<std::shared_ptr<Graph::Group>>& fusion_groups);
-
-  void BuildCublasInstr(const Node& node, Instruction* instr) const;
   // some variables are eliminated by optimized passes(such as OpFusion),
   // we can filter out them according to arguments of the built instructions,
   // and erase them from the scope to avoid unnecessary buffer allocation
@@ -189,27 +157,15 @@ class GraphCompiler final {
   // parallel compiler
   std::shared_ptr<ParallelCompiler> parallel_compiler_;
 
-  void ProcessFunction(const std::vector<ir::LoweredFunc>& lowered_funcs);
-  void SetSubKernels(Instruction* instr, const std::string& func_name);
   Target target_;
   std::shared_ptr<Graph> graph_;
   std::shared_ptr<Scope> scope_;
-  // mapping a function's name to its input artuments' names
-  std::map<std::string, std::vector<std::string>> function2input_args_;
-  // mapping a function's name to its output artuments' names
-  std::map<std::string, std::vector<std::string>> function2output_args_;
   // fetch var ids in cinn and the corresponding var nodes will not be fused so
   // as to get the result
   std::unordered_set<std::string> fetch_var_ids_;
 
-  absl::flat_hash_map<std::string, std::string> prefix2full_namemap_;
   // map dst reuse var to the src var sharing buffer
   absl::flat_hash_map<std::string, std::string> reuse_vars_map_;
-
-  std::unique_ptr<backends::Compiler> compiler_;
-  CompileOptions compile_options_;
-
-  ir::Module::Builder m_builder_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(GraphCompiler);
 };
