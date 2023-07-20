@@ -14,7 +14,6 @@
 
 import re
 import string
-import warnings
 from io import StringIO
 
 from paddle import _C_ops, _legacy_C_ops
@@ -352,32 +351,14 @@ def generate_inplace_fn(inplace_op_type):
             else:
                 op = getattr(_legacy_C_ops, inplace_op_type)
                 return op(x)
-        else:
-            warnings.warn(
-                "In static graph mode, {}() is the same as {}() and does not perform inplace operation.".format(
-                    inplace_op_type, origin_op_type
-                )
-            )
-            from ..fluid.dygraph.base import in_declarative_mode
-
-            if (
-                in_declarative_mode()
-                and hasattr(x, "is_view_var")
-                and x.is_view_var
-            ):
-                raise ValueError(
-                    f'Sorry about what\'s happend. In to_static mode, {inplace_op_type}\'s output variable {x.name} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You mast find the location of the strided API be called, and call {x.name} = {x.nameb}.assign().'
-                )
-            return generate_activation_fn(origin_op_type)(x, name)
 
     func.__name__ = inplace_op_type
     func.__doc__ = """
 Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_fluid_layers_{}`.
+Please refer to :ref:`api_paddle_{}`.
 """.format(
         origin_op_type, origin_op_type
     )
-
     return func
 
 
