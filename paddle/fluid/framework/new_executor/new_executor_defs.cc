@@ -149,22 +149,22 @@ void VariableScope::CheckExist(const std::string& name) const {
       platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
-Instruction::Instruction() : is_artificial_(false) {
+Instruction::Instruction() : is_artificial_(false), dev_ctx_(nullptr) {
+  VLOG(8) << "break1 here";
   std::shared_ptr<DeviceEvent> device_event = std::make_shared<DeviceEvent>(
       DeviceContext().GetPlace(), platform::GenerateDeviceEventFlag());
+  VLOG(8) << "break2 here";
   event_to_record_ = std::make_shared<EventInter>(
       id_, device_event, platform::kCUDA /*unused*/);
-
+  VLOG(8) << "break3 here";
   events_to_wait_ = std::make_shared<std::vector<EventInter>>();
 }
 
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
-    : is_artificial_(false),
-      id_(id),
-      op_func_node_(op_func_node),
-      dev_ctx_(dev_ctx) {
+    : is_artificial_(false), id_(id), op_func_node_(op_func_node) {
+  dev_ctx_ = &dev_ctx;
   if (op_func_node.operator_base_ != nullptr &&
       op_func_node.operator_base_->Type() == "depend") {
     is_artificial_ = true;
@@ -191,7 +191,8 @@ void Instruction::SetVar(size_t id,
                          const platform::DeviceContext& dev_ctx) {
   id_ = id;
   op_func_node_ = op_func_node;
-  dev_ctx_ = dev_ctx;
+  dev_ctx_ = &dev_ctx;
+
   if (op_func_node.operator_base_ != nullptr &&
       op_func_node.operator_base_->Type() == "depend") {
     is_artificial_ = true;
@@ -219,7 +220,7 @@ void Instruction::WaitEvent(const Place& place) const {
         "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_
             << " 's event with waiter_type: " << event_iter.waiter_type_;
-    event_iter.event_->Wait(event_iter.waiter_type_, &dev_ctx_);
+    event_iter.event_->Wait(event_iter.waiter_type_, dev_ctx_);
   }
 }
 
@@ -228,7 +229,7 @@ void Instruction::RecordEvent(const Place& place) const {
       "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
   if (event_to_record_) {
     VLOG(6) << "Record event at instruction: " << id_;
-    event_to_record_->event_->Record(&dev_ctx_);
+    event_to_record_->event_->Record(dev_ctx_);
   }
 }
 
@@ -281,7 +282,7 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   // empty here to avoid illegal local reference.
   static framework::Scope scope_;
   execution_ctx_.reset(
-      new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+      new ExecutionContext(*OpBase(), scope_, *dev_ctx_, *runtime_ctx_.get()));
 }
 
 void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
@@ -291,7 +292,7 @@ void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
   infershape_ctx_.reset(
       new RuntimeInferShapeContext(*OpBase(), *runtime_ctx_.get()));
   execution_ctx_.reset(
-      new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
+      new ExecutionContext(*OpBase(), scope, *dev_ctx_, *runtime_ctx_.get()));
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
@@ -308,7 +309,7 @@ std::shared_ptr<ExecutionContext> Instruction::InnerExecutionContext() const {
 }
 
 const platform::DeviceContext& Instruction::DeviceContext() const {
-  return dev_ctx_;
+  return *dev_ctx_;
 }
 
 const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()

@@ -304,7 +304,7 @@ class Instruction {
   std::shared_ptr<std::vector<EventInter>> events_to_wait_;
 
   OpFuncNode op_func_node_;
-  const platform::DeviceContext& dev_ctx_;  // not owned
+  const platform::DeviceContext* dev_ctx_;  // not owned
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;

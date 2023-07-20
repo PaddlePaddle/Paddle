@@ -81,9 +81,10 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   PrepareForCUDAGraphCapture();
 
   // init vec_instruction_
-  for (auto it = block_->begin(); it != block_->end(); ++it) {
-    vec_instruction_.emplace_back();
-  }
+  int op_num = block_.OpSize();
+  VLOG(8) << "op_num: " << op_num;
+  vec_instruction_.clear();
+  vec_instruction_.resize(op_num);
 }
 
 ProgramInterpreter::~ProgramInterpreter() {
@@ -297,12 +298,13 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   // share events analysis results
-  auto src_vec_instruction_ = src.GetVectorInstruction();
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    vec_instruction_[i].ShareEventsFrom(src_vec_instruction_[i]);
-  }
+  //   const std::vector<Instruction> src_vec_instruction_ =
+  //   src.GetVecInstruction(); for (size_t i = 0; i < vec_instruction_.size();
+  //   ++i) {
+  //     vec_instruction_[i].ShareEventsFrom(src_vec_instruction_[i]);
+  //   }
 
-  is_shared_ = true;
+  //   is_shared_ = true;
   VLOG(8) << "Share BuildResults from InterpreterCore("
           << const_cast<InterpreterBaseImpl*>(&src) << ") to InterpreterCore("
           << this << ")";
@@ -341,7 +343,7 @@ const interpreter::DependencyBuilder& ProgramInterpreter::GetDependencyBuilder()
   return dependency_builder_;
 }
 
-const std::vector<Instruction>& GetVecInstruction() const {
+const std::vector<Instruction>& ProgramInterpreter::GetVecInstruction() const {
   return vec_instruction_;
 }
 
@@ -586,7 +588,7 @@ void ProgramInterpreter::BuildOperatorDependences() {
 
     if (!is_shared_) {
       for (size_t next_instr_id : next_instr_ids) {
-        ++dependecy_count_[next_instr_id];
+        ++(*dependecy_count_)[next_instr_id];
       }
     }
   }
