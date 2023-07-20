@@ -269,8 +269,6 @@
 - op : assert
   inputs :
     {cond : Cond, data : Data}
-  # attrs:
-  #   { summarize : summarize}
 
 - op : assign
   backward : assign_grad
