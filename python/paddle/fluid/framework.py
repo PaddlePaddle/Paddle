@@ -2295,7 +2295,14 @@ class Variable(metaclass=VariableMetaClass):
         return _getitem_impl_(self, item)
 
     def __setitem__(self, item, value):
-        return _setitem_impl_(self, item, value)
+        from .dygraph.base import in_declarative_mode
+
+        if in_declarative_mode():
+            return _setitem_impl_(self, item, value)
+        else:
+            raise RuntimeError(
+                "In static mode, the __setitem__ (looks like: x[indices] = values) should not be used. Please use x = paddle.static.setitem(x, indices, values)"
+            )
 
     def get_value(self, scope=None):
         """
