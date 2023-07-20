@@ -355,9 +355,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (block) {
         auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
         if (!filter_var_desc->Persistable()) {
-          VLOG(3) << "Trt not support filter is  a intermediate tensor in "
-                     "conv2d op.";
+#if IS_TRT_VERSION_GE(8600)
+#else
+          LOG(INFO)
+              << "Trt below 8.6 not support conv2d's filter is a intermedoate "
+                 "tensor in conv2d op, please upgarde your TenroRT.";
           return false;
+#endif
         }
       }
     }
@@ -694,13 +698,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto index_var_name = desc.Input("Index")[0];
       auto* input_var_desc = block->FindVar(input_var_name);
       auto* index_var_desc = block->FindVar(index_var_name);
-
-      // The index input must be int32 datatype.
-      if (index_var_desc->GetDataType() !=
-          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
-        VLOG(3) << "take_along_axis op Index input data type must be int32";
-        return false;
-      }
 
       const auto input_shape = input_var_desc->GetShape();
       const auto index_shape = index_var_desc->GetShape();
@@ -2666,6 +2663,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "unbind") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the unbind does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+    }
+
     if (op_type == "temporal_shift") {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "temporal_shift is not supported when TensorRT < 8.2";
@@ -2903,7 +2915,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_groupnorm_act",
       "temporal_shift",
       "grid_sampler",
-      "cumsum"};
+      "cumsum",
+      "unbind",
+      "assign"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3065,7 +3079,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_groupnorm_act",
       "temporal_shift",
       "grid_sampler",
-      "cumsum"};
+      "cumsum",
+      "unbind",
+      "assign"};
 };
 
 struct GenericPluginTeller : public Teller {

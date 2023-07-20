@@ -2849,6 +2849,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
 
     .. code-block:: python
+        :name: code-example1
 
         import paddle
         #input:

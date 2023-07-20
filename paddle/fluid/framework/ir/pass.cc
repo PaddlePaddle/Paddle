@@ -74,6 +74,16 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "xpu_delete_cast_op_pass",
 };
 
+static std::vector<std::string> support_subgraph_generate_passes;
+
+void Pass::AddSupportSubgraphPass(const std::string &pass_type) {
+  if (std::find(support_subgraph_generate_passes.begin(),
+                support_subgraph_generate_passes.end(),
+                pass_type) == support_subgraph_generate_passes.end()) {
+    support_subgraph_generate_passes.push_back(pass_type);
+  }
+}
+
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";
   CheckPrevPass();
@@ -117,7 +127,10 @@ Graph *Pass::Apply(Graph *graph) const {
     subgraph_passes = support_subgraph_passes;
   }
   if (graph->IsMainGraph() &&
-      std::count(subgraph_passes.begin(), subgraph_passes.end(), Type())) {
+      (std::count(subgraph_passes.begin(), subgraph_passes.end(), Type()) ||
+       std::count(support_subgraph_generate_passes.begin(),
+                  support_subgraph_generate_passes.end(),
+                  Type()))) {
     for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
       auto *sub_graph = graph->GetSubGraph(i);
       if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {

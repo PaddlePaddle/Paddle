@@ -507,8 +507,9 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_assign_op_pass",
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
-      "identity_op_clean_pass",
       "delete_repeated_ops_pass",
+      "identity_op_clean_pass",
+      "fused_continuous_same_ops_pass",
       "reshape_unstack_concat_fuse_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
@@ -543,8 +544,10 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "add_layernorm_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "link_xpu_op_max_pass",
-      "inplace_op_var_pass",
       "delete_isolated_node_pass",
+      // "auto_mixed_precision_pass",
+      "cast_mixed_precision_op_fuse_pass",
+      "inplace_op_var_pass",
   });
   use_xpu_ = true;
 }

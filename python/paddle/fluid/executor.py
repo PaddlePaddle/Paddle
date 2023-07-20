@@ -855,11 +855,18 @@ class _ExecutorCache:
             if build_strategy is None or build_strategy.enable_inplace
             else False
         )
+
         enable_addto = (
             True
             if build_strategy is not None and build_strategy.enable_addto
             else False
         )
+
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+            # todo(phlrain), skip inplace add addto pass in new IR
+            enable_inplace = False
+            enable_addto = False
+
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
             skip_var_names = eval(_get_program_cache_key(feed, fetch_list))

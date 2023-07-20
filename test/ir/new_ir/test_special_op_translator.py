@@ -116,5 +116,41 @@ class TestRnnOpTranscriber(unittest.TestCase):
                 new_exe = core.StandaloneExecutor(place, plan, new_scope)
 
 
+class TestOneHotOpTranscriber(unittest.TestCase):
+    def test_mutable_attribute(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                depth = paddle.assign(np.array([10], dtype=np.int32))
+                label = paddle.static.data(
+                    name="label", shape=[-1, 1], dtype="int64"
+                )
+                one_hot_label = paddle.nn.functional.one_hot(
+                    x=label, num_classes=depth
+                )
+
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+
+    def test_normal_attribute(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                depth = 10
+                label = paddle.static.data(
+                    name="label", shape=[-1, 1], dtype="int64"
+                )
+                one_hot_label = paddle.nn.functional.one_hot(
+                    x=label, num_classes=depth
+                )
+
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+
+
 if __name__ == "__main__":
     unittest.main()
