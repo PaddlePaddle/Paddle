@@ -148,7 +148,7 @@ const void* TRTInt8Calibrator::readCalibrationCache(size_t& length)
 
 void TRTInt8Calibrator::writeCalibrationCache(const void* ptr,
                                               std::size_t length) TRT_NOEXCEPT {
-  calibration_table_ = std::string((const char*)ptr, length);
+  calibration_table_ = std::string(reinterpret_cast<const char*>(ptr), length);
   VLOG(4) << "Got calibration data for " << engine_name_ << " " << ptr
           << " length=" << length;
 }
