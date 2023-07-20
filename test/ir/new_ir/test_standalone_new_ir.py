@@ -23,7 +23,11 @@ import paddle
 class TestNewIr(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.enable_static()
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -44,7 +48,11 @@ class TestNewIr(unittest.TestCase):
 class TestCombineOp(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.enable_static()
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -65,7 +73,11 @@ class TestCombineOp(unittest.TestCase):
 class TestFeedOp(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.enable_static()
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -90,10 +102,36 @@ class TestFeedOp(unittest.TestCase):
         np.testing.assert_array_equal(out[0], gold_res)
 
 
+class TestSelectedRows(unittest.TestCase):
+    def test_with_new_ir(self):
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                w = paddle.uniform([10, 10], dtype="float32")
+                w.stop_gradient = False
+                id = paddle.ones([2], dtype="int32")
+                t = paddle.nn.functional.embedding(id, w, sparse=True)
+                loss = paddle.mean(t)
+                paddle.static.gradients(loss, w)
+
+            out = exe.run(
+                main_program,
+                fetch_list=[loss.name],
+            )
+
+
 class TestAddGradOp(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.enable_static()
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -176,7 +214,11 @@ class TestNewIrBackwardDygraph(unittest.TestCase):
 class TestSplitOp(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.enable_static()
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()

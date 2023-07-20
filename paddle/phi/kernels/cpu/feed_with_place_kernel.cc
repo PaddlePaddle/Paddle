@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
 
 namespace phi {
 
@@ -33,14 +34,22 @@ void ShaddowOutputKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(feed_with_place,
+PD_REGISTER_KERNEL(
+    feed_with_place, CPU, ALL_LAYOUT, phi::FeedWithPlaceKernel, float) {}
+
+PD_REGISTER_KERNEL(shaddow_feed,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FeedWithPlaceKernel,
+                   phi::ShaddowFeedKernel,
+                   bool,
                    float,
                    int32_t,
                    int64_t,
-                   double) {}
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(
     shaddow_output, CPU, ALL_LAYOUT, phi::ShaddowOutputKernel, float) {}
