@@ -120,9 +120,7 @@ class TestEmptyVarTranslate(unittest.TestCase):
                 out2 = paddle.mean(out1)
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 sgd_optimizer.minimize(out2)
-        print(main_program)
-        a = paddle.fluid.core.translate_newirprogram(main_program.desc)
-        a.print()
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
 class TestOneHotOpTranscriber(unittest.TestCase):
