@@ -30,7 +30,6 @@
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/utils/profiler.h"
 
-DECLARE_bool(cinn_ir_schedule);
 DECLARE_int32(cinn_parallel_compile_size);
 
 namespace cinn {
@@ -910,27 +909,16 @@ GraphCompiler::CompilationResult GraphCompiler::Build(
     } else {
       VLOG(3) << "fusion_groups is empty";
       std::vector<ir::LoweredFunc> lowered_func;
-      if (FLAGS_cinn_ir_schedule) {
-        auto& dtype_dict =
-            graph_->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
-                "inferdtype");
-        auto& shape_dict =
-            graph_->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
-                "infershape");
-        for (int i = 0; i < groups.size(); i++) {
-          for (int j = 0; j < groups[i].size(); j++) {
-            lowered_func =
-                GetOpFuncWithIRSchedule(groups[i][j], dtype_dict, shape_dict);
-            local_lowered_funcs.emplace_back(std::move(lowered_func));
-          }
-        }
-      } else {
-        for (int i = 0; i < groups.size(); i++) {
-          if (groups[i].size() == 1) {
-            lowered_func = GetOpFunc(groups[i][0]);
-          } else {
-            lowered_func = GetOpFunc(groups[i]);
-          }
+      auto& dtype_dict =
+          graph_->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
+              "inferdtype");
+      auto& shape_dict =
+          graph_->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
+              "infershape");
+      for (int i = 0; i < groups.size(); i++) {
+        for (int j = 0; j < groups[i].size(); j++) {
+          lowered_func =
+              GetOpFuncWithIRSchedule(groups[i][j], dtype_dict, shape_dict);
           local_lowered_funcs.emplace_back(std::move(lowered_func));
         }
       }
