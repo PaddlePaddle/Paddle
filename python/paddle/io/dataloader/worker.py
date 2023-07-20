@@ -384,7 +384,7 @@ def _worker_loop(
                     tensor_list = [
                         numpy2lodtensor(b)
                         if isinstance(b, np.ndarray)
-                        else b.value().get_tensor()
+                        else b.get_tensor()
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))
