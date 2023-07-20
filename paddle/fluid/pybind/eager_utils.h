@@ -36,6 +36,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/utils/pybind.h"
+#include "paddle/utils/python_patch.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
