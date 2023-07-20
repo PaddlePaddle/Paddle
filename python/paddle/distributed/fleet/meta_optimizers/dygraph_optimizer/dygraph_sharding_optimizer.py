@@ -78,6 +78,12 @@ class DygraphShardingOptimizer:
         self.tensor_fusion = strategy.hybrid_configs[
             'sharding_configs'
         ].tensor_fusion
+        self.accumulate_steps = strategy.hybrid_configs[
+            'sharding_configs'
+        ].accumulate_steps
+        self.comm_overlap = strategy.hybrid_configs[
+            'sharding_configs'
+        ].comm_overlap
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion:
             assert (
@@ -145,10 +151,17 @@ class DygraphShardingOptimizer:
                     p.clear_gradient(set_to_zero)
 
     def _tensor_fusion(self):
+        comm_group = self._hcg.get_sharding_parallel_group()
         for i in range(self._sharding_world_size):
             params = self._rank2params[i]
+            dst = comm_group.nranks[i]
             decay_fused, all_fused = fused_parameters(
-                params, self._use_main_grad
+                params,
+                self._use_main_grad,
+                comm_group,
+                dst,
+                self.accumulate_steps,
+                self.comm_overlap,
             )
             self._rank2decay[i] = decay_fused
             self._rank2fused[i] = all_fused

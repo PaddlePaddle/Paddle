@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import itertools
+import os
 from collections import OrderedDict
 
 import numpy as np
@@ -108,116 +109,28 @@ def flatten_dense_tensors(
         return grad_storage
 
 
-def obtain_storage(parameters, use_main_grad, clip, dist):
-    if len(parameters) < 1:
-        return []
-
-    var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
-    storage = []
-    for group_idx, parameters in var_groups.items():
-        param_storage, grad_storage = flatten_dense_tensors(
-            parameters,
-            use_main_grad=use_main_grad,
-            fuse_param=True,
-            warp_buffer=True,
-        )
-        param_storage.buffer.need_clip = clip
-        param_storage.buffer.is_distributed = dist
-        storage.append(param_storage.buffer)
-    return storage
-
-
-def filter_params(params, is_fp32, is_distributed, need_clip):
-    params = list(
-        filter(
-            lambda x: x.is_distributed
-            if is_distributed
-            else (not x.is_distributed),
-            params,
-        )
-    )
-    params = list(
-        filter(
-            lambda x: getattr(x, 'need_clip', True)
-            if need_clip
-            else (not getattr(x, 'need_clip', True)),
-            params,
-        )
-    )
-    params = list(
-        filter(
-            lambda x: x.dtype == paddle.float32
-            if is_fp32
-            else x.dtype != paddle.float32,
-            params,
-        )
-    )
-    dtype = None
-    for p in params:
-        if dtype is None:
-            dtype = p.dtype
-        else:
-            assert dtype == p.dtype
-
-    return params, dtype
-
-
-def fused_parameters(parameters, use_main_grad):
-    param_groups = []
-    attrs = []
-
-    is_fp32 = [True, False]
-    is_distributed = [True, False]
-    need_clip = [True, False]
-
-    no_fp32_dtype = None
-    for fp32, dist, clip in itertools.product(
-        is_fp32, is_distributed, need_clip
-    ):
-        params, dtype = filter_params(parameters, fp32, dist, clip)
-        if not fp32:
-            if no_fp32_dtype is None:
-                no_fp32_dtype = dtype
-            elif dtype is not None:
-                assert no_fp32_dtype == dtype
-        attrs.append([dtype, dist, clip])
-        param_groups.append(params)
-
-    decay_fused = []
-    all_fused = []
-    for params, attr in zip(param_groups, attrs):
-        decay_params = []
-        other_params = []
-
-        for param in params:
-            if not any(nd in param.name for nd in ["bias", "norm", "b_0"]):
-                decay_params.append(param)
-            else:
-                other_params.append(param)
-
-        is_distributed = attr[1]
-        need_clip = attr[2]
-        decay = obtain_storage(
-            decay_params, use_main_grad, need_clip, is_distributed
-        )
-        other = obtain_storage(
-            other_params, use_main_grad, need_clip, is_distributed
-        )
-        decay_fused += decay
-        all_fused += decay
-        all_fused += other
-
-    return decay_fused, all_fused
-
-
 class FusedCommBuffer:
-    def __init__(self, id, params, comm_group, acc_steps=1, act=None, dst=-1):
+    def __init__(
+        self,
+        id,
+        params,
+        comm_group,
+        acc_steps=1,
+        act=None,
+        dst=-1,
+        use_main_grad=None,
+        fuse_param=False,
+    ):
         self._id = id
         self._params = params
         self._acc_steps = acc_steps
         self._comm_group = comm_group
 
-        self.use_main_grad = hasattr(self._params[0], "main_grad")
+        self.use_main_grad = (
+            use_main_grad
+            if use_main_grad is not None
+            else hasattr(self._params[0], "main_grad")
+        )
 
         self._task = None
         self._params_step_dict = {}
@@ -237,12 +150,23 @@ class FusedCommBuffer:
 
         self._init_step_dict()
 
-        self.grad_storage = flatten_dense_tensors(
-            self._params,
-            use_main_grad=self.use_main_grad,
-            fuse_param=False,
-            warp_buffer=False,
-        ).buffer
+        if fuse_param:
+            self.param_storage, self.grad_storage = flatten_dense_tensors(
+                self._params,
+                use_main_grad=use_main_grad,
+                fuse_param=True,
+                warp_buffer=True,
+            )
+            self.param_storage = self.param_storage.buffer
+            self.grad_storage = self.grad_storage.buffer
+        else:
+            self.param_storage = None
+            self.grad_storage = flatten_dense_tensors(
+                self._params,
+                use_main_grad=self.use_main_grad,
+                fuse_param=False,
+                warp_buffer=False,
+            ).buffer
 
         self._record_addr()
 
@@ -323,3 +247,141 @@ class FusedCommBuffer:
         self.grad_storage.scale_(scale_factor)
 
         self._reset_params_checked_in()
+
+
+def obtain_storage(
+    parameters,
+    use_main_grad,
+    clip,
+    dist,
+    act,
+    comm_group,
+    dst,
+    acc_steps,
+    comm_overlap,
+):
+    if len(parameters) < 1:
+        return []
+
+    var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
+    storage = []
+    for group_idx, parameters in var_groups.items():
+        param_buffer = FusedCommBuffer(
+            group_idx,
+            parameters,
+            comm_group,
+            acc_steps,
+            act,
+            dst,
+            use_main_grad,
+            fuse_param=True,
+        ).param_storage
+        param_buffer.need_clip = clip
+        param_buffer.is_distributed = dist
+        storage.append(param_buffer)
+    return storage
+
+
+def filter_params(params, is_fp32, is_distributed, need_clip):
+    params = list(
+        filter(
+            lambda x: x.is_distributed
+            if is_distributed
+            else (not x.is_distributed),
+            params,
+        )
+    )
+    params = list(
+        filter(
+            lambda x: getattr(x, 'need_clip', True)
+            if need_clip
+            else (not getattr(x, 'need_clip', True)),
+            params,
+        )
+    )
+    params = list(
+        filter(
+            lambda x: x.dtype == paddle.float32
+            if is_fp32
+            else x.dtype != paddle.float32,
+            params,
+        )
+    )
+    dtype = None
+    for p in params:
+        if dtype is None:
+            dtype = p.dtype
+        else:
+            assert dtype == p.dtype
+
+    return params, dtype
+
+
+def fused_parameters(
+    parameters, use_main_grad, comm_group, dst, acc_step, comm_overlap
+):
+    g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
+    act = (
+        HOOK_ACTION.ALL_REDUCE if not g_shard_use_reduce else HOOK_ACTION.REDUCE
+    )
+    param_groups = []
+    attrs = []
+
+    is_fp32 = [True, False]
+    is_distributed = [True, False]
+    need_clip = [True, False]
+
+    no_fp32_dtype = None
+    for fp32, dist, clip in itertools.product(
+        is_fp32, is_distributed, need_clip
+    ):
+        params, dtype = filter_params(parameters, fp32, dist, clip)
+        if not fp32:
+            if no_fp32_dtype is None:
+                no_fp32_dtype = dtype
+            elif dtype is not None:
+                assert no_fp32_dtype == dtype
+        attrs.append([dtype, dist, clip])
+        param_groups.append(params)
+
+    decay_fused = []
+    all_fused = []
+    for params, attr in zip(param_groups, attrs):
+        decay_params = []
+        other_params = []
+
+        for param in params:
+            if not any(nd in param.name for nd in ["bias", "norm", "b_0"]):
+                decay_params.append(param)
+            else:
+                other_params.append(param)
+
+        is_distributed = attr[1]
+        need_clip = attr[2]
+        decay = obtain_storage(
+            decay_params,
+            use_main_grad,
+            need_clip,
+            is_distributed,
+            act,
+            comm_group,
+            dst,
+            acc_step,
+            comm_overlap,
+        )
+        other = obtain_storage(
+            other_params,
+            use_main_grad,
+            need_clip,
+            is_distributed,
+            act,
+            comm_group,
+            dst,
+            acc_step,
+            comm_overlap,
+        )
+        decay_fused += decay
+        all_fused += decay
+        all_fused += other
+
+    return decay_fused, all_fused
