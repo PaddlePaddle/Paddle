@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
@@ -29,12 +30,124 @@
 #endif
 
 DECLARE_string(cinn_source_code_save_path);
+DECLARE_string(cinn_dump_group_lowered_func);
+DECLARE_string(cinn_dump_group_source_code);
+DECLARE_string(cinn_dump_group_ptx);
+DECLARE_string(cinn_dump_group_instruction);
 
 namespace cinn {
 namespace backends {
 using ir::Module;
 
 static constexpr int DebugLogMaxLen = 30000;
+
+void DumpCompilationInfo::DumpLoweredFunc() {
+  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_lowered_func)) {
+    return;
+  }
+  for (int idx = 0; idx < info_.lowered_funcs.size(); idx++) {
+    auto dump_path = utils::StringFormat(
+        "%s/fusion_group_%d", FLAGS_cinn_dump_group_lowered_func.c_str(), idx);
+    if (!hlir::framework::MakeDirectory(
+            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+      LOG(WARNING) << "Failed to make directory: \"" << dump_path
+                   << "\", the lowered functions for this group will not dump.";
+    } else {
+      auto dump_file = utils::StringFormat(
+          "%s/%s", dump_path.c_str(), "lowered_function.txt");
+      VLOG(7) << "Dump lower functions to: " << dump_file;
+      std::ofstream of(dump_file, std::ios_base::out);
+      if (of.is_open()) {
+        of << info_.lowered_funcs[idx].front();
+      } else {
+        LOG(WARNING) << "Failed to open file: " << dump_file
+                     << ", please check your path.";
+      }
+      of.close();
+    }
+  }
+}
+
+void DumpCompilationInfo::DumpSourceCode() {
+  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_source_code)) {
+    return;
+  }
+  for (int idx = 0; idx < info_.source_codes.size(); idx++) {
+    auto dump_path = utils::StringFormat(
+        "%s/fusion_group_%d", FLAGS_cinn_dump_group_source_code.c_str(), idx);
+    if (!hlir::framework::MakeDirectory(
+            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+      LOG(WARNING) << "Failed to make directory: \"" << dump_path
+                   << "\", the source code for this group will not dump.";
+    } else {
+      auto dump_file =
+          utils::StringFormat("%s/%s", dump_path.c_str(), "source_code.cu");
+      VLOG(7) << "Dump source code to: " << dump_file;
+      std::ofstream of(dump_file, std::ios_base::out);
+      if (of.is_open()) {
+        of << info_.source_codes[idx];
+      } else {
+        LOG(WARNING) << "Failed to open file: " << dump_file
+                     << ", please check your path.";
+      }
+      of.close();
+    }
+  }
+}
+
+void DumpCompilationInfo::DumpPtxCode() {
+  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_ptx)) {
+    return;
+  }
+  for (int idx = 0; idx < info_.source_ptxs.size(); idx++) {
+    auto dump_path = utils::StringFormat(
+        "%s/fusion_group_%d", FLAGS_cinn_dump_group_ptx.c_str(), idx);
+    if (!hlir::framework::MakeDirectory(
+            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+      LOG(WARNING) << "Failed to make directory: \"" << dump_path
+                   << "\", the source ptx for this group will not dump.";
+    } else {
+      auto dump_file =
+          utils::StringFormat("%s/%s", dump_path.c_str(), "source_ptx.ptx");
+      VLOG(7) << "Dump source ptx to: " << dump_file;
+      std::ofstream of(dump_file, std::ios_base::out);
+      if (of.is_open()) {
+        of << info_.source_ptxs[idx];
+      } else {
+        LOG(WARNING) << "Failed to open file: " << dump_file
+                     << ", please check your path.";
+      }
+      of.close();
+    }
+  }
+}
+
+void DumpCompilationInfo::DumpInstruction() {
+  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_instruction)) {
+    return;
+  }
+  for (int idx = 0; idx < info_.instructions.size(); idx++) {
+    auto dump_path = utils::StringFormat(
+        "%s/fusion_group_%d", FLAGS_cinn_dump_group_instruction.c_str(), idx);
+    if (!hlir::framework::MakeDirectory(
+            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+      LOG(WARNING) << "Failed to make directory: \"" << dump_path
+                   << "\", the instruction for this group will not dump.";
+    } else {
+      auto dump_file =
+          utils::StringFormat("%s/%s", dump_path.c_str(), "instruction.txt");
+      VLOG(7) << "Dump instruction to: " << dump_file;
+      std::ofstream of(dump_file, std::ios_base::out);
+      if (of.is_open()) {
+        of << info_.instructions[idx]->DumpInstruction();
+      } else {
+        LOG(WARNING) << "Failed to open file: " << dump_file
+                     << ", please check your path.";
+      }
+      of.close();
+    }
+  }
+}
 
 SourceCodePrint::SourceCodePrint() {
   if (!FLAGS_cinn_source_code_save_path.empty()) {
