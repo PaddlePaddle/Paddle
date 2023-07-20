@@ -181,6 +181,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
   // need to wait
   std::shared_ptr<std::vector<size_t>> dependecy_count_;
+
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
 

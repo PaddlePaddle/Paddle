@@ -35,9 +35,6 @@ using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 using SchedulingPriority = int64_t;
 
-using DeviceContext = platform::DeviceContext;
-using DeviceEvent = platform::DeviceEvent;
-
 constexpr const char* kCoalesceTensor = "coalesce_tensor";
 
 // stream types
