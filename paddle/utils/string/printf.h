@@ -105,7 +105,7 @@ void Printf(const char* fmt, const Args&... args) {
   Fprintf(std::cout, fmt, args...);
 }
 
-inline std::string HumanReadableSize(double f_size) {
+inline std::string HumanReadableSize(std::uintmax_t f_size) {
   size_t i = 0;
   double orig = f_size;
   const std::vector<std::string> units(
@@ -117,7 +117,7 @@ inline std::string HumanReadableSize(double f_size) {
   if (i >= units.size()) {
     return Sprintf("%fB", orig);
   }
-  return Sprintf("%f%s", f_size, units[i]);
+  return Sprintf("%f%s(%fB)", f_size, units[i], orig);
 }
 
 }  // namespace string

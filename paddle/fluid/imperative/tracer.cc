@@ -28,9 +28,9 @@
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/string/string_helper.h"
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_string(tracer_mkldnn_ops_on);

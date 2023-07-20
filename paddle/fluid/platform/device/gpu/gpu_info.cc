@@ -30,9 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/utils/human_readable_mem_sz.h"
+#include "paddle/utils/string/printf.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -101,7 +100,7 @@ static size_t GpuAllocSize(bool realloc) {
       available_to_alloc,
       alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available GPU memory."));
-  VLOG(10) << "Alloc size is " << HumanReadable{alloc_bytes}
+  VLOG(10) << "Alloc size is " << paddle::string::HumanReadableSize(alloc_bytes)
            << ", is it Re-alloc: " << realloc;
   return alloc_bytes;
 }
@@ -114,7 +113,8 @@ size_t GpuMinChunkSize() { return phi::backends::gpu::GpuMinChunkSize(); }
 
 size_t GpuMaxChunkSize() {
   size_t max_chunk_size = GpuMaxAllocSize();
-  VLOG(10) << "Max chunk size " << HumanReadable{max_chunk_size};
+  VLOG(10) << "Max chunk size "
+           << paddle::string::HumanReadableSize(max_chunk_size);
   return max_chunk_size;
 }
 
@@ -223,7 +223,8 @@ class RecordedGpuMallocHelper {
       result = cudaMallocManaged(ptr, size);
     } else {
       result = cudaMalloc(ptr, size);
-      VLOG(10) << "[cudaMalloc] size=" << HumanReadable{size}
+      VLOG(10) << "[cudaMalloc] size="
+               << paddle::string::HumanReadableSize(size)
                << ", result=" << result;
     }
 #endif
@@ -265,7 +266,7 @@ class RecordedGpuMallocHelper {
     if (err != hipErrorDeinitialized) {
 #else
     auto err = cudaFree(ptr);
-    VLOG(10) << "[cudaFree] size=" << HumanReadable{size};
+    VLOG(10) << "[cudaFree] size=" << paddle::string::HumanReadableSize(size);
     if (err != cudaErrorCudartUnloading) {
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(err);

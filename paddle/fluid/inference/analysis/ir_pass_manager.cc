@@ -26,9 +26,9 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/errors.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {

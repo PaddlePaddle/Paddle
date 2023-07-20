@@ -17,7 +17,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/human_readable_mem_sz.h"
+#include "paddle/utils/string/printf.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -243,31 +243,36 @@ size_t DeviceInterface::AvailableAllocSize(size_t dev_id) {
 
 size_t DeviceInterface::GetInitAllocSize(size_t dev_id) {
   size_t init_alloc_size = AllocSize(dev_id, false);
-  VLOG(10) << Type() << " init alloc size " << HumanReadable{init_alloc_size};
+  VLOG(10) << Type() << " init alloc size "
+           << paddle::string::HumanReadableSize(init_alloc_size);
   return init_alloc_size;
 }
 
 size_t DeviceInterface::GetReallocSize(size_t dev_id) {
   size_t realloc_size = AllocSize(dev_id, true);
-  VLOG(10) << Type() << " realloc size " << HumanReadable{realloc_size};
+  VLOG(10) << Type() << " realloc size "
+           << paddle::string::HumanReadableSize(realloc_size);
   return realloc_size;
 }
 
 size_t DeviceInterface::GetMaxAllocSize(size_t dev_id) {
   size_t max_alloc_size =
       std::max(GetInitAllocSize(dev_id), GetReallocSize(dev_id));
-  VLOG(10) << Type() << " max alloc size " << HumanReadable{max_alloc_size};
+  VLOG(10) << Type() << " max alloc size "
+           << paddle::string::HumanReadableSize(max_alloc_size);
   return max_alloc_size;
 }
 
 size_t DeviceInterface::GetMaxChunkSize(size_t dev_id) {
   size_t max_chunk_size = GetMaxAllocSize(dev_id);
-  VLOG(10) << Type() << " max chunk size " << HumanReadable{max_chunk_size};
+  VLOG(10) << Type() << " max chunk size "
+           << paddle::string::HumanReadableSize(max_chunk_size);
   return max_chunk_size;
 }
 
 size_t DeviceInterface::GetExtraPaddingSize(size_t dev_id) {
-  VLOG(10) << Type() << " extra padding size " << 0;
+  VLOG(10) << Type() << " extra padding size "
+           << paddle::string::HumanReadableSize(0);
   return 0;
 }
 

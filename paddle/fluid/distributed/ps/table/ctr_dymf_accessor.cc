@@ -17,7 +17,7 @@
 #include <gflags/gflags.h>
 
 #include "glog/logging.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {

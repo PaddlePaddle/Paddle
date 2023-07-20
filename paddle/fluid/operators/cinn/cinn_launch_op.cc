@@ -21,9 +21,9 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/utils/string/string_helper.h"
 
 PHI_DECLARE_bool(cudnn_deterministic);
 

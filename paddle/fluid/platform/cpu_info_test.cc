@@ -17,8 +17,8 @@
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/string/printf.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/string/printf.h"
 
 PHI_DECLARE_double(fraction_of_cpu_memory_to_use);
 

@@ -27,7 +27,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/printf.h"
 #include "paddle2onnx/converter.h"
 
 #ifdef PADDLE_WITH_TESTING

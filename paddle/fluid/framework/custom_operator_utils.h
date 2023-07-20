@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {

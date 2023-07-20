@@ -28,8 +28,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/string/printf.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif

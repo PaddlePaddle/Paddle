@@ -24,7 +24,7 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/utils/human_readable_mem_sz.h"
+#include "paddle/utils/string/printf.h"
 
 static bool operator==(const C_Device_st& d1, const C_Device_st& d2) {
   return d1.id == d2.id;
@@ -462,8 +462,10 @@ class CustomDevice : public DeviceInterface {
           pimpl_->device_memory_stats(device, total, free));
 
       size_t used = *total - *free;
-      VLOG(10) << Type() << " memory usage " << HumanReadable{used} << "/"
-               << HumanReadable{*total} << ", " << HumanReadable{*free}
+      VLOG(10) << Type() << " memory usage "
+               << paddle::string::HumanReadableSize(used) << "/"
+               << paddle::string::HumanReadableSize(*total) << ", "
+               << paddle::string::HumanReadableSize(*free)
                << "available to allocate";
     } else {
       *total = 0;
@@ -477,7 +479,8 @@ class CustomDevice : public DeviceInterface {
 
       size_t size = 0;
       pimpl_->device_min_chunk_size(device, &size);
-      VLOG(10) << Type() << " min chunk size " << HumanReadable{size};
+      VLOG(10) << Type() << " min chunk size "
+               << paddle::string::HumanReadableSize(size);
       return size;
     } else {
       return 1;
@@ -490,7 +493,8 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_max_chunk_size) {
       pimpl_->device_max_chunk_size(device, &size);
-      VLOG(10) << Type() << " max chunk size " << HumanReadable{size};
+      VLOG(10) << Type() << " max chunk size "
+               << paddle::string::HumanReadableSize(size);
     } else {
       return DeviceInterface::GetMaxChunkSize(dev_id);
     }
@@ -503,7 +507,8 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_max_alloc_size) {
       pimpl_->device_max_alloc_size(device, &size);
-      VLOG(10) << Type() << " max alloc size " << HumanReadable{size};
+      VLOG(10) << Type() << " max alloc size "
+               << paddle::string::HumanReadableSize(size);
     } else {
       return DeviceInterface::GetMaxAllocSize(dev_id);
     }
@@ -515,7 +520,8 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_init_alloc_size) {
       pimpl_->device_init_alloc_size(device, &size);
-      VLOG(10) << Type() << " init alloc size " << HumanReadable{size};
+      VLOG(10) << Type() << " init alloc size "
+               << paddle::string::HumanReadableSize(size);
     } else {
       return DeviceInterface::GetInitAllocSize(dev_id);
     }
@@ -527,7 +533,8 @@ class CustomDevice : public DeviceInterface {
     size_t size = 0;
     if (pimpl_->device_realloc_size) {
       pimpl_->device_realloc_size(device, &size);
-      VLOG(10) << Type() << " realloc size " << HumanReadable{size};
+      VLOG(10) << Type() << " realloc size "
+               << paddle::string::HumanReadableSize(size);
     } else {
       return DeviceInterface::GetReallocSize(dev_id);
     }
@@ -542,7 +549,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_extra_padding_size(device, &padding_size));
       VLOG(10) << Type() << " extra padding size "
-               << HumanReadable{padding_size};
+               << paddle::string::HumanReadableSize(padding_size);
     } else {
       return DeviceInterface::GetExtraPaddingSize(dev_id);
     }

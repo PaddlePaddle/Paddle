@@ -12,7 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 
 #include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace gloo {
 namespace transport {
