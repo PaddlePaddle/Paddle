@@ -326,8 +326,18 @@ std::vector<std::vector<int>> InferShapeForSort(
       break;
     }
   }
-  CHECK_GT(inputs_shape[0].size(), axis)
-      << "The input's dim should be greater than axis! ";
+  if (inputs_shape[0].empty()) {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
+  } else {
+    if (axis < 0) {
+      axis += inputs_shape[0].size();
+    }
+    CHECK_GT(inputs_shape[0].size(), axis)
+        << "The input's dim should be greater than axis! ";
+  }
+
   std::vector<std::vector<int>> res{inputs_shape[0]};
   return res;
 }
@@ -352,11 +362,17 @@ std::vector<std::vector<int>> InferShapeForArgSort(
       break;
     }
   }
-  if (axis < 0) {
-    axis += inputs_shape[0].size();
+  if (inputs_shape[0].empty()) {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
+  } else {
+    if (axis < 0) {
+      axis += inputs_shape[0].size();
+    }
+    CHECK_GT(inputs_shape[0].size(), axis)
+        << "The input's dim should be greater than axis! ";
   }
-  CHECK_GT(inputs_shape[0].size(), axis)
-      << "The input's dim should be greater than axis! ";
   std::vector<std::vector<int>> res{inputs_shape[0], inputs_shape[0]};
 
   return res;
@@ -381,12 +397,19 @@ std::vector<std::vector<int>> InferShapeForTopK(
   auto axis_it = attrs.find("axis");
   CHECK(axis_it != attrs.end()) << "The attr axis of topk does not exist.";
   int axis = absl::get<int>(axis_it->second);
-  if (axis < 0) {
-    axis += res[0].size();
+
+  if (inputs_shape[0].empty()) {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
+  } else {
+    if (axis < 0) {
+      axis += inputs_shape[0].size();
+    }
+    CHECK_GE(axis, 0);
+    CHECK_LT(axis, res[0].size());
+    res[0][axis] = std::min(res[0][axis], k);
   }
-  CHECK_GE(axis, 0);
-  CHECK_LT(axis, res[0].size());
-  res[0][axis] = std::min(res[0][axis], k);
   return {res[0], res[0]};
 }
 
