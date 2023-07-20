@@ -1011,9 +1011,7 @@ void BuildOpFuncList(
                                 scope,
                                 local_scope,
                                 op_yaml_info_parser,
-                                &(op_func_node.kernel_context_),
-                                &(op_func_node.input_index),
-                                &(op_func_node.output_index));
+                                &(op_func_node.kernel_context_));
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(

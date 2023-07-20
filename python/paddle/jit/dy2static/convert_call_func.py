@@ -339,6 +339,6 @@ def convert_call(func):
         )
         return func
 
-    if func_self:
+    if func_self is not None:
         converted_call = functools.partial(converted_call, func_self)
     return converted_call
