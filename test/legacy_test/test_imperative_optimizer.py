@@ -32,7 +32,6 @@ from paddle.fluid.optimizer import (
     LookaheadOptimizer,
     ModelAverage,
     MomentumOptimizer,
-    PipelineOptimizer,
     RecomputeOptimizer,
     SGDOptimizer,
 )
@@ -765,19 +764,6 @@ class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
         exception_message = (
             "In dygraph, don't support ExponentialMovingAverage."
         )
-        self._check_exception(exception_message)
-
-
-class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = fluid.optimizer.SGD(
-            learning_rate=0.5, parameter_list=parameter_list
-        )
-        optimizer = PipelineOptimizer(optimizer)
-        return optimizer
-
-    def test_pipline(self):
-        exception_message = "In dygraph, don't support PipelineOptimizer."
         self._check_exception(exception_message)
 
 
