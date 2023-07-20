@@ -17,7 +17,7 @@
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/common/type.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/pybind/bind_utils.h"
 #include "paddle/cinn/runtime/flags.h"

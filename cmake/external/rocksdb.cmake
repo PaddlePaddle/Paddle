@@ -79,11 +79,9 @@ set(CMAKE_CXX_LINK_EXECUTABLE
 if(WITH_ARM)
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/rocksdb/libaio.h.patch
        native_src)
-  # See: [Why calling some `git` commands before `patch`?]
   set(ROCKSDB_PATCH_COMMAND
-      git checkout -- . && git checkout 6.19.fb && patch -Nd
-      ${CMAKE_BINARY_DIR}/third_party/rocksdb/src/extern_rocksdb/env <
-      ${native_src})
+      git checkout -- . && git checkout ${ROCKSDB_TAG} && patch -Nd
+      ${PADDLE_SOURCE_DIR}/third_party/rocksdb/env/ < ${native_src})
 endif()
 ExternalProject_Add(
   extern_rocksdb

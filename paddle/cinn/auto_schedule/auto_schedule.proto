@@ -16,7 +16,7 @@ syntax ="proto3";
 
 package cinn.auto_schedule.proto;
 
-import "paddle/cinn/ir/schedule_desc.proto";
+import "paddle/cinn/ir/schedule/schedule_desc.proto";
 
 message TuningRecord {
   string task_key = 1;

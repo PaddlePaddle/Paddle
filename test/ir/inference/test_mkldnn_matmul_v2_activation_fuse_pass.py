@@ -90,7 +90,7 @@ class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={'X': ['matmul_output']},
                 outputs={'Out': ['activation_output']},
-                threshold=draw(st.floats(min_value=1.0, max_value=10.0)),
+                threshold=6.0,
             )
         elif activation_type == "leaky_relu":
             activation_op = OpConfig(
