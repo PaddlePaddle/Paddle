@@ -360,7 +360,6 @@ inline void RunProgramAPI(
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
   if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
-    std::cerr << "not have cache " << program_id << std::endl;
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -400,12 +399,11 @@ inline void RunProgramAPI(
         op_desc->SetAttr("dtype", 0);
         op_desc->SetAttr("place", 0);
         op_desc->SetAttr("name", name);
-        std::cerr << "feed with data name " << name << std::endl;
         op_desc->SetOutput("out", {name});
       }
 
       std::set<std::string> set_parameter_names;
-      // TODO(phlrain): no end add all the input
+      // TODO(phlrain): no need add all the input
       for (auto op_desc : backward_program->Block(0).AllOps()) {
         for (const auto &n : op_desc->Inputs()) {
           const auto &input_var_names = n.second;
@@ -427,23 +425,18 @@ inline void RunProgramAPI(
         auto op_desc = forward_global_block->AppendOp();
         op_desc->SetType("shaddow_output");
         op_desc->SetAttr("name", name);
-        std::cerr << "shaddow output name " << name << std::endl;
         op_desc->SetInput("x", {name});
         op_desc->SetOutput("out", {"@EMPTY@"});
       }
 
       forward_program = forward_global_block->Program();
-      std::cerr << "begine to translator" << std::endl;
       paddle::translator::ProgramTranslator program_translator(forward_program,
                                                                program.get());
 
       program_translator.Translate();
 
-      std::cerr << "forward program  " << std::endl;
-      program->Print(std::cout);
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
-      ir_program->Print(std::cout);
     }
 
     interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
@@ -579,7 +572,6 @@ inline void RunProgramGradAPI(
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
   if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
-    std::cerr << "backward not have cache " << program_id << std::endl;
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -589,7 +581,6 @@ inline void RunProgramGradAPI(
 
     std::unique_ptr<::ir::Program> ir_program;
     if (FLAGS_enable_new_ir_in_executor) {
-      std::cerr << "backward " << std::endl;
       auto ir_ctx = ir::IrContext::Instance();
       auto program = std::make_unique<::ir::Program>(ir_ctx);
 
@@ -604,7 +595,6 @@ inline void RunProgramGradAPI(
         op_desc->SetAttr("dtype", 0);
         op_desc->SetAttr("place", 0);
         op_desc->SetAttr("name", name);
-        std::cerr << "back ward feed name " << name << std::endl;
         op_desc->SetOutput("out", {name});
       }
       auto output_names = details::GetTensorsName(x_grad);
@@ -613,14 +603,12 @@ inline void RunProgramGradAPI(
         param_grad_names.push_back(t);
       }
       for (auto &name : param_grad_names) {
-        // std::cerr << "out put set name " << name << std::endl;
         if (name == "@EMPTY@") {
           continue;
         }
         auto op_desc = backward_global_block->AppendOp();
         op_desc->SetType("shaddow_output");
         op_desc->SetAttr("name", name);
-        std::cerr << "name " << name << std::endl;
         op_desc->SetInput("x", {name});
         op_desc->SetOutput("out", {"@EMPTY@"});
       }
@@ -629,7 +617,6 @@ inline void RunProgramGradAPI(
 
       paddle::translator::ProgramTranslator program_translator(backward_program,
                                                                program.get());
-      std::cerr << "after translaote" << std::endl;
       program_translator.Translate();
 
       program->Print(std::cout);

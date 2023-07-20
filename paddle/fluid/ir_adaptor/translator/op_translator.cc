@@ -1125,7 +1125,6 @@ struct ShaddowOutputOpTranscriber : public OpTranscriber {
                             ir::Program* program) override {
     std::vector<ir::OpResult> op_inputs;
     auto legacy_input_vars = op_desc.Input("x", true);
-    std::cerr << "shaddow " << legacy_input_vars[0] << std::endl;
 
     auto defining_info = (*param_map)[legacy_input_vars[0]];
     op_inputs.push_back(defining_info.value);

@@ -172,7 +172,6 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
     OpTranslateFn& fn = op_translator[op->Type()];
     if (op->Type() == "shaddow_output") {
       if (!param_map_.count(op->Input("x")[0])) {
-        std::cerr << "skip shaddow output " << op->Input("x")[0] << std::endl;
         continue;
       }
     }
