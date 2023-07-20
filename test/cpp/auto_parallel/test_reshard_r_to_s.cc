@@ -27,7 +27,7 @@ namespace distributed {
 namespace auto_parallel {
 namespace tests {
 
-std::shared_ptr<DistTensor> ConstructBroadcastDistTensor(
+std::shared_ptr<DistTensor> ConstructReplicatedDistTensor(
     const std::vector<int64_t>& shape,
     const DataLayout& layout,
     const DataType& dtype,
@@ -62,7 +62,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_1d_mesh) {
   ProcessMesh mesh(mesh_shape, process_ids, dim_names);
 
   std::shared_ptr<DistTensor> input =
-      ConstructBroadcastDistTensor(tensor_shape, layout, dtype, mesh);
+      ConstructReplicatedDistTensor(tensor_shape, layout, dtype, mesh);
   int64_t split_axis = 1;
 
   // Use process mesh axis 0 to split tensor axis 1
@@ -94,7 +94,7 @@ TEST(reshard_r_to_s, r_to_s_diff_placement) {
   ProcessMesh mesh(mesh_shape, process_ids, dim_names);
 
   std::shared_ptr<DistTensor> input =
-      ConstructBroadcastDistTensor(tensor_shape, layout, dtype, mesh);
+      ConstructReplicatedDistTensor(tensor_shape, layout, dtype, mesh);
   int64_t split_axis = 1;
 
   std::vector<int64_t> out_process_ids = {2, 3, 4, 5};
@@ -123,7 +123,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_nd_mesh) {
   ProcessMesh mesh(mesh_shape, process_ids, dim_names);
 
   std::shared_ptr<DistTensor> input =
-      ConstructBroadcastDistTensor(tensor_shape, layout, dtype, mesh);
+      ConstructReplicatedDistTensor(tensor_shape, layout, dtype, mesh);
 
   // Use process mesh axis 0 to split tensor axis 1, use process mesh axis 1 to
   // split tensor axis 0

@@ -47,11 +47,19 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   const auto& process_ids = process_mesh.process_ids();
   int64_t ndims_mesh = process_shape.size();
   int64_t cur_global_rank = GetCurGlobalRank();
-  VLOG(3) << "Current global rank is " << cur_global_rank << " with ndims_mesh "
-          << ndims_mesh;
-  int64_t flat_idx_in_mesh =
-      std::find(process_ids.begin(), process_ids.end(), cur_global_rank) -
-      process_ids.begin();
+
+  VLOG(3) << "Searching current global rank " << cur_global_rank
+          << " in process_mesh " << process_mesh;
+
+  auto iter =
+      std::find(process_ids.begin(), process_ids.end(), cur_global_rank);
+  PADDLE_ENFORCE_NE(
+      iter,
+      process_ids.end(),
+      phi::errors::NotFound("Rank %lld cannot be found in process_mesh",
+                            cur_global_rank));
+
+  int64_t flat_idx_in_mesh = iter - process_ids.begin();
 
   std::vector<int64_t> coord(ndims_mesh, -1);
   for (int64_t i = ndims_mesh - 1; i >= 0; --i) {
