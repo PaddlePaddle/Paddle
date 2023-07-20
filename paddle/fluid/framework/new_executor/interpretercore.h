@@ -56,6 +56,8 @@ class InterpreterCore {
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
+  void ShareBuildResultsFrom(std::shared_ptr<InterpreterCore> src);
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
