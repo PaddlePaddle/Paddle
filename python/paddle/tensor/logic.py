@@ -15,6 +15,7 @@
 # TODO: define logic functions of a tensor
 
 import paddle
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
@@ -575,6 +576,17 @@ def greater_equal(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def greater_equal_(x, y, name=None):
+    r"""
+    Inplace version of ``greater_equal`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_greater_equal`.
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.greater_equal_(x, y)
+
+
 @templatedoc()
 def greater_than(x, y, name=None):
     """
@@ -642,6 +654,17 @@ def greater_than(x, y, name=None):
             outputs={'Out': [out]},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def greater_than_(x, y, name=None):
+    r"""
+    Inplace version of ``greater_than`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_greater_than`.
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.greater_than_(x, y)
 
 
 @templatedoc()
@@ -714,6 +737,17 @@ def less_equal(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def less_equal_(x, y, name=None):
+    r"""
+    Inplace version of ``less_equal`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_less_equal`.
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.less_equal_(x, y)
+
+
 @templatedoc()
 def less_than(x, y, name=None):
     """
@@ -784,6 +818,17 @@ def less_than(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def less_than_(x, y, name=None):
+    r"""
+    Inplace version of ``less_than`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_less_than`.
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.less_than_(x, y)
+
+
 @templatedoc()
 def not_equal(x, y, name=None):
     """
@@ -852,6 +897,17 @@ def not_equal(x, y, name=None):
             outputs={'Out': [out]},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def not_equal_(x, y, name=None):
+    r"""
+    Inplace version of ``not_equal`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_not_equal`.
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.not_equal_(x, y)
 
 
 def is_tensor(x):

@@ -415,6 +415,7 @@
     func : CompareInferMeta
   kernel :
     func : greater_equal
+  inplace: (x -> out)
 
 - op : greater_than
   args : (Tensor x, Tensor y)
@@ -423,6 +424,7 @@
     func : CompareInferMeta
   kernel :
     func : greater_than
+  inplace: (x -> out)
 
 - op : hardswish
   args : (Tensor x)
@@ -461,6 +463,7 @@
     func : CompareInferMeta
   kernel :
     func : less_equal
+  inplace: (x -> out)
 
 - op : less_than
   args : (Tensor x, Tensor y)
@@ -469,6 +472,7 @@
     func : CompareInferMeta
   kernel :
     func : less_than
+  inplace: (x -> out)
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
@@ -637,6 +641,7 @@
     func : CompareInferMeta
   kernel :
     func : not_equal
+  inplace: (x -> out)
 
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)
@@ -907,6 +912,7 @@
     func : TrilInferMeta
   kernel :
     func : tril
+  inplace: (x -> out)
   backward : tril_grad
 
 - op : tril_indices
@@ -928,6 +934,7 @@
     func : TriuInferMeta
   kernel :
     func : triu
+  inplace: (x -> out)
   backward : triu_grad
 
 - op : triu_indices
