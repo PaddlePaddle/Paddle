@@ -544,8 +544,10 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "add_layernorm_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "link_xpu_op_max_pass",
-      "inplace_op_var_pass",
       "delete_isolated_node_pass",
+      // "auto_mixed_precision_pass",
+      "cast_mixed_precision_op_fuse_pass",
+      "inplace_op_var_pass",
   });
   use_xpu_ = true;
 }
