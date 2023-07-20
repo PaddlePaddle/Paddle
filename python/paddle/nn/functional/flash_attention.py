@@ -422,7 +422,7 @@ def scaled_dot_product_attention(
     ``d`` represents the size of the last dimension of the three parameters.
 
     Warning:
-        This API is only support inputs with dtype float16 and bfloat16.
+        This API only supports inputs with dtype float16 and bfloat16.
 
     Args:
         query(Tensor): The query tensor in the Attention module.
@@ -452,10 +452,10 @@ def scaled_dot_product_attention(
         .. code-block:: python
 
             # required: skiptest
-            import paddle
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
-            output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
-            print(output)
+            >>> import paddle
+            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
+            >>> print(output)
     """
     assert attn_mask is None, "attn_mask is not supported yet"
     out, _ = flash_attention(query, key, value, dropout_p, is_causal)
