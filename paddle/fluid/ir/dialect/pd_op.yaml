@@ -116,7 +116,42 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-  invoke: {func: add_n_impl, args: inputs}
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  backward: add_n_grad
+
+- name: add_n_with_kernel
+  inputs:
+  - typename: Tensor[]
+    name: inputs
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
   backward: add_n_grad
 
 - name: write_to_array

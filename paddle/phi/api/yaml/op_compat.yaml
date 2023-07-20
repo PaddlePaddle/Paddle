@@ -1155,6 +1155,8 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2251,7 +2253,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, float threshold = 6.0]
 
 - op : remainder (elementwise_mod)
   inputs :
@@ -2534,6 +2536,15 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
 
 - op : slogdet(slogdeterminant)
   backward : slogdet_grad(slogdeterminant_grad)
