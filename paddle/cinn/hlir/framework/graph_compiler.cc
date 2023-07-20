@@ -310,8 +310,7 @@ GraphCompiler::CompilationResult GraphCompiler::Build(
   VLOG(2) << "Compile With Parallel Compiler Done!";
 
   GraphCompiler::CompilationResult compilation_result;
-  compilation_result.runtime_program.reset(
-      new Program(scope_, std::move(result.instructions)));
+  compilation_result.runtime_program.reset(new Program(scope_, std::move(result.instructions)));
   return compilation_result;
 }
 
