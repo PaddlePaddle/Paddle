@@ -20,6 +20,7 @@ from eager_op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
 
 import paddle
 from paddle.fluid import core
+from paddle.incubate.nn.functional import fused_linear_activation
 
 
 def is_fused_gemm_epilogue_supported():
@@ -587,13 +588,15 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
 
-        out1 = core.eager.ops.fused_gemm_epilogue(
+        out1 = fused_linear_activation(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'none'
         )
-        out2 = core.eager.ops.fused_gemm_epilogue(
+
+        out2 = fused_linear_activation(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'relu'
         )
-        out3 = core.eager.ops.fused_gemm_epilogue(
+
+        out3 = fused_linear_activation(
             x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'gelu'
         )
 
