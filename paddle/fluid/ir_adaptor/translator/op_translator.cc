@@ -1163,7 +1163,8 @@ ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
 }
 
 struct OneHotTranscriber : public OpTranscriber {
-  InputHandleFn GetSpecialInputHandlers(std::string input_name) override {
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
     if (input_name != "num_classes") {
       return nullptr;
     }
