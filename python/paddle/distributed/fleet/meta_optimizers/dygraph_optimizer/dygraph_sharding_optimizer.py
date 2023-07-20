@@ -154,7 +154,7 @@ class DygraphShardingOptimizer:
         comm_group = self._hcg.get_sharding_parallel_group()
         for i in range(self._sharding_world_size):
             params = self._rank2params[i]
-            dst = comm_group.nranks[i]
+            dst = comm_group.ranks[i]
             decay_fused, all_fused = fused_parameters(
                 params,
                 self._use_main_grad,
@@ -212,6 +212,11 @@ class DygraphShardingOptimizer:
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
+        if self.comm_overlap:
+            logger.debug(
+                "All gradients has already been reduced during backward"
+            )
+            return
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:

@@ -109,6 +109,14 @@ def flatten_dense_tensors(
         return grad_storage
 
 
+def bw_hook_func(buffer, param):
+    @paddle.autograd.no_grad()
+    def fused_comm(*_):
+        buffer.add_grad(param)
+
+    return fused_comm
+
+
 class FusedCommBuffer:
     def __init__(
         self,
@@ -266,7 +274,7 @@ def obtain_storage(
     var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
     storage = []
     for group_idx, parameters in var_groups.items():
-        param_buffer = FusedCommBuffer(
+        comm_buffer = FusedCommBuffer(
             group_idx,
             parameters,
             comm_group,
@@ -275,10 +283,15 @@ def obtain_storage(
             dst,
             use_main_grad,
             fuse_param=True,
-        ).param_storage
+        )
+        param_buffer = comm_buffer.param_storage
         param_buffer.need_clip = clip
         param_buffer.is_distributed = dist
         storage.append(param_buffer)
+        if comm_overlap:
+            for param in parameters:
+                param._register_backward_hook(bw_hook_func(comm_buffer, param))
+
     return storage
 
 
