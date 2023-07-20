@@ -525,10 +525,10 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
 
   // Compute the variance.
   float var = sumSq * params.invHWC - (mean * mean);
+
+  params.var_data[ni * params.groups + gi] = var;
   // Compute the inverse of the stddev.
   float invStdDev = rsqrtf(var + params.eps);
-
-  params.var_data[ni * params.groups + gi] = invStdDev;
 
   // The first activation loaded by that block.
   int32_t hwBegin = blockIdx.y * params.hwPerBlock;
