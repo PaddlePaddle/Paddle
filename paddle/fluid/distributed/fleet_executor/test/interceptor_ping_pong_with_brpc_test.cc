@@ -81,7 +81,9 @@ TEST(InterceptorTest, PingPong) {
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port0);
-  while (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) == -1) {
+  while (bind(server_fd,
+              reinterpret_cast<struct sockaddr*>(&address),
+              sizeof(address)) == -1) {
     port0++;
     address.sin_port = htons(port0);
   }
@@ -93,7 +95,9 @@ TEST(InterceptorTest, PingPong) {
   setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
   port1 = port0 + 1;
   address.sin_port = htons(port1);
-  while (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) == -1) {
+  while (bind(server_fd,
+              reinterpret_cast<struct sockaddr*>(&address),
+              sizeof(address)) == -1) {
     port1++;
     address.sin_port = htons(port1);
   }
