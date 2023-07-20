@@ -104,6 +104,7 @@ class TestFeedOp(unittest.TestCase):
 
 class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         # TODO(phlrain): support selected rows in GPU
         # place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
         place = paddle.CPUPlace()
@@ -209,8 +210,9 @@ class TestNewIrBackwardDygraph(unittest.TestCase):
             True,
         )
 
-        print(x.gradient())
-        print(y.gradient())
+        gold_res = np.ones([2, 2], dtype="float32") * 0.25
+        np.testing.assert_array_equal(x.gradient(), gold_res)
+        np.testing.assert_array_equal(y.gradient(), gold_res)
 
 
 class TestSplitOp(unittest.TestCase):
