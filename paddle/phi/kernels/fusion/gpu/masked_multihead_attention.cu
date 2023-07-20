@@ -22,20 +22,17 @@ namespace fusion {
 template <typename T, typename Context>
 void MMHAKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const paddle::optional<DenseTensor>& bias,
+                const DenseTensor& cache_kv,
                 const paddle::optional<DenseTensor>& src_mask,
                 const paddle::optional<DenseTensor>& cum_offsets,
                 const paddle::optional<DenseTensor>& sequence_lengths,
                 const paddle::optional<DenseTensor>& rotary_tensor,
                 const paddle::optional<DenseTensor>& beam_cache_offset,
-                const DenseTensor& cache_kv,
                 const paddle::optional<DenseTensor>& qkv_out_scale,
                 const paddle::optional<DenseTensor>& out_linear_shift,
                 const paddle::optional<DenseTensor>& out_linear_smooth,
                 int seq_len,
                 int rotary_emb_dims,
-                const bool mask_broadcast_num_heads,
-                const bool compute_bias,
                 const bool use_neox_rotary_style,
                 const float out_linear_in_scale,
                 const int quant_round_type,
@@ -53,6 +50,22 @@ void MMHAKernel(const Context& dev_ctx,
   int cache_bsz = cache_kv.dims()[1];
   int max_seq_len = cache_kv.dims()[3];
   float inv_sqrt_dh = 1. / sqrt(dim_head);
+
+  bool mask_broadcast_num_heads = true;
+  if (src_mask) {
+    if (src_mask->dims()[1] == 1) {
+      mask_broadcast_num_heads = true;
+    } else if (src_mask->dims()[1] == num_head) {
+      mask_broadcast_num_heads = false;
+    } else {
+      PADDLE_THROW(errors::InvalidArgument(
+          "Unknow dimension for attn_mask, the num_head(2nd) "
+          "dimension is invalid, it should be 1 or num_head(%d), "
+          "but got %d",
+          num_head,
+          src_mask->dims()[1]));
+    }
+  }
 
   if (out_linear_in_scale > 0) {
     dev_ctx.template Alloc<int8_t>(out);
@@ -88,13 +101,7 @@ void MMHAKernel(const Context& dev_ctx,
     params.beam_width = beam_cache_offset->dims()[1];
   }
 
-  params.add_qkv_bias = compute_bias;
-  if (compute_bias) {
-    // Because we may not add qkv_bias, so here we cast to T*.
-    // Author(zhengzekang).
-    params.qkv_bias = const_cast<T*>(bias->data<T>());
-  }
-
+  params.add_qkv_bias = false;
   params.batch_size = bsz;
   params.cache_batch_size = cache_bsz;
   params.num_head = num_head;
@@ -103,6 +110,7 @@ void MMHAKernel(const Context& dev_ctx,
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
+
   if (out_linear_shift) {
     DispatchFMHA<T>(dev_ctx,
                     x,

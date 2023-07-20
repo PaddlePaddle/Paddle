@@ -19,20 +19,17 @@ from paddle.framework import in_dynamic_mode
 
 def masked_multihead_attention(
     x,
-    bias=None,
+    cache_kv=None,
     src_mask=None,
     cum_offsets=None,
     sequence_lengths=None,
     rotary_tensor=None,
     beam_cache_offset=None,
-    cache_kv=None,
     qkv_out_scale=None,
     out_linear_shift=None,
     out_linear_smooth=None,
     seq_len=1,
     rotary_emb_dims=0,
-    mask_broadcast_num_heads=True,
-    compute_bias=False,
     use_neox_rotary_style=False,
     out_linear_in_scale=-1,
     quant_round_type=1,
@@ -60,20 +57,16 @@ def masked_multihead_attention(
 
     Args:
         x (Tensor): The input tensor could be 4-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3, num\_head, dim\_head]`.
-        bias (Tensor, optional): The bias tensor of qkv, the shape is `[3, num\_head, dim\_head]`.
+        cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model, the shape is `[2, batch\_size, num\_head, max\_seq\_len, head\_dim]`.
         src_mask (Tensor): The src_mask tensor, the shape is `[batch\_size, 1, 1, sequence\_length]`.
-        cum_offsets (Tensor, optional): The cum_offsets tensor, the shape is `[batch\_size, 1]`.
         sequence_lengths (Tensor, optional): The sequence_lengths tensor, the shape is `[batch\_size, 1]`.
         rotary_tensor (Tensor, optional): The rotary_tensor tensor, the dtype must be float. the shape is `[batch\_size, 1, 1, sequence\_length, dim\_head]`.
         beam_cache_offset (Tensor, optional): The beam_cache_offset tensor, the shape is `[batch\_size, beam\_size, max\_seq\_len + max\_dec\_len]`.
-        cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model, the shape is `[2, batch\_size, num\_head, max\_seq\_len, head\_dim]`.
         qkv_out_scale (Tensor, optional): The qkv_out_scale tensor, the shape is `[3, num\_head, dim\_head]]`.
         out_linear_shift (Tensor, optional): The out_linear_shift tensor.
         out_linear_smooth (Tensor, optional): The out_linear_smooth tensor.
-        seq_len (int, optional): The seq_len. Default 1.
+        beam_size (int, optional): The beam_size of beam search. Default 1.
         rotary_emb_dims (int, optional): The rotary_emb_dims. Default 0.
-        mask_broadcast_num_heads (bool, optional): A flag indicating whether broadcast is needed of src_mask num_head dim or not. Default True.
-        compute_bias (bool, optional): A flag indicating whether bias is computed or not. Default False.
         use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
         out_linear_in_scale (float, optional): The out_linear_in_scale.
         quant_round_type (int, optional): The quant_round_type. Default 1.
@@ -110,20 +103,17 @@ def masked_multihead_attention(
     if in_dynamic_mode():
         return _C_ops.masked_multihead_attention_(
             x,
-            bias,
+            cache_kv,
             src_mask,
             cum_offsets,
             sequence_lengths,
             rotary_tensor,
             beam_cache_offset,
-            cache_kv,
             qkv_out_scale,
             out_linear_shift,
             out_linear_smooth,
             seq_len,
             rotary_emb_dims,
-            mask_broadcast_num_heads,
-            compute_bias,
             use_neox_rotary_style,
             out_linear_in_scale,
             quant_round_type,
@@ -133,14 +123,10 @@ def masked_multihead_attention(
 
     helper = LayerHelper('masked_multihead_attention', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    cache_kv_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    beam_cache_offset_out = helper.create_variable_for_type_inference(
-        dtype="int"
-    )
+
     inputs = {}
     inputs['x'] = x
-    if bias:
-        inputs['bias'] = bias
+    inputs['cache_kv'] = cache_kv
     if src_mask:
         inputs['src_mask'] = src_mask
     if cum_offsets:
@@ -149,8 +135,14 @@ def masked_multihead_attention(
         inputs['sequence_lengths'] = sequence_lengths
     if rotary_tensor:
         inputs['rotary_tensor'] = rotary_tensor
+    beam_cache_offset_flag = False
     if beam_cache_offset:
         inputs['beam_cache_offset'] = beam_cache_offset
+        beam_cache_offset_flag = True
+    else:
+        beam_cache_offset = helper.create_variable_for_type_inference(
+            dtype="int"
+        )
     if qkv_out_scale:
         inputs['qkv_out_scale'] = qkv_out_scale
     if out_linear_shift:
@@ -160,18 +152,16 @@ def masked_multihead_attention(
 
     outputs = {
         'out': out,
-        'cache_kv_out': cache_kv_out,
-        'beam_cache_offset_out': beam_cache_offset_out,
+        'cache_kv_out': cache_kv,
+        'beam_cache_offset_out': beam_cache_offset,
     }
     helper.append_op(
-        type='masked_multihead_attention_',
+        type='masked_multihead_attention',
         inputs=inputs,
         outputs=outputs,
         attrs={
             'seq_len': seq_len,
             'rotary_emb_dims': rotary_emb_dims,
-            'mask_broadcast_num_heads': mask_broadcast_num_heads,
-            'compute_bias': compute_bias,
             'use_neox_rotary_style': use_neox_rotary_style,
             'out_linear_in_scale': out_linear_in_scale,
             'quant_round_type': quant_round_type,
@@ -180,7 +170,7 @@ def masked_multihead_attention(
         },
     )
     return (
-        (out, cache_kv, beam_cache_offset_out)
-        if beam_cache_offset
+        (out, cache_kv, beam_cache_offset)
+        if beam_cache_offset_flag
         else (out, cache_kv)
     )

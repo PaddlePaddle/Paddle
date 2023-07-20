@@ -3625,20 +3625,17 @@ void WeightOnlyMatmulInferMeta(const MetaTensor& x,
 }
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
-                                       const MetaTensor& bias,
+                                       const MetaTensor& cache_kv,
                                        const MetaTensor& src_mask,
                                        const MetaTensor& cum_offsets,
                                        const MetaTensor& sequence_lengths,
                                        const MetaTensor& rotary_tensor,
                                        const MetaTensor& beam_cache_offset,
-                                       const MetaTensor& cache_kv,
                                        const MetaTensor& qkv_out_scale,
                                        const MetaTensor& out_linear_shift,
                                        const MetaTensor& out_linear_smooth,
                                        int seq_len,
                                        int rotary_emb_dims,
-                                       const bool mask_broadcast_num_heads,
-                                       const bool compute_bias,
                                        const bool use_neox_rotary_style,
                                        const float out_linear_in_scale,
                                        const int quant_round_type,
@@ -3648,11 +3645,12 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out) {
   auto x_dims = x.dims();
-  auto cache_kv_dims = cache_kv.dims();
   auto x_dtype = x.dtype();
   int bsz = x_dims[0];
   int num_head = x_dims[2];
   int dim_head = x_dims[3];
+
+  auto cache_kv_dims = cache_kv.dims();
 
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
