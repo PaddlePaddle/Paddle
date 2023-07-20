@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
 
 #include "paddle/phi/kernels/fetch_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fetch_impl.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+
 PD_REGISTER_KERNEL(fetch,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::FetchKernel,
                    float,

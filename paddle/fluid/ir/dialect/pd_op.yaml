@@ -227,3 +227,30 @@
   inplace: null
   view: null
   backward: null
+
+
+- name: shaddow_feed
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+    - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [shaddow_feed]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
+  backward: null

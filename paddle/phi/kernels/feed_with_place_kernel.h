@@ -24,4 +24,9 @@ void FeedWithPlaceKernel(const Context& ctx,
                          phi::DataType data_type,
                          DenseTensor* out);
 
+template <typename T, typename Context>
+void ShaddowFeedKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       DenseTensor* out);
+
 }  // namespace phi
