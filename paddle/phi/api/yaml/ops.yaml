@@ -1080,7 +1080,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_shrink
+    func : hardshrink
   backward : hardshrink_grad
 
 - op : hardsigmoid
