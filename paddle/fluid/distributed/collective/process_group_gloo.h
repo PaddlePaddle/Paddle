@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_without_stream.h"
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
@@ -224,6 +225,8 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
         platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
     return GetDeviceContext(place);
   }
+
+  phi::distributed::GlooCommContext* GetCommContext();
 
   // Helper functions for Gloo.
   static std::shared_ptr<::gloo::transport::Device> createDeviceForHostname(
