@@ -104,6 +104,8 @@ class TestFeedOp(unittest.TestCase):
 
 class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
+        # TODO(phlrain): support selected rows in GPU
+        # place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
