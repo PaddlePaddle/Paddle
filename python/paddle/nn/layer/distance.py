@@ -51,15 +51,14 @@ class PairwiseDistance(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
-            y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
-            dist = paddle.nn.PairwiseDistance()
-            distance = dist(x, y)
-            print(distance)
-            # Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [4.99999860, 4.99999860])
-
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
+            >>> y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
+            >>> dist = paddle.nn.PairwiseDistance()
+            >>> distance = dist(x, y)
+            >>> print(distance)
+            Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [4.99999860, 4.99999860])
     """
 
     def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):

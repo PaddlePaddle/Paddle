@@ -30,7 +30,7 @@ CrossEntropyWithSoftmaxSPMDRule::InferForward(
       input_specs_size,
       2,
       phi::errors::InvalidArgument("The size of InputSpec of cross entropy "
-                                   "with softmax should be 1, but got [%d].",
+                                   "with softmax should be 2, but got [%d].",
                                    input_specs_size));
 
   auto x_shape = input_specs[0].shape();
