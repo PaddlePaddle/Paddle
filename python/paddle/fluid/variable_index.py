@@ -1232,6 +1232,11 @@ def _setitem_static(x, indices, values):
             attrs=attrs,
             inplace_map={"Input": "Out"},
         )
+        if not paddle.in_dynamic_mode():
+            # map var to the new output
+            paddle.jit.api.ProgramTranslator.get_instance()._params_map.add(
+                cur_block.program, x.desc.id(), output
+            )
         return output
 
 
