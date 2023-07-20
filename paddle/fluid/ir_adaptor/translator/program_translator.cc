@@ -59,7 +59,6 @@ void ProgramTranslator::Translate() {
       platform::errors::PreconditionNotMet(
           "Not support multi block ProgramDesc translated, now has %d blocks",
           legacy_program_->Size()));
-
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     GetParameterForSingleBlock(block);
@@ -224,7 +223,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     if (defining_op->HasAttribute(kAttrStopGradients)) {
       stop_gradients = defining_op->attribute(kAttrStopGradients)
                            .dyn_cast<ir::ArrayAttribute>()
-                           .data();
+                           .AsVector();
     } else {
       stop_gradients = std::vector<ir::Attribute>(
           defining_op->num_results(), ir::BoolAttribute::get(ctx_, false));

@@ -227,13 +227,13 @@ void DatasetImpl<T>::CreateChannel() {
   if (input_channel_ == nullptr) {
     input_channel_ = paddle::framework::MakeChannel<T>();
   }
-  if (multi_output_channel_.size() == 0) {
+  if (multi_output_channel_.empty()) {
     multi_output_channel_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_output_channel_.push_back(paddle::framework::MakeChannel<T>());
     }
   }
-  if (multi_consume_channel_.size() == 0) {
+  if (multi_consume_channel_.empty()) {
     multi_consume_channel_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_consume_channel_.push_back(paddle::framework::MakeChannel<T>());
@@ -242,13 +242,13 @@ void DatasetImpl<T>::CreateChannel() {
   if (input_pv_channel_ == nullptr) {
     input_pv_channel_ = paddle::framework::MakeChannel<PvInstance>();
   }
-  if (multi_pv_output_.size() == 0) {
+  if (multi_pv_output_.empty()) {
     multi_pv_output_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_pv_output_.push_back(paddle::framework::MakeChannel<PvInstance>());
     }
   }
-  if (multi_pv_consume_.size() == 0) {
+  if (multi_pv_consume_.empty()) {
     multi_pv_consume_.reserve(channel_num_);
     for (int i = 0; i < channel_num_; ++i) {
       multi_pv_consume_.push_back(paddle::framework::MakeChannel<PvInstance>());
@@ -413,7 +413,7 @@ static int compute_thread_batch_nccl(
 void MultiSlotDataset::PrepareTrain() {
 #ifdef PADDLE_WITH_GLOO
   if (enable_heterps_) {
-    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+    if (input_records_.empty() && input_channel_ != nullptr &&
         input_channel_->Size() != 0) {
       input_channel_->ReadAll(input_records_);
       VLOG(3) << "read from channel to records with records size: "
@@ -1009,7 +1009,7 @@ void DatasetImpl<T>::CreateReaders() {
   CHECK(channel_num_ > 0) << "channel num should > 0";
   CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
-  if (readers_.size() != 0) {
+  if (!readers_.empty()) {
     VLOG(3) << "readers_.size() = " << readers_.size()
             << ", will not create again";
     return;
@@ -1646,7 +1646,7 @@ void MultiSlotDataset::PreprocessChannel(
           << " output channel size: " << out_channel_size;
 
   if ((!input_channel_ || input_channel_->Size() == 0) &&
-      slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
+      slots_shuffle_original_data_.empty() && out_channel_size == 0) {
     VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
     return;
   }
@@ -1658,7 +1658,7 @@ void MultiSlotDataset::PreprocessChannel(
       index_slots.insert(i);
     }
   }
-  if (slots_shuffle_original_data_.size() == 0) {
+  if (slots_shuffle_original_data_.empty()) {
     // before first slots shuffle, instances could be in
     // input_channel, oupput_channel or consume_channel
     if (input_channel_ && input_channel_->Size() != 0) {
@@ -1782,7 +1782,7 @@ void SlotRecordDataset::CreateReaders() {
   CHECK(channel_num_ > 0) << "channel num should > 0";
   CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
-  if (readers_.size() != 0) {
+  if (!readers_.empty()) {
     VLOG(3) << "readers_.size() = " << readers_.size()
             << ", will not create again";
     return;
@@ -1870,7 +1870,7 @@ void SlotRecordDataset::DynamicAdjustChannelNum(int channel_num,
 void SlotRecordDataset::PrepareTrain() {
 #ifdef PADDLE_WITH_GLOO
   if (enable_heterps_) {
-    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+    if (input_records_.empty() && input_channel_ != nullptr &&
         input_channel_->Size() != 0) {
       input_channel_->ReadAll(input_records_);
       VLOG(3) << "read from channel to records with records size: "

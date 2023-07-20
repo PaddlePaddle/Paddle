@@ -1021,7 +1021,7 @@ PYBIND11_MODULE(libpaddle, m) {
     platform::CustomTracer::Release();
     platform::CustomDeviceEventResourcePool::Release();
     platform::CustomDeviceStreamResourcePool::Release();
-    phi::DeviceManager::Clear();
+    phi::DeviceManager::Release();
 #endif
   });
 
@@ -2318,6 +2318,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_pass", [](const std::string &pass_type) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
+  });
+  m.def("register_subgraph_pass", [](const std::string &pass_type) {
+    framework::ir::Pass::AddSupportSubgraphPass(pass_type);
   });
 
   m.def("size_of_dtype", framework::SizeOfType);

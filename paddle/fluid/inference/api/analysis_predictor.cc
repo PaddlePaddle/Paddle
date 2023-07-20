@@ -2220,7 +2220,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
-    if (shape.size() >= 1) {
+    if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
     } else if (tensor.numel() > 0) {
       // This must be a zero dimension tensor.
@@ -2915,6 +2915,8 @@ USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(cumsum)
+USE_TRT_CONVERTER(assign)
+USE_TRT_CONVERTER(unbind)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)

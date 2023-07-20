@@ -31,10 +31,10 @@ ir::Tensor GetTensor(
 
 std::vector<ir::Tensor> CollectInputTensor(
     const Node* node,
-    std::vector<ir::Tensor>& func_args,                       // NOLINT
-    std::unordered_map<std::string, ir::Tensor>& tensor_map,  // NOLINT
     const absl::flat_hash_map<std::string, Type>& type_dict,
-    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    std::vector<ir::Tensor>* func_args,
+    std::unordered_map<std::string, ir::Tensor>* tensor_map);
 
 std::unordered_map<Node*, Node*> BuildVirtualConsumer(
     const GroupPtr& group,
