@@ -1302,6 +1302,45 @@ class TestSqueezeOp2D(TestSqueezeOp):
 @OpTestTool.skip_if(
     not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
 )
+class TestGaussianRandomOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        out = paddle.tensor.random.gaussian(
+            shape=[],
+            mean=0.0,
+            std=0.0,
+            dtype=self.dtype,
+        )
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("gaussian_random_op")
+
+        out = builder.gaussian_random(
+            [],
+            0.0,
+            0.0,
+            1234,
+            self.dtype,
+        )
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [], [], [out])
+        self.cinn_outputs = res
+
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestMatmulOp(OpTest):
     def setUp(self):
         np.random.seed(2023)
