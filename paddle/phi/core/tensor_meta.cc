@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/ir/core/enforce.h"
 
 namespace phi {
 
@@ -42,12 +43,77 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
   //     strides[i] = strides[i + 1] * dims[i + 1];
   //   }
   // }
-
-  strides[dims.size() - 1] = 1;
-  for (int i = dims.size() - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * dims[i + 1];
+  auto p_dims = dims.Get();
+  auto p_strides = strides.GetMutable();
+  switch (dims.size()) {
+    case 1:
+      p_strides[0] = 1;
+      return strides;
+    case 2:
+      p_strides[1] = 1;
+      p_strides[0] = p_dims[1];
+      return strides;
+    case 3:
+      p_strides[2] = 1;
+      p_strides[1] = p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 4:
+      p_strides[3] = 1;
+      p_strides[2] = p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 5:
+      p_strides[4] = 1;
+      p_strides[3] = p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 6:
+      p_strides[5] = 1;
+      p_strides[4] = p_dims[5];
+      p_strides[3] = p_strides[4] * p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 7:
+      p_strides[6] = 1;
+      p_strides[5] = p_dims[6];
+      p_strides[4] = p_strides[5] * p_dims[5];
+      p_strides[3] = p_strides[4] * p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 8:
+      p_strides[7] = 1;
+      p_strides[6] = p_dims[7];
+      p_strides[5] = p_strides[6] * p_dims[6];
+      p_strides[4] = p_strides[5] * p_dims[5];
+      p_strides[3] = p_strides[4] * p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 9:
+      p_strides[8] = 1;
+      p_strides[7] = p_dims[8];
+      p_strides[6] = p_strides[7] * p_dims[7];
+      p_strides[5] = p_strides[6] * p_dims[6];
+      p_strides[4] = p_strides[5] * p_dims[5];
+      p_strides[3] = p_strides[4] * p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The rank of input should be less than 9, but received %d.",
+          dims.size()));
   }
-  return strides;
 }
 
 DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
