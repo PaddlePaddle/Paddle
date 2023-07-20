@@ -502,7 +502,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                &opt_input_shape,
                                                &min_shape_tensor,
                                                &max_shape_tensor,
-                                               &opt_shape_tensor);
+                                               &opt_shape_tensor,
+                                               nullptr);
 
         calib_res->engine_.reset(new TensorRTEngine(max_batch_size_,
                                                     workspace_size_,

@@ -49,7 +49,8 @@ void SerializeShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>>& opt_shape,
     const std::map<std::string, std::vector<int32_t>>& min_value,
     const std::map<std::string, std::vector<int32_t>>& max_value,
-    const std::map<std::string, std::vector<int32_t>>& opt_value);
+    const std::map<std::string, std::vector<int32_t>>& opt_value,
+    const std::map<std::string, phi::DataType>& dtype_info);
 void DeserializeShapeRangeInfo(
     const std::string& path,
     std::map<std::string, std::vector<int32_t>>* min_shape,
@@ -57,7 +58,8 @@ void DeserializeShapeRangeInfo(
     std::map<std::string, std::vector<int32_t>>* opt_shape,
     std::map<std::string, std::vector<int32_t>>* min_value,
     std::map<std::string, std::vector<int32_t>>* max_value,
-    std::map<std::string, std::vector<int32_t>>* opt_value);
+    std::map<std::string, std::vector<int32_t>>* opt_value,
+    std::map<std::string, phi::DataType> *dtype_info);
 void UpdateShapeRangeInfo(
     const std::string& path,
     const std::map<std::string, std::vector<int32_t>>& min_shape,

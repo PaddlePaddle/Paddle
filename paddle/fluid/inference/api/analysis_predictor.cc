@@ -705,8 +705,14 @@ bool AnalysisPredictor::PrepareExecutor() {
         inference::analysis::PassResultInfoForRuntime::Instance();
     auto reuse_table =
         pass_res_info->Get<std::unordered_map<std::string, std::string>>(
-            root_predictor_id_, "memory_optimize_pass");
-    executor_->MakeReusePlan(reuse_table);
+            root_predictor_id_, "memory_optimize_pass_node2cluster");
+    auto shape_table = 
+        pass_res_info->Get<std::unordered_map<std::string, std::vector<int>>>(
+            root_predictor_id_, "memory_optimize_pass_shape_table");
+    auto dtype_table = 
+        pass_res_info->Get<std::map<std::string, phi::DataType>>(
+            root_predictor_id_, "memory_optimize_pass_dtype_table");
+    executor_->MakeReusePlan(reuse_table, shape_table, dtype_table);
   }
 
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
@@ -1379,6 +1385,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetOptimInputShape(config_.optim_input_shape_);
   argument_->SetTensorRtTunedDynamicShape(
       config_.tuned_tensorrt_dynamic_shape());
+  argument_->SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path_);
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_->SetUseTensorRT(true);
@@ -2217,6 +2224,10 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     }
     auto tensor = new_var->Get<phi::DenseTensor>();
     if (!tensor.initialized()) return;
+
+    // 收集dtype
+    dtype_info_[input_name] = tensor.dtype();
+
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
@@ -2371,7 +2382,8 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
                                      opt_shapes,
                                      min_values,
                                      max_values,
-                                     opt_values);
+                                     opt_values,
+                                     dtype_info_);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {

@@ -19,8 +19,10 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <map>
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/variant.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -31,7 +33,9 @@ class PassResultInfoForRuntime {
   using PassInfo =
       paddle::variant<std::string,
                       std::vector<std::string>,
-                      std::unordered_map<std::string, std::string>>;
+                      std::unordered_map<std::string, std::string>,
+                      std::unordered_map<std::string, std::vector<int>>,
+                      std::map<std::string, phi::DataType>>;
 
   static PassResultInfoForRuntime* Instance() {
     static PassResultInfoForRuntime info;

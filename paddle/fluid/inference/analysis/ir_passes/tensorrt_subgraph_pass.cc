@@ -433,7 +433,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                                            &opt_input_shape,
                                            &min_shape_tensor,
                                            &max_shape_tensor,
-                                           &opt_shape_tensor);
+                                           &opt_shape_tensor,
+                                           nullptr);
     } else {
       shape_range_info_path =
           Get<std::string>("model_opt_cache_dir") + "shape_range_info.pbtxt";
@@ -446,7 +447,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                                              &opt_input_shape,
                                              &min_shape_tensor,
                                              &max_shape_tensor,
-                                             &opt_shape_tensor);
+                                             &opt_shape_tensor,
+                                             nullptr);
       } else {
         int fd = open(shape_range_info_path.c_str(), O_WRONLY | O_CREAT, 0644);
         close(fd);

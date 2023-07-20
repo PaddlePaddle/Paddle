@@ -23,6 +23,8 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
+
 
 namespace paddle {
 namespace framework {
@@ -55,13 +57,15 @@ typedef struct {
 // The traversal order also affect the lifecycles, so different sort_kind is
 // used.
 void MemoryOptimizePass::CollectLifeCycle(
-    Graph* graph,
+    Argument *argument,
     std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
+  framework::ir::Graph* graph = argument->main_graph_ptr();
   int max_lifecycle = 0;
   double persis_byte = 0;
   for (auto* op_node : framework::ir::TopologyVarientSort(
            *graph, static_cast<framework::ir::SortKind>(sort_kind))) {
+    // std::cout << "tuopu: " << op_node->Name() << std::endl;
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
@@ -76,6 +80,7 @@ void MemoryOptimizePass::CollectLifeCycle(
         auto var = node->Name();
         lifecycles->emplace(var,
                             std::make_pair(0, std::numeric_limits<int>::max()));
+        // std::cout << "tuopu: " << var << std::endl;
       }
     } else {
       // Normal operators.
@@ -104,6 +109,7 @@ void MemoryOptimizePass::CollectLifeCycle(
           continue;
         }
         std::string var = node->Name();
+        // std::cout << "tuopu: " << var << std::endl;
         if (!lifecycles->count(var)) {
           (*lifecycles)[var] = std::make_pair(max_lifecycle, max_lifecycle);
         } else {
@@ -120,8 +126,39 @@ void MemoryOptimizePass::CollectLifeCycle(
 }
 
 void MemoryOptimizePass::CollectVarMemorySize(
-    Graph* graph, space_table_t* space_table) const {
+                                                Argument *argument, 
+                                                space_table_t* space_table, 
+                                                shape_table_t* shape_table, 
+                                                dtype_table_t *dtype_info) const {
+  framework::ir::Graph* graph = argument->main_graph_ptr();
   const int fake_batch_size = 1;
+  
+  std::map<std::string, std::vector<int32_t>> opt_shape;
+  // std::map<std::string, phi::DataType> dtype_info;
+  if(argument->tensorrt_tuned_dynamic_shape()){ // turn on tensorrt dynamic shape
+    
+    DeserializeShapeRangeInfo(argument->tensorrt_shape_range_info_path(),
+                                    nullptr, 
+                                    &opt_shape, 
+                                    nullptr, 
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    dtype_info);
+  }
+
+  std::cout << "++++++++++++++++++++++++++++" << std::endl;
+  for(dtype_table_t::iterator it = dtype_info->begin(); it!= dtype_info->end(); it++) {
+    std::cout << "var name" << it->first << "var type" << it->second << std::endl;
+  }
+
+  // for(const auto& shape : opt_input_shape){
+  //   std::cout << shape.first << ":"  << std::endl;
+  //   for(const auto& dim : shape.second){
+  //     std::cout << dim << " ";
+  //   }
+  //   std::cout << std::endl;
+  // } 
 
   auto valid_var = [&](framework::ir::Node* node) -> bool {
     // lod operator reuse may cause unknown errors.
@@ -178,11 +215,32 @@ void MemoryOptimizePass::CollectVarMemorySize(
         !black_list.count(node->Var()->Name())) {
       // Parameters will not be reused.
       if (node->Var()->Persistable()) continue;
-      auto shape = node->Var()->GetShape();
-      for (auto& v : shape) {
-        if (v < 0) v = fake_batch_size;
-      }
 
+      std::vector<int32_t> shape;
+      if(argument->tensorrt_tuned_dynamic_shape() && opt_shape.count(node->Var()->Name())){ // turn on tensorrt dynamic shape
+        // std::cout << "-----path: " << argument->tensorrt_shape_range_info_path() << std::endl; 
+        // std::cout << "name: " <<  node->Var()->Name() << std::endl;
+        shape = opt_shape[node->Var()->Name()];
+      } else{ //turn off tensorrt dynamic shape
+        std::vector<int64_t> shape_int64 = node->Var()->GetShape();
+        std::transform(shape_int64.begin(), shape_int64.end(), back_inserter(shape), [](int64_t i){
+          return static_cast<int32_t>(i);
+        }); // int64 -> int32
+        if(node->Var()->Name() == "transpose_7.tmp_1"){
+          std::cout << "name choosen: " <<  node->Var()->Name() << std::endl;
+          for (auto& v : shape) {
+            std::cout << v << ", ";
+          }
+          std::cout << std::endl;
+        }
+        for (auto& v : shape) {
+          if (v < 0) v = fake_batch_size;
+        }
+        
+      } 
+
+      (*shape_table)[node->Var()->Name()] = shape;
+      
       int size = std::accumulate(
           shape.begin(), shape.end(), 1, std::multiplies<int>());
       (*space_table)[node->Var()->Name()] =
@@ -225,6 +283,7 @@ void MakeSimpleReusePlan(
 
   // Generating Memory Reuse Strategy Based on Greedy Way
   for (size_t i = 0; i < mem_nodes.size(); i++) {
+    // std::cout << "-----" << mem_nodes[i].name << std::endl;
     if (mem_nodes[i].cluster >= 0) continue;
     int cluster_index = cluster_size->size();
     mem_nodes[i].cluster = cluster_index;
@@ -265,21 +324,32 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // Because of pass is a singleton, graph can not be member
   // variables, otherwise, errors will be caused under multithreading
   // conditions.
-  auto graph = argument->main_graph_ptr();
 
   int sort_kind = 0;
   std::unordered_map<std::string, lifecycle_t> lifecycles;
   space_table_t space_table;
+  shape_table_t shape_table;
+  dtype_table_t dtype_table;
   std::unordered_map<std::string, std::string> node2cluster;
   std::unordered_map<std::string, int> cluster_size;
 
-  CollectLifeCycle(graph, &lifecycles, sort_kind);
-  CollectVarMemorySize(graph, &space_table);
+  CollectLifeCycle(argument, &lifecycles, sort_kind);
+  // std::cout << "---lifecycle---" <<std::endl;
+  // for(const auto& kv : lifecycles) {
+  //   std::cout <<  "---" << kv.first << "---" << kv.second.first << ":"<< kv.second.second << std::endl;
+  // }
+  // std::cout << "---lifecycle---" <<std::endl;
+
+  CollectVarMemorySize(argument, &space_table, &shape_table, &dtype_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
   pass_res_info->Set(
-      argument->root_predictor_id(), "memory_optimize_pass", node2cluster);
+      argument->root_predictor_id(), "memory_optimize_pass_node2cluster", node2cluster);
+  pass_res_info->Set(
+      argument->root_predictor_id(), "memory_optimize_pass_shape_table", shape_table);
+      pass_res_info->Set(
+      argument->root_predictor_id(), "memory_optimize_pass_dtype_table", dtype_table);
 
   return;
 }

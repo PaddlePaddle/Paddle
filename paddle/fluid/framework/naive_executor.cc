@@ -60,6 +60,8 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
+
+  // int iii = 0;
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
@@ -68,6 +70,28 @@ void NaiveExecutor::Run() {
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
 #endif
+    // if(iii == 0){
+    //   std::cout << "op run" << std::endl;
+    //   for(uint i = 0;i < cluster_buffer_.size();i++) {
+    //     if(cluster_buffer_[i] == nullptr){
+    //       std::cout <<"cluster_buffer_[" << i << "] is nullptr" << std::endl;
+    //       break;
+    //     }
+    //     // auto& place = cluster_buffer_[i]->place();
+    //     // cluster_buffer_[i]->mutable_data(place, cluster_size[cluster_names[i]]);
+    //     std::cout << "---" << std::endl;
+    //     // const phi::TensorBase::DDim &dims = phi::make_ddim(shape_table[cluster_names[i]]);
+    //     // std::cout << "dim test"<< dims.to_str() << std::endl;
+    //     std::cout << "densetensor memory size: " << cluster_buffer_[i]->memory_size() << std::endl;
+    //     std::cout << "densetensor meta valid?: " << cluster_buffer_[i]->valid() << std::endl;
+    //     std::cout << "dims rank: " << cluster_buffer_[i]->meta().dims.size() << std::endl;
+    //     std::cout << "dims shape: " << cluster_buffer_[i]->meta().dims.to_str() << std::endl;
+        
+    //     // cluster_buffer_[i]->ResizeAndAllocate({{phi::make_ddim(shape_table[cluster_names[i]])}});
+    //   }
+    //   iii++;
+    // }
+    
 
     for (auto &func : input_hookfuncs_) {
       func(op.get(), scope_);
@@ -77,6 +101,18 @@ void NaiveExecutor::Run() {
       op->SetOutputHooks(output_hookfuncs_);
     }
 
+    // std::cout << "op run: " << op->Type() << std::endl;
+    // if (reuse_cache_.count(op.get())) {
+    //   for (auto &it : reuse_cache_[op.get()]) {
+    //     std::cout << "densetensor memory size: " << cluster_buffer_[it.second]->memory_size() << std::endl;
+    //     std::cout << "densetensor meta valid?: " << cluster_buffer_[it.second]->valid() << std::endl;
+    //     std::cout << "dims rank: " << cluster_buffer_[it.second]->meta().dims.size() << std::endl;
+    //     std::cout << "dims shape: " << cluster_buffer_[it.second]->meta().dims.to_str() << std::endl;
+
+    //     // it.first->ShareBufferWith(*cluster_buffer_[it.second]);
+    //   }
+    // }
+
     op->Run(*scope_, place_);
 
     // Update the shared_holder so that only records the max one.
@@ -84,6 +120,9 @@ void NaiveExecutor::Run() {
       for (auto &it : reuse_cache_[op.get()]) {
         if (it.first->memory_size() >
             cluster_buffer_[it.second]->memory_size()) {
+          std::cout <<"dense tensor is initialized?: " << cluster_buffer_[it.second]->IsInitialized() << std::endl;
+          std::cout << "dense tenser memory size: " << cluster_buffer_[it.second]->memory_size() << std::endl;
+          std::cout << "dense tenser dims " << cluster_buffer_[it.second]->dims().to_str() << std::endl;    
           cluster_buffer_[it.second] = it.first;
           int updated_cluster_id = it.second;
 
@@ -197,7 +236,9 @@ void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
 }
 
 void NaiveExecutor::MakeReusePlan(
-    const std::unordered_map<std::string, std::string> &reuse_table) {
+    const std::unordered_map<std::string, std::string> &reuse_table,
+    std::unordered_map<std::string, std::vector<int>> &shape_table,
+    std::map<std::string, phi::DataType>& dtype_table) {
   std::unordered_map<std::string, std::unordered_set<std::string>> clusters;
   for (auto &it : reuse_table) {
     clusters[it.second].insert(it.first);
@@ -231,6 +272,42 @@ void NaiveExecutor::MakeReusePlan(
           }
         }
       }
+    }
+  }
+
+  // std::cout << "AaAAAAAAAAAAA" << std::endl;
+  // for(const auto& shape : shape_table){
+  //   std::cout << shape.first  << ": "<< std::endl;
+  //   for(auto i : shape.second){
+  //     std::cout << i << " ";
+  //   }
+  //   std::cout << std::endl;
+  // }
+
+  std::cout << "make use" << std::endl;
+  for(uint i = 0;i < cluster_names.size();i++) {
+    // auto& place = cluster_buffer_[i]->place();
+    // cluster_buffer_[i]->mutable_data(place, cluster_size[cluster_names[i]]);
+    if(cluster_buffer_[i] == nullptr) continue;
+    // const phi::TensorBase::DDim &dims = phi::make_ddim(shape_table[cluster_names[i]]);
+    // std::cout << "dim test"<< dims.to_str() << std::endl;
+    // std::cout << "densetensor memory size: " << cluster_buffer_[i]->memory_size() << std::endl;
+    // std::cout << "densetensor meta valid?: " << cluster_buffer_[i]->valid() << std::endl;
+    // std::cout << "dims rank: " << cluster_buffer_[i]->meta().dims.size() << std::endl;
+    // std::cout << "dims shape: " << cluster_buffer_[i]->meta().dims.to_str() << std::endl;
+    std::vector<int> shape = shape_table[cluster_names[i]];
+    int size = std::accumulate(
+          shape.begin(), shape.end(), 1, std::multiplies<int>());
+    std::cout << "name: " <<  cluster_names[i]  << std::endl;
+    if(dtype_table.size()) cluster_buffer_[i]->mutable_data(place_, dtype_table.at(cluster_names[i]), size);
+    else cluster_buffer_[i]->mutable_data(place_, phi::DataType::INT8, size); // 没有开启dynamic shape的时候用int8，避免过度开辟空间
+    cluster_buffer_[i]->Resize({{phi::make_ddim(shape_table[cluster_names[i]])}});
+  }
+
+  for (auto &op_map : reuse_cache_) {
+    // op_map.second is std::unordered_map<phi::DenseTensor*, int>.
+    for (auto &it2 : op_map.second) {
+      it2.first->ShareBufferWith(*cluster_buffer_[it2.second], true);
     }
   }
 }

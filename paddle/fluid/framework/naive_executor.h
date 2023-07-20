@@ -69,7 +69,9 @@ class NaiveExecutor {
   Scope* GetScope() { return scope_; }
 
   void MakeReusePlan(
-      const std::unordered_map<std::string, std::string>& reuse_table);
+      const std::unordered_map<std::string, std::string>& reuse_table,
+      std::unordered_map<std::string, std::vector<int>>& shape_table,
+      std::map<std::string, phi::DataType>& dtype_table);
 
   void ResetTrtOps(int num);
 
