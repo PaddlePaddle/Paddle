@@ -125,8 +125,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     // first job to other jobs. The shared build result includes op dependency,
     // event analyzer, thread scheduling and GC.
     if (type_to_id.count(job_type) && type_to_id[job_type] != job_idx) {
-      interpretercores_[job_idx]->ShareBuildResultsFrom(
-          interpretercores_[type_to_id[job_type]]);
+      //   interpretercores_[job_idx]->ShareBuildResultsFrom(
+      //       interpretercores_[type_to_id[job_type]]);
     }
     interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
   }
