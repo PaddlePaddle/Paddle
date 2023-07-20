@@ -276,13 +276,13 @@ struct XPUHardSigmoidGradFunctor : public funcs::BaseActivationFunctor<T> {
     int r = xpu::hard_sigmoid_grad(
         xpu_context,
         reinterpret_cast<const XPUType*>(
-            y_data),  // hard_sigmoid_grad do not need x_data
+            y_data),  // hardsigmoid_grad do not need x_data
         reinterpret_cast<const XPUType*>(y_data),
         reinterpret_cast<const XPUType*>(y_grad),
         reinterpret_cast<XPUType*>(x_grad),
         dx->numel(),
         slope);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_sigmoid_grad");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hardsigmoid_grad");
   }
 };
 
@@ -703,7 +703,7 @@ PD_REGISTER_KERNEL(square_grad,
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log_grad, LogGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_sigmoid_grad, HardSigmoidGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardsigmoid_grad, HardSigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardswish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)

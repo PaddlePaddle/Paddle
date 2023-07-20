@@ -1090,7 +1090,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : hard_sigmoid
+    func : hardsigmoid
   backward : hardsigmoid_grad
 
 - op : hardtanh
