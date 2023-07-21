@@ -79,6 +79,7 @@ TransposeSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
             << str_join(input_specs[i].shape()) << "] "
             << "src_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
             << "] "
+            << "perm: [" << str_join(perm_dims) << "] "
             << "dst_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
             << "]";
   }
