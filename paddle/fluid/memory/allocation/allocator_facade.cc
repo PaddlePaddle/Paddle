@@ -1454,8 +1454,8 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   auto& allocator = cuda_graph_map_[id];
   auto& ref_cnt = cuda_graph_ref_cnt_[id];
   if (allocator.get() == nullptr) {
-    allocator.reset(
-        new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
+    allocator = std::make_unique<AllocatorFacadePrivate>(
+        /*allow_free_idle_chunk=*/false);
     VLOG(10) << "Create memory pool for CUDA Graph with memory ID " << id;
   } else {
     VLOG(10) << "Use created memory pool for CUDA Graph with memory ID " << id;
