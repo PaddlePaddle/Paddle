@@ -20,7 +20,10 @@
 namespace phi {
 namespace distributed {
 
+namespace auto_parallel {
 class TensorDistAttr;
+}
+using auto_parallel::TensorDistAttr;
 
 class DistTensor final
     : public phi::TensorBase,
