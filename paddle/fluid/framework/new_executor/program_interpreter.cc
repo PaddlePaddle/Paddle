@@ -617,7 +617,13 @@ void ProgramInterpreter::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    vec_instruction_[op_idx].SetVar(op_idx, std::move(op_func_node), *dev_ctx_);
+    VLOG(8) << "operator_base_: " << op_func_node.operator_base_.get();
+    VLOG(8) << "operator_base_: " << op_func_node.phi_kernel_;
+    VLOG(8) << "operator_base_: " << op_func_node.dev_ctx_;
+    VLOG(8) << "operator_base_: " << op_func_node.infer_meta_interface_;
+    VLOG(8) << "operator_base_: " << op_func_node.execution_stream_;
+    VLOG(8) << "operator_base_: " << op_func_node.phi_op_name_;
+    vec_instruction_[op_idx].SetVar(op_idx, op_func_node, *dev_ctx_);
 #ifdef PADDLE_WITH_CUDA
     if (FLAGS_new_executor_use_cuda_graph) {
       auto& op = op_func_node.operator_base_;

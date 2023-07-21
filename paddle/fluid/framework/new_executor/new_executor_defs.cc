@@ -149,6 +149,10 @@ void VariableScope::CheckExist(const std::string& name) const {
       platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
+Instruction::Instruction() : is_artificial_(false), dev_ctx_(nullptr) {
+  events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+}
+
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
@@ -173,7 +177,7 @@ Instruction::Instruction(size_t id,
 }
 
 void Instruction::SetVar(size_t id,
-                         OpFuncNode&& op_func_node,
+                         const OpFuncNode& op_func_node,
                          const platform::DeviceContext& dev_ctx) {
   VLOG(8) << "break point1";
   id_ = id;
@@ -313,16 +317,11 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
-std::shared_ptr<EventInter> Instruction::GetEventToRecord() const {
-  return event_to_record_;
-}
-
 std::shared_ptr<std::vector<EventInter>> Instruction::GetEventsToWait() const {
   return events_to_wait_;
 }
 
 void Instruction::ShareEventsFrom(const Instruction& src) {
-  event_to_record_ = src.GetEventToRecord();
   events_to_wait_ = src.GetEventsToWait();
 }
 
