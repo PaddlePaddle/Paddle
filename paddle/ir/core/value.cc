@@ -224,7 +224,7 @@ ir::Operation *OpResultImpl::owner() const {
   // For outline result, pointer offset outline_index to obtain the address of
   // maximum inline result.
   const OpOutlineResultImpl *outline_result =
-      (const OpOutlineResultImpl *)(this);
+      reinterpret_cast<const OpOutlineResultImpl *>(this);
   outline_result +=
       (outline_result->outline_index_ - GetMaxInlineResultIndex());
   // The offset of the maximum inline result distance op is
