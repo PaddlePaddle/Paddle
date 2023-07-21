@@ -31,11 +31,14 @@ limitations under the License. */
 // *********************
 // *      PyList       *
 // *********************
+#define PyList_Check_s(op) \
+  PyType_FastSubclass(Py_TYPE_s(op), Py_TPFLAGS_LIST_SUBCLASS)
 
 #define PyList_GET_ITEM_s(op, i) \
   ((reinterpret_cast<PyListObject*>(op))->ob_item[i])
 #define PyList_SET_ITEM_s(op, i, v) \
   ((reinterpret_cast<PyListObject*>(op))->ob_item[i] = (v))
+#define PyList_GET_SIZE_s(op) (assert(PyList_Check_s(op)), Py_SIZE_s(op))
 #define _PyList_ITEMS_s(op) ((reinterpret_cast<PyListObject*>(op))->ob_item)
 
 #ifdef PyList_GET_ITEM
@@ -46,6 +49,11 @@ limitations under the License. */
 #ifdef PyList_SET_ITEM
 #undef PyList_SET_ITEM
 #define PyList_SET_ITEM(op, i, v) PyList_SET_ITEM_s(op, i, v)
+#endif
+
+#ifdef PyList_GET_SIZE
+#undef PyList_GET_SIZE
+#define PyList_GET_SIZE(op) PyList_GET_SIZE_s(op)
 #endif
 
 #ifdef _PyList_ITEMS
