@@ -151,7 +151,7 @@ void SGDSparseParamSparseGradKernel(
     SelectedRows* master_param_out UNUSED) {
   // for distributed training, a sparse var may be empty,
   // just skip updating.
-  if (grad.rows().size() == 0) {
+  if (grad.rows().empty()) {
     return;
   }
 

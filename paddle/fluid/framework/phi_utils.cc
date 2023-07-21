@@ -306,7 +306,7 @@ phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
 // TODO(chentianyu03): Inplace with IntArray constructor
 phi::IntArray MakePhiIntArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list) {
-  if (variable_list.size() == 0) {
+  if (variable_list.empty()) {
     return phi::IntArray();
   }
   auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);

@@ -141,14 +141,21 @@ from .manipulation import index_put  # noqa: F401
 from .manipulation import index_put_  # noqa: F401
 from .manipulation import unflatten  # noqa: F401
 from .math import abs  # noqa: F401
+from .math import abs_  # noqa: F401
 from .math import acos  # noqa: F401
+from .math import acos_  # noqa: F401
 from .math import asin  # noqa: F401
+from .math import asin_  # noqa: F401
 from .math import atan  # noqa: F401
+from .math import atan_  # noqa: F401
 from .math import ceil  # noqa: F401
 from .math import ceil_  # noqa: F401
 from .math import cos  # noqa: F401
+from .math import cos_  # noqa: F401
 from .math import tan  # noqa: F401
+from .math import tan_  # noqa: F401
 from .math import cosh  # noqa: F401
+from .math import cosh_  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import cummax  # noqa: F401
 from .math import cummin  # noqa: F401
@@ -175,7 +182,9 @@ from .math import scale  # noqa: F401
 from .math import scale_  # noqa: F401
 from .math import sign  # noqa: F401
 from .math import sin  # noqa: F401
+from .math import sin_  # noqa: F401
 from .math import sinh  # noqa: F401
+from .math import sinh_  # noqa: F401
 from .math import sqrt  # noqa: F401
 from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
@@ -216,6 +225,7 @@ from .math import log10  # noqa: F401
 from .math import log1p  # noqa: F401
 from .math import erf  # noqa: F401
 from .math import addmm  # noqa: F401
+from .math import addmm_  # noqa: F401
 from .math import clip  # noqa: F401
 from .math import clip_  # noqa: F401
 from .math import trace  # noqa: F401
@@ -234,8 +244,11 @@ from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
 from .math import acosh  # noqa: F401
+from .math import acosh_  # noqa: F401
 from .math import asinh  # noqa: F401
+from .math import asinh_  # noqa: F401
 from .math import atanh  # noqa: F401
+from .math import atanh_  # noqa: F401
 from .math import lerp  # noqa: F401
 from .math import lerp_  # noqa: F401
 from .math import erfinv  # noqa: F401
@@ -421,6 +434,7 @@ tensor_method_func = [  # noqa
     'log1p',
     'erf',
     'addmm',
+    'addmm_',
     'clip',
     'clip_',
     'trace',
