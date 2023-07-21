@@ -24,7 +24,7 @@ limitations under the License. */
 #endif
 
 /* Cast argument toc PyVarObject* type. */
-#define _PyVarObject_CAST_s(op) (reinterpret_cast<PyVarObject*>(op))
+#define _PyVarObject_CAST_s(op) (reinterpret_cast<PyVarObject *>(op))
 
 #define Py_SIZE_s(ob) (_PyVarObject_CAST_s(ob)->ob_size)
 
@@ -35,11 +35,11 @@ limitations under the License. */
   PyType_FastSubclass(Py_TYPE_s(op), Py_TPFLAGS_LIST_SUBCLASS)
 
 #define PyList_GET_ITEM_s(op, i) \
-  ((reinterpret_cast<PyListObject*>(op))->ob_item[i])
+  ((reinterpret_cast<PyListObject *>(op))->ob_item[i])
 #define PyList_SET_ITEM_s(op, i, v) \
-  ((reinterpret_cast<PyListObject*>(op))->ob_item[i] = (v))
+  ((reinterpret_cast<PyListObject *>(op))->ob_item[i] = (v))
 #define PyList_GET_SIZE_s(op) (assert(PyList_Check_s(op)), Py_SIZE_s(op))
-#define _PyList_ITEMS_s(op) ((reinterpret_cast<PyListObject*>(op))->ob_item)
+#define _PyList_ITEMS_s(op) ((reinterpret_cast<PyListObject *>(op))->ob_item)
 
 #ifdef PyList_GET_ITEM
 #undef PyList_GET_ITEM
@@ -67,7 +67,7 @@ limitations under the License. */
 
 /* Cast argument to PyTupleObject* type. */
 #define _PyTuple_CAST_s(op) \
-  (assert(PyTuple_Check(op)), reinterpret_cast<PyTupleObject*>(op))
+  (assert(PyTuple_Check(op)), reinterpret_cast<PyTupleObject *>(op))
 #define PyTuple_GET_SIZE_s(op) Py_SIZE_s(_PyTuple_CAST_s(op))
 #define PyTuple_GET_ITEM_s(op, i) (_PyTuple_CAST_s(op)->ob_item[i])
 /* Macro, *only* to be used to fill in brand new tuples */

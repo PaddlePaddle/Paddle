@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/utils/pybind.h"
+#include "paddle/utils/python_patch.h"
 
 namespace py = pybind11;
 
