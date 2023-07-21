@@ -42,7 +42,7 @@ using ir::Module;
 static constexpr int DebugLogMaxLen = 30000;
 
 void DumpCompilationInfo::DumpLoweredFunc() {
-  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_lowered_func)) {
+  if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;
   }
   for (int idx = 0; idx < info_.lowered_funcs.size(); idx++) {
@@ -69,7 +69,7 @@ void DumpCompilationInfo::DumpLoweredFunc() {
 }
 
 void DumpCompilationInfo::DumpSourceCode() {
-  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_source_code)) {
+  if (FLAGS_cinn_dump_group_source_code.empty()) {
     return;
   }
   for (int idx = 0; idx < info_.source_codes.size(); idx++) {
@@ -96,7 +96,7 @@ void DumpCompilationInfo::DumpSourceCode() {
 }
 
 void DumpCompilationInfo::DumpPtxCode() {
-  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_ptx)) {
+  if (FLAGS_cinn_dump_group_ptx.empty()) {
     return;
   }
   for (int idx = 0; idx < info_.source_ptxs.size(); idx++) {
@@ -123,7 +123,7 @@ void DumpCompilationInfo::DumpPtxCode() {
 }
 
 void DumpCompilationInfo::DumpInstruction() {
-  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_dump_group_instruction)) {
+  if (FLAGS_cinn_dump_group_instruction.empty()) {
     return;
   }
   for (int idx = 0; idx < info_.instructions.size(); idx++) {
