@@ -195,7 +195,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
     selected_indices->clear();
 
-    while (sorted_indices.size() != 0) {
+    while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
       for (size_t k = 0; k < selected_indices->size(); ++k) {

@@ -24,11 +24,11 @@
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/optim/cast_simplify.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -55,7 +55,8 @@ void PartialSimplify(
 //! Simplify the expression but Load.
 struct SimplifyButStoreLoadMutator : public ir::IRMutator<ir::Expr*> {
   common::cas_intervals_t& var_intervals;
-  explicit SimplifyButStoreLoadMutator(common::cas_intervals_t& var_intervals)
+  explicit SimplifyButStoreLoadMutator(
+      common::cas_intervals_t& var_intervals)  // NOLINT
       : var_intervals(var_intervals) {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
@@ -261,7 +262,7 @@ struct ReplaceFracWithDivMutator : public ir::IRMutator<> {
 };
 
 struct SimplifyBlocksMutator : public ir::IRMutator<> {
-  explicit SimplifyBlocksMutator() {}
+  SimplifyBlocksMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 
@@ -320,7 +321,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
 
 struct SimplifyForLoopsMutator : public ir::IRMutator<> {
   absl::flat_hash_map<std::string, common::CasInterval> var_intervals;
-  explicit SimplifyForLoopsMutator() {}
+  SimplifyForLoopsMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 

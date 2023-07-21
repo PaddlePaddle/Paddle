@@ -17,7 +17,7 @@
 
 #include "paddle/cinn/auto_schedule/auto_schedule.pb.h"
 #include "paddle/cinn/auto_schedule/search_space/search_state.h"
-#include "paddle/cinn/ir/schedule_desc.pb.h"
+#include "paddle/cinn/ir/schedule/schedule_desc.pb.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -34,7 +34,7 @@ struct TuningRecord {
   double execution_cost;  // unit: us
 
   TuningRecord() = default;
-  TuningRecord(const proto::TuningRecord& record)
+  explicit TuningRecord(const proto::TuningRecord& record)
       : task_key(record.task_key()),
         predicted_cost(record.predicted_cost()),
         trace(record.trace()),

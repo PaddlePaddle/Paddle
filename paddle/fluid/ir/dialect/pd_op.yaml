@@ -9,6 +9,7 @@
   data_transform: null
   inplace: null
   backward: null
+
 - name: fetch
   inputs:
   - typename: Tensor
@@ -115,7 +116,42 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-  invoke: {func: add_n_impl, args: inputs}
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  backward: add_n_grad
+
+- name: add_n_with_kernel
+  inputs:
+  - typename: Tensor[]
+    name: inputs
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
   backward: add_n_grad
 
 - name: write_to_array
@@ -150,14 +186,71 @@
   no_need_buffer: null
   data_transform: null
 
-- name: py_func_
+- name: embedding_grad_sparse
   inputs:
-  -  {typename: 'Tensor', name: x, optional: false, no_need_buffer: false, data_transform: {}}
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: weight
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
   attrs:
-  - {typename: 'int', name: forward_callable_id, default_value: '0'}
-  - {typename: 'int', name: backward_callable_id, default_value: '-1'}
-  - {typename: 'str[]', name: backward_skip_vars, default_value: '{}'}
+  - {typename: int64_t, name: padding_idx, default_value: '-1'}
+  - {typename: bool, name: sparse, default_value: 'false'}
   outputs:
-  - {typename: 'Tensor', name: out, optional: false, intermediate: false}
+  - {typename: SelectedRows, name: weight_grad, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
+  infer_meta:
+    func: EmbeddingGradSparseInferMeta
+    param: [weight]
+  kernel:
+    func: [embedding_sparse_grad]
+    param: [x, weight, out_grad, padding_idx, sparse]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [weight]
+      to_complex_flag: [false]
+    dispatch: {embedding_sparse_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+
+
+- name: shaddow_feed
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+    - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [shaddow_feed]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
+  backward: null

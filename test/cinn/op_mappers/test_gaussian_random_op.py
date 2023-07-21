@@ -16,15 +16,12 @@
 
 import unittest
 
-import numpy as np
-from op_mapper_test import OpMapperTest, logger
-
-import paddle
+from op_mapper_test import OpMapperTest
 
 
 class TestGaussianRandomOp(OpMapperTest):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3]
         self.mean = 0.0
         self.std = 1.0
@@ -59,7 +56,7 @@ class TestGaussianRandomOp(OpMapperTest):
 
 class TestGaussianRandomCase1(TestGaussianRandomOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3, 4]
         self.mean = 1.0
         self.std = 2.0
@@ -69,7 +66,7 @@ class TestGaussianRandomCase1(TestGaussianRandomOp):
 
 class TestGaussianRandomCase2(TestGaussianRandomOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [2, 3, 4]
         self.mean = 2.0
         self.std = 3.0

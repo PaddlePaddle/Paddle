@@ -728,7 +728,7 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   value_grad->set_dtype(value.dtype());
   value_grad->set_layout(value.layout());
 
-  if (bias) {
+  if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
     const int64_t bias_seq_length = bias.dims()[1];
     const int64_t bias_num_head = bias.dims()[2];
@@ -968,10 +968,10 @@ void RnnGradInferMeta(const MetaTensor& x,
   if (x_grad) {
     UnchangedInferMeta(x, x_grad);
   }
-  if (pre_state_grad.size()) {
+  if (!pre_state_grad.empty()) {
     UnchangedMultiInferMeta(pre_state, pre_state_grad);
   }
-  if (weight_grad_list.size()) {
+  if (!weight_grad_list.empty()) {
     UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }
@@ -1209,12 +1209,13 @@ void FusedRopeGradInferMeta(const MetaTensor& dout_q,
                             MetaTensor* dk,
                             MetaTensor* dv) {
   auto input_dims = dout_q.dims();
-  PADDLE_ENFORCE_EQ(input_dims.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "Input should be a 4-D tensor of format [N, C, H, W] "
-                        "or [N, H, W, C], but got %u.",
-                        input_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input should be a 4-D tensor of format "
+                                   "[batch_size, seq_len, num_heads, head_dim],"
+                                   "but got %u.",
+                                   input_dims.size()));
   if (dout_q) {
     dq->set_dims(dout_q.dims());
     dq->set_dtype(dout_q.dtype());

@@ -165,12 +165,44 @@
           comment : In order to add additional size to one side of each dimension in the output.
           default : "std::vector<int>{}"
 
+- op : elementwise_floordiv
+  version :
+    - checkpoint : Register elementwise_floordiv for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_floordiv.
+          default : 1.0
+
 - op : elementwise_max
   version :
     - checkpoint : Register elementwise_max for adding the attribute of Scale_y.
       action :
         - add_attr : Scale_y
           comment : In order to support the function of scaling the input Y when using the operator of elementwise_max.
+          default : 1.0
+
+- op : elementwise_min
+  version :
+    - checkpoint : Register elementwise_min for adding the attribute of Scale_y.
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_min.
+          default : 1.0
+
+- op : elementwise_mod
+  version :
+    - checkpoint : Register elementwise_mod for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_mod.
+          default : "false"
+
+- op : elementwise_pow
+  version :
+    - checkpoint : Register elementwise_pow for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_pow.
           default : 1.0
 
 - op : embedding

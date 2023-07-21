@@ -43,9 +43,9 @@
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/type.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_verify.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/var_mod_simplify.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
@@ -1038,13 +1038,13 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Tensor_ *op) {
 
 template <typename T,
           std::enable_if_t<std::is_same<const ir::Expr &, T>::value, int> = 0>
-void appendBody(std::vector<Expr> &new_body, T &&v) {
+void appendBody(std::vector<Expr> &new_body, T &&v) {  // NOLINT
   new_body.push_back(v);
 }
 
 template <typename T,
           std::enable_if_t<!std::is_same<const ir::Expr &, T>::value, int> = 1>
-void appendBody(std::vector<Expr> &new_body, T &&v) {
+void appendBody(std::vector<Expr> &new_body, T &&v) {  // NOLINT
   new_body.insert(new_body.end(), v.begin(), v.end());
 }
 

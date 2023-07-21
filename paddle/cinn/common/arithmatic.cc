@@ -21,9 +21,9 @@
 #include <string>
 
 #include "paddle/cinn/common/ir_util.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -180,7 +180,8 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
   ir::Expr cur;
 
  public:
-  explicit GiNaCToExprVisitor(std::map<std::string, ir::Expr>& repr_to_expr)
+  explicit GiNaCToExprVisitor(
+      std::map<std::string, ir::Expr>& repr_to_expr)  // NOLINT
       : repr_to_expr(repr_to_expr) {}
 
   Expr operator()(GiNaC::ex ex) {

@@ -27,7 +27,7 @@
 
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/buffer_assign.h"
 #include "paddle/cinn/optim/compute_inline_expand.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
@@ -69,7 +69,7 @@ void CheckNoIslCallRemains(const Expr* expr);
 Expr LowerGroup(const poly::ScheduleGroup& group,
                 const std::map<std::string, Expr>& tuple_to_expr,
                 std::map<std::string, Tensor>* global_tensor_map,
-                std::unordered_set<std::string>& resized_buffer,
+                std::unordered_set<std::string>& resized_buffer,  // NOLINT
                 StageMap stage_map,
                 ir::CudaAxisInfo* cuda_axis_info = nullptr);
 
