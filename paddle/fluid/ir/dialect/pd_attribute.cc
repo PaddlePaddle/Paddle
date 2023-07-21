@@ -20,7 +20,7 @@ const phi::IntArray& IntArrayAttribute::data() const {
   return storage()->GetAsKey();
 }
 
-const phi::DataType DataTypeAttribute::data() const { 
+const phi::DataType& DataTypeAttribute::data() const { 
   return storage()->GetAsKey(); 
 }
 
