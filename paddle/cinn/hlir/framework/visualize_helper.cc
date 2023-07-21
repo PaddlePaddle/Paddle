@@ -148,21 +148,30 @@ bool PassPrinter::End() {
 }
 
 bool MakeDirectory(const std::string& dirname, mode_t mode) {
-  const char* path = dirname.c_str();
   struct stat st;
-  if (stat(path, &st) == 0) {
-    if (S_ISDIR(st.st_mode)) {
-      return true;
-    } else {
-      return false;
+  std::string path;
+  for (int i = 0; i < dirname.size(); ++i) {
+    path.push_back(dirname[i]);
+    if (!(dirname[i] == '/' || i + 1 == dirname.size())) {
+      continue;
     }
-  } else {
-    if (mkdir(path, mode) == 0) {
-      return true;
+    if (stat(path.c_str(), &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        continue;
+      } else {
+        LOG(WARNING) << path << " is not a directory, please check your path.";
+        return false;
+      }
     } else {
-      return false;
+      if (mkdir(path.c_str(), mode) == 0) {
+        continue;
+      } else {
+        LOG(WARNING) << "Make directory fail: " << path;
+        return false;
+      }
     }
   }
+  return true;
 }
 
 std::string GenNodeDataLabel(
