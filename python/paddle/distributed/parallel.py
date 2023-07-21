@@ -397,10 +397,7 @@ class DataParallel(layers.Layer):
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
-            # TODO(liuyuhui) Currently not support xpu. xpu is
-            # still broadcasting parameters when calling layer
-            if not paddle.is_compiled_with_xpu():
-                sync_params_buffers(self._layers)
+            sync_params_buffers(self._layers)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control

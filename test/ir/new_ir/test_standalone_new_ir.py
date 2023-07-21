@@ -24,7 +24,11 @@ paddle.enable_static()
 
 class TestNewIr(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -44,7 +48,11 @@ class TestNewIr(unittest.TestCase):
 
 class TestCombineOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -64,7 +72,11 @@ class TestCombineOp(unittest.TestCase):
 
 class TestFeedOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -91,6 +103,8 @@ class TestFeedOp(unittest.TestCase):
 
 class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
+        # TODO(phlrain): support selected rows in GPU
+        # place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -113,7 +127,11 @@ class TestSelectedRows(unittest.TestCase):
 
 class TestAddGradOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -143,7 +161,11 @@ class TestAddGradOp(unittest.TestCase):
 
 class TestSplitOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
