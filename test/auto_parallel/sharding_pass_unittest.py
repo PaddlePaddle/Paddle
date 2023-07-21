@@ -140,7 +140,6 @@ class TestShardingPass(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size
         )
         sharding3_losses = np.array(history.history["loss"])
-        # NOTE: stage3 has precision problem
         self.check_results(dp_losses, sharding3_losses)
 
 
