@@ -51,7 +51,7 @@ static int _get_sockname(int sock, char *out, int out_len) {
     port = ntohs(s->sin_port);
     ::inet_ntop(AF_INET, &s->sin_addr, ip, sizeof(ip));
   } else {  // AF_INET6
-    struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
+    struct sockaddr_in6 *s = reinterpret_cast<struct sockaddr_in6 *>(&addr);
     port = ntohs(s->sin6_port);
     ::inet_ntop(AF_INET6, &s->sin6_addr, ip, sizeof(ip));
   }
