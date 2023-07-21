@@ -105,10 +105,11 @@ class Fleet:
     Returns:
         Fleet: A Fleet instance
 
-    Example for collective training:
 
         .. code-block:: python
+            :name: code-example1
 
+            # Example1: for collective training
             import paddle
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
@@ -122,10 +123,11 @@ class Fleet:
             # do distributed training
 
 
-    Example for parameter server training:
 
         .. code-block:: python
+            :name: code-example2
 
+            # Example2: for parameter server training
             import paddle
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
@@ -195,40 +197,39 @@ class Fleet:
         Returns:
             None
 
-        Examples1:
+        Examples:
 
             .. code-block:: python
+                :name: code-example1
 
                 import paddle.distributed.fleet as fleet
                 fleet.init()
 
-        Examples2:
+
 
             .. code-block:: python
+                :name: code-example2
 
                 import paddle.distributed.fleet as fleet
                 fleet.init(is_collective=True)
 
-        Examples3:
 
             .. code-block:: python
-
+                :name: code-example3
                 import paddle.distributed.fleet as fleet
                 role = fleet.PaddleCloudRoleMaker()
                 fleet.init(role)
 
-        Examples4:
 
             .. code-block:: python
-
+                :name: code-example4
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(strategy=strategy)
 
-        Examples5:
 
             .. code-block:: python
-
+                :name: code-example5
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(log_level = "DEBUG")
@@ -627,6 +628,14 @@ class Fleet:
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.barrier_worker()
         """
         self._role_maker._barrier("worker")
 
