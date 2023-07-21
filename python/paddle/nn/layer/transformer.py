@@ -22,12 +22,12 @@ import numpy as np
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
 
-from ...fluid import layers
 from ... import tensor
 from ...framework import ParamAttr
 from .. import functional as F
 from .common import Dropout, Linear
 from .container import LayerList
+from .layers import Layer
 from .norm import LayerNorm
 
 __all__ = []

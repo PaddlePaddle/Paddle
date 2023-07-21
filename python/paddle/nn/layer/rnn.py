@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import math
 from collections.abc import Sequence
 from functools import partial, reduce
@@ -601,7 +600,9 @@ class RNNCellBase(Layer):
 
         class Shape:
             def __init__(self, shape):
-                self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
+                self.shape = (
+                    list(shape) if shape[0] == -1 else ([-1] + list(shape))
+                )
 
         # nested structure of shapes
         states_shapes = self.state_shape if shape is None else shape
@@ -622,8 +623,28 @@ class RNNCellBase(Layer):
             states_dtypes = paddle.utils.map_structure(
                 lambda shape: dtype, states_shapes
             )
-        fill_shapes = copy.deepcopy(states_shapes)
-        fill_shapes.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
+        fill_shapes = states_shapes
+        if batch_ref.shape[batch_dim_idx] > 0:
+            if isinstance(fill_shapes, list):
+                for s in fill_shapes[0]:
+                    s.shape[0] = batch_ref.shape[batch_dim_idx]
+            elif isinstance(fill_shapes, tuple):
+                for s in fill_shapes:
+                    s.shape[0] = batch_ref.shape[batch_dim_idx]
+            else:
+                fill_shapes.shape[0] = batch_ref.shape[batch_dim_idx]
+        else:
+            if isinstance(fill_shapes, list):
+                for s in fill_shapes[0]:
+                    s.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
+            elif isinstance(fill_shapes, tuple):
+                for s in fill_shapes:
+                    s.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
+            else:
+                fill_shapes.shape[0] = paddle.shape(batch_ref)[
+                    batch_dim_idx
+                ].item()
+
         init_states = paddle.utils.map_structure(
             lambda shape, dtype: paddle.full(
                 shape=shape.shape,
@@ -1534,7 +1555,6 @@ class RNNBase(LayerList):
                 'Reserve': reserve,
                 'DropoutState': self._dropout_state,
             }
-
             self._helper.append_op(
                 type="rnn", inputs=inputs, outputs=outputs, attrs=attrs
             )
@@ -1557,16 +1577,15 @@ class RNNBase(LayerList):
             )
 
             fill_shape = list(state_shape)
-            fill_shape[1] = paddle.shape(inputs)[batch_index].item()
-            print("==================")
-            print(paddle.shape(inputs)[batch_index].item())
-            print(fill_shape)
-            print(state_shape)
-            print(inputs.shape)
-            print("==================")
+            if inputs.shape[batch_index] > 0:
+                fill_shape[1] = inputs.shape[batch_index]
+            else:
+                fill_shape[1] = paddle.shape(inputs)[batch_index].item()
             initial_states = tuple(
                 [
-                    paddle.full(fill_shape, 0, dtype)
+                    paddle.fluid.layers.fill_constant_batch_size_like(
+                        inputs, state_shape, dtype, 0, batch_index, 1
+                    )
                     for _ in range(self.state_components)
                 ]
             )
