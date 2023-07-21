@@ -1385,7 +1385,11 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetOptimInputShape(config_.optim_input_shape_);
   argument_->SetTensorRtTunedDynamicShape(
       config_.tuned_tensorrt_dynamic_shape());
+<<<<<<< HEAD
   argument_->SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path_);
+=======
+  argument_->SetUseTensorRT(false);
+>>>>>>> develop
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_->SetUseTensorRT(true);
