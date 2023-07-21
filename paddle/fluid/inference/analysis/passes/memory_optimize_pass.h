@@ -59,7 +59,7 @@ class MemoryOptimizePass : public AnalysisPass {
       std::unordered_map<std::string, lifecycle_t> *lifecycles,
       int sort_kind) const;
 
-  void CollectVarMemorySize(Argument *argument,
+  void CollectVarInfo(Argument *argument,
                             space_table_t *space_table, 
                             shape_table_t *shape_table,
                             dtype_table_t *dtype_info) const;

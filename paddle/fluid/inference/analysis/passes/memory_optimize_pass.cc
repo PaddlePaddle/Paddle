@@ -125,7 +125,7 @@ void MemoryOptimizePass::CollectLifeCycle(
             << (persis_byte / (1 << 20)) << "MB";
 }
 
-void MemoryOptimizePass::CollectVarMemorySize(
+void MemoryOptimizePass::CollectVarInfo(
                                                 Argument *argument, 
                                                 space_table_t* space_table, 
                                                 shape_table_t* shape_table, 
@@ -316,7 +316,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   std::unordered_map<std::string, int> cluster_size;
 
   CollectLifeCycle(argument, &lifecycles, sort_kind);
-  CollectVarMemorySize(argument, &space_table, &shape_table, &dtype_table);
+  CollectVarInfo(argument, &space_table, &shape_table, &dtype_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
