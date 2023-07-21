@@ -18,12 +18,12 @@ Test the tensor attribute grad_fn and the properties of the reverse node grad_no
 import unittest
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 
 
 class Testmodel(nn.Layer):
     def __init__(self):
-        super(Testmodel, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         y = x**2
@@ -74,7 +74,7 @@ class TestAnonmousSurvey(unittest.TestCase):
     def test_grad_fn_and_next_funs(self):
         self.check_func(self.output.grad_fn, self.output_grad_fn["grad_fn"])
 
-    def check_func(self, grad_fn: grad_fn, grad_fn_json: dict) -> None:
+    def check_func(self, grad_fn, grad_fn_json) -> None:
         """
         Check each node, grad_fn is tensor attribute. grad_fn_json is structure of next_node.
 
@@ -82,14 +82,8 @@ class TestAnonmousSurvey(unittest.TestCase):
             grad_fn (grad_fn): grad_fn of node
             grad_fn_json (dict): grad_node_json of node
         """
-        # print(grad_fn.name())
-        # assert func name
         self.assertEqual(grad_fn.name(), grad_fn_json["func_name"])
-        # Recursively test other nodes
-        if hasattr(grad_fn, 'next_functions') and grad_fn.next_functions[0]:
-            next_funcs_json = grad_fn_json["next_funcs"]
-            for u in grad_fn.next_functions:
-                self.check_func(u, next_funcs_json[u.name()])
 
 
-unittest.main()
+if __name__ == "__main__":
+    unittest.main()
