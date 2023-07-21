@@ -27,7 +27,7 @@ paddle.enable_static()
 def apply_pass(use_sharding=False, stage=None):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
-    strategy.reinit = True
+    # strategy.reinit = True
     if use_sharding:
         sharding = strategy.sharding
         sharding.enable = True
@@ -50,6 +50,7 @@ def apply_pass(use_sharding=False, stage=None):
 def reset_prog():
     paddle.fluid.framework.switch_main_program(paddle.static.Program())
     paddle.fluid.framework.switch_startup_program(paddle.static.Program())
+    paddle.utils.unique_name.switch()
 
 
 class TestShardingPass(unittest.TestCase):
@@ -65,8 +66,6 @@ class TestShardingPass(unittest.TestCase):
         paddle.seed(2022)
         np.random.seed(2022)
         random.seed(2022)
-        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
-        engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_sharding=False, stage=None):
         reset_prog()
@@ -94,11 +93,31 @@ class TestShardingPass(unittest.TestCase):
     def test_sharding_pass(self):
         # dp2 training
         dp_engine = self.get_engine()
+        input_spec = [
+            paddle.static.InputSpec([self.batch_size, 512], 'int64', 'tokens'),
+            paddle.static.InputSpec(
+                [self.batch_size, 512], 'int64', 'position_ids'
+            ),
+            paddle.static.InputSpec(
+                [self.batch_size, 1, 512, 512], 'float32', 'attention_mask'
+            ),
+        ]
+        label_spec = [
+            paddle.static.InputSpec([self.batch_size, 512], 'int64', 'label'),
+            paddle.static.InputSpec(
+                [self.batch_size, 512], 'float32', 'loss_mask'
+            ),
+        ]
+        dp_engine.prepare(
+            inputs_spec=input_spec, labels_spec=label_spec, mode='train'
+        )
+        dp_engine.save("./dp_engine", training=True)
         history = dp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         dp_losses = np.array(history.history["loss"])
 
         # sharding2 stage1 training
         sharding1_engine = self.get_engine(True, 1)
+        sharding1_engine.load("./dp_engine")
         history = sharding1_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
@@ -107,6 +126,7 @@ class TestShardingPass(unittest.TestCase):
 
         # sharding2 stage2 training
         sharding2_engine = self.get_engine(True, 2)
+        sharding2_engine.load("./dp_engine")
         history = sharding2_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
@@ -115,12 +135,13 @@ class TestShardingPass(unittest.TestCase):
 
         # sharding2 stage3 training
         sharding3_engine = self.get_engine(True, 3)
+        sharding3_engine.load("./dp_engine")
         history = sharding3_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
         sharding3_losses = np.array(history.history["loss"])
         # NOTE: stage3 has precision problem
-        # self.check_results(dp_losses, sharding3_losses)
+        self.check_results(dp_losses, sharding3_losses)
 
 
 if __name__ == "__main__":
