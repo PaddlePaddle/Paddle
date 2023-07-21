@@ -3568,6 +3568,7 @@ EOF
         if [ "$SYSTEM" == "Darwin" ]; then
             ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
         else
+            rm -rf /workspace/Paddle/build/third_party/
             ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
         fi
     else
