@@ -33,10 +33,7 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
@@ -53,10 +50,7 @@ class TestEmbeddingOpTranscriber(unittest.TestCase):
                 )
                 output = embedding(x)
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
 class TestIncrementOpTranscriber(unittest.TestCase):
@@ -70,10 +64,7 @@ class TestIncrementOpTranscriber(unittest.TestCase):
                 data = paddle.zeros(shape=[1], dtype='float32')
                 counter = paddle.increment(data)
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
 class TestAssignValueOpTranscriber(unittest.TestCase):
@@ -90,10 +81,7 @@ class TestAssignValueOpTranscriber(unittest.TestCase):
                     stop_gradient=False,
                 )
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
 class TestRnnOpTranscriber(unittest.TestCase):
@@ -110,10 +98,29 @@ class TestRnnOpTranscriber(unittest.TestCase):
                 cell = paddle.nn.SimpleRNNCell(16, 32)
                 y, h = cell(x, prev_h)
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+
+
+class TestEmptyVarTranslate(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x1 = paddle.rand(shape=[3, 3], dtype="float32")
+                x1.stop_gradient = False
+                weight = paddle.full(
+                    shape=[3, 3], fill_value="0.5", dtype="float32"
+                )
+                y = paddle.nn.functional.linear(x1, weight)
+                y.stop_gradient = True
+                out1 = paddle.concat(x=[x1, y], axis=1)
+                out2 = paddle.mean(out1)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+                sgd_optimizer.minimize(out2)
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
 class TestOneHotOpTranscriber(unittest.TestCase):

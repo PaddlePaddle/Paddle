@@ -480,14 +480,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
       continue;
     }
 
-    const auto& origin_legacy_output_vars = op_desc.Output(legacy_output_name);
-    std::vector<std::string> legacy_output_vars;
-    std::copy_if(
-        origin_legacy_output_vars.begin(),
-        origin_legacy_output_vars.end(),
-        std::back_inserter(legacy_output_vars),
-        [](const auto& var_name) { return var_name != kEmptyVarName; });
-
+    const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
     // Specially process TensorArray, this because we cannot distinguish it with
@@ -534,6 +527,11 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << info.type_name << " " << legacy_output_name;
       std::vector<ir::Type> types;
       for (const auto& var_name : legacy_output_vars) {
+        if (var_name == kEmptyVarName) {
+          types.push_back(ir::Type(nullptr));
+          arg_to_idx[var_name] = cur_output_idx;
+          continue;
+        }
         VarDesc* var = block->FindVarRecursive(var_name);
         VLOG(10) << "[output translating]"
                  << "[" << op_desc.Type() << "]" << info.name << " " << var_name
@@ -562,7 +560,8 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   for (const auto& info : op_attr_infos) {
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
-
+    VLOG(10) << "[op: " << op_desc.Type()
+             << "][attr] from: " << legacy_attr_name << " to: " << info.name;
     if (op_desc.HasAttr(legacy_attr_name)) {
       paddle::framework::Attribute legacy_attr =
           op_desc.GetAttr(legacy_attr_name);
