@@ -32,7 +32,6 @@ from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
 __all__ = []
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
 
 
 # assume only the first stage and last stage need data, and data consumption are ordred;
