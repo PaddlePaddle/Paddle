@@ -74,8 +74,13 @@ class RedundantOnnxOpsEliminationPass : public FusePassBase {
   */
   void FoldConv1dSqueeze2Ops(ir::Graph* graph,
                              const std::string& act_type) const;
+  /*
+   Origin subgraph:
+   Fused subgraph:
+  */
+  void FoldGatherSqueeze2Ops(ir::Graph* graph) const;
 
-  const std::string name_scope_{"redundant_onnx_ops_elimination_pass"};
+  const std::string name_scope_{"redundant_unsqueeze_squeeze_elimination_pass"};
 };
 
 }  // namespace ir
