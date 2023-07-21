@@ -46,6 +46,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_recompute MODULES test_pass_recompute)
   set_tests_properties(test_pass_recompute
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_offload MODULES test_pass_offload)
+  set_tests_properties(test_pass_offload PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                    TIMEOUT 50)
   py_test_modules(test_pass_sharding MODULES test_pass_sharding)
   set_tests_properties(test_pass_sharding
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)

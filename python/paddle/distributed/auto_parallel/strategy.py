@@ -84,6 +84,12 @@ class RecomputeConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class OffloadConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.OFFLOAD
+        super().__init__(category, config_dict)
+
+
 class AMPConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.AMP
@@ -188,6 +194,9 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.RECOMPUTE, None)
         self.recompute = RecomputeConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.OFFLOAD, None)
+        self.offload = OffloadConfig(config_dict)
 
         config_dict = self._config_dict.get(constants.AMP, None)
         self.amp = AMPConfig(config_dict)

@@ -59,6 +59,14 @@ set_field_default_config(RECOMPUTE, "no_recompute_segments", [])
 set_field_default_config(RECOMPUTE, "enable_tuning", False)
 
 #########################################
+# offload configuration
+#########################################
+OFFLOAD = "offload"
+set_field_default_config(OFFLOAD, "enable", False)
+set_field_default_config(OFFLOAD, "recom_offload", False)
+set_field_default_config(OFFLOAD, "offload_points", [])
+
+#########################################
 # AMP configuration
 #########################################
 AMP = "amp"
