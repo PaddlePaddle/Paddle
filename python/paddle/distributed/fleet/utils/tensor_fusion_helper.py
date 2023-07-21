@@ -128,11 +128,13 @@ class FusedCommBuffer:
         dst=-1,
         use_main_grad=None,
         fuse_param=False,
+        scale_after_comm=True,
     ):
         self._id = id
         self._params = params
         self._acc_steps = acc_steps
         self._comm_group = comm_group
+        self._scale_after_comm = scale_after_comm
 
         self.use_main_grad = (
             use_main_grad
@@ -231,6 +233,10 @@ class FusedCommBuffer:
     def _comm_grads(self):
         assert self._all_params_checked_in
 
+        if not self._scale_after_comm:
+            scale_factor = 1.0 / self._comm_group.nranks
+            self.grad_storage.scale_(scale_factor)
+
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
                 self.grad_storage, group=self._comm_group, sync_op=False
@@ -251,25 +257,28 @@ class FusedCommBuffer:
         assert self._task is not None
         self._task.wait()
 
-        scale_factor = 1.0 / self._comm_group.nranks
-        self.grad_storage.scale_(scale_factor)
+        if self._scale_after_comm:
+            scale_factor = 1.0 / self._comm_group.nranks
+            self.grad_storage.scale_(scale_factor)
 
         self._reset_params_checked_in()
 
 
 def obtain_storage(
     parameters,
-    use_main_grad,
-    clip,
-    dist,
-    act,
-    comm_group,
-    dst,
-    acc_steps,
-    comm_overlap,
+    use_main_grad=False,
+    clip=True,
+    dist=False,
+    act=None,
+    comm_group=None,
+    dst=-1,
+    acc_steps=1,
+    comm_overlap=False,
+    fuse_param=True,
+    scale_after_comm=False,
 ):
     if len(parameters) < 1:
-        return []
+        return [], []
 
     var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
     storage = []
@@ -278,12 +287,13 @@ def obtain_storage(
         comm_buffer = FusedCommBuffer(
             group_idx,
             parameters,
-            comm_group,
-            acc_steps,
-            act,
-            dst,
-            use_main_grad,
-            fuse_param=True,
+            comm_group=comm_group,
+            acc_steps=acc_steps,
+            act=act,
+            dst=dst,
+            use_main_grad=use_main_grad,
+            fuse_param=fuse_param,
+            scale_after_comm=scale_after_comm,
         )
         param_buffer = comm_buffer.param_storage
         param_buffer.need_clip = clip
@@ -292,6 +302,7 @@ def obtain_storage(
         if comm_overlap:
             for param in parameters:
                 param._register_backward_hook(bw_hook_func(comm_buffer, param))
+            buffers.append(comm_buffer)
 
     return storage, buffers
 
@@ -332,7 +343,14 @@ def filter_params(params, is_fp32, is_distributed, need_clip):
 
 
 def fused_parameters(
-    parameters, use_main_grad, comm_group, dst, acc_step, comm_overlap
+    parameters,
+    use_main_grad=False,
+    comm_group=None,
+    dst=-1,
+    acc_step=1,
+    comm_overlap=False,
+    fuse_param=True,
+    scale_after_comm=False,
 ):
     g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
     act = (
@@ -375,25 +393,29 @@ def fused_parameters(
         need_clip = attr[2]
         decay, decay_buffers = obtain_storage(
             decay_params,
-            use_main_grad,
-            need_clip,
-            is_distributed,
-            act,
-            comm_group,
-            dst,
-            acc_step,
-            comm_overlap,
+            use_main_grad=use_main_grad,
+            clip=need_clip,
+            dist=is_distributed,
+            act=act,
+            comm_group=comm_group,
+            dst=dst,
+            acc_steps=acc_step,
+            comm_overlap=comm_overlap,
+            fuse_param=fuse_param,
+            scale_after_comm=scale_after_comm,
         )
         other, other_buffers = obtain_storage(
             other_params,
-            use_main_grad,
-            need_clip,
-            is_distributed,
-            act,
-            comm_group,
-            dst,
-            acc_step,
-            comm_overlap,
+            use_main_grad=use_main_grad,
+            clip=need_clip,
+            dist=is_distributed,
+            act=act,
+            comm_group=comm_group,
+            dst=dst,
+            acc_steps=acc_step,
+            comm_overlap=comm_overlap,
+            fuse_param=fuse_param,
+            scale_after_comm=scale_after_comm,
         )
         decay_fused += decay
         all_fused += decay

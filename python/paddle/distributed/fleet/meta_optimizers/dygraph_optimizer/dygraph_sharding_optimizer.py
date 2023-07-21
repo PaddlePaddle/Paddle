@@ -159,14 +159,16 @@ class DygraphShardingOptimizer:
             dst = comm_group.ranks[i]
             decay_fused, all_fused, all_buffer = fused_parameters(
                 params,
-                self._use_main_grad,
-                comm_group,
-                dst,
-                self.accumulate_steps,
-                self.comm_overlap,
+                use_main_grad=self._use_main_grad,
+                comm_group=comm_group,
+                dst=dst,
+                acc_step=self.accumulate_steps,
+                comm_overlap=self.comm_overlap,
+                fuse_param=True,
+                scale_after_comm=False,
             )
             if self.comm_overlap:
-                self._comm_buffers.append(all_buffer)
+                self._comm_buffers += all_buffer
             self._rank2decay[i] = decay_fused
             self._rank2fused[i] = all_fused
             for p in all_fused:
