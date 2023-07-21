@@ -18,8 +18,6 @@
 #include "paddle/phi/capi/include/type_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "glog/logging.h"
-
 void PD_KernelArgsParseFn(const phi::KernelKey& default_key,
                           phi::KernelArgsDef* args_def,
                           size_t in_nargs,
