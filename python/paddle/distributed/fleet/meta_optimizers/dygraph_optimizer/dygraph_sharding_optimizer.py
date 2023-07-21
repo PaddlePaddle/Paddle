@@ -157,14 +157,15 @@ class DygraphShardingOptimizer:
         for i in range(self._sharding_world_size):
             params = self._rank2params[i]
             dst = comm_group.ranks[i]
+            # TODO(sharding dev): make scale_after_comm a field to be configured by user
             decay_fused, all_fused, all_buffer = fused_parameters(
                 params,
                 use_main_grad=self._use_main_grad,
+                fuse_param=True,
+                comm_overlap=self.comm_overlap,
                 comm_group=comm_group,
                 dst=dst,
                 acc_step=self.accumulate_steps,
-                comm_overlap=self.comm_overlap,
-                fuse_param=True,
                 scale_after_comm=False,
             )
             if self.comm_overlap:

@@ -269,12 +269,12 @@ def obtain_storage(
     use_main_grad=False,
     clip=True,
     dist=False,
+    fuse_param=True,
+    comm_overlap=False,
     act=None,
     comm_group=None,
     dst=-1,
     acc_steps=1,
-    comm_overlap=False,
-    fuse_param=True,
     scale_after_comm=False,
 ):
     if len(parameters) < 1:
@@ -295,10 +295,11 @@ def obtain_storage(
             fuse_param=fuse_param,
             scale_after_comm=scale_after_comm,
         )
-        param_buffer = comm_buffer.param_storage
-        param_buffer.need_clip = clip
-        param_buffer.is_distributed = dist
-        storage.append(param_buffer)
+        if fuse_param:
+            param_buffer = comm_buffer.param_storage
+            param_buffer.need_clip = clip
+            param_buffer.is_distributed = dist
+            storage.append(param_buffer)
         if comm_overlap:
             for param in parameters:
                 param._register_backward_hook(bw_hook_func(comm_buffer, param))
@@ -345,17 +346,35 @@ def filter_params(params, is_fp32, is_distributed, need_clip):
 def fused_parameters(
     parameters,
     use_main_grad=False,
+    fuse_param=True,
+    comm_overlap=False,
     comm_group=None,
     dst=-1,
     acc_step=1,
-    comm_overlap=False,
-    fuse_param=True,
     scale_after_comm=False,
 ):
+    """
+    Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
+    :param parameters: all parameters to be fused.
+    :param use_main_grad: does the gradient use main grad or not
+    :param comm_overlap: enable comm overlap or not
+    :param comm_group: the comm group for comm overlap
+    :param dst: the dst for comm overlap
+    :param acc_step: acc steps, using for comm overlap
+    :param fuse_param: fuse param or not
+    :param scale_after_comm: if enable comm overlap, specify the location of grad scale
+    :return: param storage if fused, comm buffers is comm overlap
+    """
     g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
     act = (
         HOOK_ACTION.ALL_REDUCE if not g_shard_use_reduce else HOOK_ACTION.REDUCE
     )
+    if comm_overlap:
+        assert comm_group is not None
+    if act == HOOK_ACTION.REDUCE:
+        assert dst != -1
+    elif act == HOOK_ACTION.ALL_REDUCE:
+        dst = -1
     param_groups = []
     attrs = []
 
@@ -396,16 +415,18 @@ def fused_parameters(
             use_main_grad=use_main_grad,
             clip=need_clip,
             dist=is_distributed,
+            fuse_param=fuse_param,
+            comm_overlap=comm_overlap,
             act=act,
             comm_group=comm_group,
             dst=dst,
             acc_steps=acc_step,
-            comm_overlap=comm_overlap,
-            fuse_param=fuse_param,
             scale_after_comm=scale_after_comm,
         )
         other, other_buffers = obtain_storage(
             other_params,
+            fuse_param=fuse_param,
+            comm_overlap=comm_overlap,
             use_main_grad=use_main_grad,
             clip=need_clip,
             dist=is_distributed,
@@ -413,8 +434,6 @@ def fused_parameters(
             comm_group=comm_group,
             dst=dst,
             acc_steps=acc_step,
-            comm_overlap=comm_overlap,
-            fuse_param=fuse_param,
             scale_after_comm=scale_after_comm,
         )
         decay_fused += decay
