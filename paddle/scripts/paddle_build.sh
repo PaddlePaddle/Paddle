@@ -3578,6 +3578,9 @@ EOF
         fi
     fi
 
+    cat /workspace/Paddle/build/third_party/absl/src/external_absl-stamp/external_absl-configure-err.log
+    sleep 10h
+
     # ci will collect ccache hit rate
     collect_ccache_hits
 
