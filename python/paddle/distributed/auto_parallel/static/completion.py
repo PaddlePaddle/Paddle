@@ -938,7 +938,7 @@ class Completer:
         """Complete annotation for the partial annotated serial_main_program.
         Arguments:
             serial_main_program: partial annotated serial_main_program.
-        Returns:e
+        Returns:
             serial_main_program: completed annotated serial_main_program.
         """
 
