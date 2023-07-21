@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/xpu/gather_add_transpose_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -25,29 +26,6 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-/*
-add transpose when gather with axis = -1 + squeeze2
-For example:
-graph:
-                      x
-                      |
-                    gather (axis = -1)
-                      |
-                   squeeze2
-                      |
-                    output
-------------------------------------------------------
-After the pass is applied:
-                      x
-                      |
-                  transpose2
-                      |
-                    gather (axis = 0)
-                      |
-                   squeeze2
-                      |
-                    Output
-*/
 struct GatherAddTranspose : public PatternBase {
   GatherAddTranspose(PDPattern* pattern, const std::string& name_scope);
 
@@ -65,50 +43,26 @@ GatherAddTranspose::GatherAddTranspose(PDPattern* pattern,
   auto* gather_in = pattern->NewNode(gather_in_repr())
                         ->assert_is_op_input("gather", "X")
                         ->assert_more([](Node* node) {
-                          return node->Var()->GetShape().size() >= 3 &&
+                          for (auto* op : node->outputs) {
+                            if (op->Op()->Type() != "gather") {
+                              return false;
+                            }
+                          }
+                          return node->outputs.size() >= 2 &&
+                                 node->Var()->GetShape().size() >= 2 &&
                                  node->Var()->GetShape().size() < 5;
                         });
-  auto* gather =
-      pattern->NewNode(gather_repr())
-          ->assert_is_op("gather")
-          ->assert_more([&](Node* node) {
-            auto* op_desc = node->Op();
-            auto in_var_node = node->inputs[1];
-            auto var_size = in_var_node->Var()->GetShape().size();
-            VLOG(3) << "GatherAddTranspose gather var_size" << var_size;
-            return op_desc->GetAttrIfExists<int>("axis") == -1 ||
-                   op_desc->GetAttrIfExists<int>("axis") == var_size - 1;
-          });
-  auto* gather_out =
-      pattern->NewNode(gather_out_repr())->assert_is_op_output("gather", "Out");
-  auto* squeeze2 =
-      pattern->NewNode(squeeze2_repr())
-          ->assert_is_op("squeeze2")
-          ->assert_more([&](Node* node) {
-            auto* op_desc = node->Op();
-            auto in_var_node = node->inputs[0];
-            auto var_size = in_var_node->Var()->GetShape().size();
-            VLOG(3) << "GatherAddTranspose squeeze2 var_size" << var_size;
-            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
-                       std::vector<int>{-1} ||
-                   op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
-                       std::vector<int>{var_size - 1};
-          });
+  auto* gather = pattern->NewNode(gather_repr())->assert_is_op("gather");
+  auto* gather_out = pattern->NewNode(gather_out_repr())
+                         ->assert_is_op_output("gather", "Out")
+                         ->assert_is_op_input("squeeze2", "X");
+  auto* squeeze2 = pattern->NewNode(squeeze2_repr())->assert_is_op("squeeze2");
 
   gather->LinksFrom({gather_in}).LinksTo({gather_out});
   gather_out->LinksTo({squeeze2});
 }
 
 }  // namespace patterns
-
-class GatherAddTransposePass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  void GatherAddTranspose(ir::Graph* graph) const;
-  const std::string name_scope_{"gather_add_transpose_pass"};
-};
 
 void GatherAddTransposePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -133,52 +87,67 @@ void GatherAddTransposePass::GatherAddTranspose(ir::Graph* graph) const {
     GET_IR_NODE(gather_out);
     GET_IR_NODE(squeeze2);
 
-    gather->Op()->SetAttr("axis", 0);
-    squeeze2->Op()->SetAttr("axes", std::vector<int>{0});
-    auto gather_out_shape = gather_out->Var()->GetShape();
-    if (gather_out_shape.size() == 3) {
-      gather_out->Var()->SetShape(
-          {gather_out_shape[2], gather_out_shape[0], gather_out_shape[1]});
-    } else {
-      gather_out->Var()->SetShape({gather_out_shape[3],
-                                   gather_out_shape[0],
-                                   gather_out_shape[1],
-                                   gather_out_shape[2]});
+    bool flag = true;
+    auto var_dims = gather_in->Var()->GetShape().size();
+    auto gather_axis = gather->Op()->GetAttrIfExists<int>("axis");
+    auto squeeze_axis =
+        squeeze2->Op()->GetAttrIfExists<std::vector<int>>("axes");
+
+    flag = flag && gather_axis == var_dims - 1;
+    flag = flag && (squeeze_axis == std::vector<int>{-1} ||
+                    squeeze_axis == std::vector<int>{var_dims - 1});
+
+    if (flag) {
+      gather->Op()->SetAttr("axis", 0);
+      squeeze2->Op()->SetAttr("axes", std::vector<int>{0});
+
+      std::string transpose2_out_name =
+          patterns::PDNodeName(name_scope_, "transpose2out");
+      VarDesc transpose2_out_vardesc(transpose2_out_name);
+      OpDesc transpose2_op_desc(gather->Op()->Block());
+      auto gather_in_shape = gather_in->Var()->GetShape();
+      auto gather_out_shape = gather_out->Var()->GetShape();
+      transpose2_out_vardesc.SetDataType(gather_in->Var()->GetDataType());
+
+      if (var_dims == 2) {
+        gather_out->Var()->SetShape({gather_out_shape[1], gather_out_shape[0]});
+        transpose2_out_vardesc.SetShape(
+            {gather_in_shape[1], gather_in_shape[0]});
+        transpose2_op_desc.SetAttr("axis", std::vector<int>{1, 0});
+      } else if (var_dims == 3) {
+        gather_out->Var()->SetShape(
+            {gather_out_shape[2], gather_out_shape[0], gather_out_shape[1]});
+        transpose2_out_vardesc.SetShape(
+            {gather_in_shape[2], gather_in_shape[0], gather_in_shape[1]});
+        transpose2_op_desc.SetAttr("axis", std::vector<int>{2, 0, 1});
+      } else {
+        gather_out->Var()->SetShape({gather_out_shape[3],
+                                     gather_out_shape[0],
+                                     gather_out_shape[1],
+                                     gather_out_shape[2]});
+        transpose2_out_vardesc.SetShape({gather_in_shape[3],
+                                         gather_in_shape[0],
+                                         gather_in_shape[1],
+                                         gather_in_shape[2]});
+        transpose2_op_desc.SetAttr("axis", std::vector<int>{3, 0, 1, 2});
+      }
+
+      auto* transpose2_out = graph->CreateVarNode(&transpose2_out_vardesc);
+
+      transpose2_op_desc.SetType("transpose2");
+      transpose2_op_desc.SetInput("X", {gather_in->Name()});
+      transpose2_op_desc.SetOutput("Out", {transpose2_out->Name()});
+      auto* transpose2 = graph->CreateOpNode(&transpose2_op_desc);
+
+      gather->Op()->SetInput("X", {transpose2_out->Name()});
+
+      IR_NODE_UNLINK(gather_in, gather);
+      IR_NODE_LINK_TO(gather_in, transpose2);
+      IR_NODE_LINK_TO(transpose2, transpose2_out);
+      IR_NODE_LINK_TO(transpose2_out, gather);
+
+      found_subgraph_count++;
     }
-
-    std::string transpose2_out_name =
-        patterns::PDNodeName("gather_add_transpose", "transpose2out");
-    VarDesc transpose2_out_vardesc(transpose2_out_name);
-    OpDesc transpose2_op_desc(gather->Op()->Block());
-    auto gather_in_shape = gather_in->Var()->GetShape();
-    transpose2_out_vardesc.SetDataType(gather_in->Var()->GetDataType());
-    if (gather_in_shape.size() == 3) {
-      transpose2_out_vardesc.SetShape(
-          {gather_in_shape[2], gather_in_shape[0], gather_in_shape[1]});
-      transpose2_op_desc.SetAttr("axis", std::vector<int>{2, 0, 1});
-    } else {
-      transpose2_out_vardesc.SetShape({gather_in_shape[3],
-                                       gather_in_shape[0],
-                                       gather_in_shape[1],
-                                       gather_in_shape[2]});
-      transpose2_op_desc.SetAttr("axis", std::vector<int>{3, 0, 1, 2});
-    }
-
-    auto* transpose2_out = graph->CreateVarNode(&transpose2_out_vardesc);
-
-    transpose2_op_desc.SetType("transpose2");
-    transpose2_op_desc.SetInput("X", {gather_in->Name()});
-    transpose2_op_desc.SetOutput("Out", {transpose2_out->Name()});
-    auto* transpose2 = graph->CreateOpNode(&transpose2_op_desc);
-
-    gather->Op()->SetInput("X", {transpose2_out->Name()});
-
-    IR_NODE_UNLINK(gather_in, gather);
-    IR_NODE_LINK_TO(gather_in, transpose2);
-    IR_NODE_LINK_TO(transpose2, transpose2_out);
-    IR_NODE_LINK_TO(transpose2_out, gather);
-
-    found_subgraph_count++;
   };
 
   gpd(graph, handler);
@@ -191,3 +160,9 @@ void GatherAddTransposePass::GatherAddTranspose(ir::Graph* graph) const {
 
 REGISTER_PASS(gather_add_transpose_pass,
               paddle::framework::ir::GatherAddTransposePass);
+
+REGISTER_PASS_CAPABILITY(gather_add_transpose_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("gather", 1)
+            .EQ("squeeze2", 0));
