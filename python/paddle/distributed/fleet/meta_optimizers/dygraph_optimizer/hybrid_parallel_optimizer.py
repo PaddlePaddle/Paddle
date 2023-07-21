@@ -75,7 +75,7 @@ class HybridParallelClipGrad:
         if mp_flag:
             # dist should reduce among sharding group、mp group、pp group
 
-            # the else branch would suffice, but this branch remains for number precision backward compatibility
+            # the else branch would suffice, but this branch remains here for number precision backward compatibility
             if not (dp_flag and sharding_flag):
                 paddle.distributed.all_reduce(
                     global_norm_var_dist,
