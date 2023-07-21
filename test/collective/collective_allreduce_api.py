@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+from legacy_test.test_collective_api_base import (
+    TestCollectiveAPIRunnerBase,
+    runtime_main,
+)
 
 import paddle
 import paddle.distributed as dist

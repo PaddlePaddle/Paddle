@@ -30,8 +30,7 @@ align = {
 }
 
 
-def assign_group_by_size(parameters, group_size=256 * 1024 * 1024):
-    # TODO(Yuang Liu): make pp_utils/utils use this tensor fusion helper
+def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
     is_sparse_gradient = [False] * len(parameters)
 
     group_indices = core.eager_assign_group_by_size(
@@ -45,7 +44,9 @@ def assign_group_by_size(parameters, group_size=256 * 1024 * 1024):
     return var_groups
 
 
-def flatten_dense_tensors(parameters, use_main_grad):
+def flatten_dense_tensors(
+    parameters, use_main_grad=False, fuse_param=True, warp_buffer=False
+):
     from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_storage import (
         GradStorage,
         ParamStorage,
@@ -64,9 +65,11 @@ def flatten_dense_tensors(parameters, use_main_grad):
         _buffer_size += np.prod(param.shape) + align_
         _param2align[param.name] = align_
 
-    param_storage = ParamStorage(size=_buffer_size, dtype=dtype, device="gpu")
-
-    param_storage.add_rank_params(parameters, _param2align)
+    if fuse_param:
+        param_storage = ParamStorage(
+            size=_buffer_size, dtype=dtype, device="gpu"
+        )
+        param_storage.add_rank_params(parameters, _param2align)
 
     # process gradient
     grad_dtype = paddle.float32 if use_main_grad else dtype
@@ -81,27 +84,35 @@ def flatten_dense_tensors(parameters, use_main_grad):
     for param in parameters:
         grad_storage.add_grad(param, _param2align[param.name])
 
-    param_storage.warp_buffer()
-    grad_storage.warp_buffer()
+    if warp_buffer:
+        if fuse_param:
+            param_storage.warp_buffer()
+        grad_storage.warp_buffer()
 
-    if not use_main_grad:
-        # param_storage --> grad_storage
-        param_storage.buffer._copy_gradient_from(grad_storage.buffer)
+    if fuse_param:
+        if not use_main_grad:
+            # param_storage --> grad_storage
+            param_storage.buffer._copy_gradient_from(grad_storage.buffer)
+        else:
+            param_storage.buffer.main_grad = grad_storage.buffer
+        param_storage.buffer.stop_gradient = False
+        return param_storage, grad_storage
     else:
-        param_storage.buffer.main_grad = grad_storage.buffer
-    param_storage.buffer.stop_gradient = False
-    return param_storage, grad_storage
+        return grad_storage
 
 
 def obtain_storage(parameters, use_main_grad, clip, dist):
     if len(parameters) < 1:
         return []
 
-    var_groups = assign_group_by_size(parameters)
+    var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
     storage = []
     for group_idx, parameters in var_groups.items():
         param_storage, grad_storage = flatten_dense_tensors(
-            parameters, use_main_grad
+            parameters,
+            use_main_grad=use_main_grad,
+            fuse_param=True,
+            warp_buffer=True,
         )
         param_storage.buffer.need_clip = clip
         param_storage.buffer.is_distributed = dist
