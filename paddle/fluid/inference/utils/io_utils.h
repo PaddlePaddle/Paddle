@@ -68,6 +68,7 @@ void UpdateShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>>& min_value,
     const std::map<std::string, std::vector<int32_t>>& max_value,
     const std::map<std::string, std::vector<int32_t>>& opt_value,
+    const std::map<std::string, phi::DataType> &dtype_info,
     const std::vector<std::string>& names,
     const std::vector<std::string>& tensor_names);
 }  // namespace inference

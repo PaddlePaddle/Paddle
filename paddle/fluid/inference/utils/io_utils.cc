@@ -299,6 +299,7 @@ void UpdateShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>> &min_value,
     const std::map<std::string, std::vector<int32_t>> &max_value,
     const std::map<std::string, std::vector<int32_t>> &opt_value,
+    const std::map<std::string, phi::DataType> &dtype_info, 
     const std::vector<std::string> &names,
     const std::vector<std::string> &tensor_names) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
@@ -308,23 +309,28 @@ void UpdateShapeRangeInfo(
     bool has_name = false;
     for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
       auto *info = shape_range_infos.mutable_shape_range_info(i);
-      if (info->name() == name) {
+      if (info->name() == name) { 
         info->clear_min_shape();
         info->clear_max_shape();
         info->clear_opt_shape();
+        if(dtype_info.count(name)) info->clear_dtype();
         for (size_t j = 0; j < min_shape.at(name).size(); ++j)
           info->add_min_shape(min_shape.at(name)[j]);
         for (size_t j = 0; j < max_shape.at(name).size(); ++j)
           info->add_max_shape(max_shape.at(name)[j]);
         for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
           info->add_opt_shape(opt_shape.at(name)[j]);
+        if(dtype_info.count(name)) info->set_dtype(static_cast<int>(dtype_info.at(name)));
         has_name = true;
         break;
       }
     }
-    if (!has_name) {
+    if (!has_name) { 
       auto *info = shape_range_infos.add_shape_range_info();
       info->set_name(name);
+      info->set_dtype(static_cast<int>(phi::DataType::FLOAT32)); // TODO(liuxuejian):This type is not sure how to obtain in trtEngineOp, 
+                                                                // let's use phi::DataType::FLOAT32 by default, 
+                                                                // and it seems it won't reach here?
       for (size_t j = 0; j < min_shape.at(name).size(); ++j)
         info->add_min_shape(min_shape.at(name)[j]);
       for (size_t j = 0; j < max_shape.at(name).size(); ++j)

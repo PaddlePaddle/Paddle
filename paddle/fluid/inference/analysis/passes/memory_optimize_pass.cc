@@ -134,10 +134,10 @@ void MemoryOptimizePass::CollectVarMemorySize(
   const int fake_batch_size = 1;
   
   std::map<std::string, std::vector<int32_t>> opt_shape;
-  // std::map<std::string, phi::DataType> dtype_info;
+
   if(argument->tensorrt_tuned_dynamic_shape()){ // turn on tensorrt dynamic shape
-    
-    DeserializeShapeRangeInfo(argument->tensorrt_shape_range_info_path(),
+    // get shape information and dtype information from the specified file.
+    DeserializeShapeRangeInfo(argument->tensorrt_shape_range_info_path(), 
                                     nullptr, 
                                     &opt_shape, 
                                     nullptr, 
@@ -146,19 +146,6 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                     nullptr,
                                     dtype_info);
   }
-
-  std::cout << "++++++++++++++++++++++++++++" << std::endl;
-  for(dtype_table_t::iterator it = dtype_info->begin(); it!= dtype_info->end(); it++) {
-    std::cout << "var name" << it->first << "var type" << it->second << std::endl;
-  }
-
-  // for(const auto& shape : opt_input_shape){
-  //   std::cout << shape.first << ":"  << std::endl;
-  //   for(const auto& dim : shape.second){
-  //     std::cout << dim << " ";
-  //   }
-  //   std::cout << std::endl;
-  // } 
 
   auto valid_var = [&](framework::ir::Node* node) -> bool {
     // lod operator reuse may cause unknown errors.
@@ -217,24 +204,19 @@ void MemoryOptimizePass::CollectVarMemorySize(
       if (node->Var()->Persistable()) continue;
 
       std::vector<int32_t> shape;
-      if(argument->tensorrt_tuned_dynamic_shape() && opt_shape.count(node->Var()->Name())){ // turn on tensorrt dynamic shape
-        // std::cout << "-----path: " << argument->tensorrt_shape_range_info_path() << std::endl; 
-        // std::cout << "name: " <<  node->Var()->Name() << std::endl;
+      if(argument->tensorrt_tuned_dynamic_shape() && 
+          opt_shape.count(node->Var()->Name())){ // turn on tensorrt dynamic shape
         shape = opt_shape[node->Var()->Name()];
       } else{ //turn off tensorrt dynamic shape
+        // int64 -> int32
         std::vector<int64_t> shape_int64 = node->Var()->GetShape();
         std::transform(shape_int64.begin(), shape_int64.end(), back_inserter(shape), [](int64_t i){
           return static_cast<int32_t>(i);
-        }); // int64 -> int32
-        if(node->Var()->Name() == "transpose_7.tmp_1"){
-          std::cout << "name choosen: " <<  node->Var()->Name() << std::endl;
-          for (auto& v : shape) {
-            std::cout << v << ", ";
-          }
-          std::cout << std::endl;
-        }
+        }); 
+
         for (auto& v : shape) {
-          if (v < 0) v = fake_batch_size;
+          if (v < 0) v = fake_batch_size; // If TRT dynamic shape is not enabled, 
+                                          // then set the dimensions with a value of -1 in the varaible to 1
         }
         
       } 
@@ -334,12 +316,6 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   std::unordered_map<std::string, int> cluster_size;
 
   CollectLifeCycle(argument, &lifecycles, sort_kind);
-  // std::cout << "---lifecycle---" <<std::endl;
-  // for(const auto& kv : lifecycles) {
-  //   std::cout <<  "---" << kv.first << "---" << kv.second.first << ":"<< kv.second.second << std::endl;
-  // }
-  // std::cout << "---lifecycle---" <<std::endl;
-
   CollectVarMemorySize(argument, &space_table, &shape_table, &dtype_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
 
