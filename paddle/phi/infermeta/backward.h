@@ -468,7 +468,7 @@ void IndexAddGradInferMeta(const MetaTensor& index,
                            MetaTensor* add_tensor_grad);
 
 void IndexPutGradInferMeta(const MetaTensor& x,
-                            const std::vector<const MetaTensor*>& indices,
+                           const std::vector<const MetaTensor*>& indices,
                            const MetaTensor& value,
                            const MetaTensor& out_grad,
                            bool accumulate,
