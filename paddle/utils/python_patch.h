@@ -27,6 +27,12 @@ limitations under the License. */
 #define _PyVarObject_CAST_s(op) (reinterpret_cast<PyVarObject *>(op))
 
 #define Py_SIZE_s(ob) (_PyVarObject_CAST_s(ob)->ob_size)
+#define Py_TYPE_s(ob) ((reinterpret_cast<PyObject *>(ob))->ob_type)
+
+#ifdef Py_TYPE
+#undef Py_TYPE
+#define Py_TYPE(ob) Py_TYPE_s(ob)
+#endif
 
 // *********************
 // *      PyList       *
