@@ -89,7 +89,7 @@ static void fast_mem_init(void* dest,
   while (dest_size > num_bytes) {
     size_t remaining = dest_size - num_bytes;
     size_t count = (remaining > num_bytes) ? num_bytes : remaining;
-    memcpy((unsigned char*)dest + num_bytes, dest, count);
+    memcpy(reinterpret_cast<unsigned char*>(dest) + num_bytes, dest, count);
     num_bytes += count;
   }
 }
