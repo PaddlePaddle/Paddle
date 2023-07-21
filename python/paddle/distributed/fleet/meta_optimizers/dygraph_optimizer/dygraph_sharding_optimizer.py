@@ -111,17 +111,17 @@ class DygraphShardingOptimizer:
             decay_params = [
                 p.name for p in self._rank2decay[self._sharding_rank]
             ]
-            all_params = self._rank2fused[self._sharding_rank]
+            fused_params = self._rank2fused[self._sharding_rank]
             apply_decay_param_fun = lambda x: x in decay_params
 
-            params = []
+            all_fused_params = []
             for v in self._rank2fused.values():
-                params += v
-            self._parameter_list = params
-            self._param_groups = params
+                all_fused_params += v
+            self._parameter_list = all_fused_params
+            self._param_groups = all_fused_params
 
-            self._set_inner_opt_attr('_parameter_list', all_params)
-            self._set_inner_opt_attr('_param_groups', all_params)
+            self._set_inner_opt_attr('_parameter_list', fused_params)
+            self._set_inner_opt_attr('_param_groups', fused_params)
             origin_decay_param_fun = getattr(
                 self._inner_opt, '_apply_decay_param_fun', None
             )

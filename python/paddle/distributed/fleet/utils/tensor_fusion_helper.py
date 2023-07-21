@@ -135,6 +135,7 @@ class FusedCommBuffer:
         self._acc_steps = acc_steps
         self._comm_group = comm_group
         self._scale_after_comm = scale_after_comm
+        self._fuse_param = fuse_param
 
         self.use_main_grad = (
             use_main_grad
@@ -145,7 +146,7 @@ class FusedCommBuffer:
         self._task = None
         self._params_step_dict = {}
         self._params_checked_in = 0
-        self._params_to_addr = {}
+        self._grads_to_addr = {}
 
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
@@ -160,7 +161,7 @@ class FusedCommBuffer:
 
         self._init_step_dict()
 
-        if fuse_param:
+        if self._fuse_param:
             self.param_storage, self.grad_storage = flatten_dense_tensors(
                 self._params,
                 use_main_grad=use_main_grad,
@@ -187,7 +188,7 @@ class FusedCommBuffer:
                 if self.use_main_grad
                 else param.grad.data_ptr()
             )
-            self._params_to_addr[param.name] = addr
+            self._grads_to_addr[param.name] = addr
 
     def _init_step_dict(self):
         for p in self._params:
@@ -212,7 +213,7 @@ class FusedCommBuffer:
             if self.use_main_grad
             else param.grad.data_ptr()
         )
-        if self._params_to_addr[param.name] != current_ptr:
+        if self._grads_to_addr[param.name] != current_ptr:
             raise ValueError(
                 "The address of the grad/main_grad of the param has been changed during training, "
                 "which is not allowed for dp/sharding overlap with pp. "
