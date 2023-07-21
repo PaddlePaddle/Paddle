@@ -128,7 +128,7 @@ inline static PyObject *eval_custom_code(PyThreadState *tstate,
 #else
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
 #endif
-  Py_DECREF(shadow);
+  Py_DECREF(shadow);  // NOLINT: for cppcoreguidelines-pro-type-cstyle-cast
   return result;
 }
 

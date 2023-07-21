@@ -51,10 +51,9 @@ BufferedReader::BufferedReader(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_) && !pin_memory) {
     int dev_idx = place_.device;
-    compute_stream_ =
-        ((phi::GPUContext *)(platform::DeviceContextPool::Instance().Get(
-             place_)))
-            ->stream();
+    compute_stream_ = (dynamic_cast<phi::GPUContext *>(
+                           platform::DeviceContextPool::Instance().Get(place_)))
+                          ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
       event = platform::CudaEventResourcePool::Instance().New(dev_idx);
@@ -80,8 +79,8 @@ BufferedReader::BufferedReader(
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
-    auto stream = ((platform::CustomDeviceContext
-                        *)(platform::DeviceContextPool::Instance().Get(place_)))
+    auto stream = (dynamic_cast<platform::CustomDeviceContext *>(
+                       platform::DeviceContextPool::Instance().Get(place_)))
                       ->stream();
     custom_device_compute_stream_ =
         std::make_shared<phi::stream::Stream>(place_, stream);
