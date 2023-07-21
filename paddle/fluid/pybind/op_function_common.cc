@@ -933,10 +933,12 @@ std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
     ssize_t arg_idx,
     bool dispensable) {
   ::pybind11::detail::instance* inst =
-      (::pybind11::detail::instance*)PyTuple_GET_ITEM(args, arg_idx);
+      reinterpret_cast<::pybind11::detail::instance*>(
+          PyTuple_GET_ITEM(args, arg_idx));
 
   if (PyTuple_Check((PyObject*)inst)) {  // NOLINT
-    inst = (::pybind11::detail::instance*)PyTuple_GET_ITEM(inst, 0);
+    inst = reinterpret_cast<::pybind11::detail::instance*>(
+        PyTuple_GET_ITEM(inst, 0));
   }
 
   if (inst == nullptr || (PyObject*)inst == Py_None) {  // NOLINT
@@ -999,7 +1001,8 @@ std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseListFromArgs(
     }
     ::pybind11::detail::instance* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
-      item = (::pybind11::detail::instance*)PyList_GetItem(list, i);
+      item = reinterpret_cast<::pybind11::detail::instance*>(
+          PyList_GetItem(list, i));
       if (!PyObject_TypeCheck((PyObject*)item, g_varbase_pytype)) {  // NOLINT
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument '%s' (position %d) must be list of Tensors, but "
