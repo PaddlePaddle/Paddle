@@ -21,7 +21,7 @@ class YoloBoxHeadOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "yolo_box_head");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "yolo_box_head");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -30,7 +30,7 @@ class YoloBoxHeadOp : public framework::OperatorWithKernel {
 
 class YoloBoxHeadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "The input tensor");
     AddAttr<std::vector<int>>("anchors",
                               "The anchor width and height, "
