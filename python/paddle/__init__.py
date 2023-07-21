@@ -472,6 +472,8 @@ from .autograd import (
 from .framework import (
     save,
     load,
+    async_save,
+    clear_async_save_task_queue,
 )
 from .distributed import DataParallel
 
