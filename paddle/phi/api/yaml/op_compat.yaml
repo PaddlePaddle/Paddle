@@ -266,6 +266,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assert
+  inputs :
+    {cond : Cond, data : Data}
+
 - op : assign
   backward : assign_grad
   inputs :
