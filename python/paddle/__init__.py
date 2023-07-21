@@ -451,6 +451,8 @@ from .tensor.to_string import set_printoptions
 
 from .tensor.einsum import einsum
 
+from .framework import async_save, clear_async_save_task_queue  # noqa: F401
+
 from .framework.random import (
     seed,
     get_cuda_rng_state,
