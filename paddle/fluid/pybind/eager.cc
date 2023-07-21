@@ -1328,7 +1328,7 @@ void BindEager(pybind11::module* module) {
   auto type = &heap_type->ht_type;
   type->tp_name = "Tensor";
   type->tp_basicsize = sizeof(TensorObject);
-  type->tp_dealloc = (destructor)TensorDealloc;
+  type->tp_dealloc = reinterpret_cast<destructor>(TensorDealloc);
   type->tp_as_number = &number_methods;
   type->tp_as_sequence = &sequence_methods;
   type->tp_as_mapping = &mapping_methods;
@@ -1377,7 +1377,7 @@ void BindEagerStringTensor(pybind11::module* module) {
   auto type = &heap_type->ht_type;
   type->tp_name = "StringTensor";
   type->tp_basicsize = sizeof(TensorObject);
-  type->tp_dealloc = (destructor)TensorDealloc;
+  type->tp_dealloc = reinterpret_cast<destructor>(TensorDealloc);
   type->tp_as_number = &number_methods;
   type->tp_as_sequence = &sequence_methods;
   type->tp_as_mapping = &mapping_methods;
