@@ -44,7 +44,7 @@ class CIdentityOp : public framework::OperatorWithKernel {
 
 class CIdentityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) identity tensor.");
     AddOutput("Out", "(Tensor) identity tensor.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")

@@ -40,7 +40,7 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
 class Pow2DecayWithLinearWarmupOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("LearningRate", "(Tensor) The input learning rate Tensor.");
     AddInput("Step", "(Tensor) The input global step Tensor.");
     AddOutput("LearningRateOut",
