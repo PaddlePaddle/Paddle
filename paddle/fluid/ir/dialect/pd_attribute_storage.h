@@ -88,7 +88,7 @@ struct PlaceAttributeStorage : public ir::AttributeStorage {
 
   bool operator==(const ParamKey &key) const { return data_ == key; }
 
-  ParamKey GetAsKey() const { return data_; }
+  const ParamKey& GetAsKey() const { return data_; }
 
  private:
   phi::Place data_;
