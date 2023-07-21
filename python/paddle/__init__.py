@@ -478,6 +478,8 @@ from .autograd import (
 from .framework import (
     save,
     load,
+    async_save,
+    clear_async_save_task_queue,  # noqa: F401
 )
 from .distributed import DataParallel
 

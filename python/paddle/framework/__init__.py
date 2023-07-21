@@ -78,6 +78,7 @@ from ..base.param_attr import ParamAttr  # noqa: F401
 from . import random  # noqa: F401
 from .framework import get_default_dtype, set_default_dtype  # noqa: F401
 from .io import load, save  # noqa: F401
+from .io import async_save, clear_async_save_task_queue  # noqa: F401
 from .io_utils import (  # noqa: F401
     _clone_var_in_block_,
     _load_program_scope,
