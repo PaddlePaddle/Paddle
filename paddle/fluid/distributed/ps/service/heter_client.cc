@@ -185,7 +185,9 @@ std::future<int32_t> HeterClient::SendCmd(
       new paddle::distributed::DownpourBrpcClosure(
           request_call_num, [request_call_num, cmd_id](void* done) {
             int ret = 0;
-            auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
+            auto* closure =
+                reinterpret_cast<paddle::distributed::DownpourBrpcClosure*>(
+                    done);
             for (size_t i = 0; i < request_call_num; ++i) {
               if (closure->check_response(i, cmd_id) != 0) {
                 ret = -1;
