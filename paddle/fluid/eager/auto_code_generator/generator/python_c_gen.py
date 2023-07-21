@@ -155,7 +155,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}
 FUNCTION_NAME_TEMPLATE = "{}{}{}"
 
 
-PYTHON_C_FUNCTION_REG_TEMPLATE = "  {{\"{}{}\", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}},\n"
+PYTHON_C_FUNCTION_REG_TEMPLATE = "  {{\"{}{}\", reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)(void)>({}eager_api_{})), METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}},\n"
 
 
 PYTHON_C_WRAPPER_TEMPLATE = """
