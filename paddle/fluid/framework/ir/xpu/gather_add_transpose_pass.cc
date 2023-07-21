@@ -88,7 +88,7 @@ void GatherAddTransposePass::GatherAddTranspose(ir::Graph* graph) const {
     GET_IR_NODE(squeeze2);
 
     bool flag = true;
-    auto var_dims = gather_in->Var()->GetShape().size();
+    auto var_dims = static_cast<int32_t>(gather_in->Var()->GetShape().size());
     auto gather_axis = gather->Op()->GetAttrIfExists<int>("axis");
     auto squeeze_axis =
         squeeze2->Op()->GetAttrIfExists<std::vector<int>>("axes");
