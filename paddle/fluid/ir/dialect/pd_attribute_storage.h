@@ -48,7 +48,7 @@ struct IntArrayAttributeStorage : public ir::AttributeStorage {
            (data_.FromTensor() == key.FromTensor());
   }
 
-  const ParamKey& GetAsKey() const { return data_; }
+  const ParamKey &GetAsKey() const { return data_; }
 
  private:
   phi::IntArray data_;
