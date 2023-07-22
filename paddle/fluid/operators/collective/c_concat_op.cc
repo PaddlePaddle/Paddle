@@ -81,7 +81,7 @@ class CConcatOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 class CConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be concated.");
     AddOutput("Out", "(Tensor) the result of concat.");
     AddAttr<int>("rank", "(int default 0) rank id.").SetDefault(0);

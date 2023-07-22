@@ -51,7 +51,7 @@ class Timer {
 class PassTimer : public PassInstrumentation {
  public:
   explicit PassTimer(bool print_module) : print_module_(print_module) {}
-  ~PassTimer() = default;
+  ~PassTimer() override = default;
 
   void RunBeforePipeline(ir::Operation* op) override {
     pipeline_timers_[op] = Timer();
