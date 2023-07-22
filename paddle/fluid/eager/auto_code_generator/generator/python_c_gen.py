@@ -243,9 +243,9 @@ static PyObject * eager_get_core_ops_returns_info(PyObject *self) {
 
 
 CORE_OPS_INFO_REGISTRY = """
-  {\"get_core_ops_args_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_info.\"},
-  {\"get_core_ops_args_type_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_type_info.\"},
-  {\"get_core_ops_returns_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
+  {\"get_core_ops_args_info\", reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)(void)>(eager_get_core_ops_args_info)), METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_info.\"},
+  {\"get_core_ops_args_type_info\", reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)(void)>(eager_get_core_ops_args_type_info)), METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_type_info.\"},
+  {\"get_core_ops_returns_info\", reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)(void)>(eager_get_core_ops_returns_info)), METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
 """
 
 NAMESPACE_WRAPPER_TEMPLATE = """namespace {} {{
