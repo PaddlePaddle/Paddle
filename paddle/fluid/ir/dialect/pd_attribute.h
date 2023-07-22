@@ -33,7 +33,7 @@ class IntArrayAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
-  const phi::IntArray& data() const;
+  const phi::IntArray &data() const;
 };
 
 class ScalarAttribute : public ir::Attribute {
