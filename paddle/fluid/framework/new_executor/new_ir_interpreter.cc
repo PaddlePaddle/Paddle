@@ -370,6 +370,11 @@ std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
 }
 
 // event analysis
+void NewIRInterpreter::InitVecInstruction(size_t size) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "InitVecInstruction is not implemented in NewIRInterpreter."));
+}
+
 const std::vector<Instruction>& NewIRInterpreter::GetVecInstruction() const {
   PADDLE_THROW(platform::errors::Unimplemented(
       "GetVecInstruction is not implemented in NewIRInterpreter."));

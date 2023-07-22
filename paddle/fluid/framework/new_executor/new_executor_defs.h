@@ -216,7 +216,7 @@ class Instruction {
   void ShareEventsFrom(const Instruction& src);
 
   void SetVar(size_t id,
-              const OpFuncNode& op_func_node,
+              OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
 
   const std::vector<EventInter>& EventsToWait() const {

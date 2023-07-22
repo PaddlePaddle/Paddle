@@ -105,6 +105,8 @@ class InterpreterBaseImpl {
 
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
+  virtual void InitVecInstruction(size_t size) = 0;
+
   virtual const std::vector<Instruction>& GetVecInstruction() const = 0;
 };
 

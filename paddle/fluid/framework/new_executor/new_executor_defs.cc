@@ -177,12 +177,12 @@ Instruction::Instruction(size_t id,
 }
 
 void Instruction::SetVar(size_t id,
-                         const OpFuncNode& op_func_node,
+                         OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx) {
   VLOG(8) << "break point1";
   id_ = id;
   VLOG(8) << "break point2";
-  op_func_node_ = op_func_node;
+  op_func_node_ = std::move(op_func_node);
   VLOG(8) << "break point3";
   dev_ctx_ = &dev_ctx;
   VLOG(8) << "break point4";
