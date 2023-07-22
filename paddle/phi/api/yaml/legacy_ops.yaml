@@ -173,14 +173,14 @@
     func : c_concat
 
 - op : c_embedding
-  args : (Tensor weight, Tensor x, int64_t start_index=0)
+  args : (Tensor weight, Tensor x, int64_t start_index=0, int64_t vocab_size=-1)
   output : Tensor(out)
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
   kernel :
     func : c_embedding
-    param : [weight, x, start_index]
+    param : [weight, x, start_index, vocab_size]
     data_type : weight
   backward : c_embedding_grad
 
