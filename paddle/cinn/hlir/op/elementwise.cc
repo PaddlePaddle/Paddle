@@ -393,6 +393,10 @@ std::vector<shape_t> InferShapeForFillConstant(
     const framework::AttrMapType &attrs) {
   CHECK(attrs.count("shape"));
   auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
+  if (shape.empty()) {
+    // For 0D-Tensor, Change fill_constant(shape=[]) -> fill_constant(shape=[1])
+    shape.push_back(1);
+  }
   return {shape};
 }
 
