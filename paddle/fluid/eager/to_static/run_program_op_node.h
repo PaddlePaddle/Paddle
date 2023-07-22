@@ -392,12 +392,16 @@ inline void RunProgramAPI(
 
       // add fetch with place op to program
       auto feed_x_name = details::GetTensorsName(x);
-      for (auto &name : feed_x_name) {
+      for (auto &in_t : x) {
+        auto name = in_t.name();
+        auto place = in_t.place().GetType();
+
         auto op_desc = forward_global_block->PrependOp();
         op_desc->SetType("feed_with_place");
         op_desc->SetAttr("index", 0);
+        // TODO(phlrain) : using tensor dtype
         op_desc->SetAttr("dtype", 0);
-        op_desc->SetAttr("place", 0);
+        op_desc->SetAttr("place", static_cast<int>(place));
         op_desc->SetAttr("name", name);
         op_desc->SetOutput("out", {name});
       }
@@ -434,7 +438,6 @@ inline void RunProgramAPI(
                                                                program.get());
 
       program_translator.Translate();
-
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
     }
@@ -585,15 +588,18 @@ inline void RunProgramGradAPI(
       auto program = std::make_unique<::ir::Program>(ir_ctx);
 
       // add feed kernel
-      for (auto &name : out_grad_names) {
+      for (auto &out_grad_t : out_grad) {
+        auto name = out_grad_t.name();
+        auto place = out_grad_t.place().GetType();
         if (name == "@EMPTY@") {
           continue;
         }
         auto op_desc = backward_global_block->PrependOp();
         op_desc->SetType("feed_with_place");
         op_desc->SetAttr("index", 0);
+        // TODO(phlrain) : using tensor dtype
         op_desc->SetAttr("dtype", 0);
-        op_desc->SetAttr("place", 0);
+        op_desc->SetAttr("place", static_cast<int>(place));
         op_desc->SetAttr("name", name);
         op_desc->SetOutput("out", {name});
       }
@@ -619,10 +625,8 @@ inline void RunProgramGradAPI(
                                                                program.get());
       program_translator.Translate();
 
-      program->Print(std::cout);
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
-      ir_program->Print(std::cout);
     }
 
     interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
