@@ -47,15 +47,16 @@ void ThreadPool::Init() {
         num_threads,
         0,
         phi::errors::InvalidArgument("The number of threads is 0."));
-    threadpool_.reset(new ThreadPool(num_threads));
+    threadpool_ = std::make_unique<ThreadPool>(num_threads);
   }
 }
 
 ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
-    // TODO(Yancey1989): binding the thread on the specify CPU number
-    thread.reset(new std::thread(std::bind(&ThreadPool::TaskLoop, this)));
+    // TODO(Yancey1989): binding the thread on the specify CPU numberw
+    thread =
+        std::make_unique<std::thread>(std::bind(&ThreadPool::TaskLoop, this));
   }
 }
 
@@ -111,7 +112,7 @@ ThreadPool* ThreadPoolIO::GetInstanceIO() {
 void ThreadPoolIO::InitIO() {
   if (io_threadpool_.get() == nullptr) {
     // TODO(typhoonzero1986): make this configurable
-    io_threadpool_.reset(new ThreadPool(FLAGS_io_threadpool_size));
+    io_threadpool_ = std::make_unique<ThreadPool>(FLAGS_io_threadpool_size);
   }
 }
 }  // namespace phi
