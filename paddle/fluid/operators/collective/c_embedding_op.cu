@@ -42,21 +42,25 @@ __global__ void CEmbedding(T *out,
                            const int64_t N,
                            const int64_t start_idx,
                            const int64_t end_idx,
-                           const int64_t limit) {
+                           const int64_t limit,
+                           const int64_t vocab_size) {
   CUDA_KERNEL_LOOP(i, limit) {
     size_t row = i / columns;
     size_t col = i % columns;
     auto id = ids[row];
 
+    PADDLE_ENFORCE(
+        id >= 0 && (vocab_size < 0 || id < vocab_size),
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        vocab_size,
+        id);
+
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
-      PADDLE_ENFORCE(real_idx < N,
-                     "The index is out of bounds, "
-                     "please check whether the dimensions of index and "
-                     "input meet the requirements. It should "
-                     "be less than [%d], but received [%d]",
-                     N,
-                     real_idx);
+
       out[i] = table[real_idx * columns + col];
     } else {
       out[i] = static_cast<T>(0);
@@ -95,6 +99,8 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
 
     const auto &dev_ctx = context.template device_context<phi::GPUContext>();
     const int64_t start_idx = context.Attr<int64_t>("start_index");
+    const int64_t vocab_size = context.Attr<int64_t>("vocab_size");
+
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
     size_t K = ids_t->numel();
@@ -119,7 +125,8 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
                                                      N,
                                                      start_idx,
                                                      end_idx,
-                                                     limit);
+                                                     limit,
+                                                     vocab_size);
 
     } else if (index_type == framework::proto::VarType::INT64) {
       CEmbedding<T, int64_t>
@@ -131,7 +138,8 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
                                                      N,
                                                      start_idx,
                                                      end_idx,
-                                                     limit);
+                                                     limit,
+                                                     vocab_size);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "GPU c_embedding ids only support int32 or int64."));
