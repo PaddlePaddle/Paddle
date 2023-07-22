@@ -330,7 +330,7 @@ def _mp_allreduce(
         return out
 
 
-def _c_lookup_table(table, index, start_index=0, name=None):
+def _c_lookup_table(table, index, start_index=0, vocab_size=-1, name=None):
     """
     Lookup table according to index.
 
@@ -346,7 +346,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     """
     if in_dynamic_mode():
         return _legacy_C_ops.c_embedding(
-            table, index, "start_index", start_index
+            table, index, "start_index", start_index, "vocab_size", vocab_size
         )
     else:
         op_type = 'c_embedding'
@@ -358,7 +358,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
             type='c_embedding',
             inputs={'Ids': index, 'W': table},
             outputs={'Out': tmp},
-            attrs={"start_index": start_index},
+            attrs={"start_index": start_index, "vocab_size": vocab_size},
         )
         return tmp
 
@@ -684,7 +684,11 @@ def _parallel_embedding(
     main_block.vars[weight.name].is_distributed = True
 
     output_parallel = _c_lookup_table(
-        weight, x, start_index=vocab_start_index, name=name
+        weight,
+        x,
+        start_index=vocab_start_index,
+        vocab_size=origin_size[0],
+        name=name,
     )
     out = _mp_allreduce(
         output_parallel,
