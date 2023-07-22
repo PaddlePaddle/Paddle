@@ -72,8 +72,8 @@ inline std::string RunTypeToString(DownstreamRunType run_type) {
   }
 }
 
-void StreamAnalyzer::ConstructEvents(
-    std::vector<Instruction>* instructions) const {
+void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions,
+                                     bool is_shared_) const {
   std::vector<Instruction> cross_step_merged_instructions = *instructions;
   for (const Instruction& instr : *instructions) {
     cross_step_merged_instructions.emplace_back(instr);
@@ -129,9 +129,11 @@ void StreamAnalyzer::ConstructEvents(
                                           platform::kCUDA /*unused*/);
           instr2event.emplace(recorder_instr_id, device_event);
         }
-
-        waiter_instr.AddEventToWait(
-            recorder_instr_id, instr2event.at(recorder_instr_id), waiter_type);
+        if (!is_shared_) {
+          waiter_instr.AddEventToWait(recorder_instr_id,
+                                      instr2event.at(recorder_instr_id),
+                                      waiter_type);
+        }
         VLOG(6) << "Add event: " << recorder_instr.OpBase()->Type() << "("
                 << recorder_instr_id << ") -> " << waiter_instr.OpBase()->Type()
                 << "(" << waiter_instr_id << "), waiter type = " << waiter_type;

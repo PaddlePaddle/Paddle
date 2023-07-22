@@ -292,16 +292,15 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   // share op dependency
-  //   dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
-  //   dependecy_count_ = src.GetDependencyCount();
+  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
+  dependecy_count_ = src.GetDependencyCount();
 
   // share events analysis results
   const std::vector<Instruction> src_vec_instruction_ = src.GetVecInstruction();
-  VLOG(8) << "Init Size:" << src_vec_instruction_.size();
   InitVecInstruction(src_vec_instruction_.size());
-  // for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-  //   vec_instruction_[i].ShareEventsFrom(src_vec_instruction_[i]);
-  // }
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    vec_instruction_[i].ShareEventsFrom(src_vec_instruction_[i]);
+  }
   is_shared_ = true;
   VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
           << ") to InterpreterCore(" << this << ")";
@@ -618,18 +617,10 @@ void ProgramInterpreter::Convert(
     vec_instruction_.clear();
     vec_instruction_.reserve(op_nums);
   }
-  VLOG(8) << "vec_instruction_ size: " << vec_instruction_.size();
-  VLOG(8) << "op_nums: " << op_nums;
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    VLOG(8) << "operator_base_: " << op_func_node.operator_base_.get();
-    VLOG(8) << "operator_base_: " << op_func_node.phi_kernel_;
-    VLOG(8) << "operator_base_: " << op_func_node.dev_ctx_;
-    VLOG(8) << "operator_base_: " << op_func_node.infer_meta_interface_;
-    VLOG(8) << "operator_base_: " << op_func_node.execution_stream_;
-    VLOG(8) << "operator_base_: " << op_func_node.phi_op_name_;
-    if (op_idx < vec_instruction_.size()) {
+    if (is_shared_) {
       vec_instruction_[op_idx].SetVar(
           op_idx, std::move(op_func_node), *dev_ctx_);
     } else {
@@ -671,7 +662,8 @@ void ProgramInterpreter::Convert(
 
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
-  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+
+  for (size_t i = 0; i < dependecy_count_->size() && !is_shared_; ++i) {
     if ((*dependecy_count_)[i] == 0) {
       auto& inst = vec_instruction_[i];
       if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
