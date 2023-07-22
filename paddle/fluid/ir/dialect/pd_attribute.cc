@@ -20,9 +20,7 @@ const phi::IntArray& IntArrayAttribute::data() const {
   return storage()->GetAsKey();
 }
 
-const phi::DataType& DataTypeAttribute::data() const { 
-  return storage()->GetAsKey(); 
-}
+phi::DataType DataTypeAttribute::data() const { return storage()->GetAsKey(); }
 
 phi::Place PlaceAttribute::data() const { return storage()->GetAsKey(); }
 
