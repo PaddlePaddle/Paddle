@@ -840,7 +840,6 @@ void BuildOpFuncList(const platform::Place& place,
                                                    static_build);
         }
       }
-      VLOG(8) << "vec_func_list size: " << vec_func_list->size();
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op_type, op->Attrs(), &ex);
       throw std::move(ex);
