@@ -594,8 +594,8 @@ void IrDependencyBuilder::BuildDownstreamMap() {
 
   auto op2dependences =
       std::map<size_t,
-               std::set<size_t>>();  // # map from op to the dependence list,
-                                     //  op must run after the dependence.
+               std::set<size_t>>();  //# map from op to the dependence list,
+                                     // op must run after the dependence.
   std::set<size_t>
       remove_duplicate;  // remove the duplicate between inputs and outputs
 
