@@ -27,6 +27,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/mman_patch.h"
 
 PHI_DECLARE_bool(use_shm_cache);
 
