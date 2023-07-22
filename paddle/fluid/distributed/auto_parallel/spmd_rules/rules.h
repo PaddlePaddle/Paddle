@@ -132,7 +132,7 @@ REGISTER_SPMD_RULE(tanh_shrink, ElementwiseSPMDRule);
 REGISTER_SPMD_RULE(thresholded_relu, ElementwiseSPMDRule);
 REGISTER_SPMD_RULE(trunc, ElementwiseSPMDRule);
 
-// matmul rule
+// layer_norm rule
 REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
 
 // replicated rule
