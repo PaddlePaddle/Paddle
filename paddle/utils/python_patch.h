@@ -13,6 +13,16 @@ limitations under the License. */
 // Define Python Macros instead of <Python.h> to avoid
 // cppcoreguidelines-pro-type-cstyle-cast
 
+#ifndef PYTHON_CLANGTIDY_PATCH_FLAG
+#define PYTHON_CLANGTIDY_PATCH_FLAG
+
+#define _PyObject_CAST_s(op) (reinterpret_cast<PyObject *>(op))
+
+#ifdef _PyObject_CAST
+#undef _PyObject_CAST
+#define _PyObject_CAST(op) _PyObject_CAST_s(op)
+#endif
+
 /* Cast argument toc PyVarObject* type. */
 #define _PyVarObject_CAST_s(op) (reinterpret_cast<PyVarObject*>(op))
 
@@ -68,4 +78,23 @@ limitations under the License. */
 #ifdef PyTuple_SET_ITEM
 #undef PyTuple_SET_ITEM
 #define PyTuple_SET_ITEM(op, i, v) PyTuple_SET_ITEM_s(op, i, v)
+#endif
+
+// *********************
+// *      Py_Bool      *
+// *********************
+
+#define Py_False_s (reinterpret_cast<PyObject *>(&_Py_FalseStruct))
+#define Py_True_s (reinterpret_cast<PyObject *>(&_Py_TrueStruct))
+
+#ifdef Py_False
+#undef Py_False
+#define Py_False Py_False_s
+#endif
+
+#ifdef Py_True
+#undef Py_True
+#define Py_True Py_True_s
+#endif
+
 #endif
