@@ -36,21 +36,23 @@ __global__ void CEmbedding(T* out,
                            const int64_t N,
                            const int64_t start_idx,
                            const int64_t end_idx,
+                           const int64_t vocab_size,
                            const int64_t limit) {
   CUDA_KERNEL_LOOP(i, limit) {
     size_t row = i / columns;
     size_t col = i % columns;
     auto id = ids[row];
 
+    PADDLE_ENFORCE(
+        id >= 0 && (vocab_size < 0 || id < vocab_size),
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        vocab_size,
+        id);
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
-      PADDLE_ENFORCE(real_idx < N,
-                     "The index is out of bounds, "
-                     "please check whether the dimensions of index and "
-                     "input meet the requirements. It should "
-                     "be less than [%d], but received [%d]",
-                     N,
-                     real_idx);
       out[i] = table[real_idx * columns + col];
     } else {
       out[i] = static_cast<T>(0);
@@ -63,6 +65,7 @@ void CEmbeddingKernel(const Context& ctx,
                       const DenseTensor& w,
                       const DenseTensor& ids,
                       int64_t start_index,
+                      int64_t vocab_size,
                       DenseTensor* out) {
   size_t N = w.dims()[0];
   size_t D = w.dims()[1];
@@ -87,6 +90,7 @@ void CEmbeddingKernel(const Context& ctx,
                                                D,
                                                N,
                                                start_index,
+                                               vocab_size,
                                                end_idx,
                                                limit);
 
@@ -99,6 +103,7 @@ void CEmbeddingKernel(const Context& ctx,
                                                D,
                                                N,
                                                start_index,
+                                               vocab_size,
                                                end_idx,
                                                limit);
   } else {
