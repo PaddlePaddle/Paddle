@@ -39,10 +39,8 @@ if g_shard_norm_align_dp:
         not g_shard_use_reduce
     ), "g_shard_norm_align_dp is not supported if g_shard_use_reduce is true"
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
-logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
 
 if g_shard_norm_align_dp:
     assert (
