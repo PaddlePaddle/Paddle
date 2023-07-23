@@ -131,9 +131,6 @@ struct SinGradFunctor<ComplexType<T>>
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    // auto dx_ = x.unaryExpr(Cosine<ComplexType<T>>());
-    // ComplexType<T> dx_conj_(dx_.real(), dx_.imag());
-    // dx.device(d) = dout * dx_conj_;
     dx.device(d) =
         dout * x.unaryExpr(Cosine<ComplexType<T>>()).unaryExpr(Conj<T>());
   }
@@ -355,10 +352,6 @@ struct CosGradFunctor<ComplexType<T>>
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    // auto dx_ =
-    // static_cast<ComplexType<T>>(x.unaryExpr(Sine<ComplexType<T>>()));
-    // ComplexType<T> dx_conj_(dx_.real, -dx_.imag);
-    // dx.device(d) = -dout * dx_conj_;
     dx.device(d) =
         -dout * x.unaryExpr(Sine<ComplexType<T>>()).unaryExpr(Conj<T>());
   }
@@ -2767,7 +2760,7 @@ struct CudaCosGradFunctor<ComplexType<T>>
   // dx = dout * (-sin(x))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return static_cast<T>(-dout * conj(sin(x)));
+    return static_cast<ComplexType<T>>(-dout * conj(sin(x)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -2951,7 +2944,7 @@ struct CudaSinGradFunctor<ComplexType<T>>
   // dx = dout * cos(x)
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return static_cast<T>(dout * conj(cos(x)));
+    return static_cast<ComplexType<T>>(dout * conj(cos(x)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -2989,7 +2982,7 @@ struct CudaTanGradFunctor<ComplexType<T>>
   // dx = dout / cos(x)^2
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return static_cast<T>(dout / conj(cos(x) * cos(x)));
+    return static_cast<ComplexType<T>>(dout / conj(cos(x) * cos(x)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
