@@ -58,6 +58,13 @@ class Graph : public cinn::common::Graph {
 
   std::vector<std::vector<Node*>> groups;
   struct Group {
+    Group() = default;
+
+    explicit Group(const Graph* graph) : graph_(graph) {}
+
+    // The graph that group belongs to.
+    const Graph* graph_ = nullptr;
+
     // distance to last group.
     int depth{0};
     int max_depth{0};
@@ -81,6 +88,15 @@ class Graph : public cinn::common::Graph {
     // master node for schedule
     std::unordered_set<Node*> master_nodes;
 
+    // fused sub-groups, used for fusion merge pass
+    std::vector<std::shared_ptr<Group>> fused_sub_groups;
+    // if as sub-group, used for belong groups.
+    std::unordered_set<std::shared_ptr<Group>> belong_groups;
+
+    // for op lowering.
+    std::vector<std::string> input_names;
+    std::vector<std::string> output_names;
+
     struct SharedGroupHasher {
       size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
         return std::hash<uint64_t>()(reinterpret_cast<uint64_t>(group.get()));
@@ -92,27 +108,6 @@ class Graph : public cinn::common::Graph {
         return first.get() == second.get();
       }
     };
-    // input groups
-    std::unordered_set<std::shared_ptr<Group>,
-                       SharedGroupHasher,
-                       SharedGroupComparator>
-        producer_groups;
-    // output grous
-    std::unordered_set<std::shared_ptr<Group>,
-                       SharedGroupHasher,
-                       SharedGroupComparator>
-        consumer_groups;
-    // fused sub-groups, used for fusion merge pass
-    std::vector<std::shared_ptr<Group>> fused_sub_groups;
-    // if as sub-group, used for belong groups.
-    std::unordered_set<std::shared_ptr<Group>,
-                       SharedGroupHasher,
-                       SharedGroupComparator>
-        belong_groups;
-
-    // for op lowering.
-    std::vector<std::string> input_names;
-    std::vector<std::string> output_names;
 
     std::vector<Node*> CollectNodes() {
       if (fused_sub_groups.size()) {
@@ -124,6 +119,20 @@ class Graph : public cinn::common::Graph {
         return tmp_nodes;
       } else {
         return nodes;
+      }
+    }
+
+    void WalkNodes(const std::function<void(const Node*)>& VisitNode) const {
+      if (fused_sub_groups.size()) {
+        for (auto& group : fused_sub_groups) {
+          for (const auto* node : group->nodes) {
+            VisitNode(node);
+          }
+        }
+      } else {
+        for (const auto* node : nodes) {
+          VisitNode(node);
+        }
       }
     }
 
@@ -139,6 +148,49 @@ class Graph : public cinn::common::Graph {
     std::unordered_set<NodeData*> GetOutputNodeDatas();
 
     std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+   public:
+    const std::unordered_set<std::shared_ptr<Group>,
+                             SharedGroupHasher,
+                             SharedGroupComparator>&
+    producer_groups() const {
+      return producer_groups_;
+    }
+
+    const std::unordered_set<std::shared_ptr<Group>,
+                             SharedGroupHasher,
+                             SharedGroupComparator>&
+    consumer_groups() const {
+      return consumer_groups_;
+    }
+
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>*
+    mut_producer_groups() {
+      return &producer_groups_;
+    }
+
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>*
+    mut_consumer_groups() {
+      return &consumer_groups_;
+    }
+
+    hlir::framework::OpPatternKind kind() const { return op_pattern_kind; }
+
+   private:
+    // input groups
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>
+        producer_groups_;
+    // output grous
+    std::unordered_set<std::shared_ptr<Group>,
+                       SharedGroupHasher,
+                       SharedGroupComparator>
+        consumer_groups_;
   };
   std::vector<std::shared_ptr<Group>> fusion_groups;
 
