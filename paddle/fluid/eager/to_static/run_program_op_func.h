@@ -81,6 +81,7 @@ inline void run_program_ad_func(
   VLOG(2) << "start run run_program grad";
 
   if (require_any_grad) {
+    std::cerr << "need grad" << std::endl;
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
@@ -110,6 +111,8 @@ inline void run_program_ad_func(
       }
     }
 
+    std::cerr << "11" << std::endl;
+
     grad_node->SetGradOutMeta(x_require_grad, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
@@ -126,5 +129,7 @@ inline void run_program_ad_func(
 
     // Set History for output set current Grad Node for
     egr::EagerUtils::SetHistory(&p_autograd_outs, grad_node);
+
+    std::cerr << "22" << std::endl;
   }
 }

@@ -110,6 +110,7 @@ void NewIRInterpreter::RunImpl() {
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
+  std::cerr << "run impl !!" << std::endl;
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
@@ -133,6 +134,7 @@ void NewIRInterpreter::RunImpl() {
   //     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   //   }
   // #endif
+  std::cerr << "fin exec" << std::endl;
 }
 
 FetchList NewIRInterpreter::Run(
@@ -194,8 +196,9 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+    std::cerr << "fin builf scope" << std::endl;
     VLOG(4) << DebugValueInfo();
-
+    
     // NOTE(zhangbo): Iterative version, gradually replacing BuildOpFuncList()
     // and Convert()
     // BuildInstruction();
@@ -209,6 +212,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                  local_scope_,
                                  value_2_var_name_,
                                  execution_config_);
+    std::cerr << "fin build op func list" << std::endl;
     // SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -1023,10 +1027,12 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
-
+    auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
+    std::cerr << op_func_node->phi_op_name_ << std::endl;
     if (instr_node.PreDefineContext()) {
+      std::cerr << "pre defin" << std::endl;
       VLOG(5) << "run new ir selected kernel";
-      auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
+      
       VLOG(5) << "begin to run op " << op_func_node->phi_op_name_;
       op_func_node->infer_meta_interface_->infer_meta_(
           &(op_func_node->infer_meta_context_));

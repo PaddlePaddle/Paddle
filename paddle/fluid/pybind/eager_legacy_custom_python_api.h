@@ -26,6 +26,7 @@ static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
+    std::cerr << "enter" << std::endl;
     auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
     auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
     auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
@@ -38,8 +39,11 @@ static PyObject *eager_api_run_program(PyObject *self,
         "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
+    std::cerr << "ro add fn " << std::endl;
     run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
+    std::cerr << "fin run program ad" << std::endl;
     PyEval_RestoreThread(tstate);
+    std::cerr << "fin run program ad2" << std::endl;
     tstate = nullptr;
     Py_RETURN_NONE;
   } catch (paddle::platform::EnforceNotMet &exception) {

@@ -375,7 +375,9 @@ inline void RunProgramAPI(
     // translator here
 
     std::unique_ptr<::ir::Program> ir_program;
+    std::cerr << "before flag" << std::endl;
     if (FLAGS_enable_new_ir_in_executor) {
+      std::cerr << "run new ir !!" << std::endl;
       auto ir_ctx = ir::IrContext::Instance();
       auto program = std::make_unique<::ir::Program>(ir_ctx);
 
@@ -456,6 +458,7 @@ inline void RunProgramAPI(
     skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
     // update interpretercore skip_gc_var
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
+    std::cerr << "create core " << interpreter_core << std::endl; 
 
     std::set<std::string> input_vars;
     input_vars.insert(input_names.begin(), input_names.end());
@@ -483,6 +486,7 @@ inline void RunProgramAPI(
     auto &cached_value =
         interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
     interpreter_core = cached_value.core_;
+    std::cerr << "core " << interpreter_core << std::endl;
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScope(x, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
@@ -502,18 +506,19 @@ inline void RunProgramAPI(
         1);
     interpreter_core->Run({});
   }
-
+  std::cerr << "fin run core" << std::endl;
   {
     paddle::platform::RecordEvent record_event(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output
+    std::cerr << "23" << std::endl;
     details::ShareTensorsFromScopeWithPartialBlock(
         out, *forward_global_block, *backward_global_block, global_inner_scope);
     details::ShareTensorsFromScopeWithPartialBlock(dout,
                                                    *forward_global_block,
                                                    *backward_global_block,
                                                    global_inner_scope);
-
+    std::cerr << "22" << std::endl;
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (is_test || !require_any_grad) {
@@ -526,6 +531,8 @@ inline void RunProgramAPI(
       VLOG(4) << "not test, set this scope can not reused";
       global_inner_scope->SetCanReused(false);
     }
+
+    std::cerr << "25" << std::endl;
   }
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -542,6 +549,7 @@ inline void RunProgramGradAPI(
     std::vector<paddle::Tensor *> &x_grad,      // NOLINT
     std::vector<paddle::Tensor *> &params_grad  // NOLINT
 ) {
+  std::cerr << "run program grad " << std::endl;
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
 
@@ -583,7 +591,7 @@ inline void RunProgramGradAPI(
     if (FLAGS_enable_new_ir_in_executor) {
       auto ir_ctx = ir::IrContext::Instance();
       auto program = std::make_unique<::ir::Program>(ir_ctx);
-
+      std::cerr << "backward " << std::endl;
       // add feed kernel
       for (auto &name : out_grad_names) {
         if (name == "@EMPTY@") {
@@ -597,6 +605,8 @@ inline void RunProgramGradAPI(
         op_desc->SetAttr("name", name);
         op_desc->SetOutput("out", {name});
       }
+
+      std::cerr << "backward 1" << std::endl;
       auto output_names = details::GetTensorsName(x_grad);
       auto param_grad_names = details::GetTensorsName(params_grad);
       for (auto &t : output_names) {
@@ -613,8 +623,10 @@ inline void RunProgramGradAPI(
         op_desc->SetOutput("out", {"@EMPTY@"});
       }
 
-      backward_program = backward_global_block->Program();
+      std::cerr << "backward 2" << std::endl;
 
+      backward_program = backward_global_block->Program();
+      std::cerr << "back trans " << std::endl;
       paddle::translator::ProgramTranslator program_translator(backward_program,
                                                                program.get());
       program_translator.Translate();
@@ -737,6 +749,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
              bool create_graph UNUSED,
              bool is_new_grad UNUSED) override {
+    std::cerr << " backward 11" << std::endl;
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);

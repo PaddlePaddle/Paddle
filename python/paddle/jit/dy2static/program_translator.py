@@ -487,7 +487,10 @@ class StaticFunction:
 
             # 4. return outputs.
             try:
-                return partial_program_layer(args)
+                print( "1111111111111111 !!!", type(partial_program_layer))
+                out = partial_program_layer(args)
+                print( "@@@@@@@@@@@@@@@@@@@@@ !!")
+                return out
             except Exception as e:
                 if not hasattr(e, error.ERROR_DATA):
                     # runtime error

@@ -213,12 +213,15 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
+        print( "enter")
         in_vars, out_vars = self._prepare(inputs)
+        print( "enter 2")
         self._cast_fp16_if_pure_fp16(in_vars)
+        print( "enter 3")
         attrs = self._prepare_attributes()
-
+        print( "enter 3.1")
         self._sync_lr_value_with_scheduler()
-
+        print( "enter 5")
         _legacy_C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -230,6 +233,7 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs
         )
+        print( "fin run pro")
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -505,7 +509,7 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
-            print("forward prog", progs[0])
+            # print("forward prog", progs[0])
             return progs[0]
         else:
             return self.infer_program
@@ -519,7 +523,7 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
-            print("bwackward prog", progs[1])
+            # print("bwackward prog", progs[1])
             return progs[1]
         else:
             """
@@ -823,26 +827,26 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                forward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            # _apply_pass(
+            #     forward_program,
+            #     empty_startup_program,
+            #     "buffer_shared_inplace_pass",
+            #     attrs,
+            #     attr_types,
+            # )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                backward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            # _apply_pass(
+            #     backward_program,
+            #     empty_startup_program,
+            #     "buffer_shared_inplace_pass",
+            #     attrs,
+            #     attr_types,
+            # )
 
     @LazyInitialized
     def _inout_var_names(self):
