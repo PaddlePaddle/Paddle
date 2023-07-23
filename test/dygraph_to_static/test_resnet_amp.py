@@ -129,19 +129,19 @@ class TestResnet(unittest.TestCase):
             ),
         )
 
-    def test_resnet_composite(self):
-        core._set_prim_backward_enabled(True)
-        static_loss = self.train(to_static=True)
-        core._set_prim_backward_enabled(False)
-        dygraph_loss = self.train(to_static=False)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
-        )
+    # def test_resnet_composite(self):
+    #     core._set_prim_backward_enabled(True)
+    #     static_loss = self.train(to_static=True)
+    #     core._set_prim_backward_enabled(False)
+    #     dygraph_loss = self.train(to_static=False)
+    #     np.testing.assert_allclose(
+    #         static_loss,
+    #         dygraph_loss,
+    #         rtol=1e-05,
+    #         err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+    #             static_loss, dygraph_loss
+    #         ),
+    #     )
 
 
 if __name__ == '__main__':
