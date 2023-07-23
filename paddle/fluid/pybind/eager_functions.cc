@@ -1276,88 +1276,107 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
-     (PyCFunction)(void (*)(void))eager_api_scale,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_scale)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_add_backward_final_hook",
-     (PyCFunction)(void (*)(void))eager_api__add_backward_final_hook,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api__add_backward_final_hook)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"run_backward",
-     (PyCFunction)(void (*)(void))eager_api_run_backward,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_run_backward)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"run_partial_grad",
-     (PyCFunction)(void (*)(void))eager_api_run_partial_grad,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_run_partial_grad)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_get_custom_operator_inplace_map",
-     (PyCFunction)(void (*)(
-         void))eager_api__get_custom_operator_inplace_reverse_idx,
+     reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)(void)>(
+         eager_api__get_custom_operator_inplace_reverse_idx)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_run_custom_op",
-     (PyCFunction)(void (*)(void))eager_api_run_custom_op,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_run_custom_op)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"tensor_copy",
-     (PyCFunction)(void (*)(void))eager_api_tensor_copy,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_tensor_copy)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_all_grads",
-     (PyCFunction)(void (*)(void))eager_api_get_all_grads,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_get_all_grads)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_grads_lists",
-     (PyCFunction)(void (*)(void))eager_api_get_grads_lists,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_get_grads_lists)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_grads_types",
-     (PyCFunction)(void (*)(void))eager_api_get_grads_types,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_get_grads_types)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"read_next_tensor_list",
-     (PyCFunction)(void (*)(void))eager_api_read_next_tensor_list,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_read_next_tensor_list)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"jit_function_call",
-     (PyCFunction)(void (*)(void))eager_api_jit_function_call,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_jit_function_call)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /**sparse functions**/
     {"sparse_coo_tensor",
-     (PyCFunction)(void (*)(void))eager_api_sparse_coo_tensor,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_sparse_coo_tensor)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"sparse_csr_tensor",
-     (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_sparse_csr_tensor)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"register_saved_tensors_hooks",
-     (PyCFunction)(void (*)(void))eager_api_register_saved_tensors_hooks,
+     reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)(void)>(
+         eager_api_register_saved_tensors_hooks)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"reset_saved_tensors_hooks",
-     (PyCFunction)(void (*)(void))eager_api_reset_saved_tensors_hooks,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_reset_saved_tensors_hooks)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /**amp functions**/
     {"set_master_grads",
-     (PyCFunction)(void (*)(void))eager_api_set_master_grads,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_set_master_grads)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 /**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)
     {"async_read",
-     (PyCFunction)(void (*)(void))eager_api_async_read,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_async_read)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"async_write",
-     (PyCFunction)(void (*)(void))eager_api_async_write,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_async_write)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"to_uva_tensor",
-     (PyCFunction)(void (*)(void))eager_api_to_uva_tensor,
+     reinterpret_cast<PyCFunction>(
+         reinterpret_cast<void (*)(void)>(eager_api_to_uva_tensor)),
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #endif
