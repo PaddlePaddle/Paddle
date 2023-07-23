@@ -149,9 +149,7 @@ void VariableScope::CheckExist(const std::string& name) const {
       platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
-Instruction::Instruction() : is_artificial_(false), dev_ctx_(nullptr) {
-  events_to_wait_ = std::make_shared<std::vector<EventInter>>();
-}
+Instruction::Instruction() : is_artificial_(false), dev_ctx_(nullptr) {}
 
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
