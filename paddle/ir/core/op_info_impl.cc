@@ -43,13 +43,14 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
     base_ptr += interfaces_num * sizeof(InterfaceValue);
   }
   if (traits_num > 0) {
-    auto p_first_trait = reinterpret_cast<TypeId *>(base_ptr);
+    TypeId *p_first_trait = reinterpret_cast<TypeId *>(base_ptr);  // NOLINT
     memcpy(base_ptr, trait_set.data(), sizeof(TypeId) * traits_num);
     std::sort(p_first_trait, p_first_trait + traits_num);
     base_ptr += traits_num * sizeof(TypeId);
   }
   // Construct OpInfoImpl.
-  VLOG(6) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
+  VLOG(6) << "Construct OpInfoImpl at "
+          << reinterpret_cast<void *>(base_ptr)  // NOLINT
           << " ......";
   OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(dialect,
                                                     op_id,
@@ -75,9 +76,9 @@ ir::IrContext *OpInfoImpl::ir_context() const {
 
 bool OpInfoImpl::HasTrait(TypeId trait_id) const {
   if (num_traits_ > 0) {
-    const TypeId *p_first_trait =
-        reinterpret_cast<const TypeId *>(reinterpret_cast<const char *>(this) -
-                                         sizeof(ir::TypeId) * num_traits_);
+    const TypeId *p_first_trait = reinterpret_cast<const TypeId *>(
+        reinterpret_cast<const char *>(this) -  // NOLINT
+        sizeof(ir::TypeId) * num_traits_);
     return std::binary_search(
         p_first_trait, p_first_trait + num_traits_, trait_id);
   }
@@ -87,8 +88,8 @@ bool OpInfoImpl::HasTrait(TypeId trait_id) const {
 bool OpInfoImpl::HasInterface(TypeId interface_id) const {
   if (num_interfaces_ > 0) {
     const InterfaceValue *p_first_interface =
-        reinterpret_cast<const InterfaceValue *>(
-            reinterpret_cast<const char *>(this) -
+        reinterpret_cast<const InterfaceValue *>(   // NOLINT
+            reinterpret_cast<const char *>(this) -  // NOLINT
             sizeof(ir::TypeId) * num_traits_ -
             sizeof(InterfaceValue) * num_interfaces_);
     return std::binary_search(p_first_interface,
@@ -101,8 +102,8 @@ bool OpInfoImpl::HasInterface(TypeId interface_id) const {
 void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
   if (num_interfaces_ > 0) {
     const InterfaceValue *p_first_interface =
-        reinterpret_cast<const InterfaceValue *>(
-            reinterpret_cast<const char *>(this) -
+        reinterpret_cast<const InterfaceValue *>(   // NOLINT
+            reinterpret_cast<const char *>(this) -  // NOLINT
             sizeof(TypeId) * num_traits_ -
             sizeof(InterfaceValue) * num_interfaces_);
     size_t left = 0, right = num_interfaces_;
@@ -123,18 +124,18 @@ void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
 void OpInfoImpl::Destroy() {
   VLOG(6) << "Destroy op_info impl at " << this;
   // (1) free interfaces
-  char *base_ptr = reinterpret_cast<char *>(this) -
+  char *base_ptr = reinterpret_cast<char *>(this) -  // NOLINT
                    sizeof(ir::TypeId) * num_traits_ -
                    sizeof(InterfaceValue) * num_interfaces_;
   if (num_interfaces_ > 0) {
     InterfaceValue *p_interface_val =
-        reinterpret_cast<InterfaceValue *>(base_ptr);
+        reinterpret_cast<InterfaceValue *>(base_ptr);  // NOLINT
     for (size_t i = 0; i < num_interfaces_; i++) {
       (p_interface_val + i)->~InterfaceValue();
     }
   }
   // (2) free memeory
-  VLOG(6) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
+  VLOG(6) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);  // NOLINT
   free(base_ptr);
 }
 

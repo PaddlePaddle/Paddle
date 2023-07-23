@@ -35,9 +35,10 @@ void *aligned_malloc(size_t size, size_t alignment) {
   if (mem == nullptr) {
     return nullptr;
   }
-  size_t adjust = alignment - reinterpret_cast<uint64_t>(mem) % alignment;
-  void *aligned_mem = reinterpret_cast<char *>(mem) + adjust;
-  *(reinterpret_cast<void **>(aligned_mem) - 1) = mem;
+  size_t adjust =
+      alignment - reinterpret_cast<uint64_t>(mem) % alignment;  // NOLINT
+  void *aligned_mem = reinterpret_cast<char *>(mem) + adjust;   // NOLINT
+  *(reinterpret_cast<void **>(aligned_mem) - 1) = mem;          // NOLINT
   assert(reinterpret_cast<uint64_t>(aligned_mem) % alignment == 0);
   return aligned_mem;
 #endif
@@ -50,7 +51,7 @@ void aligned_free(void *mem_ptr) {
   _aligned_free(mem_ptr);
 #else
   if (mem_ptr) {
-    free(*(reinterpret_cast<void **>(mem_ptr) - 1));
+    free(*(reinterpret_cast<void **>(mem_ptr) - 1));  // NOLINT
   }
 #endif
 }

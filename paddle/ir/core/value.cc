@@ -119,7 +119,7 @@ uint32_t OpResult::GetResultIndex() const { return impl()->GetResultIndex(); }
 
 detail::OpResultImpl *OpResult::impl() const {
   IR_ENFORCE(impl_, "Can't use impl() interface while value is null.");
-  return reinterpret_cast<detail::OpResultImpl *>(impl_);
+  return reinterpret_cast<detail::OpResultImpl *>(impl_);  // NOLINT
 }
 
 uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
@@ -184,10 +184,11 @@ void OpOperandImpl::RemoveFromUdChain() {
 OpOperandImpl::~OpOperandImpl() { RemoveFromUdChain(); }
 
 uint32_t ValueImpl::index() const {
-  uint32_t index =
-      reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) & 0x07;
+  uint32_t index = reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) &
+                   0x07;  // NOLINT
   if (index < 6) return index;
-  return reinterpret_cast<OpOutlineResultImpl *>(const_cast<ValueImpl *>(this))
+  return reinterpret_cast<OpOutlineResultImpl *>(
+             const_cast<ValueImpl *>(this))  // NOLINT
       ->GetResultIndex();
 }
 
@@ -196,9 +197,11 @@ std::string ValueImpl::PrintUdChain() {
   result << "Value[" << this << "] -> ";
   OpOperandImpl *tmp = first_use();
   if (tmp) {
-    result << "OpOperand[" << reinterpret_cast<void *>(tmp) << "] -> ";
+    result << "OpOperand[" << reinterpret_cast<void *>(tmp)
+           << "] -> ";  // NOLINT
     while (tmp->next_use() != nullptr) {
-      result << "OpOperand[" << reinterpret_cast<void *>(tmp->next_use())
+      result << "OpOperand["
+             << reinterpret_cast<void *>(tmp->next_use())  // NOLINT
              << "] -> ";
       tmp = tmp->next_use();
     }
@@ -218,7 +221,7 @@ ir::Operation *OpResultImpl::owner() const {
   // For inline result, pointer offset index to obtain the address of op.
   if (const auto *result = ir::dyn_cast<OpInlineResultImpl>(this)) {
     result += result->GetResultIndex() + 1;
-    return reinterpret_cast<Operation *>(
+    return reinterpret_cast<Operation *>(  // NOLINT
         const_cast<OpInlineResultImpl *>(result));
   }
   // For outline result, pointer offset outline_index to obtain the address of
@@ -230,9 +233,9 @@ ir::Operation *OpResultImpl::owner() const {
   // The offset of the maximum inline result distance op is
   // GetMaxInlineResultIndex.
   const auto *inline_result =
-      reinterpret_cast<const OpInlineResultImpl *>(outline_result);
+      reinterpret_cast<const OpInlineResultImpl *>(outline_result);  // NOLINT
   inline_result += (GetMaxInlineResultIndex() + 1);
-  return reinterpret_cast<Operation *>(
+  return reinterpret_cast<Operation *>(  // NOLINT
       const_cast<OpInlineResultImpl *>(inline_result));
 }
 }  // namespace detail

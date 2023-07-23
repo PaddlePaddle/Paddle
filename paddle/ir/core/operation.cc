@@ -64,7 +64,8 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
   size_t base_size =
       result_mem_size + op_mem_size + operand_mem_size + region_mem_size;
   // 2. Malloc memory.
-  char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
+  char *base_ptr =
+      reinterpret_cast<char *>(aligned_malloc(base_size, 8));  // NOLINT
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -81,7 +82,7 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
       Operation(attributes, op_info, num_results, num_operands, num_regions);
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
-  if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
+  if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {  // NOLINT
     IR_THROW("The address of OpOperandImpl must be divisible by 8.");
   }
   for (size_t idx = 0; idx < num_operands; idx++) {
@@ -90,7 +91,7 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
   }
   // 3.4. Construct Regions
   if (num_regions > 0) {
-    op->regions_ = reinterpret_cast<Region *>(base_ptr);
+    op->regions_ = reinterpret_cast<Region *>(base_ptr);  // NOLINT
     for (size_t idx = 0; idx < num_regions; idx++) {
       new (base_ptr) Region(op);
       base_ptr += sizeof(Region);
@@ -143,7 +144,8 @@ void Operation::Destroy() {
                     (num_results_ - max_inline_result_num) +
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results_;
-  void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
+  void *aligned_ptr =
+      reinterpret_cast<char *>(this) - result_mem_size;  // NOLINT
 
   VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
           << ", size = " << result_mem_size << "} done.";
@@ -172,17 +174,17 @@ ir::OpResult Operation::result(uint32_t index) const {
   uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
   const char *ptr =
       (index > max_inline_idx)
-          ? reinterpret_cast<const char *>(this) -
+          ? reinterpret_cast<const char *>(this) -  // NOLINT
                 (max_inline_idx + 1) * sizeof(detail::OpInlineResultImpl) -
                 (index - max_inline_idx) * sizeof(detail::OpOutlineResultImpl)
-          : reinterpret_cast<const char *>(this) -
+          : reinterpret_cast<const char *>(this) -  // NOLINT
                 (index + 1) * sizeof(detail::OpInlineResultImpl);
   if (index > max_inline_idx) {
     return ir::OpResult(
-        reinterpret_cast<const detail::OpOutlineResultImpl *>(ptr));
+        reinterpret_cast<const detail::OpOutlineResultImpl *>(ptr));  // NOLINT
   } else {
     return ir::OpResult(
-        reinterpret_cast<const detail::OpInlineResultImpl *>(ptr));
+        reinterpret_cast<const detail::OpInlineResultImpl *>(ptr));  // NOLINT
   }
 }
 
@@ -190,9 +192,11 @@ OpOperand Operation::op_operand(uint32_t index) const {
   if (index >= num_operands_) {
     IR_THROW("index exceeds OP input range.");
   }
-  const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
+  const char *ptr = reinterpret_cast<const char *>(this) +
+                    sizeof(Operation) +  // NOLINT
                     (index) * sizeof(detail::OpOperandImpl);
-  return OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+  return OpOperand(
+      reinterpret_cast<const detail::OpOperandImpl *>(ptr));  // NOLINT
 }
 
 Value Operation::operand(uint32_t index) const {
