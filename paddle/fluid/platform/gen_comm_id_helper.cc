@@ -195,10 +195,11 @@ int CreateListenSocket(const std::string& ep) {
   int total_time = 0;
   while (true) {
     int ret_val = -1;
-    RETRY_SYS_CALL_VAL(
-        bind(server_fd, (struct sockaddr*)&address, sizeof(address)),
-        "bind",
-        ret_val);
+    RETRY_SYS_CALL_VAL(bind(server_fd,
+                            reinterpret_cast<struct sockaddr*>(&address),
+                            sizeof(address)),
+                       "bind",
+                       ret_val);
 
     if (ret_val == -1) {
       BindOrConnectFailed(timeout, &try_times, &total_time, "bind", ep);
@@ -277,7 +278,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 
   int i = 0;
   while (hp->h_addr_list[i] != NULL) {
-    ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
+    ip = inet_ntoa(*reinterpret_cast<struct in_addr*>(hp->h_addr_list[i]));
     VLOG(3) << "gethostbyname  host:" << host << "  ->ip: " << ip;
     break;
   }
@@ -301,10 +302,11 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
   while (true) {
     int ret_val = -1;
-    RETRY_SYS_CALL_VAL(
-        connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)),
-        "connect",
-        ret_val);
+    RETRY_SYS_CALL_VAL(connect(sock,
+                               reinterpret_cast<struct sockaddr*>(&server_addr),
+                               sizeof(server_addr)),
+                       "connect",
+                       ret_val);
 
     if (ret_val == -1) {
       BindOrConnectFailed(timeout, &try_times, &total_time, "connect", ep);
