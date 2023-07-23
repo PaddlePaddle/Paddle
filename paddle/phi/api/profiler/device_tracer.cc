@@ -73,9 +73,10 @@ uint64_t kAlignSize = 8;
 std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
     driver_cbid_str;
 
-#define ALIGN_BUFFER(buffer, align)                                 \
-  (((uintptr_t)(buffer) & ((align)-1))                              \
-       ? ((buffer) + (align) - ((uintptr_t)(buffer) & ((align)-1))) \
+#define ALIGN_BUFFER(buffer, align)                            \
+  ((reinterpret_cast<uintptr_t>(buffer) & ((align)-1))         \
+       ? ((buffer) + (align) -                                 \
+          (reinterpret_cast<uintptr_t>(buffer) & ((align)-1))) \
        : (buffer))
 
 #define CUPTI_CALL(call)                                           \
