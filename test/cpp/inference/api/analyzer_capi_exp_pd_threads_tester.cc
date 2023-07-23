@@ -40,7 +40,8 @@ typedef struct RunParameter {
 } RunParameter;
 
 void* run(void* thread_param) {
-  struct RunParameter* param = (struct RunParameter*)thread_param;
+  struct RunParameter* param =
+      reinterpret_cast<struct RunParameter*>(thread_param);
   LOG(INFO) << "Thread " << param->thread_index << " start run!";
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(param->predictor);
   PD_Tensor* tensor =
