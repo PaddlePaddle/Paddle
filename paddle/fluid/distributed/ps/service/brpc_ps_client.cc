@@ -1580,7 +1580,8 @@ std::future<int32_t> BrpcPsClient::PushSparse(size_t table_id,
     for (size_t kv_idx = 0; kv_idx < sorted_kv_size; ++kv_idx) {
       shard_kv_data.key_list[kv_idx] = sorted_kv_list[kv_idx].first;
       shard_kv_data.value_list[kv_idx].assign(
-          (const char *)sorted_kv_list[kv_idx].second, value_size);
+          reinterpret_cast<const char *>(sorted_kv_list[kv_idx].second),
+          value_size);
     }
     shard_kv_data.kv_num = sorted_kv_size;
   }
@@ -1790,8 +1791,8 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
   } else if (sorted_kv_size == 1) {
     shard_kv_data.kv_num = 1;
     shard_kv_data.key_list[0] = sorted_kv_list[0].first;
-    shard_kv_data.value_list[0].assign((const char *)(sorted_kv_list[0].second),
-                                       value_size);
+    shard_kv_data.value_list[0].assign(
+        reinterpret_cast<const char *>(sorted_kv_list[0].second), value_size);
     return 0;
   }
 
@@ -1814,11 +1815,12 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
     }
     if (last_merge_data != NULL) {
       shard_kv_data.value_list[merged_kv_count].assign(
-          (const char *)last_merge_data, value_size);
+          reinterpret_cast<const char *>(last_merge_data), value_size);
       last_merge_data = NULL;
     } else {
       shard_kv_data.value_list[merged_kv_count].assign(
-          (const char *)sorted_kv_list[kv_idx - 1].second, value_size);
+          reinterpret_cast<const char *>(sorted_kv_list[kv_idx - 1].second),
+          value_size);
     }
     shard_kv_data.key_list[merged_kv_count++] = last_key;
     if (kv_idx < sorted_kv_size) {
@@ -1827,7 +1829,7 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
     }
     if (kv_idx == sorted_kv_size - 1) {
       shard_kv_data.value_list[merged_kv_count].assign(
-          (const char *)last_value_data, value_size);
+          reinterpret_cast<const char *>(last_value_data), value_size);
       shard_kv_data.key_list[merged_kv_count++] = last_key;
     }
   }
@@ -1918,7 +1920,7 @@ std::future<int32_t> BrpcPsClient::PushDense(const Region *regions,
     CHECK(pos + data_num <= data_size)
         << "invalid dense size, cur pos[" << pos << "]"
         << " data_num[" << data_num << "] size[" << data_size << "]";
-    const float *region_data = (const float *)(regions[i].data);
+    const float *region_data = reinterpret_cast<const float *>(regions[i].data);
     memcpy(data + pos, region_data, regions[i].size);
     pos += data_num;
   }
