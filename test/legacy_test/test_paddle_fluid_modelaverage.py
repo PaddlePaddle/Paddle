@@ -43,7 +43,7 @@ class TestModelAverage(unittest.TestCase):
 
                 optimizer.minimize(loss)
                 # build ModelAverage optimizer
-                model_average = paddle.fluid.optimizer.ModelAverage(
+                model_average = paddle.incubate.optimizer.ModelAverage(
                     0.15, min_average_window=2, max_average_window=10
                 )
 
