@@ -1337,7 +1337,7 @@ void BindEager(pybind11::module* module) {
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;
   type->tp_weaklistoffset = offsetof(TensorObject, weakrefs);
-  Py_INCREF(&PyBaseObject_Type);
+  Py_INCREF(&PyBaseObject_Type);  // NOLINT
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
@@ -1352,10 +1352,10 @@ void BindEager(pybind11::module* module) {
     return;
   }
 
-  Py_INCREF(type);
+  Py_INCREF(type);  // NOLINT
   if (PyModule_AddObject(m.ptr(), "Tensor", reinterpret_cast<PyObject*>(type)) <
       0) {
-    Py_DECREF(type);
+    Py_DECREF(type);  // NOLINT
     Py_DECREF(m.ptr());
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEager(PyModule_AddObject)."));
@@ -1385,7 +1385,7 @@ void BindEagerStringTensor(pybind11::module* module) {
   type->tp_getset = string_tensor_variable_properties;
   type->tp_init = StringTensorInit;
   type->tp_new = TensorNew;
-  Py_INCREF(&PyBaseObject_Type);
+  Py_INCREF(&PyBaseObject_Type);  // NOLINT
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
@@ -1400,10 +1400,10 @@ void BindEagerStringTensor(pybind11::module* module) {
     return;
   }
 
-  Py_INCREF(type);
+  Py_INCREF(type);  // NOLINT
   if (PyModule_AddObject(
           m.ptr(), "StringTensor", reinterpret_cast<PyObject*>(type)) < 0) {
-    Py_DECREF(type);
+    Py_DECREF(type);  // NOLINT
     Py_DECREF(m.ptr());
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEagerStringTensor(PyModule_AddObject)."));
