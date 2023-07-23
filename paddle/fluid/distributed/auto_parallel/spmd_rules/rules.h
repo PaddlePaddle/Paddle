@@ -153,6 +153,7 @@ REGISTER_SPMD_RULE(softmax_with_cross_entropy, CrossEntropyWithSoftmaxSPMDRule);
 
 // split rule
 REGISTER_SPMD_RULE(split, SplitSPMDRule);
+REGISTER_SPMD_RULE(split_with_num, SplitSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

@@ -38,26 +38,26 @@ SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 
   // step1: Build Einsum Notation
   int64_t ndim = input_specs[0].shape().size();
-  Attribute section_attr = GetAttr("num_or_sections", attrs);
   int64_t noutput = 0;
-  if (section_attr.type() == typeid(int)) {
-    noutput = *paddle::framework::ExtractAttribute<int>("num_or_sections")(
-        section_attr);
-  } else if (section_attr.type() == typeid(std::vector<int>)) {
-    std::vector<int64_t>* sections =
-        paddle::framework::ExtractAttribute<std::vector<int64_t>>(
-            "num_or_sections")(section_attr);
-    noutput = sections->size();
+  // split api uses num or sections as attribute
+  if (attrs.find("num") != attrs.end()) {
+    noutput = ExtractAttr<int64_t>("num", attrs);
+  } else if (attrs.find("sections") != attrs.end()) {
+    std::vector<int64_t> sections =
+        ExtractAttr<std::vector<int64_t>>("sections", attrs);
+    noutput = sections.size();
   }
   int64_t axis = ExtractAttr<int>("axis", attrs);
   if (axis < 0) {
     axis += ndim;
   }
-  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+  std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
 
-  // get einsum notation for input
+  // get einsum notation for input, use a special
+  // notation 'k' to mark the splitted axis in input
   std::vector<std::string> input_axes_vec;
   std::string input_axes = alphabet.substr(0, ndim);
+  input_axes[axis] = 'k';
   input_axes_vec.emplace_back(input_axes);
 
   // get einsum notation for output
@@ -99,8 +99,8 @@ SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   for (int64_t i = 0; i < ninputs; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
             << str_join(input_specs[i].shape()) << "] "
-            << "src_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
-            << "] "
+            << "einsum_notation: " << input_axes << " src_dims_mapping: ["
+            << str_join(input_specs[i].dims_mapping()) << "] "
             << "dst_dims_mapping: ["
             << str_join(new_input_dist_attrs[i].dims_mapping()) << "]";
   }

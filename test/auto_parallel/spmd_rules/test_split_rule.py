@@ -46,7 +46,9 @@ class TestReductionSPMDRule(unittest.TestCase):
     def test_single_mesh_dim(self):
         # num_or_sections = 2, axis = 1
         # [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1]
-        self.attrs['num_or_sections'] = 2
+        self.rule = get_spmd_rule("split_with_num")
+        self.attrs = {}
+        self.attrs['num'] = 2
         self.attrs['axis'] = 1
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
@@ -65,7 +67,9 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = [15, 16, 17], axis = 2
         # [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1], [0, -1, -1]
-        self.attrs['num_or_sections'] = [15, 16, 17]
+        self.rule = get_spmd_rule("split")
+        self.attrs = {}
+        self.attrs['sections'] = [15, 16, 17]
         self.attrs['axis'] = 2
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
@@ -85,7 +89,8 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = [15, 16, 17], axis = 2
         # [-1, -1, 0] --> [-1, -1, -1], [-1, -1, -1], [-1 -1, -1], [-1, -1, -1]
-        self.attrs['num_or_sections'] = [15, 16, 17]
+        self.attrs = {}
+        self.attrs['sections'] = [15, 16, 17]
         self.attrs['axis'] = 2
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0])
         result_dist_attrs = self.rule.infer_forward(
@@ -111,7 +116,9 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = 2, axis = -2
         # [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1]
-        self.attrs['num_or_sections'] = 2
+        self.rule = get_spmd_rule("split_with_num")
+        self.attrs = {}
+        self.attrs['num'] = 2
         self.attrs['axis'] = -2
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
@@ -135,7 +142,9 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = 3, axis = -1
         # [0, 1, -1, -1] --> [0, 1, -1, -1], [0, 1, -1, -1], [0, 1, -1, -1], [0, 1, -1, -1]
-        self.attrs['num_or_sections'] = 3
+        self.rule = get_spmd_rule("split_with_num")
+        self.attrs = {}
+        self.attrs['num'] = 3
         self.attrs['axis'] = -1
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
@@ -163,7 +172,9 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = [32, 32, 32], axis = 0
         # [0, 1, -1, -1] --> [-1, 1, -1, -1], [-1, 1, -1, -1], [-1, 1, -1, -1], [-1, 1, -1, -1]
-        self.attrs['num_or_sections'] = [32, 32, 32]
+        self.rule = get_spmd_rule("split")
+        self.attrs = {}
+        self.attrs['sections'] = [32, 32, 32]
         self.attrs['axis'] = 0
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
