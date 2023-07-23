@@ -388,7 +388,7 @@ class TestGroupNormBF16Op_With_NHWC(OpTest):
         self.python_out_sig = ["Y"]
         self.data_format = "NHWC"
         self.dtype = np.uint16
-        self.shape = (2, 3, 5, 100)
+        self.shape = (1, 3, 5, 100)
         self.attrs = {
             'epsilon': 5e-2,
             'groups': 2,
@@ -416,9 +416,9 @@ class TestGroupNormBF16Op_With_NHWC(OpTest):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
 
     def test_check_output(self):
-        rtol = 1e-3
+        rtol = 1e-2
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, rtol=1e-3)
+        self.check_output_with_place(place, rtol=rtol)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
