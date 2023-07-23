@@ -380,6 +380,12 @@ const std::vector<Instruction>& NewIRInterpreter::GetVecInstruction() const {
       "GetVecInstruction is not implemented in NewIRInterpreter."));
 }
 
+std::shared_ptr<std::map<size_t, std::set<size_t>>>
+NewIRInterpreter::GetLastLiveOps() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetLastLiveOps is not implemented in NewIRInterpreter."));
+}
+
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
     const std::vector<std::vector<size_t>>& input_var2op, size_t var_index) {
   if (!var_scope_.VarDesc(var_index)) {

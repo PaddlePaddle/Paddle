@@ -65,6 +65,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   const std::vector<Instruction>& GetVecInstruction() const override;
 
+  std::shared_ptr<std::map<size_t, std::set<size_t>>> GetLastLiveOps()
+      const override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -176,9 +179,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
 
-  // last_live_ops_[i] contains the id of operators that last access the i-th
+  // (*last_live_ops_)[i] contains the id of operators that last access the i-th
   // var
-  std::map<size_t, std::set<size_t>> last_live_ops_;
+  std::shared_ptr<std::map<size_t, std::set<size_t>>> last_live_ops_;
 
   // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
   // need to wait

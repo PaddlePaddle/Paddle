@@ -321,7 +321,7 @@ std::shared_ptr<EventInter> Instruction::GetEventToRecord() const {
   return event_to_record_;
 }
 
-void Instruction::ShareEventsFrom(const Instruction& src) {
+void Instruction::ShareInstructionFrom(const Instruction& src) {
   events_to_wait_ = src.GetEventsToWait();
   event_to_record_ = src.GetEventToRecord();
 }

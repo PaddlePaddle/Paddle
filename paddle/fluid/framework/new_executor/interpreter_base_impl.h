@@ -108,6 +108,9 @@ class InterpreterBaseImpl {
   virtual void InitVecInstruction(size_t size) = 0;
 
   virtual const std::vector<Instruction>& GetVecInstruction() const = 0;
+
+  virtual std::shared_ptr<std::map<size_t, std::set<size_t>>> GetLastLiveOps()
+      const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

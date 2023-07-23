@@ -291,15 +291,16 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  // share op dependency
+  // share op dependency and last_live_ops_
   dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
   dependecy_count_ = src.GetDependencyCount();
+  last_live_ops_ = src.GetLastLiveOps();
 
-  // share events analysis results
+  // share instruction
   const std::vector<Instruction> src_vec_instruction_ = src.GetVecInstruction();
   InitVecInstruction(src_vec_instruction_.size());
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    vec_instruction_[i].ShareEventsFrom(src_vec_instruction_[i]);
+    vec_instruction_[i].ShareInstructionFrom(src_vec_instruction_[i]);
   }
   is_shared_ = true;
   VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
@@ -351,6 +352,11 @@ const std::vector<Instruction>& ProgramInterpreter::GetVecInstruction() const {
 std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
     const {
   return dependecy_count_;
+}
+
+std::shared_ptr<std::map<size_t, std::set<size_t>>>
+ProgramInterpreter::GetLastLiveOps() const {
+  return last_live_ops_;
 }
 
 void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
@@ -737,7 +743,7 @@ void ProgramInterpreter::Convert(
           inner_scope->FindVar(var_scope_.GetNameById(var_id));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
-        last_live_ops_[var_id].insert(op_idx);
+        (*last_live_ops_)[var_id].insert(op_idx);
       } else {
         VLOG(4) << "not clear " << var_scope_.GetNameById(var_id) << " after "
                 << instr.OpBase()->Type() << " because its type is "
@@ -750,7 +756,7 @@ void ProgramInterpreter::Convert(
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
     int var_id = var_scope_.GetIdByName(skip_gc_var);
     if (var_id != -1) {
-      last_live_ops_[var_id].clear();
+      (*last_live_ops_)[var_id].clear();
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
     }
   }
@@ -762,12 +768,12 @@ void ProgramInterpreter::Convert(
   // c = op2(a, b)
   // in this case, a is the input of op1 and op2, we only need to check
   // a after op2, because op2 always uses a after op1.
-  for (size_t i = 0; i < last_live_ops_.size(); ++i) {
+  for (size_t i = 0; i < last_live_ops_->size(); ++i) {
     std::set<size_t> minumum_last_live_ops;
-    for (size_t item : last_live_ops_[i]) {
+    for (size_t item : (*last_live_ops_)[i]) {
       bool not_before_any = true;
       // find the op that is not executed before any
-      for (size_t other_item : last_live_ops_[i]) {
+      for (size_t other_item : (*last_live_ops_)[i]) {
         if (dependency_builder_.OpHappensBefore(item, other_item)) {
           VLOG(8) << "happens_before: " << item << "->" << other_item
                   << ", so skip " << item;
@@ -783,8 +789,8 @@ void ProgramInterpreter::Convert(
         vec_instruction_[item].AddGCCheckVar(i);
       }
     }
-    last_live_ops_[i] = minumum_last_live_ops;
-    vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
+    (*last_live_ops_)[i] = minumum_last_live_ops;
+    vec_meta_info[i].var_ref_count_ = (*last_live_ops_)[i].size();
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
