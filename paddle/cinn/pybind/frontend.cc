@@ -384,21 +384,7 @@ void BindFrontend(pybind11::module *m) {
             program->ExecuteTest(repeat_);
             auto out = scope->GetTensor(tensor_out->id);
             return out;
-          })
-      .def("test_generate_code",
-           [](Program &self,
-              const common::Target &target,
-              const std::vector<Variable> &tensor_inputs,
-              const std::vector<py::array> &input_data,
-              const Variable &tensor_out) {
-             std::shared_ptr<hlir::framework::Graph> g(
-                 new hlir::framework::Graph(self, target));
-             hlir::framework::ApplyPass(g.get(), "InferShape");
-             std::shared_ptr<hlir::framework::Scope> scope =
-                 hlir::framework::BuildScope(target, g);
-             hlir::framework::GraphCompiler gc(target, scope, g);
-             return gc.GenSourceCode();
-           });
+          });
 
   py::class_<frontend::Interpreter>(*m, "Interpreter")
       .def(py::init<const std::vector<std::string> &,

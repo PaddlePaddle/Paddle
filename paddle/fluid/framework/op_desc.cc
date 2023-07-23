@@ -457,7 +457,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   if (op_desc.dist_attr_) {
-    dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
+    dist_attr_ = std::make_unique<OperatorDistAttr>(*op_desc.dist_attr_);
   }
   need_update_ = true;
 }
@@ -1145,7 +1145,7 @@ OperatorDistAttr *OpDesc::MutableDistAttr() {
   if (dist_attr_) {
     return dist_attr_.get();
   } else {
-    dist_attr_.reset(new OperatorDistAttr(*this));
+    dist_attr_ = std::make_unique<OperatorDistAttr>(*this);
     return dist_attr_.get();
   }
 }
