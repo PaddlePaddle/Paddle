@@ -1,5 +1,5 @@
 set(CINN_PYTHON_TEST_DIR ${CMAKE_BINARY_DIR}/test/cinn)
-set(CINN_CORE_API ${CMAKE_BINARY_DIR}/python/cinncore_api.so)
+set(CINN_CORE_API ${CMAKE_BINARY_DIR}/python/core_api.so)
 
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/test/__init__.py POST_BUILD
