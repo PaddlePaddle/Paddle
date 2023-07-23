@@ -281,7 +281,8 @@ void ParallelConnectContext::connectFullMesh(
             }
             Impl impl_;
             memcpy(&impl_, addr.data(), sizeof(impl_));
-            struct sockaddr_in* sa = (struct sockaddr_in*)&(impl_.ss);
+            struct sockaddr_in* sa =
+                reinterpret_cast<struct sockaddr_in*>(&(impl_.ss));
             std::string ip = getCharIpAddr(sa->sin_addr.s_addr);
             VLOG(0) << "peer " << i << " ip addr: " << ip
                     << ", port: " << sa->sin_port;
