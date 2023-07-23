@@ -584,7 +584,7 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
 void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   phi::OneDNNContext* dev_ctx =
-      (phi::OneDNNContext*)pool.Get(predictor_.place_);
+      dynamic_cast<phi::OneDNNContext*>(pool.Get(predictor_.place_));
   dev_ctx->ResetBlobMap(phi::OneDNNContext::tls().get_curr_exec());
 }
 

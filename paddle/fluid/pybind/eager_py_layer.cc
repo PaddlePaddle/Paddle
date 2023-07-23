@@ -678,23 +678,23 @@ PyMethodDef pylayer_methods[] = {
 
 struct PyGetSetDef pylayer_properties[] {
   {"container",
-   (getter)tensor_properties_get_container,
-   (setter)tensor_properties_set_container,
+   reinterpret_cast<getter>(tensor_properties_get_container),
+   reinterpret_cast<setter>(tensor_properties_set_container),
    nullptr,
    nullptr},
       {"non_differentiable",
-       (getter)tensor_properties_get_non_differentiable,
-       (setter)tensor_properties_set_non_differentiable,
+       reinterpret_cast<getter>(tensor_properties_get_non_differentiable),
+       reinterpret_cast<setter>(tensor_properties_set_non_differentiable),
        nullptr,
        nullptr},
       {"not_inplace_tensors",
-       (getter)tensor_properties_get_not_inplace_tensors,
-       (setter)tensor_properties_set_not_inplace_tensors,
+       reinterpret_cast<getter>(tensor_properties_get_not_inplace_tensors),
+       reinterpret_cast<setter>(tensor_properties_set_not_inplace_tensors),
        nullptr,
        nullptr},
       {"materialize_grads",
        nullptr,
-       (setter)tensor_properties_set_materialize_grads,
+       reinterpret_cast<setter>(tensor_properties_set_materialize_grads),
        nullptr,
        nullptr},
   {
@@ -710,7 +710,7 @@ void BindEagerPyLayer(PyObject* module) {
   auto type = &heap_type->ht_type;
   type->tp_name = "PyLayer";
   type->tp_basicsize = sizeof(PyLayerObject);
-  type->tp_dealloc = (destructor)PyLayerDealloc;
+  type->tp_dealloc = reinterpret_cast<destructor>(PyLayerDealloc);
   type->tp_methods = pylayer_methods;
   type->tp_getset = pylayer_properties;
   type->tp_new = (newfunc)PyLayerNew;
