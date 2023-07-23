@@ -215,9 +215,9 @@ class Instruction {
 
   std::shared_ptr<EventInter> GetEventToRecord() const;
 
-  std::shared_ptr<vector<size_t>> GetNextInstrsInDifferenceThread() const;
+  std::shared_ptr<std::vector<size_t>> GetNextInstrsInDifferenceThread() const;
 
-  std::shared_ptr<vector<size_t>> GetNextInstrsInSameThread() const;
+  std::shared_ptr<std::vector<size_t>> GetNextInstrsInSameThread() const;
 
   void ShareInstructionFrom(const Instruction& src);
 
