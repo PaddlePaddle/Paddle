@@ -191,11 +191,11 @@ class Instruction {
   bool IsArtificial() const { return is_artificial_; }
 
   const std::vector<size_t>& NextInstrsInDifferenceThread() const {
-    return next_instrs_in_different_thread;
+    return *next_instrs_in_different_thread;
   }
 
   const std::vector<size_t>& NextInstrsInSameThread() const {
-    return next_instrs_in_same_thread;
+    return *next_instrs_in_same_thread;
   }
 
   size_t Id() const { return id_; }
@@ -215,7 +215,11 @@ class Instruction {
 
   std::shared_ptr<EventInter> GetEventToRecord() const;
 
-  void ShareEventsFrom(const Instruction& src);
+  std::shared_ptr<vector<size_t>> GetNextInstrsInDifferenceThread() const;
+
+  std::shared_ptr<vector<size_t>> GetNextInstrsInSameThread() const;
+
+  void ShareInstructionFrom(const Instruction& src);
 
   void SetVar(size_t id,
               OpFuncNode&& op_func_node,
@@ -226,11 +230,11 @@ class Instruction {
   }
 
   void AddNextInstrInDifferentThread(size_t id) {
-    next_instrs_in_different_thread.push_back(id);
+    next_instrs_in_different_thread->push_back(id);
   }
 
   void AddNextInstrInSameThread(size_t id) {
-    next_instrs_in_same_thread.push_back(id);
+    next_instrs_in_same_thread->push_back(id);
   }
 
   void RecordEvent(const Place& place) const;
@@ -294,8 +298,8 @@ class Instruction {
 
   size_t id_;
 
-  std::vector<size_t> next_instrs_in_different_thread;
-  std::vector<size_t> next_instrs_in_same_thread;
+  std::shared_ptr<std::vector<size_t>> next_instrs_in_different_thread;
+  std::shared_ptr<std::vector<size_t>> next_instrs_in_same_thread;
 
   std::shared_ptr<EventInter> event_to_record_;
   std::shared_ptr<std::vector<EventInter>> events_to_wait_;

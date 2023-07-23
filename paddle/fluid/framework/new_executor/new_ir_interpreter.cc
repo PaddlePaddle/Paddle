@@ -1180,7 +1180,7 @@ void NewIRInterpreter::RunNextInstructions(const Instruction& instr,
     return deps_[next_id]->CheckAndDecrease();
   };
 
-  for (size_t next_instr_id : instr.NextInstrsInDifferenceThread()) {
+  for (size_t next_instr_id : *instr.NextInstrsInDifferenceThread()) {
     if (IsReady(next_instr_id)) {
       async_work_queue_->AddTask(
           vec_instruction_[next_instr_id].KernelType(),
@@ -1188,7 +1188,7 @@ void NewIRInterpreter::RunNextInstructions(const Instruction& instr,
     }
   }
 
-  for (size_t next_instr_id : instr.NextInstrsInSameThread()) {
+  for (size_t next_instr_id : *instr.NextInstrsInSameThread()) {
     if (IsReady(next_instr_id)) {
       reserved_next_ops->push(next_instr_id);
     }

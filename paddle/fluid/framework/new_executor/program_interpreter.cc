@@ -299,7 +299,7 @@ void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   const std::vector<Instruction> src_vec_instruction_ = src.GetVecInstruction();
   InitVecInstruction(src_vec_instruction_.size());
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    vec_instruction_[i].ShareEventsFrom(src_vec_instruction_[i]);
+    vec_instruction_[i].ShareInstructionFrom(src_vec_instruction_[i]);
   }
   is_shared_ = true;
   VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
@@ -544,13 +544,15 @@ void ProgramInterpreter::CheckCUDAGraphBeforeRun(
 }
 
 void ProgramInterpreter::BuildOperatorDependences() {
+  // build results have been shared, no need to build again
+  if (is_shared_) {
+    return;
+  }
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
   dependecy_count_ = GetDependencyCount();
-  if (!is_shared_) {
-    dependecy_count_->assign(instr_num, 0);
-  }
+  dependecy_count_->assign(instr_num, 0);
 
   auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
@@ -587,10 +589,8 @@ void ProgramInterpreter::BuildOperatorDependences() {
       }
     }
 
-    if (!is_shared_) {
-      for (size_t next_instr_id : next_instr_ids) {
-        ++(*dependecy_count_)[next_instr_id];
-      }
+    for (size_t next_instr_id : next_instr_ids) {
+      ++(*dependecy_count_)[next_instr_id];
     }
   }
 }

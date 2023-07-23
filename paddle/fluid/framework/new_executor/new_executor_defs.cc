@@ -151,6 +151,8 @@ void VariableScope::CheckExist(const std::string& name) const {
 
 Instruction::Instruction() : is_artificial_(false), dev_ctx_(nullptr) {
   events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+  next_instrs_in_same_thread = std::make_shared<std::vector<size_t>>();
+  next_instrs_in_different_thread = std::make_shared<std::vector<size_t>>();
 }
 
 Instruction::Instruction(size_t id,
@@ -174,6 +176,8 @@ Instruction::Instruction(size_t id,
                         "Required id >= 0, but received id = %d", id));
 
   events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+  next_instrs_in_same_thread = std::make_shared<std::vector<size_t>>();
+  next_instrs_in_different_thread = std::make_shared<std::vector<size_t>>();
 }
 
 void Instruction::SetVar(size_t id,
@@ -321,9 +325,21 @@ std::shared_ptr<EventInter> Instruction::GetEventToRecord() const {
   return event_to_record_;
 }
 
-void Instruction::ShareEventsFrom(const Instruction& src) {
+std::shared_ptr<std::vector<size_t>> Instruction::GetNextInstrsInSameThread()
+    const {
+  return next_instrs_in_same_thread;
+}
+
+std::shared_ptr<std::vector<size_t>> Instruction::GetNextInstrsInDiffThread()
+    const {
+  return next_instrs_in_different_thread;
+}
+
+void Instruction::ShareInstructionFrom(const Instruction& src) {
   events_to_wait_ = src.GetEventsToWait();
   event_to_record_ = src.GetEventToRecord();
+  next_instrs_in_same_thread = src.GetNextInstrsInSameThread();
+  next_instrs_in_different_thread = src.GetNextInstrsInDiffThread();
 }
 
 }  // namespace framework
