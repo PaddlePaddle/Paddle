@@ -151,6 +151,7 @@ void VariableScope::CheckExist(const std::string& name) const {
 
 Instruction::Instruction() : is_artificial_(false), dev_ctx_(nullptr) {
   events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+  gc_check_vars_ = std::make_shared<std::vector<size_t>>();
 }
 
 Instruction::Instruction(size_t id,
@@ -174,6 +175,7 @@ Instruction::Instruction(size_t id,
                         "Required id >= 0, but received id = %d", id));
 
   events_to_wait_ = std::make_shared<std::vector<EventInter>>();
+  gc_check_vars_ = std::make_shared<std::vector<size_t>>();
 }
 
 void Instruction::SetVar(size_t id,
@@ -257,10 +259,10 @@ bool Instruction::OpBaseValid() const {
   return op_func_node_.operator_base_ != nullptr;
 }
 
-void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
+void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_->push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
-  return gc_check_vars_;
+  return *gc_check_vars_;
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
@@ -321,9 +323,14 @@ std::shared_ptr<EventInter> Instruction::GetEventToRecord() const {
   return event_to_record_;
 }
 
+std::shared_ptr<std::vector<size_t>> Instruction::GetGCCheckVars() const {
+  return gc_check_vars_;
+}
+
 void Instruction::ShareInstructionFrom(const Instruction& src) {
   events_to_wait_ = src.GetEventsToWait();
   event_to_record_ = src.GetEventToRecord();
+  gc_check_vars_ = src.GetGCCheckVars();
 }
 
 }  // namespace framework

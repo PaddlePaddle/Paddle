@@ -215,6 +215,8 @@ class Instruction {
 
   std::shared_ptr<EventInter> GetEventToRecord() const;
 
+  std::shared_ptr<std::vector<size_t>> GetGCCheckVars() const;
+
   void ShareInstructionFrom(const Instruction& src);
 
   void SetVar(size_t id,
@@ -307,7 +309,7 @@ class Instruction {
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
-  std::vector<size_t> gc_check_vars_;
+  std::shared_ptr<std::vector<size_t>> gc_check_vars_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 
