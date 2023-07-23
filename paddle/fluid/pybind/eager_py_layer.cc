@@ -164,7 +164,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
   inputs_size = kwargs_size + args_size;
   forward_args = PyTuple_New(args_size + 1);
-  Py_INCREF(ctx);
+  Py_INCREF(ctx);  // NOLINT
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
 
   std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
@@ -458,7 +458,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);
   Py_XDECREF(forward_fn);
-  Py_XDECREF(ctx);
+  Py_XDECREF(ctx);  // NOLINT
 
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -714,7 +714,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_methods = pylayer_methods;
   type->tp_getset = pylayer_properties;
   type->tp_new = (newfunc)PyLayerNew;
-  Py_INCREF(&PyBaseObject_Type);
+  Py_INCREF(&PyBaseObject_Type);  // NOLINT
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
@@ -729,10 +729,10 @@ void BindEagerPyLayer(PyObject* module) {
     return;
   }
 
-  Py_INCREF(type);
+  Py_INCREF(type);  // NOLINT
   if (PyModule_AddObject(module, "PyLayer", reinterpret_cast<PyObject*>(type)) <
       0) {
-    Py_DECREF(type);
+    Py_DECREF(type);  // NOLINT
     Py_DECREF(module);
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEager(PyModule_AddObject)."));
