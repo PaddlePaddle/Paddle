@@ -213,6 +213,8 @@ class Instruction {
 
   std::shared_ptr<std::vector<EventInter>> GetEventsToWait() const;
 
+  std::shared_ptr<EventInter> GetEventToRecord() const;
+
   void ShareEventsFrom(const Instruction& src);
 
   void SetVar(size_t id,

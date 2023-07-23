@@ -658,8 +658,9 @@ void ProgramInterpreter::Convert(
   // before the first call to RecordEvent, an Event represents an empty set of
   // work and WaitEvent always return succeed immediately, we omit the
   // prelude-record for the first step here.
-  stream_analyzer_.ConstructEvents(&vec_instruction_);
-
+  if (!is_shared_) {
+    stream_analyzer_.ConstructEvents(&vec_instruction_);
+  }
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
 
