@@ -937,7 +937,7 @@ void GroupNormKernel(const Context& dev_ctx,
   }
 
 #ifdef PADDLE_CUDA_BF16
-  if (is_same_v<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
+  if (is_same<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
     GroupNormNHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        x,
                                                        scale,
