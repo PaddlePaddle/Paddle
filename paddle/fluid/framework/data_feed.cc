@@ -28,6 +28,7 @@ limitations under the License. */
 #include "io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/utils/mman_patch.h"
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
 PHI_DECLARE_bool(enable_ins_parser_file);
