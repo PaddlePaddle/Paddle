@@ -49,6 +49,7 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op &&
                   interpreter::BlockCanBeStaticBuilt(block);
+  static_build_ = true;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -708,17 +709,17 @@ void ProgramInterpreter::Convert(
   for (size_t i = 0; i < last_live_ops_.size(); ++i) {
     std::set<size_t> minumum_last_live_ops;
     for (size_t item : last_live_ops_[i]) {
-      bool not_before_any = true;
+      //bool not_before_any = true;
       // find the op that is not executed before any
       for (size_t other_item : last_live_ops_[i]) {
         if (dependency_builder_.OpHappensBefore(item, other_item)) {
           VLOG(8) << "happens_before: " << item << "->" << other_item
                   << ", so skip " << item;
-          not_before_any = false;
+          //not_before_any = false;
           break;
         }
       }
-      if (not_before_any) {
+      if (true) {
         VLOG(8) << "last live op of var " << i << " "
                 << var_scope_.GetNameById(i) << " : " << item << " "
                 << vec_instruction_[item].OpBase()->Type();

@@ -254,9 +254,11 @@ class ClipHelper:
             if op.type in [
                 "c_reduce_sum",
                 "c_allreduce_sum",
+                "reduce",
+                "all_reduce"
             ] and not is_data_parallel_reduce_op(op):
                 return False
-            if op.type in ["send_v2", "recv_v2"]:
+            if op.type in ["send_v2", "recv_v2", "p_send", "p_recv"]:
                 return False
 
         return True

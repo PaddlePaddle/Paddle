@@ -61,7 +61,8 @@ void StreamAnalyzer::ConstructEvents(
       event_info;  // DeviceContext -> waiter_instr_id -> recorder_instr_ids
   AnalyseAllEventInfo(
       cross_step_merged_instructions, run_type_info, &event_info);
-  ShrinkEventInfo(dependency_builder, &event_info);
+  // fetch prnit
+  //ShrinkEventInfo(dependency_builder, &event_info);
 
   // Construct events
   std::map<size_t, std::shared_ptr<DeviceEvent>> instr2event;

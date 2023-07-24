@@ -19,7 +19,7 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
+std::set<std::string> OperatorBasesHandledInStaticBuild = {"read", "print"};
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
@@ -47,6 +47,13 @@ std::set<std::string> StaticBuildBlackList = {
     "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
+std::set<std::string> StaticBuildWhiteList = {
+    "fused_softmax_mask_upper_triangle",
+    "fused_softmax_mask_upper_triangle_grad",
+    "layer_norm",
+    "reshape2_grad"
+};
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -67,6 +74,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
 
+    bool in_white_list = StaticBuildWhiteList.count(op_type);
     bool in_black_list = StaticBuildBlackList.count(op_type);
     bool is_operator_base =
         (dynamic_cast<framework::OperatorWithKernel*>(op_base) == nullptr);
@@ -83,11 +91,11 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
     bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
 
-    KernelCode kernel_code =
+    KernelCode kernel_code = (in_white_list << 8) +
         (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
         (use_mkldnn << 4) + (has_fluid_kernel << 3) +
         (has_structured_kernel << 2) + (need_move_to_phi << 1);
-    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
+    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type) && !in_white_list) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
@@ -101,7 +109,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
+      ss << item.first << " [in_white_list = " << (item.second >> 8 &1)
+         << ", in_black_list = " << (item.second >> 7 & 1)
          << ", is_operator_base = " << (item.second >> 6 & 1)
          << ", is_custom_op = " << (item.second >> 5 & 1)
          << ", use_mkldnn = " << (item.second >> 4 & 1)
@@ -347,8 +356,8 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       }
     }
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Can not static build for op: %s", op_type));
+  //PADDLE_THROW(
+  //    phi::errors::Unimplemented("Can not static build for op: %s", op_type));
   }
 }
 
