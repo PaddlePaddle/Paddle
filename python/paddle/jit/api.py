@@ -135,9 +135,9 @@ def _dygraph_to_static_func_(dygraph_func):
             ...         x_v = x - 1
             ...     else:
             ...         x_v = x + 1
-
+            ...
             ...     return x_v
-
+            ...
             >>> paddle.enable_static()
             >>> x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
@@ -270,7 +270,7 @@ def to_static(
             ...     else:
             ...         x_v = x + 1
             ...     return x_v
-
+            ...
             >>> x = paddle.ones([1, 2], dtype='float32')
             >>> x_v = func(x)
             >>> print(x_v)
@@ -356,7 +356,7 @@ def not_to_static(func=None):
             ...     else:
             ...         out = x + 1
             ...     return out
-
+            ...
             >>> x = paddle.ones([1, 2], dtype='float32')
             >>> out = func(x)
             >>> print(out)
@@ -699,15 +699,15 @@ def _register_save_pre_hook(hook):
             ...     def __init__(self):
             ...         super().__init__()
             ...         self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
+            ...
             ...     def forward(self, x):
             ...         return self._linear(x)
-
+            ...
             >>> saving_count = 0
             >>> def save_pre_hook(layer, input_spec, configs):
             ...     global saving_count
             ...     saving_count += 1
-
+            ...
             >>> remove_handler = paddle.jit.api._register_save_pre_hook(save_pre_hook)
 
             >>> layer = LinearNet()
@@ -855,12 +855,12 @@ def save(layer, path, input_spec=None, **configs):
             >>> class RandomDataset(paddle.io.Dataset):
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
-
+            ...
             ...     def __getitem__(self, idx):
             ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
             ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
             ...         return image, label
-
+            ...
             ...     def __len__(self):
             ...         return self.num_samples
 
@@ -916,14 +916,14 @@ def save(layer, path, input_spec=None, **configs):
             ...     @paddle.jit.to_static
             ...     def fun(inputs):
             ...         return paddle.tanh(inputs)
-
+            ...
             ...     path = 'test_jit_save_load_function_1/func'
             ...     inps = paddle.rand([3, 6])
             ...     origin = fun(inps)
-
+            ...
             ...     paddle.jit.save(fun, path)
             ...     load_func = paddle.jit.load(path)
-
+            ...
             ...     load_result = load_func(inps)
             ...     print((load_result - origin).abs().max() < 1e-10)
 
@@ -1332,12 +1332,12 @@ def load(path, **configs):
                 >>> class RandomDataset(paddle.io.Dataset):
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
-
+                ...
                 ...     def __getitem__(self, idx):
                 ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
                 ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
                 ...         return image, label
-
+                ...
                 ...     def __len__(self):
                 ...         return self.num_samples
 
@@ -1345,11 +1345,11 @@ def load(path, **configs):
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
+                ...
                 ...     @paddle.jit.to_static
                 ...     def forward(self, x):
                 ...         return self._linear(x)
-
+                ...
                 >>> def train(layer, loader, loss_fn, opt):
                 ...     for epoch_id in range(EPOCH_NUM):
                 ...         for batch_id, (image, label) in enumerate(loader()):
@@ -1424,12 +1424,12 @@ def load(path, **configs):
                 >>> class RandomDataset(paddle.io.Dataset):
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
-
+                ...
                 ...     def __getitem__(self, idx):
                 ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
                 ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
                 ...         return image, label
-
+                ...
                 ...     def __len__(self):
                 ...         return self.num_samples
 
@@ -1627,7 +1627,7 @@ class TracedLayer:
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._fc = paddle.nn.Linear(3, 10)
-
+                ...
                 ...     def forward(self, input):
                 ...         return self._fc(input)
 
@@ -1677,7 +1677,7 @@ class TracedLayer:
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._fc = paddle.nn.Linear(3, 10)
-
+                ...
                 ...     def forward(self, input):
                 ...         return self._fc(input)
 
@@ -1781,7 +1781,7 @@ class TracedLayer:
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._fc = paddle.nn.Linear(3, 10)
-
+                ...
                 ...     def forward(self, input):
                 ...         return self._fc(input)
 
