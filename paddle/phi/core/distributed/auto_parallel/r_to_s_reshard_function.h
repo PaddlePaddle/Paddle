@@ -25,11 +25,12 @@ class RToSReshardFunction final : public ReshardFunction {
   RToSReshardFunction() = default;
   ~RToSReshardFunction() = default;
 
-  bool Check(const DistTensor& in,
-             const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
+  bool IsSuitable(
+      const DistTensor& in,
+      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
 
   std::shared_ptr<DistTensor> Eval(
-      const KernelKey& kernel_key,
+      const DeviceContext& dev_ctx,
       const DistTensor& in,
       const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
 };

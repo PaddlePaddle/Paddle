@@ -16,40 +16,18 @@
 
 #include <map>
 #include <vector>
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
 
 namespace phi {
 class DeviceContext;
 class DenseTensor;
-class KernelKey;
 
 namespace distributed {
 namespace auto_parallel {
-
-class ReshardSplitFunctor final {
- public:
-  using SPLIT_KERNEL_SIG = void (*)(const DeviceContext&,
-                                    const DenseTensor&,
-                                    const phi::IntArray&,
-                                    const phi::Scalar&,
-                                    std::vector<DenseTensor*>);
-
-  ReshardSplitFunctor(const KernelKey& kernel_key,
-                      const IntArray& sections,
-                      int64_t axis);
-
-  void operator()(const DeviceContext& dev_ctx,
-                  const DenseTensor& input,
-                  std::vector<DenseTensor>* output);
-
- private:
-  IntArray sections_;
-  int64_t axis_;
-  SPLIT_KERNEL_SIG functor_;
-
-  void PrepareOutput(const DenseTensor& input,
-                     const std::vector<DenseTensor*>& output);
-};
+std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
+                                             const DenseTensor& input,
+                                             const IntArray& sections,
+                                             int64_t axis);
 
 }  // namespace auto_parallel
 }  // namespace distributed

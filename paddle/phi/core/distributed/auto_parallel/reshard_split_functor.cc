@@ -13,50 +13,66 @@
 // limitations under the License.
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard_split_functor.h"
-#include "glog/logging.h"
-#include "paddle/phi/api/lib/api_gen_utils.h"
-#include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/core/kernel_factory.h"
-#include "paddle/phi/infermeta/unary.h"
+
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/split_kernel.h"
 
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
-ReshardSplitFunctor::ReshardSplitFunctor(const phi::KernelKey& kernel_key,
-                                         const IntArray& sections,
-                                         int64_t axis)
-    : sections_(sections), axis_(axis) {
-  KernelResult kernel_result =
-      phi::KernelFactory::Instance().SelectKernelOrThrowError("split",
-                                                              kernel_key);
-  const Kernel& kernel = kernel_result.kernel;
-  VLOG(3) << "Select split kernel: " << kernel;
-  functor_ = kernel.GetVariadicKernelFn<SPLIT_KERNEL_SIG>();
-}
+std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
+                                             const DenseTensor& input,
+                                             const IntArray& sections,
+                                             int64_t axis) {
+  size_t out_number = sections.size();
+  std::vector<DenseTensor> result(out_number);
 
-void ReshardSplitFunctor::operator()(const DeviceContext& dev_ctx,
-                                     const DenseTensor& input,
-                                     std::vector<DenseTensor>* output) {
-  std::vector<DenseTensor*> out_ptr_vec;
-  for (size_t i = 0; i < output->size(); ++i) {
-    out_ptr_vec.emplace_back(&(output->at(i)));
+  std::vector<MetaTensor> out_meta;
+  std::vector<MetaTensor*> out_meta_ptr;
+
+  out_meta.reserve(out_number);
+  out_meta_ptr.reserve(out_number);
+  for (size_t i = 0; i < out_number; ++i) {
+    out_meta.emplace_back(result[i]);
+    out_meta_ptr.emplace_back(&out_meta.back());
   }
-  PrepareOutput(input, out_ptr_vec);
-  (*functor_)(dev_ctx, input, sections_, axis_, out_ptr_vec);
-}
+  SplitInferMeta(phi::MetaTensor(input), sections, axis, out_meta_ptr);
 
-void ReshardSplitFunctor::PrepareOutput(
-    const DenseTensor& input, const std::vector<DenseTensor*>& output) {
-  auto out_meta_vec = paddle::experimental::MakeMetaTensor(output);
-
-  std::vector<phi::MetaTensor*> out_metas(out_meta_vec.size());
-  for (size_t i = 0; i < out_meta_vec.size(); ++i) {
-    out_metas[i] = output[i] ? &out_meta_vec[i] : nullptr;
+  std::vector<DenseTensor*> outs;
+  for (size_t i = 0; i < out_number; ++i) {
+    outs.emplace_back(&result[i]);
   }
 
-  phi::SplitInferMeta(
-      paddle::experimental::MakeMetaTensor(input), sections_, axis_, out_metas);
+  if (phi::CPUContext::classof(&dev_ctx)) {
+    PD_VISIT_ALL_TYPES(input.dtype(), "SplitKernel", ([&] {
+                         SplitKernel<data_t>(
+                             static_cast<const CPUContext&>(dev_ctx),
+                             input,
+                             sections,
+                             axis,
+                             outs);
+                       }));
+    return result;
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (phi::GPUContext::classof(&dev_ctx)) {
+    PD_VISIT_ALL_TYPES(input.dtype(), "SplitKernel", ([&] {
+                         SplitKernel<data_t>(
+                             static_cast<const GPUContext&>(dev_ctx),
+                             input,
+                             sections,
+                             axis,
+                             outs);
+                       }));
+    return result;
+  }
+#endif
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "The split in reshard only supported on CPU and GPU for now."));
 }
 
 }  // namespace auto_parallel

@@ -16,7 +16,6 @@
 #include <memory>
 
 namespace phi {
-class KernelKey;
 class DeviceContext;
 
 namespace distributed {
@@ -30,11 +29,12 @@ class ReshardFunction {
   ReshardFunction() = default;
   virtual ~ReshardFunction() = default;
 
-  virtual bool Check(const DistTensor& in,
-                     const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
+  virtual bool IsSuitable(
+      const DistTensor& in,
+      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
 
   virtual std::shared_ptr<DistTensor> Eval(
-      const KernelKey& kernel_key,
+      const DeviceContext& dev_ctx,
       const DistTensor& in,
       const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
 };

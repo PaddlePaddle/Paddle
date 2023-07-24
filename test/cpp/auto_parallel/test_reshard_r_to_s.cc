@@ -15,11 +15,11 @@
 #include <cstdlib>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/kernel_factory.h"
 #include "test/cpp/phi/core/allocator.h"
 
 namespace phi {
@@ -28,6 +28,7 @@ namespace auto_parallel {
 namespace tests {
 
 std::shared_ptr<DistTensor> ConstructReplicatedDistTensor(
+    Allocator* alloc,
     const std::vector<int64_t>& shape,
     const DataLayout& layout,
     const DataType& dtype,
@@ -36,9 +37,6 @@ std::shared_ptr<DistTensor> ConstructReplicatedDistTensor(
   const LoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto fancy_allocator =
-      std::unique_ptr<Allocator>(new phi::tests::FancyAllocator);
-  auto* alloc = fancy_allocator.get();
   std::shared_ptr<TensorDistAttr> dist_attr =
       std::make_shared<TensorDistAttr>(shape);
 
@@ -55,6 +53,9 @@ TEST(reshard_r_to_s, r_to_s_same_placement_1d_mesh) {
   std::vector<int64_t> tensor_shape = {6, 12};
   const DataType dtype{DataType::FLOAT32};
   const DataLayout layout{DataLayout::NHWC};
+  auto fancy_allocator =
+      std::unique_ptr<Allocator>(new phi::tests::FancyAllocator);
+  auto* alloc = fancy_allocator.get();
 
   std::vector<int64_t> mesh_shape = {4};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
@@ -62,7 +63,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_1d_mesh) {
   ProcessMesh mesh(mesh_shape, process_ids, dim_names);
 
   std::shared_ptr<DistTensor> input =
-      ConstructReplicatedDistTensor(tensor_shape, layout, dtype, mesh);
+      ConstructReplicatedDistTensor(alloc, tensor_shape, layout, dtype, mesh);
   int64_t split_axis = 1;
 
   // Use process mesh axis 0 to split tensor axis 1
@@ -73,12 +74,15 @@ TEST(reshard_r_to_s, r_to_s_same_placement_1d_mesh) {
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(mesh);
 
-  RToSReshardFunction r_to_s_func;
-  KernelKey kernel_key = {Backend::CPU, layout, dtype};
-  std::shared_ptr<DistTensor> output =
-      r_to_s_func.Eval(kernel_key, *input, out_dist_attr);
+  phi::CPUPlace cpu_place;
+  CPUContext dev_ctx(cpu_place);
+  dev_ctx.SetAllocator(alloc);
 
-  CHECK_EQ(r_to_s_func.Check(*input, out_dist_attr), true);
+  RToSReshardFunction r_to_s_func;
+  std::shared_ptr<DistTensor> output =
+      r_to_s_func.Eval(dev_ctx, *input, out_dist_attr);
+
+  CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), true);
   CHECK_EQ(output->numel(), 18);
   CHECK_EQ(output->dims(), DDim({6, 3}));
 }
@@ -87,6 +91,9 @@ TEST(reshard_r_to_s, r_to_s_diff_placement) {
   std::vector<int64_t> tensor_shape = {6, 12};
   const DataType dtype{DataType::FLOAT32};
   const DataLayout layout{DataLayout::NHWC};
+  auto fancy_allocator =
+      std::unique_ptr<Allocator>(new phi::tests::FancyAllocator);
+  auto* alloc = fancy_allocator.get();
 
   std::vector<int64_t> mesh_shape = {4};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
@@ -94,7 +101,7 @@ TEST(reshard_r_to_s, r_to_s_diff_placement) {
   ProcessMesh mesh(mesh_shape, process_ids, dim_names);
 
   std::shared_ptr<DistTensor> input =
-      ConstructReplicatedDistTensor(tensor_shape, layout, dtype, mesh);
+      ConstructReplicatedDistTensor(alloc, tensor_shape, layout, dtype, mesh);
   int64_t split_axis = 1;
 
   std::vector<int64_t> out_process_ids = {2, 3, 4, 5};
@@ -107,7 +114,7 @@ TEST(reshard_r_to_s, r_to_s_diff_placement) {
   out_dist_attr->set_process_mesh(out_mesh);
 
   RToSReshardFunction r_to_s_func;
-  CHECK_EQ(r_to_s_func.Check(*input, out_dist_attr), false);
+  CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), false);
 }
 
 TEST(reshard_r_to_s, r_to_s_same_placement_nd_mesh) {
@@ -116,6 +123,9 @@ TEST(reshard_r_to_s, r_to_s_same_placement_nd_mesh) {
   std::vector<int64_t> tensor_shape = {6, 12};
   const DataType dtype{DataType::FLOAT32};
   const DataLayout layout{DataLayout::NHWC};
+  auto fancy_allocator =
+      std::unique_ptr<Allocator>(new phi::tests::FancyAllocator);
+  auto* alloc = fancy_allocator.get();
 
   std::vector<int64_t> mesh_shape = {4, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -123,7 +133,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_nd_mesh) {
   ProcessMesh mesh(mesh_shape, process_ids, dim_names);
 
   std::shared_ptr<DistTensor> input =
-      ConstructReplicatedDistTensor(tensor_shape, layout, dtype, mesh);
+      ConstructReplicatedDistTensor(alloc, tensor_shape, layout, dtype, mesh);
 
   // Use process mesh axis 0 to split tensor axis 1, use process mesh axis 1 to
   // split tensor axis 0
@@ -133,12 +143,15 @@ TEST(reshard_r_to_s, r_to_s_same_placement_nd_mesh) {
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(mesh);
 
-  RToSReshardFunction r_to_s_func;
-  KernelKey kernel_key = {Backend::CPU, layout, dtype};
-  std::shared_ptr<DistTensor> output =
-      r_to_s_func.Eval(kernel_key, *input, out_dist_attr);
+  phi::CPUPlace cpu_place;
+  CPUContext dev_ctx(cpu_place);
+  dev_ctx.SetAllocator(alloc);
 
-  CHECK_EQ(r_to_s_func.Check(*input, out_dist_attr), true);
+  RToSReshardFunction r_to_s_func;
+  std::shared_ptr<DistTensor> output =
+      r_to_s_func.Eval(dev_ctx, *input, out_dist_attr);
+
+  CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), true);
   CHECK_EQ(output->numel(), 9);
   CHECK_EQ(output->dims(), DDim({3, 3}));
 }
