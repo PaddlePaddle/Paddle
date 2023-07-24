@@ -159,5 +159,19 @@ class TestOneHotOpTranscriber(unittest.TestCase):
         _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
+class TestArgmaxOpTranscriber(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.to_tensor([2, 3, 4], 'float64')
+                y = paddle.argmax(x)
+
+        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+
+
 if __name__ == "__main__":
     unittest.main()
