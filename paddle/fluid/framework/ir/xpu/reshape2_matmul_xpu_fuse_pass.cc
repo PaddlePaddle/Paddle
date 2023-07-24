@@ -24,16 +24,6 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -97,10 +87,10 @@ Reshape2MatmulPattern::Reshape2MatmulPattern(PDPattern* pattern,
           ->assert_more([](Node* node) {
             auto reshape2_in_x_shape = node->Var()->GetShape();
             size_t reshape2_in_rank = reshape2_in_x_shape.size();
-            bool nice_shape =
-                (reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1) ||
-                (reshape2_in_x_shape[1] == 1 && reshape2_in_x_shape[3] == 1);
-            return (reshape2_in_rank == 4 && nice_shape);
+            return reshape2_in_rank == 4 && ((reshape2_in_x_shape[2] == 1 &&
+                                              reshape2_in_x_shape[3] == 1) ||
+                                             (reshape2_in_x_shape[1] == 1 &&
+                                              reshape2_in_x_shape[3] == 1));
           });
   auto* reshape2 =
       pattern->NewNode(reshape2_repr())
@@ -137,6 +127,75 @@ Reshape2MatmulPattern::Reshape2MatmulPattern(PDPattern* pattern,
                          ->assert_is_op_output("matmul", "Out")
                          ->AsOutput();
   reshape2->LinksFrom({reshape2_in}).LinksTo({matmul_x});
+  matmul->LinksFrom({matmul_x, matmul_y}).LinksTo({matmul_out});
+}
+
+struct Squeeze2MatmulPattern : public PatternBase {
+  Squeeze2MatmulPattern(PDPattern* pattern, const std::string& name_scope);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(squeeze2);
+  PATTERN_DECL_NODE(matmul);
+  // declare variable node's name
+  PATTERN_DECL_NODE(squeeze2_in);
+  PATTERN_DECL_NODE(matmul_x);
+  PATTERN_DECL_NODE(matmul_y);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
+Squeeze2MatmulPattern::Squeeze2MatmulPattern(PDPattern* pattern,
+                                             const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* squeeze2_in =
+      pattern->NewNode(squeeze2_in_repr())
+          ->assert_is_op_input("squeeze2", "X")
+          ->AsInput()
+          ->assert_more([](Node* node) {
+            auto squeeze2_in_x_shape = node->Var()->GetShape();
+            size_t squeeze2_in_rank = squeeze2_in_x_shape.size();
+            return squeeze2_in_rank == 4 &&
+                   (squeeze2_in_x_shape[2] == 1 && squeeze2_in_x_shape[3] == 1);
+          });
+  auto* squeeze2 = pattern->NewNode(squeeze2_repr())
+                       ->assert_is_op("squeeze2")
+                       ->assert_has_n_inputs(1)
+                       ->assert_more([](Node* node) {
+                         auto* op_desc = node->Op();
+                         auto squeeze2_op_axes =
+                             op_desc->GetAttrIfExists<std::vector<int>>("axes");
+                         return squeeze2_op_axes == std::vector<int>{2, 3};
+                       });
+  auto matmul_x = pattern->NewNode(matmul_x_repr())
+                      ->assert_is_op_output("squeeze2", "Out")
+                      ->assert_has_n_outputs(1)
+                      ->assert_is_op_input("matmul", "X")
+                      ->assert_more([](Node* node) {
+                        auto matmul_x_shape = node->Var()->GetShape();
+                        size_t matmul_x_rank = matmul_x_shape.size();
+                        return matmul_x_rank == 2;
+                      });
+  auto* matmul_y = pattern->NewNode(matmul_y_repr())
+                       ->assert_is_op_input("matmul", "Y")
+                       ->assert_is_persistable_var()
+                       ->assert_more([](Node* node) {
+                         auto matmul_y_shape = node->Var()->GetShape();
+                         size_t matmul_y_rank = matmul_y_shape.size();
+                         return matmul_y_rank == 2;
+                       });
+  auto* matmul = pattern->NewNode(matmul_repr())
+                     ->assert_is_op("matmul")
+                     ->assert_op_attr<bool>("transpose_X", false)
+                     ->assert_op_attr<bool>("transpose_Y", false)
+                     ->assert_more([](Node* node) {
+                       auto* op_desc = node->Op();
+                       auto matmul_alpha_attr =
+                           op_desc->GetAttrIfExists<float>("alpha");
+                       return std::abs(matmul_alpha_attr - 1.f) < 1e-5;
+                     });
+  auto* matmul_out = pattern->NewNode(matmul_out_repr())
+                         ->assert_is_op_output("matmul", "Out")
+                         ->AsOutput();
+  squeeze2->LinksFrom({squeeze2_in}).LinksTo({matmul_x});
   matmul->LinksFrom({matmul_x, matmul_y}).LinksTo({matmul_out});
 }
 }  // namespace patterns
@@ -250,6 +309,59 @@ void MapMatmulV2ToMatmulXPUPass::ApplyImpl(ir::Graph* graph) const {
   MapMatmulV2ToMatmul(graph);
 }
 
+void Squeeze2MatmulXPUFusePass::FuseSqueeze2Matmul(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::Squeeze2MatmulPattern pattern(gpd.mutable_pattern(), name_scope_);
+  int found_subgraph_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle Squeeze2MatmulXPUFusePass";
+    /* declare operator node's name */
+    GET_IR_NODE(squeeze2);
+    GET_IR_NODE(matmul);
+    /* declare variable node's name*/
+    GET_IR_NODE(squeeze2_in);
+    GET_IR_NODE(matmul_x);
+    GET_IR_NODE(matmul_y);
+    GET_IR_NODE(matmul_out);
+
+    bool flag = true;
+    std::vector<Node*>& next_ops = matmul_out->outputs;
+    flag = flag && next_ops.size() == 1 &&
+           (next_ops[0]->Name() == "elementwise_add" ||
+            next_ops[0]->Name() == "batch_norm");
+
+    if (flag) {
+      OpDesc desc(matmul->Op()->Block());
+      desc.SetType("mul");
+      desc.SetInput("X", {squeeze2_in->Name()});
+      desc.SetInput("Y", {matmul_y->Name()});
+      desc.SetOutput("Out", {matmul_out->Name()});
+      desc.SetAttr("x_num_col_dims", 1);
+      desc.SetAttr("y_num_col_dims", 1);
+
+      auto mul_node = graph->CreateOpNode(&desc);
+      IR_NODE_LINK_TO(squeeze2_in, mul_node);
+      IR_NODE_LINK_TO(matmul_y, mul_node);
+      IR_NODE_LINK_TO(mul_node, matmul_out);
+      GraphSafeRemoveNodes(graph, {squeeze2, matmul_x, matmul});
+      found_subgraph_count++;
+    }
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_subgraph_count);
+}
+
+void Squeeze2MatmulXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+  Init(name_scope_, graph);
+
+  FuseSqueeze2Matmul(graph);
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
@@ -272,3 +384,13 @@ REGISTER_PASS_CAPABILITY(map_matmulv2_to_matmul_xpu_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("matmul_v2", 0)
             .LE("matmul", 1));
+
+REGISTER_PASS(squeeze2_matmul_xpu_fuse_pass,
+              paddle::framework::ir::Squeeze2MatmulXPUFusePass);
+
+REGISTER_PASS_CAPABILITY(squeeze2_matmul_xpu_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("squeeze2", 0)
+            .LE("matmul", 1)
+            .EQ("mul", 0));

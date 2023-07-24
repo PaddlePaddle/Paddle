@@ -25,7 +25,7 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import set_grad_var_shape, use_new_executor
+from .utils import get_pp_stage, set_grad_var_shape, use_new_executor
 
 
 class Parallelizer:
@@ -223,10 +223,15 @@ class Parallelizer:
     def _generate_optimizer(
         self, main_program, startup_program, optimizer, params_grads
     ):
-        # NOTE: `apply_gradients` will add an Accumulator for a parameter only once,
-        # but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
+        # NOTE:
+        # 1. `apply_gradients` will add an Accumulator for a parameter only once,
+        #    but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
+        # 2. lr_scheduler cannot be deepcopy, cause 'deepcopy' will lead to difference of learning_rate between executor and engine.
+        learning_rate = optimizer._learning_rate
         optimizer = copy.deepcopy(optimizer)
         self._dist_context._serial_optimizer = optimizer
+        self._dist_context._serial_optimizer._learning_rate = learning_rate
+
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):
                 optimizer_ops = optimizer.apply_gradients(params_grads)
@@ -400,4 +405,6 @@ class Parallelizer:
             main_program._pipeline_opt["standalone_opt"] = {
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
+                "pp_degree": len(self._dist_context.process_meshes),
+                "pp_stage": get_pp_stage(self._dist_context, rank),
             }

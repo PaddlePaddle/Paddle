@@ -34,364 +34,378 @@
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/core/enforce.h"
 
 #include "glog/logging.h"
 
 namespace ir {
 
-void BuildScope(ir::Block* block,
-                paddle::framework::Scope* scope,
-                std::unordered_map<ir::Value, std::string>* name_map) {
-  std::unordered_map<ir::Value, int> map_test;
+using VariableNameMap =
+    std::unordered_map<const paddle::framework::Variable*, std::string>;
 
-  // int count = name_map->size();
-  int count = 0;
-  for (auto it = block->begin(); it != block->end(); ++it) {
-    size_t input_num = (*it)->num_operands();
-    auto attr_map = (*it)->attributes();
-    std::string op_name = (*it)->name();
-    if (attr_map.count("op_name")) {
-      op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
-    }
-    if (op_name == "pd.fetch") {
-      // fetch is a very special op, with no output
-      for (size_t i = 0; i < input_num; ++i) {
-        auto var = scope->Var("fetch");
-        auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-        // for now only support one fetch
-        fetch_list->resize(1);
-      }
-      continue;
-    }
+paddle::framework::Variable* CreateVar(
+    ir::Value value,
+    paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
+    bool force_persisable,
+    std::unordered_map<ir::Value, std::string>* value_2_var_name,
+    std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name,
+    std::map<std::string, int>* var_name_2_id,
+    std::vector<paddle::framework::Variable*>* variable_list) {
+  Operation* def_op = value.GetDefiningOp();
+  bool is_persisable = false;
+  if (def_op->attributes().count("is_persisable")) {
+    is_persisable = def_op->attributes()
+                        .at("is_persisable")
+                        .dyn_cast<ir::BoolAttribute>()
+                        .data();
+  }
 
-    if (op_name == "builtin.combine") {
-      auto out_value = (*it)->result(0);
+  paddle::framework::Variable* var = nullptr;
+  std::string name = var_name_prefix + "_inner_var_" +
+                     std::to_string(variable_2_var_name->size());
+  if (force_persisable || is_persisable) {
+    VLOG(6) << "Create var: " << name << " in scope " << inner_scope->root();
+    var = const_cast<paddle::framework::Scope*>(inner_scope->root())->Var(name);
+  } else {
+    VLOG(6) << "Create var: " << name << " in scope " << inner_scope;
+    var = inner_scope->Var(name);
+  }
+  value_2_var_name->emplace(value, name);
+  variable_2_var_name->emplace(var, name);
+  auto id = var_name_2_id->size();
+  var_name_2_id->emplace(name, id);
+  variable_list->push_back(var);
+  PADDLE_ENFORCE_EQ(
+      variable_list->size(),
+      var_name_2_id->size(),
+      paddle::platform::errors::InvalidArgument(
+          "The size of variable_list and var_name_2_id map should be equal"));
+  return var;
+}
 
-      VLOG(5) << "process builtin combine";
-      std::string name;
-      if (name_map->find(out_value) != name_map->end()) {
-        name = name_map->at(out_value);
-      } else {
-        name = "inner_var_" + std::to_string(count++);
-        name_map->emplace(out_value, name);
-      }
-
-      auto var = scope->Var(name);
-      auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
-
-      for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
-
-        PADDLE_ENFORCE_EQ(name_map->count(ptr),
-                          true,
-                          phi::errors::PreconditionNotMet(
-                              "can not found input of combine op"));
-
-        tensor_array->emplace_back(
-            &(scope->Var(name_map->at(ptr))->Get<phi::DenseTensor>()));
-      }
-
-      continue;
-    }
-
-    if (input_num > 0) {
-      for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              op_name));
-        }
-      }
-    }
-
-    int out_num = (*it)->num_results();
-
-    if (out_num > 0) {
-      for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = (*it)->result(i);
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          name = "inner_var_" + std::to_string(count++);
-          name_map->emplace(ptr, name);
-        }
-        auto var = scope->Var(name);
-
-        // need to update here, only support DenseTensor
-        var->GetMutable<phi::DenseTensor>();
+void CheckInputVars(
+    ir::Operation* op,
+    const std::string& op_name,
+    const std::unordered_map<ir::Value, std::string>& value_2_var_name) {
+  size_t input_num = op->num_operands();
+  if (input_num > 0) {
+    for (size_t i = 0; i < input_num; ++i) {
+      auto value = op->operand(i);
+      if (value) {
+        PADDLE_ENFORCE_NE(
+            value_2_var_name.find(value),
+            value_2_var_name.end(),
+            phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                op_name));
       }
     }
   }
 }
 
-void BuildInferMetaContext(
-    ir::Operation* op,
-    const std::unordered_map<ir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    const OpInfoTuple& op_yaml_info,
-    phi::InferMetaContext* ctx) {
-  // inputs include input and mutable attributes
-  auto input_info = std::get<0>(op_yaml_info);
-  std::map<std::string, size_t> input_index_map;
-  std::map<std::string, std::string> mutable_attr_type_map;
-  int input_index = 0;
-  for (auto& t : input_info) {
-    VLOG(6) << t.name << "\t" << t.type_name;
-    input_index_map[t.name] = input_index++;
-    if (t.is_mutable_attribute) {
-      mutable_attr_type_map[t.name] = t.type_name;
-    }
-  }
-
-  auto attr_info = std::get<1>(op_yaml_info);
-  std::map<std::string, std::string> attr_type_map;
-  for (auto& t : attr_info) {
-    VLOG(6) << t.name << "\t" << t.type_name;
-    attr_type_map[t.name] = t.type_name;
-  }
-
-  auto attr_map = op->attributes();
-  auto runtime_info = std::get<3>(op_yaml_info);
-
-  // int input_index = 0;
-  std::vector<std::string> vec_param_list = runtime_info.infer_meta_param;
-
-  for (size_t input_index = 0; input_index < vec_param_list.size();
-       input_index++) {
-    auto& t = vec_param_list[input_index];
-
-    if (input_index_map.count(t)) {
-      // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
-      auto in_var_name = name_map.at(ptr);
-
-      if (mutable_attr_type_map.count(t)) {
-        VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
-                << in_var_name;
-        if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          phi::Attribute r1 = phi::TensorRef(
-              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
-          ctx->EmplaceBackAttr(r1);
-        } else if (mutable_attr_type_map[t] ==
-                   "paddle::dialect::ScalarAttribute") {
-          phi::Attribute r1 = phi::TensorRef(
-              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
-
-          ctx->EmplaceBackAttr(r1);
-        } else {
-          PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                  mutable_attr_type_map[t]));
-        }
-
-      } else {
-        VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
-        auto var = scope->Var(in_var_name);
-        if (var->IsType<phi::DenseTensor>()) {
-          const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
-          ctx->EmplaceBackInput(const_cast<phi::TensorBase*>(tensor_in));
-        } else {
-          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>
-              inputs;
-          auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
-          for (size_t i = 0; i < tensor_array.size(); ++i) {
-            inputs.emplace_back(std::move(phi::MetaTensor(*tensor_array[i])));
-          }
-
-          ctx->EmplaceBackInputs(std::move(inputs));
-        }
-      }
-    }
-
-    if (attr_type_map.count(t)) {
-      auto type_name = attr_type_map[t];
-      if (type_name == "paddle::dialect::IntArrayAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::IntArrayAttribute>().data());
-      } else if (type_name == "paddle::dialect::DataTypeAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
-      } else if (type_name == "ir::Int32Attribute") {
-        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
-      } else if (type_name == "ir::FloatAttribute") {
-        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
-      } else if (type_name == "ir::BoolAttribute") {
-        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
-      } else if (type_name == "paddle::dialect::PlaceAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
-      } else if (type_name == "paddle::dialect::ScalarAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::ScalarAttribute>().data());
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                type_name));
-      }
-      VLOG(6) << "ctx->EmplaceBackAttr: " << t;
-    }
-  }
-
-  // update here, support fetch list for now
-  // [todo update here]
-  if (op->attributes().count("op_name") &&
-      (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
-       "pd.fetch")) {
-    // process fetch op
-    auto fetch_var = scope->Var("fetch");
-    auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
-    ctx->EmplaceBackOutput(out_tensor);
+void BuildValue(ir::Value value,
+                paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id,
+                std::vector<paddle::framework::Variable*>* variable_list) {
+  paddle::framework::Variable* var = nullptr;
+  if (value_2_var_name->find(value) != value_2_var_name->end()) {
+    var = inner_scope->FindVar(value_2_var_name->at(value));
   } else {
-    ir::Value out_ptr = op->result(0);
-    auto name = name_map.at(out_ptr);
-    ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+    var = CreateVar(value,
+                    inner_scope,
+                    var_name_prefix,
+                    false,
+                    value_2_var_name,
+                    variable_2_var_name,
+                    var_name_2_id,
+                    variable_list);
+  }
+
+  // Only support DenseTensor or Vector<DenseTensor>
+  if (!value.type()) {
+    var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    var->GetMutable<phi::DenseTensor>();
+  } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    var->GetMutable<phi::SelectedRows>();
+  } else if (value.type().isa<ir::VectorType>()) {
+    auto tensor_array = var->GetMutable<paddle::framework::VariableRefArray>();
+    for (size_t i = 0; i < value.type().dyn_cast<ir::VectorType>().size();
+         i++) {
+      PADDLE_ENFORCE(value.type()
+                         .dyn_cast<ir::VectorType>()[i]
+                         .isa<paddle::dialect::AllocatedDenseTensorType>(),
+                     paddle::platform::errors::Fatal(
+                         "Element of VectorType output only support "
+                         "DenseTensorType"));
+      auto var_i = CreateVar(value,
+                             inner_scope,
+                             var_name_prefix,
+                             false,
+                             value_2_var_name,
+                             variable_2_var_name,
+                             var_name_2_id,
+                             variable_list);
+      var_i->GetMutable<phi::DenseTensor>();
+      tensor_array->emplace_back(var_i);
+    }
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Output only support DenseTensorType or VectorType"));
   }
 }
 
-void BuildPhiKernelContext(
+void HandleForSpecialOp(
     ir::Operation* op,
-    const std::unordered_map<ir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    const OpInfoTuple& op_yaml_info,
-    phi::KernelContext* ctx,
-    std::map<std::string, std::vector<int>>* input_map,
-    std::map<std::string, std::vector<int>>* output_map) {
-  // inputs include input and mutable attributes
-  auto input_info = std::get<0>(op_yaml_info);
-  std::map<std::string, size_t> input_index_map;
-  std::map<std::string, std::string> mutable_attr_type_map;
-  int input_index = 0;
-  for (auto& t : input_info) {
-    VLOG(6) << t.name << "\t" << t.type_name;
-    input_index_map[t.name] = input_index++;
-    if (t.is_mutable_attribute) {
-      mutable_attr_type_map[t.name] = t.type_name;
+    paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
+    std::unordered_map<ir::Value, std::string>* value_2_var_name,
+    std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name,
+    std::map<std::string, int>* var_name_2_id,
+    std::vector<paddle::framework::Variable*>* variable_list) {
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+  }
+
+  if (op_name == "pd.fetch") {
+    // fetch is a very special op, with no output
+    auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
+                   ->Var("fetch");
+    VLOG(6) << "Create var: fetch in scope " << inner_scope->root();
+    auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    fetch_list->resize(index + 1);
+  }
+
+  if (op_name == "pd.feed") {
+    auto value = op->result(0);
+    VLOG(6) << "link feed output to feed in variable" << inner_scope;
+
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+
+    auto feed_var_name = "feed_" + std::to_string(index);
+    value_2_var_name->emplace(value, feed_var_name);
+  }
+
+  if (op_name == "builtin.combine") {
+    auto out_value = op->result(0);
+
+    paddle::framework::Variable* var = nullptr;
+    if (value_2_var_name->find(out_value) != value_2_var_name->end()) {
+      var = inner_scope->FindVar(value_2_var_name->at(out_value));
+    } else {
+      var = CreateVar(out_value,
+                      inner_scope,
+                      var_name_prefix,
+                      false,
+                      value_2_var_name,
+                      variable_2_var_name,
+                      var_name_2_id,
+                      variable_list);
+    }
+
+    auto tensor_array = var->GetMutable<paddle::framework::VariableRefArray>();
+    // clear tensor array
+    tensor_array->clear();
+    size_t input_num = op->num_operands();
+    for (size_t i = 0; i < input_num; ++i) {
+      auto value = op->operand(i);
+      PADDLE_ENFORCE_EQ(
+          value_2_var_name->count(value),
+          true,
+          phi::errors::PreconditionNotMet("can not found input of combine op"));
+      tensor_array->emplace_back(
+          inner_scope->FindVar(value_2_var_name->at(value)));
     }
   }
 
-  auto attr_info = std::get<1>(op_yaml_info);
-  std::map<std::string, std::string> attr_type_map;
-  for (auto& t : attr_info) {
-    VLOG(6) << t.name << "\t" << t.type_name;
-    attr_type_map[t.name] = t.type_name;
+  if (op_name == "builtin.set_parameter") {
+    VLOG(6) << "Handle for builtin.set_parameter:";
+    auto param_name = op->attributes()
+                          .at("parameter_name")
+                          .dyn_cast<ir::StrAttribute>()
+                          .AsString();
+
+    auto value = op->operand(0);
+    // change opreand name to param_name
+    auto orig_name = value_2_var_name->at(value);
+
+    if (inner_scope->root()->FindVar(param_name) == nullptr) {
+      const_cast<paddle::framework::Scope*>(inner_scope->root())
+          ->Rename(orig_name, param_name);
+    }
+    (*value_2_var_name)[value] = param_name;
   }
 
-  auto attr_map = op->attributes();
-  auto runtime_info = std::get<3>(op_yaml_info);
+  if (op_name == "builtin.get_parameter") {
+    VLOG(6) << "Handle for builtin.get_parameter:";
+    auto param_name = op->attributes()
+                          .at("parameter_name")
+                          .dyn_cast<ir::StrAttribute>()
+                          .AsString();
+    auto value = op->result(0);
+    value_2_var_name->emplace(value, param_name);
+  }
 
-  // int input_index = 0;
-  std::vector<std::string> vec_param_list = runtime_info.kernel_param;
-  for (auto& t : vec_param_list) {
-    if (input_index_map.count(t)) {
-      // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
-      auto in_var_name = name_map.at(ptr);
+  if (op_name == "builtin.slice") {
+    VLOG(6) << "Handle for builtin.slice";
+    auto out_value = op->result(0);
+    auto in_value = op->operand(0);
+    PADDLE_ENFORCE_EQ(value_2_var_name->count(in_value),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "input of buildin slice not in name map"));
 
-      if (input_map != nullptr) {
-        // only deal with single input for now, [todo] need support multi input
-        // like concat
-        size_t tmp_id = std::atol(in_var_name.substr(4, 100).c_str());
-        (*input_map)[std::to_string(input_index_map.at(t))].push_back(tmp_id);
+    int index =
+        op->attributes().at("index").dyn_cast<ir::Int32Attribute>().data();
+    auto in_var = inner_scope->FindVar(value_2_var_name->at(in_value));
+    auto variable_array = in_var->Get<paddle::framework::VariableRefArray>();
+
+    PADDLE_ENFORCE_EQ(
+        variable_2_var_name->count(variable_array[index]),
+        true,
+        phi::errors::PreconditionNotMet("[%d] the variable in build slice "
+                                        "input MUST in variable name map",
+                                        index));
+
+    std::string var_name = variable_2_var_name->at(variable_array[index]);
+    value_2_var_name->emplace(out_value, var_name);
+  }
+}
+
+void HandleForInplaceOp(
+    ir::Operation* op,
+    paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
+    std::unordered_map<ir::Value, std::string>* value_2_var_name,
+    std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name,
+    std::map<std::string, int>* var_name_2_id,
+    std::vector<paddle::framework::Variable*>* variable_list) {
+  if (op->num_results() < 1) return;
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+  }
+
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_());
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    ir::Value value = op->result(i);
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      std::string inplace_name = yaml_parser.InplaceName(value_name);
+      ir::Value inplace_value =
+          op->operand(yaml_parser.InputName2Id().at(inplace_name));
+      std::string var_name = value_2_var_name->at(inplace_value);
+      VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+              << " (var: " << var_name << ")";
+      value_2_var_name->emplace(value, var_name);
+    } else {
+      BuildValue(value,
+                 inner_scope,
+                 var_name_prefix,
+                 value_2_var_name,
+                 variable_2_var_name,
+                 var_name_2_id,
+                 variable_list);
+    }
+  }
+}
+
+// NOTE(zhiqiu): the persistable is created in inner_scope's root, and other is
+// created in inner_scope.
+void BuildScope(const ir::Block& block,
+                paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id,
+                std::vector<paddle::framework::Variable*>* variable_list) {
+  VLOG(4) << "***** [before build] scope"
+          << "(" << inner_scope << ") ******\n"
+          << paddle::framework::GenScopeTreeDebugInfo(
+                 const_cast<paddle::framework::Scope*>(inner_scope->root()));
+
+  for (auto it = block.begin(); it != block.end(); ++it) {
+    ir::Operation* op = *it;
+
+    std::string op_name = op->name();
+    if (op->attributes().count("op_name")) {
+      op_name = op->attributes()
+                    .at("op_name")
+                    .dyn_cast<ir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(4) << "build op:" << op_name;
+
+    if (op_name == "pd.feed" || op_name == "pd.fetch" ||
+        op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+      HandleForSpecialOp(op,
+                         inner_scope,
+                         var_name_prefix,
+                         value_2_var_name,
+                         variable_2_var_name,
+                         var_name_2_id,
+                         variable_list);
+      continue;
+    }
+
+    CheckInputVars(op, op_name, *value_2_var_name);
+
+    if (op->num_results() < 1) continue;
+    if (op->attributes().count("is_inplace") != 0 &&
+        op->attributes()
+            .at("is_inplace")
+            .dyn_cast<ir::BoolAttribute>()
+            .data()) {
+      HandleForInplaceOp(op,
+                         inner_scope,
+                         var_name_prefix,
+                         value_2_var_name,
+                         variable_2_var_name,
+                         var_name_2_id,
+                         variable_list);
+      continue;
+    } else {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        BuildValue(op->result(i),
+                   inner_scope,
+                   var_name_prefix,
+                   value_2_var_name,
+                   variable_2_var_name,
+                   var_name_2_id,
+                   variable_list);
       }
-
-      if (mutable_attr_type_map.count(t)) {
-        VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
-                << in_var_name;
-        if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          phi::Attribute r1 = phi::TensorRef(
-              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
-          ctx->EmplaceBackAttr(r1);
-        } else if (mutable_attr_type_map[t] ==
-                   "paddle::dialect::ScalarAttribute") {
-          phi::Attribute r1 = phi::TensorRef(
-              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
-
-          ctx->EmplaceBackAttr(r1);
-        } else {
-          PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                  mutable_attr_type_map[t]));
-        }
-
-      } else {
-        VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
-
-        PADDLE_ENFORCE_NOT_NULL(
-            scope->FindLocalVar(in_var_name),
-            phi::errors::PreconditionNotMet("can not find var[%s] in scope",
-                                            in_var_name));
-
-        auto var = scope->Var(in_var_name);
-        if (var->IsType<phi::DenseTensor>()) {
-          const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
-          ctx->EmplaceBackInput(tensor_in);
-        } else {
-          paddle::small_vector<const phi::TensorBase*> inputs;
-          auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
-          for (size_t i = 0; i < tensor_array.size(); ++i) {
-            inputs.emplace_back(tensor_array[i]);
-          }
-
-          ctx->EmplaceBackInputs(std::move(inputs));
-        }
-      }
-    }
-
-    if (attr_type_map.count(t)) {
-      auto type_name = attr_type_map[t];
-      if (type_name == "paddle::dialect::IntArrayAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::IntArrayAttribute>().data());
-      } else if (type_name == "paddle::dialect::DataTypeAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
-      } else if (type_name == "ir::Int32Attribute") {
-        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
-      } else if (type_name == "ir::FloatAttribute") {
-        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
-      } else if (type_name == "ir::BoolAttribute") {
-        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
-      } else if (type_name == "paddle::dialect::PlaceAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
-      } else if (type_name == "paddle::dialect::ScalarAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::ScalarAttribute>().data());
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                type_name));
-      }
-      VLOG(6) << "ctx->EmplaceBackAttr: " << t;
     }
   }
 
-  if (op->attributes().count("op_name") &&
-      (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
-       "pd.fetch")) {
-    // process fetch op
-    auto fetch_var = scope->Var("fetch");
-    auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
-    ctx->EmplaceBackOutput(out_tensor);
-  } else {
-    ir::Value out_ptr = op->result(0);
-    auto name = name_map.at(out_ptr);
-    ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
-        &(scope->Var(name)->Get<phi::DenseTensor>())));
-
-    if (output_map != nullptr) {
-      // only deal with single input for now, [todo] need support multi input
-      // like concat
-      size_t tmp_id = std::atol(name.substr(4, 100).c_str());
-      (*output_map)["out"].push_back(tmp_id);
-    }
-  }
+  VLOG(4) << "***** [after build] scope"
+          << "(" << inner_scope << ") ******\n"
+          << paddle::framework::GenScopeTreeDebugInfo(
+                 const_cast<paddle::framework::Scope*>(inner_scope->root()));
 }
 
 }  // namespace ir

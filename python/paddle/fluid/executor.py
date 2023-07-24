@@ -525,8 +525,9 @@ def _to_name_str(var):
 
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
+    from ..distributed.backup_env import getenv_or_backup
 
-    trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
     fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
     cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
@@ -855,11 +856,18 @@ class _ExecutorCache:
             if build_strategy is None or build_strategy.enable_inplace
             else False
         )
+
         enable_addto = (
             True
             if build_strategy is not None and build_strategy.enable_addto
             else False
         )
+
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+            # todo(phlrain), skip inplace add addto pass in new IR
+            enable_inplace = False
+            enable_addto = False
+
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
             skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
@@ -878,10 +886,9 @@ class _ExecutorCache:
 
             standalone_opt = new_program._pipeline_opt["standalone_opt"]
             pass_name = standalone_opt["schedule_mode"]
-            pass_attr = {
-                "num_micro_batches": standalone_opt["num_micro_batches"]
-            }
-            plan = apply_pass(new_program, new_program, pass_name, pass_attr)
+            plan = apply_pass(
+                new_program, new_program, pass_name, standalone_opt
+            )
         else:
             default_job = core.Job("default")
             type_to_program = {"default": new_program.desc}
@@ -1635,6 +1642,7 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
+
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 

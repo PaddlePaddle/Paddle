@@ -22,6 +22,10 @@ import unittest
 
 import numpy
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
 from paddle.static.amp import decorate
@@ -76,7 +80,7 @@ def resnet_cifar10(input, depth=32):
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
+        return nets.img_conv_group(
             input=input,
             pool_size=2,
             pool_stride=2,
@@ -135,7 +139,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+        optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
 
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"}
@@ -509,7 +513,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 )
                 avg_cost = paddle.mean(cost)
 
-                optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+                optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
                 amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                     custom_black_varnames={"loss", "conv2d_0.w_0"}
                 )

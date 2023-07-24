@@ -34,17 +34,22 @@ OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
 }
 OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
-OpOperand OpOperand::next_use() const { return impl_->next_use(); }
+OpOperand OpOperand::next_use() const { return impl()->next_use(); }
 
-Value OpOperand::source() const { return impl_->source(); }
+Value OpOperand::source() const { return impl()->source(); }
 
-void OpOperand::set_source(Value value) {
-  IR_ENFORCE(impl_, "Can't set source for a null value.");
-  impl_->set_source(value);
+Type OpOperand::type() const { return source().type(); }
+
+void OpOperand::set_source(Value value) { impl()->set_source(value); }
+
+Operation *OpOperand::owner() const { return impl()->owner(); }
+
+void OpOperand::RemoveFromUdChain() { return impl()->RemoveFromUdChain(); }
+
+detail::OpOperandImpl *OpOperand::impl() const {
+  IR_ENFORCE(impl_, "Can't use impl() interface while op_operand is null.");
+  return impl_;
 }
-
-Operation *OpOperand::owner() const { return impl_->owner(); }
-
 // Value
 Value::Value(const detail::ValueImpl *impl)
     : impl_(const_cast<detail::ValueImpl *>(impl)) {}
@@ -80,14 +85,21 @@ OpOperand Value::first_use() const { return impl()->first_use(); }
 
 bool Value::use_empty() const { return !first_use(); }
 
+bool Value::HasOneUse() const { return impl()->HasOneUse(); }
+
 void Value::ReplaceUsesWithIf(
     Value new_value,
     const std::function<bool(OpOperand)> &should_replace) const {
   for (auto it = begin(); it != end();) {
-    auto cur = it++;
-    if (should_replace(*cur)) {
-      cur->set_source(new_value);
+    if (should_replace(*it)) {
+      (it++)->set_source(new_value);
     }
+  }
+}
+
+void Value::ReplaceAllUsesWith(Value new_value) const {
+  for (auto it = begin(); it != end();) {
+    (it++)->set_source(new_value);
   }
 }
 
@@ -106,6 +118,7 @@ Operation *OpResult::owner() const { return impl()->owner(); }
 uint32_t OpResult::GetResultIndex() const { return impl()->GetResultIndex(); }
 
 detail::OpResultImpl *OpResult::impl() const {
+  IR_ENFORCE(impl_, "Can't use impl() interface while value is null.");
   return reinterpret_cast<detail::OpResultImpl *>(impl_);
 }
 

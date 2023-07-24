@@ -168,6 +168,8 @@ class Pass {
 
   virtual bool SupportApplyProgramViaGraph() const { return true; }
 
+  static void AddSupportSubgraphPass(const std::string &pass_type);
+
  protected:
   virtual void ApplyImpl(Graph *graph UNUSED) const {
     PADDLE_THROW(platform::errors::Unimplemented(

@@ -95,6 +95,10 @@ PHI_DEFINE_string(rccl_dir,
                   "dlopen will search rccl from LD_LIBRARY_PATH");
 #endif
 
+#ifdef PADDLE_WITH_XPU
+DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
+#endif
+
 namespace phi {
 namespace dynload {
 
@@ -597,6 +601,14 @@ void* GetCusparseLtDsoHandle() {
       "Your CUDA_VERSION less 11.2, not support cusparseLt. "
       "If you want to use cusparseLt, please upgrade CUDA and rebuild "
       "PaddlePaddle.");
+  return nullptr;
+#endif
+}
+
+void* GetXPTIDsoHandle() {
+#ifdef PADDLE_WITH_XPTI
+  return GetDsoHandleFromSearchPath(FLAGS_xpti_dir, "libxpti.so");
+#else
   return nullptr;
 #endif
 }

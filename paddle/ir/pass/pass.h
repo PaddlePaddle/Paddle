@@ -20,7 +20,7 @@
 
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pass/analysis_manager.h"
-#include "paddle/utils/optional.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace ir {
 
@@ -55,8 +55,8 @@ struct PassInfo {
   std::string name;
 
   // opt_level=0: the basic pass which framework need.
-  // opt_level=1: the fusion logical pass.
-  // opt_level=2: constant fold, cse, memory optimize, etc.
+  // opt_level=1: constant fold, cse, memory optimize, etc.
+  // opt_level=2: the fusion logical pass.
   // opt_level=3: layout, etc.
   uint8_t opt_level;
 
@@ -91,8 +91,7 @@ class IR_API Pass {
   AnalysisManager analysis_manager() { return pass_state().am; }
 
   detail::PassExecutionState& pass_state() {
-    IR_ENFORCE(pass_state_.is_initialized() == true,
-               "pass state was never initialized");
+    IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
     return *pass_state_;
   }
 
@@ -101,7 +100,7 @@ class IR_API Pass {
  private:
   detail::PassInfo pass_info_;
 
-  paddle::optional<detail::PassExecutionState> pass_state_;
+  std::optional<detail::PassExecutionState> pass_state_;
 
   friend class PassManager;
   friend class detail::PassAdaptor;
