@@ -171,6 +171,11 @@ class Linear(Layer):
         self.name = name
 
     def forward(self, input):
+        with paddle.amp.auto_cast(custom_white_list={'elementwise_add','fused_gemm_epilogue'}, dtype='bfloat16'):
+            out = paddle.incubate.nn.functional.fused_linear(
+                x=input, weight=self.weight, bias=self.bias, name=self.name
+            )
+            return out
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name
         )

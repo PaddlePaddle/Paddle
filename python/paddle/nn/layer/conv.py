@@ -15,7 +15,7 @@
 # TODO: define classes of convolutional neural network
 
 import numpy as np
-
+import paddle
 from paddle import get_flags
 
 from ...device import (
@@ -704,29 +704,30 @@ class Conv2D(_ConvNd):
         )
 
     def forward(self, x):
-        if self._padding_mode != 'zeros':
-            x = F.pad(
-                x,
-                self._reversed_padding_repeated_twice,
-                mode=self._padding_mode,
-                data_format=self._data_format,
-            )
+        with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O1', dtype='bfloat16'):
+            if self._padding_mode != 'zeros':
+                x = F.pad(
+                    x,
+                    self._reversed_padding_repeated_twice,
+                    mode=self._padding_mode,
+                    data_format=self._data_format,
+                )
 
-        out = F.conv._conv_nd(
-            x,
-            self.weight,
-            bias=self.bias,
-            stride=self._stride,
-            padding=self._updated_padding,
-            padding_algorithm=self._padding_algorithm,
-            dilation=self._dilation,
-            groups=self._groups,
-            data_format=self._data_format,
-            channel_dim=self._channel_dim,
-            op_type=self._op_type,
-            use_cudnn=self._use_cudnn,
-        )
-        return out
+            out = F.conv._conv_nd(
+                x,
+                self.weight,
+                bias=self.bias,
+                stride=self._stride,
+                padding=self._updated_padding,
+                padding_algorithm=self._padding_algorithm,
+                dilation=self._dilation,
+                groups=self._groups,
+                data_format=self._data_format,
+                channel_dim=self._channel_dim,
+                op_type=self._op_type,
+                use_cudnn=self._use_cudnn,
+            )
+            return out
 
 
 class Conv2DTranspose(_ConvNd):
