@@ -333,7 +333,7 @@ struct GPUContext::Impl {
   void InitEigenDevice() {
     PD_CHECK(allocator_ != nullptr,
              "the allocator for eigen device is nullptr.");
-    eigen_stream_.reset(new internal::EigenGpuStreamDevice());
+    eigen_stream_ = std::make_unique<internal::EigenGpuStreamDevice>();
     eigen_stream_->Reinitialize(stream(), allocator_, place_);
     eigen_device_ = new Eigen::GpuDevice(eigen_stream_.get());
   }
