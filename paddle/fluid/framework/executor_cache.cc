@@ -415,7 +415,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  return std::move(ir_res);
+  return ir_res;
 }
 
 std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
@@ -470,7 +470,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  return std::move(res);
+  return res;
 }
 
 }  // namespace framework
