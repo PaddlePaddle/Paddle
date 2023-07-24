@@ -111,6 +111,8 @@ class IR_API alignas(8) Operation final {
 
   Block *GetParent() const { return parent_; }
 
+  Block *GetParent() { return parent_; }
+
   Region *GetParentRegion() const;
 
   Operation *GetParentOp() const;
