@@ -320,8 +320,8 @@ PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
     // Get the GradNode from meta
     auto grad_node_ptr = meta->GetMutableGradNode();
     if (!grad_node_ptr) {
-        Py_INCREF(Py_None);
-        return Py_None;
+      Py_INCREF(Py_None);
+      return Py_None;
     }
 
     PyObject* py_grad_node = ToPyObject(grad_node_ptr);

@@ -89,5 +89,6 @@ class TestAnonmousSurvey(unittest.TestCase):
             for u in grad_fn.next_functions:
                 self.check_func(u, next_funcs_json[u.name()])
 
+
 if __name__ == "__main__":
     unittest.main()

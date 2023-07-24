@@ -1008,11 +1008,10 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node) {
   py::object py_obj = py::cast(grad_node, py::return_value_policy::reference);
-  PyObject* py_grad_node = py_obj.release().ptr(); 
+  PyObject* py_grad_node = py_obj.release().ptr();
   Py_INCREF(py_grad_node);
   return py_grad_node;
 }
-
 
 static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
                                              const std::string& arg_name,
