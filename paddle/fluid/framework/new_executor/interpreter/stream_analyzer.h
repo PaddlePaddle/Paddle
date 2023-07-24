@@ -85,6 +85,7 @@ class StreamAnalyzer {
       const Instruction& cur_instr, const Instruction& next_instr) const;
 
   const Place place_;
+  bool is_event_info_build_{false};
   std::shared_ptr<
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
       event_info_;
