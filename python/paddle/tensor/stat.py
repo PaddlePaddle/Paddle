@@ -255,7 +255,7 @@ def numel(x, name=None):
         return out
 
 
-def nanmedian(x, axis=None, keepdim=False, mode='mean', name=None):
+def nanmedian(x, axis=None, keepdim=False, mode='avg', name=None):
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -274,8 +274,8 @@ def nanmedian(x, axis=None, keepdim=False, mode='mean', name=None):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        mode (str, optional): Mode for shape[dim] size is even(optional, mean or min).
-            If mode is mean, return val is (mid1 + mid2)/2.
+        mode (str, optional): Mode for shape[dim] size is even(optional, avg or min).
+            If mode is avg, return val is (mid1 + mid2)/2.
             If mode is min, return val is min(mid1, mid2), return index is min val index.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -308,8 +308,8 @@ def nanmedian(x, axis=None, keepdim=False, mode='mean', name=None):
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
         raise ValueError("Axis list should not be empty.")
 
-    if mode not in ('mean', 'min'):
-        raise ValueError(f"Mode {mode} is not supported. Must be mean or min.")
+    if mode not in ('avg', 'min'):
+        raise ValueError(f"Mode {mode} is not supported. Must be avg or min.")
 
     if axis is None:
         axis = []
