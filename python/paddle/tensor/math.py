@@ -4529,8 +4529,9 @@ def neg_(x, name=None):
     Inplace version of ``neg`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_neg`.
     """
-    if in_dynamic_mode():
-        return _C_ops.scale_(x)
+    return x.scale_(
+        scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name
+    )
 
 
 def atan2(x, y, name=None):
@@ -6015,14 +6016,14 @@ def i0(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def i0_(x, y, name=None):
+def i0_(x, name=None):
     r"""
     Inplace version of ``i0`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_i0`.
     """
 
     if in_dynamic_mode():
-        return _C_ops.i0_(x, y)
+        return _C_ops.i0_(x)
 
 
 def i0e(x, name=None):
