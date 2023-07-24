@@ -1,6 +1,5 @@
 if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
-  set(PLUGIN_URL --depth 1
-                 https://github.com/PaddlePaddle/PaddleCustomDevice.git)
+  set(PLUGIN_URL https://github.com/PaddlePaddle/PaddleCustomDevice.git)
   set(PLUGIN_TAG develop)
 
   file(

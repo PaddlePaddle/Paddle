@@ -24,7 +24,7 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
         cmd = 'cd {} \
-            && git clone {} \
+            && git clone --depth 1 {} \
             && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
