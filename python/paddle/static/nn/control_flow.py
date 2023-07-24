@@ -27,7 +27,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import Operator, Program, Variable, static_only
 
 # Temporary solution, it will be deleted later
-from paddle.fluid.layers.control_flow import ConditionalBlock, select_input
+from paddle.fluid.layers.control_flow import ConditionalBlock
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -1165,6 +1165,92 @@ def copy_var_to_parent_block(var, layer_helper):
         )
         paddle.assign(var, parent_block_var)
     return parent_block_var
+
+
+def select_output(input, outputs, mask):
+    """
+    **select_output**
+    This API takes in one input and multiple outputs and an integer mask. It
+    selects the output specified by the mask and copy the input to selected
+    output. It is useful in control flow.
+
+    Args:
+        input(Variable): The input variable
+        outputs(tuple|list): The output variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            output to be copied with input
+
+    Returns:
+        Variable: The outputs variables
+    """
+    helper = LayerHelper('select_output', **locals())
+    check_type(input, 'input', (Variable), 'select_output')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_output')
+    check_type(outputs, 'outputs', (list, tuple), 'select_output')
+
+    helper.append_op(
+        type='select_output',
+        inputs={'X': input, 'Mask': mask},
+        outputs={'Out': outputs},
+    )
+    return outputs
+
+
+def _select_input_infer_shape(first_shape, second_shape):
+    """
+    This function infer the output shape by following algorithm:
+    1. if the dims is different, raise a error.
+    2. compare axis one by one:
+        if a == b: we set axis to a
+        if a != b: we set axis to -1
+    for compatibility, non declarative mode, we just return second_shape.
+    """
+    if len(first_shape) != len(second_shape):
+        warnings.warn(
+            f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
+        )
+        return second_shape
+    out_shape = list(
+        map(lambda a, b: a if a == b else -1, first_shape, second_shape)
+    )
+    return out_shape
+
+
+def select_input(inputs, mask):
+    """
+    **select_input**
+
+    This API takes in multiple inputs and uses an integer mask to select one
+    input to output. It is useful in control flow.
+
+    Args:
+        inputs(tuple|list): The input variables
+        mask(Tensor): A tensor containing 1 integer number selecting which
+            input to output
+
+    Returns:
+        Variable: The selected input variable
+    """
+    helper = LayerHelper('select_input', **locals())
+    check_type(inputs, 'inputs', (list, tuple), 'select_input')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
+
+    # Select input should expand the shape. If it is - 1 and valid number, use - 1 first. If the dim is different, an error will be reported directly
+    # assert inputs[0].dtype == inputs[1].dtype, f"Expect the inputs should have the same dtype, but get {inputs[0].dtype} and {inputs[1].dtype}"
+
+    output_shape = _select_input_infer_shape(inputs[0].shape, inputs[1].shape)
+    output_dtype = inputs[1].dtype
+    output_type = inputs[1].type
+
+    out = helper.create_variable(
+        dtype=output_dtype, shape=output_shape, type=output_type
+    )
+    helper.append_op(
+        type='select_input',
+        inputs={'X': inputs, 'Mask': mask},
+        outputs={'Out': out},
+    )
+    return out
 
 
 def select_input_with_buildin_type(inputs, mask, name):
