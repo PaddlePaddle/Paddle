@@ -515,8 +515,13 @@ class TestLayerNormOp(unittest.TestCase):
         self.use_cudnn = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        np.testing.assert_allclose(np.array(tensor).flatten(), np_array.flatten(),
-            rtol=1e-3, atol=atol, err_msg=msg)
+        np.testing.assert_allclose(
+            np.array(tensor).flatten(),
+            np_array.flatten(),
+            rtol=1e-3,
+            atol=atol,
+            err_msg=msg,
+        )
 
     def check_forward_backward(
         self,
