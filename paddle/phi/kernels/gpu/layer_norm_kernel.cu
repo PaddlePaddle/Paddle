@@ -578,7 +578,8 @@ void LayerNormKernel(const Context &dev_ctx,
                                    VecSize,                                  \
                                    WARPS_M,                                  \
                                    WARPS_N,                                  \
-                                   BYTES_PER_LDG>                            \
+                                   BYTES_PER_LDG,                            \
+                                   feature_size>                             \
         <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
             batch_size,                                                      \
             feature_size,                                                    \
