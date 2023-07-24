@@ -73,6 +73,7 @@ pipeline {
       }
     }
     stage('Daily Release') {
+      // Test commit update
       agent {
         kubernetes {
           yamlFile 'ci/templates/musa.yaml'
