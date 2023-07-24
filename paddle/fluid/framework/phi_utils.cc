@@ -40,7 +40,7 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
         platform::errors::InvalidArgument("Op proto cannot be nullptr."));
   }
 
-  ~KernelArgsNameMakerByOpProto() {}
+  ~KernelArgsNameMakerByOpProto() override {}
 
   const paddle::small_vector<const char*>& GetInputArgsNames() override;
   const paddle::small_vector<const char*>& GetOutputArgsNames() override;
