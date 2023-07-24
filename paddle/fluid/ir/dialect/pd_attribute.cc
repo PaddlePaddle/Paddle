@@ -38,7 +38,7 @@ phi::Scalar ScalarAttribute::data() {
   } else if (isa<ir::BoolAttribute>()) {
     return phi::Scalar(dyn_cast<ir::BoolAttribute>().data());
   } else if (isa<ir::StrAttribute>()) {
-    return phi::Scalar(dyn_cast<ir::StrAttribute>().data());
+    return phi::Scalar(dyn_cast<ir::StrAttribute>().AsString());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported ir attribute when casting it into "
