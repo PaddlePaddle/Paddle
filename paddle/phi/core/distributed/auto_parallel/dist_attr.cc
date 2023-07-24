@@ -81,14 +81,32 @@ void TensorDistAttr::set_annotated(
 }
 
 void TensorDistAttr::set_partial_status(
-    const std::set<_Partial_>& partial_status) {
+    const paddle::flat_hash_map<int64_t, _Partial_>& partial_status) {
   partial_status_ = partial_status;
 }
 
 void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
                                         const ReduceType& type) {
   for (const auto& dim : dims) {
+    if (partial_status_.count(dim) != 0) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Trying to Set dim %d as Partial which is already a Partial dim.",
+          dim));
+    }
     partial_status_.emplace(dim, type);
+  }
+}
+
+void TensorDistAttr::clean_partial_status() { partial_status_.clear(); }
+
+void TensorDistAttr::clean_partial_status(const std::vector<int64_t>& dims) {
+  for (const auto& dim : dims) {
+    if (partial_status_.count(dim) == 0) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Trying to clean Partial on dim %d but it is not Partial.", dim));
+    } else {
+      partial_status_.erase(dim);
+    }
   }
 }
 
@@ -197,10 +215,11 @@ bool TensorDistAttr::verify_partial_status() const {
   VLOG(4) << "[TensorDistAttr verify_partial_status] "
           << partial_status_string();
   for (auto& itr : partial_status_) {
-    if (itr.dim_ < 0 || itr.dim_ >= process_mesh_.ndim()) {
+    if (itr.second.dim_ < 0 || itr.second.dim_ >= process_mesh_.ndim()) {
       return false;
     }
-    if (itr.type_ < ReduceType::SUM || itr.type_ <= ReduceType::ALL) {
+    if (itr.second.type_ < ReduceType::SUM ||
+        itr.second.type_ <= ReduceType::ALL) {
       return false;
     }
   }
@@ -319,7 +338,7 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
 std::string TensorDistAttr::partial_status_string() const {
   std::string partial_status_str = "[";
   for (auto& itr : partial_status_) {
-    partial_status_str += itr.to_string() + ", ";
+    partial_status_str += itr.second.to_string() + ", ";
   }
   partial_status_str += "]";
   return partial_status_str;

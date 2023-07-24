@@ -71,12 +71,22 @@ class TensorDistAttr {
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
-  const std::set<_Partial_>& partial_status() const { return partial_status_; }
+  const paddle::flat_hash_map<int64_t, _Partial_>& partial_status() const {
+    return partial_status_;
+  }
 
-  void set_partial_status(const std::set<_Partial_>& partial_status);
+  // by map
+  void set_partial_status(
+      const paddle::flat_hash_map<int64_t, _Partial_>& partial_status);
 
+  // by each dim
   void set_partial_status(const std::vector<int64_t>& dims,
                           const ReduceType& type = ReduceType::SUM);
+  // all
+  void clean_partial_status();
+
+  // clean by dims
+  void clean_partial_status(const std::vector<int64_t>& dims);
 
   void set_default_dims_mapping(const std::vector<int64_t>& tensor_shape);
 
@@ -141,7 +151,10 @@ class TensorDistAttr {
   int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
-  std::set<_Partial_> partial_status_;
+  // partial map would be small (less than mesh.size)
+  // iterate operation (copy and comparision) would more frequency than random
+  // element access. <key: dim on mesh, value: partial object>
+  paddle::flat_hash_map<int64_t, _Partial_> partial_status_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
@@ -152,6 +165,12 @@ inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
 bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs);
 
 inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+bool operator==(const _Partial_& lhs, const _Partial_& rhs);
+
+inline bool operator!=(const _Partial_& lhs, const _Partial_& rhs) {
   return !operator==(lhs, rhs);
 }
 
