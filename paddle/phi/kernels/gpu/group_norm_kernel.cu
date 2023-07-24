@@ -29,12 +29,7 @@ namespace phi {
 
 static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
 
-static inline __device__ __host__ float sigmoid(float x) {
-  return 1.F / (1.F + expf(-x));
-}
-
 #ifdef PADDLE_CUDA_BF16
-// #ifdef __CUDA_NO_BFLOAT162_OPERATORS__
 
 __host__ __device__ inline float __internal_bfloat162float(const uint16_t h) {
   float f;
@@ -81,7 +76,6 @@ __host__ __device__ inline __nv_bfloat162 __float22bfloat162_rn(
   return val;
 }
 
-// #endif
 #endif
 
 struct GroupSums {
