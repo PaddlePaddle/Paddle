@@ -130,7 +130,7 @@ def _dygraph_to_static_func_(dygraph_func):
             >>> from paddle.jit.api import dygraph_to_static_func
 
             >>> @dygraph_to_static_func
-            >>> def func(x):
+            ... def func(x):
             ...     if paddle.mean(x) < 0:
             ...         x_v = x - 1
             ...     else:
@@ -345,12 +345,12 @@ def not_to_static(func=None):
             >>> import paddle
 
             >>> @paddle.jit.not_to_static
-            >>> def func_not_to_static(x):
+            ... def func_not_to_static(x):
             ...     res = x - 1
             ...     return res
 
             >>> @paddle.jit.to_static
-            >>> def func(x):
+            ... def func(x):
             ...     if paddle.mean(x) < 0:
             ...         out = func_not_to_static(x)
             ...     else:
