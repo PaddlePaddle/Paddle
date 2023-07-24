@@ -135,12 +135,12 @@ void MemoryOptimizePass::CollectVarInfo(
   
   std::map<std::string, std::vector<int32_t>> max_shape;
 
-  if(argument->tensorrt_tuned_dynamic_shape()){ // turn on tensorrt dynamic shape
+  if(argument->use_gpu() && argument->use_tensorrt() && argument->tensorrt_tuned_dynamic_shape()){ // turn on tensorrt dynamic shape
     // get shape information and dtype information from the specified file.
     DeserializeShapeRangeInfo(argument->tensorrt_shape_range_info_path(), 
-                                    nullptr, 
-                                    nullptr, 
+                                    nullptr,
                                     &max_shape, 
+                                    nullptr, 
                                     nullptr,
                                     nullptr,
                                     nullptr,
@@ -204,7 +204,7 @@ void MemoryOptimizePass::CollectVarInfo(
       if (node->Var()->Persistable()) continue;
 
       std::vector<int32_t> shape;
-      if(argument->tensorrt_tuned_dynamic_shape() && 
+      if(argument->use_gpu() && argument->use_tensorrt() && argument->tensorrt_tuned_dynamic_shape() && 
           max_shape.count(node->Var()->Name())){ // turn on tensorrt dynamic shape
         shape = max_shape[node->Var()->Name()];
       } else{ //turn off tensorrt dynamic shape
@@ -215,8 +215,10 @@ void MemoryOptimizePass::CollectVarInfo(
         }); 
 
         for (auto& v : shape) {
-          if (v < 0) v = fake_batch_size; // If TRT dynamic shape is not enabled, 
+          if (v < 0) {
+            v = fake_batch_size; // If TRT dynamic shape is not enabled, 
                                           // then set the dimensions with a value of -1 in the varaible to 1
+          }
         }
         
       } 
