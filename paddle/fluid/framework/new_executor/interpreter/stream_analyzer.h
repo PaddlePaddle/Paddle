@@ -33,7 +33,10 @@ class StreamAnalyzer {
   using DeviceContext = platform::DeviceContext;
   using Place = platform::Place;
 
-  explicit StreamAnalyzer(const Place& place) : place_(place) {}
+  explicit StreamAnalyzer(const Place& place) : place_(place) {
+    event_info_ = std::make_shared<
+        std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>();
+  }
 
   ~StreamAnalyzer() {}
 
@@ -43,6 +46,12 @@ class StreamAnalyzer {
       const OpFuncNode& op_func_node) const;
 
   platform::DeviceType GetWaiterType(const Instruction& instr) const;
+
+  void ShareEventInfoFrom(const StreamAnalyzer& src);
+
+  std::shared_ptr<
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+  GetEventInfo() const;
 
  private:
   bool HasDataDependency(const Instruction& cur_instr,
@@ -76,6 +85,9 @@ class StreamAnalyzer {
       const Instruction& cur_instr, const Instruction& next_instr) const;
 
   const Place place_;
+  std::shared_ptr<
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+      event_info_;
 };
 
 }  // namespace interpreter

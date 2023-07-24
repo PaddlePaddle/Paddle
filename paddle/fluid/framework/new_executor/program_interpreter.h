@@ -61,6 +61,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
+  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
+
+  bool IsSharedResultsBuild() const override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -134,9 +138,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
-  // Note(sonder): share the op dependency,
-  // event analyzer, thread scheduling and GC.
-  bool is_shared_{false};
+  // Note(sonder): share the op dependency and event analysis procedure.
+  bool is_shared_results_build_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned
