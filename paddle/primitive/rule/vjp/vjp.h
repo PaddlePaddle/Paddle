@@ -19,13 +19,50 @@
 #endif
 
 #include <math.h>
+#include <vector>
 
+#include "paddle/ir/core/value.h"
 #include "paddle/primitive/primitive/primitive.h"
+#include "paddle/primitive/type/desc_tensor.h"
+
+namespace paddle {
+namespace ir {
+namespace api {
+std::vector<std::vector<ir::OpResult>> tanh_grad(
+    ir::OpResult out,
+    ir::OpResult grad_out,
+    const std::vector<std::vector<int>>& argnums) {
+  std::vector<std::vector<ir::OpResult>> res;
+  return res;
+}
+}  // namespace api
+}  // namespace ir
+}  // namespace paddle
 
 namespace paddle {
 namespace primitive {
 namespace experimental {
+// std::vector<std::vector<ir::OpResult> interface(vector<vector<int>> argnums,
+// vector<vector<opresult>){
 
+//     return vector<vector<opresult>> res ;
+// }
+
+std::vector<std::vector<Tensor>> tanh_vjp(
+    const Tensor& out,
+    const Tensor& grad_out,
+    const std::vector<std::vector<int>>& argnums) {
+  // 1.constuct out and grad_out OpResult
+  std::vector<std::vector<Tensor>> res;
+  ir::OpResult out_opres(
+      std::static_pointer_cast<DescTensor>(out.impl())->getValue());
+  ir::OpResult grad_out_opres(
+      std::static_pointer_cast<DescTensor>(grad_out.impl())->getValue());
+
+  // 2.tanh_grad
+  return res;
+}
+namespace details {
 template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
@@ -33,6 +70,7 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   set_output<T>(grad_x_tmp, grad_x);
 }
 
+}  // namespace details
 }  // namespace experimental
 }  // namespace primitive
 }  // namespace paddle
