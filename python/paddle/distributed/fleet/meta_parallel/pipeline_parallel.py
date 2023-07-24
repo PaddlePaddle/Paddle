@@ -18,6 +18,11 @@ from collections import defaultdict
 
 import paddle
 from paddle import framework
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    HOOK_ACTION,
+    FusedCommBuffer,
+    assign_group_by_size,
+)
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
@@ -27,11 +32,6 @@ from ..utils.hybrid_parallel_util import (
     broadcast_sharding_parameters,
 )
 from ..utils.log_util import logger
-from ..utils.tensor_fusion_helper import (
-    HOOK_ACTION,
-    FusedCommBuffer,
-    assign_group_by_size,
-)
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 from .pp_utils import p2p_communication as p2p
@@ -324,8 +324,8 @@ class PipelineParallel(MetaParallelBase):
                 if act == HOOK_ACTION.REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
-
                 var_groups = assign_group_by_size(parameter_list, group_size)
+
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
                         group_idx,
@@ -462,8 +462,7 @@ class PipelineParallel(MetaParallelBase):
             ), "comm buffers should be created"
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_and_split_grads()
-
+                    buffer.scale_grads()
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
         self._layers.allreduce_shared_weight_gradients()
@@ -883,7 +882,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_and_split_grads()
+                    buffer.scale_grads()
 
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
@@ -1270,7 +1269,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
         for buffers in self._chunk_2_comm_buffers.values():
             for buffer in buffers:
-                buffer.scale_and_split_grads()
+                buffer.scale_grads()
 
     def forward_backward_pipeline(
         self, data, scaler, forward_only=False, compute_loss=True

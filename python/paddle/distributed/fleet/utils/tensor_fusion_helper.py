@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import itertools
+import os
 import weakref
 from collections import OrderedDict
 
@@ -40,7 +41,13 @@ class HOOK_ACTION:
     REDUCE_SCATTER = 2
 
 
-def flatten_dense_tensors(parameters, use_main_grad=False, release_grad=False):
+def flatten_dense_tensors(
+    parameters,
+    use_main_grad=False,
+    release_grad=False,
+    fuse_param=True,
+    warp_buffer=False,
+):
     from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_storage import (
         GradStorage,
         ParamStorage,
@@ -62,11 +69,15 @@ def flatten_dense_tensors(parameters, use_main_grad=False, release_grad=False):
         _param2align[param.name] = align_
 
     if release_grad:
+        assert not fuse_param
+        assert not warp_buffer
         return None, _buffer_size, _param2offset
 
-    param_storage = ParamStorage(size=_buffer_size, dtype=dtype, device="gpu")
-
-    param_storage.add_rank_params(parameters, _param2align)
+    if fuse_param:
+        param_storage = ParamStorage(
+            size=_buffer_size, dtype=dtype, device="gpu"
+        )
+        param_storage.add_rank_params(parameters, _param2align)
 
     # process gradient
     grad_dtype = paddle.float32 if use_main_grad else dtype
@@ -81,19 +92,21 @@ def flatten_dense_tensors(parameters, use_main_grad=False, release_grad=False):
     for param in parameters:
         grad_storage.add_grad(param, _param2align[param.name])
 
-    param_storage.warp_buffer()
-    grad_storage.warp_buffer()
+    if warp_buffer:
+        if fuse_param:
+            param_storage.warp_buffer()
+        grad_storage.warp_buffer()
 
-    if not use_main_grad:
-        # param_storage --> grad_storage
-        param_storage.buffer._copy_gradient_from(grad_storage.buffer)
+    if fuse_param:
+        if not use_main_grad:
+            # param_storage --> grad_storage
+            param_storage.buffer._copy_gradient_from(grad_storage.buffer)
+        else:
+            param_storage.buffer.main_grad = grad_storage.buffer
+        param_storage.buffer.stop_gradient = False
+        return param_storage, grad_storage, _buffer_size, _param2offset
     else:
-        param_storage.buffer.main_grad = grad_storage.buffer
-    param_storage.buffer.stop_gradient = False
-
-    return param_storage, grad_storage
-
-    # return grad_storage.buffer, _buffer_size, _param2offset
+        return grad_storage, _buffer_size, _param2offset
 
 
 class ShardingGradView:
@@ -276,15 +289,24 @@ class FusedCommBuffer:
         act=None,
         dst=-1,
         release_grads=False,
+        use_main_grad=None,
+        fuse_param=False,
+        scale_after_comm=True,
     ):
+
         self._id = id
         self._params = params
         self._acc_steps = acc_steps
         self._comm_group = comm_group
         self._release_grads = release_grads
 
-        self.use_main_grad = hasattr(self._params[0], "main_grad")
-
+        self.use_main_grad = (
+            use_main_grad
+            if use_main_grad is not None
+            else hasattr(self._params[0], "main_grad")
+        )
+        self._fuse_param = fuse_param
+        self._scale_after_comm = scale_after_comm
         self._task = None
         self._dtype = (
             paddle.float32 if self.use_main_grad else self._params[0].dtype
@@ -308,13 +330,37 @@ class FusedCommBuffer:
 
         self._init_step_dict()
         if self._act != HOOK_ACTION.REDUCE_SCATTER:
-            (
-                self.grad_storage,
-                self.buffer_size,
-                self.param2offset,
-            ) = flatten_dense_tensors(
-                self._params, self.use_main_grad, self._release_grads
-            )
+            if self._fuse_param:
+                (
+                    self.param_storage,
+                    self.grad_storage,
+                    self.buffer_size,
+                    self.param2offset,
+                ) = flatten_dense_tensors(
+                    self._params,
+                    release_grads=release_grads,
+                    use_main_grad=use_main_grad,
+                    fuse_param=True,
+                    warp_buffer=True,
+                )
+                self.param_storage = self.param_storage.buffer
+                self.grad_storage = self.grad_storage.buffer
+            else:
+                self.param_storage = None
+                (
+                    self.grad_storage,
+                    self.buffer_size,
+                    self.param2offset,
+                ) = flatten_dense_tensors(
+                    self._params,
+                    release_grads=release_grads,
+                    use_main_grad=self.use_main_grad,
+                    fuse_param=False,
+                    warp_buffer=False,
+                )
+                if not self._release_grads:
+                    self.grad_storage = self.grad_storage.buffer
+
         else:
             (
                 self._sharding_param_grad_view,
@@ -462,6 +508,11 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def _comm_grads(self):
+
+        if not self._scale_after_comm:
+            scale_factor = 1.0 / self._comm_group.nranks
+            self.grad_storage.scale_(scale_factor)
+
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
                 self.grad_storage, group=self._comm_group, sync_op=False
@@ -488,9 +539,13 @@ class FusedCommBuffer:
         self._task = task
 
     @imperative_base.no_grad
-    def scale_and_split_grads(self):
+    def scale_grads(self):
         assert self._task is not None, "Task is not initialized. "
         self._task.wait()
+        if self._scale_after_comm:
+            scale_factor = 1.0 / self._comm_group.nranks
+            self.grad_storage.scale_(scale_factor)
+
         scale_factor = 1.0 / self._comm_group.nranks
         self.grad_storage.scale_(scale_factor)
 
@@ -517,20 +572,56 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
     return var_groups
 
 
-def obtain_storage(parameters, use_main_grad, clip, dist):
+def bw_hook_func(buffer, param):
+    @paddle.autograd.no_grad()
+    def fused_comm(*_):
+        buffer.add_grad(param)
+
+    return fused_comm
+
+
+def obtain_storage(
+    parameters,
+    use_main_grad=False,
+    clip=True,
+    dist=False,
+    fuse_param=True,
+    comm_overlap=False,
+    act=None,
+    comm_group=None,
+    dst=-1,
+    acc_steps=1,
+    scale_after_comm=False,
+):
     if len(parameters) < 1:
-        return []
+        return [], []
 
     var_groups = assign_group_by_size(parameters)
     storage = []
+    buffers = []
     for group_idx, parameters in var_groups.items():
-        param_storage, grad_storage = flatten_dense_tensors(
-            parameters, use_main_grad
+        comm_buffer = FusedCommBuffer(
+            group_idx,
+            parameters,
+            comm_group=comm_group,
+            acc_steps=acc_steps,
+            act=act,
+            dst=dst,
+            use_main_grad=use_main_grad,
+            fuse_param=fuse_param,
+            scale_after_comm=scale_after_comm,
         )
-        param_storage.buffer.need_clip = clip
-        param_storage.buffer.is_distributed = dist
-        storage.append(param_storage.buffer)
-    return storage
+        if fuse_param:
+            param_buffer = comm_buffer.param_storage
+            param_buffer.need_clip = clip
+            param_buffer.is_distributed = dist
+            storage.append(param_buffer)
+        if comm_overlap:
+            for param in parameters:
+                param._register_backward_hook(bw_hook_func(comm_buffer, param))
+            buffers.append(comm_buffer)
+
+    return storage, buffers
 
 
 def filter_params(params, is_fp32, is_distributed, need_clip):
@@ -568,7 +659,38 @@ def filter_params(params, is_fp32, is_distributed, need_clip):
     return params, dtype
 
 
-def fused_parameters(parameters, use_main_grad):
+def fused_parameters(
+    parameters,
+    use_main_grad=False,
+    fuse_param=True,
+    comm_overlap=False,
+    comm_group=None,
+    dst=-1,
+    acc_step=1,
+    scale_after_comm=False,
+):
+    """
+    Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
+    :param parameters: all parameters to be fused.
+    :param use_main_grad: does the gradient use main grad or not
+    :param comm_overlap: enable comm overlap or not
+    :param comm_group: the comm group for comm overlap
+    :param dst: the dst for comm overlap
+    :param acc_step: acc steps, using for comm overlap
+    :param fuse_param: fuse param or not
+    :param scale_after_comm: if enable comm overlap, specify the location of grad scale
+    :return: param storage if fused, comm buffers is comm overlap
+    """
+    g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
+    act = (
+        HOOK_ACTION.ALL_REDUCE if not g_shard_use_reduce else HOOK_ACTION.REDUCE
+    )
+    if comm_overlap:
+        assert comm_group is not None
+    if act == HOOK_ACTION.REDUCE:
+        assert dst != -1
+    elif act == HOOK_ACTION.ALL_REDUCE:
+        dst = -1
     param_groups = []
     attrs = []
 
@@ -591,6 +713,7 @@ def fused_parameters(parameters, use_main_grad):
 
     decay_fused = []
     all_fused = []
+    all_buffers = []
     for params, attr in zip(param_groups, attrs):
         decay_params = []
         other_params = []
@@ -603,14 +726,36 @@ def fused_parameters(parameters, use_main_grad):
 
         is_distributed = attr[1]
         need_clip = attr[2]
-        decay = obtain_storage(
-            decay_params, use_main_grad, need_clip, is_distributed
+        decay, decay_buffers = obtain_storage(
+            decay_params,
+            use_main_grad=use_main_grad,
+            clip=need_clip,
+            dist=is_distributed,
+            fuse_param=fuse_param,
+            comm_overlap=comm_overlap,
+            act=act,
+            comm_group=comm_group,
+            dst=dst,
+            acc_steps=acc_step,
+            scale_after_comm=scale_after_comm,
         )
-        other = obtain_storage(
-            other_params, use_main_grad, need_clip, is_distributed
+        other, other_buffers = obtain_storage(
+            other_params,
+            fuse_param=fuse_param,
+            comm_overlap=comm_overlap,
+            use_main_grad=use_main_grad,
+            clip=need_clip,
+            dist=is_distributed,
+            act=act,
+            comm_group=comm_group,
+            dst=dst,
+            acc_steps=acc_step,
+            scale_after_comm=scale_after_comm,
         )
         decay_fused += decay
         all_fused += decay
         all_fused += other
+        all_buffers += decay_buffers
+        all_buffers += other_buffers
 
-    return decay_fused, all_fused
+    return decay_fused, all_fused, all_buffers
