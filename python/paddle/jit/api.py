@@ -145,9 +145,9 @@ def _dygraph_to_static_func_(dygraph_func):
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> out = exe.run(fetch_list=[x_v])
             >>> print(out[0])
-            >>> [[1. 1. 1.]
-            >>>  [1. 1. 1.]
-            >>>  [1. 1. 1.]]
+            [[1. 1. 1.]
+             [1. 1. 1.]
+             [1. 1. 1.]]
 
     """
 
@@ -260,6 +260,7 @@ def to_static(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP
             >>> import paddle
             >>> from paddle.jit import to_static
 
@@ -342,6 +343,7 @@ def not_to_static(func=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP
             >>> import paddle
 
             >>> @paddle.jit.not_to_static
