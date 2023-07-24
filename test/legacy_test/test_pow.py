@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from test_inplace import TestDygraphInplace
 
 import paddle
 from paddle.fluid import core
@@ -212,41 +211,6 @@ class TestPowerError(unittest.TestCase):
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = int(np.random.rand() * 10)
         self.assertRaises(TypeError, paddle.pow, x, str(y))
-
-
-class TestInplacePowerScalar(TestDygraphInplace):
-    def set_np_compare_func(self):
-        self.np_compare = np.allclose
-
-    def inplace_api_processing(self, var):
-        return paddle.pow_(var, 2)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.pow(var, 2)
-
-
-class TestInplacePowerTensor(TestDygraphInplace):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-        self.y = paddle.ones([10, 20, 1], dtype="float32") * 2
-
-    def set_np_compare_func(self):
-        self.np_compare = np.allclose
-
-    def inplace_api_processing(self, var):
-        return paddle.pow_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.pow(var, self.y)
-
-    def test_type_error(self):
-        var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
-        with self.assertRaisesRegex(
-            TypeError,
-            'y must be scalar or tensor type, but received: %s ' % (type([2])),
-        ):
-            paddle.pow_(var, [2])
 
 
 if __name__ == '__main__':

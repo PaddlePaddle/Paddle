@@ -83,6 +83,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       map[in_node->Name()] = 0;
       if (!in_node->Var()->Persistable()) {
         input_persis = false;
+      } else if (!in_node->inputs.empty()) {
+        input_persis = false;
       }
     }
     for (auto out_node : op_node->outputs) {
@@ -128,13 +130,13 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         local_scope->FindVar(out_node->Var()->Name())
             ->GetMutable<phi::DenseTensor>();
         // useless out_node can be removed, not need set it persistable !
-        if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
+        if (out_node->outputs.empty()) remove_nodes.emplace(out_node);
       }
       op->Run(*local_scope, platform::CPUPlace());
       folded_op_num++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable
-        if (out_node->outputs.size() == 0L) continue;
+        if (out_node->outputs.empty()) continue;
         auto out_desc = out_node->Var();
         auto out_name = out_desc->Name();
         auto *local_out_tensor =
@@ -157,7 +159,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     delete local_scope;
   }
-  LOG(INFO) << folded_op_num << " Ops are folded";
+  AddStatis(folded_op_num);
 }
 
 }  // namespace ir

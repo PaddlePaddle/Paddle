@@ -138,6 +138,14 @@ DEFINE_OP_TYPE_ID = """
 IR_DEFINE_EXPLICIT_TYPE_ID({op_name})
 """
 
+scalar_type_maps = {
+    'int': 'ir::Int32Attribute',
+    'int64_t': 'ir::Int64Attribute',
+    'float': 'ir::FloatAttribute',
+    'dobule': 'ir::DoubleAttribute',
+    'bool': 'ir::BoolAttribute',
+}
+
 
 def to_phi_and_fluid_op_name(op_item):
     # Templat: - op : phi_name (fluid_name)
@@ -151,13 +159,14 @@ def to_phi_and_fluid_op_name(op_item):
         return phi_name, fluid_name
 
 
-scalar_type_maps = {
-    'int': 'ir::Int32Attribute',
-    'int64_t': 'ir::Int64Attribute',
-    'float': 'ir::FloatAttribute',
-    'dobule': 'ir::DoubleAttribute',
-    'bool': 'ir::BoolAttribute',
-}
+def to_phi_and_fluid_grad_op_name(op_item):
+    # Templat: sum_grad (reduce_sum_grad), sum_double_grad
+    rtn = []
+    all_names = op_item.split(', ')
+    for name in all_names:
+        backward_phi_name, backward_fluid_name = to_phi_and_fluid_op_name(name)
+        rtn.append([backward_phi_name, backward_fluid_name])
+    return rtn
 
 
 # =====================================
@@ -171,9 +180,16 @@ class OpCompatParser:
 
     def get_compat(self, op_name):
         for compat in self.ops_compat:
-            phi_name, fluid_name = to_phi_and_fluid_op_name(compat['op'])
-            if op_name == phi_name:
+            forward_phi_name, forward_fluid_name = to_phi_and_fluid_op_name(
+                compat['op']
+            )
+            if op_name == forward_phi_name:
                 return compat
+            elif 'backward' in compat.keys():
+                bkw_names = to_phi_and_fluid_grad_op_name(compat['backward'])
+                for name in bkw_names:
+                    if op_name == name[0]:
+                        return compat
         return None
 
 
@@ -291,6 +307,9 @@ class OpInfoParser:
         self.inplace_map = self.parse_op_inplace_info()
         self.view_map = self.parse_op_view_info()
 
+        # parse has_custom_verify
+        self.custom_verify = self.parse_custom_verify()
+
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
             type_list
@@ -299,6 +318,11 @@ class OpInfoParser:
             assert len(type_list) == len(
                 optional_list
             ), "type list size != optional list size."
+
+    def parse_custom_verify(self):
+        if 'custom_verify' in self.op_yaml_item:
+            return self.op_yaml_item['custom_verify']
+        return False
 
     def parse_op_phi_name(self):
         if (self.parse_op_inplace_info() is None) and (
@@ -964,17 +988,19 @@ def OpGenerator(
             )
 
             # generate op verify function str
-            op_verify_str = gen_verify_func_str(
-                op_class_name,
-                op_input_type_list,
-                op_input_optional_list,
-                op_mutable_attribute_name_list,
-                op_mutable_attribute_type_list,
-                op_non_mutable_attribute_name_list,
-                op_non_mutable_attribute_type_list,
-                op_output_type_list,
-                op_output_optional_list,
-            )
+            op_verify_str = ''
+            if not op_info.custom_verify:
+                op_verify_str = gen_verify_func_str(
+                    op_class_name,
+                    op_input_type_list,
+                    op_input_optional_list,
+                    op_mutable_attribute_name_list,
+                    op_mutable_attribute_type_list,
+                    op_non_mutable_attribute_name_list,
+                    op_non_mutable_attribute_type_list,
+                    op_output_type_list,
+                    op_output_optional_list,
+                )
 
             op_infer_meta_str = gen_op_infer_meta_str(op_info, op_class_name)
 
