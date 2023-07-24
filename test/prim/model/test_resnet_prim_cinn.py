@@ -111,7 +111,6 @@ def run(model, data_loader, optimizer, mode):
             acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
             acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
-            optimizer.step()
             if mode == 'train':
                 avg_loss.backward()
                 optimizer.minimize(avg_loss)
