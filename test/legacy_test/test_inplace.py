@@ -803,10 +803,10 @@ class TestDygraphInplaceI0(TestDygraphInplaceWithContinuous):
 
 class TestDygraphInplacePolygamma(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
-        return paddle.polygamma_(var, 2)
+        return paddle.polygamma_(var, 1)
 
     def non_inplace_api_processing(self, var):
-        return paddle.polygamma(var, 2)
+        return paddle.polygamma(var, 1)
 
 
 class TestDygraphInplaceHardTanh(TestDygraphInplaceWithContinuous):
