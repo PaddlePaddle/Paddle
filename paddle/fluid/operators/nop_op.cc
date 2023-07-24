@@ -33,7 +33,7 @@ class NopOp : public framework::OperatorWithKernel {
 
 class NopOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) The input tensor of nop op.").AsDuplicable();
     AddOutput("Out", "(Tensor) The output tensor of nop op.").AsDuplicable();
     AddComment(R"DOC(
