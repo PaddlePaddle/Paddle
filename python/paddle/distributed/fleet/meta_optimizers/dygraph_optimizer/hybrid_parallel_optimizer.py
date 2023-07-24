@@ -27,7 +27,7 @@ from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
 from paddle.framework import core
-from paddle.nn import ClipGradByGlobalNorm, _squared_l2_norm, clip
+from paddle.nn import ClipGradByGlobalNorm, clip
 
 from ...base.topology import ParallelMode
 from ...utils.hybrid_parallel_util import (
@@ -103,7 +103,7 @@ class HybridParallelClipGrad:
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = clip.merge_selected_rows(g)
                 merge_grad = clip.get_tensor_from_selected_rows(merge_grad)
-            sum_square = _squared_l2_norm(merge_grad)
+            sum_square = clip._squared_l2_norm(merge_grad)
 
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
                 hasattr(p, 'is_firstly_shared')
