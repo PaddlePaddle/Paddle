@@ -60,6 +60,7 @@ from ..fluid.framework import (
 )
 
 __all__ = [
+    'Optimizer',
     'SGD',
     'Momentum',
     'Adam',
