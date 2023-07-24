@@ -24,10 +24,8 @@ from paddle.common_ops_import import (
     in_dygraph_mode,
 )
 from paddle.fluid import core
+from paddle.fluid.backward import _infer_var_data_type_shape_
 from paddle.fluid.framework import Operator, Program, Variable, static_only
-
-# Temporary solution, it will be deleted later
-from paddle.fluid.layers.control_flow import ConditionalBlock
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -149,6 +147,198 @@ class WhileGuard(BlockGuard):
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op._complete()
+        return super().__exit__(exc_type, exc_val, exc_tb)
+
+
+class ConditionalBlock:
+    '''
+    **ConditionalBlock**
+
+    ConditionalBlock is an operator that bind a block to a specific condition,
+    if the condition matches, the corresponding block will be executed.
+
+    Args:
+        inputs (Variable): bool conditions.
+        is_scalar_condition (bool): whether the branch is controlled by a scalar.
+        name(str): name of this ConditionalBlock.
+
+    Examples:
+        .. code-block:: python
+
+             import paddle
+             import paddle.fluid as fluid
+             cond = paddle.less_than(x=label, y=limit)
+             true_image, false_image = layers.split_lod_tensor(
+                 input=image, mask=cond)
+             true_cond = layers.ConditionalBlock([true_image])
+
+             with true_cond.block():
+                 ...
+             with false_cond.block():
+                 ...
+    '''
+
+    def __init__(self, inputs, is_scalar_condition=False, name=None):
+        for each_input in inputs:
+            check_type(each_input, "input", Variable, "ConditionalBlock")
+        self.inputs = inputs
+        self.is_scalar_condition = is_scalar_condition
+        self.helper = LayerHelper('conditional_block', name=name)
+
+    def block(self):
+        return ConditionalBlockGuard(self)
+
+    def complete(self):
+        inside_block = self.helper.main_program.current_block()
+        parent_block = self.helper.main_program.block(inside_block.parent_idx)
+
+        intermediate = set()
+        params = set()
+        params, intermediate = get_inputs_outputs_in_block(
+            inside_block, params, intermediate, helper=self.helper
+        )
+
+        # Todo(liym27) Here assume that all params are in recursive parent block
+        # but when minimize() called in control flow, some params may be in
+        # conditional grad block
+        param_list = [
+            parent_block._var_recursive(each_name) for each_name in params
+        ]
+
+        out_list = []
+        for inner_out_name in intermediate:
+            inner_var = parent_block._find_var_recursive(inner_out_name)
+            if inner_var:
+                out_list.append(inner_var)
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES
+        )
+        conditional_block_op = parent_block.append_op(
+            type='conditional_block',
+            inputs={
+                'Cond': self.inputs,
+                'Input': param_list,
+            },
+            outputs={'Out': out_list, 'Scope': [step_scope]},
+            attrs={
+                'sub_block': inside_block,
+                'is_scalar_condition': self.is_scalar_condition,
+            },
+        )
+
+        if self.need_append_conditional_block_grad(inside_block):
+            self.append_conditional_block_grad(
+                parent_block, inside_block, conditional_block_op
+            )
+
+    def need_append_conditional_block_grad(self, inside_block):
+        grad_sub_block_idx = inside_block.backward_block_idx
+        inside_block_idx = inside_block.idx
+
+        # if inside_block have grad_block and grad_block is not itself,
+        # we will append conditional block grad.
+        return (
+            grad_sub_block_idx != -1 and grad_sub_block_idx != inside_block_idx
+        )
+
+    def append_conditional_block_grad(
+        self, parent_block, inside_block, conditional_block_op
+    ):
+        '''
+        Append op `conditional_block_grad` manually.
+        When `optimizer.minimize/append_backward` is called in Paddle control flow,
+        grad ops will be appended before appending op `conditional_block` so that
+        op `conditional_block_grad` can't be appended when calling
+        `optimizer.minimize/append_backward`. After appending op `conditional_block`,
+        `conditional_block_grad` is appended manually.
+
+        Args:
+            parent_block (Block): The block that `conditional_block_op` blongs to.
+            inside_block (Block): The sub block of `conditional_block_op`.
+            conditional_block_op (Operator): The forward op conditional_block.
+        '''
+
+        grad_sub_block_idx = inside_block.backward_block_idx
+        grad_sub_block = self.helper.main_program.block(grad_sub_block_idx)
+
+        intermediate = set()
+        params = set()
+
+        for each_op in grad_sub_block.ops:
+            assert isinstance(each_op, Operator)
+            for iname in each_op.input_names:
+                for in_var_name in each_op.input(iname):
+                    if in_var_name not in intermediate:
+                        params.add(in_var_name)
+
+            for oname in each_op.output_names:
+                for out_var_name in each_op.output(oname):
+                    intermediate.add(out_var_name)
+
+        param_list = []
+        for inner_input_name in params:
+            inner_var = parent_block._find_var_recursive(inner_input_name)
+            if inner_var:
+                param_list.append(inner_var.name)
+
+        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+            conditional_block_op.desc, set(), [grad_sub_block.desc]
+        )
+
+        # append op_desc in grad_op_descs to target_block
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        new_op_desc = parent_block.desc.append_op()
+        new_op_desc.copy_from(grad_op_desc[0])
+        new_op_desc._set_attr(op_role_attr_name, backward)
+        # set input and output manually
+        new_op_desc.set_input('Input', param_list)
+        new_op_desc.set_output(
+            'Input@GRAD', [param + "@GRAD" for param in param_list]
+        )
+
+        new_vars = set()
+        for grad_var_name in new_op_desc.output_arg_names():
+            if (
+                grad_sub_block.desc.has_var_recursive(grad_var_name.encode())
+                or grad_var_name == core.empty_var_name()
+            ):
+                continue
+            grad_sub_block.desc.var(grad_var_name.encode())
+            new_vars.add(grad_var_name)
+            if grad_var_name not in op_grad_to_var:
+                continue
+
+        # infer_shape and infer_type
+        new_op_desc.infer_var_type(grad_sub_block.desc)
+        new_op_desc.infer_shape(grad_sub_block.desc)
+
+        for arg in new_op_desc.output_arg_names():
+            if arg in new_vars:
+                _infer_var_data_type_shape_(arg, grad_sub_block)
+
+        self.helper.main_program._sync_with_cpp()
+
+
+class ConditionalBlockGuard(BlockGuard):
+    """
+    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
+    holding a ConditionalBlock, and helping users entering and exiting the
+    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard
+    is generally an internal component of IfElse, users should not use it directly.
+    """
+
+    def __init__(self, block):
+        check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
+        super().__init__(block.helper.main_program)
+        self.block = block
+
+    def __enter__(self):
+        return super().__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.block.complete()
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -1519,3 +1709,136 @@ def Print(
         },
     )
     return output
+
+
+class Switch:
+    """
+    :api_attr: Static Graph
+
+    This class is used to implement Switch branch control function.
+    Switch branch contains several case branches and one default branch.
+    Switch control flow checks whether the case branch conditions are satisfied in turn,
+    and only executes the statement after the first case branch that satisfies the conditions.
+    If there is no case branch that satisfies the condition,
+    only the statement following the default branch is executed.
+
+    Note:
+        A new OP :ref:`api_fluid_layers_case` is highly recommended instead of ``Switch`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
+
+    Member Functions:
+        case(condition): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+
+        default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
+
+    Case and default functions can only be used inside the scope of Switch, as shown below:
+
+    .. code-block:: python
+
+        '''
+        import paddle
+        import paddle.fluid as fluid
+        with fluid.layers.Switch() as switch:
+            with switch.case(cond1):
+                i = paddle.full(shape=[1], dtype='int64', fill_value=1)
+            with switch.case(cond2):
+                i = paddle.full(shape=[1], dtype='int64', fill_value=2)
+            with switch.default():
+                i = paddle.full(shape=[1], dtype='int64', fill_value=0)
+        '''
+
+    Args:
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            lr = paddle.static.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype='float32',
+                persistable=True,
+                name="learning_rate")
+            zero_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=0.0)
+            one_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=1.0)
+            two_var = paddle.full(
+                shape=[1], dtype='float32', fill_value=2.0)
+
+            global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
+
+            with fluid.layers.control_flow.Switch() as switch:
+                with switch.case(global_step == zero_var):
+                    paddle.assign(input=one_var, output=lr)
+                with switch.default():
+                    paddle.assign(input=two_var, output=lr)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[lr])
+            print(res) # [array([1.], dtype=float32)]
+    """
+
+    def __init__(self, name=None):
+        self.helper = LayerHelper('switch', name=name)
+        self.inside_scope = False
+        self.pre_not_conditions = []
+
+    def case(self, condition):
+        if not self.inside_scope:
+            raise ValueError("case should be called inside with")
+
+        check_variable_and_dtype(
+            condition,
+            'condition',
+            ['bool'],
+            'the member function case of fluid.layers.Switch',
+        )
+
+        if len(self.pre_not_conditions) == 0:
+            cond_block = ConditionalBlock([condition], is_scalar_condition=True)
+            not_cond = paddle.logical_not(x=condition)
+            self.pre_not_conditions.append(not_cond)
+        else:
+            pre_cond_num = len(self.pre_not_conditions)
+            pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
+            new_not_cond = paddle.logical_and(
+                x=pre_not_cond, y=paddle.logical_not(x=condition)
+            )
+            self.pre_not_conditions.append(new_not_cond)
+            cond_block = ConditionalBlock(
+                [paddle.logical_and(x=pre_not_cond, y=condition)],
+                is_scalar_condition=True,
+            )
+
+        return ConditionalBlockGuard(cond_block)
+
+    def default(self):
+        pre_cond_num = len(self.pre_not_conditions)
+        if pre_cond_num == 0:
+            raise ValueError("there should be at least one condition")
+        cond_block = ConditionalBlock(
+            [self.pre_not_conditions[pre_cond_num - 1]],
+            is_scalar_condition=True,
+        )
+        return ConditionalBlockGuard(cond_block)
+
+    def __enter__(self):
+        """
+        set flag that now is inside switch.block {}
+        :return:
+        """
+        self.inside_scope = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.inside_scope = False
+        if exc_type is not None:
+            return False  # re-raise exception
+
+        return True
