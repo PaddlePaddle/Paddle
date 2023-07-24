@@ -259,7 +259,7 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 inline void SyncCUDAStream() {
 #if !defined(_WIN32)
   hipStreamSynchronize(0);
@@ -319,7 +319,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
   if (stream) {
     platform::RecordEvent record_event(
         "GpuMemcpyAsync:GPU->CPU", platform::TracerEventType::UserDefined, 1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
                              num,
@@ -341,7 +341,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
   } else {
     platform::RecordEvent record_event(
         "GpuMemcpySync:GPU->CPU", platform::TracerEventType::UserDefined, 1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
 #elif defined(PADDLE_WITH_MUSA)
     platform::GpuMemcpySync(dst, src, num, musaMemcpyDeviceToHost);
@@ -371,7 +371,7 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
   if (stream) {
     platform::RecordEvent record_event(
         "GpuMemcpyAsync:CPU->GPU", platform::TracerEventType::UserDefined, 1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
                              num,
@@ -393,7 +393,7 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
   } else {
     platform::RecordEvent record_event(
         "GpuMemcpySync:CPU->GPU", platform::TracerEventType::UserDefined, 1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_MUSA)
     platform::GpuMemcpySync(dst, src, num, musaMemcpyHostToDevice);
@@ -425,7 +425,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
       platform::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU",
                                          platform::TracerEventType::UserDefined,
                                          1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       platform::GpuMemcpyAsync(dst,
                                src,
                                num,
@@ -448,7 +448,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
       platform::RecordEvent record_event("GpuMemcpySync(same_gpu):GPU->GPU",
                                          platform::TracerEventType::UserDefined,
                                          1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToDevice);
 #elif defined(PADDLE_WITH_MUSA)
       platform::GpuMemcpySync(dst, src, num, musaMemcpyDeviceToDevice);
@@ -532,7 +532,7 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned",
                                        platform::TracerEventType::UserDefined,
                                        1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
                              num,
@@ -555,7 +555,7 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
     platform::RecordEvent record_event("GpuMemcpySync:GPU->CUDAPinned",
                                        platform::TracerEventType::UserDefined,
                                        1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
 #elif defined(PADDLE_WITH_MUSA)
     platform::GpuMemcpySync(dst, src, num, musaMemcpyDeviceToHost);
@@ -582,7 +582,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     platform::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU",
                                        platform::TracerEventType::UserDefined,
                                        1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
                              num,
@@ -605,7 +605,7 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
     platform::RecordEvent record_event("GpuMemcpySync:CUDAPinned->GPU",
                                        platform::TracerEventType::UserDefined,
                                        1);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_MUSA)
     platform::GpuMemcpySync(dst, src, num, musaMemcpyHostToDevice);

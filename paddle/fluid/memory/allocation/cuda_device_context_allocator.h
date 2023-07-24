@@ -79,7 +79,7 @@ class GPUContextAllocator : public Allocator {
                                gpuStream_t default_stream)
       : place_(place), default_stream_(default_stream) {
     platform::CUDADeviceGuard guard(place_.device);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&event_, hipEventDisableTiming));
 #elif defined(PADDLE_WITH_MUSA)
@@ -94,7 +94,7 @@ class GPUContextAllocator : public Allocator {
   ~GPUContextAllocator() {
     if (event_) {
       platform::CUDADeviceGuard guard(place_.device);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_WARN_GPU_SUCCESS(hipEventDestroy(event_));
 #elif defined(PADDLE_WITH_MUSA)
       PADDLE_WARN_GPU_SUCCESS(musaEventDestroy(event_));
@@ -114,7 +114,7 @@ class GPUContextAllocator : public Allocator {
     auto allocation = new GPUContextAllocation(
         static_unique_ptr_cast<Allocation>(memory::Alloc(place_, size)));
 // Wait for the event on stream
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, default_stream_));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(default_stream_, event_, 0));
 #elif defined(PADDLE_WITH_MUSA)

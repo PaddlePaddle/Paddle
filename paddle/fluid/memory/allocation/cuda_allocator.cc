@@ -25,7 +25,6 @@
 #endif
 
 #ifdef PADDLE_WITH_HIP
-#ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
 

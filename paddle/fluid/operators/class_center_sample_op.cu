@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <hiprand_kernel.h>
 
@@ -72,7 +72,7 @@ __global__ void RandomSampleClassCenter(const int64_t n,
   size_t local_seed =
       (static_cast<size_t>(seed) + 0x9E3779B9U +
        (static_cast<size_t>(id) << 6U) + (static_cast<size_t>(id) >> 2U));
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   hiprand_init(local_seed, id, increment, &localState);
   CUDA_KERNEL_LOOP(i, n) {
     buffer[i] = static_cast<T>(hiprand(&localState) % max_val);

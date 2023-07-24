@@ -21,7 +21,7 @@ namespace memory {
 namespace allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostFree(allocation->ptr()));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_ENFORCE_GPU_SUCCESS(musaHostFree(allocation->ptr()));
@@ -37,7 +37,7 @@ void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 }
 phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostMalloc(&ptr, size, hipHostMallocPortable));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_ENFORCE_GPU_SUCCESS(musaHostMalloc(&ptr, size, musaHostMallocPortable));

@@ -2204,7 +2204,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       auto *dev_ctx = pool.Get(place_);
       auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       hipStreamSynchronize(stream);
 #elif defined(PADDLE_WITH_MUSA)
       musaStreamSynchronize(stream);

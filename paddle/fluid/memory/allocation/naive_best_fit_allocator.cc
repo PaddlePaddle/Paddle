@@ -313,7 +313,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
         string::HumanReadableSize(Used<platform::CUDAPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       hipMemset(ptr, 0xEF, size);
 #elif defined(PADDLE_WITH_MUSA)
       musaMemset(ptr, 0xEF, size);
