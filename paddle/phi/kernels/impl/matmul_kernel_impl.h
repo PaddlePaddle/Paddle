@@ -1089,26 +1089,12 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                        DenseTensor* out,
                        bool transpose_x,
                        bool transpose_y) {
-  auto x_dtype = x.dtype();
-  auto y_dtype = y.dtype();
-
-  if ((x_dtype == DataType::INT32 && y_dtype == DataType::INT32)) {
-    DenseTensor x_tmp = phi::Cast<int, Context>(ctx, x, phi::DataType::FLOAT32);
-    DenseTensor y_tmp = phi::Cast<int, Context>(ctx, y, phi::DataType::FLOAT32);
-    DenseTensor out_tmp;
-    MatMulFunction<Context, float>(
-        ctx, x_tmp, y_tmp, x_dims, y_dims, &out_tmp, transpose_x, transpose_y);
-    phi::CastKernel<float>(ctx, out_tmp, phi::DataType::INT32, out);
-  } else if ((x_dtype == DataType::INT64 && y_dtype == DataType::INT64)) {
-    DenseTensor x_tmp =
-        phi::Cast<int64_t, Context>(ctx, x, phi::DataType::FLOAT32);
-    DenseTensor y_tmp =
-        phi::Cast<int64_t, Context>(ctx, y, phi::DataType::FLOAT32);
-    DenseTensor out_tmp;
-    MatMulFunction<Context, float>(
-        ctx, x_tmp, y_tmp, x_dims, y_dims, &out_tmp, transpose_x, transpose_y);
-    phi::CastKernel<float>(ctx, out_tmp, phi::DataType::INT64, out);
-  }
+  auto x_tmp = phi::Cast<T, Context>(ctx, x, phi::DataType::FLOAT32);
+  auto y_tmp = phi::Cast<T, Context>(ctx, y, phi::DataType::FLOAT32);
+  DenseTensor out_tmp;
+  MatMulFunction<Context, float>(
+      ctx, x_tmp, y_tmp, x_dims, y_dims, &out_tmp, transpose_x, transpose_y);
+  phi::CastKernel<float>(ctx, out_tmp, phi::DataType::INT64, out);
 }
 
 template <typename Context, typename T>
