@@ -408,4 +408,14 @@ void BuildScope(const ir::Block& block,
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
 }
 
+void BuildPhiContext(ir::Operation* op,
+                     const std::unordered_map<ir::Value, std::string>& name_map,
+                     paddle::framework::Scope* scope,
+                     paddle::framework::Scope* local_scope,
+                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                     paddle::framework::RuntimeContext* runtime_ctx);
+{
+  
+}
+
 }  // namespace ir

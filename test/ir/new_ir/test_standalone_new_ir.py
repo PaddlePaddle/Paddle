@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from pickletools import read_int4
 import unittest
 
 import numpy as np
@@ -203,6 +204,10 @@ class TestJitSaveOp(unittest.TestCase):
             path,
             input_spec=[paddle.static.InputSpec([10, 10], 'float32', 'x')],
         )
+        
+        print( "load")
+        paddle.jit.load(path)
+            
 
 
 if __name__ == "__main__":

@@ -1003,6 +1003,14 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
+    std::cerr << "kernel name " << kernel_name << std::endl;
+
+    if ( kernel_name == "fused_softmax_mask_upper_triangle")
+    {
+
+    }
+    else
+    {
     ::ir::BuildPhiContext<phi::KernelContext,
                           const phi::TensorBase*,
                           phi::TensorBase*,
@@ -1014,6 +1022,7 @@ void BuildOpFuncList(
                                 local_scope,
                                 op_yaml_info_parser,
                                 &(op_func_node.kernel_context_));
+    }
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(

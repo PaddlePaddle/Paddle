@@ -37,6 +37,7 @@
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/fluid/framework/operator.h"
 
 #include "glog/logging.h"
 
@@ -49,6 +50,13 @@ void BuildScope(const ir::Block& block,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list);
+
+void BuildPhiContext(ir::Operation* op,
+                     const std::unordered_map<ir::Value, std::string>& name_map,
+                     paddle::framework::Scope* scope,
+                     paddle::framework::Scope* local_scope,
+                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                     paddle::framework::RuntimeContext* runtime_ctx); 
 
 template <typename Context,
           typename InType,
