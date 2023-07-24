@@ -837,6 +837,7 @@ def save(layer, path, input_spec=None, **configs):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP
             >>> # example 1: save layer
             >>> import numpy as np
             >>> import paddle
@@ -1314,6 +1315,7 @@ def load(path, **configs):
             .. code-block:: python
                 :name: code-example1
 
+                >>> # doctest: +SKIP
                 >>> import numpy as np
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -1459,11 +1461,11 @@ def load(path, **configs):
 
                 >>> # 1. train and save inference model
                 >>> for data in loader():
-                >>> exe.run(
-                ...     static.default_main_program(),
-                ...     feed=data,
-                ...     fetch_list=[avg_loss]
-                ... )
+                >>>     exe.run(
+                ...         static.default_main_program(),
+                ...         feed=data,
+                ...         fetch_list=[avg_loss]
+                ...     )
 
                 >>> model_path = "fc.example.model"
                 >>> paddle.fluid.io.save_inference_model(
