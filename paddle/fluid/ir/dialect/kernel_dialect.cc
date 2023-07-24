@@ -22,6 +22,7 @@
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/kernel_type_storage.h"
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/platform/init_phi.h"
@@ -40,6 +41,7 @@ PaddleKernelDialect::PaddleKernelDialect(ir::IrContext *context)
 
 void PaddleKernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
+  RegisterTypes<paddle::dialect::AllocatedSelectedRowsType>();
   RegisterOps<dialect::PhiKernelOp>();
 
   RegisterAttributes<paddle::dialect::KernelAttribute>();

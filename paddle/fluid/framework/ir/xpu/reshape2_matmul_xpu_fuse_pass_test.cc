@@ -22,6 +22,32 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+TEST(Squeeze2MatmulXPUFusePass, basic) {
+  Layers layers;
+
+  auto* squeeze2_in = layers.data("squeeze2_in", {64, 1, 74, 1});
+  auto* squeeze2_out = layers.squeeze2(squeeze2_in, std::vector<int>{1, 3});
+  auto* matmul_y = layers.data("matmul_y", {74, 64}, true);
+  auto* matmul_out =
+      layers.matmul(squeeze2_out, matmul_y, nullptr, false, false);
+  auto* ele_y = layers.data("ele_y", {64}, true);
+  layers.elementwise_add(matmul_out, ele_y);
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  auto pass = PassRegistry::Instance().Get("squeeze2_matmul_xpu_fuse_pass");
+  VLOG(3) << DebugString(graph);
+
+  pass->Apply(graph.get());
+  VLOG(3) << DebugString(graph);
+
+  auto ops_num = GetNumOpNodes(graph);
+  PADDLE_ENFORCE_EQ(
+      ops_num,
+      3,
+      platform::errors::PreconditionNotMet(
+          "graph should only have 2 op nodes, but received %d.", ops_num));
+}
+
 TEST(ReShape2MatmulXPUFusePass, basic) {
   Layers layers;
 

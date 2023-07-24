@@ -19,24 +19,26 @@
 #include <functional>
 #include <initializer_list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/dll_decl.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/type_id.h"
 #include "paddle/ir/core/type_name.h"
 #include "paddle/ir/core/value.h"
-#include "paddle/utils/optional.h"
 
 namespace ir {
 
 // This class reprensents the benefit of a pattern. The most common
 // unit to use is the `numver of operations` in the pattern.
-class PatternBenefit {
+class IR_API PatternBenefit {
  public:
   PatternBenefit() = default;
   PatternBenefit(uint32_t val) : val_(val) {}  // NOLINT
@@ -72,22 +74,22 @@ class IR_API Pattern {
  public:
   const std::vector<OpInfo>& generated_ops() const { return generated_ops_; }
 
-  paddle::optional<OpInfo> root_kind() const {
+  std::optional<OpInfo> root_kind() const {
     if (root_kind_ == RootKind::OperationInfo)
       return OpInfo::RecoverFromOpaquePointer(root_val_);
-    return paddle::none;
+    return std::nullopt;
   }
 
-  paddle::optional<TypeId> GetRootInterfaceID() const {
+  std::optional<TypeId> GetRootInterfaceID() const {
     if (root_kind_ == RootKind::InterfaceId)
       return TypeId::RecoverFromOpaquePointer(root_val_);
-    return paddle::none;
+    return std::nullopt;
   }
 
-  paddle::optional<TypeId> GetRootTraitID() const {
+  std::optional<TypeId> GetRootTraitID() const {
     if (root_kind_ == RootKind::TraitId)
       return TypeId::RecoverFromOpaquePointer(root_val_);
-    return paddle::none;
+    return std::nullopt;
   }
 
   PatternBenefit benefit() const { return benefit_; }
@@ -147,6 +149,8 @@ class IR_API Pattern {
 
   const PatternBenefit benefit_;
   IrContext* context_;
+  // A list of the potential operations that may be generated when rewriting an
+  // op with this pattern.
   std::vector<OpInfo> generated_ops_;
 
   std::string debug_name_;
@@ -161,13 +165,13 @@ class IR_API RewritePattern : public Pattern {
 
   virtual void Rewrite(Operation* op,
                        PatternRewriter& rewriter) const {  // NOLINT
-    throw(
+    IR_THROW(
         "need to implement either MatchAndRewrite or one of the rewrite "
         "functions.");
   }
 
   virtual bool Match(Operation* op) const {
-    throw("need to implement either MatchAndRewrite or Match.");
+    IR_THROW("need to implement either MatchAndRewrite or Match.");
     return false;
   }
 
@@ -219,10 +223,10 @@ struct OpOrInterfaceRewritePatternBase : public RewritePattern {
 
   virtual void Rewrite(SourceOp op,
                        PatternRewriter& rewriter) const {  // NOLINT
-    throw("must override Rewrite or MatchAndRewrite");
+    IR_THROW("must override Rewrite or MatchAndRewrite");
   }
   virtual bool Match(SourceOp op) const {
-    throw("must override Match or MatchAndRewrite");
+    IR_THROW("must override Match or MatchAndRewrite");
   }
   virtual bool MatchAndRewrite(SourceOp op,
                                PatternRewriter& rewriter) const {  // NOLINT
@@ -257,32 +261,23 @@ class RewriterBase : public Builder {
  public:
   // TODO(wilber): Supplementary methods of block and region.
 
-  // TODO(wilber): Support ValueRange.
-  // virtual void ReplaceOpWithIf(Operation* op,
-  //                              ValueRange new_values,
-  //                              bool* all_uses_replaced,
-  //                              std::function<bool(OpOperand&)> functor);
-  // void ReplaceOpWithIf(Operation* op,
-  //                      ValueRange new_values,
-  //                      std::function<bool(OpOperand&)> functor);
-  // virtual void ReplaceOp(Operation* op, ValueRange new_values);
+  virtual void ReplaceOpWithIf(Operation* op,
+                               const std::vector<Value>& new_values,
+                               bool* all_uses_replaced,
+                               const std::function<bool(OpOperand)>& functor);
 
-  // virtual void ReplaceOpWithNewOp()
+  void ReplaceOpWithIf(Operation* op,
+                       const std::vector<Value>& new_values,
+                       const std::function<bool(OpOperand)>& functor);
+
+  virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
+
+  // template <typename OpTy, typename... Args>
+  // OpTy ReplaceOpWithNewOp(Operation *op, Args &&...args);
 
   virtual void EraseOp(Operation* op);
 
-  virtual void StartRootUpdate(Operation* op) {}
-  virtual void FinalizeRootUpdate(Operation* op) {}
-  virtual void CancleRootUpdate(Operation* op) {}
-
-  template <typename CallableT>
-  void UpdateRootInplace(Operation* root, CallableT&& callable) {
-    StartRootUpdate(root);
-    callable();
-    FinalizeRootUpdate(root);
-  }
-
-  void ReplaceAllUsesWith(Value from, Value to);
+  IR_API void ReplaceAllUsesWith(Value from, Value to);
 
   void ReplaceUseIf(Value from,
                     Value to,
@@ -293,11 +288,25 @@ class RewriterBase : public Builder {
 
   virtual ~RewriterBase();
 
-  // virtual void NotifyRootReplaced(Operation* op, ValueRange replacement) {}
+  virtual void NotifyRootReplaced(Operation* op,
+                                  const std::vector<Value>& replacement) {}
 
   virtual void NotifyOperationRemoved(Operation* op) {}
 
-  // virtual bool NotifyMatchFailure()
+  virtual void NotifyOperationInserted(Operation* op) {}
+
+  virtual void StartRootUpdate(Operation* op) {}
+
+  virtual void FinalizeRootUpdate(Operation* op) {}
+
+  virtual void CancleRootUpdate(Operation* op) {}
+
+  template <typename CallableT>
+  void UpdateRootInplace(Operation* root, CallableT&& callable) {
+    StartRootUpdate(root);
+    callable();
+    FinalizeRootUpdate(root);
+  }
 
  private:
   void operator=(const RewriterBase&) = delete;

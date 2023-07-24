@@ -100,6 +100,20 @@ class TestSqueezeOp1BF16Op(TestSqueezeOp):
         self.dtype = np.uint16
 
 
+class TestSqueezeOp_ZeroDim1(TestSqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (0,)
+        self.new_shape = ()
+
+
+class TestSqueezeOp_ZeroDim2(TestSqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (1, 1, 1)
+        self.axes = (0, 1, 2)
+        self.new_shape = ()
+
+
 # Correct: No axes input.
 class TestSqueezeOp2(TestSqueezeOp):
     def setUp(self):

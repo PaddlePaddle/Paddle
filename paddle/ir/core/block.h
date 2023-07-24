@@ -40,6 +40,8 @@ class IR_API Block {
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
+  const_iterator begin() const { return ops_.begin(); }
+  const_iterator end() const { return ops_.end(); }
   iterator begin() { return ops_.begin(); }
   iterator end() { return ops_.end(); }
   reverse_iterator rbegin() { return ops_.rbegin(); }
@@ -50,6 +52,7 @@ class IR_API Block {
   void push_back(Operation *op);
   void push_front(Operation *op);
   iterator insert(const_iterator iterator, Operation *op);
+  iterator erase(const_iterator position);
   void clear();
   operator Region::iterator() { return position_; }
 

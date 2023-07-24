@@ -14,13 +14,13 @@
 
 #include "paddle/ir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
 
 #include "paddle/ir/core/op_info.h"
-#include "paddle/utils/optional.h"
 
 namespace ir {
 
@@ -76,19 +76,19 @@ FrozenRewritePatternSet::FrozenRewritePatternSet(
         continue;
     }
 
-    if (paddle::optional<OpInfo> root_name = pat->root_kind()) {
+    if (std::optional<OpInfo> root_name = pat->root_kind()) {
       impl_->op_specific_native_pattern_map_[*root_name].push_back(pat.get());
       impl_->op_specific_native_patterns_.push_back(std::move(pat));
       continue;
     }
 
-    if (paddle::optional<TypeId> interface_id = pat->GetRootInterfaceID()) {
+    if (std::optional<TypeId> interface_id = pat->GetRootInterfaceID()) {
       AddToOpsWhen(
           pat, [&](OpInfo info) { return info.HasInterface(*interface_id); });
       continue;
     }
 
-    if (paddle::optional<TypeId> trait_id = pat->GetRootTraitID()) {
+    if (std::optional<TypeId> trait_id = pat->GetRootTraitID()) {
       AddToOpsWhen(pat, [&](OpInfo info) { return info.HasTrait(*trait_id); });
       continue;
     }

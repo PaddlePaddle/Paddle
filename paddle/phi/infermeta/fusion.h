@@ -30,6 +30,18 @@ void AddActXPUInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* out_max);
 
+void AddLayernormXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int64_t m,
+                              int64_t n,
+                              float epsilon,
+                              MetaTensor* out,
+                              MetaTensor* mean,
+                              MetaTensor* variance,
+                              MetaTensor* z_add);
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -42,10 +54,9 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const std::vector<int>& strides,
                         const std::string& padding_algorithm,
                         int groups,
-                        bool has_bias,
-                        bool has_branch,
                         int act_type,
                         float act_param,
+                        DataType out_dtype,
                         MetaTensor* out,
                         MetaTensor* out_max);
 
@@ -68,6 +79,7 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
+                    DataType out_dtype,
                     MetaTensor* out,
                     MetaTensor* out_max);
 
@@ -145,4 +157,22 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                          MetaTensor* out,
                          MetaTensor* out_max);
 
+void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
+                                 const MetaTensor& x_max,
+                                 const MetaTensor& filter,
+                                 const MetaTensor& filter_max,
+                                 const MetaTensor& bias,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& output_padding,
+                                 const IntArray& output_size,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::vector<int>& dilations,
+                                 const std::string& data_format,
+                                 bool has_bias,
+                                 bool with_act,
+                                 const std::string& act_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_max);
 }  // namespace phi

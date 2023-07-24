@@ -100,7 +100,7 @@ class IR_API Dialect {
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
                                  ConcreteOp::attributes_name,
-                                 ConcreteOp::Verify);
+                                 ConcreteOp::VerifyInvariants);
   }
 
   void RegisterOp(const std::string &name, OpInfoImpl *op_info);
@@ -145,7 +145,7 @@ class IR_API Dialect {
     IR_THROW("dialect has no registered attribute printing hook");
   }
 
-  virtual void PrintOperation(Operation *op,
+  virtual void PrintOperation(const Operation *op,
                               IrPrinter &printer) const;  // NOLINT
 
  private:

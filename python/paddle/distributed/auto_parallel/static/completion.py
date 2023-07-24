@@ -16,6 +16,7 @@ import copy
 import logging
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.fluid.core import get_spmd_rule  # noqa: F401
 from paddle.framework import core
 
 from ..process_mesh import ProcessMesh, compute_compatible_process_mesh
@@ -937,7 +938,7 @@ class Completer:
         """Complete annotation for the partial annotated serial_main_program.
         Arguments:
             serial_main_program: partial annotated serial_main_program.
-        Returns:e
+        Returns:
             serial_main_program: completed annotated serial_main_program.
         """
 

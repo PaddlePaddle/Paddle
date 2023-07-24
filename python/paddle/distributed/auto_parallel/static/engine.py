@@ -400,8 +400,11 @@ class Engine:
         dist_main_block._sync_with_cpp()
         self._has_prepared_reader[self._mode] = True
 
-        # Insert read op to forward TaskNode if 1F1B pass is setted
-        if self.main_program._pipeline_opt:
+        # Insert read op to forward TaskNode for fleet executor if 1F1B pass is setted
+        if (
+            self.main_program._pipeline_opt
+            and not auto_utils.use_new_executor()
+        ):
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
             fwd_task = None
@@ -471,8 +474,6 @@ class Engine:
                     if var_name not in fetch_names:
                         fetch_names.append(var_name)
                     group_indices.append(fetch_names.index(var_name))
-            if not group_indices:
-                fetch_names.append([])
             fetch_indices.append(group_indices)
 
         dist_context = self._dist_contexts[mode]
@@ -756,7 +757,7 @@ class Engine:
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
-        # For now, the completer has to be passed to the planner,
+        # For now, the completer has to be passed to the Parallelizer,
         # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
@@ -867,6 +868,7 @@ class Engine:
         collate_fn=None,
         callbacks=None,
         verbose=2,
+        nvprof_range=[-1, -1],
     ):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
@@ -904,6 +906,7 @@ class Engine:
                 0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. Default: None. (Unused for now)
+            nvprof_range(list, optional): A list of integers indicating nvprof ranges in form of [start_step, end_step]. Note that if start_step >= end_step, the nvprof will not apply.
 
         Returns:
             None
@@ -967,35 +970,41 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=self._acc_steps,
+            acc_step=1
+            if self._strategy.pipeline.enable
+            else self._acc_steps,  # lr update once every local batch
         )
 
         cbks.on_begin('train')
         for epoch in range(epochs):
             logs = {}
             cbks.on_epoch_begin(epoch)
+
             for step, _ in enumerate(train_dataloader):
-                cbks.on_batch_begin('train', step, logs)
-                try:
-                    outs = self._executor.run(
-                        self.main_program,
-                        fetch_list=fetch_names,
-                        use_program_cache=self._strategy.use_cache,
-                        return_numpy=self._strategy.return_numpy,
+                with paddle.profiler.utils._nvprof_range(
+                    iter_id=step, start=nvprof_range[0], end=nvprof_range[1]
+                ):
+                    cbks.on_batch_begin('train', step, logs)
+                    try:
+                        outs = self._executor.run(
+                            self.main_program,
+                            fetch_list=fetch_names,
+                            use_program_cache=self._strategy.use_cache,
+                            return_numpy=self._strategy.return_numpy,
+                        )
+                    except core.EOFException:
+                        break
+                    lr = auto_utils.get_lr(self.optimizer)
+                    logs = self._prepare_logger(
+                        outs,
+                        epoch,
+                        step,
+                        lr,
+                        fetch_names,
+                        fetch_indices,
+                        self._mode,
                     )
-                except core.EOFException:
-                    break
-                lr = auto_utils.get_lr(self.optimizer)
-                logs = self._prepare_logger(
-                    outs,
-                    epoch,
-                    step,
-                    lr,
-                    fetch_names,
-                    fetch_indices,
-                    self._mode,
-                )
-                cbks.on_batch_end('train', step, logs)
+                    cbks.on_batch_end('train', step, logs)
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(

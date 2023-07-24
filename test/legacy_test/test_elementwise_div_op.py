@@ -212,8 +212,6 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
             check_args = [check_option['grad'], 'Out']
             check_kwargs = {
                 'no_grad_set': check_option['no_grad'],
-                'user_defined_grads': check_option['val_grad'],
-                'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
             }
             if self.place is None:

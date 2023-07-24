@@ -414,6 +414,36 @@ def _add_feed_fetch_ops(
     return tmp_program
 
 
+def _set_micro_batch_fetch(plan):
+    if plan.micro_batch_num() <= 1:
+        return
+
+    valid_fetch_types = ["fetch", "fetch_v2"]
+    for job in plan.job_list():
+        idx_to_col_attr = {}
+        prog = plan.program(job.type())
+        for i in range(prog.block(0).op_size()):
+            op = prog.block(0).op(i)
+            if op.type() in valid_fetch_types:
+                idx_to_col_attr[i] = op.attr('col')
+
+        for idx, col in idx_to_col_attr.items():
+            job.set_col_attr_for_fetch_op(
+                idx, col * plan.micro_batch_num() + job.micro_batch_id()
+            )
+
+
+def _merge_tensors(tensor, micro_batch_num):
+    if micro_batch_num <= 1:
+        return tensor
+    assert len(tensor) % micro_batch_num == 0
+    chunk_tensor = [
+        tensor[i : i + micro_batch_num]
+        for i in range(0, len(tensor), micro_batch_num)
+    ]
+    return [np.array(chunk) for chunk in chunk_tensor]
+
+
 def _apply_inplace_addto_pass(
     program, enable_inplace, enable_addto, skip_var_names
 ):
@@ -495,8 +525,9 @@ def _to_name_str(var):
 
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
+    from ..distributed.backup_env import getenv_or_backup
 
-    trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
     fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
     cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
@@ -653,8 +684,13 @@ class _StandaloneExecutor:
         """
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
-            return as_numpy(tensors, copy=True)
+            tensors = as_numpy(tensors, copy=True)
+            return _merge_tensors(tensors, self._plan.micro_batch_num())
         else:
+            if self._plan.micro_batch_num() > 1:
+                raise RuntimeError(
+                    "`merge_tensor` does not support when return_numpy is False."
+                )
             return tensors
 
     def _create_new_executor(self):
@@ -820,23 +856,47 @@ class _ExecutorCache:
             if build_strategy is None or build_strategy.enable_inplace
             else False
         )
+
         enable_addto = (
             True
             if build_strategy is not None and build_strategy.enable_addto
             else False
         )
+
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+            # todo(phlrain), skip inplace add addto pass in new IR
+            enable_inplace = False
+            enable_addto = False
+
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
             skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
+
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(
-            place,
-            core.Plan([core.Job("default")], {"default": new_program.desc}),
-            scope,
-        )
+        if (
+            new_program._pipeline_opt
+            and "standalone_opt" in new_program._pipeline_opt
+        ):
+            from paddle.distributed.passes.pipeline_scheduler_pass import (
+                apply_pass,
+            )
+
+            standalone_opt = new_program._pipeline_opt["standalone_opt"]
+            pass_name = standalone_opt["schedule_mode"]
+            plan = apply_pass(
+                new_program, new_program, pass_name, standalone_opt
+            )
+        else:
+            default_job = core.Job("default")
+            type_to_program = {"default": new_program.desc}
+            plan = core.Plan([default_job], type_to_program)
+
+        _set_micro_batch_fetch(plan)
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
 
@@ -1408,7 +1468,15 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        if isinstance(program, Program) and program._pipeline_opt:
+        from paddle.distributed.auto_parallel.static.utils import (
+            use_new_executor,
+        )
+
+        if (
+            isinstance(program, Program)
+            and program._pipeline_opt
+            and not use_new_executor()
+        ):
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
@@ -1574,6 +1642,7 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
+
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
