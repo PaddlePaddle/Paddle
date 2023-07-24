@@ -85,7 +85,12 @@ void NaiveExecutor::Run() {
     if (reuse_cache_.count(op.get())) {
       for (auto &it : reuse_cache_[op.get()]) {
         if (it.first->memory_size() >
-            cluster_buffer_[it.second]->memory_size()) {   
+            cluster_buffer_[it.second]->memory_size()) { 
+
+          std::cout <<"\033[31mdense tensor is initialized?:\033[0m " << cluster_buffer_[it.second]->IsInitialized() << std::endl;
+          std::cout << "\033[31mdense tenser memory size:\033[0m " << cluster_buffer_[it.second]->memory_size() << std::endl;
+          std::cout << "\033[31mdense tenser dims:\033[0m " << cluster_buffer_[it.second]->dims().to_str() << std::endl;
+          
           cluster_buffer_[it.second] = it.first;
           int updated_cluster_id = it.second;
 

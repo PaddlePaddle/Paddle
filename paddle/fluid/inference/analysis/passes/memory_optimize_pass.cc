@@ -133,14 +133,14 @@ void MemoryOptimizePass::CollectVarInfo(
   framework::ir::Graph* graph = argument->main_graph_ptr();
   const int fake_batch_size = 1;
   
-  std::map<std::string, std::vector<int32_t>> opt_shape;
+  std::map<std::string, std::vector<int32_t>> max_shape;
 
   if(argument->tensorrt_tuned_dynamic_shape()){ // turn on tensorrt dynamic shape
     // get shape information and dtype information from the specified file.
     DeserializeShapeRangeInfo(argument->tensorrt_shape_range_info_path(), 
                                     nullptr, 
-                                    &opt_shape, 
                                     nullptr, 
+                                    &max_shape, 
                                     nullptr,
                                     nullptr,
                                     nullptr,
@@ -205,8 +205,8 @@ void MemoryOptimizePass::CollectVarInfo(
 
       std::vector<int32_t> shape;
       if(argument->tensorrt_tuned_dynamic_shape() && 
-          opt_shape.count(node->Var()->Name())){ // turn on tensorrt dynamic shape
-        shape = opt_shape[node->Var()->Name()];
+          max_shape.count(node->Var()->Name())){ // turn on tensorrt dynamic shape
+        shape = max_shape[node->Var()->Name()];
       } else{ //turn off tensorrt dynamic shape
         // int64 -> int32
         std::vector<int64_t> shape_int64 = node->Var()->GetShape();
