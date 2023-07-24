@@ -266,6 +266,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assert
+  inputs :
+    {cond : Cond, data : Data}
+
 - op : assign
   backward : assign_grad
   inputs :
@@ -419,6 +423,12 @@
   outputs :
     out : Out
   drop_empty_grad : [input_grad]
+
+- op : cast
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : ceil
   backward : ceil_grad
@@ -1149,6 +1159,8 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1318,6 +1330,13 @@
     input : X
   outputs :
     out : Out
+
+- op : hsigmoid_loss(hierarchical_sigmoid)
+  backward: hsigmoid_loss_grad(hierarchical_sigmoid_grad)
+  inputs:
+   {x: X, w: W, label: Label, bias: Bias, path: PathTable, code: PathCode}
+  outputs:
+   {out: Out, pre_out: PreOut, w_out: W_Out}
 
 - op : huber_loss
   backward : huber_loss_grad
@@ -1864,7 +1883,9 @@
 - op : mish
   backward : mish_grad
   inputs:
-    lambda:  threshold
+    {x : X, lambda : threshold}
+  outputs:
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2236,7 +2257,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, float threshold = 6.0]
 
 - op : remainder (elementwise_mod)
   inputs :
@@ -2257,6 +2278,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : repeat_interleave
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    repeats : Repeats
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
@@ -2505,8 +2534,21 @@
 
 - op : slice
   backward : slice_grad
+  inputs :
+    input : Input
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
 
 - op : slogdet(slogdeterminant)
   backward : slogdet_grad(slogdeterminant_grad)
@@ -2789,6 +2831,10 @@
 
 - op : transpose (transpose2)
   backward : transpose_grad (transpose2_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   attrs:
     perm : axis
   extra :
@@ -2984,6 +3030,10 @@
   get_expected_kernel_type :
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
+
+- op: fetch
+  inputs: {x: X}
+  outputs: {out: Out}
 
 - op: full_batch_size_like (fill_constant_batch_size_like)
 

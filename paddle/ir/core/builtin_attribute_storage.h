@@ -135,7 +135,10 @@ struct ArrayAttributeStorage : public AttributeStorage {
   bool empty() const { return size_ == 0u; }
 
   Attribute at(size_t index) const {
-    IR_ENFORCE(index < size_, "Invalid index");
+    IR_ENFORCE(index < size_,
+               "The index (%d) must be less than size (%d).",
+               index,
+               size_);
     return data_[index];
   }
 
