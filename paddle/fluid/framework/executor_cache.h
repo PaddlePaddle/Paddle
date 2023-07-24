@@ -238,13 +238,13 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
     framework::Scope* scope);
 
 std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
-    paddle::framework::BlockDesc* forward_global_block,
-    paddle::framework::BlockDesc* backward_global_block,
+    const paddle::framework::BlockDesc* forward_global_block,
+    const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<std::string> output_names,
     const std::vector<paddle::Tensor>& x);
 
 std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
-    paddle::framework::BlockDesc* backward_global_block,
+    const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,
     const std::vector<paddle::Tensor*>& params_grad);

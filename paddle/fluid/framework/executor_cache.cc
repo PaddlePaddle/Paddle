@@ -347,16 +347,18 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
 }
 
 std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
-    paddle::framework::BlockDesc *forward_global_block,
-    paddle::framework::BlockDesc *backward_global_block,
+    const paddle::framework::BlockDesc *forward_global_block,
+    const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> output_names,
     const std::vector<paddle::Tensor> &x) {
   auto ir_ctx = ::ir::IrContext::Instance();
   auto program = std::make_unique<::ir::Program>(ir_ctx);
 
   std::set<std::string> set_output_names;
-  // TODO(phlrain): no end add all the input
-  for (auto op_desc : forward_global_block->Program()->Block(0).AllOps()) {
+  auto local_program =
+      paddle::framework::ProgramDesc(*(forward_global_block->Program()));
+
+  for (auto op_desc : local_program.Block(0).AllOps()) {
     for (const auto &n : op_desc->Outputs()) {
       const auto &input_var_names = n.second;
       for (const auto &var_name : input_var_names) {
@@ -370,7 +372,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     auto name = in_t.name();
     auto place = in_t.place().GetType();
 
-    auto op_desc = forward_global_block->PrependOp();
+    auto op_desc = local_program.MutableBlock(0)->PrependOp();
     op_desc->SetType("feed_with_place");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
@@ -399,15 +401,14 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
       continue;
     }
 
-    auto op_desc = forward_global_block->AppendOp();
+    auto op_desc = local_program.MutableBlock(0)->AppendOp();
     op_desc->SetType("shaddow_output");
     op_desc->SetAttr("name", name);
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
 
-  auto forward_program = forward_global_block->Program();
-  paddle::translator::ProgramTranslator program_translator(forward_program,
+  paddle::translator::ProgramTranslator program_translator(&local_program,
                                                            program.get());
 
   program_translator.Translate();
@@ -418,13 +419,15 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 }
 
 std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
-    paddle::framework::BlockDesc *backward_global_block,
+    const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::Tensor *> &x_grad,
     const std::vector<paddle::Tensor *> &params_grad) {
   auto ir_ctx = ::ir::IrContext::Instance();
   auto program = std::make_unique<::ir::Program>(ir_ctx);
 
+  auto local_program =
+      paddle::framework::ProgramDesc(*(backward_global_block->Program()));
   // add feed kernel
   for (auto &out_grad_t : out_grad) {
     auto name = out_grad_t.name();
@@ -432,7 +435,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
     if (name == "@EMPTY@") {
       continue;
     }
-    auto op_desc = backward_global_block->PrependOp();
+    auto op_desc = local_program.MutableBlock(0)->PrependOp();
     op_desc->SetType("feed_with_place");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
@@ -454,16 +457,14 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
     if (name == "@EMPTY@") {
       continue;
     }
-    auto op_desc = backward_global_block->AppendOp();
+    auto op_desc = local_program.MutableBlock(0)->AppendOp();
     op_desc->SetType("shaddow_output");
     op_desc->SetAttr("name", name);
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
 
-  auto backward_program = backward_global_block->Program();
-
-  paddle::translator::ProgramTranslator program_translator(backward_program,
+  paddle::translator::ProgramTranslator program_translator(&local_program,
                                                            program.get());
   program_translator.Translate();
 
