@@ -20,6 +20,7 @@ from paddle.nn import functional as F
 from ...base import topology as tp
 from . import mp_ops
 from .random import get_rng_state_tracker
+from ....communication.reduce import ReduceOp, _get_reduce_op
 
 __all__ = []
 
@@ -309,16 +310,59 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
     def forward(self, x):
         # use inner api to process identity
-        if self.is_mp:
-            input_parallel = mp_ops._c_identity(
-                x, group=self.model_parallel_group
-            )
-        else:
-            input_parallel = x
 
-        output_parallel = self.linear(
-            input_parallel, self.weight, self.bias, name=self._name
-        )
+        def _overlap_linear(input, weight, bias):
+            class InnerOverlapLinear(paddle.autograd.PyLayer):
+                @staticmethod
+                def forward(ctx, x, w, b):
+                    input_parallel = paddle._legacy_C_ops.c_identity(
+                        input,
+                        'use_calc_stream',
+                        True,
+                        'ring_id',
+                        self.model_parallel_group.id,
+                        'use_model_parallel',
+                        True,
+                    )
+                    output_parallel = paddle._C_ops.linear(x, w, b)
+                    return output_parallel
+
+                @staticmethod
+                def backward(ctx, dy):
+                    paddle.fluid.core.nvprof_nvtx_push("dx compute")
+                    dx = paddle.matmul(dy, weight, transpose_y=True)
+                    paddle.fluid.core.nvprof_nvtx_pop()
+                    op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+                    paddle.fluid.core.nvprof_nvtx_push("dx all_reduce")
+                    task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(dx, op_type)
+                    paddle.fluid.core.nvprof_nvtx_pop()
+                    paddle.fluid.core.nvprof_nvtx_push("dw compute")
+                    dw = paddle.matmul(input, dy, transpose_x=True)
+                    paddle.fluid.core.nvprof_nvtx_pop()
+
+                    if bias is None:
+                        task.wait()
+                        return dx, dw
+                    else:
+                        dbias = paddle.sum(dy, axis=0)
+                        task.wait()
+                        return dx, dw, dbias
+
+            return InnerOverlapLinear.apply(x, self.weight, self.bias)
+        
+        if True:
+            output_parallel = _overlap_linear()
+        else:
+            if self.is_mp:
+                input_parallel = mp_ops._c_identity(
+                    x, group=self.model_parallel_group
+                )
+            else:
+                input_parallel = x
+
+            output_parallel = self.linear(
+                input_parallel, self.weight, self.bias, name=self._name
+            )
 
         if self.gather_output and self.is_mp:
             output = mp_ops._c_concat(
