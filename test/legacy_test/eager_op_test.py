@@ -1211,13 +1211,14 @@ class OpTest(unittest.TestCase):
             return
 
         set_flags({"FLAGS_enable_new_ir_in_executor": True})
-
+        new_scope = paddle.static.Scope()
         executor = Executor(place)
         ir_outs = executor.run(
             program,
             feed=feed_map,
             fetch_list=fetch_list,
             return_numpy=False,
+            scope=new_scope,
         )
         assert len(outs) == len(
             ir_outs
