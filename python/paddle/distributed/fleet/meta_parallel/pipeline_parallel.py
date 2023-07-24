@@ -794,7 +794,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._backward_step_count += 1
             sync_step = self._backward_step_count - self.stage_id
             if sync_step > 0 and sync_step % self.accumulate_steps == 0:
-                chunk_idx = sync_step // self.accumulate_steps - 1
+                chunk_idx = self._virtual_pp_world_size - (
+                    sync_step // self.accumulate_steps
+                )
                 for buffer in self._chunk_2_comm_buffers[chunk_idx]:
                     buffer.comm_grads()
 
@@ -803,9 +805,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     self._backward_step_count
                     == self.accumulate_steps * self._virtual_pp_world_size
                 ):
-                    for buffer in self._chunk_2_comm_buffers[
-                        self._virtual_pp_world_size - 1
-                    ]:
+                    for buffer in self._chunk_2_comm_buffers[0]:
                         buffer.comm_grads()
 
         return input_tensor_grad
@@ -1050,13 +1050,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     self._backward_step_count
                     == self.accumulate_steps * self._virtual_pp_world_size
                 ), "backward step count should be equal to accumulate steps * "
-                "virtual pp world size, but get {} vs {}".format(
+                "virtual pp world size, but get {}, excepted result is {}".format(
                     self._backward_step_count,
                     self.accumulate_steps * self._virtual_pp_world_size,
                 )
 
-                for idx, buffers in self._chunk_2_comm_buffers.items():
-                    print(f"Start sync grads {idx}")
+                for _, buffers in self._chunk_2_comm_buffers.items():
                     for buffer in buffers:
                         buffer.scale_and_split_grads()
 

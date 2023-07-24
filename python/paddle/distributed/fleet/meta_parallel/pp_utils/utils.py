@@ -262,9 +262,14 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def scale_and_split_grads(self):
-        assert self._task is not None, "Task is not initialized."
-        self._task.wait()
+        assert self._task is not None, (
+            "Task is not initialized. "
+            "Parameter number: {}, Check-in number: {}".format(
+                len(self._params), self._params_checked_in
+            )
+        )
 
+        self._task.wait()
         scale_factor = 1.0 / self._comm_group.nranks
         self.grad_storage.scale_(scale_factor)
 
