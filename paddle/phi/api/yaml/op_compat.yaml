@@ -1832,7 +1832,7 @@
       data_type : float
       support_tensor : true
 
-- op : merged_momentum_
+- op : merged_momentum_ (merged_momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
