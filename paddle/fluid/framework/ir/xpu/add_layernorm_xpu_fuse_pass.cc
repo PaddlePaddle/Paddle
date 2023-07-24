@@ -181,6 +181,12 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+    auto x_shape = add_x->Var()->GetShape();
+    auto x_rank = x_shape.size();
+    auto y_shape = add_y->Var()->GetShape();
+    auto y_rank = y_shape.size();
+    if (x_rank != y_rank)
+      return;
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;
 
