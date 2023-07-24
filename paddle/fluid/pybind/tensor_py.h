@@ -466,6 +466,9 @@ void SetTensorFromPyArrayT(
 #ifdef PADDLE_WITH_HIP
       paddle::platform::GpuMemcpySync(
           dst, array.data(), array.nbytes(), hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+      paddle::platform::GpuMemcpySync(
+          dst, array.data(), array.nbytes(), musaMemcpyHostToDevice);
 #else
       paddle::platform::GpuMemcpySync(
           dst, array.data(), array.nbytes(), cudaMemcpyHostToDevice);

@@ -155,11 +155,16 @@ void GPUSampleWithProb<T>::operator()(const phi::GPUContext& context,
   int num_tries = UniqSampler<T>(sampler, num_samples, s_data);
   VLOG(1) << "num_tries: " << num_tries;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(samples_data + num_true,
                                        s_data,
                                        sizeof(int64_t) * num_samples,
                                        hipMemcpyHostToDevice));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpy(samples_data + num_true,
+                                        s_data,
+                                        sizeof(int64_t) * num_samples,
+                                        hipMemcpyHostToDevice));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(samples_data + num_true,
                                         s_data,

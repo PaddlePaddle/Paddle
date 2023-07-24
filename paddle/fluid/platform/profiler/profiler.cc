@@ -18,6 +18,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -42,6 +45,9 @@ namespace platform {
 void SynchronizeDevice() {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#endif
+#ifdef PADDLE_WITH_MUSA
+  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #endif
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());

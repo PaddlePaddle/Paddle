@@ -252,9 +252,12 @@ static void YoloTensorParseCuda(
 
   // Estimate how many boxes will be choosed
   int bbox_count = 0;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   hipMemcpy(
       bbox_count_device_ptr, &bbox_count, sizeof(int), hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(
+      bbox_count_device_ptr, &bbox_count, sizeof(int), musaMemcpyHostToDevice);
 #else
   cudaMemcpy(
       bbox_count_device_ptr, &bbox_count, sizeof(int), cudaMemcpyHostToDevice);
@@ -265,9 +268,12 @@ static void YoloTensorParseCuda(
                                                          class_num,
                                                          anchors_num,
                                                          prob_thresh);
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   hipMemcpy(
       &bbox_count, bbox_count_device_ptr, sizeof(int), hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(
+      &bbox_count, bbox_count_device_ptr, sizeof(int), musaMemcpyDeviceToHost);
 #else
   cudaMemcpy(
       &bbox_count, bbox_count_device_ptr, sizeof(int), cudaMemcpyDeviceToHost);
@@ -280,9 +286,12 @@ static void YoloTensorParseCuda(
   float* bbox_tensor = *bboxes_tensor_ptr;
   // Update previous maximum bbox number
   if (bbox_count > *bbox_count_max_alloc) {
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     hipFree(bbox_tensor);
     hipMalloc(&bbox_tensor, bbox_count * (5 + class_num) * sizeof(float));
+#elif defined(PADDLE_WITH_MUSA)
+    musaFree(bbox_tensor);
+    musaMalloc(&bbox_tensor, bbox_count * (5 + class_num) * sizeof(float));
 #else
     cudaFree(bbox_tensor);
     cudaMalloc(&bbox_tensor, bbox_count * (5 + class_num) * sizeof(float));
@@ -293,9 +302,12 @@ static void YoloTensorParseCuda(
 
   // Now generate bboxes
   int bbox_index = 0;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   hipMemcpy(
       bbox_index_device_ptr, &bbox_index, sizeof(int), hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(
+      bbox_index_device_ptr, &bbox_index, sizeof(int), musaMemcpyHostToDevice);
 #else
   cudaMemcpy(
       bbox_index_device_ptr, &bbox_index, sizeof(int), cudaMemcpyHostToDevice);
@@ -349,13 +361,20 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
     anchors.insert(anchors.end(), anchors1.begin(), anchors1.end());
     anchors.insert(anchors.end(), anchors2.begin(), anchors2.end());
     int* device_anchors;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     hipMalloc(reinterpret_cast<void**>(&device_anchors),
               anchors.size() * sizeof(int));
     hipMemcpy(device_anchors,
               anchors.data(),
               anchors.size() * sizeof(int),
               hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMalloc(reinterpret_cast<void**>(&device_anchors),
+              anchors.size() * sizeof(int));
+    musaMemcpy(device_anchors,
+              anchors.data(),
+              anchors.size() * sizeof(int),
+              musaMemcpyHostToDevice);
 #else
     cudaMalloc(reinterpret_cast<void**>(&device_anchors),
                anchors.size() * sizeof(int));
@@ -384,8 +403,12 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
     int batch = context.Input<phi::DenseTensor>("ImageShape")->dims()[0];
     TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
     for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
       hipMalloc(
+          reinterpret_cast<void**>(&ts_info[i].bboxes_dev_ptr),
+          ts_info[i].bbox_count_max_alloc * (5 + class_num) * sizeof(float));
+#elif defined(PADDLE_WITH_MUSA)
+      musaMalloc(
           reinterpret_cast<void**>(&ts_info[i].bboxes_dev_ptr),
           ts_info[i].bbox_count_max_alloc * (5 + class_num) * sizeof(float));
 #else
@@ -395,8 +418,11 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
 #endif
       ts_info[i].bboxes_host_ptr = reinterpret_cast<float*>(malloc(
           ts_info[i].bbox_count_max_alloc * (5 + class_num) * sizeof(float)));
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
       hipMalloc(reinterpret_cast<void**>(&ts_info[i].bbox_count_device_ptr),
+                sizeof(int));
+#elif defined(PADDLE_WITH_MUSA)
+      musaMalloc(reinterpret_cast<void**>(&ts_info[i].bbox_count_device_ptr),
                 sizeof(int));
 #else
       cudaMalloc(reinterpret_cast<void**>(&ts_info[i].bbox_count_device_ptr),
@@ -407,8 +433,10 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
     // Box index counter in gpu memory
     // *bbox_index_device_ptr used by atomicAdd
     int* bbox_index_device_ptr;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     hipMalloc(reinterpret_cast<void**>(&bbox_index_device_ptr), sizeof(int));
+#elif defined(PADDLE_WITH_MUSA)
+    musaMalloc(reinterpret_cast<void**>(&bbox_index_device_ptr), sizeof(int));
 #else
     cudaMalloc(reinterpret_cast<void**>(&bbox_index_device_ptr), sizeof(int));
 #endif
@@ -450,12 +478,18 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
                       bbox_count_max_alloc * (5 + class_num) * sizeof(float)));
         }
 // we need copy bbox_count_host boxes to cpu memory
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
         hipMemcpyAsync(
             ts_info[ts_id].bboxes_host_ptr,
             ts_info[ts_id].bboxes_dev_ptr,
             ts_info[ts_id].bbox_count_host * (5 + class_num) * sizeof(float),
             hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+        musaMemcpyAsync(
+            ts_info[ts_id].bboxes_host_ptr,
+            ts_info[ts_id].bboxes_dev_ptr,
+            ts_info[ts_id].bbox_count_host * (5 + class_num) * sizeof(float),
+            musaMemcpyDeviceToHost);
 #else
         cudaMemcpyAsync(
             ts_info[ts_id].bboxes_host_ptr,
@@ -532,15 +566,20 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
       boxes_num_data[batch_id] = bbox_det_vec.size();
     }
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     hipFree(bbox_index_device_ptr);
+#elif defined(PADDLE_WITH_MUSA)
+    musaFree(bbox_index_device_ptr);
 #else
     cudaFree(bbox_index_device_ptr);
 #endif
     for (int i = 0; i < batch * boxes_input.size(); i++) {
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
       hipFree(ts_info[i].bboxes_dev_ptr);
       hipFree(ts_info[i].bbox_count_device_ptr);
+#elif defined(PADDLE_WITH_MUSA)
+      musaFree(ts_info[i].bboxes_dev_ptr);
+      musaFree(ts_info[i].bbox_count_device_ptr);
 #else
       cudaFree(ts_info[i].bboxes_dev_ptr);
       cudaFree(ts_info[i].bbox_count_device_ptr);

@@ -32,6 +32,11 @@
 #include "cub/cub.cuh"
 #include "math.h"  // NOLINT
 #endif
+#ifdef __MUSACC__
+#include "cub/cub.cuh"
+#include "math.h"  // NOLINT
+#endif
+
 
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
@@ -51,8 +56,10 @@ using phi::funcs::ToVector;
 template <typename T>
 static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {
   static_assert(!std::is_same<T, void>::value, "T cannot be void.");
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(x, 0, n * sizeof(T), stream));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaMemsetAsync(x, 0, n * sizeof(T), stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(x, 0, n * sizeof(T), stream));
 #endif
@@ -250,10 +257,14 @@ static void LogParamAndTrustRatioDivSquareNorm(
 static bool IsFinite(const phi::GPUContext &dev_ctx, const float *ptr) {
   auto stream = dev_ctx.stream();
   float cpu_value;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
       &cpu_value, ptr, sizeof(float), hipMemcpyDeviceToHost, stream));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(
+      &cpu_value, ptr, sizeof(float), musaMemcpyDeviceToHost, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamSynchronize(stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
       &cpu_value, ptr, sizeof(float), cudaMemcpyDeviceToHost, stream));
@@ -1129,10 +1140,14 @@ static std::string GetMinMaxStr(const T *x, size_t n, const phi::Place &place) {
                     stream,
                     &cub_buffer);
     T ret_cpu[2];
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
         &ret_cpu[0], ret, 2 * sizeof(T), hipMemcpyDeviceToHost, stream));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(
+        &ret_cpu[0], ret, 2 * sizeof(T), musaMemcpyDeviceToHost, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamSynchronize(stream));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
         &ret_cpu[0], ret, 2 * sizeof(T), cudaMemcpyDeviceToHost, stream));
@@ -1183,12 +1198,18 @@ static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
                   dev_ctx.stream(),
                   &buffer);
   bool flag;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&flag,
                                             out.Get<bool>(),
                                             sizeof(flag),
                                             hipMemcpyDeviceToHost,
                                             dev_ctx.stream()));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(&flag,
+                                             out.Get<bool>(),
+                                             sizeof(flag),
+                                             musaMemcpyDeviceToHost,
+                                             dev_ctx.stream()));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&flag,
                                              out.Get<bool>(),

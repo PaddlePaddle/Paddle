@@ -31,6 +31,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif  // PADDLE_WITH_MUSA
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -100,6 +103,15 @@ void SynchronizeAllDevice() {
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  }
+  SetDeviceId(pre_device_id);
+#endif
+#ifdef PADDLE_WITH_MUSA
+  int pre_device_id = GetCurrentDeviceId();
+  int count = GetGPUDeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetDeviceId(i);
+    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
   }
   SetDeviceId(pre_device_id);
 #endif

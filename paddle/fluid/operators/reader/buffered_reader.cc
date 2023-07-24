@@ -192,11 +192,16 @@ void BufferedReader::ReadAsync(size_t i) {
         // cuda[i].mutable_data() is called, since some ops release
         // cuda memory immediately without waiting cuda kernel ends
         platform::SetDeviceId(place_.device);
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
         PADDLE_ENFORCE_GPU_SUCCESS(
             hipEventRecord(events_[i].get(), compute_stream_));
         PADDLE_ENFORCE_GPU_SUCCESS(
             hipStreamWaitEvent(stream_.get(), events_[i].get(), 0));
+#elif defined(PADDLE_WITH_MUSA)
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            musaEventRecord(events_[i].get(), compute_stream_));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            musaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(
             cudaEventRecord(events_[i].get(), compute_stream_));

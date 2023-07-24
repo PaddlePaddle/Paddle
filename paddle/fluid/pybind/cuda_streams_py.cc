@@ -84,6 +84,8 @@ void BindCudaStream(py::module *m_ptr) {
     paddle::platform::SetDeviceId(device_id);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 #endif

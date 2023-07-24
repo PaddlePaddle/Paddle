@@ -38,6 +38,16 @@ limitations under the License. */
 #include <thrust/system_error.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <mublas.h>
+#include <mudnn.h>
+#include <mufft.h>
+#include <murand.h>
+#include <musparse.h>
+#include <thrust/system/musa/error.h>
+#include <thrust/system_error.h>
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <miopen/miopen.h>

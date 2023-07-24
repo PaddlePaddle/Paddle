@@ -133,6 +133,8 @@ float CalculateEstOccupancy(uint32_t DeviceId,
                             int32_t BlockZ,
                             void* kernelFunc,
                             uint8_t launchType);
+#elif defined(PADDLE_WITH_MUSA)
+
 #else
 float CalculateEstOccupancy(uint32_t deviceId,
                             uint16_t registersPerThread,
