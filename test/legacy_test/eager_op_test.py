@@ -1213,8 +1213,15 @@ class OpTest(unittest.TestCase):
         set_flags({"FLAGS_enable_new_ir_in_executor": True})
         new_scope = paddle.static.Scope()
         executor = Executor(place)
+        new_program = None
+        if isinstance(program, paddle.static.CompiledProgram):
+            new_program = fluid.CompiledProgram(
+                program._program, build_strategy=program._build_strategy
+            )
+        else:
+            new_program = program.clone()
         ir_outs = executor.run(
-            program,
+            new_program,
             feed=feed_map,
             fetch_list=fetch_list,
             return_numpy=False,
