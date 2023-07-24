@@ -115,6 +115,8 @@ class IR_API alignas(8) Operation final {
 
   Region *GetParentRegion() const;
 
+  Region *GetParentRegion();
+
   Operation *GetParentOp() const;
 
   Program *GetParentProgram();

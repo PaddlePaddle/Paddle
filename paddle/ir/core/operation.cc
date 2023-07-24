@@ -214,6 +214,10 @@ Region *Operation::GetParentRegion() const {
   return parent_ ? parent_->GetParent() : nullptr;
 }
 
+Region *Operation::GetParentRegion() {
+  return parent_ ? parent_->GetParent() : nullptr;
+}
+
 Operation *Operation::GetParentOp() const {
   return parent_ ? parent_->GetParentOp() : nullptr;
 }
