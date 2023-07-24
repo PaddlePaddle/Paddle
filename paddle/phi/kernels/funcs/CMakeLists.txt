@@ -8,7 +8,7 @@ file(
   GLOB func_cc_srcs
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "*.cc")
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   file(
     GLOB func_cu_srcs
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

@@ -205,7 +205,7 @@ class WarpCTCFunctor {
     warpctc_version_ = phi::dynload::get_warpctc_version();
 
     if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       options_.loc = CTC_GPU;
       options_.stream =
           reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();

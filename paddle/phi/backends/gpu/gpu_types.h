@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
@@ -80,4 +80,4 @@ DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToDevice,
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace phi
 
-#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)

@@ -15,7 +15,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
@@ -95,6 +95,9 @@ using CUDAGraphID = unsigned long long;  // NOLINT
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
   constexpr auto GPU_CV = ROCM_CV;
+#elif PADDLE_WITH_MUSA
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
+  constexpr auto GPU_CV = MUSA_CV;
 #else  // CDUA
 
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
@@ -103,9 +106,10 @@ using CUDAGraphID = unsigned long long;  // NOLINT
 
 DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
                          cudaErrorMemoryAllocation,
-                         hipErrorOutOfMemory);
-DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
-DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
+                         hipErrorOutOfMemory,
+                         musaErrorMemoryAllocation);
+DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady, musaErrorNotReady);
+DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess, musaSuccess);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace paddle

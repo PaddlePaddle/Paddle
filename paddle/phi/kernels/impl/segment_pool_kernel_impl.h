@@ -64,7 +64,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (!cpu_place) {
     DenseTensor length;
     length.Resize(phi::make_ddim({1}));

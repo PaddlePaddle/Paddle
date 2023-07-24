@@ -117,7 +117,7 @@ file(
   "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc"
   "sparse/xpu/*.cc")
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   collect_srcs(kernels_srcs SRCS ${kernel_cu})
   kernel_declare("${kernel_cu}")
 endif()

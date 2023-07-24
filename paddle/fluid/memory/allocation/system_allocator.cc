@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
@@ -120,7 +120,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool CPUAllocator::UseGpu() const { return false; }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
 void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
@@ -214,8 +214,10 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
   void* p;
 // PINNED memory is visible to all CUDA contexts.
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   hipError_t result = hipHostMalloc(&p, size, hipHostMallocPortable);
+#elif defined(PADDLE_WITH_MUSA)
+  musaError_t result = musaHostMalloc(&p, size, musaHostMallocPortable);
 #else
   cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 #endif

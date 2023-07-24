@@ -19,7 +19,7 @@ set(ALLOCATOR_SRCS
     buddy_allocator.cc
     system_allocator.cc)
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   list(
     APPEND
     ALLOCATOR_SRCS

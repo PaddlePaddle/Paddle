@@ -59,7 +59,7 @@ class SparseCsrTensor;
 namespace paddle {
 
 namespace platform {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class Communicator;
 class NCCLCommunicator;
@@ -189,7 +189,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     FetchList,
     FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclUniqueId,
     platform::Communicator,

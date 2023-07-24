@@ -223,7 +223,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           sizeof_dtype * numel);
     }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   } else if (self->tensor.is_gpu()) {
     eager_gil_scoped_release guard;
 #if defined(PADDLE_WITH_CUDA)
@@ -1338,7 +1338,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       self_numpy[_index] = py::object(py::handle(value_obj), true);
     }
     if (!self->tensor.initialized()) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       SetTensorFromPyArray(self_tensor,
                            self_numpy,
                            platform::Place(platform::CUDAPlace(0)),

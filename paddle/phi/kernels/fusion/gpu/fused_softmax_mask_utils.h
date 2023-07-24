@@ -25,7 +25,7 @@
 
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #define WARP_SIZE 64

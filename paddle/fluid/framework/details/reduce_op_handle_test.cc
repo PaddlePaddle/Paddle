@@ -303,7 +303,7 @@ TEST(ReduceTester, TestCPUReduceTestLodTensor) {
   test_op.InitReduceOp(out_scope_idx);
   test_op.TestReduceLodTensors(out_scope_idx);
 }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
 TEST(ReduceTester, TestGPUReduceTestSelectedRows) {
   TestReduceOpHandle test_op;

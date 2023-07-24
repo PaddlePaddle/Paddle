@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 DECLARE_int64(gpu_allocator_retry_time);
@@ -41,7 +41,7 @@ static inline size_t AlignTo(size_t size, size_t alignment) {
 }
 
 TEST(allocator, allocator) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
   FLAGS_gpu_allocator_retry_time = 500;
   FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
@@ -102,7 +102,7 @@ TEST(allocator, allocator) {
 
 TEST(multithread_allocate, test_segfault) {
   FLAGS_allocator_strategy = "auto_growth";
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   std::mutex mtx;
   std::condition_variable cv;
   bool flag = false;

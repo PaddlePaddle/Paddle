@@ -69,10 +69,10 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
   fleet_ptr_ = FleetWrapper::GetInstance();
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   copy_streams_.clear();
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
     defined(PADDLE_WITH_XPU)
   places_.clear();
   thread_scopes_.clear();
@@ -80,7 +80,7 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
 }
 
 void PullDenseWorker::CreatePinVar() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
     defined(PADDLE_WITH_XPU)
   // for (auto& v : dense_value_names_) {
   //  for (auto& name : v.second) {
@@ -96,7 +96,7 @@ void PullDenseWorker::CreatePinVar() {
       auto* ptr = root_scope_->Var(name + "pin");
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       phi::DenseTensor* pin_tensor = ptr->GetMutable<phi::DenseTensor>();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       pin_tensor->mutable_data<float>(tensor->dims(),
                                       platform::CUDAPinnedPlace());
 #endif
@@ -125,7 +125,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
     exit(-1);
   }
   status_vec->resize(0);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
     defined(PADDLE_WITH_XPU)
 
   for (size_t i = 0; i < places_.size(); ++i) {
@@ -144,7 +144,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         Variable* var = thread_scopes_[i]->FindVar(name);
         phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
         float* w = tensor->data<float>();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
         memory::Copy(places_[i],
                      w,
                      platform::CUDAPinnedPlace(),
@@ -179,7 +179,7 @@ void PullDenseWorker::PullDense(bool force_update) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
     defined(PADDLE_WITH_XPU)
       VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_,

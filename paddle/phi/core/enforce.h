@@ -90,7 +90,7 @@ limitations under the License. */
 // Note: these headers for simplify demangle type string
 #include "paddle/phi/core/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
 

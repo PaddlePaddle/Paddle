@@ -156,11 +156,16 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   hipMemcpy(gpu_values,
             values.data(),
             values.size() * sizeof(float*),
             hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(gpu_values,
+             values.data(),
+             values.size() * sizeof(float*),
+             musaMemcpyHostToDevice);
 #else
   cudaMemcpy(gpu_values,
              values.data(),

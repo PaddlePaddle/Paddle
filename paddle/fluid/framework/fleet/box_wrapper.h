@@ -593,8 +593,11 @@ class BoxWrapper {
       auto* gpu_data = gpu_tensor.data<T>();
       auto len = gpu_tensor.numel();
       data->resize(len);
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
       hipMemcpy(data->data(), gpu_data, sizeof(T) * len, hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_HIP)
+      musaMemcpy(
+          data->data(), gpu_data, sizeof(T) * len, musaMemcpyDeviceToHost);
 #else
       cudaMemcpy(
           data->data(), gpu_data, sizeof(T) * len, cudaMemcpyDeviceToHost);

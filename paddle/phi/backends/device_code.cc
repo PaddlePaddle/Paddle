@@ -78,7 +78,7 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
   }
   for (auto& p : set) {
     if (p.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       device_codes_.emplace(p, DeviceCodeMap());
 #else
       PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -88,12 +88,12 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   GPUDeviceCode::CheckAvailableStatus();
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_HIP
 static bool CheckCUDADriverResult(hipError_t result,
                                   std::string caller,

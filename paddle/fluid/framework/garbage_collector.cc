@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <functional>
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "gflags/gflags.h"
@@ -64,7 +64,7 @@ void IPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
     const platform::CUDAPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
@@ -91,8 +91,10 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
                                                size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
   platform::CUDADeviceGuard guard(place.device);
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream_));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&stream_));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream_));
   callback_manager_.reset(

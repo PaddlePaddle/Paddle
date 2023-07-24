@@ -82,7 +82,7 @@ struct PADDLE_ALIGN(2) float16 {
 // Constructors
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline explicit float16(const half& h) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
 #else

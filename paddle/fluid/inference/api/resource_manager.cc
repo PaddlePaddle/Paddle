@@ -44,7 +44,7 @@
 namespace paddle {
 namespace internal {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 class EigenGpuStreamDevice : public Eigen::StreamInterface {
  public:
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
@@ -99,9 +99,12 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
     if (semaphore_ == NULL) {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
@@ -132,7 +135,7 @@ void CPUContextResource::InitCPUResource() {
 
 CPUContextResource::CPUContextResource() { InitCPUResource(); }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 GPUContextResource::GPUContextResource(const phi::Place& place, void* stream)
     : place_(place) {
   InitGPUResource(stream);
@@ -156,8 +159,10 @@ void GPUContextResource::InitGPUResource(void* stream) {
 
 void GPUContextResource::DestroyGPUResource() {
   if (owned_stream_) {
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(stream_));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
 #endif
@@ -375,7 +380,7 @@ CPUContextResource* ResourceManager::GetCPUResource() const {
   return cpu_resource_.get();
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 void* ResourceManager::InitGPUResource(const phi::Place& place, void* stream) {
   std::lock_guard<std::mutex> lock_gurad(gpu_mutex_);
   if (gpu_resources_.count(stream)) {

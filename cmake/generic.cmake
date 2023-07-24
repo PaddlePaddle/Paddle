@@ -425,6 +425,9 @@ function(cc_binary TARGET_NAME)
   if(WITH_ROCM)
     target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
   endif()
+  #if(WITH_MUSA)
+  #  target_link_libraries(${TARGET_NAME} ${MUSA_LIB})
+  #endif()
 
   check_coverage_opt(${TARGET_NAME} ${cc_binary_SRCS})
 
@@ -774,6 +777,71 @@ function(hip_test TARGET_NAME)
     )
   endif()
 endfunction()
+
+function(musa_library TARGET_NAME)
+  if(WITH_MUSA)
+    set(options STATIC static SHARED shared)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(musa_library "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    if(musa_library_SRCS)
+      # TODO(MTAI): enable compiling static library
+      #if(musa_library_SHARED OR musa_library_shared) # build *.so
+      #  musa_add_library(${TARGET_NAME} SHARED ${musa_library_SRCS})
+      #else()
+      #  musa_add_library(${TARGET_NAME} STATIC ${musa_library_SRCS})
+      #  find_fluid_modules(${TARGET_NAME})
+      #  find_phi_modules(${TARGET_NAME})
+      #endif()
+      musa_add_library(${TARGET_NAME} SHARED ${hip_library_SRCS})
+      if(musa_library_DEPS)
+        add_dependencies(${TARGET_NAME} ${musa_library_DEPS})
+        target_link_libraries(${TARGET_NAME} ${musa_library_DEPS})
+      endif()
+      # cpplint code style
+      foreach(source_file ${musa_library_SRCS})
+        string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+        if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+          list(APPEND musa_library_HEADERS
+               ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+        endif()
+      endforeach()
+    else()
+      if(musa_library_DEPS)
+        list(REMOVE_DUPLICATES musa_library_DEPS)
+        generate_dummy_static_lib(
+          LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR
+          "generic.cmake:musa_library")
+
+        target_link_libraries(${TARGET_NAME} ${musa_library_DEPS})
+        add_dependencies(${TARGET_NAME} ${musa_library_DEPS})
+      else()
+        message(FATAL "Please specify source file or library in musa_library.")
+      endif()
+    endif()
+  endif()
+endfunction()
+
+function(musa_binary TARGET_NAME)
+  if(WITH_MUSA)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(musa_binary "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    musa_add_executable(${TARGET_NAME} ${musa_binary_SRCS})
+    if(musa_binary_DEPS)
+      target_link_libraries(${TARGET_NAME} ${musa_binary_DEPS})
+      add_dependencies(${TARGET_NAME} ${musa_binary_DEPS})
+      common_link(${TARGET_NAME})
+    endif()
+  endif()
+endfunction()
+
+# TODO(MTAI): enable musa_test
+#function(musa_test TARGET_NAME)
+#endfunction()
 
 function(xpu_library TARGET_NAME)
   if(WITH_XPU_KP)

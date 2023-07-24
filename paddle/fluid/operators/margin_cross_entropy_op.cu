@@ -13,9 +13,11 @@
 // limitations under the License.
 
 // old op include, fluid should be removed
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
+#if defined(PADDLE_WITH_MUSA)
+#include <cub/cub.cuh>
 #else
 #include <cub/cub.cuh>
 #endif

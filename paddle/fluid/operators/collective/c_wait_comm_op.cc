@@ -57,9 +57,12 @@ class CWaitCommOp : public framework::OperatorBase {
         platform::NCCLCommContext::Instance().Get(ring_id, place)->comm_event();
 
 // comm_stream-->event-->compute_stream
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, comm_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event, comm_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(compute_stream, event, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, comm_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));

@@ -29,9 +29,12 @@ limitations under the License. */
 
 #include <ostream>
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
+#elif defined(PADDLE_WITH_MUSA)
+#include <musa_runtime.h>
+#include <murand_kernel.h>
 #else
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
@@ -89,12 +92,18 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   hiprandState rng;
   hiprand_init(rand_seed * gridDim.x + blockIdx.x,
                threadIdx.y * WARP_SIZE + threadIdx.x,
                0,
                &rng);
+#elif defined(PADDLE_WITH_MUSA)
+  murandState rng;
+  murand_init(rand_seed * gridDim.x + blockIdx.x,
+              threadIdx.y * WARP_SIZE + threadIdx.x,
+              0,
+              &rng);
 #else
   curandState rng;
   curand_init(rand_seed * gridDim.x + blockIdx.x,
@@ -126,8 +135,10 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
 #endif
 
       for (int idx = k + threadIdx.x; idx < deg; idx += WARP_SIZE) {
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
         const int num = hiprand(&rng) % (idx + 1);
+#elif defined(PADDLE_WITH_MUSA)
+        const int num = murand(&rng) % (idx + 1);
 #else
         const int num = curand(&rng) % (idx + 1);
 #endif

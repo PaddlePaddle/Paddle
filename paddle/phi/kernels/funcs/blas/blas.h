@@ -360,7 +360,7 @@ class Blas {
             T* B,
             int ldb) const;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   template <typename T>
   void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
 
@@ -543,7 +543,7 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template TRSM<T>(args...);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   template <typename... ARGS>
   void BatchedGETRF(ARGS... args) const {
     Base()->template BatchedGETRF<T>(args...);

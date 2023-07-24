@@ -32,7 +32,7 @@ class ConvSearchCache {
     static ConvSearchCache instance;
     return instance;
   }
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   AlgorithmsCache<miopenConvFwdAlgorithm_t>* GetForward() {
     return &forward_cache_;
   }
@@ -45,6 +45,8 @@ class ConvSearchCache {
   AlgorithmsCache<miopenConvFwdAlgorithm_t>* GetConvFusion() {
     return &fusion_forward_cache_;
   }
+#elif defined(PADDLE_WITH_MUSA)
+
 #else
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetForward() {
     return &forward_cache_;
@@ -67,11 +69,13 @@ class ConvSearchCache {
   ConvSearchCache(const ConvSearchCache&) {}
   ConvSearchCache& operator=(const ConvSearchCache&) {}
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   AlgorithmsCache<miopenConvFwdAlgorithm_t> forward_cache_;
   AlgorithmsCache<miopenConvBwdDataAlgorithm_t> backward_data_cache_;
   AlgorithmsCache<miopenConvBwdWeightsAlgorithm_t> backward_filter_cache_;
   AlgorithmsCache<miopenConvFwdAlgorithm_t> fusion_forward_cache_;
+#elif defined(PADDLE_WITH_MUSA)
+
 #else
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t> forward_cache_;
   AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> backward_data_cache_;

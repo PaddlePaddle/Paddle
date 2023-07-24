@@ -215,9 +215,12 @@ void QkvToContextPluginDynamic::configurePlugin(
       fake_qk_bias_ = reinterpret_cast<float *>(
           tensor_.mutable_data<int32_t>(platform::CUDAPlace(device_id)));
       int64_t size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));

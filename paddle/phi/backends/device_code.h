@@ -48,7 +48,7 @@ class DeviceCode {
   std::string kernel_;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 class GPUDeviceCode : public DeviceCode {
  public:
   explicit GPUDeviceCode(const Place& place,

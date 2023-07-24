@@ -21,7 +21,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
@@ -161,7 +161,7 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                            std::string("%s"),
                            kv.second.c_str());
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   std::vector<int32_t> device_ids = GetSelectedDevices();
   for (auto index = 0u; index < device_ids.size(); index++) {

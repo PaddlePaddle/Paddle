@@ -611,7 +611,7 @@ void BatchNormKernel(const Context &ctx,
   }
   epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // mode_ = miopenBNSpatial;
 #elif CUDNN_VERSION_MIN(7, 0, 1)
