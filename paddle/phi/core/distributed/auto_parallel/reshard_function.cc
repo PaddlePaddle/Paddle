@@ -18,7 +18,5 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace phi {
-namespace distributed {
-namespace auto_parallel {}  // namespace auto_parallel
-}  // namespace distributed
+namespace distributed {}  // namespace distributed
 }  // namespace phi

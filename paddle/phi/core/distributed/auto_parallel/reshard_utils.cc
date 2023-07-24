@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+
 #include <cstdlib>
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping) {
   return std::any_of(dims_mapping.begin(),
@@ -80,6 +80,5 @@ std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
   return split_axis_to_mesh_axis;
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

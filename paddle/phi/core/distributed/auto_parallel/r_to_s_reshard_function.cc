@@ -24,7 +24,6 @@
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 bool RToSReshardFunction::IsSuitable(
     const DistTensor& in,
@@ -34,13 +33,17 @@ bool RToSReshardFunction::IsSuitable(
 
   const auto& in_dims_mapping = in_dist_attr->dims_mapping();
   const auto& out_dims_mapping = out_dist_attr->dims_mapping();
+
   flag &= IsDimsMappingReplicated(in_dims_mapping);
   flag &= IsDimsMappingShard(out_dims_mapping);
 
   const auto& in_process_mesh = in_dist_attr->process_mesh();
   const auto& out_process_mesh = out_dist_attr->process_mesh();
 
+  flag &= (in_process_mesh.ndim() == 1);
+  flag &= (out_process_mesh.ndim() == 1);
   flag &= (in_process_mesh == out_process_mesh);
+
   return flag;
 }
 
@@ -50,9 +53,7 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
     const std::shared_ptr<TensorDistAttr>& out_dist_attr) {
   const auto& out_dims_mapping = out_dist_attr->dims_mapping();
   const auto& out_process_mesh = out_dist_attr->process_mesh();
-  const DenseTensor& origin_in_physical_tensor_cur_rank = in.value();
-  const DenseTensor* in_physical_tensor_cur_rank =
-      &origin_in_physical_tensor_cur_rank;
+  const DenseTensor& in_physical_tensor_cur_rank = in.value();
 
   DenseTensor out_physical_tensor_cur_rank;
 
@@ -60,44 +61,40 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
       GetSplitAxisWithDimsMapping(out_dims_mapping);
   std::vector<int64_t> coord_in_mesh = GetCurRankCoordInMesh(out_process_mesh);
 
-  for (const auto& iter : split_axis_to_mesh_axis) {
-    int64_t split_axis = iter.first;
-    int64_t mesh_axis = iter.second;
+  int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
+  int64_t mesh_axis = split_axis_to_mesh_axis.begin()->second;
 
-    PADDLE_ENFORCE_LT(
-        mesh_axis,
-        out_process_mesh.ndim(),
-        phi::errors::OutOfRange(
-            "The mesh axis %lld exceed the size of process mesh %lld.",
-            mesh_axis,
-            out_process_mesh.ndim()));
+  PADDLE_ENFORCE_LT(
+      mesh_axis,
+      out_process_mesh.ndim(),
+      phi::errors::OutOfRange(
+          "The mesh axis %lld exceed the size of process mesh %lld.",
+          mesh_axis,
+          out_process_mesh.ndim()));
 
-    int64_t num_of_process = out_process_mesh.shape()[mesh_axis];
-    VLOG(3) << "RToSReshard: Tensor will be split on axis " << split_axis
-            << ". Split will use axis " << mesh_axis << " of process_mesh."
-            << " There will have " << num_of_process
-            << " process participate in.";
+  int64_t num_of_process = out_process_mesh.shape()[mesh_axis];
+  VLOG(3) << "RToSReshard: Tensor will be split on axis " << split_axis
+          << ". Split will use axis " << mesh_axis << " of process_mesh."
+          << " There will have " << num_of_process
+          << " process participate in.";
 
-    // TODO(liyurui): Consider the tensor can not be balanced split,
-    // for example, the shape of tensor is {6} but want to split it by 4
-    // process.
-    IntArray sections(std::vector<int64_t>(
-        num_of_process, in.dims()[split_axis] / num_of_process));
+  // TODO(liyurui): Consider the tensor can not be balanced split,
+  // for example, the shape of tensor is {6} but want to split it by 4
+  // process.
+  IntArray sections(std::vector<int64_t>(
+      num_of_process, in.dims()[split_axis] / num_of_process));
 
-    std::vector<DenseTensor> split_out_vec = ReshardSplitFunctor(
-        dev_ctx, *in_physical_tensor_cur_rank, sections, split_axis);
+  std::vector<DenseTensor> split_out_vec = ReshardSplitFunctor(
+      dev_ctx, in_physical_tensor_cur_rank, sections, split_axis);
 
-    VLOG(3) << "The current process will remain the idx "
-            << coord_in_mesh[mesh_axis] << " piece of tensor";
-    out_physical_tensor_cur_rank = split_out_vec[coord_in_mesh[mesh_axis]];
-    in_physical_tensor_cur_rank = &out_physical_tensor_cur_rank;
-  }
+  VLOG(3) << "The current process will remain the idx "
+          << coord_in_mesh[mesh_axis] << " piece of tensor";
+  out_physical_tensor_cur_rank = split_out_vec[coord_in_mesh[mesh_axis]];
 
   return std::make_shared<DistTensor>(
       std::make_shared<DenseTensor>(out_physical_tensor_cur_rank),
       out_dist_attr);
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

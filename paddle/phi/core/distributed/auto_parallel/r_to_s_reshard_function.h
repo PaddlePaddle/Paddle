@@ -18,7 +18,6 @@
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 class RToSReshardFunction final : public ReshardFunction {
  public:
@@ -35,6 +34,5 @@ class RToSReshardFunction final : public ReshardFunction {
       const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
 };
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

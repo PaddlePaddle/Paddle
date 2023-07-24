@@ -23,6 +23,9 @@ namespace distributed {
 namespace auto_parallel {
 
 class ProcessMesh;
+}  // namespace auto_parallel
+
+using auto_parallel::ProcessMesh;
 
 bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping);
 
@@ -43,6 +46,5 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh);
 std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping);
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

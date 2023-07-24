@@ -23,12 +23,10 @@ class DeviceContext;
 class DenseTensor;
 
 namespace distributed {
-namespace auto_parallel {
 std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
                                              const DenseTensor& input,
                                              const IntArray& sections,
                                              int64_t axis);
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

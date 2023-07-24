@@ -111,8 +111,8 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 
 void BindAutoParallel(py::module *m) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  using phi::distributed::auto_parallel::RToSReshardFunction;
-  py::class_<RToSReshardFunction>(*m, "RToSReshardFunction").def(py::init<>());
+  py::class_<phi::distributed::RToSReshardFunction>(*m, "RToSReshardFunction")
+      .def(py::init<>());
 #endif
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")

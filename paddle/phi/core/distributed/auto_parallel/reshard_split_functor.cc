@@ -22,7 +22,6 @@
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
                                              const DenseTensor& input,
@@ -75,6 +74,5 @@ std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
       "The split in reshard only supported on CPU and GPU for now."));
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi
