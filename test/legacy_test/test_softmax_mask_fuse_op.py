@@ -51,16 +51,10 @@ class TestSoftmaxMaskFuseOp(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        try:
-            self.check_output_with_place(core.CPUPlace())
-        except NotImplementedError:
-            pass
+        self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad(self):
-        try:
-            self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
-        except NotImplementedError:
-            pass
+        self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
 
 
 @unittest.skipIf(
