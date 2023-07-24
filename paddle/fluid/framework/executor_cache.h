@@ -29,6 +29,9 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
 namespace paddle {
@@ -220,13 +223,31 @@ class InterpreterCoreInfoCache {
   std::unordered_map<int64_t, InterpreterCoreInfo> info_map_;
 };
 
-std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const ProgramDesc& program_desc,
     const platform::Place& place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope* scope,
-    std::unique_ptr<::ir::Program> ir_prog = nullptr);
+    framework::Scope* scope);
+
+std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+    std::unique_ptr<::ir::Program> ir_prog,
+    const platform::Place& place,
+    bool is_grad,
+    int64_t program_id,
+    framework::Scope* scope);
+
+std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
+    paddle::framework::BlockDesc* forward_global_block,
+    paddle::framework::BlockDesc* backward_global_block,
+    const std::vector<std::string> output_names,
+    const std::vector<paddle::Tensor>& x);
+
+std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
+    paddle::framework::BlockDesc* backward_global_block,
+    const std::vector<paddle::Tensor>& out_grad,
+    const std::vector<paddle::Tensor*>& x_grad,
+    const std::vector<paddle::Tensor*>& params_grad);
 
 }  // namespace framework
 }  // namespace paddle
