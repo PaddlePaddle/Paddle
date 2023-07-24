@@ -117,6 +117,27 @@ AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
 
 }  // namespace patterns
 
+namespace {
+void setIntermediateOut(OpDesc* desc,
+                        const std::string& out_name,
+                        const std::string& scope_name) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  desc->SetOutput(out_name, {new_name});
+}
+
+void addIntermediateOut(Node* op_node,
+                        const std::string& out_name,
+                        const std::string& scope_name,
+                        Graph* graph) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  VarDesc out_var(new_name);
+  out_var.SetPersistable(false);
+  auto* node_var = graph->CreateVarNode(&out_var);
+  IR_NODE_LINK_TO(op_node, node_var);
+}
+
+}  // namespace
+
 class AddLayernormXPUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
@@ -156,7 +177,7 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     GET_IR_NODE(norm_variance);
     GET_IR_NODE(norm_out);
 
-    auto* block = ele_add->Op()->Block();
+    auto* block = l_norm->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -180,6 +201,9 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     fused_op_desc.SetAttr("epsilon", eps);
     fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     fused_op_desc.SetOutput("out", {fused_op_out_name});
+    setIntermediateOut(&fused_op_desc, "mean", name_scope_);
+    setIntermediateOut(&fused_op_desc, "variance", name_scope_);
+    setIntermediateOut(&fused_op_desc, "z_add", name_scope_);
     // relink fused op
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
     IR_NODE_LINK_TO(add_x, fused_op);
@@ -187,6 +211,9 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     IR_NODE_LINK_TO(norm_scale, fused_op);
     IR_NODE_LINK_TO(norm_bias, fused_op);
     IR_NODE_LINK_TO(fused_op, norm_out);
+    addIntermediateOut(fused_op, "mean", name_scope_, graph);
+    addIntermediateOut(fused_op, "variance", name_scope_, graph);
+    addIntermediateOut(fused_op, "z_add", name_scope_, graph);
     delete_nodes.insert({ele_add, l_norm, ele_out, norm_mean, norm_variance});
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;

@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -70,20 +73,29 @@ void AddLayernormXPUKernel(const Context& ctx,
                            const DenseTensor& bias,
                            int begin_norm_axis,
                            float epsilon,
-                           DenseTensor* out) {
+                           DenseTensor* out,
+                           DenseTensor* mean,
+                           DenseTensor* variance,
+                           DenseTensor* z_add) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   const float* scale_data = scale.data<float>();
   const float* bias_data = bias.data<float>();
+  float* mean_data = ctx.template Alloc<float>(mean);
+  float* variance_data = ctx.template Alloc<float>(variance);
+  auto* z_add_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(z_add));
 
   auto x_dims = x.dims();
   auto y_dims = y.dims();
+  VLOG(1) << "x_dims: " << x_dims << ", y_dims: " << y_dims;
   auto out_dims = BroadCastInferShape(x_dims, y_dims, -1);
+  VLOG(1) << "out dims: " << out_dims;
   auto layer_norm_x_mat_dims = phi::flatten_to_2d(out_dims, begin_norm_axis);
   int64_t m = layer_norm_x_mat_dims[0];
   int64_t n = layer_norm_x_mat_dims[1];
+  VLOG(1) << "m=" << m << ", n=" << n;
 
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
 
@@ -97,9 +109,9 @@ void AddLayernormXPUKernel(const Context& ctx,
       /* float epsilon */ epsilon,
       /* const float* scale */ scale_data,
       /* const float* bias */ bias_data,
-      /* float* mean */ nullptr,
-      /* float* variance */ nullptr,
-      /* T* z_add */ nullptr);
+      /* float* mean */ mean_data,
+      /* float* variance */ variance_data,
+      /* T* z_add */ z_add_data);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layernorm_xpu");
 }
 
