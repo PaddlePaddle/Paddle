@@ -113,7 +113,7 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 #ifdef PADDLE_WITH_DISTRIBUTE
-PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value);
+PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(
     const phi::distributed::auto_parallel::TensorDistAttr* value);
 #endif

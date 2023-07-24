@@ -801,8 +801,8 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     return ToPyObject(tensor);
   } else if (self->tensor.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-    auto* tensor = static_cast<phi::distributed::auto_parallel::DistTensor*>(
-        self->tensor.impl().get());
+    auto* tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     VLOG(6) << "dist tensor: " << tensor->defined();
     return ToPyObject(tensor);
 #else

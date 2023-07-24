@@ -164,9 +164,8 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
   EAGER_TRY
   if (self->tensor.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-    phi::distributed::auto_parallel::DistTensor* dist_tensor =
-        static_cast<phi::distributed::auto_parallel::DistTensor*>(
-            self->tensor.impl().get());
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(dist_tensor->dist_attr().get());
 #else
     RETURN_PY_NONE

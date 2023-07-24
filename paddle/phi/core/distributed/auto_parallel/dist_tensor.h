@@ -18,11 +18,12 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
 namespace distributed {
-namespace auto_parallel {
 
+namespace auto_parallel {
 class TensorDistAttr;
+}
+using auto_parallel::TensorDistAttr;
 
 class DistTensor final
     : public phi::TensorBase,
@@ -125,6 +126,5 @@ class DistTensor final
   std::unique_ptr<DenseTensor> value_{nullptr};
 };
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi
