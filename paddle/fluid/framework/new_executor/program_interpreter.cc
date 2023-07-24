@@ -193,6 +193,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       RunImpl();
     }
     is_build_ = true;
+    is_shared_results_build_ = true;
   } else {
     RunImpl();
   }
@@ -300,7 +301,7 @@ void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   // share event analysis
   stream_analyzer_.ShareEventInfoFrom(src.GetStreamAnalyzer());
   is_shared_results_build_ = true;
-  VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
           << ") to InterpreterCore(" << this << ")";
 }
 
