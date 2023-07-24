@@ -372,11 +372,8 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    // translator here
-
-    std::unique_ptr<::ir::Program> ir_program;
     if (FLAGS_enable_new_ir_in_executor) {
-      // update
+      // build new ir program
       auto ir_program = paddle::framework::ConstructFowardIrProgram(
           forward_global_block, backward_global_block, output_names, x);
       interpreter_core =
@@ -528,7 +525,6 @@ inline void RunProgramGradAPI(
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
-    std::unique_ptr<::ir::Program> ir_program;
     if (FLAGS_enable_new_ir_in_executor) {
       auto res = paddle::framework::ConstructBackwardIrProgram(
           backward_global_block, out_grad, x_grad, params_grad);
