@@ -72,8 +72,7 @@ inline std::string RunTypeToString(DownstreamRunType run_type) {
   }
 }
 
-void StreamAnalyzer::ConstructEvents(
-    std::vector<Instruction>* instructions) const {
+void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
   if (!is_event_info_build_) {
     std::vector<Instruction> cross_step_merged_instructions = *instructions;
     for (const Instruction& instr : *instructions) {

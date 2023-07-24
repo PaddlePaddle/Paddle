@@ -40,7 +40,7 @@ class StreamAnalyzer {
 
   ~StreamAnalyzer() {}
 
-  void ConstructEvents(std::vector<Instruction>* instructions) const;
+  void ConstructEvents(std::vector<Instruction>* instructions);
 
   platform::DeviceContext* ParseDeviceContext(
       const OpFuncNode& op_func_node) const;
