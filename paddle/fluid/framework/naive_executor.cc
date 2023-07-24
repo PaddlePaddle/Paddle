@@ -240,7 +240,7 @@ void NaiveExecutor::MakeReusePlan(
   }
 
   // allocate space in advance for the variable.
-  for(uint i = 0;i < cluster_names.size();i++) {
+  for(int i = 0; i < static_cast<int>(cluster_names.size()); i++) {
     if(cluster_buffer_[i] == nullptr) continue;
     
     std::vector<int> shape = shape_table[cluster_names[i]];
