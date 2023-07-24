@@ -91,11 +91,14 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 if(WITH_TESTING)
-  if(CINN_ONLY)
+  if(WITH_CINN)
     add_subdirectory(cpp/cinn)
     add_subdirectory(cinn)
+  endif()
+  if(CINN_ONLY)
     return()
   endif()
+
   add_subdirectory(amp)
   add_subdirectory(asp)
   add_subdirectory(autograd)
@@ -221,14 +224,6 @@ if(TARGET standalone_executor_test)
   set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
   if(NOT WIN32)
     add_dependencies(standalone_executor_test download_program)
-  endif()
-endif()
-
-if(TARGET standalone_executor_new_ir_test)
-  if(NOT WIN32)
-    set_tests_properties(
-      standalone_executor_new_ir_test
-      PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
   endif()
 endif()
 

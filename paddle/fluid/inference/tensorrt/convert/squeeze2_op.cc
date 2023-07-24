@@ -36,7 +36,7 @@ class Squeeze2OpConverter : public OpConverter {
     if (op_desc.HasAttr("axes")) {
       axes = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     }
-    if (axes.size() == 0) {
+    if (axes.empty()) {
       for (int i = 0; i < input_dims.nbDims; i++) {
         if (input_dims.d[i] == -1) {
           PADDLE_THROW(platform::errors::InvalidArgument(

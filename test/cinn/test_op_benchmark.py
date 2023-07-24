@@ -17,15 +17,12 @@
 import sys
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime
-from cinn.common import *
-from cinn.framework import *
-from cinn.frontend import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
+from cinn.frontend import Program, Variable
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 assert len(sys.argv) == 2
 enable_gpu = sys.argv.pop()
@@ -314,7 +311,7 @@ __global__ void fn_conv2d_0_kernel(float* __restrict__ placeholder, float* __res
             "TESTING [mul and add] time cost with shape [128,512]*[256,512]...",
         )
 
-    def atest_matmul(self):
+    def atest_matmul3(self):
         prog = Program()
         a = Variable("A").set_type(Float(32)).set_shape([512, 512])
         b = Variable("B").set_type(Float(32)).set_shape([512, 512])
@@ -440,7 +437,7 @@ typedef char int8_t;
             (tensor_data[0] + tensor_data[1]).reshape(-1), result, atol=1e-4
         )
 
-    def atest_elementwise2(self):
+    def atest_elementwise3(self):
         prog = Program()
         a = Variable("A").set_type(Float(32)).set_shape([4, 1024])
         b = Variable("B").set_type(Float(32)).set_shape([4, 1024])

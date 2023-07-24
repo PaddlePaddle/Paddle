@@ -58,9 +58,13 @@ void cinn_cpu_mkldnn_softmax_fp32(int batch,
   auto src_mem =
       memory(src_md, engine, reinterpret_cast<float*>(inputs->memory));
   auto dst_mem = memory(src_md, engine, reinterpret_cast<float*>(out->memory));
-  auto softmax_d = dnnl::softmax_forward::desc(
-      dnnl::prop_kind::forward_inference, src_md, axis);
-  auto softmax_pd = dnnl::softmax_forward::primitive_desc(softmax_d, engine);
+  auto softmax_pd =
+      dnnl::softmax_forward::primitive_desc(engine,
+                                            dnnl::prop_kind::forward_inference,
+                                            dnnl::algorithm::softmax_accurate,
+                                            src_md,
+                                            src_md,
+                                            axis);
   auto softmax_prim = dnnl::softmax_forward(softmax_pd);
 
   softmax_prim.execute(engine_stream,
@@ -117,19 +121,17 @@ void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
   auto conv_weights_md = memory::desc({conv_weights_tz}, dt::f32, tag::any);
   auto conv_dst_md = memory::desc({conv_dst_tz}, dt::f32, tag::nchw);
 
-  auto conv_desc =
-      dnnl::convolution_forward::desc(dnnl::prop_kind::forward_inference,
-                                      dnnl::algorithm::convolution_direct,
-                                      conv_src_md,
-                                      conv_weights_md,
-                                      conv_dst_md,
-                                      conv_strides,
-                                      conv_dilations,
-                                      conv_paddings,
-                                      conv_paddings);
-
-  auto conv_prim_desc =
-      dnnl::convolution_forward::primitive_desc(conv_desc, cpu_engine);
+  auto conv_prim_desc = dnnl::convolution_forward::primitive_desc(
+      cpu_engine,
+      dnnl::prop_kind::forward_inference,
+      dnnl::algorithm::convolution_direct,
+      conv_src_md,
+      conv_weights_md,
+      conv_dst_md,
+      conv_strides,
+      conv_dilations,
+      conv_paddings,
+      conv_paddings);
 
   auto conv_src_memory = conv_user_src_memory;
   auto conv_weights_memory = conv_user_weights_memory;

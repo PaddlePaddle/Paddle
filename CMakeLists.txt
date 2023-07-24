@@ -24,9 +24,6 @@ endif()
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
-  cmake_policy(SET CMP0104 OLD)
-endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -273,7 +270,7 @@ option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
-option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
+option(WITH_NVTX "Paddle with nvtx for profiler" OFF)
 option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
 option(WITH_DGC "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(
@@ -664,6 +661,10 @@ if(WITH_MIPS)
   add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if(WITH_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_NVTX)
+endif()
+
 if(WITH_LOONGARCH)
   set(WITH_XBYAK
       OFF
@@ -698,7 +699,7 @@ if(ON_INFER)
   add_definitions(-DPADDLE_ON_INFERENCE)
   set(WITH_SHARED_IR
       OFF
-      CACHE STRING "Only paddle_inference.so is allowed in inference." FORCE)
+      CACHE BOOL "Only paddle_inference.so is allowed in inference." FORCE)
 else()
   #TODO(luotao), combine this warning with `make inference_lib_dist` command.
   message(
@@ -708,9 +709,7 @@ else()
 endif()
 
 if(NOT WITH_SHARED_IR)
-  if(WIN32)
-    add_definitions(-DIR_API=)
-  endif()
+  add_definitions(-DSTATIC_IR)
 endif()
 
 if(WITH_STRIP)

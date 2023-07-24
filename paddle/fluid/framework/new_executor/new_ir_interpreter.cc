@@ -36,6 +36,7 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
 namespace paddle {
@@ -49,12 +50,14 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope),
+      scope_(scope),
       ir_program_(std::move(ir_prog)) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
   //    &&interpreter::BlockCanBeStaticBuilt(block);
+  static_build_ = true;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -62,20 +65,18 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
+  if (execution_config_.create_local_scope) {
+    auto local_scope = &scope_->NewScope();
+    local_scope_ = local_scope;
+    VLOG(6) << "new ir interpretercore scope: " << scope_ << "\t"
+            << "; local scope: " << local_scope_;
+  }
+  // TODO(zhangbo): delete var_scope
+  var_scope_.SetLocalScope(local_scope_);
+
   execution_config_.AnalyzeThreadPoolConfig(place,
                                             ir_program_->block()->size());
   execution_config_.Log(/*log_level=*/8);
-
-  if (execution_config_.create_local_scope) {
-    auto local_scope = &var_scope_.GetMutableScope()->NewScope();
-    local_scope_ = local_scope;
-  }
-
-  // force use outer scope for now
-  local_scope_ = scope;
-  static_build_ = true;
-
-  var_scope_.SetLocalScope(local_scope_);
 
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
@@ -184,15 +185,29 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    ::ir::BuildScope(
-        ir_program_->block(), local_scope_, &value_2_var_name_map_);
+    std::stringstream ss;
+    ss << this;
+    ::ir::BuildScope(*ir_program_->block(),
+                     InnerScope(),
+                     ss.str(),
+                     &value_2_var_name_,
+                     &variable_2_var_name_,
+                     &var_name_2_id_,
+                     &variable_list_);
+    VLOG(4) << DebugValueInfo();
+
+    // NOTE(zhangbo): Iterative version, gradually replacing BuildOpFuncList()
+    // and Convert()
+    // BuildInstruction();
+    // BuildInstructionDependences();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
                                  ir_program_->block(),
                                  &op_func_nodes,
+                                 scope_,
                                  local_scope_,
-                                 value_2_var_name_map_,
+                                 value_2_var_name_,
                                  execution_config_);
     // SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -212,8 +227,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 
   // return Fetch Tensors
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+  Scope* inner_scope = InnerScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -225,6 +239,48 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                             "Cannot fetch data when using CUDA Graph."));
     }
 #endif
+    return fetch_list;
+  } else {
+    return {};
+  }
+}
+
+FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
+                                    bool need_fetch) {
+  SetDeviceId(place_);
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    std::stringstream ss;
+    ss << this;
+    ::ir::BuildScope(*ir_program_->block(),
+                     InnerScope(),
+                     ss.str(),
+                     &value_2_var_name_,
+                     &variable_2_var_name_,
+                     &var_name_2_id_,
+                     &variable_list_);
+    VLOG(4) << DebugValueInfo();
+    BuildInstruction();
+    BuildInstructionDependences();
+    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+         ++instr_id) {
+      vec_instruction_base_[instr_id]->Run();
+    }
+  } else {
+    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+         ++instr_id) {
+      vec_instruction_base_[instr_id]->Run();
+    }
+  }
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
+  // return Fetch Tensors
+  Scope* inner_scope = InnerScope();
+  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+  if (fetch_var && need_fetch) {
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
     return fetch_list;
   } else {
     return {};
@@ -287,10 +343,30 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   }
 }
 
+const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
+
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
   VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << src
           << ") to InterpreterCore(" << this << ")";
+}
+
+void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "ShareBuildResultsFrom is not implemented in NewIRInterpreter."));
+}
+
+// op dependences
+const interpreter::DependencyBuilder& NewIRInterpreter::GetDependencyBuilder()
+    const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in NewIRInterpreter."));
+}
+
+std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
+    const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyCount is not implemented in NewIRInterpreter."));
 }
 
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
@@ -321,8 +397,7 @@ std::shared_ptr<interpreter::AsyncWorkQueue> NewIRInterpreter::GetWorkQueue() {
 }
 
 void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+  Scope* inner_scope = InnerScope();
   VariableValueMap ins_map;
   for (auto& var_name_item : instr_node->Inputs()) {
     std::vector<Variable*> input_vars;
@@ -349,9 +424,8 @@ void NewIRInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   if (instr_node->OpBase()->Type() == "cinn_launch" ||
       instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
                                                                  // in kernel
-    Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                         : var_scope_.GetMutableScope();
-    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+    Scope* inner_scope = InnerScope();
+    instr_node->ResetContextWithScope(ins_map, outs_map, *inner_scope);
   } else {
     instr_node->ResetContext(ins_map, outs_map);
   }
@@ -380,8 +454,7 @@ void NewIRInterpreter::BuildInplace() {
     }
   }
 
-  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                       : var_scope_.GetMutableScope();
+  Scope* local_scope = InnerScope();
   std::vector<std::vector<size_t>> input_var2op(var_scope_.VarSize());
   for (Instruction& instr : vec_instruction_) {
     for (auto& item : instr.Inputs()) {
@@ -778,7 +851,7 @@ void NewIRInterpreter::BuildSkipShareLoDInfo() {
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
         if (var->IsType<phi::DenseTensor>()) {
-          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
+          if (!var->Get<phi::DenseTensor>().lod().empty()) {
             can_skip_lod = false;
             break;
           }
@@ -799,8 +872,7 @@ void NewIRInterpreter::BuildSkipShareLoDInfo() {
 void NewIRInterpreter::RunOperator(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
-                                       : var_scope_.GetMutableScope();
+  Scope* local_scope = InnerScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
@@ -969,16 +1041,19 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
 
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
-    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_
+                 << " raises an EnforceNotMet exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
-    LOG(WARNING) << op->Type() << " raises an exception "
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_ << " raises an exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
-    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    LOG(WARNING) << instr_node.OpFunc()->phi_op_name_
+                 << " raises an unknown exception";
     exception_holder_.Catch(std::current_exception());
   }
 }
@@ -1047,7 +1122,7 @@ void NewIRInterpreter::ExecuteInstructionList(
             if (cancel) {
               break;
             }
-            VLOG(0) << "deps:\n" << GetDepsString();
+            VLOG(6) << "deps:\n" << GetDepsString();
             times++;
           }
           return times;
@@ -1152,7 +1227,8 @@ void NewIRInterpreter::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
-  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+  if (instr.DeviceContext().GetPlace().GetType() ==
+      phi::AllocationType::CUSTOM) {
     return;
   }
   platform::RecordEvent record(
@@ -1336,6 +1412,10 @@ void NewIRInterpreter::SetFeedVarsInplaceSkip(
 
 bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
+Scope* NewIRInterpreter::InnerScope() {
+  return local_scope_ != nullptr ? local_scope_ : scope_;
+}
+
 // Note(zhangbo):
 // (1) What is "Trace"?
 // The OP execute scheduling rule adopted by Interpretercore by default is a
@@ -1471,6 +1551,106 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+}
+
+/// ======================== ///
+///        For new ir        ///
+/// ======================== ///
+
+void NewIRInterpreter::BuildInstruction() {
+  VLOG(0) << "Build Instructions for new ir ... ";
+  vec_instruction_base_.clear();
+  size_t op_idx = 0;
+  for (auto it = ir_program_->block()->begin();
+       it != ir_program_->block()->end();
+       ++it) {
+    VLOG(0) << "Build Instruction for op: " << op_idx;
+    if ((*it)->dialect()->name() == "pd_kernel") {
+      auto op_name = (*it)
+                         ->attributes()
+                         .at("op_name")
+                         .dyn_cast<::ir::StrAttribute>()
+                         .AsString();
+      if (op_name == "builtin.combine" || op_name == "builtin.slice" ||
+          op_name == "pd.feed" || op_name == "pd.fetch" ||
+          op_name == "builtin.set_parameter" ||
+          op_name == "builtin.get_parameter") {
+        VLOG(6) << "skip process " << op_name;
+        continue;
+      }
+      vec_instruction_base_.emplace_back(
+          std::make_unique<PhiKernelInstruction>(op_idx++,
+                                                 place_,
+                                                 (*it),
+                                                 scope_,
+                                                 local_scope_,
+                                                 value_2_var_name_,
+                                                 var_name_2_id_,
+                                                 variable_2_var_name_));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Now only support pd_kernel dialect."));
+    }
+  }
+}
+
+std::string NewIRInterpreter::DebugValueInfo() {
+  std::stringstream os;
+  os << "value info of interpretercore " << this << "\n"
+     << "value -> var_name -> id -> variable*"
+     << "\n";
+  for (auto kv : value_2_var_name_) {
+    os << kv.first.impl() << " -> " << kv.second << " -> "
+       << var_name_2_id_.at(kv.second) << " -> "
+       << InnerScope()->FindVar(kv.second) << "\n";
+  }
+  return os.str();
+}
+
+void NewIRInterpreter::BuildInstructionDependences() {
+  // analysis the dependences between instructions, add next_instr_list to each
+  // instr, and set the dependecy_count_
+  size_t instr_num = vec_instruction_base_.size();
+  dependecy_count_ = std::vector<size_t>(instr_num, 0);
+  auto downstream_map = ir_dependency_builder_.Build(vec_instruction_base_);
+
+  for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
+    InstructionBase* cur_instr = vec_instruction_base_[instr_id].get();
+    const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
+
+    if (FLAGS_new_executor_serial_run) {
+      for (size_t next_instr_id : next_instr_ids) {
+        cur_instr->AddNextInstrInSameThread(next_instr_id);
+      }
+    } else {
+      if (cur_instr->KernelType() == OpFuncType::kGpuAsync) {
+        for (size_t next_instr_id : next_instr_ids) {
+          if (vec_instruction_base_[next_instr_id]->KernelType() ==
+              OpFuncType::kGpuAsync) {
+            cur_instr->AddNextInstrInSameThread(next_instr_id);
+          } else {
+            cur_instr->AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      } else {
+        bool has_instr_in_same_thread = false;
+        for (size_t next_instr_id : next_instr_ids) {
+          if (!has_instr_in_same_thread &&
+              vec_instruction_base_[next_instr_id]->KernelType() !=
+                  OpFuncType::kGpuAsync) {
+            cur_instr->AddNextInstrInSameThread(next_instr_id);
+            has_instr_in_same_thread = true;
+          } else {
+            cur_instr->AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      }
+    }
+
+    for (size_t next_instr_id : next_instr_ids) {
+      ++dependecy_count_[next_instr_id];
+    }
+  }
 }
 
 }  // namespace framework

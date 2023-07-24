@@ -36,7 +36,7 @@ class AllReduceDelOp : public framework::OperatorWithKernel {
 
 class AllReduceDelOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor), tensor to be allreduced.");
     AddOutput("Out", "(Tensor) the result of allreduced.");
     AddAttr<int>("reduce_type", "(int) determine the reduce type.")

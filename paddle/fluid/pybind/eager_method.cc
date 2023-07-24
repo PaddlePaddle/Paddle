@@ -175,7 +175,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       nullptr);
 
   if (!self->tensor.impl()->initialized()) {
-    if (tensor_dims.size() == 0) {
+    if (tensor_dims.empty()) {
       py_dims[0] = 0;
       py_strides[0] = 0;
       PyObject* array = api.PyArray_NewFromDescr_(
@@ -803,7 +803,7 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
 #ifdef PADDLE_WITH_DISTRIBUTE
     auto* tensor = static_cast<phi::distributed::auto_parallel::DistTensor*>(
         self->tensor.impl().get());
-    VLOG(6) << "dist tensor: " << tensor->IsInitialized();
+    VLOG(6) << "dist tensor: " << tensor->defined();
     return ToPyObject(tensor);
 #else
     RETURN_PY_NONE

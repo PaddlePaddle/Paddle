@@ -16,12 +16,19 @@ import logging
 import os
 import struct
 import unittest
-from contextlib import contextmanager
 
 import numpy as np
-from cinn import Target
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import (
+    BFloat16,
+    Bool,
+    DefaultHostTarget,
+    DefaultNVGPUTarget,
+    Float,
+    Float16,
+    Int,
+    UInt,
+    is_compiled_with_cuda,
+)
 from cinn.runtime import seed as cinn_seed
 
 import paddle
