@@ -594,6 +594,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
+
+      // This must be a zero dimension tensor.
+      // At present, we convert it to a 1D tensor to feed them into Trt.
+      if (t_shape.size() == 0) {
+        PADDLE_ENFORCE_EQ(
+            t.numel(),
+            1UL,
+            platform::errors::PreconditionNotMet(
+                "This tensor must have one element, but got %ld.", t.numel()));
+        t_shape.push_back(1);
+      }
+
       // Get index of profile 0 first, then plus binding offset
       const int bind_index =
           engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
