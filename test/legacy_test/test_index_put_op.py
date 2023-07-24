@@ -854,6 +854,39 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
+    def test_backward_in_static(self):
+        paddle.enable_static()
+        exe = paddle.static.Executor()
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
+            x = paddle.zeros((4, 2, 5))
+            x.stop_gradient = False
+
+            y = x + 1
+            index = paddle.to_tensor([0, 1, 3])
+
+            value = paddle.ones((5,))
+            value.stop_gradient = False
+
+            z = paddle.index_put(y, (index,), value)
+            l = z.sum()
+            paddle.static.append_backward(l)
+            res = exe.run(fetch_list=[z, x.grad_name, value.grad_name])
+
+            expected_z = np.ones((4, 2, 5))
+            expected_z[[0, 1, 3]] = np.ones((5,))
+
+            expected_x_grad = np.ones((4, 2, 5))
+            expected_x_grad[[0, 1, 3]] = 0
+
+            expected_v_grad = np.ones((5,)) * 3 * 2
+
+            np.testing.assert_allclose(expected_z, res[0])
+            np.testing.assert_allclose(expected_x_grad, res[1])
+            np.testing.assert_allclose(expected_v_grad, res[2])
+        paddle.disable_static()
+
 
 class TestIndexPutAPIMixedIndices(TestIndexPutAPIBase):
     def init_dtype_type(self):
