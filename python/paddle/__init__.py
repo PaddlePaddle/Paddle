@@ -138,14 +138,10 @@ from .tensor.linalg import mv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
-from .tensor.logic import greater_equal_  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
-from .tensor.logic import greater_than_  # noqa: F401
 from .tensor.logic import is_empty  # noqa: F401
 from .tensor.logic import less_equal  # noqa: F401
-from .tensor.logic import less_equal_  # noqa: F401
 from .tensor.logic import less_than  # noqa: F401
-from .tensor.logic import less_than_  # noqa: F401
 from .tensor.logic import logical_and  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
@@ -155,7 +151,6 @@ from .tensor.logic import bitwise_not  # noqa: F401
 from .tensor.logic import bitwise_or  # noqa: F401
 from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
-from .tensor.logic import not_equal_  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
 from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
@@ -218,7 +213,6 @@ from .tensor.math import asin_  # noqa: F401
 from .tensor.math import atan  # noqa: F401
 from .tensor.math import atan_  # noqa: F401
 from .tensor.math import atan2  # noqa: F401
-from .tensor.math import atan2_  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import cos_  # noqa: F401
@@ -534,7 +528,6 @@ __all__ = [  # noqa
     'logical_and',
     'full_like',
     'less_than',
-    'less_than_',
     'kron',
     'clip',
     'Tensor',
@@ -582,7 +575,6 @@ __all__ = [  # noqa
     'reciprocal',
     'rand',
     'less_equal',
-    'less_equal_',
     'triu',
     'triu_',
     'sin',
@@ -661,14 +653,12 @@ __all__ = [  # noqa
     'all',
     'ones',
     'not_equal',
-    'not_equal_',
     'sum',
     'nansum',
     'nanmean',
     'count_nonzero',
     'tile',
     'greater_equal',
-    'greater_equal_',
     'isfinite',
     'create_parameter',
     'dot',
@@ -680,7 +670,6 @@ __all__ = [  # noqa
     'tolist',
     'tensordot',
     'greater_than',
-    'greater_than_',
     'shard_index',
     'argsort',
     'tanh',

@@ -713,116 +713,6 @@ class TestDygraphInplaceTril(TestDygraphInplaceWithContinuous):
         return paddle.tril(var, 0)
 
 
-# class TestDygraphInplaceGreaterEqual(TestDygraphInplace):
-#     def init_data(self):
-#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-#         self.dtype = "float32"
-#         self.y = paddle.randn([10, 20, 1], dtype="float32")
-
-#     def inplace_api_processing(self, var):
-#         return paddle.greater_equal_(var, self.y)
-
-#     def non_inplace_api_processing(self, var):
-#         return paddle.greater_equal(var, self.y)
-
-#     def test_backward_error(self):
-#         pass
-
-#     def test_backward_success_1(self):
-#         pass
-
-#     def test_backward_success_2(self):
-#         pass
-
-
-# class TestDygraphInplaceGreaterThan(TestDygraphInplace):
-#     def init_data(self):
-#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-#         self.dtype = "float32"
-#         self.y = paddle.randn([10, 20, 1], dtype="float32")
-
-#     def inplace_api_processing(self, var):
-#         return paddle.greater_than_(var, self.y)
-
-#     def non_inplace_api_processing(self, var):
-#         return paddle.greater_than(var, self.y)
-
-#     def test_backward_error(self):
-#         pass
-
-#     def test_backward_success_1(self):
-#         pass
-
-#     def test_backward_success_2(self):
-#         pass
-
-
-# class TestDygraphInplaceLessThan(TestDygraphInplace):
-#     def init_data(self):
-#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-#         self.dtype = "float32"
-#         self.y = paddle.randn([10, 20, 1], dtype="float32")
-
-#     def inplace_api_processing(self, var):
-#         return paddle.less_than_(var, self.y)
-
-#     def non_inplace_api_processing(self, var):
-#         return paddle.less_than(var, self.y)
-
-#     def test_backward_error(self):
-#         pass
-
-#     def test_backward_success_1(self):
-#         pass
-
-#     def test_backward_success_2(self):
-#         pass
-
-
-# class TestDygraphInplaceLessEqual(TestDygraphInplace):
-#     def init_data(self):
-#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-#         self.dtype = "float32"
-#         self.y = paddle.randn([10, 20, 1], dtype="float32")
-
-#     def inplace_api_processing(self, var):
-#         return paddle.less_equal_(var, self.y)
-
-#     def non_inplace_api_processing(self, var):
-#         return paddle.less_equal(var, self.y)
-
-#     def test_backward_error(self):
-#         pass
-
-#     def test_backward_success_1(self):
-#         pass
-
-#     def test_backward_success_2(self):
-#         pass
-
-
-# class TestDygraphInplaceNotEqual(TestDygraphInplace):
-#     def init_data(self):
-#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-#         self.dtype = "float32"
-#         self.y = paddle.randn([10, 20, 1], dtype="float32")
-
-#     def inplace_api_processing(self, var):
-#         return paddle.not_equal_(var, self.y)
-
-#     def non_inplace_api_processing(self, var):
-#         return paddle.not_equal(var, self.y)
-
-#     def test_backward_error(self):
-#         pass
-
-#     def test_backward_success_1(self):
-#         pass
-
-#     def test_backward_success_2(self):
-#         pass
-
-
 class TestDygraphInplaceLogit(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.logit_(var, 1e-3)
@@ -861,21 +751,6 @@ class TestDygraphInplaceLog1p(TestDygraphInplaceWithContinuous):
 
     def non_inplace_api_processing(self, var):
         return paddle.log1p(var)
-
-
-# ValueError: (InvalidArgument) Required tensor shall not be nullptr, but received nullptr.
-#  [Hint: tensor should not be null.] (at /root/dev/Paddle/paddle/phi/core/device_context.cc:142)
-# class TestDygraphInplaceAtan2(TestDygraphInplaceWithContinuous):
-#     def init_data(self):
-#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-#         self.dtype = "float32"
-#         self.y = paddle.randn([10, 20, 1], dtype="float32")
-
-#     def inplace_api_processing(self, var):
-#         return paddle.atan2_(var, self.y)
-
-#     def non_inplace_api_processing(self, var):
-#         return paddle.atan2(var, self.y)
 
 
 class TestDygraphInplaceTrunc(TestDygraphInplaceWithContinuous):

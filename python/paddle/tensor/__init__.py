@@ -76,14 +76,10 @@ from .linalg import lu_unpack  # noqa: F401
 from .linalg import cdist  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
-from .logic import greater_equal_  # noqa: F401
 from .logic import greater_than  # noqa: F401
-from .logic import greater_than_  # noqa: F401
 from .logic import is_empty  # noqa: F401
 from .logic import less_equal  # noqa: F401
-from .logic import less_equal_  # noqa: F401
 from .logic import less_than  # noqa: F401
-from .logic import less_than_  # noqa: F401
 from .logic import logical_and  # noqa: F401
 from .logic import logical_not  # noqa: F401
 from .logic import logical_or  # noqa: F401
@@ -93,7 +89,6 @@ from .logic import bitwise_or  # noqa: F401
 from .logic import bitwise_xor  # noqa: F401
 from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
-from .logic import not_equal_  # noqa: F401
 from .logic import allclose  # noqa: F401
 from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
@@ -226,7 +221,6 @@ from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
-from .math import atan2_  # noqa: F401
 from .math import logsumexp  # noqa: F401
 from .math import logaddexp  # noqa: F401
 from .math import inverse  # noqa: F401

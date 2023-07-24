@@ -4600,17 +4600,6 @@ def atan2(x, y, name=None):
         return out
 
 
-@inplace_apis_in_dygraph_only
-def atan2_(x, y, name=None):
-    r"""
-    Inplace version of ``atan2`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_atan2`.
-    """
-
-    if in_dynamic_mode():
-        return _C_ops.atan2_(x, y)
-
-
 def logit(x, eps=None, name=None):
     r"""
     This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.

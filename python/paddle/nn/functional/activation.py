@@ -299,6 +299,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def hardtanh_(x, min=-1.0, max=1.0, name=None):
     r"""
     Inplace version of ``hardtanh`` API, the output Tensor will be inplaced with input ``x``.
@@ -467,6 +468,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def leaky_relu_(x, negative_slope=0.01, name=None):
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
@@ -1460,6 +1462,7 @@ def tanhshrink(x, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def thresholded_relu(x, threshold=1.0, name=None):
     r"""
     thresholded relu activation.
