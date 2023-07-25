@@ -16,6 +16,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif

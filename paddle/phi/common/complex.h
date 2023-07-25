@@ -26,6 +26,11 @@
 #include <thrust/complex.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <muComplex.h>
+#include <thrust/complex.h>
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_complex.h>
 #include <thrust/complex.h>  // NOLINT
@@ -82,6 +87,15 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   HOSTDEVICE inline explicit operator hipDoubleComplex() const {
     return make_hipDoubleComplex(real, imag);
+  }
+
+#elif defined(PADDLE_WITH_MUSA)
+  HOSTDEVICE inline explicit operator muFloatComplex() const {
+    return make_muFloatComplex(real, imag);
+  }
+
+  HOSTDEVICE inline explicit operator muDoubleComplex() const {
+    return make_muDoubleComplex(real, imag);
   }
 #else
   HOSTDEVICE inline explicit operator cuFloatComplex() const {

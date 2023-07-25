@@ -22,6 +22,9 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/backends/dynload/mublas.h"
+#include "paddle/phi/backends/dynload/mudnn.h"
 #else  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
@@ -32,7 +35,9 @@ namespace phi {
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
-
+#elif defined(PADDLE_WITH_MUSA)
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+  using GPU_TYPE = MUSA_TYPE;
 #else  // PADDLE_WITH_CDUA
 
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
@@ -56,6 +61,9 @@ DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
   constexpr auto GPU_CV = ROCM_CV;
+#elif defined(PADDLE_WITH_MUSA)
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
+  constexpr auto GPU_CV = MUSA_CV;
 #else  // PADDLE_WITH_CUDA
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
   constexpr auto GPU_CV = CUDA_CV;

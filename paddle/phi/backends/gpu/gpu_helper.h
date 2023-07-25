@@ -17,6 +17,8 @@
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/backends/gpu/musa/musa_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #endif

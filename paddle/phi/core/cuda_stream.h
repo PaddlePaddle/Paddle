@@ -28,6 +28,11 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+using gpuStream_t = cudaStream_t;
+#endif
+
 #ifdef PADDLE_WITH_MUSA
 #include <musa_runtime.h>
 using gpuStream_t = musaStream_t;
@@ -152,6 +157,8 @@ class CUDAStream {
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(raw_stream(), ev, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(raw_stream(), ev, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(raw_stream(), ev, 0));
 #endif
@@ -164,6 +171,8 @@ class CUDAStream {
       backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
       hipStreamDestroy(raw_stream());
+#elif defined(PADDLE_WITH_MUSA)
+      musaStreamDestroy(raw_stream());
 #else
       cudaStreamDestroy(raw_stream());
 #endif

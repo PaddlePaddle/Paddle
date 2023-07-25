@@ -43,6 +43,17 @@ limitations under the License. */
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/mublas.h"
+#include "paddle/phi/backends/dynload/mudnn.h"
+#include "paddle/phi/backends/dynload/musolver.h"
+#include "paddle/phi/backends/dynload/musparse.h"
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#include "paddle/phi/backends/dynload/mccl.h"
+#endif  // !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+#endif  // PADDLE_WITH_MUSA
+
+
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
@@ -119,6 +130,9 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
@@ -143,6 +157,16 @@ static void StreamCallbackFunc(gpuStream_t stream,
                                gpuError_t status,
                                void* user_data)
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+#if MUSA_VERSION >= 10000
+    static void MUDART_CB StreamCallbackFunc(void* user_data)
+#else
+    static void MUDART_CB
+    StreamCallbackFunc(musaStream_t stream, musaError_t status, void* user_data)
+#endif
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
     static void CUDART_CB StreamCallbackFunc(void* user_data)
@@ -170,6 +194,8 @@ void DnnWorkspaceHandle::RunFuncSync(
     std::lock_guard<std::mutex> guard(*mtx_);
 #ifdef PADDLE_WITH_HIP
     auto status = hipMalloc(&workspace_ptr, size);
+#elif defined(PADDLE_WITH_MUSA)
+    auto status = musaMalloc(&workspace_ptr, size);
 #else
     auto status = cudaMalloc(&workspace_ptr, size);
 #endif
@@ -178,6 +204,8 @@ void DnnWorkspaceHandle::RunFuncSync(
       phi::backends::gpu::GpuStreamSync(stream_);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipFree(workspace_ptr));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaFree(workspace_ptr));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(workspace_ptr));
 #endif
@@ -464,6 +492,11 @@ struct GPUContext::Impl {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDestroy(dnn_handle_));
       dnn_handle_ = nullptr;
     }
+#elif defined(PADDLE_WITH_MUSA)
+    if (owned_ && dnn_handle_ != nullptr) {
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDestroy(dnn_handle_));
+      dnn_handle_ = nullptr;
+    }
 #else
     if (owned_ && dnn_handle_ != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroy(dnn_handle_));
@@ -529,6 +562,18 @@ struct GPUContext::Impl {
       break;
     }
 #endif  // !defined(_WIN32)
+
+#elif defined(PADDLE_WITH_MUSA)
+    musaError_t e_sync = musaSuccess;
+#if !defined(_WIN32)
+    e_sync = musaStreamSynchronize(stream());
+#else
+    while (e_sync = musaStreamQuery(stream())) {
+      if (e_sync == musaErrorNotReady) continue;
+      break;
+    }
+#endif  // !defined(_WIN32)
+
 #else   // PADDLE_WITH_HIP
     cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
@@ -547,6 +592,8 @@ struct GPUContext::Impl {
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream(), ev, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(stream(), ev, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream(), ev, 0));
 #endif
@@ -678,6 +725,8 @@ struct GPUContext::Impl {
   void RecordEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream()));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(ev, stream()));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream()));
 #endif
@@ -707,6 +756,16 @@ struct GPUContext::Impl {
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamAddCallback(stream(), internal::StreamCallbackFunc, func, 0));
+#endif
+#endif
+
+#ifdef PADDLE_WITH_MUSA
+#if MUSA_VERSION >= 10000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        musaLaunchHostFunc(stream(), internal::StreamCallbackFunc, func));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        musaStreamAddCallback(stream(), internal::StreamCallbackFunc, func, 0));
 #endif
 #endif
   }

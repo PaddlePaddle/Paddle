@@ -35,6 +35,16 @@ limitations under the License. */
 #include <thrust/system_error.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <mublas_v2.h>
+#include <mudnn.h>
+#include <mufft.h>
+#include <murand.h>
+#include <musparse.h>
+#include <thrust/system/musa/error.h>
+#include <thrust/system_error.h>
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <miopen/miopen.h>
@@ -74,6 +84,20 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
+
+
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/mublas.h"
+#include "paddle/phi/backends/dynload/mudnn.h"
+#include "paddle/phi/backends/dynload/murand.h"
+#include "paddle/phi/backends/dynload/musolver.h"
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#include <error.h>
+
+#include "paddle/phi/backends/dynload/mccl.h"
+#endif  // __APPLE__
+#endif  // PADDLE_WITH_MUSA
+
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/hipfft.h"

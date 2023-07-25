@@ -117,6 +117,8 @@ void StringTensor::init_holder() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_HIP
     hipMemset(ptr, 0, bytes_size);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(ptr, 0, bytes_size);
 #else
     cudaMemset(ptr, 0, bytes_size);
 #endif
