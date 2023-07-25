@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 import os
+import sys
 from collections import defaultdict
 
 import paddle
@@ -256,7 +257,9 @@ class PipelineParallel(MetaParallelBase):
 
         return fused_allreduce
 
-    def register_allreduce_overlap_hook(self, model, comm_group, acc_steps, dp):
+    def register_allreduce_overlap_hook(
+        self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
+    ):
         if model.get_num_virtual_stages() > 1:
             models = model.get_model_chunks()
         else:
@@ -302,7 +305,7 @@ class PipelineParallel(MetaParallelBase):
                 if not dp:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
-                var_groups = assign_group_by_size(parameter_list)
+                var_groups = assign_group_by_size(parameter_list, group_size)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
                         group_idx, parameters, comm_group, acc_steps, act, dst
@@ -818,6 +821,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
             buffer.add_grad(param, use_comm=False)
 
         return fused_allreduce
+
+    def register_allreduce_overlap_hook(self, model, comm_group, acc_steps, dp):
+        super().register_allreduce_overlap_hook(
+            model, comm_group, acc_steps, dp, group_size=sys.maxsize
+        )
 
     def forward_backward_pipeline(
         self, data, scaler, forward_only=False, compute_loss=True
