@@ -227,6 +227,8 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
                                   strides));
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
 }
 

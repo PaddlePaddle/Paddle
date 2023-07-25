@@ -50,32 +50,25 @@ void Conv1dXPUKernel(const Context& ctx,
   int out_c = static_cast<int>(filter_dims[0]);
   int ksize_w = static_cast<int>(filter_dims[2]);
 
-  VLOG(1) << "--- 0";
   auto* input_data = reinterpret_cast<const XPUType*>(x.data<T>());
-  VLOG(1) << "--- 1";
   const float* input_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
-  VLOG(1) << "--- 2";
   auto* filter_data = filter.data<int16_t>();
-  VLOG(1) << "--- 3";
   auto* filter_max_data = filter_max.data<float>();
-  VLOG(1) << "--- 4";
   auto* branch_data =
       branch.get_ptr() == nullptr
           ? nullptr
           : reinterpret_cast<const XPUType*>(branch.get_ptr()->data<T>());
-  VLOG(1) << "--- 5";
   const float* branch_max_data = branch_max.get_ptr() == nullptr
                                      ? nullptr
                                      : branch_max.get_ptr()->data<float>();
-  VLOG(1) << "--- 6";
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
-  VLOG(1) << "--- 7";
+  VLOG(1) << "--- 1";
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  VLOG(1) << "--- 8";
+  VLOG(1) << "--- 2";
   auto* out_max_data = ctx.template Alloc<float>(out_max);
-  VLOG(1) << "--- 9";
+  VLOG(1) << "--- 3";
  
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {

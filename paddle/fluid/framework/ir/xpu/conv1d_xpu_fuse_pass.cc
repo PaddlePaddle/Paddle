@@ -623,9 +623,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
         conv_paddings[0] = conv_paddings[1];
       }
     }
-    std::vector<int64_t> paddings(2);
-    paddings.push_back(static_cast<int64_t>(conv_paddings[0]));
-    paddings.push_back(static_cast<int64_t>(conv_paddings[1]));
+    std::vector<int64_t> paddings = {static_cast<int64_t>(conv_paddings[0]), static_cast<int64_t>(conv_paddings[1])};
     conv1d_xpu_op_desc.SetAttr("paddings", paddings);
     auto conv_dilations =
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("dilations"));
