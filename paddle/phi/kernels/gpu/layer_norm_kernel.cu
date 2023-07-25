@@ -19,11 +19,41 @@
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
-DECLARE_bool(use_fast_math);
-
 namespace phi {
 
 #ifdef PADDLE_WITH_CUDA
+
+template <typename U>
+__device__ inline void LegacyOnline(U val, U *mean, U *square, U *count) {
+  *mean += val;
+  *square += val * val;
+  *count += 1;
+}
+
+template <typename U>
+__device__ inline void LegacyOnline(
+    U old_mean, U old_square, U old_cnt, U *mean, U *square, U *cnt) {
+  *mean += old_mean;
+  *square += old_square;
+  *cnt += old_cnt;
+}
+
+template <typename U>
+__device__ inline void LegacyWarpAllReduce(U *mean, U *square, U *count) {
+  constexpr int kWarpSize = 32;
+#pragma unroll
+  for (int mask = (kWarpSize >> 1); mask > 0; mask >>= 1) {
+    U b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
+    U b_square = __shfl_down_sync(0xffffffff, *square, mask);
+    U b_cnt = __shfl_down_sync(0xffffffff, *count, mask);
+    LegacyOnline<U>(b_mean, b_square, b_cnt, mean, square, count);
+  }
+
+  *mean = __shfl_sync(0xffffffff, *mean, 0, kWarpSize);
+  *square = __shfl_sync(0xffffffff, *square, 0, kWarpSize);
+  *count = __shfl_sync(0xffffffff, *count, 0, kWarpSize);
+}
+
 template <typename U>
 __device__ inline void WelfordOnline(U val, U *mean, U *square, U *count) {
   *count += 1;
@@ -293,7 +323,12 @@ struct LayerNormDataWritter<T, U, IsSameType, 1> {
   }
 };
 
-template <typename IndexT, typename T, typename U, bool IsSameType, int VecSize>
+template <typename IndexT,
+          typename T,
+          typename U,
+          bool IsSameType,
+          int VecSize,
+          bool UseWelford = false>
 __global__ void LayerNormFwdWithWelford(
     const T *__restrict__ src_data,
     T *dst_data,
@@ -326,16 +361,37 @@ __global__ void LayerNormFwdWithWelford(
         row_src, buffer, last_tid_idx, read_times, cols_this_thread);
 
     for (int i = 0; i < cols_this_thread; i++) {
-      WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
+      if (UseWelford) {
+        WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
+      } else {
+        LegacyOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
+      }
     }
 
     U warp_cnt = tid_cnt;
     U warp_mean = tid_mean;
     U warp_square = tid_square;
-    WelfordWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
 
-    U row_variance = max(warp_square / warp_cnt, 0.f);
-    U row_inv_var = funcs::rsqrt_(row_variance + epsilon);
+    if (UseWelford) {
+      WelfordWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
+    } else {
+      LegacyWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
+      warp_mean = warp_mean / warp_cnt;
+    }
+
+    U row_variance;
+    U row_inv_var;
+
+    auto inv_cnt =
+        static_cast<U>(static_cast<float>(1.) / static_cast<float>(warp_cnt));
+
+    if (UseWelford) {
+      row_variance = max(warp_square * inv_cnt, 0.f);
+      row_inv_var = funcs::rsqrt_(row_variance + epsilon);
+    } else {
+      row_variance = max(warp_square * inv_cnt - warp_mean * warp_mean, 0.f);
+      row_inv_var = funcs::rsqrt_(row_variance + epsilon);
+    }
 
     // TODO(limingshu): make code below vectorization.
     if (threadIdx.x == 0) {
@@ -591,72 +647,31 @@ void LayerNormKernel(const Context &dev_ctx,
             y_data);                                                         \
   } break
 
-#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD(ScaleT)       \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 768);  \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1024); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1280); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1536); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1792); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 2048); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 4096)
-
 #ifdef PADDLE_WITH_CUDA
-  bool can_call_fast_kernel = false;
-  if ((feature_size >= 768 && feature_size <= 2048 && feature_size % 256 == 0 ||
-       feature_size == 4096) &&
-      scale != nullptr && bias != nullptr) {
-    // can_call_fast_kernel = true;
-    can_call_fast_kernel = false;
-  }
 
-  if (can_call_fast_kernel) {
-    if (is_scale_bias_same_dtype_with_x) {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(T);
-        default:
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "256 is supported "
-              "now"));
-          break;
-      }
-    } else {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(U);
-        default:
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "is supported "
-              "now"));
-          break;
-      }
-    }
+  // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
+  if (feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
+    LaunchLayerNormKernel<Context, T, U>(dev_ctx,
+                                         x_data,
+                                         y_data,
+                                         void_scale_data,
+                                         void_bias_data,
+                                         mean_data,
+                                         var_data,
+                                         epsilon,
+                                         batch_size,
+                                         feature_size,
+                                         valid_scale,
+                                         valid_bias,
+                                         is_scale_bias_same_dtype_with_x);
   } else {
-    // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (FLAGS_use_fast_math && feature_size <= 1024 &&
-        (!std::is_same<T, int8_t>::value)) {
-      LaunchLayerNormKernel<Context, T, U>(dev_ctx,
-                                           x_data,
-                                           y_data,
-                                           void_scale_data,
-                                           void_bias_data,
-                                           mean_data,
-                                           var_data,
-                                           epsilon,
-                                           batch_size,
-                                           feature_size,
-                                           valid_scale,
-                                           valid_bias,
-                                           is_scale_bias_same_dtype_with_x);
-    } else {
 #endif
-      if (is_scale_bias_same_dtype_with_x) {
-        PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
-      } else {
-        PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
-      }
-#ifdef PADDLE_WITH_CUDA
+    if (is_scale_bias_same_dtype_with_x) {
+      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+    } else {
+      PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
     }
+#ifdef PADDLE_WITH_CUDA
   }
 #endif
 

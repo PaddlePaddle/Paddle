@@ -49,32 +49,50 @@ class AttnLayerNorm {
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
 
-    switch (phi::funcs::GetDesiredBlockDim(feature_size_)) {
-      FIXED_BLOCK_DIM_CASE(
-          phi::funcs::LayerNormForward<T,
-                                       phi::funcs::LayerNormParamType<T>,
-                                       kBlockDim,
-                                       false,
-                                       InType,
-                                       OutType>
-          <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
-                                                  scale_data,
-                                                  bias_data,
-                                                  y_data,
-                                                  mean_data,
-                                                  var_data,
-                                                  epsilon_,
-                                                  feature_size_,
-                                                  dequant_out_scale_data,
-                                                  quant_out_scale_offset,
-                                                  quant_in_scale,
-                                                  quant_round_type,
-                                                  quant_max_bound,
-                                                  quant_min_bound));
-      default:
-        PADDLE_THROW(
-            phi::errors::InvalidArgument("Feature_size must be larger than 1"));
-        break;
+    using U = phi::funcs::LayerNormParamType<T>;
+    if (feature_size_ <= 1024 && (!std::is_same<OutType, int8_t>::value)) {
+      phi::LaunchLayerNormKernel<phi::GPUContext, T, U>(
+          dev_ctx_,
+          x_data,
+          reinterpret_cast<T*>(y_data),
+          scale_data,
+          bias_data,
+          mean_data,
+          var_data,
+          epsilon_,
+          batch_size_,
+          feature_size_,
+          scale_data != nullptr,
+          bias_data != nullptr,
+          false);
+    } else {
+      switch (phi::funcs::GetDesiredBlockDim(feature_size_)) {
+        FIXED_BLOCK_DIM_CASE(
+            phi::funcs::LayerNormForward<T,
+                                         phi::funcs::LayerNormParamType<T>,
+                                         kBlockDim,
+                                         false,
+                                         InType,
+                                         OutType>
+            <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
+                                                    scale_data,
+                                                    bias_data,
+                                                    y_data,
+                                                    mean_data,
+                                                    var_data,
+                                                    epsilon_,
+                                                    feature_size_,
+                                                    dequant_out_scale_data,
+                                                    quant_out_scale_offset,
+                                                    quant_in_scale,
+                                                    quant_round_type,
+                                                    quant_max_bound,
+                                                    quant_min_bound));
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Feature_size must be larger than 1"));
+          break;
+      }
     }
   }
 

@@ -2187,4 +2187,18 @@ static void LayerNormBackward(
 }
 
 }  // namespace funcs
+template <typename Context, typename T, typename U>
+void LaunchLayerNormKernel(const Context &dev_ctx,
+                           const T *x_data,
+                           T *y_data,
+                           const void *void_scale_data,
+                           const void *void_bias_data,
+                           U *mean_data,
+                           U *var_data,
+                           float epsilon,
+                           const int64_t rows,
+                           const int cols,
+                           const bool valid_scale,
+                           const bool valid_bias,
+                           const bool is_same_type);
 }  // namespace phi

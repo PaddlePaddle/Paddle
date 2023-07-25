@@ -29,6 +29,9 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#include "paddle/phi/kernels/funcs/layer_norm_util.h"
+
 namespace paddle {
 namespace operators {
 
@@ -110,8 +113,10 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
                             PairForLayerNormAddFunctor<T>());
 
     if (threadIdx.x == 0) {
+      T inv_cnt =
+          static_cast<T>(static_cast<float>(1.) / static_cast<float>(N));
       T mean_i = static_cast<T>(pair.first_ / N);
-      T variance_i = static_cast<T>(pair.second_ / N - mean_i * mean_i);
+      T variance_i = static_cast<T>(pair.second_ * inv_cnt - mean_i * mean_i);
       shared_mem[BlockDim] = mean_i;
       shared_mem[BlockDim + 1] = variance_i;
       if (mean) {
@@ -123,7 +128,8 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
     }
     __syncthreads();
     T mean_i = shared_mem[BlockDim];
-    T std_i = static_cast<T>(RealSqrt(shared_mem[BlockDim + 1] + epsilon));
+    // T std_i = static_cast<T>(RealSqrt(shared_mem[BlockDim + 1] + epsilon));
+    T r_std_i = phi::funcs::rsqrt_(shared_mem[BlockDim + 1] + epsilon);
 
     index = i * N + threadIdx.x;
     // First BlockDim elements loading from shared memory.
@@ -132,7 +138,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
 
     // For layer_norm, calculate out
     for (int j = threadIdx.x; j < N; j += blockDim.x) {
-      T tmp_0 = (save_ptr[save_index] - mean_i) / std_i;
+      T tmp_0 = (save_ptr[save_index] - mean_i) * r_std_i;
       T tmp_1 = scale ? scale[j] * tmp_0 : tmp_0;
       out[index] = bias_1 ? tmp_1 + bias_1[j] : tmp_1;
 
