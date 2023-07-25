@@ -773,6 +773,40 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return output_tensor
 
+    def _overlap_comm_grads(self):
+        if self._comm_overlap:
+            self._backward_step_count += 1
+            sync_step = self._backward_step_count - self.stage_id
+            if sync_step > 0 and sync_step % self.accumulate_steps == 0:
+                chunk_idx = self._virtual_pp_world_size - (
+                    sync_step // self.accumulate_steps
+                )
+                for buffer in self._chunk_2_comm_buffers[chunk_idx]:
+                    buffer.comm_grads()
+
+            if self.stage_id != 0:
+                if (
+                    self._backward_step_count
+                    == self.accumulate_steps * self._virtual_pp_world_size
+                ):
+                    for buffer in self._chunk_2_comm_buffers[0]:
+                        buffer.comm_grads()
+
+    def _sync_overlap_grads(self):
+        if self._comm_overlap:
+            assert (
+                self._backward_step_count
+                == self.accumulate_steps * self._virtual_pp_world_size
+            ), "backward step count should be equal to accumulate steps * "
+            "virtual pp world size, but get {}, excepted result is {}".format(
+                self._backward_step_count,
+                self.accumulate_steps * self._virtual_pp_world_size,
+            )
+
+            for _, buffers in self._chunk_2_comm_buffers.items():
+                for buffer in buffers:
+                    buffer.scale_and_split_grads()
+
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
         self.set_virtual_pipeline_rank(virtual_pp_rank)
@@ -793,23 +827,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             input_tensor, output_tensor, output_tensor_grad
         )
 
-        if self._comm_overlap:
-            self._backward_step_count += 1
-            sync_step = self._backward_step_count - self.stage_id
-            if sync_step > 0 and sync_step % self.accumulate_steps == 0:
-                chunk_idx = self._virtual_pp_world_size - (
-                    sync_step // self.accumulate_steps
-                )
-                for buffer in self._chunk_2_comm_buffers[chunk_idx]:
-                    buffer.comm_grads()
-
-            if self.stage_id != 0:
-                if (
-                    self._backward_step_count
-                    == self.accumulate_steps * self._virtual_pp_world_size
-                ):
-                    for buffer in self._chunk_2_comm_buffers[0]:
-                        buffer.comm_grads()
+        self._overlap_comm_grads()
 
         return input_tensor_grad
 
@@ -1053,19 +1071,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     )
                 )
 
-            if self._comm_overlap:
-                assert (
-                    self._backward_step_count
-                    == self.accumulate_steps * self._virtual_pp_world_size
-                ), "backward step count should be equal to accumulate steps * "
-                "virtual pp world size, but get {}, excepted result is {}".format(
-                    self._backward_step_count,
-                    self.accumulate_steps * self._virtual_pp_world_size,
-                )
-
-                for _, buffers in self._chunk_2_comm_buffers.items():
-                    for buffer in buffers:
-                        buffer.scale_and_split_grads()
+            self._sync_overlap_grads()
 
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").start()
