@@ -93,6 +93,7 @@ class IR_API CombineOp : public ir::Op<CombineOp> {
                     const std::vector<ir::OpResult> &inputs);
 
   void Verify() const;
+  ir::OpResult out() { return result(0); }
 };
 
 ///
@@ -108,6 +109,7 @@ class IR_API SliceOp : public ir::Op<SliceOp> {
 
   static const char *attributes_name[attributes_num];
   void Verify() const;
+  ir::OpResult out() { return result(0); }
 };
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
