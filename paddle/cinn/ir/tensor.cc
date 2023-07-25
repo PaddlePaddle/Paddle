@@ -554,11 +554,14 @@ ir::Tensor _Tensor_::Reshape(const std::vector<Expr> &shape,
 
   {
     int32_t this_num_elements = 1;
-    for (auto &e : this->shape)
+    for (auto &e : this->shape) {
       this_num_elements = this_num_elements * e.as_int32();
+    }
 
     int32_t num_elements = 1;
-    for (auto &e : shape) num_elements = num_elements * e.as_int32();
+    for (auto &e : shape) {
+      num_elements = num_elements * e.as_int32();
+    }
 
     CHECK_EQ(this_num_elements, num_elements) << "number of elements mismatch.";
   }
