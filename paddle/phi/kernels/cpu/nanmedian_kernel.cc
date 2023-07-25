@@ -78,7 +78,7 @@ void CalcMedianFunc(const Context& dev_ctx,
           m_ptr[2 * i + 1] = sort_indices_ptr[pos];
           o_ptr[i] = sort_out_ptr[pos];
         } else {
-          if (mode == "mean") {
+          if (mode == "avg") {
             m_ptr[2 * i] =
                 row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
             m_ptr[2 * i + 1] = sort_indices_ptr[pos];
@@ -124,7 +124,7 @@ void CalcMedianFunc(const Context& dev_ctx,
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
 
-        if (mode == "mean") {
+        if (mode == "avg") {
           m_ptr[2 * i] =
               sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
           m_ptr[2 * i + 1] = sort_indices_ptr[pos];

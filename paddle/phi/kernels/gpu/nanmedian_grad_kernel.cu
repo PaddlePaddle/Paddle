@@ -84,7 +84,7 @@ void CalcMedianGradKernel(const Context& dev_ctx,
   int64_t stride = x_dim[x_rank - 1];
   int64_t pre_dim = numel / stride;
 
-  bool mode_mean = mode == "mean" ? true : false;
+  bool mode_mean = mode == "avg" ? true : false;
   KernelNanmedianGrad<T>
       <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           x_data, m_data, out_grad_ptr, dx_data, stride, pre_dim, mode_mean);

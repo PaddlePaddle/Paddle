@@ -190,7 +190,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   // (pre_dim, stride)
   int64_t stride = x_dim[x_rank - 1];
   int64_t pre_dim = numel / stride;
-  bool mode_mean = mode == "mean" ? true : false;
+  bool mode_mean = mode == "avg" ? true : false;
   int64_t i = 0;
 
   DenseTensor nan_counts, nan_stat;
