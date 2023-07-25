@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 
-#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -129,10 +129,10 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
   if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
     data = print_tensor.data<T>();
   } else {
-    phi::GPUPlace gpu_place;
     phi::CPUPlace cpu_place;
-    auto& pool = paddle::experimental::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.GetMutable(gpu_place);
+
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(print_tensor.place());
 
     phi::Copy(*dev_ctx, print_tensor, cpu_place, true, &cpu_tensor);
     data = cpu_tensor.data<T>();
