@@ -560,7 +560,10 @@ class TestTanh(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
-        self.check_grad(['X'], 'Out', check_prim=False)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -1599,10 +1602,13 @@ class TestCos(TestActivation):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
-        # Complex64 [GPU]: AssertionError: 0.0057843705 not less than or equal to 0.005
-        self.check_grad(
-            ['X'], 'Out', check_prim=False, max_relative_error=0.006
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            # Complex64 [GPU]: AssertionError: 0.0057843705 not less than or equal to 0.005
+            self.check_grad(
+                ['X'], 'Out', check_prim=False, max_relative_error=0.006
+            )
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
 
     def if_enable_cinn(self):
         pass
@@ -1778,7 +1784,10 @@ class TestSin(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
-        self.check_grad(['X'], 'Out', check_prim=False)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
 
     def if_enable_cinn(self):
         pass
