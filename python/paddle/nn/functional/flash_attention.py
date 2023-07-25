@@ -452,7 +452,7 @@ def scaled_dot_product_attention(
         .. code-block:: python
 
             >>> import paddle
-            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
     """
