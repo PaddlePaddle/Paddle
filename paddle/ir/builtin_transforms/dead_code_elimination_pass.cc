@@ -56,7 +56,7 @@ class DeadCodeEliminationPass : public ir::Pass {
             get_parameter_op->attributes()
                 .at(get_parameter_op.attributes_name[0])
                 .dyn_cast<ir::StrAttribute>()
-                .data());
+                .AsString());
       }
       block->erase(*op);
     }

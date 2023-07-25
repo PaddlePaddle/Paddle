@@ -21,13 +21,13 @@
 
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/ir_util.h"
-#include "paddle/cinn/ir/collect_ir_nodes.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/optim/cast_simplify.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {

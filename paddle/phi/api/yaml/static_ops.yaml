@@ -156,6 +156,16 @@
   optional : bias
   backward : depthwise_conv2d_transpose_grad
 
+- op : dist_concat
+  args : (Tensor x, int ring_id = 0, int nranks = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : DistConcatInferMeta
+    param: [x, nranks]
+  kernel :
+    func : dist_concat
+    param: [x, nranks]
+
 - op : einsum
   args : (Tensor[] x, str equation)
   output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
@@ -397,6 +407,15 @@
     param : [x, axis, keepdim, reduce_all]
   backward : min_grad
 
+- op : minimum
+  args : (Tensor x, Tensor y, int axis = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseRawInferMeta
+  kernel :
+    func : minimum
+  backward : minimum_grad
+
 - op : norm
   args : (Tensor x, int axis, float epsilon=1.0e-10f, bool is_test=false)
   output : Tensor(out), Tensor(norm)
@@ -524,16 +543,6 @@
   kernel :
     func : reduce_scatter
     param: [x, nranks]
-
-- op : relu6
-  args : (Tensor x, float threshold = 6.0f)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : relu6_raw
-  backward : relu6_grad
 
 - op : remainder
   args : (Tensor x, Tensor y, int axis = -1)

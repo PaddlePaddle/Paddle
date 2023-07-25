@@ -18,11 +18,12 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
 namespace distributed {
-namespace auto_parallel {
 
+namespace auto_parallel {
 class TensorDistAttr;
+}
+using auto_parallel::TensorDistAttr;
 
 class DistTensor final
     : public phi::TensorBase,
@@ -82,10 +83,10 @@ class DistTensor final
   /// \brief Test whether the storage is allocated.
   /// \return Whether the storage is allocated.
   bool initialized() const override {
-    return value_->holder_ && value_->holder_->ptr();
+    return value_ && value_->holder_ && value_->holder_->ptr();
   }
 
-  bool IsInitialized() const { return value_->holder_ != nullptr; }
+  bool defined() const { return value_ && value_->holder_; }
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
@@ -125,6 +126,5 @@ class DistTensor final
   std::unique_ptr<DenseTensor> value_{nullptr};
 };
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

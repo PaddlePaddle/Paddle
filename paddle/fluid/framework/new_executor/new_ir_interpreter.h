@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
 namespace ir {
@@ -46,7 +47,18 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
+  paddle::framework::FetchList BetaRun(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true) override;
+
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
+
+  void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  // op dependences
+  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
+
+  std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
@@ -178,9 +190,29 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
+  /// ======================== ///
+  ///        For new ir        ///
+  /// ======================== ///
+  std::string DebugValueInfo();
+
+  void BuildInstruction();
+
+  void BuildInstructionDependences();
+
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
+  std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
+
+  std::unordered_map<::ir::Value, std::string> value_2_var_name_;
+
+  std::unordered_map<const paddle::framework::Variable*, std::string>
+      variable_2_var_name_;
+
+  std::map<std::string, int> var_name_2_id_;
+
+  std::vector<Variable*> variable_list_;
+
+  interpreter::IrDependencyBuilder ir_dependency_builder_;
 };
 
 }  // namespace framework
