@@ -21,7 +21,7 @@ class YoloBoxPostOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Boxes0"), "Input", "Boxes0", "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasInput("Boxes1"), "Input", "Boxes1", "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasInput("Boxes2"), "Input", "Boxes2", "yolo_box_post");
@@ -37,7 +37,7 @@ class YoloBoxPostOp : public framework::OperatorWithKernel {
 
 class YoloBoxPostOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("Boxes0", "The Boxes0 tensor");
     AddInput("Boxes1", "The Boxes1 tensor");
     AddInput("Boxes2", "The Boxes2 tensor");
