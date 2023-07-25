@@ -45,7 +45,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-using phi::distributed::auto_parallel::DistTensor;
+using phi::distributed::DistTensor;
 using phi::distributed::auto_parallel::TensorDistAttr;
 #endif
 
