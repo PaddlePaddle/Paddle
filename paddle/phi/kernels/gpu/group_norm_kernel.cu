@@ -29,59 +29,6 @@ namespace phi {
 
 static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
 
-// #ifdef __CUDA_BF16_HPP__
-
-// __host__ __device__ inline float __internal_bfloat162float(const uint16_t h)
-// {
-//   float f;
-// #if defined(__CUDA_ARCH__)
-//   asm("{ mov.b32 %0, {0,%1};}\n" : "=f"(f) : "h"(h));
-// #else
-//   unsigned int u = static_cast<unsigned int>(h) << 16;
-// #if defined(__CUDACC__)
-//   (void)memcpy(&f, &u, sizeof(f));
-// #else
-//   (void)std::memcpy(&f, &u, sizeof(f));
-// #endif
-// #endif
-//   return f;
-// }
-
-// __host__ __device__ inline float2 __bfloat1622float2(const __nv_bfloat162 a)
-// {
-//   float hi_float;
-//   float lo_float;
-//   lo_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).x);
-//   hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
-//   return make_float2(lo_float, hi_float);
-// }
-
-// __host__ __device__ inline __nv_bfloat162 __floats2bfloat162_rn(const float
-// a,
-//                                                                 const float
-//                                                                 b) {
-//   __nv_bfloat162 val;
-// #if __CUDA_ARCH__ >= 800
-//   asm("{.reg .b16 low,high;\n"
-//       "  cvt.rn.bf16.f32 low, %1;\n"
-//       "  cvt.rn.bf16.f32 high, %2;\n"
-//       "  mov.b32 %0, {low,high};}\n"
-//       : "=r"(__BFLOAT162_TO_UI(val))
-//       : "f"(a), "f"(b));
-// #else
-//   val = __nv_bfloat162(__float2bfloat16_rn(a), __float2bfloat16_rn(b));
-// #endif
-//   return val;
-// }
-
-// __host__ __device__ inline __nv_bfloat162 __float22bfloat162_rn(
-//     const float2 a) {
-//   __nv_bfloat162 val = __floats2bfloat162_rn(a.x, a.y);
-//   return val;
-// }
-
-// #endif
-
 struct GroupSums {
   // Is it the 1st element of the group?
   int32_t flag;
@@ -181,7 +128,7 @@ inline __device__ void UpdateSum<phi::dtype::float16, 2>(
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
 
-#ifdef __CUDA_BF16_HPP__
+#if defined(PADDLE_CUDA_BF16) && __CUDA_ARCH__ >= 800
 template <>
 inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
     const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
@@ -382,7 +329,7 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
   }
 }
 
-#ifdef __CUDA_BF16_HPP__
+#if defined(PADDLE_CUDA_BF16) && __CUDA_ARCH__ >= 800
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     int32_t hwBegin,
@@ -935,7 +882,7 @@ void GroupNormKernel(const Context& dev_ctx,
     return;
   }
 
-#ifdef __CUDA_BF16_HPP__
+#if defined(PADDLE_CUDA_BF16) && __CUDA_ARCH__ >= 800
   if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
     GroupNormNHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        x,
