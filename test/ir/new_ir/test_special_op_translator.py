@@ -159,7 +159,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
         _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
-class TestRMSNormOpTranscriber(unittest.TestCase):
+class TestIndexPutOpTranscriber(unittest.TestCase):
     def test_op(self):
         place = core.Place()
         place.set_place(paddle.CPUPlace())
@@ -167,12 +167,10 @@ class TestRMSNormOpTranscriber(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.scope_guard(new_scope):
             with paddle.static.program_guard(main_program):
-                x = paddle.randn([2, 8])
-                gamma = paddle.randn([8])
-                beta = paddle.randn([8])
-                y = paddle.incubate.nn.functional.rms_norm(
-                    x, gamma, beta, 1e-6, begin_norm_axis=1
-                )
+                x = paddle.randn([2, 3])
+                indices = [paddle.randint(0, 2, [2]), paddle.randint(0, 1, [2])]
+                value = paddle.randn([2])
+                y = paddle.index_put(x, indices, value, False)
 
         _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
