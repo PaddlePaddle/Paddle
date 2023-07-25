@@ -311,11 +311,14 @@ class ColumnParallelLinear(paddle.nn.Layer):
     def forward(self, x):
         # use inner api to process identity
 
-        def _overlap_linear(input, weight, bias):
+        def _overlap_linear():
             class InnerOverlapLinear(paddle.autograd.PyLayer):
                 @staticmethod
-                def forward(ctx, x, w, b):
-                    input_parallel = paddle._legacy_C_ops.c_identity(
+                def forward(ctx, input, weight, bias):
+                    ctx.input = input
+                    ctx.weight = weight
+                    ctx.has_bias = (bias is not None)
+                    input = paddle._legacy_C_ops.c_identity(
                         input,
                         'use_calc_stream',
                         True,
@@ -324,23 +327,24 @@ class ColumnParallelLinear(paddle.nn.Layer):
                         'use_model_parallel',
                         True,
                     )
-                    output_parallel = paddle._C_ops.linear(x, w, b)
-                    return output_parallel
+                    # output_parallel = paddle._C_ops.linear(input_parallel, w, b)
+                    # return output_parallel
+                    return paddle._C_ops.linear(input, weight, bias)
 
                 @staticmethod
                 def backward(ctx, dy):
                     paddle.fluid.core.nvprof_nvtx_push("dx compute")
-                    dx = paddle.matmul(dy, weight, transpose_y=True)
+                    dx = paddle.matmul(dy, ctx.weight, transpose_y=True)
                     paddle.fluid.core.nvprof_nvtx_pop()
                     op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
                     paddle.fluid.core.nvprof_nvtx_push("dx all_reduce")
                     task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(dx, op_type)
                     paddle.fluid.core.nvprof_nvtx_pop()
                     paddle.fluid.core.nvprof_nvtx_push("dw compute")
-                    dw = paddle.matmul(input, dy, transpose_x=True)
+                    dw = paddle.matmul(ctx.input, dy, transpose_x=True)
                     paddle.fluid.core.nvprof_nvtx_pop()
 
-                    if bias is None:
+                    if not ctx.has_bias:
                         task.wait()
                         return dx, dw
                     else:
