@@ -20,10 +20,9 @@ void Verify(Operation *op, bool verify_recursively) {
   if (!verify_recursively) return;
   for (size_t index = 0; index < op->num_regions(); ++index) {
     auto &region = op->region(index);
-    for (auto iter = region.begin(); iter != region.end(); ++iter) {
-      auto block = *iter;
-      for (auto op_iter = block->begin(); op_iter != block->end(); ++op_iter) {
-        Verify(*op_iter, verify_recursively);
+    for (auto block : region) {
+      for (auto op_item : *block) {
+        Verify(op_item, verify_recursively);
       }
     }
   }

@@ -29,12 +29,12 @@ std::string json_vector<std::string>(
   std::ostringstream res_stream;
   auto count = type_vector.size();
   res_stream << "[";
-  for (auto it = type_vector.begin(); it != type_vector.end(); it++) {
+  for (const auto& item : type_vector) {
     if (count > 1) {
-      res_stream << "\"" << (*it) << "\""
+      res_stream << "\"" << item << "\""
                  << ",";
     } else {
-      res_stream << "\"" << (*it) << "\"";
+      res_stream << "\"" << item << "\"";
     }
     count--;
   }

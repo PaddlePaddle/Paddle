@@ -2707,9 +2707,7 @@ static std::string GenerateGradNodeCCContents(
   }
 
   size_t outs_size = 0;
-  for (size_t i = 0; i < op_base_infos.size(); i++) {
-    const auto& op_base_info = op_base_infos[i];
-
+  for (const auto& op_base_info : op_base_infos) {
     const auto& grad_ins_fwd_slotname_map =
         op_base_info.GetGradInsFwdSlotnameMap();
     const auto& grad_ins_grad_slotname_map =

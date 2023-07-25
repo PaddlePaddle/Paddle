@@ -229,7 +229,7 @@ void AdamDenseParamSparseGradKernel(
         }
       }));
     }
-    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+    for (auto& item : fs) item.wait();
   }
 #endif    // !_WIN32
   else {  // NOLINT

@@ -948,9 +948,9 @@ void BuildOpFuncList(
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  for (auto it = block->begin(); it != block->end(); ++it) {
+  for (auto op : *block) {
     OpFuncNode op_func_node;
-    auto attr_map = (*it)->attributes();
+    auto attr_map = op->attributes();
 
     auto op_name =
         attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
@@ -979,7 +979,7 @@ void BuildOpFuncList(
         phi::MetaTensor,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        false>((*it),
+        false>(op,
                value_2_name_map,
                scope,
                local_scope,
@@ -1006,7 +1006,7 @@ void BuildOpFuncList(
                           phi::TensorBase*,
                           paddle::small_vector<const phi::TensorBase*>,
                           paddle::small_vector<phi::TensorBase*>,
-                          true>((*it),
+                          true>(op,
                                 value_2_name_map,
                                 scope,
                                 local_scope,

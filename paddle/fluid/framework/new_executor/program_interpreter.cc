@@ -277,8 +277,8 @@ void ProgramInterpreter::reset_scope(Scope* new_scope) {
     refs_[i]->ResetVariable(var_list[i]);
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); i++) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 }
 
@@ -410,8 +410,7 @@ void ProgramInterpreter::BuildInplace() {
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    auto& instr = vec_instruction_[i];
+  for (auto& instr : vec_instruction_) {
     auto* op_base = instr.OpBase();
     if (!op_base->Info().infer_inplace_) {
       continue;
@@ -762,8 +761,8 @@ void ProgramInterpreter::Convert(
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 
   bool inplaced = false;
@@ -1390,8 +1389,7 @@ void ProgramInterpreter::TraceInstructionList(
     }
   }
 
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    auto instr_id = trace_execute_order_[idx];
+  for (auto instr_id : trace_execute_order_) {
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
@@ -1431,9 +1429,9 @@ void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
 
 void ProgramInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    if (vec_instruction_[i].KernelType() == OpFuncType::kCpuSync ||
-        vec_instruction_[i].KernelType() == OpFuncType::kGpuSync) {
+  for (auto& ins : vec_instruction_) {
+    if (ins.KernelType() == OpFuncType::kCpuSync ||
+        ins.KernelType() == OpFuncType::kGpuSync) {
       sync_op_num = sync_op_num + 1;
     }
   }

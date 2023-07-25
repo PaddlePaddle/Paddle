@@ -49,8 +49,8 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
     // concat primitive by not adding additional dimension, since it causes
     // wrong output format deduction and suboptimal performance as a result
     if (stack_axis != ndims) {
-      for (size_t i = 0; i < inputs.size(); ++i) {
-        srcs_md.push_back(inputs[i]->mem_desc());
+      for (auto input : inputs) {
+        srcs_md.push_back(input->mem_desc());
       }
 
       input_dims[stack_axis] *= inputs.size();
@@ -59,8 +59,8 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
       auto extended_input_dims = vectorize<int64_t>(output->dims());
       extended_input_dims[stack_axis] = 1;
 
-      for (size_t i = 0; i < inputs.size(); ++i) {
-        srcs_md.push_back(inputs[i]->mem_desc().reshape(extended_input_dims));
+      for (auto input : inputs) {
+        srcs_md.push_back(input->mem_desc().reshape(extended_input_dims));
       }
 
       // concat primitive choses suboptimal format tag because it cannot

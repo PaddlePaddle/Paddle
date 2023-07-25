@@ -71,7 +71,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     size_t height = dst_num_rows;
 
     // do shrink for the top level LoD
-    if (x_tensor.lod().size() > 0 &&
+    if (!x_tensor.lod().empty() &&
         x_tensor.lod()[0].size() > static_cast<size_t>(dst_num_rows)) {
       auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(
           x_tensor.lod(), 0, dst_num_rows, 0);

@@ -94,8 +94,8 @@ const std::map<std::string, int>& OpYamlInfoParser::OutputName2Id() const {
 
 bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
   auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
-  for (size_t i = 0; i < inplace_info.size(); i++) {
-    if (out_name == inplace_info[i].first) {
+  for (const auto& info : inplace_info) {
+    if (out_name == info.first) {
       return true;
     }
   }
@@ -105,9 +105,9 @@ bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
 const std::string& OpYamlInfoParser::InplaceName(
     const std::string& out_name) const {
   auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
-  for (size_t i = 0; i < inplace_info.size(); i++) {
-    if (out_name == inplace_info[i].first) {
-      return inplace_info[i].second;
+  for (const auto& info : inplace_info) {
+    if (out_name == info.first) {
+      return info.second;
     }
   }
   PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -118,27 +118,27 @@ void OpYamlInfoParser::parse() {
   auto input_info = std::get<0>(op_info_tuple_);
 
   int input_start_index = 0;
-  for (size_t i = 0; i < input_info.size(); ++i) {
-    input_name2id_[input_info[i].name] = input_start_index++;
-    input_name_list_.push_back(input_info[i].name);
-    input_info_[input_info[i].name] = input_info[i];
-    if (!input_info[i].is_mutable_attribute) {
+  for (auto& info : input_info) {
+    input_name2id_[info.name] = input_start_index++;
+    input_name_list_.push_back(info.name);
+    input_info_[info.name] = info;
+    if (!info.is_mutable_attribute) {
       input_tensor_number_++;
     }
   }
 
   auto attribute_info = std::get<1>(op_info_tuple_);
-  for (size_t i = 0; i < attribute_info.size(); ++i) {
-    attribute_name_list_.push_back(attribute_info[i].name);
-    attr_info_[attribute_info[i].name] = attribute_info[i];
+  for (auto& info : attribute_info) {
+    attribute_name_list_.push_back(info.name);
+    attr_info_[info.name] = info;
   }
 
   int output_start_index = 0;
   auto output_info = std::get<2>(op_info_tuple_);
-  for (size_t i = 0; i < output_info.size(); ++i) {
-    output_name2id_[output_info[i].name] = output_start_index++;
-    output_name_list_.push_back(output_info[i].name);
-    output_info_[output_info[i].name] = output_info[i];
+  for (auto& info : output_info) {
+    output_name2id_[info.name] = output_start_index++;
+    output_name_list_.push_back(info.name);
+    output_info_[info.name] = info;
   }
 
   auto runtime_info = std::get<3>(op_info_tuple_);

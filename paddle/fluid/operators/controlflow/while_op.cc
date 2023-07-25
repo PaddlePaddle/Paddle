@@ -162,7 +162,7 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
-    if (step_scopes->size() > 0) {
+    if (!step_scopes->empty()) {
       platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
       for (auto &s : *step_scopes) {
         if (scope.HasKid(s)) {

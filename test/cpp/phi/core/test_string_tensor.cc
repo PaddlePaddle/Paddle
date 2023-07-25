@@ -145,8 +145,8 @@ TEST(pstring, func) {
   CHECK_EQ(oss1.str(), long_str);
 
   // Test iterator
-  for (auto it = long_str.begin(); it != long_str.end(); ++it) {
-    oss2 << *it;
+  for (auto str_item : long_str) {
+    oss2 << str_item;
   }
   CHECK_EQ(oss2.str(), long_str);
 

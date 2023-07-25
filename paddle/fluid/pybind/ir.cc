@@ -55,8 +55,8 @@ void BindBlock(py::module *m) {
   block.def("front", &Block::front, return_value_policy::reference)
       .def("get_op_list", [](Block &self) -> py::list {
         py::list op_list;
-        for (auto iter = self.begin(); iter != self.end(); iter++) {
-          op_list.append(*iter);
+        for (auto &op : self) {
+          op_list.append(op);
         }
         return op_list;
       });

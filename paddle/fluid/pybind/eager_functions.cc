@@ -707,8 +707,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     if (require_any_grad && (vec_map.size() > 1)) {
       VLOG(6) << " Construct Grad for Custom Op: " << op_type;
       ConstructFwdAndBwdMap(vec_map, op_type);
-      for (size_t i = 0; i < outs_auto_grad_metas.size(); ++i) {
-        egr::EagerUtils::PassStopGradient(false, outs_auto_grad_metas[i]);
+      for (auto& outs_auto_grad_meta : outs_auto_grad_metas) {
+        egr::EagerUtils::PassStopGradient(false, outs_auto_grad_meta);
       }
       // Note(HongyuJia): In dygraph eager mode, CheckInplace makes sure leaf
       // nodes set stop_gradient=True. However, dygraph mode can also outputs
@@ -755,32 +755,32 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       }
 
       // Prepare Grad inputs with fwd outputs
-      for (auto it = slot_map[0][2].begin(); it != slot_map[0][2].end(); it++) {
-        VLOG(7) << "Prepare fwd_outs: " << it->first
-                << " to grad_inputs: " << it->second;
-        grad_node->fwd_outs[it->second] =
+      for (auto item : slot_map[0][2]) {
+        VLOG(7) << "Prepare fwd_outs: " << item.first
+                << " to grad_inputs: " << item.second;
+        grad_node->fwd_outs[item.second] =
             egr::RunCustomOpNode::ConstructTensorWrapper(
-                ctx.OutputsBetween(ctx.OutputRangeAt(it->first).first,
-                                   ctx.OutputRangeAt(it->first).second));
+                ctx.OutputsBetween(ctx.OutputRangeAt(item.first).first,
+                                   ctx.OutputRangeAt(item.first).second));
       }
 
       // Prepare Grad inputs with fwd inputs
-      for (auto it = slot_map[0][3].begin(); it != slot_map[0][3].end(); it++) {
-        VLOG(7) << "Prepare fwd_ins: " << it->first
-                << " to grad_inputs: " << it->second;
-        grad_node->fwd_ins[it->second] =
+      for (auto item : slot_map[0][3]) {
+        VLOG(7) << "Prepare fwd_ins: " << item.first
+                << " to grad_inputs: " << item.second;
+        grad_node->fwd_ins[item.second] =
             egr::RunCustomOpNode::ConstructTensorWrapper(
-                ctx.InputsBetween(ctx.InputRangeAt(it->first).first,
-                                  ctx.InputRangeAt(it->first).second));
+                ctx.InputsBetween(ctx.InputRangeAt(item.first).first,
+                                  ctx.InputRangeAt(item.first).second));
       }
 
       const std::vector<paddle::any>& res_attrs = ctx.Attrs();
       std::vector<paddle::any> attrs(res_attrs.size());
       // Prepare attrs for Grad node
-      for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {
-        VLOG(7) << "Prepare fwd attrs: " << it->first
-                << " to grad_attrs: " << it->second;
-        attrs[it->second] = res_attrs[it->first];
+      for (auto item : slot_map[0][4]) {
+        VLOG(7) << "Prepare fwd attrs: " << item.first
+                << " to grad_attrs: " << item.second;
+        attrs[item.second] = res_attrs[item.first];
       }
       grad_node->SetAttrs(attrs);
     }

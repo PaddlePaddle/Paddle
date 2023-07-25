@@ -201,9 +201,9 @@ void Communicator::RpcSendDense(const CommContext &ctx,
                      request_call_num);  // accessor->update_dim() = 1
   float *data = dense_data->data();
   uint32_t pos = 0;
-  for (size_t i = 0; i < var_names.size(); ++i) {
+  for (const auto &var_name : var_names) {
     const phi::DenseTensor tensor =
-        scope.FindVar(var_names[i])->Get<phi::DenseTensor>();
+        scope.FindVar(var_name)->Get<phi::DenseTensor>();
     size_t count = static_cast<size_t>(tensor.numel());
     const float *g = tensor.data<float>();
     CHECK(pos + count <= dense_data->size())
@@ -602,8 +602,7 @@ void AsyncCommunicator::PullSparseToTensorSync(
   float *output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
-  for (size_t index = 0; index < inputs->size(); ++index) {
-    const phi::DenseTensor *tensor = inputs->at(index);
+  for (auto tensor : *inputs) {
     const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -892,11 +891,11 @@ bool AsyncCommunicator::Check(const int table_id) {
 void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const framework::Scope &scope) {
   waiting_ = false;
-  for (size_t i = 0; i < var_names.size(); i++) {
-    auto *var = scope.FindVar(var_names[i]);
+  for (const auto &var_name : var_names) {
+    auto *var = scope.FindVar(var_name);
     auto tmp_grad_var = std::make_shared<Variable>();
     framework::CopyVariable(*var, tmp_grad_var.get());
-    send_varname_to_queue_[var_names[i]]->Push(tmp_grad_var);
+    send_varname_to_queue_[var_name]->Push(tmp_grad_var);
   }
 }
 
@@ -1045,10 +1044,10 @@ void GeoCommunicator::Send(
   // insert ids which has not been record
   // VLOG(0) << "fl-ps > table_name: " << table_name << " splited_var_nums: " <<
   // splited_var_nums << " rows size: " << rows.size();
-  for (size_t j = 0; j < rows.size(); j++) {  // batch_size == rows.size()
-    auto ep_idx = rows[j] % splited_var_nums;
+  for (auto row : rows) {  // batch_size == rows.size()
+    auto ep_idx = row % splited_var_nums;
     ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
-        .insert(rows[j]);
+        .insert(row);
     // VLOG(0) << " id: " << rows[j] << " ";
   }
 
@@ -1299,8 +1298,8 @@ std::vector<int64_t> GeoCommunicator::MergeSparseIds(
       wait_times = 0;
       std::shared_ptr<std::vector<int64_t>> pop_ids = nullptr;
       sparse_id_queues_.at(send_varname)->Get(pop_ids);
-      for (size_t j = 0; j < pop_ids->size(); j++) {
-        sparse_ids.insert(pop_ids->at(j));
+      for (auto &pop_id : *pop_ids) {
+        sparse_ids.insert(pop_id);
       }
       merge_num += 1;
       VLOG(3) << "sparse_id_queues_(" << send_varname << ") pushed";

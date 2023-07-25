@@ -473,8 +473,7 @@ void MultiDevSSAGraphBuilderBase::CreateFusedBroadcastOp(
 #endif
   result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
+  for (auto &p : places_) {
     SetCommunicationContext(op_handle, p);
   }
 

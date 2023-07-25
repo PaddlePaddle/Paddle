@@ -91,8 +91,7 @@ void PriorBoxKernel(const Context& ctx,
             b_t += 4;
           }
           // priors with different aspect ratios
-          for (size_t r = 0; r < new_aspect_ratios.size(); ++r) {
-            float ar = new_aspect_ratios[r];
+          for (float ar : new_aspect_ratios) {
             if (fabs(ar - 1.) < 1e-6) {
               continue;
             }
@@ -106,8 +105,7 @@ void PriorBoxKernel(const Context& ctx,
           }
         } else {
           // priors with different aspect ratios
-          for (size_t r = 0; r < new_aspect_ratios.size(); ++r) {
-            float ar = new_aspect_ratios[r];
+          for (auto ar : new_aspect_ratios) {
             box_width = min_size * sqrt(ar) / 2.;
             box_height = min_size / sqrt(ar) / 2.;
             b_t[0] = (center_x - box_width) / img_width;

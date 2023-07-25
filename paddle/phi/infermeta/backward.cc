@@ -364,11 +364,11 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
   // only ensure that fft axes' size greater than zero at runtime
   // they might be -1 to indicate unknown size ar compile time
   if (config.is_runtime) {
-    for (size_t i = 0; i < axes.size(); i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+    for (auto axis : axes) {
+      PADDLE_ENFORCE_GT(x_dim[axis],
                         0,
                         phi::errors::InvalidArgument(
-                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+                            "Invalid fft n-point (%d).", x_dim[axis]));
     }
   }
 
@@ -1061,10 +1061,10 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   auto vec = phi::vectorize<int>(dy_dim);
   vec.erase(vec.begin() + axis);
 
-  for (size_t i = 0; i < x_grad.size(); ++i) {
-    if (x_grad[i]) {
-      x_grad[i]->set_dims(phi::make_ddim(vec));
-      x_grad[i]->set_dtype(out_grad.dtype());
+  for (auto& grad : x_grad) {
+    if (grad) {
+      grad->set_dims(phi::make_ddim(vec));
+      grad->set_dtype(out_grad.dtype());
     }
   }
 }

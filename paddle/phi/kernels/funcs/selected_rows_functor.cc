@@ -248,10 +248,10 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
                   phi::SelectedRows* input2) {
     // Ensure all selected rows have the same height
     size_t size = 0u;
-    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      auto& in_rows = (*iter)->rows();
+    for (auto item : input1) {
+      auto& in_rows = item->rows();
       size += in_rows.end() - in_rows.begin();
-      auto in1_height = (*iter)->height();
+      auto in1_height = item->height();
       PADDLE_ENFORCE_EQ(in1_height,
                         input2->height(),
                         phi::errors::InvalidArgument(
@@ -264,8 +264,8 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
     // concat rows
     std::vector<int64_t> in2_rows;
     in2_rows.reserve(in2_rows.size() + size);
-    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      const phi::Vector<int64_t>& in_rows = (*iter)->rows();
+    for (auto item : input1) {
+      const phi::Vector<int64_t>& in_rows = item->rows();
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
     input2->set_rows(in2_rows);

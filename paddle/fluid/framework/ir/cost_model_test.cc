@@ -27,7 +27,7 @@ namespace framework {
 // Register test op
 class FakeTestOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddInput("Y", "").AsDuplicable();
     AddOutput("Out", "").AsDuplicable();

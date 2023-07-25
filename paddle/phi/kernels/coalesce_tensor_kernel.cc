@@ -201,11 +201,11 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   // Init the continuous space
   size_t offset = 0;
   if (copy_data) {
-    for (size_t i = 0; i < input.size(); ++i) {
-      size_t len = static_cast<size_t>(input[i]->numel());
+    for (auto item : input) {
+      size_t len = static_cast<size_t>(item->numel());
       auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
                                             static_cast<int64_t>(offset + len));
-      phi::Copy(dev_ctx, *input[i], dev_ctx.GetPlace(), false, &sub_tensor);
+      phi::Copy(dev_ctx, *item, dev_ctx.GetPlace(), false, &sub_tensor);
 
       offset += use_align
                     ? phi::Alignment(
@@ -217,13 +217,13 @@ void CoalesceTensorKernel(const Context &dev_ctx,
     phi::VisitDataType(
         dtype, FillConstantVisitor<Context>(dev_ctx, fused_output, constant));
   } else if (persist_output) {
-    for (size_t i = 0; i < output.size(); ++i) {
-      size_t len = static_cast<size_t>(output[i]->numel());
+    for (auto &item : output) {
+      size_t len = static_cast<size_t>(item->numel());
       auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
                                             static_cast<int64_t>(offset + len));
       // some var may not persistable, or persistable var may not init
-      if (output[i]->initialized()) {
-        phi::Copy(dev_ctx, *output[i], dev_ctx.GetPlace(), false, &sub_tensor);
+      if (item->initialized()) {
+        phi::Copy(dev_ctx, *item, dev_ctx.GetPlace(), false, &sub_tensor);
       }
       offset += use_align
                     ? phi::Alignment(

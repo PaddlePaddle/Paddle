@@ -82,8 +82,8 @@ DataType TensorArray::dtype() const {
 }
 
 void TensorArray::set_type(const DataType dtype) {
-  for (size_t i = 0; i < tensors_.size(); ++i) {
-    tensors_[i].set_type(dtype);
+  for (auto& tensor : tensors_) {
+    tensor.set_type(dtype);
   }
 }
 
@@ -106,8 +106,8 @@ DataLayout TensorArray::layout() const {
 }
 
 void TensorArray::set_layout(DataLayout layout) {
-  for (size_t i = 0; i < tensors_.size(); ++i) {
-    tensors_[i].set_layout(layout);
+  for (auto& tensor : tensors_) {
+    tensor.set_layout(layout);
   }
 }
 
@@ -122,9 +122,8 @@ void* TensorArray::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
                                 size_t requested_size,
                                 bool fake_allc) {
-  for (size_t i = 0; i < tensors_.size(); i++) {
-    tensors_[i].AllocateFrom(
-        allocator, tensors_[i].dtype(), requested_size, fake_allc);
+  for (auto& tensor : tensors_) {
+    tensor.AllocateFrom(allocator, tensor.dtype(), requested_size, fake_allc);
   }
   return nullptr;
 }

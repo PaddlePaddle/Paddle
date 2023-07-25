@@ -141,8 +141,8 @@ void TablePrinter::CalcLayout() {
     }
   }
 
-  for (auto it = idx.begin(); it != idx.end(); ++it) {
-    shares_[*it] = static_cast<size_t>(shares_[*it]);
+  for (auto& item : idx) {
+    shares_[item] = static_cast<size_t>(shares_[item]);
   }
 
   // For each record.

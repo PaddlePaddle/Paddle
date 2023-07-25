@@ -601,8 +601,8 @@ std::future<int32_t> BrpcPsClient::CacheShuffleMultiTable(
   param.push_back(path);
   param.push_back(mode);
   param.push_back(cache_threshold);
-  for (size_t i = 0; i < tables.size(); i++) {
-    param.push_back(std::to_string(tables[i]));
+  for (auto table : tables) {
+    param.push_back(std::to_string(table));
   }
   return SendSaveCmd(0, PS_CACHE_SHUFFLE, param);
 }
@@ -1181,8 +1181,8 @@ std::future<int32_t> BrpcPsClient::PullSparse(float **select_values,
           uint64_t last_key = UINT64_MAX;
           float *last_value_data = NULL;
 
-          for (size_t kv_idx = 0; kv_idx < request_kvs.size(); ++kv_idx) {
-            auto *kv_pair = &(request_kvs[kv_idx]);
+          for (auto &request_kv : request_kvs) {
+            auto *kv_pair = request_kvs;
             if (kv_pair->first == last_key) {
               memcpy(reinterpret_cast<void *>(kv_pair->second),
                      reinterpret_cast<void *>(last_value_data),
@@ -1296,8 +1296,8 @@ std::future<int32_t> BrpcPsClient::PullSparseParam(float **select_values,
           float *last_value_data = NULL;
 
           // can remove sort&unique
-          for (size_t kv_idx = 0; kv_idx < request_kvs.size(); ++kv_idx) {
-            auto *kv_pair = &(request_kvs[kv_idx]);
+          for (auto &request_kv : request_kvs) {
+            auto *kv_pair = request_kv;
             if (kv_pair->first == last_key) {
               memcpy(reinterpret_cast<void *>(kv_pair->second),
                      reinterpret_cast<void *>(last_value_data),
@@ -1613,9 +1613,9 @@ void BrpcPsClient::PushSparseTaskConsume() {
       ++_async_call_num;
 
       int merge_count = 0;
-      for (size_t i = 0; i < task_list.size(); ++i) {
-        if (task_list[i]->data()) {
-          _sparse_task_pool.push(task_list[i]->data());
+      for (auto &task : task_list) {
+        if (task->data()) {
+          _sparse_task_pool.push(task->data());
         }
       }
       auto sparse_task_data = _sparse_task_pool.get();

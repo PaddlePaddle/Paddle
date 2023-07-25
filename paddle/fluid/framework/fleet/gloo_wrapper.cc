@@ -292,8 +292,8 @@ void ParallelConnectContext::connectFullMesh(
         i,
         connect_threads.size()));
   }
-  for (uint32_t i = 0; i < connect_threads.size(); ++i) {
-    connect_threads[i]->join();
+  for (auto& connect_thread : connect_threads) {
+    connect_thread->join();
   }
   device_ = dev;
   transportContext_ = std::move(transportContext);
