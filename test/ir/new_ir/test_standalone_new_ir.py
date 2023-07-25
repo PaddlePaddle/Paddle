@@ -163,7 +163,6 @@ class TestAddGradOp(unittest.TestCase):
 class TestNewIrDygraph(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.disable_static()
-        paddle.device.set_device("cpu")
 
         @paddle.jit.to_static
         def func(x, y):
@@ -186,7 +185,6 @@ class TestNewIrDygraph(unittest.TestCase):
 class TestNewIrBackwardDygraph(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.disable_static()
-        paddle.device.set_device("cpu")
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.enable_inplace = False
 

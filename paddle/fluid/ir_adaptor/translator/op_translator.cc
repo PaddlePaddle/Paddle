@@ -960,6 +960,7 @@ struct FeedWithPlaceOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
+    int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
     ir::AttributeMap attribute_map = {
         {"name",
          ir::StrAttribute::get(ctx,
@@ -967,7 +968,9 @@ struct FeedWithPlaceOpTranscriber : public OpTranscriber {
         {"index", ir::Int64Attribute::get(ctx, 0)},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
-        {"place", paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace())},
+        {"place",
+         paddle::dialect::PlaceAttribute::get(
+             ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
     };
 
     return attribute_map;
