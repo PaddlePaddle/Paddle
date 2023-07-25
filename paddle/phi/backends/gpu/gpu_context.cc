@@ -62,6 +62,10 @@ limitations under the License. */
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #endif  // PADDLE_WITH_HIP
 
+#ifdef PADDLE_WITH_MUSA
+
+#endif
+
 // NOTE: The paddle framework should add WITH_EIGEN option to support compile
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"

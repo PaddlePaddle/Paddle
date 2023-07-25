@@ -283,7 +283,7 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
 
 template <>
 size_t Used<platform::CUDAPlace>(const platform::CUDAPlace &place) {
-#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP)
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || defined PADDLE_WITH_MUSA)
   return GetGPUBuddyAllocator(place.device)->Used();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
