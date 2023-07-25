@@ -179,6 +179,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         bool need_set_parameter_op = (parameter_name_mappings_.find(var_name) !=
                                       parameter_name_mappings_.end());
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
+        need_set_parameter_op &= (param_map_.count(var_name) != 0);
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
           ir::Operation* op = InsertSetParamaterOp(
@@ -223,7 +224,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     if (defining_op->HasAttribute(kAttrStopGradients)) {
       stop_gradients = defining_op->attribute(kAttrStopGradients)
                            .dyn_cast<ir::ArrayAttribute>()
-                           .data();
+                           .AsVector();
     } else {
       stop_gradients = std::vector<ir::Attribute>(
           defining_op->num_results(), ir::BoolAttribute::get(ctx_, false));

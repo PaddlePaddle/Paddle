@@ -90,10 +90,15 @@
       tensor_name : EpsilonTensor
 
 - op : add (elementwise_add)
-  backward : add_grad (elementwise_add_grad)
+  backward : add_grad (elementwise_add_grad), add_double_grad (elementwise_add_grad_grad), add_triple_grad (elementwise_add_triple_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : add_n (sum)
   inputs:
@@ -261,6 +266,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assert
+  inputs :
+    {cond : Cond, data : Data}
+
 - op : assign
   backward : assign_grad
   inputs :
@@ -414,6 +423,12 @@
   outputs :
     out : Out
   drop_empty_grad : [input_grad]
+
+- op : cast
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : ceil
   backward : ceil_grad
@@ -1011,6 +1026,9 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : feed
+  outputs: {out: Out}
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -1099,9 +1117,15 @@
 
 - op : fmin (elementwise_fmin)
   backward : fmin_grad (elementwise_fmin_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [fmin]
 
 - op : fold
   inputs :
@@ -1135,6 +1159,8 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1305,6 +1331,13 @@
   outputs :
     out : Out
 
+- op : hsigmoid_loss(hierarchical_sigmoid)
+  backward: hsigmoid_loss_grad(hierarchical_sigmoid_grad)
+  inputs:
+   {x: X, w: W, label: Label, bias: Bias, path: PathTable, code: PathCode}
+  outputs:
+   {out: Out, pre_out: PreOut, w_out: W_Out}
+
 - op : huber_loss
   backward : huber_loss_grad
   inputs :
@@ -1338,6 +1371,12 @@
 
 - op : imag
   backward : imag_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : increment
   inputs :
     x : X
   outputs :
@@ -1622,6 +1661,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : logsumexp
+  backward : logsumexp_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : lrn
   backward : lrn_grad
   extra :
@@ -1824,14 +1870,22 @@
 
 - op : minimum (elementwise_min)
   backward : minimum_grad (elementwise_min_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [minimum]
 
 - op : mish
   backward : mish_grad
   inputs:
-    lambda:  threshold
+    {x : X, lambda : threshold}
+  outputs:
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2095,6 +2149,12 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : print
+  inputs :
+    in : In
+  outputs :
+    out : Out
+
 - op : prior_box
   inputs :
     {input: Input, image: Image}
@@ -2197,7 +2257,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, float threshold = 6.0]
 
 - op : remainder (elementwise_mod)
   inputs :
@@ -2218,6 +2278,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : repeat_interleave
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    repeats : Repeats
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
@@ -2466,8 +2534,21 @@
 
 - op : slice
   backward : slice_grad
+  inputs :
+    input : Input
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
 
 - op : slogdet(slogdeterminant)
   backward : slogdet_grad(slogdeterminant_grad)
@@ -2529,6 +2610,10 @@
     out : Out
 
 - op : split
+  inputs:
+    x : X
+  outputs:
+    out : Out
   int_array:
       sections :
           data_type : int
@@ -2665,6 +2750,10 @@
     attrs : [bool use_mkldnn = false, float beta = 1.0]
 
 - op : sync_batch_norm
+  inputs :
+    {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
+  outputs :
+    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
@@ -2688,7 +2777,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
   inputs :
     x : X
   outputs :
@@ -2742,6 +2831,10 @@
 
 - op : transpose (transpose2)
   backward : transpose_grad (transpose2_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   attrs:
     perm : axis
   extra :
@@ -2937,6 +3030,10 @@
   get_expected_kernel_type :
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
+
+- op: fetch
+  inputs: {x: X}
+  outputs: {out: Out}
 
 - op: full_batch_size_like (fill_constant_batch_size_like)
 

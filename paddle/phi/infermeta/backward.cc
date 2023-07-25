@@ -728,7 +728,7 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   value_grad->set_dtype(value.dtype());
   value_grad->set_layout(value.layout());
 
-  if (bias) {
+  if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
     const int64_t bias_seq_length = bias.dims()[1];
     const int64_t bias_num_head = bias.dims()[2];

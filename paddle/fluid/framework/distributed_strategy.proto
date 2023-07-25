@@ -66,6 +66,12 @@ message PpConfig {
     optional bool profiling = 5 [ default = false ];
 }
 
+message DygraphShardingConfig {
+  optional bool tensor_fusion = 1 [ default = false ];
+  optional int32 accumulate_steps = 2 [ default = 1 ];
+  optional bool comm_overlap = 3 [ default = false ];
+}
+
 message HybridConfig {
   optional int32 dp_degree = 1 [ default = -1 ];
   optional int32 mp_degree = 2 [ default = 1 ];
@@ -73,6 +79,7 @@ message HybridConfig {
   optional int32 sharding_degree = 4 [ default = 1 ];
   optional MpConfig mp_configs = 5;
   optional PpConfig pp_configs = 6;
+  optional DygraphShardingConfig sharding_configs = 7;
 }
 
 message AMPConfig {
