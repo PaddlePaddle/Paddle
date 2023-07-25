@@ -66,29 +66,24 @@ def variable_length_memory_efficient_attention(
 
             dtype = paddle.float16
 
-            query = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            key = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            value = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
+            query = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
+            key = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
+            value = paddle.randn([batch, num_head, seq_len, head_size], dtype=dtype)
             seq_lens = paddle.to_tensor([seq_len, ] * batch, dtype='int32')
-            mask = paddle.randn([1, 1, 1, seq_len], dtype=dtype)
+            mask = paddle.randn([batch, 1, seq_len, seq_len], dtype=dtype)
 
             scale = float(1.0 / math.sqrt(head_size))
 
             def naive_attention_impl(query, key, value, mask, scale):
-                query = paddle.transpose(query, [0, 2, 1, 3])
-                key = paddle.transpose(key, [0, 2, 1, 3])
-                value = paddle.transpose(value, [0, 2, 1, 3])
-
                 qk_res = paddle.matmul(query, key, transpose_y=True)
                 attention = qk_res * scale
                 attention = attention + mask
                 softmax_result = paddle.nn.functional.softmax(attention, -1)
                 result = paddle.matmul(softmax_result, value)
-                result = paddle.transpose(result, [0, 2, 1, 3])
                 return result
 
             out = naive_attention_impl(query, key, value, mask, scale)
-            # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, mask, scale)
+            # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale)
 
             print(out.shape) # [batch, seq_len, num_head, head_size]
     """
