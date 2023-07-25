@@ -14,7 +14,7 @@
 
 import logging
 
-import paddle
+# import paddle
 from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
@@ -403,4 +403,4 @@ class RecomOffloadPass(PassBase):
             self.bw_start_op_idx, len(self._main_block.ops)
         )
         # print("finished program = {}".format(main_program))
-        paddle.save(main_program, "final_prog.pdmodel")
+        # paddle.save(main_program, "final_prog.pdmodel")
