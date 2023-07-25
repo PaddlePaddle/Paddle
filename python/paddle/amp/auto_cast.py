@@ -404,7 +404,6 @@ def amp_guard(
     if not enable:
         amp_level = AMP_LEVEL.O0
         amp_dtype = "float32"
-        # amp_global_state().amp_dtype = amp_dtype
 
     # master_grad_hook will run at the end of backward.
     # Since backward_final_hook will be cleared once they have been
@@ -480,7 +479,6 @@ def _set_multi_precision(optimizer, multi_precision):
     )
 
     optimizer = (
-        # optimizer._inner_optimizer
         optimizer._inner_opt
         if isinstance(optimizer, DygraphShardingOptimizer)
         else optimizer
