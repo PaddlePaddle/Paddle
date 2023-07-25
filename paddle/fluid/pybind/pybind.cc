@@ -2319,6 +2319,9 @@ All parameter, weight, gradient are variables in Paddle.
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
+  m.def("register_subgraph_pass", [](const std::string &pass_type) {
+    framework::ir::Pass::AddSupportSubgraphPass(pass_type);
+  });
 
   m.def("size_of_dtype", framework::SizeOfType);
   py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")

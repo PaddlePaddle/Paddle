@@ -872,14 +872,8 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
-      // TODO(liuyuhui): BKCL only support parameters using float type,
-      // other parameters need to be strongly converted to float before
-      // broadcasting,
-      // but broadcast is equivalent to no type of operation, does not affect
-      // correctness.
-      BKCLDataType data_type = BKCL_FLOAT;
-      // BKCLDataType data_type =
-      // platform::ToBKCLDataType(framework::TransToProtoVarType(main_tensor.dtype()));
+      auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
+      BKCLDataType data_type = platform::ToBKCLDataType(dtype);
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -904,33 +898,21 @@ void ParallelExecutor::BCastParamsToDevices(
                             member_->places_.size()));
       {
         auto *bkcl_ctxs = member_->bkcl_ctxs_->DefaultFlatCtx();
-
-        PADDLE_ENFORCE_EQ(
-            bkcl_group_start(),
-            BKCL_SUCCESS,
-            platform::errors::Unavailable("bkcl_group_start failed"));
+        platform::BKCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[i]);
-          auto broadcast_numel = numel;
-          if (framework::TransToProtoVarType(main_tensor.dtype()) ==
-              framework::proto::VarType::INT64) {
-            broadcast_numel *= 2;
-          }
           PADDLE_ENFORCE_EQ(
               bkcl_broadcast(bkcl_ctx.comm(),
                              buffers[i],
                              buffers[i],
-                             broadcast_numel,
+                             numel,
                              data_type,
                              0,
                              NULL),
               BKCL_SUCCESS,
               platform::errors::Unavailable("bkcl_broadcast failed"));
         }
-        PADDLE_ENFORCE_EQ(
-            bkcl_group_end(),
-            BKCL_SUCCESS,
-            platform::errors::Unavailable("bkcl_group_end failed"));
+        bkcl_ctxs->WaitAll();
       }
 #else
       PADDLE_THROW(
