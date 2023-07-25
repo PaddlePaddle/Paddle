@@ -12,30 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import unittest
 
 from quant_aware_config_utils import TestQuantAwareBase
 
-logging.basicConfig(level="INFO", format="%(message)s")
 
-
-class TestQuantAwareNone(TestQuantAwareBase):
-    def generate_config(self):
-        config = None
-        return config
-
-
-class TestQuantAwareTRT(TestQuantAwareBase):
+class TestQuantAwareFullQuantize(TestQuantAwareBase):
     def generate_config(self):
         config = {
             'weight_quantize_type': 'channel_wise_abs_max',
             'activation_quantize_type': 'moving_average_abs_max',
             'quantize_op_types': ['depthwise_conv2d', 'mul', 'conv2d'],
             'onnx_format': False,
-            'for_tensorrt': True,
+            'is_full_quantize': True,
         }
         return config
+
+
+class TestQuantAwareSaveInt8(TestQuantAwareBase):
+    def generate_config(self):
+        config = {
+            'weight_quantize_type': 'channel_wise_abs_max',
+            'activation_quantize_type': 'moving_average_abs_max',
+            'quantize_op_types': ['depthwise_conv2d', 'mul', 'conv2d'],
+            'onnx_format': False,
+        }
+        return config
+
+    def get_save_int8(self):
+        return True
 
 
 if __name__ == '__main__':
