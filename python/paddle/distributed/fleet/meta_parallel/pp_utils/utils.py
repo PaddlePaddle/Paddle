@@ -244,7 +244,13 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def comm_grads(self):
-        assert self._all_params_checked_in, "Not all params checked in."
+        assert self._all_params_checked_in, (
+            "Not all params checked in."
+            "Parameter number: {}, Check-in number: {}".format(
+                len(self._params), self._params_checked_in
+            )
+        )
+
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
                 self.grad_storage, group=self._comm_group, sync_op=False
@@ -262,13 +268,7 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def scale_and_split_grads(self):
-        assert self._task is not None, (
-            "Task is not initialized. "
-            "Parameter number: {}, Check-in number: {}".format(
-                len(self._params), self._params_checked_in
-            )
-        )
-
+        assert self._task is not None, "Task is not initialized. "
         self._task.wait()
         scale_factor = 1.0 / self._comm_group.nranks
         self.grad_storage.scale_(scale_factor)
