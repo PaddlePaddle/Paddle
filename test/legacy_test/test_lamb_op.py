@@ -340,8 +340,8 @@ class TestLambBF16OpMultipleSteps(TestLambOpMultipleSteps):
             self.inputs['Beta2Pow'] = convert_float_to_uint16(beta2_pow_out)
 
             # Randomize gradient for next step
-            self.inputs['Grad'] = np.random.uniform(-1, 1, (102, 105)).astype(
-                np.float32
+            self.inputs['Grad'] = convert_float_to_uint16(
+                np.random.uniform(-1, 1, (102, 105)).astype(np.float32)
             )
 
 
