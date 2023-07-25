@@ -14,27 +14,28 @@
 
 #pragma once
 
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-
 #include <math.h>
 #include <vector>
 
-#include "paddle/primitive/primitive/primitive.h"
+#include "paddle/ir/core/value.h"
+#include "paddle/phi/api/include/tensor.h"
+
+namespace ir {
+namespace api {
+std::vector<std::vector<ir::OpResult>> tanh_grad(
+    ir::OpResult out,
+    ir::OpResult grad_out,
+    const std::vector<std::vector<int>>& stop_gradients);
+}  // namespace api
+}  // namespace ir
 
 namespace paddle {
 namespace primitive {
 namespace experimental {
-namespace details {
-template <typename T>
-void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
-  if (!grad_x) return;
-  auto grad_x_tmp = grad_out * (1 - out * out);
-  set_output<T>(grad_x_tmp, grad_x);
+std::vector<std::vector<Tensor>> tanh_vjp(
+    const Tensor& out,
+    const Tensor& grad_out,
+    const std::vector<std::vector<int>>& stop_gradients);
 }
-
-}  // namespace details
-}  // namespace experimental
 }  // namespace primitive
 }  // namespace paddle
