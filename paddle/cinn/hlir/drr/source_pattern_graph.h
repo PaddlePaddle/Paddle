@@ -16,15 +16,13 @@
 #include <functional>
 #include <memory>
 
-#include "paddle/cinn/hlir/drr/drr_pass_context.h"
-#include "visit_status.h"
+#include "paddle/cinn/hlir/drr/api/drr_pass_context.h"
 
 namespace cinn {
 namespace hlir {
 namespace drr {
 
 class Constrain;
-class SourcePatternGraph;
 class MatchContext;
 class OpCall;
 class Tensor;
