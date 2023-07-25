@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/ir_copy.h"
+#pragma once
 
-#include <gtest/gtest.h>
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 
-#include "paddle/cinn/ir/utils/ir_printer.h"
+namespace phi {
 
-namespace cinn {
-namespace optim {
-
-TEST(IrCopy, basic) {
-  Expr a(1.f);
-  auto aa = IRCopy(a);
-  LOG(INFO) << "aa " << aa;
+template <typename T, typename Context>
+void ShaddowFeedKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       DenseTensor* out) {
+  ctx.template Alloc<T>(out);
+  if (x.place() == out->place()) {
+    out->ShareDataWith(x);
+    out->set_lod(x.lod());
+  } else {
+    phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
+  }
 }
 
-}  // namespace optim
-}  // namespace cinn
+}  // namespace phi

@@ -18,9 +18,9 @@
 #include <vector>
 
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/ir_replace.h"
 
 namespace cinn {

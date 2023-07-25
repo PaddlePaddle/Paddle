@@ -27,7 +27,7 @@ VarDesc::VarDesc(const VarDesc &other)
       attrs_(other.attrs_),
       original_id_(other.original_id_) {
   if (other.dist_attr_) {
-    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+    dist_attr_ = std::make_unique<TensorDistAttr>(*other.dist_attr_);
   }
   need_updated_ = true;
 }
@@ -442,7 +442,7 @@ TensorDistAttr *VarDesc::MutableDistAttr() {
     return dist_attr_.get();
   } else {
     auto shape = paddle::distributed::auto_parallel::get_tensor_shape(this);
-    dist_attr_.reset(new TensorDistAttr(shape));
+    dist_attr_ = std::make_unique<TensorDistAttr>(shape);
     return dist_attr_.get();
   }
   need_updated_ = true;
