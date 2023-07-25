@@ -20,8 +20,7 @@ from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 from paddle import nn
-from paddle.fluid import core, framework
-from paddle.fluid.executor import Executor
+from paddle.fluid import core
 
 
 def skip_unit_test():
@@ -44,7 +43,6 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
     def setUp(self):
         self.__class__.op_type = "fused_scale_bias_relu_conv_bnstats"
         self.dtype = np.float16
-        self.math_type = np.float32
         self.outputs = None
         self.padding_algorithm = "EXIPLICIT"
         self.data_format = "NHWC"
@@ -121,6 +119,16 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
         self.bn_running_mean_input = self.bn._mean.numpy()
         self.bn_running_var_input = self.bn._variance.numpy()
 
+        (
+            y_ref,
+            running_mean_out_ref,
+            running_var_out_ref,
+            saved_mean_out_ref,
+            saved_invvar_out_ref,
+            eqscale_ref,
+            eqbias_ref,
+        ) = self.calc_ref()
+
         self.inputs = {
             'x': self.x_input,
             'w': self.w_input,
@@ -129,7 +137,6 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
             'input_running_mean': self.bn_running_mean_input,
             'input_running_var': self.bn_running_var_input,
         }
-
         if self.fuse_prologue:
             extra_inputs = {
                 'bias': self.bias_input,
@@ -137,18 +144,17 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
             }
             self.inputs.update(extra_inputs)
 
-    def has_cuda(self):
-        return core.is_compiled_with_cuda()
+        self.outputs = {
+            'out': y_ref,
+            'out_running_mean': running_mean_out_ref,
+            'out_running_var': running_var_out_ref,
+            'saved_mean': saved_mean_out_ref,
+            'saved_var': saved_invvar_out_ref,
+            'eq_scale': eqscale_ref,
+            'eq_bias': eqbias_ref,
+        }
 
-    def get_feed_map(self, inputs, place):
-        feed_map = {}
-        for name in inputs:
-            tensor = core.LoDTensor()
-            tensor.set(inputs[name], place)
-            feed_map[name] = tensor
-        return feed_map
-
-    def calc_normal_pass(self):
+    def calc_ref(self):
         # Calculate normal (scale + bias + relu +) Conv + BN
         x_input_np = self.x_input
         if self.fuse_prologue:
@@ -165,175 +171,29 @@ class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
         mean_np = after_conv_np.mean(axis=0)
         var_np = after_conv_np.var(axis=0)
         invstd_np = 1 / np.sqrt(var_np + self.epsilon)
+        # Calculate reference for eqscale and eqbias
+        eqscale_np = self.bn_scale_input * invstd_np
+        eqbias_np = (
+            self.bn_bias_input - self.bn_scale_input * mean_np * invstd_np
+        )
         return (
             after_conv.numpy().astype(self.dtype),
-            after_bn.numpy().astype(self.dtype),
             self.bn._mean.numpy(),
             self.bn._variance.numpy(),
             mean_np,
             invstd_np,
+            eqscale_np,
+            eqbias_np,
         )
 
-    def calc_fused_pass(self, place):
-        paddle.enable_static()
-        program = framework.Program()
-        block = program.global_block()
-
-        x_var = block.create_var(name="x", shape=self.x_size, dtype='float16')
-        w_var = block.create_var(
-            name="w", shape=self.filter_size, dtype='float16'
-        )
-        scale_var = block.create_var(
-            name="scale", shape=self.scale_size, dtype='float16'
-        )
-        bias_var = block.create_var(
-            name="bias", shape=self.scale_size, dtype='float16'
-        )
-        y_var = block.create_var(name="out", dtype='float16')
-        bn_scale = block.create_var(
-            name="bn_scale", shape=self.bn_size, dtype='float32'
-        )
-        bn_bias = block.create_var(
-            name="bn_bias", shape=self.bn_size, dtype='float32'
-        )
-        bn_running_mean = block.create_var(
-            name="input_running_mean", shape=self.bn_size, dtype='float32'
-        )
-        bn_running_var = block.create_var(
-            name="input_running_var", shape=self.bn_size, dtype='float32'
-        )
-        updated_running_mean = block.create_var(
-            name="out_running_mean", shape=self.bn_size, dtype='float32'
-        )
-        updated_running_var = block.create_var(
-            name="out_running_var", shape=self.bn_size, dtype='float32'
-        )
-        saved_mean = block.create_var(
-            name="saved_mean", shape=self.bn_size, dtype='float32'
-        )
-        saved_inv_var = block.create_var(
-            name="saved_var", shape=self.bn_size, dtype='float32'
-        )
-        eq_scale = block.create_var(
-            name="eq_scale", shape=self.bn_size, dtype='float16'
-        )
-        eq_bias = block.create_var(
-            name="eq_bias", shape=self.bn_size, dtype='float16'
-        )
-        op_inputs = {
-            'x': x_var,
-            'w': w_var,
-            'scale': scale_var,
-            'bias': bias_var,
-            'bn_scale': bn_scale,
-            'bn_bias': bn_bias,
-            'input_running_mean': bn_running_mean,
-            'input_running_var': bn_running_var,
-        }
-        op_outputs = {
-            'out': y_var,
-            'out_running_mean': updated_running_mean,
-            'out_running_var': updated_running_var,
-            'saved_mean': saved_mean,
-            'saved_var': saved_inv_var,
-            'eq_scale': eq_scale,
-            'eq_bias': eq_bias,
-        }
-        op = block.append_op(
-            type=self.__class__.op_type,
-            inputs=op_inputs,
-            outputs=op_outputs,
-            attrs=self.attrs,
-        )
-        op.desc.infer_shape(block.desc)
-
-        # execute program
-        feed_map = self.get_feed_map(self.inputs, place)
-        fetch_list = [
-            'out',
-            'eq_scale',
-            'eq_bias',
-            'out_running_mean',
-            'out_running_var',
-            'saved_mean',
-            'saved_var',
-        ]
-
-        executor = Executor(place)
-        outs = executor.run(
-            program, feed=feed_map, fetch_list=fetch_list, return_numpy=True
-        )
-        (
-            y_out,
-            eq_scale_out,
-            eq_bias_out,
-            running_mean_out,
-            running_var_out,
-            saved_mean_out,
-            saved_invvar_out,
-        ) = outs
-        bn_out = y_out * eq_scale_out.reshape(
-            [1, 1, 1, -1]
-        ) + eq_bias_out.reshape([1, 1, 1, -1])
-        return (
-            y_out,
-            bn_out,
-            running_mean_out,
-            running_var_out,
-            saved_mean_out,
-            saved_invvar_out,
-        )
+    def has_cuda(self):
+        return core.is_compiled_with_cuda()
 
     def test_check_output(self):
         if self.has_cuda():
             place = core.CUDAPlace(0)
-            (
-                y_ref,
-                bn_out_ref,
-                running_mean_out_ref,
-                running_var_out_ref,
-                saved_mean_out_ref,
-                saved_invvar_out_ref,
-            ) = self.calc_normal_pass()
-            (
-                y_out,
-                bn_out,
-                running_mean_out,
-                running_var_out,
-                saved_mean_out,
-                saved_invvar_out,
-            ) = self.calc_fused_pass(place)
-
-            np.testing.assert_allclose(
-                y_ref, y_out, rtol=self.rtol, atol=self.atol
-            )
-
-            np.testing.assert_allclose(
-                bn_out_ref, bn_out, rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                running_mean_out_ref,
-                running_mean_out,
-                rtol=self.rtol,
-                atol=self.atol,
-            )
-            np.testing.assert_allclose(
-                running_var_out_ref,
-                running_var_out,
-                rtol=self.rtol,
-                atol=self.atol,
-            )
-            np.testing.assert_allclose(
-                saved_mean_out_ref,
-                saved_mean_out,
-                rtol=self.rtol,
-                atol=self.atol,
-            )
-            np.testing.assert_allclose(
-                saved_invvar_out_ref,
-                saved_invvar_out,
-                rtol=self.rtol,
-                atol=self.atol,
+            self.check_output_with_place(
+                place, atol=self.atol, rtol=self.rtol, check_dygraph=False
             )
 
     def init_test_case(self):
