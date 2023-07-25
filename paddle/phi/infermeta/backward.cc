@@ -1202,6 +1202,21 @@ void IndexAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void IndexPutGradInferMeta(const MetaTensor& x,
+                           const std::vector<const MetaTensor*>& indices,
+                           const MetaTensor& value,
+                           const MetaTensor& out_grad,
+                           bool accumulate,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (value_grad) {
+    value_grad->share_meta(value);
+  }
+}
+
 void FusedRopeGradInferMeta(const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
