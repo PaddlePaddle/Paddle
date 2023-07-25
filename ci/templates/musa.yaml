@@ -23,7 +23,7 @@ spec:
   containers:
   - name: main
     tty: true
-    image: sh-harbor.mthreads.com/mt-ai/musa-pytorch-dev:latest
+    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:test
     imagePullPolicy: Always
     env:
     - name: TARGET_DEVICE
@@ -70,4 +70,3 @@ spec:
     - mountPath: /artifacts
       name: artifacts
       readOnly: false
-

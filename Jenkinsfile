@@ -31,23 +31,11 @@ pipeline {
   }
 
   stages {
-    stage('Lint') {
-      parallel {
-        stage('Python Lint') {
-          steps {
-            container('main') {
-              sh 'git config --global --add safe.directory \"*\"'
-              sh 'echo python Lint'
-            }
-          }
-        }
-        stage('C++ Lint') {
-          steps {
-            container('main') {
-              sh 'git config --global --add safe.directory \"*\"'
-              sh 'echo C++ Lint'
-            }
-          }
+    stage("Codestyle-Check") {
+      steps {
+        container('main') {
+          sh 'git config --global --add safe.directory \"*\"'
+          sh 'git diff --name-only origin/develop..HEAD | xargs pre-commit run --files'
         }
       }
     }
@@ -98,4 +86,3 @@ pipeline {
     }
   }
 }
-
