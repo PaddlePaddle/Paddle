@@ -2759,7 +2759,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #if !IS_TRT_VERSION_GE(7220)
-      VLOG(3) << "flip is not supported when TensorRT blow 7.2.2";
+      VLOG(3) << "flip is not supported when TensorRT below 7.2.2";
       return false;
 #endif
     }
