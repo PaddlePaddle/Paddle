@@ -118,6 +118,12 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
+  if (int_indices_v.empty()) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
   const size_t total_dims = x.dims().size();
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
