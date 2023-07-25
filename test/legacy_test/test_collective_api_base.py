@@ -503,6 +503,11 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
+        elif col_type == "dist_identity":
+            need_result1 = input1
+            need_result2 = input2
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=0, atol=0)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=0, atol=0)
         elif col_type == "alltoall":
             need_result1 = np.vstack(
                 (
