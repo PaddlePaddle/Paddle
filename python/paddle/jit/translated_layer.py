@@ -1312,6 +1312,7 @@ class TranslatedLayer(layers.Layer):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1358,7 +1359,6 @@ class TranslatedLayer(layers.Layer):
             ...                 epoch_id, batch_id, np.mean(loss.numpy())))
             ...
             >>> # 1. train & save model.
-
             >>> # create network
             >>> layer = LinearNet()
             >>> loss_fn = nn.CrossEntropyLoss()
@@ -1380,7 +1380,6 @@ class TranslatedLayer(layers.Layer):
             >>> paddle.jit.save(layer, model_path)
 
             >>> # 2. load model as TranslatedLayer
-
             >>> # load
             >>> translated_layer = paddle.jit.load(model_path)
 
