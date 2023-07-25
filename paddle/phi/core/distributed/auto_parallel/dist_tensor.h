@@ -59,6 +59,13 @@ class DistTensor final
     set_meta(dense_tensor->meta());
   }
 
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& dense_tensor,
+             const DenseTensorMeta& meta,
+             const std::shared_ptr<TensorDistAttr>& dist_attr)
+      : meta_(meta), dist_attr_(dist_attr) {
+    value_ = std::make_unique<DenseTensor>(*dense_tensor);
+  }
+
   ~DistTensor() = default;
 
   static const char* name() { return "DistTensor"; }

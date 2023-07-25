@@ -45,10 +45,12 @@ class ForwardAPI(BaseAPI):
         else:
             return self.api
 
-    def gene_input(self, kernel_tensor_type=None, code_indent=''):
+    def gene_input(
+        self, kernel_tensor_type=None, code_indent='', for_auto_parallel=False
+    ):
         kernel_param = self.kernel['param']
         input_name_tensor_map, input_tensor_code = super().gene_input(
-            kernel_tensor_type, code_indent
+            kernel_tensor_type, code_indent, for_auto_parallel
         )
 
         # generate the input that is in view list
@@ -171,7 +173,7 @@ class ForwardAPI(BaseAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        auto_parallel_flag=False,
+        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []
@@ -198,7 +200,7 @@ class ForwardAPI(BaseAPI):
                 assert (
                     self.outputs['out_size_expr'][0] is not None
                 ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
-                if auto_parallel_flag is True:
+                if for_auto_parallel is True:
                     output_create = (
                         output_create
                         + f"""
@@ -212,7 +214,7 @@ class ForwardAPI(BaseAPI):
                     )
 
             else:
-                if auto_parallel_flag is True:
+                if for_auto_parallel is True:
                     output_create = (
                         output_create
                         + f"""

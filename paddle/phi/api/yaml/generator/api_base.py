@@ -693,7 +693,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return trans_flag
 
     def gene_dense_input(
-        self, input_name, input_name_tensor_map, code_indent=''
+        self,
+        input_name,
+        input_name_tensor_map,
+        code_indent='',
+        for_auto_parallel=False,
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -706,11 +710,18 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_name_tensor_map[input_name].append(
             (f"{PREFIX_TENSOR_NAME}{input_name}", False)
         )
-        input_tensor_code = (
-            input_tensor_code
-            + f"""
+        if for_auto_parallel is True:
+            input_tensor_code = (
+                input_tensor_code
+                + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareDataForDistTensor({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
+            )
+        else:
+            input_tensor_code = (
+                input_tensor_code
+                + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
-        )
+            )
         return input_tensor_code
 
     def gene_selected_rows_input(
@@ -807,7 +818,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             )
         return input_tensor_code
 
-    def gene_input(self, kernel_tensor_type=None, code_indent=''):
+    def gene_input(
+        self, kernel_tensor_type=None, code_indent='', for_auto_parallel=False
+    ):
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -826,9 +839,24 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     else kernel_tensor_type[0][kernel_param.index(input_name)]
                 )
                 if api_tensor_type in self.gene_input_func.keys():
-                    input_tensor_code += self.gene_input_func[api_tensor_type][
-                        phi_tensor_type
-                    ](input_name, input_name_tensor_map, code_indent)
+                    if (
+                        api_tensor_type == "const Tensor&"
+                        and phi_tensor_type == "dense"
+                    ):
+                        input_tensor_code += self.gene_input_func[
+                            api_tensor_type
+                        ][phi_tensor_type](
+                            input_name,
+                            input_name_tensor_map,
+                            code_indent,
+                            for_auto_parallel,
+                        )
+                    else:
+                        input_tensor_code += self.gene_input_func[
+                            api_tensor_type
+                        ][phi_tensor_type](
+                            input_name, input_name_tensor_map, code_indent
+                        )
                 else:
                     # do nothing
                     pass
@@ -861,7 +889,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         return input_name_tensor_map, input_tensor_code
 
-    def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
+    def get_kernel_args(
+        self, kernel_tensor_type=None, code_indent='', for_auto_parallel=False
+    ):
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -888,7 +918,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             kernel_param = input_names + attr_names
 
         input_name_tensor_map, input_tensor_code = self.gene_input(
-            kernel_tensor_type, code_indent
+            kernel_tensor_type, code_indent, for_auto_parallel
         )
 
         input_tensor_code = (
@@ -1114,7 +1144,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     kernel_args.append(PREFIX_TENSOR_NAME + param)
                 else:
                     if self.inputs['input_info'][param] == "const Tensor&":
-                        kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
+                        if for_auto_parallel is True:
+                            kernel_args.append(
+                                PREFIX_TENSOR_NAME + param + "->value()"
+                            )
+                        else:
+                            kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
                     elif (
                         self.inputs['input_info'][param]
                         == "const std::vector<Tensor>&"
@@ -1184,7 +1219,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        auto_parallel_flag=False,
+        for_auto_parallel=False,
     ):
         return None, None, None
 
@@ -1340,7 +1375,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             out_tensor_type_list,
             code_indent,
             inplace_flag,
-            auto_parallel_flag=True,
+            for_auto_parallel=True,
         )
 
         # 6. Local InferMeta
@@ -1402,8 +1437,10 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
             )
         else:
             # auto parallel branch, all apis contains this branch default
-            # now only work for the ops contains single kernel
-            if len(self.inputs['names']) > 0:
+            # 1. only works for the ops contains single kernel
+            # 2. doesn't support initialize ops now
+            # 3. doesn't support view api
+            if len(self.inputs['names']) > 0 and len(self.view_map) == 0:
                 api_code += self.gene_auto_parallel_branch(
                     self.kernel['func'][0], '  ', inplace_flag
                 )

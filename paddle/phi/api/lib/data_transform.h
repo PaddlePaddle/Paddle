@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/selected_rows.h"
 
@@ -79,6 +80,11 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
+
+std::shared_ptr<phi::distributed::auto_parallel::DistTensor>
+PrepareDataForDistTensor(const Tensor& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag);
 
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,

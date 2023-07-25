@@ -53,7 +53,7 @@ class StringsAPI(ForwardAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        auto_parallel_flag=False,
+        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []

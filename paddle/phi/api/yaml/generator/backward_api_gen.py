@@ -146,7 +146,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        auto_parallel_flag=False,
+        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []
