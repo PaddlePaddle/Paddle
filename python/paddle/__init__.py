@@ -638,7 +638,6 @@ __all__ = [  # noqa
     'ceil',
     'atan',
     'atan_',
-    'atan2_',
     'atan2',
     'rad2deg',
     'deg2rad',
