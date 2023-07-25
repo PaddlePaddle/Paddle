@@ -23,7 +23,7 @@ pushd ${temp_dir} \
 && git fetch origin \
 && git checkout ${PLUGIN_TAG} -b dev \
 && pushd backends/custom_cpu \
-&& mkdir build && pushd build && cmake .. -DPython_EXECUTABLE=${PYTHON_EXECUTABLE} && make -j8 && popd && popd && popd && popd
+&& mkdir build && pushd build && cmake .. -DPython_EXECUTABLE=${PYTHON_EXECUTABLE} -DWITH_TESTING=OFF && make -j8 && popd && popd && popd && popd
 
 echo "begin test use custom_cpu"
 
