@@ -243,6 +243,7 @@ class TestSplitOp(unittest.TestCase):
 
 class TestNewIrPrint(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
