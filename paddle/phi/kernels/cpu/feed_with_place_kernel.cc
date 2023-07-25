@@ -26,6 +26,11 @@ void FeedWithPlaceKernel(const Context& ctx,
                          phi::DataType data_type,
                          DenseTensor* out) {}
 
+template <typename T, typename Context>
+void ShaddowOutputKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         DenseTensor* out) {}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
@@ -44,3 +49,6 @@ PD_REGISTER_KERNEL(shaddow_feed,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {}
+
+PD_REGISTER_KERNEL(
+    shaddow_output, CPU, ALL_LAYOUT, phi::ShaddowOutputKernel, float) {}
