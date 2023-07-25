@@ -438,8 +438,10 @@ inline void RunProgramAPI(
                                                                program.get());
 
       program_translator.Translate();
+      program->Print(std::cerr);
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
+      ir_program->Print(std::cerr);
     }
 
     interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
@@ -574,7 +576,9 @@ inline void RunProgramGradAPI(
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
+  std::cerr << "program id " << program_id << std::endl;
   if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
+    std::cerr << "not get cache " << std::endl;
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -624,9 +628,11 @@ inline void RunProgramGradAPI(
       paddle::translator::ProgramTranslator program_translator(backward_program,
                                                                program.get());
       program_translator.Translate();
+      program->Print(std::cerr);
 
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
+      ir_program->Print(std::cerr);
     }
 
     interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(

@@ -270,6 +270,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     auto kernel_key =
         GetKernelKey(*it, place, map_value_pair, std::move(op_info_parser));
+
+    // if( (*it)->name() == "phi.kernel")
+    // {
+    //   kernel_key.set_backend ( phi::Backend::CPU );
+    // }
     VLOG(6) << "kernel type " << kernel_key;
 
     // only for single output

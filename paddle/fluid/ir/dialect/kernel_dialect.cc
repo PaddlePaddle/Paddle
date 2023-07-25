@@ -65,8 +65,8 @@ void PaddleKernelDialect::PrintAttribute(ir::Attribute attr,
                                          std::ostream &os) const {
   phi::KernelKey kernel = attr.dyn_cast<KernelAttribute>().data();
 
-  os << "<backend:" << kernel.backend() << "|layout:" << kernel.layout()
-     << "|dtype:" << kernel.dtype() << ">";
+  os << "<B:" << kernel.backend() << "|L:" << kernel.layout()
+     << "|D:" << kernel.dtype() << ">";
 }
 
 }  // namespace dialect

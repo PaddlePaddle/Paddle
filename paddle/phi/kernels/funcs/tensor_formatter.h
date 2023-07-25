@@ -15,8 +15,7 @@
 #pragma once
 #include <string>
 
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/var_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 class DenseTensor;

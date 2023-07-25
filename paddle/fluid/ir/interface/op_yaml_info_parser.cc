@@ -44,7 +44,7 @@ const std::string& OpYamlInfoParser::AttrTypeName(
   PADDLE_ENFORCE_NE(
       it,
       attr_info_.end(),
-      phi::errors::NotFound("Not found [%s] in attribute map", name));
+      phi::errors::NotFound("Not found [%s] in attribute map", name.c_str()));
   return it->second.type_name;
 }
 
