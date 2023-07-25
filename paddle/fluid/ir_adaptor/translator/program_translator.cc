@@ -217,7 +217,15 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
       continue;
     }
     ir::OpResult value = value_info.value;
+    if (!value) {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "Value of [%s] can not ber None", var_name));
+    }
     auto* defining_op = value.owner();
+    PADDLE_ENFORCE_NOT_NULL(
+        defining_op,
+        phi::errors::PreconditionNotMet(
+            "Defining operator of [%s] can not be nullptr", var_name));
     VLOG(8) << "[op translated][stop gradient]" << var_name
             << " from: " << defining_op->name();
     std::vector<ir::Attribute> stop_gradients;

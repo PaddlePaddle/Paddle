@@ -954,6 +954,39 @@ struct FeedOpTranscriber : public OpTranscriber {
   }
 };
 
+struct FeedWithPlaceOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    ir::AttributeMap attribute_map = {
+        {"name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"dtype",
+         paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
+        {"place",
+         paddle::dialect::PlaceAttribute::get(
+             ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
+    };
+
+    return attribute_map;
+  }
+
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    return {};
+  }
+};
+
 struct SplitOpTranscriber : public OpTranscriber {
   std::vector<ir::OpResult> GenerateOperationInput(
       ir::IrContext* ctx,
@@ -1087,6 +1120,32 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+struct ShaddowOutputOpTranscriber : public OpTranscriber {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
+    std::vector<ir::OpResult> op_inputs;
+    auto legacy_input_vars = op_desc.Input("x", true);
+
+    auto defining_info = (*param_map)[legacy_input_vars[0]];
+    op_inputs.push_back(defining_info.value);
+
+    ir::AttributeMap attribute_map = {
+        {"parameter_name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+    };
+
+    auto create_op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
+    ir::Operation* operation =
+        ir::Operation::Create(op_inputs, attribute_map, {}, create_op_info);
+    program->block()->push_back(operation);
+
+    return operation;
+  }
+};
+
 // NOTE, add_n op in legacy ops don't have a kernel, so we use a new op for now
 struct AddNOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
@@ -1159,6 +1218,7 @@ struct OneHotTranscriber : public OpTranscriber {
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
+  special_handlers["feed_with_place"] = FeedWithPlaceOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
@@ -1167,8 +1227,10 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["shaddow_output"] = ShaddowOutputOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["sum"] = AddNOpTranscriber();
 }
 
 }  // namespace translator

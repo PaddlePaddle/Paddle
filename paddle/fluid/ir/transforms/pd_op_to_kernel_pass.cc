@@ -62,6 +62,20 @@ phi::KernelKey GetKernelKey(
             TransToPhiDataType(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
+
+  if (op->name() == "pd.feed_with_place") {
+    // NOTE, for now feed op don't need a kernel, so the data type from Op
+    // Result the next op use base program datatype
+    auto t =
+        op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
+
+    auto backend = paddle::experimental::ParseBackend(t);
+    return {backend,
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+  }
+
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;

@@ -826,6 +826,18 @@
   inplace: (x -> out)
   backward : expm1_grad
 
+- op : feed_with_place
+  args : (int64_t index, DataType dtype, str name, Place place)
+  output : Tensor(out)
+  infer_meta :
+    func : FeedWithPlaceInferMeta
+    param : [index, dtype]
+  kernel:
+    func : feed_with_place
+    param : [index, dtype]
+    data_type : dtype
+    backend : place
+
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
@@ -2211,6 +2223,16 @@
     support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
+
+- op : shaddow_output
+  args : (Tensor x, str name)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func : shaddow_output
+    param : [x]
 
 - op : shape
   args : (Tensor input)
