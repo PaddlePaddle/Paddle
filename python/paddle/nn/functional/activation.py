@@ -1462,7 +1462,6 @@ def tanhshrink(x, name=None):
         return out
 
 
-@inplace_apis_in_dygraph_only
 def thresholded_relu(x, threshold=1.0, name=None):
     r"""
     thresholded relu activation.
@@ -1519,6 +1518,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def thresholded_relu_(x, threshold=1.0, name=None):
     r"""
     Inplace version of ``thresholded_relu`` API, the output Tensor will be inplaced with input ``x``.
