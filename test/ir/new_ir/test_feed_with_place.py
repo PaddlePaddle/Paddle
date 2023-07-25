@@ -30,6 +30,7 @@ def feed_with_place():
             'index': 0,
             'dtype': 0,
             'place': 0,
+            'name': "x",
         },
     )
     return out
