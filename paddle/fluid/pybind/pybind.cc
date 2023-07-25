@@ -778,12 +778,24 @@ PYBIND11_MODULE(libpaddle, m) {
           }
         });
 
-  py::class_<egr::GradNodeBase>(m, "GradNodeBase")
-      .def("name", &egr::GradNodeBase::name)
-      .def_property_readonly("next_functions",
-                             &egr::GradNodeBase::NextFunctions)
-      .def("input_meta", &egr::GradNodeBase::InputMeta)
-      .def("output_meta", &egr::GradNodeBase::OutputMeta);
+  py::class_<egr::GradNodeBase, std::shared_ptr<egr::GradNodeBase>>(
+      m, "GradNodeBase")
+      .def("name",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->name();
+           })
+      .def_property_readonly(
+          "next_functions",
+          [](const std::shared_ptr<egr::GradNodeBase> &self) {
+            return self->NextFunctions();
+          })
+      .def("input_meta",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->InputMeta();
+           })
+      .def("output_meta", [](const std::shared_ptr<egr::GradNodeBase> &self) {
+        return self->OutputMeta();
+      });
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);

@@ -126,7 +126,7 @@ PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
 
-PyObject* ToPyObject(egr::GradNodeBase* grad_node);
+PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 
 class PyTensorHook : public egr::TensorHook {
  public:
