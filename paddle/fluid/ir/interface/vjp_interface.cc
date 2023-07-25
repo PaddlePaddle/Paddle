@@ -12,29 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-
-#include <math.h>
-#include <vector>
-
-#include "paddle/primitive/primitive/primitive.h"
+#include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/primitive/rule/vjp/vjp_dispatch.h"
 
 namespace paddle {
-namespace primitive {
-namespace experimental {
-namespace details {
-template <typename T>
-void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
-  if (!grad_x) return;
-  auto grad_x_tmp = grad_out * (1 - out * out);
-  set_output<T>(grad_x_tmp, grad_x);
+namespace dialect {
+std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
+    std::vector<std::vector<ir::OpResult>> out_grads,
+    const std::vector<std::vector<int>>& stop_gradients) {
+  return {{}};
 }
 
-}  // namespace details
-}  // namespace experimental
-}  // namespace primitive
+std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
+    std::vector<std::vector<ir::OpResult>> out_grads,
+    const std::vector<std::vector<int>>& stop_gradients) {
+  return {{}};
+}
+}  // namespace dialect
 }  // namespace paddle
