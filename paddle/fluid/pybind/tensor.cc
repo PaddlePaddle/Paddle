@@ -1025,7 +1025,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  using phi::distributed::auto_parallel::DistTensor;
+  using phi::distributed::DistTensor;
   py::class_<DistTensor>(m, "DistTensor")
       .def(
           "get_tensor",

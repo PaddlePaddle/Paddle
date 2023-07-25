@@ -8,4 +8,5 @@ gather_srcs(
   ir_printer.cc
   ir_verify.cc
   ir_compare.cc
-  ir_nodes_collector.cc)
+  ir_nodes_collector.cc
+  ir_copy.cc)

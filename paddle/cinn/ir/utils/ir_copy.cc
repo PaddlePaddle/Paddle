@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 
 #include <map>
 #include <memory>
