@@ -271,10 +271,12 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     auto kernel_key =
         GetKernelKey(*it, place, map_value_pair, std::move(op_info_parser));
 
-    // if( (*it)->name() == "phi.kernel")
-    // {
-    //   kernel_key.set_backend ( phi::Backend::CPU );
-    // }
+    std::cerr << "name " << (*it)->name() << std::endl;
+    if ((*it)->name() == "pd.pool2d") {
+      std::cerr << "chaned pool2d" << std::endl;
+      kernel_key.set_backend(phi::Backend::GPU);
+      std::cerr << kernel_key << std::endl;
+    }
     VLOG(6) << "kernel type " << kernel_key;
 
     // only for single output
