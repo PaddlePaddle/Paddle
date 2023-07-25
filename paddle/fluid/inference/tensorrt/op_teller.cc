@@ -2747,6 +2747,23 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "flip") {
+      if (!desc.HasAttr("axis")) {
+        VLOG(3) << "The necessary attributes of the flip operator axis "
+                   " is missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the flip does not support "
+                   "static shape yet";
+        return false;
+      }
+#if !IS_TRT_VERSION_GE(7220)
+      VLOG(3) << "flip is not supported when TensorRT blow 7.2.2";
+      return false;
+#endif
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2917,7 +2934,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
-      "assign"};
+      "assign",
+      "flip"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3081,7 +3099,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
-      "assign"};
+      "assign",
+      "flip"};
 };
 
 struct GenericPluginTeller : public Teller {
