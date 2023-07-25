@@ -373,10 +373,13 @@ def read_memory_log(path, file) -> Tuple[float, bool]:
 
     with open(log_path, 'r') as f:
         reader = csv.reader(f)
-
+        flag = False
         # skip headers
-        while next(reader)[1] != 'utilization_gpu':
-            next(reader)
+        while not flag:
+            # show the first line of reader
+            row = next(reader)
+            if len(row) == 6 and 'memory_used' in row:
+                flag = True
         for row in reader:
             # If row length is 6 then it's a utilization data row
             # skip header
@@ -436,7 +439,7 @@ def gbs_default_candidates(tuner_cfg):
         candidates["pp_degree"] = [pp_candidate]
         candidates["sharding_degree"] = [sharding_dgree_candidate]
         candidates["sharding_stage"] = [1]
-        candidates["use_recompute"] = [True]
+        candidates["use_recompute"] = [False]
         candidates["recompute_granularity"] = [None]
         candidates["micro_batch_size"] = [2**i for i in range(0, 10)]
         candidates["global_batch_size"] = [

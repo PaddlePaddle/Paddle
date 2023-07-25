@@ -252,8 +252,23 @@ class ETCDMaster(Master):
 
         self.job_prefix = f'/paddle/{job_id}'
         self.heartbeat_prefix = f'{self.job_prefix}/heartbeat'
+        if self.ctx.is_auto_tuner_mode():
+            delete_success = False
+            while not delete_success:
+                try:
+                    self.client.delete_prefix(self.job_prefix)
+                    delete_success = True
+                except:
+                    time.sleep(1)
 
-        lease = self.client.lease(ttl)
+        if self.ctx.is_auto_tuner_mode():
+            lease_success = False
+            while not lease_success:
+                try:
+                    lease = self.client.lease(ttl)
+                    lease_success = True
+                except:
+                    time.sleep(1)
 
         # self.client.delete_prefix(self.job_prefix)
 
