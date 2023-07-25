@@ -257,6 +257,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    // Build
     std::stringstream ss;
     ss << this;
     ::ir::BuildScope(*ir_program_->block(),
@@ -296,11 +297,129 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
       }
     }
 
+    // calculate last_live_ops_
+    // for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx)
+    // { InstructionBase* instr = vec_instruction_base_[op_idx]; OpInOutInfo
+    // info;
+    //     info.Build(instr.OpBase());
+
+    // std::set<size_t> gc_check_vars;
+
+    //     const std::map<std::string, std::vector<int>>& ins = instr.Inputs();
+    //     const std::map<std::string, std::vector<int>>& outs =
+    //     instr.Outputs(); std::multimap<std::string, std::vector<int>>
+    //     ins_and_outs{ins.begin(),
+    //                                                               ins.end()};
+    //     ins_and_outs.insert(outs.begin(), outs.end());
+
+    //     for (auto& item : ins_and_outs) {
+    //       for (auto id : item.second) {
+    //         if (id == kEmptyVarIndex) {
+    //           continue;
+    //         }
+    //         auto* var_desc = var_scope_.VarDesc(id);
+    //         // skip no_need_buffer input vars
+    //         if (var_desc && ins.count(item.first) &&
+    //             !info.IsInArgBufferNeeded(var_desc->Name())) {
+    //           continue;
+    //         }
+    //         // skip when this var is not in block and not a data_transferred
+    //         var,
+    //         // which means this var is managed by other block
+    //         const auto& var_name = var_scope_.GetNameById(id);
+    //         bool not_owned = !block_.HasVar(var_name);
+    //         const auto& transferred_vars =
+    //         var_scope_.DataTransferAddedVars(); bool not_transferred =
+    //             std::all_of(transferred_vars.begin(),
+    //                         transferred_vars.end(),
+    //                         [&](const std::pair<std::string, int>& elem) {
+    //                           return elem.first != var_name;
+    //                         });
+    //         if (not_owned && not_transferred) {
+    //           VLOG(10) << "[gc_check_inputs] skip gc: " << var_name;
+    //           continue;
+    //         }
+    //         gc_check_vars.insert(id);
+    //       }
+    //     }
+
+    //     for (auto var_id : gc_check_vars) {
+    //       Scope* inner_scope =
+    //           HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+    //       paddle::framework::Variable* var =
+    //           inner_scope->FindVar(var_scope_.GetNameById(var_id));
+    //       if (var->IsType<phi::DenseTensor>() ||
+    //       var->IsType<phi::SelectedRows>() ||
+    //           var->IsType<LoDTensorArray>()) {
+    //         last_live_ops_[var_id].insert(op_idx);
+    //       } else {
+    //         VLOG(4) << "not clear " << var_scope_.GetNameById(var_id) << "
+    //         after "
+    //                 << instr.OpBase()->Type() << " because its type is "
+    //                 << framework::ToTypeName(var->Type());
+    //       }
+    //     }
+    // }
+
+    // clear the last_live_ops list for all vars in skip_gc_vars
+    for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
+      int var_id = GetIdByName(skip_gc_var);
+      if (var_id != -1) {
+        last_live_ops_[var_id].clear();
+        VLOG(8) << "Skip gc for var: " << skip_gc_var;
+      }
+    }
+
+    // shrink, find the downstream op that has no other op in the
+    // downstream list happens before it
+    // For example,
+    // b = op1(a)
+    // c = op2(a, b)
+    // in this case, a is the input of op1 and op2, we only need to check
+    // a after op2, because op2 always uses a after op1.
+    var_ref_count_.resize(variable_list_.size());
+    for (size_t i = 0; i < last_live_ops_.size(); ++i) {
+      std::set<size_t> minumum_last_live_ops;
+      for (size_t item : last_live_ops_[i]) {
+        bool not_before_any = true;
+        // find the op that is not executed before any
+        for (size_t other_item : last_live_ops_[i]) {
+          if (dependency_builder_.OpHappensBefore(item, other_item)) {
+            VLOG(6) << "happens_before: " << item << "->" << other_item
+                    << ", so skip " << item;
+            not_before_any = false;
+            break;
+          }
+        }
+        if (not_before_any) {
+          VLOG(6) << "last live op of var " << i << " "
+                  << var_scope_.GetNameById(i) << " : " << item << " "
+                  << vec_instruction_[item].OpBase()->Type();
+          minumum_last_live_ops.insert(item);
+          vec_instruction_[item].AddGCCheckVar(i);
+        }
+      }
+      last_live_ops_[i] = minumum_last_live_ops;
+      var_ref_count_[i] = last_live_ops_[i].size();
+    }
+
+    for (auto& dep : dependecy_count_) {
+      deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
+    }
+    for (size_t i = 0; i < variable_list_.size(); ++i) {
+      refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
+          var_ref_count_[i], variable_list_[i]));
+    }
+
+    AnalyseExecuteOrderForTrace();
+
+    // Run
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
     }
   } else {
+    // Run
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
@@ -392,6 +511,14 @@ std::string NewIRInterpreter::GetNameById(int id) const {
     return it->first;
   }
   return "";
+}
+
+int NewIRInterpreter::GetIdByName(const std::string& name) const {
+  auto it = var_name_2_id_.find(name);
+  if (it != var_name_2_id_.end()) {
+    return it->second;
+  }
+  return -1;
 }
 
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
@@ -1562,7 +1689,7 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
-  auto op_downstream_map = dependency_builder_.OpDownstreamMap();
+  auto op_downstream_map = ir_dependency_builder_.OpDownstreamMap();
 
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id

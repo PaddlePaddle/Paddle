@@ -82,6 +82,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::string GetNameById(int id) const;
 
+  int GetIdByName(const std::string& name) const;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -213,6 +215,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   std::map<std::string, int> var_name_2_id_;
 
   std::vector<Variable*> variable_list_;
+
+  std::vector<int> var_ref_count_;
 
   interpreter::IrDependencyBuilder ir_dependency_builder_;
 
