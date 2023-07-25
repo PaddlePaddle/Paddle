@@ -159,7 +159,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
         _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
 
-class TestArgmaxOpTranscriber(unittest.TestCase):
+class TestRMSNormOpTranscriber(unittest.TestCase):
     def test_op(self):
         place = core.Place()
         place.set_place(paddle.CPUPlace())
@@ -167,8 +167,12 @@ class TestArgmaxOpTranscriber(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.scope_guard(new_scope):
             with paddle.static.program_guard(main_program):
-                x = paddle.to_tensor([2, 3, 4], 'float64')
-                y = paddle.argmax(x)
+                x = paddle.randn([2, 8])
+                gamma = paddle.randn([8])
+                beta = paddle.randn([8])
+                y = paddle.incubate.nn.functional.rms_norm(
+                    x, gamma, beta, 1e-6, begin_norm_axis=1
+                )
 
         _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
 
