@@ -324,12 +324,6 @@ class Parallelizer:
                 config["offload_points"] = copy.deepcopy(
                     recom_config["checkpoints"]
                 )
-                print(f"+++++++++++++ recom_config = {recom_config}")
-                print(
-                    "+++++++++++++ offload_points = {}".format(
-                        config["offload_points"]
-                    )
-                )
                 auto_parallel_recom_offload_pass = new_pass(
                     "auto_parallel_recom_offload", config
                 )

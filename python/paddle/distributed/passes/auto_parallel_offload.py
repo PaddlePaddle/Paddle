@@ -14,23 +14,24 @@
 
 import logging
 
+import paddle
 from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
 from paddle.framework import core
 from paddle.utils import unique_name
 
-from ..auto_parallel.process_mesh import ProcessMesh
 from ..auto_parallel.static.dist_attribute import OperatorDistAttr
 from ..auto_parallel.static.utils import set_var_dist_attr
+from .auto_parallel_recompute import insert_dependencies_for_two_ops
 from .pass_base import PassBase, register_pass
 
 world_process_group = get_world_process_group()
 
-logging.basicConfig(
-    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s',
-    level=logging.DEBUG,
-)
+# logging.basicConfig(
+#     format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s',
+#     level=logging.DEBUG,
+# )
 
 
 @register_pass("auto_parallel_recom_offload")
@@ -61,7 +62,7 @@ class RecomOffloadPass(PassBase):
             shape=self._main_block.var(varname).shape,
             dtype=self._main_block.var(varname).dtype,
             persistable=False,
-            stop_gradient=True,
+            stop_gradient=False,
         )
         # set the dist_attr of new var according to origin var
         ref_mesh = ref_var_dist_attr.process_mesh
@@ -73,7 +74,7 @@ class RecomOffloadPass(PassBase):
             shape=self._main_block.var(varname).shape,
             dtype=self._main_block.var(varname).dtype,
             persistable=False,
-            stop_gradient=True,
+            stop_gradient=False,
         )
 
         set_var_dist_attr(
@@ -81,6 +82,17 @@ class RecomOffloadPass(PassBase):
         )
 
         return pinned_var_name, fetched_var_name
+
+    def _reset_op_dist_attr(self, op, new_var_name, is_input=True):
+        op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
+        var_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+            self._main_block.var(new_var_name)
+        )
+        assert op_dist_attr is not None
+        if is_input:
+            op_dist_attr.set_input_dist_attr(new_var_name, var_dist_attr)
+        if not is_input:
+            op_dist_attr.set_output_dist_attr(new_var_name, var_dist_attr)
 
     def _record_op_to_insert(self, idx, checkpoint_name, op_type):
         """
@@ -134,7 +146,7 @@ class RecomOffloadPass(PassBase):
             else:
                 pass
         logging.debug(
-            "++++++++ fw_start_op_idx:{} and bw_first_op_idx: {}".format(
+            "fw_start_op_idx:{} and bw_first_op_idx: {}".format(
                 self.fw_start_op_idx, self.bw_start_op_idx
             )
         )
@@ -147,19 +159,6 @@ class RecomOffloadPass(PassBase):
         assert (
             self.fw_start_op_idx < self.bw_start_op_idx
         ), "BW start op must be behind th FW start op"
-
-        #  # Don't offload the checkpoints of last operator, because they will be used in backward pass intermediately.
-        # for idx in reversed(range(self.fw_start_op_idx, self.bw_start_op_idx)):
-        #     find_last_op = False
-        #     cur_op = self._main_block.ops[idx]
-        #     output_var_names = cur_op.desc.output_arg_names()
-        #     for out_var_name in output_var_names:
-        #         if out_var_name in self.unoffload_checkpoint_names:
-        #             self.unoffload_checkpoint_names.remove(out_var_name)
-        #             find_last_op = True
-        #     if find_last_op == True:
-        #         self.need_offload_checkpoint_names = self.unoffload_checkpoint_names[:]
-        #         break
 
         # record the checkpoints after they are generated
         for idx, op in enumerate(
@@ -190,7 +189,7 @@ class RecomOffloadPass(PassBase):
                 else:
                     pass
         logging.debug(
-            "++++++++ offload unoffload_checkpoint_names: {}".format(
+            "There are some checkpoints unoffloaded: {}, maybe it is wrong".format(
                 self.unoffload_checkpoint_names
             )
         )
@@ -209,7 +208,6 @@ class RecomOffloadPass(PassBase):
             else:
                 pass
         assert self.bw_start_op_idx < all_ops_num, "BW op should exist"
-        logging.debug(f"++++++++ fetch bw_start_op_idx:{self.bw_start_op_idx}")
         # use for prefetch one checkpoint
         checkpoint_usage_count = {}
         for ckpt in self.need_offload_checkpoint_names:
@@ -223,6 +221,7 @@ class RecomOffloadPass(PassBase):
         for i, op in enumerate(self._main_block.ops[self.bw_start_op_idx :]):
             current_idx = self.bw_start_op_idx + i
             input_varnames = op.desc.input_arg_names()
+            output_varnames = op.desc.output_arg_names()  # for nop op
             for input_varname in input_varnames:
                 if input_varname in self.need_offload_checkpoint_names:
                     if input_varname not in self.unoffload_checkpoint_names:
@@ -243,6 +242,10 @@ class RecomOffloadPass(PassBase):
                             prev_fetched_checkpoint_varname, input_varname
                         )
                         # deal origin ops inputs
+                        self._reset_op_dist_attr(
+                            self._main_block.ops[current_idx],
+                            self._varnames2fetch_names[input_varname],
+                        )
                         self._main_block.ops[current_idx]._rename_input(
                             input_varname,
                             self._varnames2fetch_names[input_varname],
@@ -256,8 +259,19 @@ class RecomOffloadPass(PassBase):
                 else:
                     pass
 
+            for output_varname in output_varnames:
+                if output_varname in self.need_offload_checkpoint_names:
+                    self._reset_op_dist_attr(
+                        self._main_block.ops[current_idx],
+                        self._varnames2fetch_names[output_varname],
+                        is_input=False,
+                    )
+                    self._main_block.ops[current_idx]._rename_output(
+                        output_varname,
+                        self._varnames2fetch_names[output_varname],
+                    )
         logging.debug(
-            "++++++++ fetch unoffload_checkpoint_names: {}".format(
+            "There are some checkpoints unfetched {}, maybe it is wrong!".format(
                 self.unoffload_checkpoint_names
             )
         )
@@ -265,7 +279,6 @@ class RecomOffloadPass(PassBase):
     def _update_main_program(self, start_op_idx, end_op_idx):
         if len(self.pos_insert_op_map) == 0:
             return
-        logging.debug(f"++++++++ pos_insert_op_map = {self.pos_insert_op_map}")
         for op_idx in reversed(range(start_op_idx, end_op_idx)):
             if op_idx in self.pos_insert_op_map:
                 op_varnames = self.pos_insert_op_map[op_idx]
@@ -276,7 +289,7 @@ class RecomOffloadPass(PassBase):
                         ), "The variable {} is not in _varnames2pinned_names".format(
                             op_var[1]
                         )
-                        dst_varname = self._varnames2fetch_names[op_var[1]]
+                        dst_varname = self._varnames2pinned_names[op_var[1]]
                         self._insert_async_memcpy_op(
                             op_idx + i, op_var[1], dst_varname, 0, 1
                         )
@@ -312,11 +325,10 @@ class RecomOffloadPass(PassBase):
             attrs={"dst_place_type": int(dst_place_type), OP_ROLE_KEY: op_role},
         )
         new_op_dist_attr = OperatorDistAttr(new_op.desc)
-        new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
-        new_op_dist_attr.impl_idx = 0
         input_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
             self._main_block.var(src_varname)
         )
+        new_op_dist_attr.process_mesh = input_dist_attr.process_mesh
         output_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
             self._main_block.var(dst_varname)
         )
@@ -325,10 +337,28 @@ class RecomOffloadPass(PassBase):
         self._dist_context.set_op_dist_attr_for_program(
             new_op, new_op_dist_attr
         )
+        # insert nop op to add a dependency between "fetch" op and "grad op"
+        if op_role == 1:
+            prior_op = self._main_block.ops[insert_idx - 1]
+            prior_mesh = self._dist_context.get_op_dist_attr_for_program(
+                prior_op
+            ).process_mesh
+            cur_mesh = self._dist_context.get_op_dist_attr_for_program(
+                new_op
+            ).process_mesh
+            if prior_mesh == cur_mesh:
+                insert_dependencies_for_two_ops(
+                    self._main_block,
+                    insert_idx,
+                    prior_op,
+                    new_op,
+                    self._dist_context,
+                )
 
     def _apply_single_impl(self, main_program, startup_program, context):
+        # paddle.save(main_program, "orgin_prog.pdmodle")
         self._offload_points = self.get_attr("offload_points")
-        logging.debug(f"+++++++++ offload_points = {self._offload_points}")
+        logging.debug(f"The origin checkpints is {self._offload_points}")
         loss = self.get_attr("loss")
         no_grad_set = self.get_attr("no_grad_set")
         self._dist_context = self.get_attr("dist_context")
@@ -336,19 +366,15 @@ class RecomOffloadPass(PassBase):
 
         self._sorted_offload_points = self._offload_points[:]
         assert len(self._sorted_offload_points) > 0, " points must not empty"
-        logging.debug(
-            "+++++++++ _sorted_offload_points = {}".format(
-                self._sorted_offload_points
-            )
-        )
 
         self._varnames2pinned_names = {}
         self._varnames2fetch_names = {}
 
         # ctreat auxiliary vars
-        for op_idx, op in enumerate(self._main_block.ops):
-            if len(self._varnames2fetch_names) == len(
-                self._sorted_offload_points
+        for _, op in enumerate(self._main_block.ops):
+            if (
+                len(self._varnames2fetch_names)
+                == len(self._sorted_offload_points) - 1
             ):
                 break
             output_vars = op.desc.output_arg_names()
@@ -376,3 +402,5 @@ class RecomOffloadPass(PassBase):
         self._update_main_program(
             self.bw_start_op_idx, len(self._main_block.ops)
         )
+        # print("finished program = {}".format(main_program))
+        paddle.save(main_program, "final_prog.pdmodel")
