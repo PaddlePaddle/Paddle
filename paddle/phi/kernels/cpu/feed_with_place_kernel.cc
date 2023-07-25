@@ -38,6 +38,11 @@ void ShaddowOutputKernel(const Context& ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {}
 
+template <typename T, typename Context>
+void ShaddowOutputKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         DenseTensor* out) {}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(

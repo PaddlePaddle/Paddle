@@ -372,85 +372,26 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    // translator here
-
-    std::unique_ptr<::ir::Program> ir_program;
     if (FLAGS_enable_new_ir_in_executor) {
-      auto ir_ctx = ir::IrContext::Instance();
-      auto program = std::make_unique<::ir::Program>(ir_ctx);
-
-      std::set<std::string> set_output_names;
-      // TODO(phlrain): no end add all the input
-      for (auto op_desc : forward_program->Block(0).AllOps()) {
-        for (const auto &n : op_desc->Outputs()) {
-          const auto &input_var_names = n.second;
-          for (const auto &var_name : input_var_names) {
-            set_output_names.insert(var_name);
-          }
-        }
-      }
-
-      // add fetch with place op to program
-      auto feed_x_name = details::GetTensorsName(x);
-      for (auto &in_t : x) {
-        auto name = in_t.name();
-        auto place = in_t.place().GetType();
-
-        auto op_desc = forward_global_block->PrependOp();
-        op_desc->SetType("feed_with_place");
-        op_desc->SetAttr("index", 0);
-        // TODO(phlrain) : using tensor dtype
-        op_desc->SetAttr("dtype", 0);
-        op_desc->SetAttr("place", static_cast<int>(place));
-        op_desc->SetAttr("name", name);
-        op_desc->SetOutput("out", {name});
-      }
-
-      std::set<std::string> set_parameter_names;
-      // TODO(phlrain): no need add all the input
-      for (auto op_desc : backward_program->Block(0).AllOps()) {
-        for (const auto &n : op_desc->Inputs()) {
-          const auto &input_var_names = n.second;
-          for (const auto &var_name : input_var_names) {
-            set_parameter_names.insert(var_name);
-          }
-        }
-      }
-
-      for (auto &t : output_names) {
-        set_parameter_names.insert(t);
-      }
-
-      for (auto &name : set_parameter_names) {
-        if (!set_output_names.count(name)) {
-          continue;
-        }
-
-        auto op_desc = forward_global_block->AppendOp();
-        op_desc->SetType("shaddow_output");
-        op_desc->SetAttr("name", name);
-        op_desc->SetInput("x", {name});
-        op_desc->SetOutput("out", {"@EMPTY@"});
-      }
-
-      forward_program = forward_global_block->Program();
-      paddle::translator::ProgramTranslator program_translator(forward_program,
-                                                               program.get());
-
-      program_translator.Translate();
-      program->Print(std::cerr);
-      ir_program.reset(
-          paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
-      ir_program->Print(std::cerr);
+      // build new ir program
+      auto ir_program = paddle::framework::ConstructFowardIrProgram(
+          forward_global_block, backward_global_block, output_names, x);
+      interpreter_core =
+          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+              std::move(ir_program),
+              place,
+              /*is_grad=*/false,
+              program_id,
+              global_inner_scope);
+    } else {
+      interpreter_core =
+          paddle::framework::CreateProgramInterpreterCoreInfoToCache(
+              *forward_program,
+              place,
+              /*is_grad=*/false,
+              program_id,
+              global_inner_scope);
     }
-
-    interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
-        *forward_program,
-        place,
-        /*is_grad=*/false,
-        program_id,
-        global_inner_scope,
-        std::move(ir_program));
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars =
         paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
@@ -586,62 +527,26 @@ inline void RunProgramGradAPI(
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
-    std::unique_ptr<::ir::Program> ir_program;
     if (FLAGS_enable_new_ir_in_executor) {
-      auto ir_ctx = ir::IrContext::Instance();
-      auto program = std::make_unique<::ir::Program>(ir_ctx);
+      auto res = paddle::framework::ConstructBackwardIrProgram(
+          backward_global_block, out_grad, x_grad, params_grad);
 
-      // add feed kernel
-      for (auto &out_grad_t : out_grad) {
-        auto name = out_grad_t.name();
-        auto place = out_grad_t.place().GetType();
-        if (name == "@EMPTY@") {
-          continue;
-        }
-        auto op_desc = backward_global_block->PrependOp();
-        op_desc->SetType("feed_with_place");
-        op_desc->SetAttr("index", 0);
-        // TODO(phlrain) : using tensor dtype
-        op_desc->SetAttr("dtype", 0);
-        op_desc->SetAttr("place", static_cast<int>(place));
-        op_desc->SetAttr("name", name);
-        op_desc->SetOutput("out", {name});
-      }
-      auto output_names = details::GetTensorsName(x_grad);
-      auto param_grad_names = details::GetTensorsName(params_grad);
-      for (auto &t : output_names) {
-        param_grad_names.push_back(t);
-      }
-      for (auto &name : param_grad_names) {
-        if (name == "@EMPTY@") {
-          continue;
-        }
-        auto op_desc = backward_global_block->AppendOp();
-        op_desc->SetType("shaddow_output");
-        op_desc->SetAttr("name", name);
-        op_desc->SetInput("x", {name});
-        op_desc->SetOutput("out", {"@EMPTY@"});
-      }
-
-      backward_program = backward_global_block->Program();
-
-      paddle::translator::ProgramTranslator program_translator(backward_program,
-                                                               program.get());
-      program_translator.Translate();
-      program->Print(std::cerr);
-
-      ir_program.reset(
-          paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
-      ir_program->Print(std::cerr);
+      interpreter_core =
+          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+              std::move(res),
+              place,
+              /*is_grad=*/true,
+              program_id,
+              global_inner_scope);
+    } else {
+      interpreter_core =
+          paddle::framework::CreateProgramInterpreterCoreInfoToCache(
+              *backward_program,
+              place,
+              /*is_grad=*/true,
+              program_id,
+              global_inner_scope);
     }
-
-    interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
-        *backward_program,
-        place,
-        /*is_grad=*/true,
-        program_id,
-        global_inner_scope,
-        std::move(ir_program));
 
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly
