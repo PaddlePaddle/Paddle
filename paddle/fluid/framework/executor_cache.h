@@ -228,8 +228,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const platform::Place& place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope* scope,
-    std::unique_ptr<::ir::Program> ir_prog = nullptr);
+    framework::Scope* scope);
 
 std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
     std::unique_ptr<::ir::Program> ir_prog,

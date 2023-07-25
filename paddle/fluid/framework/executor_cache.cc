@@ -295,8 +295,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const platform::Place &place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope *scope,
-    std::unique_ptr<::ir::Program> ir_program) {
+    framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {

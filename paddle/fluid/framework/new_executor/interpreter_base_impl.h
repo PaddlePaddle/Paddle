@@ -36,7 +36,6 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/backends/device_manager.h"
 
 DECLARE_bool(new_executor_serial_run);

@@ -31,7 +31,6 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
 namespace translator {
@@ -75,11 +74,10 @@ void ProgramTranslator::Translate() {
     SetParameterFromSingleBlock(block);
   }
 
-  // for (size_t block_idx = 0; block_idx < legacy_program_->Size();
-  // block_idx++) {
-  //   const BlockDesc& block = legacy_program_->Block(block_idx);
-  //   SetStopGradientAttributeForAllValue(block);
-  // }
+  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
+    const BlockDesc& block = legacy_program_->Block(block_idx);
+    SetStopGradientAttributeForAllValue(block);
+  }
 }
 
 inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
@@ -123,9 +121,6 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
   std::unordered_set<std::string> inner_defining_variables;
 
   for (auto op_desc : block.AllOps()) {
-    if (op_desc->Type() == "feed") {
-      continue;
-    }
     for (const auto& n : op_desc->Inputs()) {
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
@@ -170,11 +165,6 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
-    if (op->Type() == "shaddow_output") {
-      if (!param_map_.count(op->Input("x")[0])) {
-        continue;
-      }
-    }
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
