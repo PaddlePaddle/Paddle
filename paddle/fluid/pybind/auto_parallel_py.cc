@@ -285,7 +285,11 @@ void BindAutoParallel(py::module *m) {
             return TensorDistAttr(self);
           },
           py::arg("memo"))
-      .def("__str__", &TensorDistAttr::to_string);
+      .def("__str__", &TensorDistAttr::to_string)
+      .def("is_partial", &TensorDistAttr::is_partial)
+      .def("partial_dims", &TensorDistAttr::partial_dims)
+      .def("clean_partial_dims", &TensorDistAttr::clean_partial_dims)
+      .def("clean_partial_status", &TensorDistAttr::clean_partial_status);
 
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
       .def("infer_forward", &SPMDRuleBase::InferForward)

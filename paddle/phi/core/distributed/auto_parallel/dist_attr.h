@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace phi {
 namespace distributed {
@@ -71,6 +72,12 @@ class TensorDistAttr {
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
+  // true if tensor is partial on any mesh dim.
+  bool is_partial() const { return !partial_status_.empty(); }
+
+  // return vector of mesh dims on which the this tensor is partial on
+  const std::vector<int64_t> partial_dims() const;
+
   const paddle::flat_hash_map<int64_t, _Partial_>& partial_status() const {
     return partial_status_;
   }
@@ -86,7 +93,7 @@ class TensorDistAttr {
   void clean_partial_status();
 
   // clean by dims
-  void clean_partial_status(const std::vector<int64_t>& dims);
+  void clean_partial_dims(const std::vector<int64_t>& dims);
 
   void set_default_dims_mapping(const std::vector<int64_t>& tensor_shape);
 

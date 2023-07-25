@@ -80,6 +80,15 @@ void TensorDistAttr::set_annotated(
   annotated_ = annotated;
 }
 
+const std::vector<int64_t> TensorDistAttr::partial_dims() const {
+  std::vector<int64_t> keys;
+  keys.reserve(partial_status_.size());
+  for (auto& kv : partial_status_) {
+    keys.push_back(kv.first);
+  }
+  return keys;
+}
+
 void TensorDistAttr::set_partial_status(
     const paddle::flat_hash_map<int64_t, _Partial_>& partial_status) {
   partial_status_ = partial_status;
@@ -93,13 +102,14 @@ void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
           "Trying to Set dim %d as Partial which is already a Partial dim.",
           dim));
     }
-    partial_status_.emplace(dim, type);
+    _Partial_ partial = {dim, type};
+    partial_status_.emplace(dim, partial);
   }
 }
 
 void TensorDistAttr::clean_partial_status() { partial_status_.clear(); }
 
-void TensorDistAttr::clean_partial_status(const std::vector<int64_t>& dims) {
+void TensorDistAttr::clean_partial_dims(const std::vector<int64_t>& dims) {
   for (const auto& dim : dims) {
     if (partial_status_.count(dim) == 0) {
       PADDLE_THROW(phi::errors::InvalidArgument(
