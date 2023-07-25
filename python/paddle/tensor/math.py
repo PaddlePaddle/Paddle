@@ -2297,7 +2297,7 @@ def outer(x, y, name=None):
                     val,
                     name,
                     ['float16', 'float32', 'float64', 'int32', 'int64'],
-                    'inner',
+                    'outer',
                 )
 
         __check_input(nx, ny)

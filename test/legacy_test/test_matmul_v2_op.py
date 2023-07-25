@@ -732,7 +732,7 @@ class TestInt32MatmulOp(OpTest):
     def init_input_output(self):
         self.x = np.random.random((10, 10)).astype(self.dtype)
         self.y = np.random.random((10, 10)).astype(self.dtype)
-        self.out = np.dot(self.x, self.y)
+        self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
         self.check_output(check_cinn=False)
@@ -758,7 +758,7 @@ class TestInt32MatMulOpBroadcast(OpTest):
     def init_input_output(self):
         self.x = np.random.random((10, 2, 5)).astype(self.dtype)
         self.y = np.random.random((5, 20)).astype(self.dtype)
-        self.out = np.dot(self.x, self.y)
+        self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
         self.check_output(check_cinn=False)
@@ -784,7 +784,7 @@ class TestInt64MatmulOp(OpTest):
     def init_input_output(self):
         self.x = np.random.random((10, 10)).astype(self.dtype)
         self.y = np.random.random((10, 10)).astype(self.dtype)
-        self.out = np.dot(self.x, self.y)
+        self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
         self.check_output(check_cinn=False)
@@ -810,7 +810,7 @@ class TestInt64MatMulOpBroadcast(OpTest):
     def init_input_output(self):
         self.x = np.random.random((10, 2, 5)).astype(self.dtype)
         self.y = np.random.random((5, 20)).astype(self.dtype)
-        self.out = np.dot(self.x, self.y)
+        self.out = np.matmul(self.x, self.y)
 
     def test_check_output(self):
         self.check_output(check_cinn=False)
