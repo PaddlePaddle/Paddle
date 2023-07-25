@@ -114,30 +114,6 @@ PD_REGISTER_KERNEL(not_equal, KPS, ALL_LAYOUT, phi::NotEqualKernel, int) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-PD_REGISTER_KERNEL(
-    less_than_raw, KPS, ALL_LAYOUT, phi::LessThanRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    less_equal_raw, KPS, ALL_LAYOUT, phi::LessEqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    greater_than_raw, KPS, ALL_LAYOUT, phi::GreaterThanRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    greater_equal_raw, KPS, ALL_LAYOUT, phi::GreaterEqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(equal_raw, KPS, ALL_LAYOUT, phi::EqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(
-    not_equal_raw, KPS, ALL_LAYOUT, phi::NotEqualRawKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-
 #else
 
 PD_REGISTER_KERNEL(equal_all,
@@ -157,20 +133,6 @@ PD_REGISTER_KERNEL(equal_all,
                      KPS,                                 \
                      ALL_LAYOUT,                          \
                      phi::func##Kernel,                   \
-                     bool,                                \
-                     int16_t,                             \
-                     int,                                 \
-                     int64_t,                             \
-                     float,                               \
-                     double,                              \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16) {              \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
-  }                                                       \
-  PD_REGISTER_KERNEL(name##_raw,                          \
-                     KPS,                                 \
-                     ALL_LAYOUT,                          \
-                     phi::func##RawKernel,                \
                      bool,                                \
                      int16_t,                             \
                      int,                                 \

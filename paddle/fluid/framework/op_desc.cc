@@ -457,7 +457,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   if (op_desc.dist_attr_) {
-    dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
+    dist_attr_ = std::make_unique<OperatorDistAttr>(*op_desc.dist_attr_);
   }
   need_update_ = true;
 }
@@ -691,7 +691,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).empty()) {
     // Find current attr via attr name and set the correct attribute value
     if (is_runtime_attr) {
       attr_type =
@@ -1145,7 +1145,7 @@ OperatorDistAttr *OpDesc::MutableDistAttr() {
   if (dist_attr_) {
     return dist_attr_.get();
   } else {
-    dist_attr_.reset(new OperatorDistAttr(*this));
+    dist_attr_ = std::make_unique<OperatorDistAttr>(*this);
     return dist_attr_.get();
   }
 }

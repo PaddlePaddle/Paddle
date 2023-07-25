@@ -171,7 +171,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     T adaptive_threshold = nms_threshold;
     const T* bbox_data = bbox.data<T>();
 
-    while (sorted_indices.size() != 0) {
+    while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
       for (size_t k = 0; k < selected_indices->size(); ++k) {

@@ -57,29 +57,29 @@ class AttnMatmulINT8 {
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
-    quantize_kernel_launcher<T>(input->data<T>(),
-                                input_tmp->data<int8_t>(),
-                                quant_in_scale,
-                                m_,
-                                k_,
-                                quant_round_type,
-                                quant_max_bound,
-                                quant_min_bound,
-                                dev_ctx_.stream());
+    LaunchQuantKernel<T>(input->data<T>(),
+                         input_tmp->data<int8_t>(),
+                         quant_in_scale,
+                         m_,
+                         k_,
+                         quant_round_type,
+                         quant_max_bound,
+                         quant_min_bound,
+                         dev_ctx_.stream());
 
     helpers_[0]->GEMM(input_tmp->data<int8_t>(),
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
                       dev_ctx_.stream());
 
-    dequantize_kernel_launcher<T>(output_tmp->data<int32_t>(),
-                                  output->data<T>(),
-                                  m_,
-                                  n_,
-                                  dev_ctx_.stream(),
-                                  gpu_config_.get(),
-                                  quant_in_scale,
-                                  dequant_out_scale->data<float>());
+    LaunchDequantKernel<T>(output_tmp->data<int32_t>(),
+                           output->data<T>(),
+                           m_,
+                           n_,
+                           dev_ctx_.stream(),
+                           gpu_config_.get(),
+                           quant_in_scale,
+                           dequant_out_scale->data<float>());
 
     if (compute_bias_) {
       // bias_out = output + bias
@@ -126,14 +126,14 @@ class AttnMatmulINT8 {
                       output_tmp->data<int32_t>(),
                       dev_ctx_.stream());
 
-    dequantize_kernel_launcher<T>(output_tmp->data<int32_t>(),
-                                  output->data<T>(),
-                                  m_,
-                                  n_,
-                                  dev_ctx_.stream(),
-                                  gpu_config_.get(),
-                                  quant_in_scale,
-                                  dequant_out_scale->data<float>());
+    LaunchDequantKernel<T>(output_tmp->data<int32_t>(),
+                           output->data<T>(),
+                           m_,
+                           n_,
+                           dev_ctx_.stream(),
+                           gpu_config_.get(),
+                           quant_in_scale,
+                           dequant_out_scale->data<float>());
 
     if (compute_bias_) {
       // bias_out = output + bias
@@ -162,15 +162,15 @@ class AttnMatmulINT8 {
                              const int quant_round_type = 1,
                              const float quant_max_bound = 127.0,
                              const float quant_min_bound = -127.0) {
-    quantize_kernel_launcher<T>(input->data<T>(),
-                                input_tmp->data<int8_t>(),
-                                quant_in_scale,
-                                m_,
-                                k_,
-                                quant_round_type,
-                                quant_max_bound,
-                                quant_min_bound,
-                                dev_ctx_.stream());
+    LaunchQuantKernel<T>(input->data<T>(),
+                         input_tmp->data<int8_t>(),
+                         quant_in_scale,
+                         m_,
+                         k_,
+                         quant_round_type,
+                         quant_max_bound,
+                         quant_min_bound,
+                         dev_ctx_.stream());
 
     helpers_[0]->GEMM(input_tmp->data<int8_t>(),
                       weight->data<int8_t>(),

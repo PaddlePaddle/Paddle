@@ -200,7 +200,7 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
     std::vector<bool> &is_weighted_list) {
   std::vector<std::vector<int64_t>> request_bucket;
   std::vector<std::vector<bool>> is_weighted_bucket;
-  bool add_weight = is_weighted_list.size() > 0;
+  bool add_weight = !is_weighted_list.empty();
   std::vector<int> server_index_arr;
   std::vector<int> index_mapping(server_size, -1);
   for (size_t query_idx = 0; query_idx < node_id_list.size(); ++query_idx) {
@@ -638,7 +638,7 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
     int request_idx = server2request[server_index];
     node_id_buckets[request_idx].push_back(node_ids[query_idx]);
     query_idx_buckets[request_idx].push_back(query_idx);
-    if (features_idx_buckets[request_idx].size() == 0) {
+    if (features_idx_buckets[request_idx].empty()) {
       features_idx_buckets[request_idx].resize(feature_names.size());
     }
     for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {

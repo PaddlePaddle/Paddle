@@ -28,18 +28,18 @@ class Node;
 
 class FuseSgdOpPass : public FuseOptimizerOpPass {
  private:
-  virtual const std::string GetOpType() const { return "sgd"; }
+  const std::string GetOpType() const override { return "sgd"; }
 
-  virtual const std::vector<std::string> GetAuxiliaryVarNames() const {
+  const std::vector<std::string> GetAuxiliaryVarNames() const override {
     return {};
   }
 
   // Fuse Sgd Ops
-  virtual ir::Node *FuseOptimizerOps(
+  ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &sgd_ops,
-      ir::Graph *graph) const {
+      ir::Graph *graph) const override {
     PADDLE_ENFORCE_GT(
         sgd_ops.size(),
         static_cast<size_t>(0),

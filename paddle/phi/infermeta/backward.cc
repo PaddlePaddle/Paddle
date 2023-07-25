@@ -728,7 +728,7 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   value_grad->set_dtype(value.dtype());
   value_grad->set_layout(value.layout());
 
-  if (bias) {
+  if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
     const int64_t bias_seq_length = bias.dims()[1];
     const int64_t bias_num_head = bias.dims()[2];
@@ -968,10 +968,10 @@ void RnnGradInferMeta(const MetaTensor& x,
   if (x_grad) {
     UnchangedInferMeta(x, x_grad);
   }
-  if (pre_state_grad.size()) {
+  if (!pre_state_grad.empty()) {
     UnchangedMultiInferMeta(pre_state, pre_state_grad);
   }
-  if (weight_grad_list.size()) {
+  if (!weight_grad_list.empty()) {
     UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }
@@ -1199,6 +1199,21 @@ void IndexAddGradInferMeta(const MetaTensor& index,
     add_value_grad->set_dtype(add_value.dtype());
     add_value_grad->set_layout(add_value.layout());
     add_value_grad->share_lod(add_value);
+  }
+}
+
+void IndexPutGradInferMeta(const MetaTensor& x,
+                           const std::vector<const MetaTensor*>& indices,
+                           const MetaTensor& value,
+                           const MetaTensor& out_grad,
+                           bool accumulate,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (value_grad) {
+    value_grad->share_meta(value);
   }
 }
 
