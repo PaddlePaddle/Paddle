@@ -129,9 +129,10 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
   if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
     data = print_tensor.data<T>();
   } else {
+    phi::GPUPlace gpu_place;
     phi::CPUPlace cpu_place;
     auto& pool = paddle::experimental::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.GetMutable(cpu_place);
+    auto* dev_ctx = pool.GetMutable(gpu_place);
 
     phi::Copy(*dev_ctx, print_tensor, cpu_place, true, &cpu_tensor);
     data = cpu_tensor.data<T>();

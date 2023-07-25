@@ -32,42 +32,6 @@ void FeedWithPlaceKernel(const Context& ctx,
                          phi::DataType data_type,
                          DenseTensor* out) {}
 
-template <typename T, typename Context>
-void PrintKernel(const Context& ctx,
-                 const DenseTensor& x,
-                 int first_n,
-                 const std::string& message,
-                 int summarize,
-                 bool print_tensor_name,
-                 bool print_tensor_type,
-                 bool print_tensor_shape,
-                 bool print_tensor_layout,
-                 bool print_tensor_lod,
-                 const std::string& print_phase,
-                 bool is_forward,
-                 DenseTensor* out) {
-  phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
-  out->set_lod(x.lod());
-
-  // if ((is_forward && print_phase == kBackward) ||
-  //     (!is_forward && print_phase == kForward)) {
-  //   return;
-  // }
-
-  // TODO(phlrain): support first_n using a input tensor
-  // if (first_n > 0 && ++times_ > first_n) return;
-
-  // TODO(phlrain): support printed_var_name
-  paddle::operators::TensorFormatter formatter;
-  const std::string& name = print_tensor_name ? "var" : "";
-  formatter.SetPrintTensorType(print_tensor_type);
-  formatter.SetPrintTensorShape(print_tensor_shape);
-  formatter.SetPrintTensorLod(print_tensor_lod);
-  formatter.SetPrintTensorLayout(print_tensor_layout);
-  formatter.SetSummarize(summarize);
-  formatter.Print(x, name, message);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
