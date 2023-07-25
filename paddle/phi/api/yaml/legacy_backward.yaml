@@ -485,17 +485,6 @@
     func : prod_grad
   composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
 
-- backward_op : relu6_grad
-  forward : relu6 (Tensor x) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out]
-  kernel :
-    func : relu6_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int repeats, int axis)

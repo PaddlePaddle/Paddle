@@ -30,7 +30,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
