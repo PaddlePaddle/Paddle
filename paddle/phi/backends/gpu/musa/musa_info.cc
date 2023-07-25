@@ -88,16 +88,15 @@ int GetGPUComputeCapability(int id) {
                                    "but received id is: %d. GPU count is: %d.",
                                    id,
                                    GetGPUDeviceCount()));
-  return 100;
-  //int major, minor;
-  //auto major_error_code = musaDeviceGetAttribute(
-  //    &major, musaDeviceAttributeComputeCapabilityMajor, id);
-  //auto minor_error_code = musaDeviceGetAttribute(
-  //    &minor, musaDeviceAttributeComputeCapabilityMinor, id);
+  int major, minor;
+  auto major_error_code = musaDeviceGetAttribute(
+      &major, musaDevAttrComputeCapabilityMajor, id);
+  auto minor_error_code = musaDeviceGetAttribute(
+      &minor, musaDevAttrComputeCapabilityMinor, id);
 
-  //PADDLE_ENFORCE_GPU_SUCCESS(major_error_code);
-  //PADDLE_ENFORCE_GPU_SUCCESS(minor_error_code);
-  //return major * 100 + minor;
+  PADDLE_ENFORCE_GPU_SUCCESS(major_error_code);
+  PADDLE_ENFORCE_GPU_SUCCESS(minor_error_code);
+  return major * 100 + minor;
 }
 
 int GetGPURuntimeVersion(int id) {
@@ -138,7 +137,8 @@ int GetGPUMultiProcessors(int id) {
                                    GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(
-      musaDeviceGetAttribute(&count, musaDeviceAttributeMultiprocessorCount, id));
+                                     
+      musaDeviceGetAttribute(&count, musaDevAttrMultiProcessorCount, id));
   return count;
 }
 
@@ -152,7 +152,7 @@ int GetGPUMaxThreadsPerMultiProcessor(int id) {
                                    GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceGetAttribute(
-      &count, musaDeviceAttributeMaxThreadsPerMultiProcessor, id));
+      &count, musaDevAttrMaxThreadsPerMultiProcessor, id));
 
   return count;
 }
@@ -167,7 +167,7 @@ int GetGPUMaxThreadsPerBlock(int id) {
                                    GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(
-      musaDeviceGetAttribute(&count, musaDeviceAttributeMaxThreadsPerBlock, id));
+      musaDeviceGetAttribute(&count, musaDevAttrMaxThreadsPerBlock, id));
   return count;
 }
 
@@ -188,17 +188,17 @@ std::array<int, 3> GetGpuMaxGridDimSize(int id) {
   std::array<int, 3> ret;
   int size;
   auto error_code_x =
-      musaDeviceGetAttribute(&size, musaDeviceAttributeMaxGridDimX, id);
+      musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimX, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_x);
   ret[0] = size;
 
   auto error_code_y =
-      musaDeviceGetAttribute(&size, musaDeviceAttributeMaxGridDimY, id);
+      musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimY, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_y);
   ret[1] = size;
 
   auto error_code_z =
-      musaDeviceGetAttribute(&size, musaDeviceAttributeMaxGridDimZ, id);
+      musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimZ, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_z);
   ret[2] = size;
   return ret;
