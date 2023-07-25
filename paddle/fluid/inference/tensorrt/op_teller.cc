@@ -1200,15 +1200,15 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
       if (!with_dynamic_shape) {
-        // At present, only support float32 or float16 into trt.
+        // At present, only support float32 or float16 or float64 into trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
               dtype == framework::proto::VarType::FP64 ||
               dtype == framework::proto::VarType::FP16)) {
           return false;
         }
       } else {
-        // At present, only support float32 or float16 or int32 or int64 into
-        // trt.
+        // At present, only support float32 or float16 or float64 or int32 or
+        // int64 into trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
               dtype == framework::proto::VarType::FP16 ||
               dtype == framework::proto::VarType::FP64 ||
@@ -2222,16 +2222,19 @@ struct SimpleOpTypeSetTeller : public Teller {
       } else {
 #if IS_TRT_VERSION_GE(7000)
         if (dtype != framework::proto::VarType::INT32 &&
+            dtype != framework::proto::VarType::INT64 &&
             dtype != framework::proto::VarType::FP32 &&
             dtype != framework::proto::VarType::FP64) {
-          VLOG(3) << "reduce op input data type must be int32 or float32 or "
+          VLOG(3) << "reduce op input data type must be int32 or int64 or "
+                     "float32 or "
                      "float64";
           return false;
         }
 #else
         if (dtype != framework::proto::VarType::FP32 &&
             dtype != framework::proto::VarType::FP64) {
-          VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+          VLOG(3) << "reduce op input data type must be float32 or float64 "
+                     "using TensorRT "
                      "< 7.0";
           return false;
         }
