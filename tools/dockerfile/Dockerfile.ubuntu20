@@ -147,13 +147,14 @@ RUN pip3.7 --no-cache-dir install -r /root/requirements.txt && \
 #RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 #CMD source ~/.bashrc
 
-# ccache 3.7.9
-RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
-    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
-    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+# ccache 4.2.0
+RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
+    tar xf ccache-4.8.2.tar.gz && mkdir /usr/local/ccache-4.8.2 && cd ccache-4.8.2 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.8.2 .. && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
-    cd ../ && rm -rf ccache-3.7.9 ccache-3.7.9.tar.gz
+    ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
+    cd ../../ && rm -rf ccache-4.8.2.tar.gz
 
 # clang+llvm 3.8.0
 RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
