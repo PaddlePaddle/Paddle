@@ -215,11 +215,14 @@ void IrPrinter::PrintOpResult(const Operation* op) {
 }
 
 void IrPrinter::PrintAttributeMap(const Operation* op) {
+  AttributeMap attributes = op->attributes();
+  std::map<std::string, Attribute, std::less<std::string>> order_attributes(
+      attributes.begin(), attributes.end());
   os << " {";
 
   PrintInterleave(
-      op->attributes().begin(),
-      op->attributes().end(),
+      order_attributes.begin(),
+      order_attributes.end(),
       [this](std::pair<std::string, Attribute> it) {
         this->os << it.first;
         this->os << ":";
