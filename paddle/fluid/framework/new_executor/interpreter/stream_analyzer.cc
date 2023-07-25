@@ -708,15 +708,7 @@ bool IrStreamAnalyzer::HasDataDependency(
     const paddle::framework::InstructionBase* cur_instr,
     const paddle::framework::InstructionBase* next_instr) const {
   auto no_need_buffer_ins = [](const paddle::framework::InstructionBase* instr)
-      -> const std::unordered_set<ir::Value> {
-    // auto* op = instr.OpBase();
-    // auto& inferer = op->Info().NoNeedBufferVarsInferer();
-    // if (inferer) {
-    //   return inferer(op->Inputs(), op->Outputs(), op->Attrs());
-    // }
-    // TODO(zhangbo9674): Get NoNeedBufferValue set
-    return std::unordered_set<ir::Value>();
-  };
+      -> const std::unordered_set<ir::Value> { return instr->NoNeedBuffer(); };
 
   // cur_instr->var->next_instr
   std::unordered_set<size_t> cur_var_ids;

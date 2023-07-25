@@ -294,6 +294,14 @@ PhiKernelInstruction::PhiKernelInstruction(
   InitInputsOutputsIds(
       op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";
+
+  auto no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
+  std::unordered_set<::ir::Value> no_need_buffer_values;
+  for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
+    no_need_buffer_values.insert(op->operand(id));
+  }
+  SetNoNeedBuffer(no_need_buffer_values);
+  VLOG(6) << "finish process no need buffer";
 }
 
 std::vector<int> GetValueIds(

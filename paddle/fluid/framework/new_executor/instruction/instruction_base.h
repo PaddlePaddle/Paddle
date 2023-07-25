@@ -125,6 +125,13 @@ class InstructionBase {
   void SetOutputs(
       const std::unordered_map<::ir::Value, std::vector<int>>& outputs);
 
+  const std::unordered_set<::ir::Value>& NoNeedBuffer() const {
+    return no_need_buffer_;
+  }
+  void SetNoNeedBuffer(const std::unordered_set<::ir::Value>& no_need_buffer) {
+    no_need_buffer_ = no_need_buffer;
+  }
+
   virtual void Run() = 0;
 
   virtual const std::string& Name() const = 0;

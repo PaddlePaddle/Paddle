@@ -267,9 +267,34 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                      &var_name_2_id_,
                      &variable_list_);
     VLOG(4) << DebugValueInfo();
+
     BuildInstruction();
+
     BuildInstructionDependences();
+
     ir_stream_analyzer_.ConstructEvents(&vec_instruction_base_);
+    // add event for the input var of jit program, since there are async copied
+    // from gpu_pinned place to gpu place on compute stream.
+    for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+      if (dependecy_count_[i] == 0) {
+        InstructionBase* inst = vec_instruction_base_[i];
+        if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
+          for (auto& item : inst->Inputs()) {
+            for (auto var_id : item.second) {
+              auto name = GetNameById(var_id);
+              if (JitInputVars().count(name)) {
+                auto device_event = std::make_shared<platform::DeviceEvent>(
+                    place_, platform::GenerateDeviceEventFlag());
+                VLOG(4) << "Add input event for input: " << name << " of "
+                        << inst->Name();
+                inst->AddEventToWait(
+                    i, device_event, ir_stream_analyzer_.GetWaiterType(inst));
+              }
+            }
+          }
+        }
+      }
+    }
 
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
@@ -353,6 +378,21 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
 }
 
 const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
+
+std::string NewIRInterpreter::GetNameById(int id) const {
+  // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
+  // vec_meta_info_[id] may be nullptr,
+  // typically when the target variable is not existed in the original program
+  // desc, but created by interpretercore.
+  // For example, created and used by d2h_copy or h2d_copy operator.
+  auto it = std::find_if(var_name_2_id_.begin(),
+                         var_name_2_id_.end(),
+                         [id](const auto& pair) { return pair.second == id; });
+  if (it != var_name_2_id_.end()) {
+    return it->first;
+  }
+  return "";
+}
 
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
