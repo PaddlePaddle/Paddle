@@ -1005,9 +1005,16 @@ void BuildOpFuncList(
                       kernel_name);
     std::cerr << "kernel name " << kernel_name << std::endl;
 
-    if ( kernel_name == "fused_softmax_mask_upper_triangle")
+    if ( kernel_name == "fused_softmax_mask_upper_triangle" || kernel_name == "fused_softmax_mask_upper_triangle_grad" )
     {
-
+      // builder operator
+      op_func_node.operator_base_ = ir::BuildOperatorBase( (*it), value_2_name_map, op_yaml_info_parser);
+      paddle::framework::VariableValueMap in_map;
+      paddle::framework::VariableValueMap out_map;
+      op_func_node.runtime_ctx_ = std::make_shared<paddle::framework::RuntimeContext>( 
+              paddle::framework::RuntimeContext(in_map, out_map));
+      ir::BuildRuntimeContext( (*it), value_2_name_map, scope, local_scope, op_yaml_info_parser, op_func_node.runtime_ctx_.get());
+      op_func_node.fluid_op = true;
     }
     else
     {

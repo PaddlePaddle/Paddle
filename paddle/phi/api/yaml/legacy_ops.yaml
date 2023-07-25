@@ -1020,3 +1020,5 @@
     func : UnchangedInferMeta
   kernel:
     func : fused_softmax_mask_upper_triangle
+  backward: fused_softmax_mask_upper_triangle_grad
+

@@ -1026,14 +1026,28 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
 
     if (instr_node.PreDefineContext()) {
       VLOG(5) << "run new ir selected kernel";
+      std::cerr << instr_node.OpFunc()->phi_op_name_ << std::endl;
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
       VLOG(5) << "begin to run op " << op_func_node->phi_op_name_;
       if (op_func_node->infer_meta_interface_) {
+        std::cerr << "run infer meta" << std::endl;
         op_func_node->infer_meta_interface_->infer_meta_(
             &(op_func_node->infer_meta_context_));
       }
       VLOG(5) << "after run infer meta";
-      (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+      
+      if( op_func_node->fluid_op )
+      {
+        // run fluid op 
+        std::cerr  << "run fluid op" << std::endl;      
+        ExecutionContext exe_ctx(*(op_func_node->operator_base_.get()), *scope_, *(op_func_node->dev_ctx_), *(op_func_node->runtime_ctx_.get()) );
+         (*(op_func_node->phi_kernel_))( &exe_ctx );      
+      
+      }
+      else
+      {
+        (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+      }
       VLOG(5) << "after run kernel";
     } else if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);

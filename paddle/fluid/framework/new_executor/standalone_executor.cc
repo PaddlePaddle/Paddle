@@ -64,9 +64,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
-      auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
+      auto base_program = paddle::TranslateLegacyProgramToProgram(*program);      
       auto kernel_program =
-          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);      
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
           place_, std::move(kernel_program), scope_, execution_config));
     } else {

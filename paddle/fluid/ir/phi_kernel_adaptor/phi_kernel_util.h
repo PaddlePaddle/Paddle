@@ -51,12 +51,16 @@ void BuildScope(const ir::Block& block,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list);
 
-void BuildPhiContext(ir::Operation* op,
+void BuildRuntimeContext(ir::Operation* op,
                      const std::unordered_map<ir::Value, std::string>& name_map,
                      paddle::framework::Scope* scope,
                      paddle::framework::Scope* local_scope,
                      const paddle::dialect::OpYamlInfoParser& op_yaml_info,
                      paddle::framework::RuntimeContext* runtime_ctx); 
+
+std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase( ir::Operation* op,
+                    const std::unordered_map<ir::Value, std::string>& name_map,
+                    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
 template <typename Context,
           typename InType,
