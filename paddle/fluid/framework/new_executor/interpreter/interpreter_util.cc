@@ -952,12 +952,13 @@ void BuildOpFuncList(
     OpFuncNode op_func_node;
     auto attr_map = (*it)->attributes();
 
-    auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+    auto op_name =
+        attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
         op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter") {
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -977,6 +978,7 @@ void BuildOpFuncList(
         phi::MetaTensor,
         phi::MetaTensor,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         false>((*it),
                value_2_name_map,
                scope,
@@ -985,7 +987,7 @@ void BuildOpFuncList(
                &(op_func_node.infer_meta_context_));
 
     auto kernel_name =
-        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
     auto kernel_key = attr_map.at("kernel_key")
                           .dyn_cast<paddle::dialect::KernelAttribute>()
                           .data();
@@ -1003,14 +1005,13 @@ void BuildOpFuncList(
                           const phi::TensorBase*,
                           phi::TensorBase*,
                           paddle::small_vector<const phi::TensorBase*>,
+                          paddle::small_vector<phi::TensorBase*>,
                           true>((*it),
                                 value_2_name_map,
                                 scope,
                                 local_scope,
                                 op_yaml_info_parser,
-                                &(op_func_node.kernel_context_),
-                                &(op_func_node.input_index),
-                                &(op_func_node.output_index));
+                                &(op_func_node.kernel_context_));
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(
