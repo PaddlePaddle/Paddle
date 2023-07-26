@@ -84,12 +84,12 @@ void InstructionBase::AddInplace(Variable* in, Variable* out) {
 void InstructionBase::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 void InstructionBase::SetInputs(
-    const std::map<std::string, std::vector<int>>& inputs) {
+    const std::unordered_map<ir::Value, std::vector<int>>& inputs) {
   input_index_ = inputs;
 }
 
 void InstructionBase::SetOutputs(
-    const std::map<std::string, std::vector<int>>& outputs) {
+    const std::unordered_map<ir::Value, std::vector<int>>& outputs) {
   output_index_ = outputs;
 }
 

@@ -25,7 +25,7 @@ namespace operators {
 
 class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X",
              "X(Tensor), Input variable which"
              "mapping the leaf node idx of tdm tree,"

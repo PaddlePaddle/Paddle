@@ -240,7 +240,7 @@ struct XPUHardSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
     using XPUType = typename XPUTypeTrait<T>::Type;
     int r = xpu_activation_1attr_func<Context, T, XPUType>(
         dev_ctx, x, out, slope, xpu::hard_sigmoid<XPUType>);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_sigmoid");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hardsigmoid");
   }
 };
 
@@ -549,7 +549,7 @@ PD_REGISTER_KERNEL(
     sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     swish, XPU, ALL_LAYOUT, phi::SwishKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(hard_sigmoid,
+PD_REGISTER_KERNEL(hardsigmoid,
                    XPU,
                    ALL_LAYOUT,
                    phi::HardSigmoidKernel,

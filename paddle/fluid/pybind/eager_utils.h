@@ -113,7 +113,7 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 #ifdef PADDLE_WITH_DISTRIBUTE
-PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value);
+PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(
     const phi::distributed::auto_parallel::TensorDistAttr* value);
 #endif
@@ -126,7 +126,7 @@ PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
 
-PyObject* ToPyObject(egr::GradNodeBase* grad_node);
+PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 
 class PyTensorHook : public egr::TensorHook {
  public:
