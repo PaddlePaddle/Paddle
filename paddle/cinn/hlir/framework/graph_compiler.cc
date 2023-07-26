@@ -30,8 +30,6 @@
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/utils/profiler.h"
 
-DECLARE_int32(cinn_parallel_compile_size);
-
 namespace cinn {
 namespace hlir {
 namespace framework {
