@@ -337,7 +337,8 @@ std::string TensorDistAttr::partial_status_string() const {
   std::string partial_status_str = "[";
   for (auto& itr : partial_status_) {
     partial_status_str += "Partial(dims:" + std::to_string(itr.first) + ", " +
-                          ReduceTypeStrings[static_cast<int>(type_)] + "), ";
+                          ReduceTypeStrings[static_cast<int>(itr.second)] +
+                          "), ";
   }
   partial_status_str += "]";
   return partial_status_str;
