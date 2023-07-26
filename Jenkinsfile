@@ -35,7 +35,8 @@ pipeline {
       steps {
         container('main') {
           sh 'git config --global --add safe.directory \"*\"'
-          sh 'git diff --name-only origin/develop..HEAD | xargs pre-commit run --files'
+          sh '/bin/bash --login -c "BRANCH=origin/develop /bin/bash tools/codestyle/pre_commit.sh"'
+          // sh 'git diff --name-only origin/develop..HEAD | xargs pre-commit run --files'
         }
       }
     }

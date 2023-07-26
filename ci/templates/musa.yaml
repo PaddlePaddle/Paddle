@@ -23,7 +23,7 @@ spec:
   containers:
   - name: main
     tty: true
-    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:test
+    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:v0.1.0
     imagePullPolicy: Always
     env:
     - name: TARGET_DEVICE
