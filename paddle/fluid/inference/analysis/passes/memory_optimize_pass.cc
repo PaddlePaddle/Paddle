@@ -65,7 +65,6 @@ void MemoryOptimizePass::CollectLifeCycle(
   double persis_byte = 0;
   for (auto* op_node : framework::ir::TopologyVarientSort(
            *graph, static_cast<framework::ir::SortKind>(sort_kind))) {
-    // std::cout << "tuopu: " << op_node->Name() << std::endl;
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
@@ -80,7 +79,6 @@ void MemoryOptimizePass::CollectLifeCycle(
         auto var = node->Name();
         lifecycles->emplace(var,
                             std::make_pair(0, std::numeric_limits<int>::max()));
-        // std::cout << "tuopu: " << var << std::endl;
       }
     } else {
       // Normal operators.
@@ -109,7 +107,6 @@ void MemoryOptimizePass::CollectLifeCycle(
           continue;
         }
         std::string var = node->Name();
-        // std::cout << "tuopu: " << var << std::endl;
         if (!lifecycles->count(var)) {
           (*lifecycles)[var] = std::make_pair(max_lifecycle, max_lifecycle);
         } else {
@@ -267,7 +264,6 @@ void MakeSimpleReusePlan(
 
   // Generating Memory Reuse Strategy Based on Greedy Way
   for (size_t i = 0; i < mem_nodes.size(); i++) {
-    // std::cout << "-----" << mem_nodes[i].name << std::endl;
     if (mem_nodes[i].cluster >= 0) continue;
     int cluster_index = cluster_size->size();
     mem_nodes[i].cluster = cluster_index;
@@ -297,12 +293,13 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // Memory optimization.
   // We will perform the following operation:
   // 1. Collect all var's lifetime.
-  // 2. Make reuse plan: the vars can be reused if there is no overlap(on
+  // 2. Collect all var's memory size, shape and dtype.
+  // 3. Make reuse plan: the vars can be reused if there is no overlap(on
   // lifetime) between
   // them.
   // The final plan is a mapping table in which the key represents the original
   // name of var and the value in the table represents the current name of var.
-  // 3. Perform reuse plan: Replace all var's name in the model according to the
+  // 4. Perform reuse plan: Replace all var's name in the model according to the
   // mapping table.
   if (!argument->enable_memory_optim()) return;
   // Because of pass is a singleton, graph can not be member
