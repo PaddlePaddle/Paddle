@@ -608,6 +608,44 @@ struct GpuPsCommGraphFloatFea {
   }
 };  // end of struct GpuPsCommGraphFloatFea
 
+struct GpuPsCommRankFea {
+  uint64_t *node_list;  // only locate on host side, the list of node id
+  uint32_t *rank_list;  // locate on both side
+  uint64_t feature_size, feature_capacity;
+  // the size of feature array and graph_node_list array
+  GpuPsCommRankFea()
+      : node_list(NULL),
+        rank_list(NULL),
+        feature_size(0),
+        feature_capacity(0) {}
+  GpuPsCommRankFea(uint64_t *node_list_,
+                    uint32_t *rank_list_,
+                    uint64_t feature_size_)
+      : node_list(node_list_),
+        rank_list(rank_list_),
+        feature_size(feature_size_) {}
+  void init_on_cpu(uint64_t feature_size) {
+    this->feature_size = feature_size;
+    this->node_list = new uint64_t[feature_size];
+    this->rank_list = new uint32_t[feature_size];
+  }
+  void release_on_cpu() {
+#define DEL_PTR_ARRAY(p) \
+  if (p != nullptr) {    \
+    delete[] p;          \
+    p = nullptr;         \
+  }
+    DEL_PTR_ARRAY(node_list);
+    DEL_PTR_ARRAY(rank_list);
+  }
+  void display_on_cpu() const {
+    VLOG(1) << "GpuPsCommRankFea feature_size = " << feature_size;
+    for (uint64_t i = 0; i < feature_size; i++) {
+      VLOG(1) << "GpuPsCommRankFea rank_list[" << i << "] = " << rank_list[i];
+    }
+  }
+};  // end of struct GpuPsCommRankFea
+
 }  // end of namespace framework
 }  // end of namespace paddle
 #endif

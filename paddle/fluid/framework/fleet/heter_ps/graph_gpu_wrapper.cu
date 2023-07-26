@@ -22,7 +22,7 @@
 PHI_DECLARE_int32(gpugraph_storage_mode);
 PHI_DECLARE_bool(graph_metapath_split_opt);
 PHI_DECLARE_string(graph_edges_split_mode);
-
+PHI_DECLARE_bool(multi_node_sample_use_gpu_table);
 namespace paddle {
 namespace framework {
 
@@ -1028,6 +1028,16 @@ void GraphGpuWrapper::seek_keys_rank(int gpu_id,
   platform::CUDAPlace place = platform::CUDAPlace(gpu_id);
   auto stream = get_local_stream(gpu_id);
 
+
+  if (FLAGS_graph_edges_split_mode == "fennel" ) {
+    if (FLAGS_multi_node_sample_use_gpu_table) {
+      // fennel下，FLAGS_multi_node_sample_use_gpu_table为True
+      GpuPsGraphTable *g = reinterpret_cast<GpuPsGraphTable *>(graph_table);
+      g->get_rank_info_of_nodes(gpu_id, d_in_keys, d_out_ranks, len);
+      return;
+    }
+  } 
+  
   std::vector<uint64_t> h_keys(len);
   std::vector<uint32_t> h_ranks(len);
   CUDA_CHECK(cudaMemcpyAsync(
@@ -1039,9 +1049,11 @@ void GraphGpuWrapper::seek_keys_rank(int gpu_id,
   CUDA_CHECK(cudaStreamSynchronize(stream));
 
   if (FLAGS_graph_edges_split_mode == "fennel") {
+    // fennel下，但 FLAGS_multi_node_sample_use_gpu_table为False
     reinterpret_cast<GpuPsGraphTable *>(graph_table)
         ->cpu_graph_table_->query_all_ids_rank(len, h_keys.data(), h_ranks.data());
   } else {
+    // 硬拆下，cpu上进行取余得到
     auto gpu_num = reinterpret_cast<GpuPsGraphTable *>(graph_table)
         ->get_device_num();
     for (size_t i = 0; i < len; ++i) {
@@ -1280,8 +1292,28 @@ void GraphGpuWrapper::release_graph_edge() {
 }
 
 void GraphGpuWrapper::release_graph_node() {
-  return reinterpret_cast<GpuPsGraphTable *>(graph_table)
+  reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->release_graph_node();
+  // fennel 下 构造gpu表
+  if (strncasecmp(FLAGS_graph_edges_split_mode.c_str(), "fennel", 6) == 0 && FLAGS_multi_node_sample_use_gpu_table) {
+    debug_gpu_memory_info("release_graph_node fennel gputable start");
+    VLOG(0) << "begin build rank gpu table";
+    GpuPsGraphTable *g = reinterpret_cast<GpuPsGraphTable *>(graph_table);
+    std::vector<std::future<int>> tasks;
+    for (int i = 0; i < 8; i++) {
+      tasks.push_back(upload_task_pool->enqueue([&, i, this]() -> int {
+        // build rank feature
+        GpuPsCommRankFea sub_graph =
+            g->cpu_graph_table_->make_gpu_ps_rank_fea(i);
+        g->build_rank_fea_on_single_gpu(sub_graph, i);
+        sub_graph.release_on_cpu();
+        return 0;
+      }));
+    }
+    for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+    debug_gpu_memory_info("upload_batch feature end");
+    VLOG(0) << "end build rank gpu table";
+  }
 }
 
 std::vector<uint64_t> &GraphGpuWrapper::get_graph_total_keys() {

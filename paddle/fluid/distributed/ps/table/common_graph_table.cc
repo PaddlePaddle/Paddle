@@ -363,6 +363,63 @@ GraphTable::make_gpu_ps_graph_float_fea(int gpu_id,
   return res;
 }
 
+paddle::framework::GpuPsCommRankFea GraphTable::make_gpu_ps_rank_fea(
+    int gpu_id) {
+  paddle::framework::GpuPsCommRankFea res;
+  if(egde_node_rank_.empty()) {
+    return res;
+  }
+  std::vector<size_t> node_num_vec(shard_num_per_server, 0);
+  auto rank_nodes = egde_node_rank_.get_rank_nodes();
+  // 遍历 rank_nodes[i][shard_num]，分8份，分配到 res
+  std::vector<std::future<size_t>> tasks;
+
+  auto mutexs = new std::mutex[shard_num_per_server];
+  for (int i = 0; i < node_num_; i++) {
+    for (size_t shard_id = 0; shard_id < shard_num_per_server; shard_id++) {
+      tasks.push_back(_cpu_worker_pool[gpu_id]->enqueue([i, gpu_id, shard_id, &rank_nodes, &node_num_vec, &mutexs]() -> size_t {
+        auto &rank_node = rank_nodes[i][shard_id];
+        size_t start = 0;
+        for (auto it = rank_node.begin(); it != rank_node.end(); it++) {
+          if (gpu_id == static_cast<int>(*it % 8)) {
+            start++;
+          }
+        }
+        mutexs[shard_id].lock();
+        node_num_vec[shard_id] += start;
+        mutexs[shard_id].unlock();
+        return start;
+      }));
+    }
+  }
+  size_t all_size = 0;
+  for (size_t i = 0; i < tasks.size(); i++) {
+    all_size += tasks[i].get();
+  }
+  res.init_on_cpu(all_size);
+  tasks.clear();
+  size_t ind = 0;
+  for (size_t shard_id = 0; shard_id < shard_num_per_server; shard_id++) {
+    tasks.push_back(
+        _cpu_worker_pool[gpu_id]->enqueue([&, shard_id, ind, gpu_id, this]() -> size_t {
+          auto start = ind;
+          for (int i = 0; i < node_num_; i++) {
+            auto &rank_node = rank_nodes[i][shard_id];
+            for (auto it = rank_node.begin(); it != rank_node.end(); it++) {
+              if (gpu_id == static_cast<int>((*it) % 8)) {
+                res.node_list[start] = *it;
+                res.rank_list[start++] = i;
+              }
+            }
+          }
+          return 0;
+        }));
+    ind += node_num_vec[shard_id];
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  return res;
+}
+
 int32_t GraphTable::add_node_to_ssd(
     int type_id, int idx, uint64_t src_id, char *data, int len) {
   if (_db != NULL) {

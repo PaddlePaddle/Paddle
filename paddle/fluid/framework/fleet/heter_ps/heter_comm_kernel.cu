@@ -1164,6 +1164,14 @@ HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
     int64_t len,
     const cudaStream_t& stream);
 
+template void
+HeterCommKernel::fill_dvals<uint32_t, int, cudaStream_t>(
+    uint32_t* d_shard_vals,
+    uint32_t* d_vals,
+    int* idx,
+    int64_t len,
+    const cudaStream_t& stream);
+
 template void HeterCommKernel::
     sort_pairs<uint32_t, paddle::framework::FeaturePushValue, cudaStream_t>(
         void* d_temp_storage,

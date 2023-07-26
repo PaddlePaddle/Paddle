@@ -27,6 +27,7 @@
 #ifdef PADDLE_WITH_HETERPS
 
 PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
+PHI_DECLARE_bool(multi_node_sample_use_gpu_table);
 
 namespace paddle {
 namespace framework {
@@ -51,6 +52,10 @@ class GpuPsGraphTable
     return gpu_id * float_feature_table_num_;
   }
 
+  inline int get_rank_list_offset(int gpu_id) const {
+    return gpu_id * rank_table_num_;
+  }
+
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource,
                   int graph_table_num, int slot_num_for_pull_feature = 0, int float_slot_num = 0)
       : HeterComm<uint64_t, uint64_t, int, CommonFeatureValueAccessor>(
@@ -71,6 +76,12 @@ class GpuPsGraphTable
 
     tables_ = std::vector<Table *>(
         gpu_num * (graph_table_num_ + feature_table_num_ + float_feature_table_num_), NULL);
+    
+    if (FLAGS_multi_node_sample_use_gpu_table) {
+      VLOG(0) << "rank_table_num set to 1";
+      this->rank_table_num_ = 1;
+      rank_tables_ = std::vector<RankTable *>(gpu_num * rank_table_num_, NULL);
+    }
     for (int i = 0; i < gpu_num; i++) {
       global_device_map[resource_->dev_id(i)] = i;
       for (int j = 0; j < graph_table_num_; j++) {
@@ -81,6 +92,9 @@ class GpuPsGraphTable
       }
       for (int j = 0; j < float_feature_table_num_; j++) {
         gpu_graph_float_fea_list_.push_back(GpuPsCommGraphFloatFea());
+      }
+      for (int j = 0; j < rank_table_num_; j++) {
+        gpu_rank_fea_list_.push_back(GpuPsCommRankFea());
       }
     }
     cpu_table_status = -1;
@@ -98,9 +112,11 @@ class GpuPsGraphTable
   void build_graph_on_single_gpu(const GpuPsCommGraph &g, int gpu_id, int idx);
   void build_graph_fea_on_single_gpu(const GpuPsCommGraphFea &g, int gpu_id);
   void build_graph_float_fea_on_single_gpu(const GpuPsCommGraphFloatFea &g, int gpu_id);
+  void build_rank_fea_on_single_gpu(const GpuPsCommRankFea &g, int gpu_id);
   void clear_graph_info(int gpu_id, int index);
   void clear_graph_info(int index);
   void reset_feature_info(int gpu_id, size_t capacity, size_t feature_size);
+  void reset_rank_info(int gpu_id, size_t capacity, size_t feature_size);
   void reset_float_feature_info(int gpu_id, size_t capacity, size_t feature_size);
   void clear_feature_info(int gpu_id, int index);
   void clear_feature_info(int index);
@@ -245,6 +261,10 @@ class GpuPsGraphTable
        std::shared_ptr<phi::Allocation> &slot_list,
        bool sage_mode = false);
 
+  int get_rank_info_of_nodes(int gpu_id,
+                            const uint64_t* d_nodes,
+                            uint32_t* d_ranks,
+                            int node_len);
 
   NodeQueryResult query_node_list(int gpu_id,
                                   int idx,
@@ -301,12 +321,15 @@ class GpuPsGraphTable
   void set_keys2rank(int gpu_id, std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank) {
     resource_->set_keys2rank(gpu_id, keys2rank);
   }
+  void rank_build_ps(int dev_num, uint64_t *h_keys, uint32_t *h_vals, size_t len,
+                     size_t chunk_size, int stream_num);
 
   int gpu_num;
-  int graph_table_num_, feature_table_num_{0}, float_feature_table_num_{0};
+  int graph_table_num_, feature_table_num_{0}, float_feature_table_num_{0}, rank_table_num_{0};
   std::vector<GpuPsCommGraph> gpu_graph_list_;
   std::vector<GpuPsCommGraphFea> gpu_graph_fea_list_;
   std::vector<GpuPsCommGraphFloatFea> gpu_graph_float_fea_list_;
+  std::vector<GpuPsCommRankFea> gpu_rank_fea_list_;
   int global_device_map[32];
   const int parallel_sample_size = 1;
   const int dim_y = 256;
@@ -317,6 +340,8 @@ class GpuPsGraphTable
   std::condition_variable cv_;
   int cpu_table_status;
   bool infer_mode_ = false;
+  using RankTable = HashTable<uint64_t, uint32_t>;
+  std::vector<RankTable*> rank_tables_;
 };
 
 };  // namespace framework

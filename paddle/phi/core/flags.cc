@@ -1173,6 +1173,9 @@ PHI_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
 PADDLE_DEFINE_EXPORTED_bool(query_dest_rank_by_multi_node,
                             false,
                             "Control whether to query dest rank by multi machine");
+PADDLE_DEFINE_EXPORTED_bool(multi_node_sample_use_gpu_table,
+                            true,
+                            "Control whether to use gpu table in sample multi machine");
 
 /**
  * ProcessGroupNCCL related FLAG

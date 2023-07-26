@@ -658,6 +658,12 @@ template void HashTable<int64_t, unsigned int>::insert<cudaStream_t>(
     size_t len,
     cudaStream_t stream);
 
+template void HashTable<uint64_t, uint32_t>::insert<cudaStream_t>(
+    const uint64_t* d_keys,
+    const uint32_t* d_vals,
+    size_t len,
+    cudaStream_t stream);
+
 template void HashTable<uint64_t, uint64_t>::get_keys<cudaStream_t>(
     uint64_t* d_out, uint64_t* global_cursor, cudaStream_t stream);
 
