@@ -36,6 +36,16 @@ void *PD_DeviceContextAllocateTensor(const PD_DeviceContext *ctx,
                                      PD_DataType dtype,
                                      PD_Status *status);
 
+void PD_DeviceContextSetSeed(const PD_DeviceContext *ctx,
+                             uint64_t seed,
+                             PD_Status *status);
+
+uint64_t PD_DeviceContextGetSeed(const PD_DeviceContext *ctx,
+                                 PD_Status *status);
+
+uint64_t PD_DeviceContextGetRandom(const PD_DeviceContext *ctx,
+                                   PD_Status *status);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
