@@ -28,8 +28,6 @@
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn::pybind {
 
 namespace py = pybind11;
@@ -64,41 +62,23 @@ void BindFramework(pybind11::module *m) {
              }
 
              ir::LoweredFunc func;
-             if (FLAGS_cinn_ir_schedule) {
-               std::string output_name = "out";
-               temp_inputs.emplace_back(output_name);
-               std::vector<std::string> input_output_names;
-               for (const auto &input : inputs) {
-                 input_output_names.push_back(input->name);
-               }
-               input_output_names.push_back(output_name);
-               std::vector<ir::LoweredFunc> funcs =
-                   hlir::framework::GetFuncFromImpl(
-                       impl,
-                       common::CINNValuePack{temp_inputs},
-                       res,
-                       input_output_names,
-                       key,
-                       target);
-               CHECK_EQ(funcs.size(), 1U);
-               func = funcs[0];
-             } else {
-               common::CINNValuePack C =
-                   impl->fcompute(common::CINNValuePack{temp_inputs});
-               poly::StageMap stages = C.back();
-               // make sure all the tensors in the stages before schedule
-               // launch.
-               for (int i = 0; i < C->size() - 1; i++) {
-                 ir::Expr temp = C[i];
-                 stages->InsertLazily(temp.as_tensor_ref());
-               }
-               C = impl->fschedule(C);
-               for (int i = 0; i < C->size() - 1; i++) {
-                 ir::Expr temp = C[i];
-                 res.push_back(temp.as_tensor_ref());
-               }
-               func = Lower(key, stages, res);
+             std::string output_name = "out";
+             temp_inputs.emplace_back(output_name);
+             std::vector<std::string> input_output_names;
+             for (const auto &input : inputs) {
+               input_output_names.push_back(input->name);
              }
+             input_output_names.push_back(output_name);
+             std::vector<ir::LoweredFunc> funcs =
+                 hlir::framework::GetFuncFromImpl(
+                     impl,
+                     common::CINNValuePack{temp_inputs},
+                     res,
+                     input_output_names,
+                     key,
+                     target);
+             CHECK_EQ(funcs.size(), 1U);
+             func = funcs[0];
              return func;
            });
 
