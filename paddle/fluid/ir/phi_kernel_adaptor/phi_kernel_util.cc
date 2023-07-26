@@ -351,6 +351,9 @@ void HandleForInplaceOp(
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value value = op->result(i);
+    if (value.type().storage() == nullptr) {
+      continue;
+    }
     std::string value_name = yaml_parser.OutputNames()[i];
     if (yaml_parser.HasInplace(value_name)) {
       std::string inplace_name = yaml_parser.InplaceName(value_name);
