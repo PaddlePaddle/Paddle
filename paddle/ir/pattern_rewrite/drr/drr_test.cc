@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/drr/drr_pass_context.h"
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
 
 namespace cinn {
 namespace hlir {

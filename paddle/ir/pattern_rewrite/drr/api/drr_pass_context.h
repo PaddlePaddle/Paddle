@@ -172,7 +172,7 @@ class ResultPattern {
  private:
   friend class SourcePattern;
 
-  explicit ResultPattern(DrrPassContext* ctx_) : ctx_(ctx_) {}
+  explicit ResultPattern(DrrPassContext* ctx) : ctx_(ctx) {}
 
   DrrPassContext* ctx_;
 };
@@ -191,13 +191,8 @@ class SourcePattern {
     return ctx_->SourceTensorPattern(tensor_id);
   }
 
-  bool AllMatched(
-      const MatchContext& match_context,
-      const std::function<VisitStatus(const MatchContext& match_context)>&
-          VisitMatchContext) const;
-
  private:
-  explicit SourcePattern(DrrPassContext* ctx_) : ctx_(ctx_) {}
+  explicit SourcePattern(DrrPassContext* ctx) : ctx_(ctx) {}
   DrrPassContext* ctx_;
 };
 

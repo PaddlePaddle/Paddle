@@ -16,7 +16,7 @@
 #include <functional>
 #include <memory>
 
-#include "paddle/cinn/hlir/drr/api/drr_pass_context.h"
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
 
 namespace cinn {
 namespace hlir {
@@ -33,6 +33,10 @@ class SourcePatternGraph {
  public:
   void AddOpCall(const std::shared_ptr<drr::OpCall>& op_call) {
     owned_op_call_.insert(op_call);
+  }
+
+  std::weak_ptr<OpCall> SinkNode() const {
+    return output_tensors.begin()->producer();
   }
 
  private:

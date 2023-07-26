@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/drr/source_pattern_graph.h"
+#include "paddle/ir/pattern_rewrite/drr/source_pattern_graph.h"
 
 namespace cinn {
 namespace hlir {
