@@ -18,68 +18,14 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_rope_utils.h"
 namespace phi {
 namespace fusion {
-template <typename T, typename MPType, int VecSize = 2>
-__global__ void VectorizedFusedRopeGradKernel(phi::Array<const T*, 3> ins_data,
-                                              int batch_size,
-                                              int seq_len,
-                                              int num_heads,
-                                              int head_dim,
-                                              phi::Array<T*, 3> outs_data,
-                                              int num_inputs,
-                                              MPType div_c) {
-  int index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int stride = gridDim.x * blockDim.x * VecSize;
-  int size = batch_size * seq_len * num_heads * head_dim;
-  MPType sin_value[VecSize];
-  MPType cos_value[VecSize];
-  MPType result[VecSize];
-  T store[VecSize];
-  using VecType = phi::AlignedVector<T, VecSize>;
-  constexpr int kVectorsPerThread = VecSize / 2;
-
-  for (; index < size; index += stride) {
-#pragma unroll
-    for (int nx = 0; nx < VecSize; ++nx) {
-      // get sin_index and cos_index
-      int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int pos_seq = index_wc / (num_heads * head_dim);
-      MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
-      MPType indicses =
-          static_cast<MPType>(1) /
-          pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
-      MPType value = pos_seq * indicses;
-      sin_value[nx] = sin(value);
-      cos_value[nx] = cos(value);
-    }
-
-#pragma unroll
-    for (int iter = 0; iter < 3; iter++) {
-      if (iter > num_inputs) break;
-      const T* input = ins_data[iter] + index;
-      VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
-
-#pragma unroll
-      for (int nx = 0; nx < kVectorsPerThread; ++nx) {
-        int pr_index = nx * 2;
-        int ls_index = pr_index + 1;
-
-        MPType p0 = static_cast<MPType>(input[pr_index]);
-        MPType p1 = static_cast<MPType>(input[ls_index]);
-        result[pr_index] = cos_value[pr_index] * p0 + sin_value[ls_index] * p1;
-        result[ls_index] = cos_value[ls_index] * p1 - sin_value[pr_index] * p0;
-
-        store[pr_index] = static_cast<T>(result[pr_index]);
-        store[ls_index] = static_cast<T>(result[ls_index]);
-      }
-      out[0] = *(reinterpret_cast<VecType*>(store));
-    }
-  }
-}
 
 template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
+                         const paddle::optional<DenseTensor>& sin,
+                         const paddle::optional<DenseTensor>& cos,
                          const DenseTensor& dout_q,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
@@ -111,6 +57,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   phi::Array<T*, 3> outs_data;
   phi::Array<const T*, 3> ins_data;
+  phi::Array<const T*, 2> sin_cos_data;
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
@@ -135,8 +82,20 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
-  VectorizedFusedRopeGradKernel<T, MPType, vec_size>
+  bool flag_sin_cos = false;
+  if (sin.get_ptr() && cos.get_ptr()) {
+    sin_cos_data[0] = sin->data<T>();
+    sin_cos_data[1] = cos->data<T>();
+
+    flag_sin_cos = true;
+  }
+
+  int sign = -1;
+  VectorizedFusedRopeKernel<T, MPType, vec_size>
       <<<grid, block, 0, stream>>>(ins_data,
+                                   sin_cos_data,
+                                   flag_sin_cos,
+                                   sign,
                                    batch_size,
                                    seq_len,
                                    num_heads,
