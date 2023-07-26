@@ -958,7 +958,8 @@ void BuildOpFuncList(
 
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
         op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
+        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -1011,9 +1012,7 @@ void BuildOpFuncList(
                                 scope,
                                 local_scope,
                                 op_yaml_info_parser,
-                                &(op_func_node.kernel_context_),
-                                &(op_func_node.input_index),
-                                &(op_func_node.output_index));
+                                &(op_func_node.kernel_context_));
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(

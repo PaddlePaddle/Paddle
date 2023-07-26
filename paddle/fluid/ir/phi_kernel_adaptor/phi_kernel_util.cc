@@ -49,6 +49,7 @@ using VariableNameMap =
 paddle::framework::Variable* CreateVar(
     ir::Value value,
     paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
     bool force_persisable,
     std::unordered_map<ir::Value, std::string>* value_2_var_name,
     std::unordered_map<const paddle::framework::Variable*, std::string>*
@@ -65,7 +66,10 @@ paddle::framework::Variable* CreateVar(
   }
 
   paddle::framework::Variable* var = nullptr;
-  std::string name = "inner_var_" + std::to_string(variable_2_var_name->size());
+
+  std::string name = var_name_prefix + "_inner_var_" +
+                     std::to_string(variable_2_var_name->size());
+
   if (force_persisable || is_persisable) {
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope->root();
     var = const_cast<paddle::framework::Scope*>(inner_scope->root())->Var(name);
@@ -109,6 +113,7 @@ void CheckInputVars(
 
 void BuildValue(ir::Value value,
                 paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
                 std::unordered_map<ir::Value, std::string>* value_2_var_name,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
@@ -120,6 +125,7 @@ void BuildValue(ir::Value value,
   } else {
     var = CreateVar(value,
                     inner_scope,
+                    var_name_prefix,
                     false,
                     value_2_var_name,
                     variable_2_var_name,
@@ -146,6 +152,7 @@ void BuildValue(ir::Value value,
                          "DenseTensorType"));
       auto var_i = CreateVar(value,
                              inner_scope,
+                             var_name_prefix,
                              false,
                              value_2_var_name,
                              variable_2_var_name,
@@ -163,6 +170,7 @@ void BuildValue(ir::Value value,
 void HandleForSpecialOp(
     ir::Operation* op,
     paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
     std::unordered_map<ir::Value, std::string>* value_2_var_name,
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
@@ -187,25 +195,22 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.feed") {
     auto value = op->result(0);
-    auto var = CreateVar(value,
-                         inner_scope,
-                         false,
-                         value_2_var_name,
-                         variable_2_var_name,
-                         var_name_2_id,
-                         variable_list);
-    // TODO(phlrain): need to update here, support StringTensor
-    auto out_tensor = var->GetMutable<phi::DenseTensor>();
+    VLOG(6) << "link feed output to feed in variable" << inner_scope;
 
-    auto feed_var =
-        const_cast<paddle::framework::Scope*>(inner_scope->root())->Var("feed");
-    VLOG(6) << "Create var: feed in scope " << inner_scope->root();
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    auto feed_list = feed_var->Get<paddle::framework::FeedList>();
-    auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
-    out_tensor->ShareDataWith(in_tensor);
-    out_tensor->set_lod(in_tensor.lod());
+
+    auto feed_var_name = "feed_" + std::to_string(index);
+    value_2_var_name->emplace(value, feed_var_name);
+  }
+
+  if (op_name == "pd.feed_with_place") {
+    VLOG(6) << "Handle for pd.feed_with_place";
+    auto var_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto value = op->result(0);
+    value_2_var_name->emplace(value, var_name);
   }
 
   if (op_name == "builtin.combine") {
@@ -217,6 +222,7 @@ void HandleForSpecialOp(
     } else {
       var = CreateVar(out_value,
                       inner_scope,
+                      var_name_prefix,
                       false,
                       value_2_var_name,
                       variable_2_var_name,
@@ -255,6 +261,22 @@ void HandleForSpecialOp(
           ->Rename(orig_name, param_name);
     }
     (*value_2_var_name)[value] = param_name;
+  }
+
+  if (op_name == "pd.shaddow_output") {
+    VLOG(6) << "Handle for pd.shaddow_ouptut";
+    auto var_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto value = op->operand(0);
+    // change opreand name to param_name
+    auto orig_name = value_2_var_name->at(value);
+
+    if (inner_scope->root()->FindVar(var_name) == nullptr) {
+      const_cast<paddle::framework::Scope*>(inner_scope->root())
+          ->Rename(orig_name, var_name);
+    }
+    (*value_2_var_name)[value] = var_name;
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -296,6 +318,7 @@ void HandleForSpecialOp(
 void HandleForInplaceOp(
     ir::Operation* op,
     paddle::framework::Scope* inner_scope,
+    const std::string& var_name_prefix,
     std::unordered_map<ir::Value, std::string>* value_2_var_name,
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
@@ -328,6 +351,7 @@ void HandleForInplaceOp(
     } else {
       BuildValue(value,
                  inner_scope,
+                 var_name_prefix,
                  value_2_var_name,
                  variable_2_var_name,
                  var_name_2_id,
@@ -340,6 +364,7 @@ void HandleForInplaceOp(
 // created in inner_scope.
 void BuildScope(const ir::Block& block,
                 paddle::framework::Scope* inner_scope,
+                const std::string& var_name_prefix,
                 std::unordered_map<ir::Value, std::string>* value_2_var_name,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
@@ -364,9 +389,11 @@ void BuildScope(const ir::Block& block,
 
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
+        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
+                         var_name_prefix,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
@@ -384,6 +411,7 @@ void BuildScope(const ir::Block& block,
             .data()) {
       HandleForInplaceOp(op,
                          inner_scope,
+                         var_name_prefix,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
@@ -393,6 +421,7 @@ void BuildScope(const ir::Block& block,
       for (size_t i = 0; i < op->num_results(); ++i) {
         BuildValue(op->result(i),
                    inner_scope,
+                   var_name_prefix,
                    value_2_var_name,
                    variable_2_var_name,
                    var_name_2_id,

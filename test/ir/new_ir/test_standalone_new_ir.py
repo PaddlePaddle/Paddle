@@ -19,12 +19,15 @@ import numpy as np
 
 import paddle
 
-paddle.enable_static()
-
 
 class TestNewIr(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -44,7 +47,12 @@ class TestNewIr(unittest.TestCase):
 
 class TestCombineOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -64,7 +72,12 @@ class TestCombineOp(unittest.TestCase):
 
 class TestFeedOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -91,6 +104,9 @@ class TestFeedOp(unittest.TestCase):
 
 class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
+        # TODO(phlrain): support selected rows in GPU
+        # place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -113,7 +129,12 @@ class TestSelectedRows(unittest.TestCase):
 
 class TestAddGradOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -123,11 +144,9 @@ class TestAddGradOp(unittest.TestCase):
                 x = paddle.static.data("x", [2, 2], dtype="float32")
                 y = paddle.static.data("y", [2, 2], dtype="float32")
                 x.stop_gradient = False
-
                 z = x * y
 
                 paddle.static.gradients(z, x)
-
             np_a = np.random.rand(2, 2).astype("float32")
             np_b = np.random.rand(2, 2).astype("float32")
             out = exe.run(
@@ -141,9 +160,68 @@ class TestAddGradOp(unittest.TestCase):
         np.testing.assert_array_equal(out[0], gold_res)
 
 
+class TestNewIrDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+        # paddle.device.set_device("cpu")
+
+        @paddle.jit.to_static
+        def func(x, y):
+            return x + y
+
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        z = func(x, y)
+
+        gold_res = np.ones([2, 2], dtype="float32") * 2
+        self.assertEqual(
+            np.array_equal(
+                z.numpy(),
+                gold_res,
+            ),
+            True,
+        )
+
+
+class TestNewIrBackwardDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.enable_inplace = False
+
+        @paddle.jit.to_static(build_strategy=build_strategy)
+        def func(x, y):
+            return x * y
+
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
+        z = func(x, y)
+        loss = z.mean()
+        loss.backward()
+        gold_res = np.ones([2, 2], dtype="float32")
+        self.assertEqual(
+            np.array_equal(
+                z.numpy(),
+                gold_res,
+            ),
+            True,
+        )
+
+        gold_res = np.ones([2, 2], dtype="float32") * 0.25
+        np.testing.assert_array_equal(x.gradient(), gold_res)
+        np.testing.assert_array_equal(y.gradient(), gold_res)
+
+
 class TestSplitOp(unittest.TestCase):
     def test_with_new_ir(self):
-        place = paddle.CPUPlace()
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -164,4 +242,5 @@ class TestSplitOp(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

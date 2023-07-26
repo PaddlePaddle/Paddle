@@ -778,12 +778,24 @@ PYBIND11_MODULE(libpaddle, m) {
           }
         });
 
-  py::class_<egr::GradNodeBase>(m, "GradNodeBase")
-      .def("name", &egr::GradNodeBase::name)
-      .def_property_readonly("next_functions",
-                             &egr::GradNodeBase::NextFunctions)
-      .def("input_meta", &egr::GradNodeBase::InputMeta)
-      .def("output_meta", &egr::GradNodeBase::OutputMeta);
+  py::class_<egr::GradNodeBase, std::shared_ptr<egr::GradNodeBase>>(
+      m, "GradNodeBase")
+      .def("name",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->name();
+           })
+      .def_property_readonly(
+          "next_functions",
+          [](const std::shared_ptr<egr::GradNodeBase> &self) {
+            return self->NextFunctions();
+          })
+      .def("input_meta",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->InputMeta();
+           })
+      .def("output_meta", [](const std::shared_ptr<egr::GradNodeBase> &self) {
+        return self->OutputMeta();
+      });
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
@@ -2318,6 +2330,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_pass", [](const std::string &pass_type) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
+  });
+  m.def("register_subgraph_pass", [](const std::string &pass_type) {
+    framework::ir::Pass::AddSupportSubgraphPass(pass_type);
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
