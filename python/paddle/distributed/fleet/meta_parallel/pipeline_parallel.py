@@ -565,7 +565,7 @@ class PipelineParallel(MetaParallelBase):
             ), "comm buffers should be created"
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_grads()
+                    buffer.scale_and_split_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -1039,7 +1039,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_grads()
+                    buffer.scale_and_split_grads()
 
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
