@@ -71,8 +71,8 @@ class GradientMergeOptimizer:
         input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
         cost, fc_1, pred = mlp(input_x, input_y)
-        sgd = fluid.optimizer.Adam(learning_rate=0.01)
-        sgd = fluid.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
+        sgd = paddle.optimizer.Adam(learning_rate=0.01)
+        sgd = paddle.incubate.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
         sgd.minimize(cost)
 
         place = fluid.CPUPlace()
