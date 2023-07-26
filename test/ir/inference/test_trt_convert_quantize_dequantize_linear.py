@@ -113,13 +113,16 @@ class TrtConvertQuantizeDequantizeTest(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data_1": [1, 8, 32, 32]
+                "input_data_1": [1, 8, 32, 32],
+                "add": [1, 8, 32, 32],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data_1": [16, 8, 32, 32]
+                "input_data_1": [16, 8, 32, 32],
+                "add": [16, 8, 32, 32],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data_1": [16, 8, 32, 32]
+                "input_data_1": [16, 8, 32, 32],
+                "add": [16, 8, 32, 32],
             }
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
