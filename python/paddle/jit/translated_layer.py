@@ -1522,6 +1522,7 @@ class TranslatedLayer(layers.Layer):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP
                 >>> import numpy as np
                 >>> import paddle
                 >>> from paddle import nn
