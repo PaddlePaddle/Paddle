@@ -18,12 +18,12 @@ set -e
 
 temp_dir=$(mktemp --directory)
 pushd ${temp_dir} \
-&& git clone ${PLUGIN_URL} \
+&& git clone --depth 1 ${PLUGIN_URL} \
 && pushd PaddleCustomDevice/ \
 && git fetch origin \
 && git checkout ${PLUGIN_TAG} -b dev \
 && pushd backends/custom_cpu \
-&& mkdir build && pushd build && cmake .. -DPython_EXECUTABLE=${PYTHON_EXECUTABLE} && make -j8 && popd && popd && popd && popd
+&& mkdir build && pushd build && cmake .. -DPython_EXECUTABLE=${PYTHON_EXECUTABLE} -DWITH_TESTING=OFF && make -j8 && popd && popd && popd && popd
 
 echo "begin test use custom_cpu"
 
