@@ -272,6 +272,18 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         GetKernelKey(*it, place, map_value_pair, std::move(op_info_parser));
     VLOG(6) << "kernel type " << kernel_key;
 
+    // if ((*it)->name() == "pd.reshape") {
+    //   std::cerr << "change reshape" << std::endl;
+    //   kernel_key.set_backend(phi::Backend::CPU);
+    //   std::cerr << kernel_key << std::endl;
+    // }
+
+    if ((*it)->name() == "pd.pool2d" || (*it)->name() == "pd.pool2d_grad") {
+      std::cerr << "change pool2d" << std::endl;
+      kernel_key.set_backend(phi::Backend::GPU);
+      std::cerr << kernel_key << std::endl;
+    }
+
     // only for single output
     // need update new kernel key layout and data tyep
 

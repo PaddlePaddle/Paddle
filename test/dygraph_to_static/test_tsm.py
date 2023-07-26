@@ -296,7 +296,10 @@ def train(args, fake_data_reader, to_static):
     valid_config = merge_configs(config, 'valid', vars(args))
     print_configs(train_config, 'Train')
 
-    place = fluid.CUDAPlace(0) if args.use_gpu else fluid.CPUPlace()
+    # place = fluid.CUDAPlace(0) if args.use_gpu else fluid.CPUPlace()
+    place = fluid.CPUPlace()
+
+    print("place ", place)
 
     random.seed(0)
     np.random.seed(0)

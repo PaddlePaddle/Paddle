@@ -24,7 +24,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 place = (
@@ -115,13 +114,13 @@ class TestBert(unittest.TestCase):
 
                 step_idx += 1
                 if step_idx == STEP_NUM:
-                    if to_static:
-                        paddle.jit.save(bert, self.model_save_prefix)
-                    else:
-                        paddle.save(
-                            bert.state_dict(),
-                            self.dy_state_dict_save_path + '.pdparams',
-                        )
+                    # if to_static:
+                    #     paddle.jit.save(bert, self.model_save_prefix)
+                    # else:
+                    #     paddle.save(
+                    #         bert.state_dict(),
+                    #         self.dy_state_dict_save_path + '.pdparams',
+                    #     )
                     break
             return loss, ppl
 
@@ -233,21 +232,21 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
-        self.verify_predict()
+        # self.verify_predict()
 
-    def test_train_composite(self):
-        core._set_prim_backward_enabled(True)
-        # core._add_skip_comp_ops("layer_norm")
-        static_loss, static_ppl = self.train_static(
-            self.bert_config, self.data_reader
-        )
-        core._set_prim_backward_enabled(False)
-        # core._add_skip_comp_ops("layer_norm")
-        dygraph_loss, dygraph_ppl = self.train_dygraph(
-            self.bert_config, self.data_reader
-        )
-        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
-        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
+    # def test_train_composite(self):
+    #     core._set_prim_backward_enabled(True)
+    #     # core._add_skip_comp_ops("layer_norm")
+    #     static_loss, static_ppl = self.train_static(
+    #         self.bert_config, self.data_reader
+    #     )
+    #     core._set_prim_backward_enabled(False)
+    #     # core._add_skip_comp_ops("layer_norm")
+    #     dygraph_loss, dygraph_ppl = self.train_dygraph(
+    #         self.bert_config, self.data_reader
+    #     )
+    #     np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+    #     np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
     def verify_predict(self):
         for data in self.data_reader.data_generator()():

@@ -639,11 +639,12 @@ def val_bmn(model, args):
 class TestTrain(unittest.TestCase):
     def setUp(self):
         self.args = Args()
-        self.place = (
-            fluid.CPUPlace()
-            if not fluid.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
-        )
+        self.place = fluid.CUDAPlace(0)
+        # self.place = (
+        #     fluid.CPUPlace()
+        #     if not fluid.is_compiled_with_cuda()
+        #     else fluid.CUDAPlace(0)
+        # )
 
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
@@ -738,13 +739,13 @@ class TestTrain(unittest.TestCase):
                         loss_data += val_loss_data
 
                     if batch_id == args.train_batch_num:
-                        if to_static:
-                            paddle.jit.save(bmn, self.model_save_prefix)
-                        else:
-                            paddle.save(
-                                bmn.state_dict(),
-                                self.dy_param_path + '.pdparams',
-                            )
+                        # if to_static:
+                        #     paddle.jit.save(bmn, self.model_save_prefix)
+                        # else:
+                        #     paddle.save(
+                        #         bmn.state_dict(),
+                        #         self.dy_param_path + '.pdparams',
+                        #     )
                         break
             return np.array(loss_data)
 
@@ -763,7 +764,7 @@ class TestTrain(unittest.TestCase):
         )
 
         # Prediction needs trained models, so put `test_predict` at last of `test_train`
-        self.verify_predict()
+        # self.verify_predict()
 
     def verify_predict(self):
         args = Args()

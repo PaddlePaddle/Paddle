@@ -350,7 +350,8 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> output_names,
-    const std::vector<paddle::Tensor> &x) {
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params) {
   auto ir_ctx = ::ir::IrContext::Instance();
   auto program = std::make_unique<::ir::Program>(ir_ctx);
 
@@ -371,6 +372,20 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
   for (auto &in_t : x) {
     auto name = in_t.name();
     auto place = in_t.place().GetType();
+
+    auto op_desc = local_program.MutableBlock(0)->PrependOp();
+    op_desc->SetType("feed_with_place");
+    op_desc->SetAttr("index", 0);
+    // TODO(phlrain) : using tensor dtype
+    op_desc->SetAttr("dtype", 0);
+    op_desc->SetAttr("place", static_cast<int>(place));
+    op_desc->SetAttr("name", name);
+    op_desc->SetOutput("out", {name});
+  }
+
+  for (auto &param : params) {
+    auto name = param.name();
+    auto place = param.place().GetType();
 
     auto op_desc = local_program.MutableBlock(0)->PrependOp();
     op_desc->SetType("feed_with_place");
@@ -413,8 +428,9 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   program_translator.Translate();
 
+  program->Print(std::cerr);
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
-
+  ir_res->Print(std::cerr);
   return ir_res;
 }
 
@@ -468,8 +484,10 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
                                                            program.get());
   program_translator.Translate();
 
+  program->Print(std::cerr);
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
+  res->Print(std::cerr);
   return res;
 }
 

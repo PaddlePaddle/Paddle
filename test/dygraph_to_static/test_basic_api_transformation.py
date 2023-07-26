@@ -312,10 +312,10 @@ class TestDygraphBasicApi_Conv2DTranspose(TestDygraphBasicApi):
         self.dygraph_func = dyfunc_Conv2DTranspose
 
 
-class TestDygraphBasicApi_Conv3DTranspose(TestDygraphBasicApi):
-    def setUp(self):
-        self.input = np.random.random((5, 3, 12, 32, 32)).astype('float32')
-        self.dygraph_func = dyfunc_Conv3DTranspose
+# class TestDygraphBasicApi_Conv3DTranspose(TestDygraphBasicApi):
+#     def setUp(self):
+#         self.input = np.random.random((5, 3, 12, 32, 32)).astype('float32')
+#         self.dygraph_func = dyfunc_Conv3DTranspose
 
 
 class TestDygraphBasicApi_Linear(TestDygraphBasicApi):

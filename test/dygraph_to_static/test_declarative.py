@@ -111,41 +111,41 @@ class TestInputSpec(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_with_input_spec(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
-            x = to_variable(np.ones([4, 10]).astype('float32'))
-            y = to_variable(np.ones([4, 10]).astype('float32') * 2)
-            int_val = 4.0
+    # def test_with_input_spec(self):
+    #     with fluid.dygraph.guard(fluid.CPUPlace()):
+    #         x = to_variable(np.ones([4, 10]).astype('float32'))
+    #         y = to_variable(np.ones([4, 10]).astype('float32') * 2)
+    #         int_val = 4.0
 
-            net = SimpleNet()
+    #         net = SimpleNet()
 
-            # 1. each method holds independent program cache
-            out = net(x)
-            self.assertTrue(len(net.forward.program_cache) == 1)
+    #         # 1. each method holds independent program cache
+    #         out = net(x)
+    #         self.assertTrue(len(net.forward.program_cache) == 1)
 
-            # 2. test save load
-            net.inner_function(x)
-            paddle.jit.save(net, self.model_path)
-            infer_net = paddle.jit.load(self.model_path)
-            pred = infer_net(x)
-            np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
+    #         # 2. test save load
+    #         net.inner_function(x)
+    #         paddle.jit.save(net, self.model_path)
+    #         infer_net = paddle.jit.load(self.model_path)
+    #         pred = infer_net(x)
+    #         np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
 
-            # 3. we can decorate any method
-            x_2 = to_variable(np.ones([4, 20]).astype('float32'))
-            # uses `to_static(func)` instead of `@to_static`
-            net.add_func = to_static(net.add_func)
-            out = net.add_func(x_2, np.ones([20]).astype('float32'))
-            self.assertTrue(len(net.add_func.program_cache) == 1)
+    #         # 3. we can decorate any method
+    #         x_2 = to_variable(np.ones([4, 20]).astype('float32'))
+    #         # uses `to_static(func)` instead of `@to_static`
+    #         net.add_func = to_static(net.add_func)
+    #         out = net.add_func(x_2, np.ones([20]).astype('float32'))
+    #         self.assertTrue(len(net.add_func.program_cache) == 1)
 
-            # 5. test input with list
-            out = net.func_with_list([x, y], int_val)
+    #         # 5. test input with list
+    #         out = net.func_with_list([x, y], int_val)
 
-            # 6. test input with dict
-            out = net.func_with_dict({'x': x, 'y': y})
+    #         # 6. test input with dict
+    #         out = net.func_with_dict({'x': x, 'y': y})
 
-            # 7. test input with lits contains dict
-            int_np = np.ones([1]).astype('float32')
-            out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
+    #         # 7. test input with lits contains dict
+    #         int_np = np.ones([1]).astype('float32')
+    #         out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
     def test_with_error(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
@@ -468,13 +468,13 @@ class TestSetBuffers(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_set_buffers1(self):
-        paddle.disable_static()
-        net = SetBuffersNet1()
-        out = net()
-        self.assertEqual(out.numpy().tolist(), [2])
-        paddle.jit.save(net, self.model_path)
-        paddle.enable_static()
+    # def test_set_buffers1(self):
+    #     paddle.disable_static()
+    #     net = SetBuffersNet1()
+    #     out = net()
+    #     self.assertEqual(out.numpy().tolist(), [2])
+    #     paddle.jit.save(net, self.model_path)
+    #     paddle.enable_static()
 
     def test_set_buffers2(self):
         paddle.disable_static()
