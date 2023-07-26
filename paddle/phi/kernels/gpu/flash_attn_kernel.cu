@@ -54,7 +54,8 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#ifdef PADDLE_WITH_FLASHATTN
+// #ifdef PADDLE_WITH_FLASHATTN
+#if 0
   if (is_test) dropout = 0.0f;
 
   ctx.template Alloc<T>(out);
@@ -215,10 +216,10 @@ void FlashAttnKernel(const Context& ctx,
                      const DenseTensor& k,
                      const DenseTensor& v,
                      const paddle::optional<DenseTensor>& fixed_seed_offset,
-                     float dropout,
-                     bool causal,
-                     bool return_softmax,
-                     bool is_test,
+                     const float p_dropout,
+                     const bool is_causal,
+                     const bool return_softmax,
+                     const bool is_test,
                      const std::string& rng_name,
                      DenseTensor* out,
                      DenseTensor* softmax,
@@ -234,53 +235,107 @@ void FlashAttnKernel(const Context& ctx,
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
-  int64_t batch_size = dims[0];
-  int64_t seq_len_q = dims[1];
-  int64_t num_heads = dims[2];
-  int64_t head_size = dims[3];
+  const int batch_size = dims[0];
+  const int seqlen_q = dims[1];
+  const int num_heads = dims[2];
+  const int head_size_og = dims[3];
+  const int seqlen_k = k.dims()[1];
+  const int num_heads_k = k.dims()[2];
 
-  int64_t seq_len_k = k.dims()[1];
-
-  int64_t total_q = batch_size * seq_len_q;
-  int64_t total_k = batch_size * seq_len_k;
-
-  float scale = 1.0f / std::sqrt(head_size);
+  // should we use this scale??
+  const float softmax_scale = 1.0f / std::sqrt(head_size_og);
 
   VLOG(4) << "FlashAttn fwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";
 
-  DenseTensor q_t_s, k_t_s, v_t_s;
-  q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
-  k_t_s.ShareDataWith(k).Resize({total_k, num_heads, head_size});
-  v_t_s.ShareDataWith(v).Resize({total_k, num_heads, head_size});
+#if 0
+  if (is_test) p_dropout = 0.0f;
+#endif
 
-  DenseTensor cu_seqlens_q;
-  DenseTensor cu_seqlens_k;
-  ArangeNullaryKernel<int32_t, Context>(
-      ctx, 0, (batch_size + 1) * seq_len_q, seq_len_q, &cu_seqlens_q);
-  ArangeNullaryKernel<int32_t, Context>(
-      ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
+  ctx.template Alloc<T>(out);
 
-  FlashAttnUnpaddedKernel<T, Context>(ctx,
-                                      q_t_s,
-                                      k_t_s,
-                                      v_t_s,
-                                      cu_seqlens_q,
-                                      cu_seqlens_k,
-                                      fixed_seed_offset,
-                                      seq_len_q,
-                                      seq_len_k,
-                                      scale,
-                                      dropout,
-                                      causal,
-                                      return_softmax,
-                                      is_test,
-                                      rng_name,
-                                      out,
-                                      softmax,
-                                      softmax_lse,
-                                      seed_offset);
+  cudaStream_t stream = ctx.stream();
+  const bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
 
+  uint64_t seed;
+  uint64_t offset;
+
+  if (fixed_seed_offset.get_ptr()) {
+    const int64_t* fixed_seed_offset_data =
+        fixed_seed_offset.get_ptr()->data<int64_t>();
+    seed = static_cast<uint64_t>(fixed_seed_offset_data[0]);
+    offset = static_cast<uint64_t>(fixed_seed_offset_data[1]);
+  } else {
+    uint64_t inc = batch_size * num_heads * 32;
+    std::pair<uint64_t, uint64_t> seed_offset_pair;
+    if (rng_name != "") {
+      auto gen = phi::GetRandomSeedGenerator(rng_name);
+      seed_offset_pair = gen->IncrementOffset(inc);
+    } else {
+      auto* gen = ctx.GetGenerator();
+      seed_offset_pair = gen->IncrementOffset(inc);
+    }
+    seed = seed_offset_pair.first;
+    offset = seed_offset_pair.second;
+  }
+
+  VLOG(4) << "FlashAttn fwd seed: " << seed << ", offset: " << offset;
+
+  seed_offset->Resize({2});
+  int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
+  seed_offset_data[0] = static_cast<int64_t>(seed);
+  seed_offset_data[1] = static_cast<int64_t>(offset);
+
+  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+
+  // we just round the size but not doing any padding, it's dangerous.
+  const int head_size = round_multiple(head_size_og, 8);
+  const int head_size_rounded = round_multiple(head_size, 32);
+  const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
+  const int seqlen_k_rounded = round_multiple(seqlen_k, 128);
+
+  softmax_lse->Resize({batch_size, num_heads, seqlen_q_rounded});
+  ctx.template Alloc<float>(softmax_lse);
+
+  if (return_softmax) {
+    softmax->Resize(
+        {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
+    ctx.template Alloc<T>(softmax);
+  }
+
+  // it seems that we don't have to allocate workspace in fa-2
+
+#if 0
+  bool succ = phi::dynload::flash_attn_fwd();
+#endif
+  bool succ =
+      phi::dynload::flash_attn_fwd(const_cast<void*>(q.data()),
+                                   const_cast<void*>(k.data()),
+                                   const_cast<void*>(v.data()),
+                                   out->data(),
+                                   batch_size,
+                                   seqlen_q,
+                                   seqlen_k,
+                                   seqlen_q_rounded,
+                                   seqlen_k_rounded,
+                                   num_heads,
+                                   num_heads_k,
+                                   head_size,
+                                   head_size_rounded,
+                                   p_dropout,
+                                   softmax_scale,
+                                   is_causal,
+                                   return_softmax,
+                                   is_bf16,
+                                   return_softmax ? softmax->data() : nullptr,
+                                   softmax_lse->data(),
+                                   stream,
+                                   seed,
+                                   offset);
+
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
 #endif
 }
 
