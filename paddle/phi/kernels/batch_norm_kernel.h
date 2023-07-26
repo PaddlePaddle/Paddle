@@ -53,5 +53,4 @@ void BatchNormInferKernel(const Context& dev_ctx,
                           DenseTensor* y,
                           DenseTensor* mean_out,
                           DenseTensor* variance_out);
-
 }  // namespace phi
