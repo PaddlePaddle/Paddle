@@ -1583,9 +1583,7 @@ class RNNBase(LayerList):
                 fill_shape[1] = paddle.shape(inputs)[batch_index].item()
             initial_states = tuple(
                 [
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1
-                    )
+                    paddle.full(shape=fill_shape, fill_value=0, dtype=dtype)
                     for _ in range(self.state_components)
                 ]
             )

@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
+from paddle.fluid.framework import Variable
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -91,13 +91,13 @@ class Normal(distribution.Distribution):
             check_type(
                 loc,
                 'loc',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
             check_type(
                 scale,
                 'scale',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
 
