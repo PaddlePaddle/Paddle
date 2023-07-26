@@ -27,11 +27,11 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
@@ -222,6 +222,7 @@ void ReplaceExpr(Expr* source,
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
                                  int total_extent,
                                  const ModuleExpr& module_expr) {
+  const std::string primitive = "split";
   CHECK(!factors.empty())
       << "The factors param of Split should not be empty! Please check.";
   bool has_minus_one = false;
@@ -230,11 +231,19 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   for (auto& i : factors) {
     idx++;
     if (i == 0 || i < -1) {
-      throw IRScheduleErrorHandler(NegativeFactorErrorMessage(i, idx),
-                                   module_expr);
+      std::ostringstream os;
+      os << "The params in factors of Split should be positive. However, the "
+            "factor at position "
+         << idx << " is " << i << std::endl;
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     } else if (i == -1) {
       if (has_minus_one) {
-        throw IRScheduleErrorHandler(InferFactorErrorMessage(), module_expr);
+        std::ostringstream os;
+        os << "The params in factors of Split should not be less than -1 or "
+              "have "
+              "more than one -1!"
+           << std::endl;
+        throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
       }
       has_minus_one = true;
     } else {
@@ -244,12 +253,20 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   std::vector<int> validated_factors = factors;
   if (!has_minus_one) {
     if (product < total_extent) {
-      throw IRScheduleErrorHandler(FactorProductErrorMessage(), module_expr);
+      std::ostringstream os;
+      os << "In Split, the factors' product should be not larger than or equal "
+            "to original loop's extent!"
+         << std::endl;
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     }
     return validated_factors;
   } else {
     if (product > total_extent) {
-      throw IRScheduleErrorHandler(FactorProductErrorMessage(), module_expr);
+      std::ostringstream os;
+      os << "In Split, the factors' product should be not larger than or equal "
+            "to original loop's extent!"
+         << std::endl;
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     }
     int minus_one_candidate = static_cast<int>(
         ceil(static_cast<double>(total_extent) / static_cast<double>(product)));

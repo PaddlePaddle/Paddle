@@ -467,4 +467,11 @@ void IndexAddGradInferMeta(const MetaTensor& index,
                            MetaTensor* x_grad,
                            MetaTensor* add_tensor_grad);
 
+void IndexPutGradInferMeta(const MetaTensor& x,
+                           const std::vector<const MetaTensor*>& indices,
+                           const MetaTensor& value,
+                           const MetaTensor& out_grad,
+                           bool accumulate,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad);
 }  // namespace phi
