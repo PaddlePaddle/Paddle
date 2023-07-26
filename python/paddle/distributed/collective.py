@@ -344,9 +344,9 @@ def _init_parallel_env(backend):
         )
         if backend == "gloo":
             core.CommContextManager.create_gloo_comm_context(
-                store, 0, rank, world_size
+                store, "0", rank, world_size
             )
         elif backend == "nccl":
             core.CommContextManager.create_nccl_comm_context(
-                store, dev_id, 0, rank, world_size
+                store, dev_id, "0", rank, world_size
             )

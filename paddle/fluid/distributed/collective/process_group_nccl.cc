@@ -985,7 +985,7 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     int size,
     int gid) {
   phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store, device_id, gid, rank, size);
+      store, device_id, std::to_string(gid), rank, size);
   auto process_group =
       std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
@@ -996,7 +996,7 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext() {
   const auto& comm_context_manager =
       phi::distributed::CommContextManager::GetInstance();
   auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-      comm_context_manager.Get(this->gid_));
+      comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
                     phi::errors::Unavailable("NCCLCommContext is nullptr"));
