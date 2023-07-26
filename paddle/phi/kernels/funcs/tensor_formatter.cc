@@ -16,8 +16,6 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/convert_utils.h"
-
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
