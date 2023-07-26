@@ -277,6 +277,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     //   kernel_key.set_backend(phi::Backend::CPU);
     //   std::cerr << kernel_key << std::endl;
     // }
+    if ((*it)->name() == "pd.shape") {
+      std::cerr << "change reshape" << std::endl;
+      kernel_key.set_backend(phi::Backend::CPU);
+      std::cerr << kernel_key << std::endl;
+    }
 
     if ((*it)->name() == "pd.pool2d" || (*it)->name() == "pd.pool2d_grad") {
       std::cerr << "change pool2d" << std::endl;

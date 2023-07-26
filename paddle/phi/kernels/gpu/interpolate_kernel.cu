@@ -778,13 +778,17 @@ static void Interpolate2DCUDAFwd(
 
   float scale_w = -1;
   float scale_h = -1;
+  std::cerr << "size tensor" << std::endl;
   if (size_tensor && size_tensor->size() > 0) {
+    std::cerr << "enter size " << std::endl;
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_h = new_size[0];
     out_w = new_size[1];
   } else {
+    std::cerr << "scale tensor" << std::endl;
     if (scale_tensor) {
+      std::cerr << "enter scale tensor" << std::endl;
       auto scale_data =
           funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
       if (scale_data.size() > 1) {
@@ -834,7 +838,9 @@ static void Interpolate2DCUDAFwd(
       out_h = static_cast<int>(in_h * scale_h);
       out_w = static_cast<int>(in_w * scale_w);
     }
+    std::cerr << "out size " << std::endl;
     if (out_size) {
+      std::cerr << "enter out size " << std::endl;
       DenseTensor sizes;
       phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
 
