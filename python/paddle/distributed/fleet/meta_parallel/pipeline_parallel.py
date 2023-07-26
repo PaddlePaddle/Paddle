@@ -384,11 +384,10 @@ class PipelineParallel(MetaParallelBase):
 
             for dst in fused_parameter_group:
                 parameter_list = fused_parameter_group[dst]
-                if not dp:
+                if act == HOOK_ACTION.REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
-                var_groups = assign_group_by_size(parameter_list)
-
+                var_groups = assign_group_by_size(parameter_list, group_size)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
                         group_idx, parameters, comm_group, acc_steps, act, dst
@@ -577,7 +576,7 @@ class PipelineParallel(MetaParallelBase):
             ), "comm buffers should be created"
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_grads()
+                    buffer.scale_and_split_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -629,7 +628,7 @@ class PipelineParallel(MetaParallelBase):
         self._layers.train()
         self.register_sharding_comm_overlap_hook(optimizer)
 
-        if self._sharding_comm_overlap and len(self._comm_buffers) == 0:
+        if self._sharding_comm_overlap and len(self._chunk_2_comm_buffers) == 0:
             self.register_allreduce_overlap_hook(
                 self._layers, self.sharding_group, self.accumulate_steps, False
             )
@@ -1068,7 +1067,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_grads()
+                    buffer.scale_and_split_grads()
 
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
