@@ -37,8 +37,6 @@
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/optim/vectorize_loops.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace optim {
 
@@ -60,7 +58,7 @@ Expr Optimize(Expr e,
   VectorizeLoops(&copied, target);
   VLOG(4) << "After Optimize VectorizeLoops:" << copied;
 #ifdef CINN_WITH_CUDA
-  if (FLAGS_cinn_ir_schedule && copied.as_lowered_func()) {
+  if (copied.as_lowered_func()) {
     ir::SetCudaAxisInfo(&copied);
   }
   if (remove_gpu_for_loops) {
@@ -93,10 +91,8 @@ Expr Optimize(Expr e,
 
 ir::Module Optimize(const ir::Module& module, const Target& target) {
   auto copied = IRCopy(Expr(module));
-  if (FLAGS_cinn_ir_schedule) {
-    UnrollLoop(&copied);
-    VectorizeLoops(&copied, Target());
-  }
+  UnrollLoop(&copied);
+  VectorizeLoops(&copied, Target());
   VLOG(10) << "After VectorizeLoops:" << copied.as_module_ref();
   RemoveScheduleBlock(&copied);
   VLOG(10) << "After RemoveScheduleBlock:" << copied.as_module_ref();
