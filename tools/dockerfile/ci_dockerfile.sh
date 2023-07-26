@@ -98,6 +98,7 @@ function make_ce_framework_dockcerfile(){
   sed "s/<baseimg>/11.2.2-cudnn8-devel-ubuntu20.04/g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i RUN chmod 777 /tmp" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name} 
