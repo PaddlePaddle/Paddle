@@ -164,9 +164,8 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
   EAGER_TRY
   if (self->tensor.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-    phi::distributed::auto_parallel::DistTensor* dist_tensor =
-        static_cast<phi::distributed::auto_parallel::DistTensor*>(
-            self->tensor.impl().get());
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(dist_tensor->dist_attr().get());
 #else
     RETURN_PY_NONE
@@ -318,17 +317,16 @@ PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
 
   if (meta) {
     // Get the GradNode from meta
-    auto grad_node = meta->GradNode();  // Convert GradNode to a Python object
-    // The conversion will depend on the structure of GradNode.
-
-    if (!grad_node) {
+    auto grad_node_ptr = meta->GetMutableGradNode();
+    if (!grad_node_ptr) {
       Py_INCREF(Py_None);
       return Py_None;
     }
 
-    PyObject* py_grad_node = ToPyObject(grad_node);
+    PyObject* py_grad_node = ToPyObject(grad_node_ptr);
 
     return py_grad_node;
+
   } else {
     // If meta does not exist, return an appropriate Python object (e.g., None
     // or a special value).

@@ -266,6 +266,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : assert
+  inputs :
+    {cond : Cond, data : Data}
+
 - op : assign
   backward : assign_grad
   inputs :
@@ -1025,6 +1029,9 @@
 - op : feed
   outputs: {out: Out}
 
+- op : feed_with_place
+  outputs: {out: out}
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -1155,6 +1162,8 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2454,6 +2463,10 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
+
+- op : shaddow_output
+  inputs: {x: x}
+  outputs: {out: out}
 
 - op : shape
   inputs :

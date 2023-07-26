@@ -16,6 +16,7 @@ import atexit
 import collections
 import glob
 import hashlib
+import importlib.abc
 import importlib.util
 import json
 import logging
@@ -173,6 +174,7 @@ def custom_write_stub(resource, pyfile):
         import sys
         import types
         import paddle
+        import importlib.abc
         import importlib.util
 
         cur_dir = os.path.dirname(os.path.abspath(__file__))

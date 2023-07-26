@@ -32,16 +32,16 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_int32(cinn_schedule_error_message_level);
+DECLARE_int32(cinn_error_message_level);
 
 namespace cinn {
 namespace ir {
@@ -54,12 +54,11 @@ class ScheduleImpl {
   ScheduleImpl() = default;
   explicit ScheduleImpl(const ModuleExpr& module_expr,
                         bool debug_flag = false,
-                        ScheduleErrorMessageLevel err_msg_level =
-                            ScheduleErrorMessageLevel::kGeneral)
+                        utils::ErrorMessageLevel err_msg_level =
+                            utils::ErrorMessageLevel::kGeneral)
       : module_expr_(module_expr), debug_flag_(debug_flag) {
-    err_msg_level_ = static_cast<ScheduleErrorMessageLevel>(
-        FLAGS_cinn_schedule_error_message_level ||
-        static_cast<int>(err_msg_level));
+    err_msg_level_ = static_cast<utils::ErrorMessageLevel>(
+        FLAGS_cinn_error_message_level || static_cast<int>(err_msg_level));
   }
   explicit ScheduleImpl(ModuleExpr&& module_expr)
       : module_expr_(std::move(module_expr)) {}
@@ -138,8 +137,7 @@ class ScheduleImpl {
 
   ModuleExpr module_expr_;
   bool debug_flag_{false};
-  ScheduleErrorMessageLevel err_msg_level_ =
-      ScheduleErrorMessageLevel::kGeneral;
+  utils::ErrorMessageLevel err_msg_level_ = utils::ErrorMessageLevel::kGeneral;
 };
 
 /** \brief A macro that guards the beginning of each implementation of schedule
@@ -152,10 +150,10 @@ class ScheduleImpl {
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                    \
-  }                                                                       \
-  catch (const IRScheduleErrorHandler& err_hanlder) {                     \
-    CINN_THROW(err_hanlder.FormatErrorMessage(primitive, err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
   }
 
 std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
@@ -177,7 +175,7 @@ std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
   std::vector<int> processed_factors;
   CINN_IR_SCHEDULE_BEGIN();
   processed_factors = ValidateFactors(factors, tot_extent, this->module_expr_);
-  CINN_IR_SCHEDULE_END("split", this->err_msg_level_);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
   int prod_size = std::accumulate(processed_factors.begin(),
                                   processed_factors.end(),
                                   1,
@@ -2316,7 +2314,7 @@ IRSchedule::IRSchedule() {}
 IRSchedule::IRSchedule(const ModuleExpr& module_expr,
                        utils::LinearRandomEngine::StateType rand_seed,
                        bool debug_flag,
-                       ScheduleErrorMessageLevel err_msg_level) {
+                       utils::ErrorMessageLevel err_msg_level) {
   impl_ =
       std::make_unique<ScheduleImpl>(module_expr, debug_flag, err_msg_level);
   this->InitSeed(rand_seed);
