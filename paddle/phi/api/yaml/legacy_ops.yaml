@@ -998,21 +998,6 @@
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
 
-
-
-- op : feed_with_place
-  args : (int64_t index, DataType dtype, Place place)
-  output : Tensor(out)
-  infer_meta :
-    func : FeedWithPlaceInferMeta
-    param : [index, dtype]
-  kernel:
-    func : feed_with_place
-    param : [index, dtype]
-    data_type : dtype
-    backend : place
-
-
 - op : fused_softmax_mask_upper_triangle
   args : (Tensor X)
   output : Tensor(Out)

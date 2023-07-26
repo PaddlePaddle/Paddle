@@ -766,6 +766,6 @@
   output : Tensor(X_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out_grad]
+    param : [Out_grad]
   kernel:
     func : fused_softmax_mask_upper_triangle_grad
