@@ -80,11 +80,9 @@ class TestShardingPass(unittest.TestCase):
         return engine
 
     def check_results(self, ref_losses, check_losses):
-        np.testing.assert_allclose(
+        np.testing.assert_equal(
             ref_losses,
             check_losses,
-            rtol=self.rtol,
-            atol=self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
                 __class__, ref_losses, check_losses, ref_losses - check_losses
             ),
@@ -114,6 +112,15 @@ class TestShardingPass(unittest.TestCase):
         dp_engine.save("./dp_engine", training=True)
         history = dp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         dp_losses = np.array(history.history["loss"])
+
+        # dp2 training after load dp_engine
+        dp_load_engine = self.get_engine()
+        dp_load_engine.load("./dp_engine")
+        history = dp_load_engine.fit(
+            self.dataset, 3, batch_size=self.batch_size
+        )
+        dp_load_losses2 = np.array(history.history["loss"])
+        self.check_results(dp_losses, dp_load_losses2)
 
         # sharding2 stage1 training
         sharding1_engine = self.get_engine(True, 1)
