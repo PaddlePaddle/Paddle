@@ -106,7 +106,6 @@ class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.enable_static()
         # TODO(phlrain): support selected rows in GPU
-        # place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -239,6 +238,19 @@ class TestSplitOp(unittest.TestCase):
             )
 
             np.testing.assert_array_equal(out[0], np_a[0:2])
+
+
+class TestJitSaveOp(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+
+        linear = paddle.nn.Linear(10, 10)
+        path = "example_model/linear"
+        paddle.jit.save(
+            linear,
+            path,
+            input_spec=[paddle.static.InputSpec([10, 10], 'float32', 'x')],
+        )
 
 
 if __name__ == "__main__":
