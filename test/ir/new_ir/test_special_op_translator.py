@@ -207,7 +207,7 @@ class TestIndexPutOpTranscriber(unittest.TestCase):
                 value = paddle.randn([2])
                 y = paddle.index_put(x, indices, value, False)
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 if __name__ == "__main__":
