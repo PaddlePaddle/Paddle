@@ -1571,7 +1571,6 @@ class TranslatedLayer(layers.Layer):
                 >>> layer = LinearNet()
                 >>> loss_fn = nn.CrossEntropyLoss()
                 >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
-
                 >>> # create data loader
                 >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
                 >>> loader = paddle.io.DataLoader(dataset,
