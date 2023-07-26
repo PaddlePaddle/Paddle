@@ -51,7 +51,7 @@ class QuantDequantTest(unittest.TestCase):
         self.dynamic_shape_params = None
         self.enable_lite = False
         self.lite_parameters = None
-        self.path = "./inference_pass/" + self.__class__.__name__ + "/"
+        self.path = "./inference_pass/" + self.__class__.__name__
         self.data = None
         self.label = None
         self.result = None

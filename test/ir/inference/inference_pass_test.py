@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import os
 import random
 import tempfile
@@ -61,13 +62,10 @@ class InferencePassTest(unittest.TestCase):
             # there won't be too many useless files
             # after finishing a couple of tests.
             feeded_vars = []
-            for var in self.startup_program.list_vars():
+            for var in program.list_vars():
                 if var.name in feeded_var_names:
                     feeded_vars.append(var)
-            print("feeded_var_names")
-            print(feeded_var_names)
-            print("feeded_vars")
-            print(feeded_vars)
+
             paddle.static.io.save_inference_model(
                 dirname,
                 feeded_vars,
@@ -75,6 +73,31 @@ class InferencePassTest(unittest.TestCase):
                 executor,
                 program=program,
             )
+
+            # for debug, remove it later
+            print("===========================")
+            files = os.listdir(self.temp_dir.name)
+            for file in files:
+                print(file)
+
+            # if the param save is null
+            # replace model_path to old version
+            param_file = dirname + ".pdiparams"
+            if not os.path.exists(param_file):
+                model_path = dirname + ".pdmodel"
+                try:
+                    save_dirname = os.path.normpath(dirname)
+                    os.makedirs(save_dirname)
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                model_path_old = os.path.join(save_dirname, "__model__")
+                if not os.path.exists(model_path_old):
+                    os.rename(model_path, model_path_old)
+            print("------------------------------")
+            files = os.listdir(self.temp_dir.name)
+            for file in files:
+                print(file)
 
     def _get_paddle_outs(self, executor, program, scope):
         '''
@@ -121,9 +144,13 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig.
         '''
-        config = AnalysisConfig(
-            self.path + ".pdmodel", self.path + ".pdiparams"
-        )
+        param_file = self.path + ".pdiparams"
+        if not os.path.exists(param_file):
+            config = AnalysisConfig(self.path)
+        else:
+            config = AnalysisConfig(
+                self.path + ".pdmodel", self.path + ".pdiparams"
+            )
         config.disable_gpu()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
