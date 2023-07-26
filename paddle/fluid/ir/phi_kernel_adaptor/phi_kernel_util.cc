@@ -264,7 +264,7 @@ void HandleForSpecialOp(
   }
 
   if (op_name == "pd.shadow_output") {
-    VLOG(6) << "Handle for pd.shaddow_ouptut";
+    VLOG(6) << "Handle for pd.shadow_ouptut";
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 

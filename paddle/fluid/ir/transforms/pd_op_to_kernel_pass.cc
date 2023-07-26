@@ -433,17 +433,17 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
       auto out_type = paddle::dialect::AllocatedDenseTensorType::get(
           ctx,
-          phi::TransToPhiPlace(shaddow_key.backend()),
+          phi::TransToPhiPlace(shadow_key.backend()),
           (*it)->result(0).type().dyn_cast<dialect::DenseTensorType>());
 
-      ir::Operation* shaddow_op =
+      ir::Operation* shadow_op =
           ir::Operation::Create({op->result(0)}, attr_map, {out_type}, op_info);
 
-      map_op_pair[*it] = shaddow_op;
-      program->block()->push_back(shaddow_op);
+      map_op_pair[*it] = shadow_op;
+      program->block()->push_back(shadow_op);
       if ((*it)->num_results() > 0) {
-        for (size_t i = 0; i < shaddow_op->num_results(); ++i) {
-          map_value_pair[(*it)->result(i)] = shaddow_op->result(i);
+        for (size_t i = 0; i < shadow_op->num_results(); ++i) {
+          map_value_pair[(*it)->result(i)] = shadow_op->result(i);
         }
       }
     }
