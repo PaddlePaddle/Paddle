@@ -186,6 +186,7 @@ class AttributeJstTransformer(BaseTransformer):
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
         self.interested_name = {
             'size',
+            '__len__',
         }
         self.root = node
 
