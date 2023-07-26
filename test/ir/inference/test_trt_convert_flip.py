@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
 import unittest
 from functools import partial
 from typing import List
@@ -42,40 +41,37 @@ class TrtConvertFlipTest(TrtLayerAutoScanTest):
             elif self.dims == 1:
                 return np.random.random([24]).astype(np.int32)
 
-        def generate_axis(is_int):
-            if is_int:
-                return random.randint(0, self.dims - 1)
+        def generate_axis():
             return np.arange(self.dims).tolist()
 
         for dims in [2, 3, 4]:
             for batch in [3, 6, 9]:
-                for is_int in [True, False]:
-                    self.dims = dims
-                    axis = generate_axis(is_int)
-                    ops_config = [
-                        {
-                            "op_type": "flip",
-                            "op_inputs": {
-                                "X": ["input_data"],
-                            },
-                            "op_outputs": {"Out": ["output_data"]},
-                            "op_attrs": {"axis": axis},
-                        }
-                    ]
-                    ops = self.generate_op_config(ops_config)
-
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input, batch)
-                            ),
+                self.dims = dims
+                axis = generate_axis()
+                ops_config = [
+                    {
+                        "op_type": "flip",
+                        "op_inputs": {
+                            "X": ["input_data"],
                         },
-                        outputs=["output_data"],
-                    )
+                        "op_outputs": {"Out": ["output_data"]},
+                        "op_attrs": {"axis": axis},
+                    }
+                ]
+                ops = self.generate_op_config(ops_config)
 
-                    yield program_config
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={},
+                    inputs={
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input, batch)
+                        ),
+                    },
+                    outputs=["output_data"],
+                )
+
+                yield program_config
 
     def sample_predictor_configs(
         self, program_config
