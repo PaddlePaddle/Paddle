@@ -369,6 +369,16 @@ std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
       "GetDependencyCount is not implemented in NewIRInterpreter."));
 }
 
+const interpreter::StreamAnalyzer& NewIRInterpreter::GetStreamAnalyzer() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetStreamAnalyzer is not implemented in NewIRInterpreter."));
+}
+
+bool NewIRInterpreter::IsSharedResultsBuild() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "IsSharedResultsBuild is not implemented in NewIRInterpreter."));
+}
+
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
     const std::vector<std::vector<size_t>>& input_var2op, size_t var_index) {
   if (!var_scope_.VarDesc(var_index)) {
