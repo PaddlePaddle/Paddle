@@ -299,7 +299,7 @@ void HardSwishGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(relu_grad,
                    GPU,
                    ALL_LAYOUT,

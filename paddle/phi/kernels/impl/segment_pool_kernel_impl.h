@@ -77,6 +77,11 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
                                          segment_ids_ptr + num_indices - 1,
                                          sizeof(IndexT),
                                          hipMemcpyDeviceToHost));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpy(length_data,
+                                          segment_ids_ptr + num_indices - 1,
+                                          sizeof(IndexT),
+                                          musaMemcpyDeviceToHost));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(length_data,
                                           segment_ids_ptr + num_indices - 1,

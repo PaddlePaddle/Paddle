@@ -289,7 +289,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
-#else
+#else // CUDA & MUSA
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,

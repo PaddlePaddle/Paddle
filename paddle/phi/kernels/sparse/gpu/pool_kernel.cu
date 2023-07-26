@@ -103,6 +103,8 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
 // 2. max pool
 #ifdef PADDLE_WITH_HIP
   thrust::fill(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::fill(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::fill(thrust::cuda::par.on(dev_ctx.stream()),
 #endif

@@ -145,6 +145,8 @@ struct IscloseFunctor<phi::GPUContext, T> {
     grid = (grid > block) ? block : grid;
 #ifdef PADDLE_WITH_HIP
     hipMemset(out_data, true, num * sizeof(bool));
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(out_data, true, num * sizeof(bool));
 #else
     cudaMemset(out_data, true, num * sizeof(bool));
 #endif

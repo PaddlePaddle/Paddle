@@ -83,6 +83,9 @@ int GetAllStringsSize(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   phi::backends::gpu::GpuMemcpyAsync(
       &num, nums_ptr, sizeof(int), hipMemcpyDeviceToHost, dev_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+  phi::backends::gpu::GpuMemcpyAsync(
+      &num, nums_ptr, sizeof(int), musaMemcpyDeviceToHost, dev_ctx.stream());
 #else
   phi::backends::gpu::GpuMemcpyAsync(
       &num, nums_ptr, sizeof(int), cudaMemcpyDeviceToHost, dev_ctx.stream());
@@ -179,6 +182,9 @@ void DeserializeOnGPU(const phi::GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   phi::backends::gpu::GpuMemcpySync(
       &numel, strings_data, sizeof(numel), hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+  phi::backends::gpu::GpuMemcpySync(
+      &numel, strings_data, sizeof(numel), musaMemcpyDeviceToHost);
 #else
   phi::backends::gpu::GpuMemcpySync(
       &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);
