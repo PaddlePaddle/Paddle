@@ -76,7 +76,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
                                         true);
 
   VLOG(6) << "Make ReduceHook function";
-  auto reduce_hook = [&](void) -> void {
+  auto reduce_hook = [&]() -> void {
     auto* t_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                       ->data<float>();
     for (int i = 0; i < tensor.numel(); i++) {
@@ -214,7 +214,7 @@ void test_matmul(bool is_remove_gradient_hook) {
                                         2.0,
                                         true);
 
-  auto reduce_hook = [&](void) -> void {
+  auto reduce_hook = [&]() -> void {
     auto* t_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>();
     for (int i = 0; i < Y.numel(); i++) {
@@ -278,7 +278,7 @@ void test_backward_final_hooks() {
                                         true);
 
   VLOG(6) << "Make ReduceHook function";
-  auto backward_final_hook = [&](void) -> void {
+  auto backward_final_hook = [&]() -> void {
     auto* t_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(X.impl())->data<float>();
     VLOG(6) << "Run Target Backward Hook";

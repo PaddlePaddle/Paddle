@@ -1030,6 +1030,9 @@
 - op : feed
   outputs: {out: Out}
 
+- op : feed_with_place
+  outputs: {out: out}
+
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -2461,6 +2464,10 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
+
+- op : shaddow_output
+  inputs: {x: x}
+  outputs: {out: out}
 
 - op : shape
   inputs :
