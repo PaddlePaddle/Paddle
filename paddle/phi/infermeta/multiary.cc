@@ -3617,6 +3617,8 @@ void FusedConvInferMeta(const MetaTensor& input,
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
+                        const MetaTensor& sin,
+                        const MetaTensor& cos,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {

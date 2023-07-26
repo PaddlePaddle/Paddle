@@ -2748,7 +2748,7 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-  m.def("translate_newirprogram", &paddle::TranslateLegacyProgramToProgram);
+  m.def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram);
   BindFleetWrapper(&m);
   BindIO(&m);
   BindParallelExecutor(m);
