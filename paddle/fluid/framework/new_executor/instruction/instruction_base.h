@@ -45,9 +45,9 @@ class InstructionBase {
   OpFuncType KernelType() const;
   void SetKernelType(OpFuncType type) { type_ = type; }
 
-  int GetStreamPriority() const { return scheduling_priority_; }
-  void SetStreamPriority(SchedulingPriority scheduling_priority) {
-    scheduling_priority_ = scheduling_priority;
+  int GetStreamPriority() const { return stream_priority_; }
+  void SetStreamPriority(int stream_priority) {
+    stream_priority_ = stream_priority;
   }
 
   SchedulingPriority GetSchedulingPriority() const {

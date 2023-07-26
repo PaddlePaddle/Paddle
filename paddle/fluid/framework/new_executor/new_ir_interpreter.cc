@@ -270,10 +270,14 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     VLOG(4) << DebugValueInfo();
 
     BuildInstruction();
+    VLOG(4) << "Done BuildInstruction";
 
     BuildInstructionDependences();
+    VLOG(4) << "Done BuildInstructionDependences";
 
     ir_stream_analyzer_.ConstructEvents(&vec_instruction_base_);
+    VLOG(4) << "Done ConstructEvents";
+
     // add event for the input var of jit program, since there are async copied
     // from gpu_pinned place to gpu place on compute stream.
     for (size_t i = 0; i < dependecy_count_.size(); ++i) {
@@ -296,6 +300,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
         }
       }
     }
+    VLOG(4) << "AddEventToWait for JitInputVars";
 
     // calculate last_live_ops_
     for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx) {
@@ -312,10 +317,6 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
 
       for (auto& item : ins_and_outs) {
         for (auto var_id : item.second) {
-          // skip kEmptyVarIndex
-          if (var_id == kEmptyVarIndex) {
-            continue;
-          }
           // skip no_need_buffer input vars
           if (ins.count(item.first) &&
               instr->NoNeedBuffer().count(item.first)) {
@@ -339,7 +340,6 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
         }
       }
     }
-
     // clear the last_live_ops list for all vars in skip_gc_vars
     for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
       int var_id = GetIdByName(skip_gc_var);
@@ -348,6 +348,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
         VLOG(8) << "Skip gc for var: " << skip_gc_var;
       }
     }
+    VLOG(4) << "calculate last_live_ops_";
 
     // shrink, find the downstream op that has no other op in the
     // downstream list happens before it
@@ -357,13 +358,23 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     // in this case, a is the input of op1 and op2, we only need to check
     // a after op2, because op2 always uses a after op1.
     var_ref_count_.resize(variable_list_.size());
+    VLOG(4) << "last_live_ops_.size() : " << last_live_ops_.size();
+    for (auto kv : last_live_ops_) {
+      for (auto val : kv.second) {
+        VLOG(4) << "var: " << kv.first << " -> op: " << val;
+      }
+    }
+    VLOG(4) << "var_ref_count_.size() : " << var_ref_count_.size();
     for (size_t i = 0; i < last_live_ops_.size(); ++i) {
       std::set<size_t> minumum_last_live_ops;
+      for (auto val : last_live_ops_[i]) {
+        VLOG(4) << "last_live_ops_: " << val;
+      }
       for (size_t item : last_live_ops_[i]) {
         bool not_before_any = true;
         // find the op that is not executed before any
         for (size_t other_item : last_live_ops_[i]) {
-          if (dependency_builder_.OpHappensBefore(item, other_item)) {
+          if (ir_dependency_builder_.OpHappensBefore(item, other_item)) {
             VLOG(6) << "happens_before: " << item << "->" << other_item
                     << ", so skip " << item;
             not_before_any = false;
@@ -373,14 +384,15 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
         if (not_before_any) {
           VLOG(6) << "last live op of var " << i << " "
                   << var_scope_.GetNameById(i) << " : " << item << " "
-                  << vec_instruction_[item].OpBase()->Type();
+                  << vec_instruction_base_[item]->Name();
           minumum_last_live_ops.insert(item);
-          vec_instruction_[item].AddGCCheckVar(i);
+          vec_instruction_base_[item]->AddGCCheckVar(i);
         }
       }
       last_live_ops_[i] = minumum_last_live_ops;
       var_ref_count_[i] = last_live_ops_[i].size();
     }
+    VLOG(4) << "calculate last_live_ops_ 2";
 
     for (auto& dep : dependecy_count_) {
       deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
@@ -389,14 +401,17 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
       refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
           var_ref_count_[i], variable_list_[i]));
     }
+    VLOG(4) << "calculate last_live_ops_ 3";
 
     AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap());
+    VLOG(4) << "Done AnalyseExecuteOrderForTrace";
 
     // Run
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
     }
+    VLOG(4) << "Done first run";
   } else {
     // Run
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
