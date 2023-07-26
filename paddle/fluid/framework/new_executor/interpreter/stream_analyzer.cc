@@ -72,36 +72,36 @@ inline std::string RunTypeToString(DownstreamRunType run_type) {
   }
 }
 
-void StreamAnalyzer::ConstructEvents(
-    std::vector<Instruction>* instructions) const {
-  std::vector<Instruction> cross_step_merged_instructions = *instructions;
-  for (const Instruction& instr : *instructions) {
-    cross_step_merged_instructions.emplace_back(instr);
+void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
+  if (!is_event_info_build_) {
+    std::vector<Instruction> cross_step_merged_instructions = *instructions;
+    for (const Instruction& instr : *instructions) {
+      cross_step_merged_instructions.emplace_back(instr);
+    }
+
+    DependencyBuilder dependency_builder;
+    dependency_builder.Build(cross_step_merged_instructions);
+
+    const std::map<size_t, std::set<size_t>>& downstream_map =
+        dependency_builder.OpDownstreamMap();
+    const size_t instr_num = cross_step_merged_instructions.size();
+    std::vector<std::vector<std::vector<size_t>>> run_type_info(
+        instr_num,
+        std::vector<std::vector<size_t>>(
+            /*number_of_run_type = */ 2));  // instr_id -> run_type ->
+                                            // next_instr_id
+    AnalyseAllRunType(
+        cross_step_merged_instructions, downstream_map, &run_type_info);
+
+    AnalyseAllEventInfo(
+        cross_step_merged_instructions, run_type_info, event_info_.get());
+    ShrinkEventInfo(dependency_builder, event_info_.get());
+    is_event_info_build_ = true;
   }
-
-  DependencyBuilder dependency_builder;
-  dependency_builder.Build(cross_step_merged_instructions);
-
-  const std::map<size_t, std::set<size_t>>& downstream_map =
-      dependency_builder.OpDownstreamMap();
-  const size_t instr_num = cross_step_merged_instructions.size();
-  std::vector<std::vector<std::vector<size_t>>> run_type_info(
-      instr_num,
-      std::vector<std::vector<size_t>>(
-          /*number_of_run_type = */ 2));  // instr_id -> run_type ->
-                                          // next_instr_id
-  AnalyseAllRunType(
-      cross_step_merged_instructions, downstream_map, &run_type_info);
-
-  std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>
-      event_info;  // DeviceContext -> waiter_instr_id -> recorder_instr_ids
-  AnalyseAllEventInfo(
-      cross_step_merged_instructions, run_type_info, &event_info);
-  ShrinkEventInfo(dependency_builder, &event_info);
 
   // Construct events
   std::map<size_t, std::shared_ptr<DeviceEvent>> instr2event;
-  for (auto& context_item : event_info) {
+  for (auto& context_item : *event_info_) {
     for (auto& waiter_item : context_item.second) {
       size_t waiter_instr_id = waiter_item.first;
       std::set<size_t>& recorder_instr_ids = waiter_item.second;
@@ -481,6 +481,16 @@ DownstreamRunType StreamAnalyzer::AnalyseRunTypeForTwoInstructions(
   return DownstreamRunType::kDirectRun;
 }
 
+std::shared_ptr<
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+StreamAnalyzer::GetEventInfo() const {
+  return event_info_;
+}
+
+void StreamAnalyzer::ShareEventInfoFrom(const StreamAnalyzer& src) {
+  event_info_ = src.GetEventInfo();
+  is_event_info_build_ = true;
+}
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

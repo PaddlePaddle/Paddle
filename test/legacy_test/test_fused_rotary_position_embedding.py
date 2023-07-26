@@ -41,37 +41,43 @@ def mult_qkv(value, cos_tensor, sin_tensor):
     return query
 
 
-def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
-    q, k, v = deal_qkv(init_q, init_k, init_v)
+def get_sin_cos_tensor(seq_len, head_dim, sign):
+    pos_seq = paddle.arange(0, seq_len, 1, dtype="float32")
+    indices = paddle.arange(0, head_dim, 2, dtype="float32")
 
-    pos_seq = paddle.arange(0, q.shape[2], 1, dtype="float32")
-    indices = paddle.arange(0, q.shape[3], 2, dtype="float32")
-
-    indices = 1 / 10000 ** (indices / q.shape[3])
+    indices = 1 / 10000 ** (indices / head_dim)
     sinusoid_inp = pos_seq.unsqueeze(1) * indices.unsqueeze(0)
 
-    sin_sin = np.empty((q.shape[2] * q.shape[3]), dtype=np.float32)
-    cos_cos = np.empty((q.shape[2] * q.shape[3]), dtype=np.float32)
+    sin_sin = np.empty((seq_len * head_dim), dtype=np.float32)
+    cos_cos = np.empty((seq_len * head_dim), dtype=np.float32)
     numpy_array = sinusoid_inp.numpy()
     iter_array = np.nditer(numpy_array)
 
     i = 0
 
     for value in iter_array:
-        sin_sin[i * 2] = -1 * np.sin(value)
+        sin_sin[i * 2] = sign * np.sin(value)
         cos_cos[i * 2 + 0] = np.cos(value)
         sin_sin[i * 2 + 1] = np.sin(value)
         cos_cos[i * 2 + 1] = np.cos(value)
         i += 1
 
-    sin_tensor = paddle.reshape(
-        paddle.to_tensor(sin_sin, place=paddle.CPUPlace()),
-        [1, 1, q.shape[2], q.shape[3]],
+    tensor_sin = paddle.reshape(
+        paddle.to_tensor(sin_sin),
+        [1, 1, seq_len, head_dim],
     )
-    cos_tensor = paddle.reshape(
-        paddle.to_tensor(cos_cos, place=paddle.CPUPlace()),
-        [1, 1, q.shape[2], q.shape[3]],
+    tensor_cos = paddle.reshape(
+        paddle.to_tensor(cos_cos),
+        [1, 1, seq_len, head_dim],
     )
+
+    return tensor_sin, tensor_cos
+
+
+def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
+    q, k, v = deal_qkv(init_q, init_k, init_v)
+
+    sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], -1)
 
     query = mult_qkv(q, cos_tensor, sin_tensor)
     value = mult_qkv(v, cos_tensor, sin_tensor)
@@ -98,7 +104,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tmp.stop_gradient = False
         return tmp
 
-    def get_forward_backward(self, rope_function, seed):
+    def get_forward_backward(self, rope_function, seed, flag=0):
         paddle.disable_static()
         paddle.seed(seed)
         fw = []
@@ -106,7 +112,15 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tensor_q = self.get_paddle_tensor()
         tensor_k = self.get_paddle_tensor()
         tensor_v = self.get_paddle_tensor()
-        out_q, out_k, out_v = rope_function(tensor_q, tensor_k, tensor_v)
+        if flag:
+            tensor_sin, tensor_cos = get_sin_cos_tensor(
+                tensor_q.shape[1], tensor_q.shape[3], 1
+            )
+            out_q, out_k, out_v = rope_function(
+                tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
+            )
+        else:
+            out_q, out_k, out_v = rope_function(tensor_q, tensor_k, tensor_v)
 
         fw.append(out_q)
         fw.append(out_k)
@@ -130,6 +144,21 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         )
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding, seed=self.seed
+        )
+        for i in range(len(p_fw)):
+            np.testing.assert_allclose(
+                p_fw[i].numpy(), f_fw[i].numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                p_bw[i].numpy(), f_bw[i].numpy(), rtol=1e-05
+            )
+
+    def test_fused_dropout_add_sin_cos(self):
+        p_fw, p_bw = self.get_forward_backward(
+            paddle_fused_rotary_position_embedding, seed=self.seed
+        )
+        f_fw, f_bw = self.get_forward_backward(
+            fused_rotary_position_embedding, seed=self.seed, flag=1
         )
         for i in range(len(p_fw)):
             np.testing.assert_allclose(

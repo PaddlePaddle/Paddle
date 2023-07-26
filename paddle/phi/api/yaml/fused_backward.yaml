@@ -17,10 +17,10 @@
   support_dygraph_mode : true
 
 - backward_op : fused_rotary_position_embedding_grad
-  forward: fused_rotary_position_embedding (Tensor q, Tensor k, Tensor v) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
-  args : (Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad)
+  forward: fused_rotary_position_embedding (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
+  args : (Tensor sin, Tensor cos, Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad)
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
-  optional : out_k_grad, out_v_grad, k_grad, v_grad
+  optional :  sin, cos, out_k_grad, out_v_grad, k_grad, v_grad
   infer_meta :
     func : FusedRopeGradInferMeta
   kernel :
