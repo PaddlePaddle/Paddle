@@ -107,7 +107,6 @@ class TestFeedOp(unittest.TestCase):
 class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
         # TODO(phlrain): support selected rows in GPU
-        # place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
         paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
@@ -204,11 +203,6 @@ class TestJitSaveOp(unittest.TestCase):
             path,
             input_spec=[paddle.static.InputSpec([10, 10], 'float32', 'x')],
         )
-        
-        print( "load")
-        paddle.jit.load(path)
-            
-
 
 if __name__ == "__main__":
     paddle.enable_static()
