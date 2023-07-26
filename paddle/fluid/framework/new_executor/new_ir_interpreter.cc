@@ -298,68 +298,47 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     }
 
     // calculate last_live_ops_
-    // for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx)
-    // { InstructionBase* instr = vec_instruction_base_[op_idx]; OpInOutInfo
-    // info;
-    //     info.Build(instr.OpBase());
+    for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx) {
+      InstructionBase* instr = vec_instruction_base_[op_idx];
+      std::set<size_t> gc_check_vars;
 
-    // std::set<size_t> gc_check_vars;
+      const std::unordered_map<::ir::Value, std::vector<int>>& ins =
+          instr->Inputs();
+      const std::unordered_map<::ir::Value, std::vector<int>>& outs =
+          instr->Outputs();
+      std::unordered_multimap<::ir::Value, std::vector<int>> ins_and_outs{
+          ins.begin(), ins.end()};
+      ins_and_outs.insert(outs.begin(), outs.end());
 
-    //     const std::map<std::string, std::vector<int>>& ins = instr.Inputs();
-    //     const std::map<std::string, std::vector<int>>& outs =
-    //     instr.Outputs(); std::multimap<std::string, std::vector<int>>
-    //     ins_and_outs{ins.begin(),
-    //                                                               ins.end()};
-    //     ins_and_outs.insert(outs.begin(), outs.end());
+      for (auto& item : ins_and_outs) {
+        for (auto var_id : item.second) {
+          // skip kEmptyVarIndex
+          if (var_id == kEmptyVarIndex) {
+            continue;
+          }
+          // skip no_need_buffer input vars
+          if (ins.count(item.first) &&
+              instr->NoNeedBuffer().count(item.first)) {
+            continue;
+          }
+          gc_check_vars.insert(var_id);
+        }
+      }
 
-    //     for (auto& item : ins_and_outs) {
-    //       for (auto id : item.second) {
-    //         if (id == kEmptyVarIndex) {
-    //           continue;
-    //         }
-    //         auto* var_desc = var_scope_.VarDesc(id);
-    //         // skip no_need_buffer input vars
-    //         if (var_desc && ins.count(item.first) &&
-    //             !info.IsInArgBufferNeeded(var_desc->Name())) {
-    //           continue;
-    //         }
-    //         // skip when this var is not in block and not a data_transferred
-    //         var,
-    //         // which means this var is managed by other block
-    //         const auto& var_name = var_scope_.GetNameById(id);
-    //         bool not_owned = !block_.HasVar(var_name);
-    //         const auto& transferred_vars =
-    //         var_scope_.DataTransferAddedVars(); bool not_transferred =
-    //             std::all_of(transferred_vars.begin(),
-    //                         transferred_vars.end(),
-    //                         [&](const std::pair<std::string, int>& elem) {
-    //                           return elem.first != var_name;
-    //                         });
-    //         if (not_owned && not_transferred) {
-    //           VLOG(10) << "[gc_check_inputs] skip gc: " << var_name;
-    //           continue;
-    //         }
-    //         gc_check_vars.insert(id);
-    //       }
-    //     }
-
-    //     for (auto var_id : gc_check_vars) {
-    //       Scope* inner_scope =
-    //           HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
-    //       paddle::framework::Variable* var =
-    //           inner_scope->FindVar(var_scope_.GetNameById(var_id));
-    //       if (var->IsType<phi::DenseTensor>() ||
-    //       var->IsType<phi::SelectedRows>() ||
-    //           var->IsType<LoDTensorArray>()) {
-    //         last_live_ops_[var_id].insert(op_idx);
-    //       } else {
-    //         VLOG(4) << "not clear " << var_scope_.GetNameById(var_id) << "
-    //         after "
-    //                 << instr.OpBase()->Type() << " because its type is "
-    //                 << framework::ToTypeName(var->Type());
-    //       }
-    //     }
-    // }
+      for (auto var_id : gc_check_vars) {
+        Scope* inner_scope = InnerScope();
+        paddle::framework::Variable* var =
+            inner_scope->FindVar(GetNameById(var_id));
+        if (var->IsType<phi::DenseTensor>() ||
+            var->IsType<phi::SelectedRows>() || var->IsType<LoDTensorArray>()) {
+          last_live_ops_[var_id].insert(op_idx);
+        } else {
+          VLOG(4) << "not clear " << GetNameById(var_id) << " after "
+                  << instr->Name() << " because its type is "
+                  << framework::ToTypeName(var->Type());
+        }
+      }
+    }
 
     // clear the last_live_ops list for all vars in skip_gc_vars
     for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
@@ -411,7 +390,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
           var_ref_count_[i], variable_list_[i]));
     }
 
-    AnalyseExecuteOrderForTrace();
+    AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap());
 
     // Run
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
@@ -889,69 +868,6 @@ void NewIRInterpreter::Convert(
     }
   }
 
-  // calculate last_live_ops_
-  //   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
-  //     Instruction& instr = vec_instruction_[op_idx];
-  //     OpInOutInfo info;
-  //     info.Build(instr.OpBase());
-
-  //     std::set<size_t> gc_check_vars;
-
-  //     const std::map<std::string, std::vector<int>>& ins = instr.Inputs();
-  //     const std::map<std::string, std::vector<int>>& outs = instr.Outputs();
-  //     std::multimap<std::string, std::vector<int>> ins_and_outs{ins.begin(),
-  //                                                               ins.end()};
-  //     ins_and_outs.insert(outs.begin(), outs.end());
-
-  //     for (auto& item : ins_and_outs) {
-  //       for (auto id : item.second) {
-  //         if (id == kEmptyVarIndex) {
-  //           continue;
-  //         }
-  //         auto* var_desc = var_scope_.VarDesc(id);
-  //         // skip no_need_buffer input vars
-  //         if (var_desc && ins.count(item.first) &&
-  //             !info.IsInArgBufferNeeded(var_desc->Name())) {
-  //           continue;
-  //         }
-  //         // skip when this var is not in block and not a data_transferred
-  //         var,
-  //         // which means this var is managed by other block
-  //         const auto& var_name = var_scope_.GetNameById(id);
-  //         bool not_owned = !block_.HasVar(var_name);
-  //         const auto& transferred_vars = var_scope_.DataTransferAddedVars();
-  //         bool not_transferred =
-  //             std::all_of(transferred_vars.begin(),
-  //                         transferred_vars.end(),
-  //                         [&](const std::pair<std::string, int>& elem) {
-  //                           return elem.first != var_name;
-  //                         });
-  //         if (not_owned && not_transferred) {
-  //           VLOG(10) << "[gc_check_inputs] skip gc: " << var_name;
-  //           continue;
-  //         }
-  //         gc_check_vars.insert(id);
-  //       }
-  //     }
-
-  //     for (auto var_id : gc_check_vars) {
-  //       Scope* inner_scope =
-  //           HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
-  //       paddle::framework::Variable* var =
-  //           inner_scope->FindVar(var_scope_.GetNameById(var_id));
-  //       if (var->IsType<phi::DenseTensor>() ||
-  //       var->IsType<phi::SelectedRows>() ||
-  //           var->IsType<LoDTensorArray>()) {
-  //         last_live_ops_[var_id].insert(op_idx);
-  //       } else {
-  //         VLOG(4) << "not clear " << var_scope_.GetNameById(var_id) << "
-  //         after "
-  //                 << instr.OpBase()->Type() << " because its type is "
-  //                 << framework::ToTypeName(var->Type());
-  //       }
-  //     }
-  //   }
-
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
     int var_id = var_scope_.GetIdByName(skip_gc_var);
@@ -993,23 +909,6 @@ void NewIRInterpreter::Convert(
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
 
-  //   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-  //     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
-  //   }
-
-  // bool inplaced = false;
-  // for (const Instruction& inst : vec_instruction_) {
-  //   if (inst.OpBase()->Type() == "share_buffer" ||
-  //       inst.OpBase()->Type() == "share_data") {
-  //     VLOG(4) << "Already inplaced, skip inplace now.";
-  //     inplaced = true;
-  //   }
-  // }
-
-  //   if (FLAGS_new_executor_use_inplace && !inplaced) {
-  //     BuildInplace();
-  //   }
-
   for (auto& dep : dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
@@ -1018,7 +917,7 @@ void NewIRInterpreter::Convert(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
 
-  AnalyseExecuteOrderForTrace();
+  AnalyseExecuteOrderForTrace(dependency_builder_.OpDownstreamMap());
 }
 
 void NewIRInterpreter::BuildSkipShareLoDInfo() {
@@ -1685,11 +1584,10 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 // ->(sync_run)-> OP(B) OP(O) ->(direct_run)-> OP(C) ->(direct_run)-> OP(D) If B
 // is run before C, B may always block to wait for A to finish executing, but in
 // fact, C can be executed first during this time.
-void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
+void NewIRInterpreter::AnalyseExecuteOrderForTrace(
+    std::map<size_t, std::set<size_t>> op_downstream_map) {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
-
-  auto op_downstream_map = ir_dependency_builder_.OpDownstreamMap();
 
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id

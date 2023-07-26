@@ -91,7 +91,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
-  void AnalyseExecuteOrderForTrace();
+  void AnalyseExecuteOrderForTrace(
+      std::map<size_t, std::set<size_t>> op_downstream_map);
 
   // inplace
   void BuildInplace();
