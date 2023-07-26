@@ -210,10 +210,6 @@ Attribute Operation::attribute(const std::string &key) const {
   return attributes_.at(key);
 }
 
-Region *Operation::GetParentRegion() const {
-  return parent_ ? parent_->GetParent() : nullptr;
-}
-
 Region *Operation::GetParentRegion() {
   return parent_ ? parent_->GetParent() : nullptr;
 }
@@ -223,6 +219,15 @@ Operation *Operation::GetParentOp() const {
 }
 
 Program *Operation::GetParentProgram() {
+  Operation *op = this;
+  while (Operation *parent_op = op->GetParentOp()) {
+    op = parent_op;
+  }
+  ModuleOp module_op = op->dyn_cast<ModuleOp>();
+  return module_op ? module_op.program() : nullptr;
+}
+
+const Program *Operation::GetParentProgram() const {
   Operation *op = this;
   while (Operation *parent_op = op->GetParentOp()) {
     op = parent_op;
