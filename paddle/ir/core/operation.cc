@@ -250,6 +250,14 @@ void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   }
 }
 
+void Operation::ReplaceAllUsesWith(const std::vector<OpResult> &op_results) {
+  IR_ENFORCE(num_results_ == op_results.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(op_results[i]);
+  }
+}
+
 void Operation::Verify() {
   if (info_) {
     info_.Verify(this);

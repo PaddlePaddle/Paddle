@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle import ir
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -33,7 +34,7 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
@@ -50,7 +51,7 @@ class TestEmbeddingOpTranscriber(unittest.TestCase):
                 )
                 output = embedding(x)
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestIncrementOpTranscriber(unittest.TestCase):
@@ -64,7 +65,7 @@ class TestIncrementOpTranscriber(unittest.TestCase):
                 data = paddle.zeros(shape=[1], dtype='float32')
                 counter = paddle.increment(data)
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestAssignValueOpTranscriber(unittest.TestCase):
@@ -81,7 +82,7 @@ class TestAssignValueOpTranscriber(unittest.TestCase):
                     stop_gradient=False,
                 )
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestRnnOpTranscriber(unittest.TestCase):
@@ -98,7 +99,7 @@ class TestRnnOpTranscriber(unittest.TestCase):
                 cell = paddle.nn.SimpleRNNCell(16, 32)
                 y, h = cell(x, prev_h)
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestEmptyVarTranslate(unittest.TestCase):
@@ -120,7 +121,7 @@ class TestEmptyVarTranslate(unittest.TestCase):
                 out2 = paddle.mean(out1)
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 sgd_optimizer.minimize(out2)
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestOneHotOpTranscriber(unittest.TestCase):
@@ -139,7 +140,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
     def test_normal_attribute(self):
         place = core.Place()
@@ -156,7 +157,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 if __name__ == "__main__":
