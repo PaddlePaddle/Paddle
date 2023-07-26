@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <absl/types/variant.h>
 #include <memory>
 #include <unordered_map>
 #include "paddle/cinn/common/context.h"
@@ -30,9 +31,15 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
-// macros or attempt to unify Op name with Paddle and CINN.
-static const std::unordered_map<std::string, std::string> OP_NAMES = {
+struct CompatibleInfo {
+  static constexpr char* kInputPrefix = "input_";
+  static constexpr char* kOutputPrefix = "output_";
+  // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
+  // macros or attempt to unify Op name with Paddle and CINN.
+  static const std::unordered_map<std::string, std::string> OP_NAMES;
+};
+
+const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd.full", "fill_constant"}, {"pd.matmul", "matmul"}};
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
@@ -43,7 +50,7 @@ class NewIRCompiler final {
                 const Target& target,
                 const std::shared_ptr<Scope>& scope)
       : program_(prog),
-        m_builder_("NewIR", target),  // TODO(dev): need unique name
+        m_builder_("NewIR", target),
         target_(target),
         scope_(scope) {}
   std::unique_ptr<Program> Build() {
@@ -70,38 +77,44 @@ class NewIRCompiler final {
     compiler_->Build(build_module, "");
 
     auto instructions = BuildInstructions(groups);
+
+    // TODO(Aurelius84): Instantiate all tensors on compile-time, which is
+    // controlled by 'options.with_instantiate_variables' in GraphCompiler.
+    // Moreover, it's better to implement InsertBufferHandlers() logic
+    // to automatically insert Malloc and Free instructions.
+    for (auto& name : scope_->var_names()) {
+      std::string var_name({name.data(), name.size()});
+      VLOG(4) << "Instantiate " << var_name << " on compile-time";
+      auto* var = scope_->Var<Tensor>(var_name);
+      auto& tensor = absl::get<Tensor>(*var);
+      tensor->mutable_data(target_, tensor->type());
+    }
     return std::make_unique<Program>(scope_, std::move(instructions));
   }
 
   std::vector<ir::LoweredFunc> GetOpFunc(const ::ir::Operation& op, int idx) {
     std::vector<ir::Tensor> inputs;
     std::vector<common::CINNValue> cinn_inputs;
-    VLOG(4) << "GetOpFunc for op: " << op.name();
+    auto op_name = op.name();
+    VLOG(4) << "GetOpFunc for op: " << op_name;
     // step 1: Deal with Oprands
     for (int i = 0; i < op.num_operands(); ++i) {
       auto in_value = op.operand(i);
       // TODO(Aurelius84): For now, use addr as name but it's not wise.
-      std::string input_id = std::to_string(std::hash<::ir::Value>()(in_value));
-      // NOTE(Aurelius84): whether need to support other Type?
+      std::string input_id = CompatibleInfo::kInputPrefix +
+                             std::to_string(std::hash<::ir::Value>()(in_value));
       auto type_info =
           in_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
       auto in_shape = phi::vectorize<int>(type_info.dims());
-      ir::Tensor temp;
       auto dtype = type_info.dtype();
-      // TODO(Aurelius84): support more type
-      if (dtype.isa<::ir::Float32Type>()) {
-        temp = lang::Placeholder<float>(input_id, in_shape);
-      } else if (dtype.isa<::ir::Int32Type>()) {
-        temp = lang::Placeholder<int>(input_id, in_shape);
-      }
-
+      ir::Tensor temp = lang::CreatePlaceHolder(
+          in_shape, utils::ConvertIRType(dtype), input_id);
       inputs.push_back(temp);
       cinn_inputs.push_back(common::CINNValue(temp));
     }
     for (auto out_name : OpGetOutputNames(op)) {
-      cinn_inputs.push_back(
-          common::CINNValue(op.name().substr(3) + "_" + out_name));
+      cinn_inputs.push_back(common::CINNValue(out_name));
     }
 
     VLOG(4) << "inputs.size(): " << inputs.size();
@@ -113,8 +126,7 @@ class NewIRCompiler final {
       auto out_value = op.result(i);
       auto type_info =
           out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-      // TODO(Aurelius84): need to support ::ir::Type -> common::Type
-      out_types.push_back(common::Float(32));
+      out_types.push_back(utils::ConvertIRType(type_info.dtype()));
       auto out_shape = phi::vectorize<int>(type_info.dims());
       out_shapes.push_back(std::move(out_shape));
     }
@@ -124,14 +136,14 @@ class NewIRCompiler final {
     {
       VLOG(4) << "op.attributes():" << op.attributes().size();
       auto attrs = utils::ConvertAttributes(op.attributes());
-      node_attrs.node_name = OP_NAMES.at(op.name());
+      node_attrs.node_name = CompatibleInfo::OP_NAMES.at(op_name);
       node_attrs.attr_store = std::move(attrs);
     }
     auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
     // NOTE(Aurelius84): Do we need replace all hlir::framework Operator with
     // ::ir::Program ？
     const hlir::framework::Operator* cinn_op =
-        Operator::Get(OP_NAMES.at(op.name()));
+        Operator::Get(CompatibleInfo::OP_NAMES.at(op_name));
     auto impl = OpStrategy::SelectImpl(
         strategy[cinn_op](node_attrs, inputs, out_types, out_shapes, target_));
     common::CINNValuePack C =
@@ -223,7 +235,8 @@ class NewIRCompiler final {
     std::unordered_set<std::string> repeat;
     for (int i = 0; i < op.num_operands(); ++i) {
       auto value = op.operand(i);
-      std::string name = std::to_string(std::hash<::ir::Value>()(value));
+      std::string name = CompatibleInfo::kInputPrefix +
+                         std::to_string(std::hash<::ir::Value>()(value));
       if (repeat.count(name)) {
         continue;
       }
@@ -237,7 +250,8 @@ class NewIRCompiler final {
     std::vector<std::string> names;
     for (int i = 0; i < op.num_results(); ++i) {
       auto value = op.result(i);
-      std::string name = std::to_string(std::hash<::ir::Value>()(value));
+      std::string name = CompatibleInfo::kOutputPrefix +
+                         std::to_string(std::hash<::ir::Value>()(value));
       names.push_back(std::move(name));
     }
     return names;
@@ -257,11 +271,12 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   std::unordered_set<::ir::Value> visited;
   auto scope = std::make_shared<Scope>();
 
-  auto create_var = [&](::ir::Value value) {
+  auto create_var = [&](const std::string& name_prefix, ::ir::Value value) {
     if (visited.count(value) > 0) return;
     visited.emplace(value);
 
-    std::string name = std::to_string(std::hash<::ir::Value>()(value));
+    std::string name =
+        name_prefix + std::to_string(std::hash<::ir::Value>()(value));
     auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
@@ -271,20 +286,18 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
       shape.push_back(Shape::dim_t(type_info.dims()[i]));
     }
     tensor->Resize(Shape{shape});
-    // TODO(Aurelius84): need convert this.
-    tensor->set_type(common::Float(32));
+    tensor->set_type(utils::ConvertIRType(type_info.dtype()));
   };
 
   for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
-    // visit OpOprands
     for (auto i = 0; i < (*it)->num_operands(); ++i) {
       auto in_value = (*it)->operand(i);
-      create_var(in_value);
+      create_var(CompatibleInfo::kInputPrefix, in_value);
     }
 
     for (auto i = 0; i < (*it)->num_results(); ++i) {
       auto out_value = (*it)->result(i);
-      create_var(out_value);
+      create_var(CompatibleInfo::kOutputPrefix, out_value);
     }
   }
   return scope;

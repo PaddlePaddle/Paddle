@@ -531,7 +531,9 @@ void Free<platform::CustomPlace>(const platform::CustomPlace &place,
                                  size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  GetBuddyAllocator(place)->Free(p);
+  if (phi::DeviceManager::HasDeviceType(place.GetDeviceType())) {
+    GetBuddyAllocator(place)->Free(p);
+  }
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CustomPlace' is not supported in CPU only device."));

@@ -103,8 +103,7 @@ class HybridParallelClipGrad:
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = clip.merge_selected_rows(g)
                 merge_grad = clip.get_tensor_from_selected_rows(merge_grad)
-            square = paddle.square(merge_grad)
-            sum_square = paddle.sum(square)
+            sum_square = clip._squared_l2_norm(merge_grad)
 
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
                 hasattr(p, 'is_firstly_shared')
@@ -230,15 +229,15 @@ class HybridParallelClipGrad:
             if getattr(p, 'need_clip', True) is False:
                 continue
             if g.dtype == paddle.float16:
-                g.scale_(clip_var_fp16)
+                g.multiply_(clip_var_fp16)
             elif g.dtype == paddle.bfloat16:
                 if paddle.is_compiled_with_xpu():
                     raise NotImplementedError(
                         "BF16 is not supported on XPU now"
                     )
-                g.scale_(clip_var_bf16)
+                g.multiply_(clip_var_bf16)
             else:
-                g.scale_(clip_var)
+                g.multiply_(clip_var)
             p._reset_grad_inplace_version(True)
 
         return params_grads
