@@ -26,6 +26,9 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
+#endif
 
 namespace py = pybind11;
 
@@ -107,6 +110,11 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 }
 
 void BindAutoParallel(py::module *m) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  py::class_<phi::distributed::RToSReshardFunction>(*m, "RToSReshardFunction")
+      .def(py::init<>());
+#endif
+
   py::class_<ProcessMesh>(*m, "ProcessMesh")
       .def(py::init<>())
       .def(py::init<const std::vector<int64_t> &,
