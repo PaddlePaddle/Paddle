@@ -14,7 +14,6 @@
 
 #pragma once
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/ir/core/value.h"
