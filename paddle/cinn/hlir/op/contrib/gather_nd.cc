@@ -38,7 +38,6 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {
