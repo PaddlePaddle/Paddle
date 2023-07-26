@@ -15,17 +15,12 @@
 # limitations under the License.
 
 import unittest
+
 import cinn
 import numpy as np
-from cinn import runtime
-from cinn import ir
-from cinn.poly import create_stages
-from cinn import lang
-from cinn import Target
-from cinn import pe
-from cinn.common import *
 import scipy
-from scipy import special
+from cinn import Target, ir, lang, pe, runtime
+from cinn.poly import create_stages
 
 
 class TestPEElementwise(unittest.TestCase):
@@ -116,13 +111,13 @@ class TestPEElementwise(unittest.TestCase):
         is_round=False,
         is_bool=False,
     ):
-        m, n = [
+        m, n = (
             ir.Expr(_)
             for _ in (
                 self.m,
                 self.n,
             )
-        ]
+        )
 
         x = lang.Placeholder(dtype, "x", [m, n])
         y = cinn_fn(x.to_tensor())

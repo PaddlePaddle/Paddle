@@ -15,8 +15,8 @@
 #include "paddle/cinn/optim/buffer_assign.h"
 
 #include "paddle/cinn/common/union_find.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower_impl.h"
 #include "paddle/cinn/optim/ir_replace.h"
 
@@ -26,7 +26,7 @@ namespace optim {
 namespace {
 
 struct BufferUFNode : public common::UnionFindNode {
-  BufferUFNode(const std::string& x) : tensor_name(x) {}
+  explicit BufferUFNode(const std::string& x) : tensor_name(x) {}
 
   const char* type_info() const override { return __type_info__; }
 
@@ -38,7 +38,8 @@ const char* BufferUFNode::__type_info__ = "BufferUFNode";
 
 struct IRReplaceTensorMutator : ir::IRMutator<> {
   const std::map<std::string, ir::Tensor>& tensor_map;
-  IRReplaceTensorMutator(const std::map<std::string, ir::Tensor>& tensor_map)
+  explicit IRReplaceTensorMutator(
+      const std::map<std::string, ir::Tensor>& tensor_map)
       : tensor_map(tensor_map) {}
   void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 

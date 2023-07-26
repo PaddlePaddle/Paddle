@@ -177,7 +177,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
 class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(
         R"DOC(" + "HeterListenAndServ operator" + "\n" + "This operator" +

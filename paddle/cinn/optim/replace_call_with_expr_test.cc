@@ -17,15 +17,15 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/poly/ast_gen.h"
 
 namespace cinn {
 namespace optim {
 
-using namespace poly;
+using namespace poly;  // NOLINT
 
 }  // namespace optim
 }  // namespace cinn

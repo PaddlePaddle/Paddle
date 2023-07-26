@@ -207,12 +207,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
     auto tensor_A = A.as_tensor_ref();
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    std::string tensor_name = common::UniqName("T_Resize_out");
 
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 2U);
-      tensor_name = pack_args[1].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 2U);
+    std::string tensor_name = pack_args[1].operator std::string();
 
     ir::Tensor out = Resize(tensor_A, target, out_shape, mode, tensor_name);
 
@@ -240,10 +237,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    long prod_size = std::accumulate(output_shapes[0].begin(),
-                                     output_shapes[0].end(),
-                                     1,
-                                     std::multiplies<int>());
+    int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                        output_shapes[0].end(),
+                                        1,
+                                        std::multiplies<int>());
     if (prod_size > 1) {
       if (target.arch == Target::Arch::NVGPU) {
         pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);

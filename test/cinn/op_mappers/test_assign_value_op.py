@@ -15,9 +15,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_mapper_test import OpMapperTest, logger
-import paddle
+from op_mapper_test import OpMapperTest
 
 
 class TestAssignValueOp(OpMapperTest):

@@ -57,6 +57,10 @@ DEFINE_bool(cinn_use_op_fusion,
             BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
             "Whether to use op fusion pass.");
 
+DEFINE_bool(general_fusion_merge_pass,
+            BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
+            "Whether to use general fusion_merge pass.");
+
 DEFINE_bool(cinn_use_common_subexpression_elimination,
             BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                         false),
@@ -160,6 +164,11 @@ DEFINE_int32(cinn_profiler_state,
              "Specify the ProfilerState by Int in CINN, 0 for kDisabled, 1 for "
              "kCPU, 2 for kCUDA, 3 for kAll, default 0.");
 
+DEFINE_int32(cinn_error_message_level,
+             Int32FromEnv("FLAGS_cinn_error_message_level", 0),
+             "Specify the level of printing error message in the schedule."
+             "0 means short, 1 means detailed.");
+
 namespace cinn {
 namespace runtime {
 
@@ -196,16 +205,16 @@ bool GetCinnCudnnDeterministic() {
 #endif
 }
 
-unsigned long long RandomSeed::seed_ = 0ULL;
+uint64_t RandomSeed::seed_ = 0ULL;
 
-unsigned long long RandomSeed::GetOrSet(unsigned long long seed) {
+uint64_t RandomSeed::GetOrSet(uint64_t seed) {
   if (seed != 0ULL) {
     seed_ = seed;
   }
   return seed_;
 }
 
-unsigned long long RandomSeed::Clear() {
+uint64_t RandomSeed::Clear() {
   auto old_seed = seed_;
   seed_ = 0ULL;
   return old_seed;

@@ -19,8 +19,8 @@
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -46,7 +46,7 @@ bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize);
  */
 ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
                                       const ir::LoweredFunc& old_func,
-                                      ir::Expr& body);
+                                      ir::Expr& body);  // NOLINT
 
 }  // namespace auto_schedule
 }  // namespace cinn

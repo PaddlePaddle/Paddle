@@ -15,10 +15,9 @@
 # limitations under the License.
 
 import unittest
-from pass_test import PassTest
-from cinn.frontend import *
-from cinn.common import *
+
 import numpy as np
+from pass_test import PassTest
 
 
 class TestExpandZeroDimPass(PassTest):

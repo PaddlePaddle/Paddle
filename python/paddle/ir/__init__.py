@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import backward
+from paddle.fluid.core import (
+    Program,
+    Block,
+    Operation,
+    Value,
+    OpOperand,
+    OpResult,
+    Type,
+)  # noqa: F401
+from paddle.fluid.core import (
+    get_op_result_shape,
+    get_op_result_dtype,
+    translate_to_new_ir,
+)  # noqa: F401
+
+__all__ = [  # noqa
+    'Program',
+    'Block',
+    'Operation',
+    'Value',
+    'OpOperand',
+    'OpResult',
+    'Type',
+    'get_op_result_shape',
+    'get_op_result_dtype',
+    'translate_to_new_ir',
+]

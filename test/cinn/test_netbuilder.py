@@ -14,19 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.static as static
-from cinn.frontend import *
-from cinn import Target
-from cinn.framework import *
-import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.common import *
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
+from cinn.frontend import NetBuilder
+
+import paddle
+from paddle import static
 
 enable_gpu = sys.argv.pop()
 
@@ -77,7 +73,7 @@ class TestNetBuilder(unittest.TestCase):
                     ". Diff is: ",
                     output[i] - result[len(result) - 1][i],
                 )
-        self.assertTrue(np.allclose(result[len(result) - 1], output, atol=1e-4))
+        np.testing.assert_allclose(result[len(result) - 1], output, atol=1e-4)
 
     def test_basic(self):
         builder = NetBuilder("test_basic")

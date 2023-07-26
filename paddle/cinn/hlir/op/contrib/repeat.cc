@@ -33,7 +33,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
@@ -201,10 +201,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
       ir::ModuleExpr mod_expr(vec_ast);
       ir::IRSchedule ir_sch(mod_expr);
       ir_sch.MergeExprs();
-      long prod_size = std::accumulate(output_shapes[0].begin(),
-                                       output_shapes[0].end(),
-                                       1,
-                                       std::multiplies<int>());
+      int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                          output_shapes[0].end(),
+                                          1,
+                                          std::multiplies<int>());
       if (prod_size > 1) {
         if (target.arch == Target::Arch::NVGPU) {
           pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);

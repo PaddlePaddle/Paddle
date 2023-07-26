@@ -24,6 +24,7 @@
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/pass/use_general_pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 
 namespace cinn::frontend {
@@ -75,11 +76,11 @@ class PassTest {
  public:
   PassTest() { target_ = common::DefaultTarget(); }
 
-  int RunAndCheck(NetBuilder& builder,
+  int RunAndCheck(NetBuilder* builder,
                   const std::vector<std::string>& program_passes,
                   const std::vector<std::string>& input_names,
                   const std::vector<std::string>& output_names) {
-    auto program = builder.Build();
+    auto program = builder->Build();
     CHECK(IsValid(program)) << "The origin program is not valid.";
     int origin_program_size = program.size();
     LOG(INFO) << "Run origin program";

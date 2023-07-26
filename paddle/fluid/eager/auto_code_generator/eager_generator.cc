@@ -1545,23 +1545,22 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                                                    op_type);
     }
   }
-  if (ins_contents_str.size() > 0)
+  if (!ins_contents_str.empty())
     ins_contents_str.pop_back();  // // Remove trailing ","
 
-  if (amp_tensors_vector_str.size() > 0) amp_tensors_vector_str.pop_back();
+  if (!amp_tensors_vector_str.empty()) amp_tensors_vector_str.pop_back();
 
   for (const std::string& arg : input_args_str_list) {
     dygraph_function_args_str += arg;
     dygraph_function_args_str += ",";
   }
-  if (dygraph_function_args_str.size() > 0)
-    dygraph_function_args_str.pop_back();
+  if (!dygraph_function_args_str.empty()) dygraph_function_args_str.pop_back();
 
   for (const std::string& arg : amp_function_call_args_str_list) {
     amp_function_call_args_str += arg;
     amp_function_call_args_str += ",";
   }
-  if (amp_function_call_args_str.size() > 0)
+  if (!amp_function_call_args_str.empty())
     amp_function_call_args_str.pop_back();
 
   // Handle Dispensable Inputs
@@ -1725,9 +1724,9 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       }
     }
   }
-  if (outs_contents_str.size() > 0)
+  if (!outs_contents_str.empty())
     outs_contents_str.pop_back();  // Remove trailing ","
-  if (inplace_mapping_str.size() > 0)
+  if (!inplace_mapping_str.empty())
     inplace_mapping_str.pop_back();  // Remove trailing ","
 
   if ((op_type != "cast") && (forward_inplace_map.empty())) {
@@ -1740,7 +1739,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         "%s\n"
         "  }\n";
     std::string amp_logic_str = "";
-    if (in_vars.size() != 0) {
+    if (!in_vars.empty()) {
       const char* AMP_TENSORS_VECTOR_TEMPLATE =
           "    paddle::small_vector<std::vector<paddle::Tensor>, "
           "egr::kSlotSmallVectorSize> "
@@ -1770,7 +1769,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         "      return %s_dygraph_function(%s);\n"
         "    }";
     amp_function_call_args_str += ", attr_map ";
-    if (amp_function_call_args_str.size() > 0) {
+    if (!amp_function_call_args_str.empty()) {
       auto iter = amp_function_call_args_str.begin();
       if ((*iter) == ',') amp_function_call_args_str.erase(iter);
     }
@@ -2078,7 +2077,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     function_name = op_type + "__dygraph_function";
   }
 
-  if (dygraph_function_args_str.size() > 0) {
+  if (!dygraph_function_args_str.empty()) {
     auto iter = dygraph_function_args_str.begin();
     if ((*iter) == ',') dygraph_function_args_str.erase(iter);
   }
@@ -2284,7 +2283,7 @@ static std::string GenerateSingleOpBase(
           grad_input_name));
     }
   }
-  if (ins_contents_str.size() > 0)
+  if (!ins_contents_str.empty())
     ins_contents_str.pop_back();  // // Remove trailing ","
 
   const char* BWD_INS_MAP_TEMPLATE =
@@ -3070,14 +3069,14 @@ static std::string ConvertCoreOpsInfosToString(
     }
 
     // Remove trailing ','
-    if (returns_str.size() > 0) returns_str.pop_back();
+    if (!returns_str.empty()) returns_str.pop_back();
     std::string op_type_init_str = paddle::string::Sprintf(
         Core_Ops_Returns_TEMPLATE, op_type, returns_str);
     core_ops_legacy_returns_info_init_str += op_type_init_str;
   }
 
   // Remove trailing ','
-  if (core_ops_legacy_returns_info_init_str.size() > 0)
+  if (!core_ops_legacy_returns_info_init_str.empty())
     core_ops_legacy_returns_info_init_str.pop_back();
 
   return core_ops_legacy_returns_info_init_str;

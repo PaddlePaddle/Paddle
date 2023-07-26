@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.framework import *
 import unittest
+
 import numpy as np
+from cinn import Target
+from cinn.framework import Tensor
 
 
 class TensorTest(unittest.TestCase):
@@ -27,7 +29,7 @@ class TensorTest(unittest.TestCase):
         data = np.random.random([10, 5])
         tensor.from_numpy(data, target)
 
-        self.assertTrue(np.allclose(tensor.numpy(), data))
+        np.testing.assert_allclose(tensor.numpy(), data)
 
 
 if __name__ == "__main__":

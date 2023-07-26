@@ -15,13 +15,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, OpTestTool
+from cinn.common import Float
+from cinn.frontend import NetBuilder
+from op_test import OpTest
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
-import sys
 
 
 class TestBroadcastToOp(OpTest):

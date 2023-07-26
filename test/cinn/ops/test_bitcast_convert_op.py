@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
-
 from struct import pack, unpack
+
+import numpy as np
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 
 @OpTestTool.skip_if(
@@ -69,7 +69,7 @@ class TestBitcastConvertCase1(TestBitcastConvertOp):
         packed = pack(data.size * 'h', *data.flatten())
         self.inputs = {"x": data}
         self.outputs = {
-            "y": np.array(unpack('4i', packed), dtype='int32').reshape((4)),
+            "y": np.array(unpack('4i', packed), dtype='int32').reshape(4),
             "output_type": "int32",
         }
 

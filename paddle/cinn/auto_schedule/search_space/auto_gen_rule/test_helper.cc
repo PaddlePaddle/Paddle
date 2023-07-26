@@ -63,12 +63,10 @@ ir::IRSchedule TestAutoGenRuleBase::MakeIRSchedule(
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
   hlir::framework::OpLowerer op_lowerer(dtype_dict, shape_dict, target_);
 
-  if (apply_manual_schedule) {
-    lowered_funcs_ = op_lowerer.Lower(graph->fusion_groups.front());
-  } else {
-    lowered_funcs_ =
-        op_lowerer.LowerWithoutSchedule(graph->fusion_groups.front());
-  }
+  lowered_funcs_ =
+      op_lowerer.Lower(graph->fusion_groups.front(),
+                       /*apply_op_schedule = */ apply_manual_schedule,
+                       /*apply_group_schedule = */ apply_manual_schedule);
   CHECK(!lowered_funcs_.empty()) << "lowered_funcs_ is empty";
 
   std::vector<Expr> bodys;
@@ -190,7 +188,7 @@ void CheckResult(raw_func_type test_func,
     input_data_ptrs[i] =
         reinterpret_cast<float*>(malloc(input_data_numel * sizeof(float)));
     for (int j = 0; j < input_data_numel; ++j) {
-      input_data_ptrs[i][j] = (rand() * 1.f) / RAND_MAX;
+      input_data_ptrs[i][j] = (rand() * 1.f) / RAND_MAX;  // NOLINT
     }
   }
   std::vector<float*> test_output_data_ptrs(output_names.size());

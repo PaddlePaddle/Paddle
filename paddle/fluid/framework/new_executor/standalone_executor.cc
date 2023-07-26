@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 
@@ -61,11 +61,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.create_local_scope = false;
     execution_config.skip_gc_vars = job->SkipGcVars();
 
+    // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
       auto kernel_program =
-          paddle::dialect::PdOpLowerToKernelPass(base_program.get());
+          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
           place_, std::move(kernel_program), scope_, execution_config));
     } else {
@@ -95,18 +96,36 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   const auto& jobs = plan_.JobList();
 
   if (!is_interpretercore_build_result_shared_) {
+    std::map<std::string, std::vector<size_t>> type_to_id;
     for (size_t job_idx = 1; job_idx < jobs.size(); ++job_idx) {
       interpretercores_[job_idx]->ShareWorkQueueFrom(interpretercores_[0]);
       // TODO(Ruibiao): Share other build result, e.g., kernel choosing, data
       // transfer, op dependency, thread scheduling, GC, event analyzer, and so
       // on.
+      type_to_id[jobs[job_idx]->Type()].emplace_back(job_idx);
     }
     is_interpretercore_build_result_shared_ = true;
+
+    // Note(sonder): For the same type of job, share the build result of the
+    // first job to other jobs. The shared build result includes op dependency,
+    // event analyzer, thread scheduling and GC.
+    for (const auto& pair : type_to_id) {
+      const auto& ids = pair.second;
+      for (size_t i = 1; i < ids.size(); ++i) {
+        interpretercores_[ids[i]]->ShareBuildResultsFrom(
+            interpretercores_[ids[0]]);
+      }
+    }
   }
 
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
+
+    platform::RecordEvent record_event(
+        job_type + "-" + std::to_string(job->MicroBatchId()),
+        platform::TracerEventType::UserDefined,
+        1);
 
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();

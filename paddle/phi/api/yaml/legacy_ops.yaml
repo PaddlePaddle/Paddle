@@ -143,16 +143,6 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
-- op : concat
-  args : (Tensor[] x, Scalar(int64_t) axis)
-  output : Tensor
-  infer_meta :
-    func : ConcatInferMeta
-    param : [x, axis]
-  kernel :
-    func : concat
-  backward : concat_grad
-
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -167,15 +157,6 @@
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
-
-- op : cumsum
-  args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(out)
-  infer_meta :
-    func : CumScalarAxisInferMeta
-  kernel :
-    func : cumsum
-  backward : cumsum_grad
 
 - op : decode_jpeg
   args : (Tensor x, str mode, Place place)
@@ -256,7 +237,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : elementwise_pow
-  inplace: (x -> out)
   backward : elementwise_pow_grad
 
 - op : embedding
@@ -271,6 +251,16 @@
     param : [x, weight, padding_idx]
     data_type : weight
   backward : embedding_grad
+
+- op : embedding_grad_dense
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor(weight_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [weight]
+  kernel :
+    func : embedding_grad
+    data_type : weight
 
 - op : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -304,15 +294,6 @@
   kernel :
     func : equal
 
-- op : expand
-  args : (Tensor x, IntArray shape)
-  output : Tensor
-  infer_meta :
-    func : ExpandInferMeta
-  kernel :
-    func : expand
-  backward : expand_grad
-
 - op : exponential_
   args : (Tensor x, float lam)
   output : Tensor(out)
@@ -343,16 +324,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : floor_divide
-
-- op : fmin
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    param: [x, y]
-    func : ElementwiseInferMeta
-  kernel :
-    func : fmin
-  backward : fmin_grad
 
 - op : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
@@ -425,17 +396,6 @@
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
-- op : fused_rope
-  args : (Tensor q, Tensor k, Tensor v)
-  output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
-  infer_meta :
-    func : FusedRopeInferMeta
-  optional : k,v, out_k, out_v
-  kernel :
-    func : fused_rope
-    data_type : q
-  backward: fused_rope_grad
-
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
   output: Tensor(out)
@@ -473,15 +433,6 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
-
-- op : heaviside
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : heaviside
-  backward : heaviside_grad
 
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
@@ -560,6 +511,14 @@
   kernel :
     func : matmul
   backward : matmul_grad
+
+- op : matmul_int8
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
+  output : Tensor
+  infer_meta :
+    func : MatmulInt8InferMeta
+  kernel :
+    func : matmul_int8
 
 - op : matrix_rank
   args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
@@ -737,17 +696,6 @@
     func : prod
   backward : prod_grad
 
-- op : psroi_pool
-  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
-  output : Tensor
-  infer_meta :
-    func : PsroiPoolInferMeta
-  kernel :
-    func : psroi_pool
-    data_type : x
-  optional : boxes_num
-  backward : psroi_pool_grad
-
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
   output : Tensor(out)
@@ -771,16 +719,6 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
-
-- op : relu6
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : relu6
-  backward : relu6_grad
 
 - op : remainder
   args : (Tensor x, Tensor y)
@@ -836,29 +774,6 @@
   optional : sequence_length
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
-
-- op : roi_align
-  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
-  output : Tensor
-  infer_meta :
-    func : RoiAlignInferMeta
-  kernel :
-    func : roi_align
-    data_type : x
-  optional : boxes_num
-  backward : roi_align_grad
-
-- op : roi_pool
-  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale)
-  output : Tensor(out), Tensor(arg_max)
-  infer_meta :
-    func : RoiPoolInferMeta
-  kernel :
-    func : roi_pool
-    data_type : x
-  optional : boxes_num
-  intermediate : arg_max
-  backward : roi_pool_grad
 
 - op : rrelu
   args : (Tensor x, float lower, float upper, bool is_test)
@@ -978,7 +893,7 @@
 
 - op : transpose
   args : (Tensor x, int[] perm)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
   kernel :
@@ -1061,6 +976,7 @@
   kernel :
     func : unique
     data_type : x
+  optional : indices, inverse, counts
 
 - op : unpool
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)

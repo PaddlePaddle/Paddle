@@ -19,7 +19,7 @@
 #include <cstdlib>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -37,7 +37,7 @@ void AutoGenRule::ApplyRandomly() {
   CHECK_GT(num_applicable_, 0)
       << "Call " << GetRuleName()
       << "::ApplyRandomly() with NumberApplicable() == 0";
-  int index = rand() % num_applicable_;
+  int index = rand() % num_applicable_;  // NOLINT
   return Apply(index);
 }
 

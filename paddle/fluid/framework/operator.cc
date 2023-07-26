@@ -223,7 +223,7 @@ bool RuntimeInferShapeContext::HasInput(const std::string& name) const {
     return false;
   }
   const auto& in = it->second;
-  if (in.size() == 0) return false;
+  if (in.empty()) return false;
   PADDLE_ENFORCE_EQ(
       in.size(),
       1UL,
@@ -240,7 +240,7 @@ bool RuntimeInferShapeContext::HasOutput(const std::string& name) const {
     return false;
   }
   const auto& out = it->second;
-  if (out.size() == 0) {
+  if (out.empty()) {
     return false;
   }
   PADDLE_ENFORCE_EQ(
@@ -967,7 +967,7 @@ OperatorBase::OperatorBase(const std::string& type,
   // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
   // Inputs, outputs and attrs will be set to empty map
   // to improve the execution efficiency of dygraph.
-  if (inputs_.size() > 0 || outputs_.size() > 0) {
+  if (!inputs_.empty() || !outputs_.empty()) {
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
   }
@@ -1149,7 +1149,7 @@ ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const {
   LogVarUsageIfUnusedVarCheckEnabled(name);
 
   auto vars = MultiInputVar(name);
-  if (vars.size() == 0) {
+  if (vars.empty()) {
     return {};
   }
   std::vector<const phi::DenseTensor*> res;
@@ -1176,7 +1176,7 @@ std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
     const std::string& name) const {
   auto vars = MultiOutputVar(name);
 
-  if (vars.size() == 0) {
+  if (vars.empty()) {
     return {};
   }
   std::vector<phi::DenseTensor*> res;
@@ -2621,7 +2621,9 @@ Scope* OperatorWithKernel::PrepareData(
           if (kernel_type_for_var.backend() == phi::Backend::GPU ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
               new_expected_kernel_key->backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
+              kernel_type_for_var.backend() == phi::Backend::XPU ||
+              new_expected_kernel_key->backend() == phi::Backend::XPU) {
             new_scope = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
@@ -2629,7 +2631,9 @@ Scope* OperatorWithKernel::PrepareData(
         } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
                    expected_kernel_key.backend() == phi::Backend::GPU ||
-                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN ||
+                   kernel_type_for_var.backend() == phi::Backend::XPU ||
+                   expected_kernel_key.backend() == phi::Backend::XPU) {
           new_scope = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;
@@ -3124,7 +3128,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : phi_kernel_context->InputRangeAt(i - 1).second);
     // deal with optional here
-    if ((it == ctx.inputs.end() || it->second.size() == 0) &&
+    if ((it == ctx.inputs.end() || it->second.empty()) &&
         (input_defs[i].type_index ==
              std::type_index(typeid(paddle::optional<phi::DenseTensor>)) ||
          input_defs[i].type_index ==
@@ -3549,7 +3553,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             Type());
     for (const auto& input_name : extra_input_names) {
       auto it = ctx.inputs.find(input_name);
-      if (it == ctx.inputs.end() || it->second.size() == 0) {
+      if (it == ctx.inputs.end() || it->second.empty()) {
         one_dnn_ctx->SetDnnInput(input_name, nullptr);
       } else {
         auto ins_vector = it->second;

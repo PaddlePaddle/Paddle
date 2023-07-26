@@ -28,7 +28,7 @@ struct KernelAttributeStorage : public ir::AttributeStorage {
 
   explicit KernelAttributeStorage(const ParamKey &key) { kernel_key_ = key; }
 
-  static KernelAttributeStorage *Construct(ParamKey key) {
+  static KernelAttributeStorage *Construct(const ParamKey &key) {
     return new KernelAttributeStorage(key);
   }
 

@@ -29,8 +29,8 @@
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
@@ -51,7 +51,7 @@ using cinn::hlir::op::ExternalApiRegistry;
 // *** update a scheduled function with several post-processors
 ir::LoweredFunc FuncWithUpdatedBody(const common::Target& target,
                                     const ir::LoweredFunc& old_func,
-                                    ir::Expr& body);
+                                    ir::Expr& body);  // NOLINT
 // check whether a scheduled lowered function is valid
 bool PruneInvalid(const ir::LoweredFunc& lowered_func,
                   const common::Target& target);

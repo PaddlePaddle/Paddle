@@ -28,11 +28,16 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using namespace framework;
+using framework::Graph;
+using framework::Node;
+using framework::NodeData;
+using framework::Operator;
+using framework::OpPatternKind;
+using framework::shape_t;
 
 class FusionHelperBase {
  public:
-  FusionHelperBase(const framework::Graph* graph)
+  explicit FusionHelperBase(const framework::Graph* graph)
       : shape_dict_(graph->GetAttrs<absl::flat_hash_map<std::string, shape_t>>(
             "infershape")),
         target_(graph->target_) {

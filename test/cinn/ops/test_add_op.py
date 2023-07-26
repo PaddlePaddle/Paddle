@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
+import paddle
 
 
 @OpTestTool.skip_if(

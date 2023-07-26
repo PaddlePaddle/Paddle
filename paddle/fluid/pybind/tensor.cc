@@ -103,11 +103,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
+#include "paddle/fluid/pybind/graph.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -1025,7 +1025,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  using phi::distributed::auto_parallel::DistTensor;
+  using phi::distributed::DistTensor;
   py::class_<DistTensor>(m, "DistTensor")
       .def(
           "get_tensor",

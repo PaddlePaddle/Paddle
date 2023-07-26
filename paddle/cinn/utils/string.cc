@@ -112,8 +112,9 @@ size_t Count(std::string *s, const std::string &sub) {
          !IsSuffix(s->at(pos + sub.length())))) {
       pos += sub.length();
       times++;
-    } else
+    } else {
       pos++;
+    }
   }
   return times;
 }

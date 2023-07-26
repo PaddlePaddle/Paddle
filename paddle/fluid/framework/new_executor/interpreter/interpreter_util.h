@@ -98,6 +98,7 @@ void BuildOpFuncList(
     ::ir::Block* block,
     std::vector<OpFuncNode>* vec_func_list,
     framework::Scope* scope,
+    framework::Scope* local_scope,
     const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config);
 

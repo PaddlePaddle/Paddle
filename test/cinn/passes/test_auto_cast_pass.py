@@ -15,9 +15,8 @@
 # limitations under the License.
 
 import unittest
+
 from pass_test import PassTest
-from cinn.frontend import *
-from cinn.common import *
 
 
 class TestAutoCastPass(PassTest):

@@ -15,14 +15,9 @@
 # limitations under the License.
 
 import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.optim import *
-from cinn import Target
-from cinn.common import *
-from cinn.ir import *
+
+from cinn.ir import Expr, Var
+from cinn.optim import simplify
 
 
 class TestIR(unittest.TestCase):

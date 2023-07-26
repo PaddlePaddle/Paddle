@@ -31,12 +31,25 @@ class OpYamlInfoParser {
   const std::string& AttrTypeName(const std::string& name) const;
   const std::string& TensorAttrTypeName(const std::string& name) const;
 
-  const std::vector<std::string>& InferMetaTensorParams() const;
-  const std::vector<std::string>& InferMetaAttrParams() const;
-  const std::vector<std::string>& KernelFnTensorParams() const;
-  const std::vector<std::string>& KernelFnAttrParams() const;
+  const std::vector<std::string>& TensorParams(bool is_kernel = false) const;
+  const std::vector<std::string>& AttrParams(bool is_kernel = false) const;
   const OpRunTimeInfo& OpRuntimeInfo() const;
-  const std::map<std::string, int>& Name2Id() const;
+  const std::map<std::string, int>& InputName2Id() const;
+  const std::map<std::string, int>& OutputName2Id() const;
+
+  const std::vector<std::string>& InputNames() const {
+    return input_name_list_;
+  }
+  const std::vector<std::string>& AttributeNames() const {
+    return attribute_name_list_;
+  }
+  const std::vector<std::string>& OutputNames() const {
+    return output_name_list_;
+  }
+
+  bool HasInplace(const std::string& out_name) const;
+
+  const std::string& InplaceName(const std::string& out_name) const;
 
  private:
   void parse();
@@ -46,18 +59,26 @@ class OpYamlInfoParser {
 
   OpInfoTuple op_info_tuple_;
 
-  std::map<std::string, int> map_name2id_;
-
-  std::map<std::string, OpInputInfo> map_input_info_;
-  std::map<std::string, OpAttributeInfo> map_attr_info_;
-  std::map<std::string, OpOutputInfo> map_output_info_;
-
-  std::vector<std::string> vec_infer_meta_tensor_params_;
-  std::vector<std::string> vec_infer_meta_attr_params_;
-  std::vector<std::string> vec_kernel_fn_tensor_params_;
-  std::vector<std::string> vec_kernel_fn_attr_params_;
-
+  // input info
+  std::map<std::string, int> input_name2id_;
+  std::vector<std::string> input_name_list_;
+  std::map<std::string, OpInputInfo> input_info_;
   int input_tensor_number_{0};
+
+  // attribute info
+  std::vector<std::string> attribute_name_list_;
+  std::map<std::string, OpAttributeInfo> attr_info_;
+
+  // output info
+  std::map<std::string, int> output_name2id_;
+  std::vector<std::string> output_name_list_;
+  std::map<std::string, OpOutputInfo> output_info_;
+
+  // runtime info
+  std::vector<std::string> infer_meta_tensor_params_;
+  std::vector<std::string> infer_meta_attr_params_;
+  std::vector<std::string> kernel_fn_tensor_params_;
+  std::vector<std::string> kernel_fn_attr_params_;
 };
 
 }  // namespace dialect
