@@ -233,7 +233,7 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
     bool need_skip = false;
-    for (auto& skip_op : skip_ops) {
+    for (auto& skip_op : skip_ops_) {
       if (op->Type().find(skip_op) != std::string::npos) {
         need_skip = true;
         break;

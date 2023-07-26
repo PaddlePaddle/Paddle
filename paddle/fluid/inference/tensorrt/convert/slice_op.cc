@@ -198,7 +198,7 @@ class SliceOpConverter : public OpConverter {
 
       if (!decrease_axises.empty()) {
         for (auto& decrease_axis : decrease_axises) {
-          decrease_axis[i]--;
+          decrease_axis--;
         }
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
           if (decrease_axises.end() !=

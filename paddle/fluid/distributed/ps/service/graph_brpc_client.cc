@@ -277,8 +277,7 @@ std::future<int32_t> GraphBrpcClient::remove_graph_node(
       server_index_arr.push_back(server_index);
       request_bucket.push_back(std::vector<int64_t>());
     }
-    request_bucket[index_mapping[server_index]].push_back(
-        node_id_list[query_idx]);
+    request_bucket[index_mapping[server_index]].push_back(node_id);
   }
   size_t request_call_num = request_bucket.size();
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(

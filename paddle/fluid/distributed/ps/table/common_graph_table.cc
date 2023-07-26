@@ -1369,8 +1369,8 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
     for (auto &ntype : ntypes) {
       int ret = this->load_nodes(npath_str, ntype);
       if (ret != 0) {
-        VLOG(0) << "Fail to load nodes, path[" << npath << "], ntypes["
-                << ntypes[j] << "]";
+        VLOG(0) << "Fail to load nodes, path[" << npath << "], ntypes[" << ntype
+                << "]";
         return -1;
       }
     }

@@ -990,8 +990,8 @@ void TestKernelSgd() {
           tgt(&lr, param_data, grad_data, rows_data, o_data, &attr);
           // only the selected rows should be equal
           for (auto row : rows) {
-            ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
-                        oref_data + rows[i] * attr.grad_width,
+            ExpectEQ<T>(o_data + row * attr.grad_width,
+                        oref_data + row * attr.grad_width,
                         attr.grad_width);
           }
 

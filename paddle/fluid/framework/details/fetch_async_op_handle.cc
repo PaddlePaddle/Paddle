@@ -250,7 +250,7 @@ void FetchAsyncOpHandle::RunImpl() {
       std::vector<const phi::DenseTensor *> src_lodtensors;
       src_lodtensors.reserve(src_vars.size());
       for (auto src_var : src_vars) {
-        src_lodtensors.emplace_back(src_var->Get<phi::DenseTensor>());
+        src_lodtensors.emplace_back(&src_var->Get<phi::DenseTensor>());
       }
 
       phi::DenseTensor dst_lodtensor;
@@ -262,19 +262,19 @@ void FetchAsyncOpHandle::RunImpl() {
       src_lodtensor_arrays.reserve(src_vars.size());
       for (auto src_var : src_vars) {
         src_lodtensor_arrays.emplace_back(
-            src_var->Get<framework::LoDTensorArray>());
+            &src_var->Get<framework::LoDTensorArray>());
       }
 
       LoDTensorArray dst_lodtensor_array;
       dst_lodtensor_array.resize(src_lodtensor_arrays[0]->size());
 
-      for (auto &lodtensor : dst_lodtensor_array) {
+      for (size_t i = 0; i < dst_lodtensor_array.size(); ++i) {
         std::vector<const phi::DenseTensor *> src_lodtensors;
         src_lodtensors.reserve(src_lodtensor_arrays.size());
         for (auto *src_lodtensor_array : src_lodtensor_arrays) {
-          src_lodtensors.emplace_back(src_lodtensor_array);
+          src_lodtensors.emplace_back(&(*src_lodtensor_array)[i]);
         }
-        FetchMergedLodTensor(src_lodtensors, &lodtensor);
+        FetchMergedLodTensor(src_lodtensors, &dst_lodtensor_array[i]);
       }
       val.at(offset_) = std::move(dst_lodtensor_array);
     }

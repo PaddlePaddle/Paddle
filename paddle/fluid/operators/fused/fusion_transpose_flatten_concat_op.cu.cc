@@ -97,7 +97,7 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
           handle,
           CudnnDataType<T>::kOne(),
           in_desc,
-          static_cast<const void*>(ins[k]->data<T>()),
+          static_cast<const void*>(item->data<T>()),
           CudnnDataType<T>::kZero(),
           out_desc,
           static_cast<void*>(odata)));

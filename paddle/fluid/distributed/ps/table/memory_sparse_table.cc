@@ -803,7 +803,7 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
                 for (size_t mf_idx = data_size; mf_idx < value_size; ++mf_idx) {
                   data_buffer[mf_idx] = 0.0;
                 }
-                auto offset = keys[i].second;
+                auto offset = item.second;
                 float *select_data = pull_values + select_value_size * offset;
                 _value_accesor->Select(
                     &select_data, (const float **)&data_buffer_ptr, 1);

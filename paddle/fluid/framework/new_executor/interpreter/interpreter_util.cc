@@ -981,7 +981,7 @@ void BuildOpFuncList(
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>((*it),
+          false>(op,
                  value_2_name_map,
                  scope,
                  local_scope,

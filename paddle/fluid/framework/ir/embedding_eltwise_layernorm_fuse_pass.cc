@@ -326,8 +326,8 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
           }
         }
       }
-      ids.push_back(start_pattern_in_nodes[i][iter].first->Name());
-      embs.push_back(start_pattern_in_nodes[i][iter].second->Name());
+      ids.push_back(start_pattern.first->Name());
+      embs.push_back(start_pattern.second->Name());
     }
     for (auto item : js) {
       auto ids_shape = inner_pattern_ins[item].first->Var()->GetShape();
@@ -345,8 +345,8 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
           }
         }
       }
-      ids.push_back(inner_pattern_ins[js[iter]].first->Name());
-      embs.push_back(inner_pattern_ins[js[iter]].second->Name());
+      ids.push_back(inner_pattern_ins[item].first->Name());
+      embs.push_back(inner_pattern_ins[item].second->Name());
     }
 
     // todo: support any inputs with lookup_table_v2

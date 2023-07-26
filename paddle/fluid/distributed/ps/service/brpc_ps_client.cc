@@ -1181,15 +1181,14 @@ std::future<int32_t> BrpcPsClient::PullSparse(float **select_values,
           uint64_t last_key = UINT64_MAX;
           float *last_value_data = NULL;
 
-          for (auto &request_kv : request_kvs) {
-            auto *kv_pair = request_kvs;
-            if (kv_pair->first == last_key) {
-              memcpy(reinterpret_cast<void *>(kv_pair->second),
+          for (auto &kv_pair : request_kvs) {
+            if (kv_pair.first == last_key) {
+              memcpy(reinterpret_cast<void *>(kv_pair.second),
                      reinterpret_cast<void *>(last_value_data),
                      value_size);
             } else {
-              last_key = kv_pair->first;
-              last_value_data = kv_pair->second;
+              last_key = kv_pair.first;
+              last_value_data = kv_pair.second;
               if (value_size !=
                   io_buffer_itr.copy_and_forward(
                       reinterpret_cast<void *>(last_value_data), value_size)) {
@@ -1296,15 +1295,14 @@ std::future<int32_t> BrpcPsClient::PullSparseParam(float **select_values,
           float *last_value_data = NULL;
 
           // can remove sort&unique
-          for (auto &request_kv : request_kvs) {
-            auto *kv_pair = request_kv;
-            if (kv_pair->first == last_key) {
-              memcpy(reinterpret_cast<void *>(kv_pair->second),
+          for (auto &kv_pair : request_kvs) {
+            if (kv_pair.first == last_key) {
+              memcpy(reinterpret_cast<void *>(kv_pair.second),
                      reinterpret_cast<void *>(last_value_data),
                      value_size);
             } else {
-              last_key = kv_pair->first;
-              last_value_data = kv_pair->second;
+              last_key = kv_pair.first;
+              last_value_data = kv_pair.second;
               if (value_size !=
                   io_buffer_itr.copy_and_forward(
                       reinterpret_cast<void *>(last_value_data), value_size)) {

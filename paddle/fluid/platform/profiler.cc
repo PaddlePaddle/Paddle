@@ -490,7 +490,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr,
                     platform::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(ptr,
-                 std::make_unique<RecordMemEvent>(
+                 std::unique_ptr<RecordMemEvent>(
                      new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 
@@ -527,7 +527,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr,
                     platform::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(ptr,
-                 std::make_unique<RecordMemEvent>(
+                 std::unique_ptr<RecordMemEvent>(
                      new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 

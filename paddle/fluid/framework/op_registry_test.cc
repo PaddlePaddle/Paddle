@@ -300,9 +300,9 @@ class OpMultiKernelTest<CPUContext, T> : public paddle::framework::OpKernel<T> {
 
 template <typename T>
 class OpMultiKernelTest<phi::GPUContext, T>
-    : public paddle::framework::OpKernel<T> override {
+    : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const {
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     --op_test_value;
   }
 };
