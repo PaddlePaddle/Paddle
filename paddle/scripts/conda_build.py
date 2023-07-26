@@ -98,12 +98,14 @@ pip install paddle_bfloat==0.1.7 -f C:\package
         self.python38 = r"    - python>=3.8, <3.9"
         self.python39 = r"    - python>=3.9, <3.10"
         self.python310 = r"    - python>=3.10, <3.11"
+        self.python311 = r"    - python>=3.11, <3.12"
 
         self.python_version = [
             self.python37,
             self.python38,
             self.python39,
             self.python310,
+            self.python311,
         ]
 
         self.cuda102 = r"""
@@ -125,11 +127,11 @@ pip install paddle_bfloat==0.1.7 -f C:\package
     """
         self.cuda_info = [
             (self.cuda102, "cuda10.2", ".post102"),
-            (self.cuda112, "cuda11.2", ""),
+            (self.cuda112, "cuda11.2", ".post112"),
             (self.cuda116, "cuda11.6", ".post116"),
             (self.cuda117, "cuda11.7", ".post117"),
         ]
-        self.py_str = ["py37", "py38", "py39", "py310"]
+        self.py_str = ["py37", "py38", "py39", "py310", "py311"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install {}/paddlepaddle".format(
             package_path
@@ -142,24 +144,28 @@ pip install paddle_bfloat==0.1.7 -f C:\package
             "-cp38-cp38-macosx_10_9_x86_64",
             "-cp39-cp39-macosx_10_9_x86_64",
             "-cp310-cp310-macosx_10_9_x86_64",
+            "-cp311-cp311-macosx_10_9_x86_64",
         ]
         self.mac_pip_arm = [
             "",
             "-cp38-cp38-macosx_11_0_arm64",
             "-cp39-cp39-macosx_11_0_arm64",
             "-cp310-cp310-macosx_11_0_arm64",
+            "-cp311-cp311-macosx_11_0_arm64",
         ]
         self.linux_pip = [
             "-cp37-cp37m-linux_x86_64",
             "-cp38-cp38-linux_x86_64",
             "-cp39-cp39-linux_x86_64",
             "-cp310-cp310-linux_x86_64",
+            "-cp311-cp311-linux_x86_64",
         ]
         self.windows_pip = [
             "-cp37-cp37m-win_amd64",
             "-cp38-cp38-win_amd64",
             "-cp39-cp39-win_amd64",
             "-cp310-cp310-win_amd64",
+            "-cp311-cp311-win_amd64",
         ]
 
 
