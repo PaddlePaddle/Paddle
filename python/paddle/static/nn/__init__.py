@@ -40,7 +40,7 @@ from .common import layer_norm  # noqa: F401
 
 from .common import embedding  # noqa: F401
 from .common import sparse_embedding  # noqa: F401
-from ...fluid.layers import StaticRNN  # noqa: F401
+from .common import ExponentialMovingAverage  # noqa: F401
 
 from .sequence_lod import sequence_conv  # noqa: F401
 from .sequence_lod import sequence_softmax  # noqa: F401
@@ -99,6 +99,6 @@ __all__ = [  # noqa
     'sequence_scatter',
     'sequence_enumerate',
     'sequence_reverse',
-    'StaticRNN',
     'prelu',
+    'ExponentialMovingAverage',
 ]

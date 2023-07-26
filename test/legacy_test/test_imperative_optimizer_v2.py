@@ -797,18 +797,6 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-class TestImperativeModelAverage(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.incubate.optimizer.ModelAverage(
-            0.15, min_average_window=10000, max_average_window=12500
-        )
-        return optimizer
-
-    def test_modelaverage(self):
-        exception_message = "In dygraph, don't support ModelAverage."
-        self._check_exception(exception_message)
-
-
 class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = DGCMomentumOptimizer(
