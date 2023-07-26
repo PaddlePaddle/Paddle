@@ -122,8 +122,7 @@ Conv1dXPUPattern::Conv1dXPUPattern(PDPattern* pattern,
           });
   auto conv_input = pattern->NewNode(conv_input_repr())
                         ->assert_is_op_output("unsqueeze2", "Out")
-                        ->assert_is_op_input(conv_type_, "Input")
-                        ->assert_has_n_outputs(1);
+                        ->assert_is_op_input(conv_type_, "Input");
   unsqueeze2->LinksFrom({x}).LinksTo({conv_input});
   auto conv = pattern->NewNode(conv_repr())->assert_is_op(conv_type_);
   auto conv_filter = pattern->NewNode(conv_filter_repr())
@@ -383,19 +382,19 @@ void Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_subgraph_count = 0;
   for (auto conv_type : {"conv2d"}) {
     for (auto with_conv_bias : {true}) {
-      for (auto with_bn : {true}) {
-        for (auto with_branch_x : {false}) {
-          for (auto with_branch_y : {false}) {
+      for (auto with_bn : {true, false}) {
+        for (auto with_branch_x : {true, false}) {
+          for (auto with_branch_y : {true, false}) {
             for (auto act_type : {
-                    //  "relu",
-                    //  "sigmoid",
-                    //  "tanh",
-                    //  "gelu",
+                     "relu",
+                     "sigmoid",
+                     "tanh",
+                     "gelu",
                      "leaky_relu",
-                    //  "hard_swish",
-                    //  "hard_sigmoid",
-                    //  "relu6",
-                    //  "swish",
+                     "hard_swish",
+                     "hard_sigmoid",
+                     "relu6",
+                     "swish",
                      "",
                  }) {
               if (with_branch_x && with_branch_y) continue;
@@ -639,7 +638,23 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
       stride_w = conv_strides[1];
     }
     conv1d_xpu_op_desc.SetAttr("strides", stride_w);
-
+    // update graph pattern after fuse
+    std::unordered_set<const Node*> delete_nodes = {conv, conv_out, ew_bias_add, ew_bias_add_y, ew_bias_add_out, squeeze2};
+    // for x->unsqueeze-->conv2d pattern
+    //                 |->conv2d
+    if (conv_input->outputs.size() == 1) {
+      IR_NODE_UNLINK(x, unsqueeze2);
+      auto x_link_in_nodes = x->inputs;
+      for (auto x_link_in_node : x_link_in_nodes) {
+        auto op_desc = x_link_in_node->Op();
+        op_desc->Flush();
+      }
+      delete_nodes.insert(unsqueeze2);
+      delete_nodes.insert(conv_input);
+    } else {
+      IR_NODE_UNLINK(conv_input, conv);
+      unsqueeze2->Op()->Flush();
+    }
     auto* conv1d_xpu = graph->CreateOpNode(&conv1d_xpu_op_desc);
     IR_NODE_LINK_TO(x, conv1d_xpu);
     IR_NODE_LINK_TO(filter_int16, conv1d_xpu);
@@ -656,17 +671,11 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
       IR_NODE_LINK_TO(conv1d_xpu, ew_branch_add_out);
     } else if (bn_out) {
       IR_NODE_LINK_TO(conv1d_xpu, bn_out);
-    } else if (squeeze2_out) {
-      IR_NODE_LINK_TO(conv1d_xpu, squeeze2_out);
-    } else if (ew_bias_add_out) {
-      IR_NODE_LINK_TO(conv1d_xpu, ew_bias_add_out);
     } else {
-      IR_NODE_LINK_TO(conv1d_xpu, conv_out);
+      IR_NODE_LINK_TO(conv1d_xpu, squeeze2_out);
     }
     IR_NODE_LINK_TO(conv1d_xpu, conv1d_xpu_out_max);
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {
-        unsqueeze2, conv_input, conv, squeeze2};
     if (act != nullptr) {
       delete_nodes.insert(act);
     }
@@ -683,10 +692,6 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
       delete_nodes.insert(bn_mean_out);
       delete_nodes.insert(bn_saved_var);
       delete_nodes.insert(bn_saved_mean);
-    }
-    if (ew_bias_add) {
-      delete_nodes.insert(ew_bias_add);
-      delete_nodes.insert(ew_bias_add_y);
     }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
