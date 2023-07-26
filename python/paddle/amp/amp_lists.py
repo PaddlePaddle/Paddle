@@ -90,7 +90,7 @@ EXTRA_BLACK_LIST = {
     'scatter',
 }
 
-BF16_WHITE_LIST = {'conv2d', 'einsum', 'matmul_v2'}
+BF16_WHITE_LIST = {'conv2d', 'matmul', 'matmul_v2', 'mul'}
 BF16_BLACK_LIST = set()
 
 
