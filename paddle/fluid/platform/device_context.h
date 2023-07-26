@@ -42,6 +42,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
+#include "paddle/fluid/platform/dynload/mublas.h"
+#include "paddle/fluid/platform/dynload/mudnn.h"
+#include "paddle/fluid/platform/dynload/musparse.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+#include "paddle/fluid/platform/dynload/mccl.h"
+#endif
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -73,7 +85,7 @@ limitations under the License. */
 #include "paddle/phi/backends/stream.h"
 
 #if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
-#include "unsupported/Eigen/CXX11/Tensor"
+//#include "unsupported/Eigen/CXX11/Tensor"
 #endif
 
 namespace Eigen {

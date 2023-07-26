@@ -72,6 +72,11 @@ using cufftHandle = int;
 // Forward declaration of NCCL types.
 using ncclComm_t = struct ncclComm *;
 
+// Forward declaration of MUSA runtime types.
+using musaStream_t = struct MUstream_st *;
+using musaEvent_t = struct MUevent_st *;
+using mublasHandle_t = struct _mublasHandle_t*;
+
 /// Forward declaration of ROCM types.
 #include <cstddef>
 

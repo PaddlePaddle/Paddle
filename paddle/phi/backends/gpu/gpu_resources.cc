@@ -37,9 +37,7 @@
 
 #ifdef PADDLE_WITH_MUSA
 #include "paddle/phi/backends/dynload/mublas.h"
-#include "paddle/phi/backends/dynload/mublasLt.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
-#include "paddle/phi/backends/dynload/musolver.h"
 #include "paddle/phi/backends/dynload/musparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/backends/dynload/mccl.h"
@@ -158,7 +156,8 @@ void InitGpuProperties(Place place,
            "version.";
   }
 #elif defined(PADDLE_WITH_MUSA)
-  size_t mudnn_dso_ver = dynload::mudnnGetVersion();
+  //size_t mudnn_dso_ver = dynload::mudnnGetVersion();
+  size_t mudnn_dso_ver = 0;
   LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place.device)
                           << ", muDNN Version: " << mudnn_dso_ver / 1000 << "."
                           << (mudnn_dso_ver % 1000) / 100 << ".";
@@ -184,15 +183,15 @@ void InitGpuProperties(Place place,
           local_musa_version / 10,
           mudnn_dso_ver / 1000));
 #endif
-  if (local_cuda_version < compile_cuda_version) {
+  if (local_musa_version < compile_musa_version) {
     LOG_FIRST_N(WARNING, 1)
         << "WARNING: device: " << static_cast<int>(place.device)
-        << ". The installed Paddle is compiled with CUDA "
-        << compile_cuda_version / 10 << "." << compile_cuda_version % 10
-        << ", but CUDA runtime version in your machine is "
-        << local_cuda_version / 10 << "." << local_cuda_version % 10
+        << ". The installed Paddle is compiled with MUSA "
+        << compile_musa_version / 10 << "." << compile_musa_version % 10
+        << ", but MUSA runtime version in your machine is "
+        << local_musa_version / 10 << "." << local_musa_version % 10
         << ", which may cause serious incompatible bug. "
-        << "Please recompile or reinstall Paddle with compatible CUDA "
+        << "Please recompile or reinstall Paddle with compatible MUSA "
            "version.";
   }
 #else
@@ -267,9 +266,9 @@ void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream) {
   phi::dynload::rocblas_create_handle(blas_handle);
   phi::dynload::rocblas_set_stream(*blas_handle, stream);
 #elif defined(PADDLE_WITH_MUSA)
-  PADDLE_RETRY_MUSA_SUCCESS(phi::dynload::mublasCreate(blas_handle));
-  PADDLE_RETRY_MUSA_SUCCESS(
-      phi::dynload::mublasSetStream(*blas_handle, stream));
+  PADDLE_RETRY_CUDA_SUCCESS(mublasCreate(blas_handle));
+  PADDLE_RETRY_CUDA_SUCCESS(
+      mublasSetStream(*blas_handle, stream));
 #else   // PADDLE_WITH_MUSA
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(blas_handle));
   PADDLE_RETRY_CUDA_SUCCESS(
@@ -285,7 +284,7 @@ void DestroyBlasHandle(blasHandle_t handle) {
   }
 #elif defined(PADDLE_WITH_MUSA)
   if (handle != nullptr) {
-    phi::dynload::mublasDestroy(handle);
+    mublasDestroy(handle);
     handle = nullptr;
   }
 #else
@@ -334,21 +333,7 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreate(handle));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetStream(*handle, stream));
 #elif defined(PADDLE_WITH_MUSA)
-    auto local_cudnn_version = phi::dynload::mudnnGetVersion() / 100;
-    auto compile_mudnn_version = MUDNN_VERSION / 100;
-    if (local_mudnn_version < static_cast<size_t>(compile_mudnn_version)) {
-      LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place.device
-          << ". The installed Paddle is compiled with MUDNN "
-          << compile_mudnn_version / 10 << "." << compile_mudnn_version % 10
-          << ", but MUDNN version in your machine is "
-          << local_mudnn_version / 10 << "." << local_mudnn_version % 10
-          << ", which may cause serious incompatible bug. "
-          << "Please recompile or reinstall Paddle with compatible MUDNN "
-             "version.";
-    }
-    PADDLE_RETRY_MUSA_SUCCESS(phi::dynload::mudnnCreate(handle));
-    PADDLE_RETRY_MUSA_SUCCESS(phi::dynload::mudnnSetStream(*handle, stream));
+
 #else
     auto local_cudnn_version = phi::dynload::cudnnGetVersion() / 100;
     auto compile_cudnn_version = CUDNN_VERSION / 100;
@@ -378,10 +363,7 @@ void DestroyDnnHandle(dnnHandle_t handle) {
     handle = nullptr;
   }
 #elif defined(PADDLE_WITH_MUSA)
-  if (handle != nullptr) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDestroy(handle));
-    handle = nullptr;
-  }
+
 #else
   if (handle != nullptr) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroy(handle));
@@ -391,14 +373,14 @@ void DestroyDnnHandle(dnnHandle_t handle) {
 }
 
 void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream) {
-#ifndef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_CUDA
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusolverDnCreate(handle));
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusolverDnSetStream(*handle, stream));
 #endif
 }
 
 void DestroySolverHandle(solverHandle_t solver_handle) {
-#ifndef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_CUDA
   if (solver_handle != nullptr) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDestroy(solver_handle));
     solver_handle = nullptr;

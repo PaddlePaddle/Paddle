@@ -208,7 +208,7 @@ class WarpRNNTFunctor {
     options_.batch_first = true;
 
     if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       options_.loc = RNNT_GPU;
       options_.stream =
           reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();

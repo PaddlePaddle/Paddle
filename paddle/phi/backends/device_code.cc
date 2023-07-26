@@ -24,7 +24,9 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/flags.h"
-
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
 PHI_DECLARE_string(cuda_dir);
 
 namespace phi {
@@ -107,7 +109,7 @@ static bool CheckCUDADriverResult(MUresult result,
                                   std::string kernel_name = "") {
   if (result != MUSA_SUCCESS) {
     const char* error = nullptr;
-    dynload::muGetErrorString(result, &error);
+    muGetErrorString(result, &error);
 #else
 static bool CheckCUDADriverResult(CUresult result,
                                   std::string caller,
@@ -138,7 +140,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
   hiprtcResult nvrtc_result =
       dynload::hiprtcVersion(&nvrtc_major, &nvrtc_minor);
 #elif defined(PADDLE_WITH_MUSA)
-  nvrtcResult nvrtc_result = dynload::nvrtcVersion(&nvrtc_major, &nvrtc_minor);
+
 #else
   nvrtcResult nvrtc_result = dynload::nvrtcVersion(&nvrtc_major, &nvrtc_minor);
 #endif
@@ -150,7 +152,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
   hipError_t driver_result = dynload::hipDriverGetVersion(&driver_version);
   if (driver_result == hipSuccess) {
 #elif defined(PADDLE_WITH_MUSA)
-  MUresult driver_result = dynload::muDriverGetVersion(&driver_version);
+  MUresult driver_result = muDriverGetVersion(&driver_version);
   if (driver_result == MUSA_SUCCESS) {
 #else
   CUresult driver_result = dynload::cuDriverGetVersion(&driver_version);
@@ -166,7 +168,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
 #ifdef PADDLE_WITH_HIP
   if (nvrtc_result != HIPRTC_SUCCESS || driver_result != hipSuccess) {
 #elif defined(PADDLE_WITH_MUSA)
-  if (nvrtc_result != NVRTC_SUCCESS || driver_result != MUSA_SUCCESS) {
+  if (false) {
 #else
   if (nvrtc_result != NVRTC_SUCCESS || driver_result != CUDA_SUCCESS) {
 #endif
@@ -178,7 +180,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
   if (CheckCUDADriverResult(dynload::hipGetDeviceCount(&count),
                             "hipGetDeviceCount")) {
 #elif defined(PADDLE_WITH_MUSA)
-  if (CheckCUDADriverResult(dynload::muDeviceGetCount(&count),
+  if (CheckCUDADriverResult(muDeviceGetCount(&count),
                             "muDeviceGetCount")) {
 #else
   if (CheckCUDADriverResult(dynload::cuDeviceGetCount(&count),
@@ -340,85 +342,10 @@ bool GPUDeviceCode::Compile(bool include_path) {
     return false;
   }
 #elif defined(PADDLE_WITH_MUSA)
-  nvrtcProgram program;
-  if (!CheckNVRTCResult(dynload::nvrtcCreateProgram(&program,
-                                                    kernel_.c_str(),  // buffer
-                                                    name_.c_str(),    // name
-                                                    0,         // numHeaders
-                                                    nullptr,   // headers
-                                                    nullptr),  // includeNames
-                        "nvrtcCreateProgram")) {
-    return false;
-  }
-
-  // Compile the program for specified compute_capability
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       DeviceContextPool::Instance().Get(place_));
-  int compute_capability = dev_ctx->GetComputeCapability();
-  std::string compute_flag =
-      "--gpu-architecture=compute_" + std::to_string(compute_capability);
-  std::vector<const char*> options = {"--std=c++11", compute_flag.c_str()};
-  std::string include_option;
-  if (include_path) {
-    std::string cuda_include_path = FindMUSAIncludePath();
-    if (!cuda_include_path.empty()) {
-      include_option = "--include-path=" + cuda_include_path;
-      options.push_back(include_option.c_str());
-    }
-  }
-  nvrtcResult compile_result =
-      dynload::nvrtcCompileProgram(program,          // program
-                                   options.size(),   // numOptions
-                                   options.data());  // options
-  if (compile_result == NVRTC_ERROR_COMPILATION) {
-    // Obtain compilation log from the program
-    size_t log_size;
-    if (!CheckNVRTCResult(dynload::nvrtcGetProgramLogSize(program, &log_size),
-                          "nvrtcGetProgramLogSize")) {
-      return false;
-    }
-    std::vector<char> log;
-    log.resize(log_size + 1);
-    if (!CheckNVRTCResult(dynload::nvrtcGetProgramLog(program, log.data()),
-                          "nvrtcGetProgramLog")) {
-      return false;
-    }
-    LOG(WARNING) << "JIT compiling of CUDA code failed:"
-                 << "\n  Kernel name: " << name_ << "\n  Kernel body:\n"
-                 << kernel_ << "\n  Compiling log: " << log.data();
-
-    return false;
-  }
-
-  // Obtain PTX from the program
-  size_t ptx_size;
-  if (!CheckNVRTCResult(dynload::nvrtcGetPTXSize(program, &ptx_size),
-                        "nvrtcGetPTXSize")) {
-    return false;
-  }
-  ptx_.resize(ptx_size + 1);
-  if (!CheckNVRTCResult(dynload::nvrtcGetPTX(program, ptx_.data()),
-                        "nvrtcGetPTX")) {
-    return false;
-  }
-
-  if (!CheckNVRTCResult(dynload::nvrtcDestroyProgram(&program),
-                        "nvrtcDestroyProgram")) {
-    return false;
-  }
-
-  if (!CheckCUDADriverResult(dynload::muModuleLoadData(&module_, ptx_.data()),
-                             "muModuleLoadData",
-                             name_)) {
-    return false;
-  }
-
-  if (!CheckCUDADriverResult(
-          dynload::muModuleGetFunction(&function_, module_, name_.c_str()),
-          "muModuleGetFunction",
-          name_)) {
-    return false;
-  }
+  is_compiled_ = false;
+  return false;
 #else
   nvrtcProgram program;
   if (!CheckNVRTCResult(dynload::nvrtcCreateProgram(&program,
@@ -539,7 +466,7 @@ void GPUDeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
                        name_.c_str()));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_ENFORCE_EQ(
-      dynload::muLaunchKernel(function_,
+      muLaunchKernel(function_,
                               num_blocks,
                               1,
                               1,  // grid dim
@@ -581,25 +508,20 @@ bool GPUDeviceCode::CheckNVRTCResult(hiprtcResult result,
         << " > failed: " << dynload::hiprtcGetErrorString(result);
     return false;
   }
-#elif defined(PADDLE_WITH_MUSA)
-bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
-  if (result != NVRTC_SUCCESS) {
-    LOG_FIRST_N(WARNING, 1)
-        << "Call " << function << " for < " << name_
-        << " > failed: " << dynload::nvrtcGetErrorString(result);
-    return false;
-  }
-#else
-bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
-  if (result != NVRTC_SUCCESS) {
-    LOG_FIRST_N(WARNING, 1)
-        << "Call " << function << " for < " << name_
-        << " > failed: " << dynload::nvrtcGetErrorString(result);
-    return false;
-  }
-#endif
   return true;
 }
+#endif
+#ifdef PADDLE_WITH_CUDA
+bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
+  if (result != NVRTC_SUCCESS) {
+    LOG_FIRST_N(WARNING, 1)
+        << "Call " << function << " for < " << name_
+        << " > failed: " << dynload::nvrtcGetErrorString(result);
+    return false;
+  }
+  return true;
+}
+#endif
 #endif
 
 }  // namespace phi

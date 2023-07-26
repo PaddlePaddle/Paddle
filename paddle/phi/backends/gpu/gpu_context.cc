@@ -46,7 +46,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MUSA
 #include "paddle/phi/backends/dynload/mublas.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
-#include "paddle/phi/backends/dynload/musolver.h"
 #include "paddle/phi/backends/dynload/musparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/phi/backends/dynload/mccl.h"
@@ -61,10 +60,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #endif  // PADDLE_WITH_HIP
-
-#ifdef PADDLE_WITH_MUSA
-
-#endif
 
 // NOTE: The paddle framework should add WITH_EIGEN option to support compile
 // without eigen.
@@ -164,10 +159,10 @@ static void StreamCallbackFunc(gpuStream_t stream,
 
 #ifdef PADDLE_WITH_MUSA
 #if MUSA_VERSION >= 10000
-    static void MUDART_CB StreamCallbackFunc(void* user_data)
+    static void StreamCallbackFunc(void* user_data)
 #else
-    static void MUDART_CB
-    StreamCallbackFunc(musaStream_t stream, musaError_t status, void* user_data)
+    static void
+    StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void* user_data)
 #endif
 #endif
 
@@ -497,10 +492,7 @@ struct GPUContext::Impl {
       dnn_handle_ = nullptr;
     }
 #elif defined(PADDLE_WITH_MUSA)
-    if (owned_ && dnn_handle_ != nullptr) {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDestroy(dnn_handle_));
-      dnn_handle_ = nullptr;
-    }
+
 #else
     if (owned_ && dnn_handle_ != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroy(dnn_handle_));
@@ -578,7 +570,7 @@ struct GPUContext::Impl {
     }
 #endif  // !defined(_WIN32)
 
-#else   // PADDLE_WITH_HIP
+#else   // PADDLE_WITH_MUSA
     cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
     e_sync = cudaStreamSynchronize(stream());
@@ -588,7 +580,7 @@ struct GPUContext::Impl {
       break;
     }
 #endif  // !defined(_WIN32)
-#endif  // PADDLE_WITH_HIP
+#endif  // PADDLE_WITH_CUDA
 
     PADDLE_ENFORCE_GPU_SUCCESS(e_sync);
   }
@@ -775,7 +767,7 @@ struct GPUContext::Impl {
   }
 
   void WaitStreamCallback() const {
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
     phi::backends::gpu::GpuStreamSync(stream());
 #endif
     {

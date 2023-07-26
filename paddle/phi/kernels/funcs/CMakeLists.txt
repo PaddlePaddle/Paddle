@@ -1,4 +1,4 @@
-add_subdirectory(eigen)
+#add_subdirectory(eigen)
 add_subdirectory(blas)
 add_subdirectory(lapack)
 add_subdirectory(detail)
@@ -15,4 +15,5 @@ if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
     "*.cu")
 endif()
 
-collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})
+#collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})
+collect_srcs(kernels_srcs SRCS ${func_cc_srcs})

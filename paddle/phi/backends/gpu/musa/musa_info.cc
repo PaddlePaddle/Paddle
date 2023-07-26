@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include <array>
+#include <mutex>
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 #include "paddle/phi/core/enforce.h"
 
-#include "musa_runtime_api.h"
+#include "musa_runtime.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
@@ -29,7 +31,7 @@ namespace backends {
 namespace gpu {
 
 int DnnVersion() {
-  return 0.0.0;
+  return 0;
   //if (!dynload::HasCUDNN()) return -1;
   //size_t version_major, version_minor, version_patch;
   //PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(

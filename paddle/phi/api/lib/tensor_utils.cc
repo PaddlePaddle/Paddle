@@ -20,6 +20,8 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#elif defined(PADDLE_WITH_MUSA)
+#include <musa_runtime.h>
 #else
 #include <hip/hip_runtime.h>
 #endif
@@ -43,6 +45,12 @@ phi::Place GetPlaceFromPtr(void* data) {
       phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
                                  "supported when CUDA version >= 10.0."));
 #endif
+#elif defined(PADDLE_WITH_MUSA)
+  musaPointerAttributes attr;
+  musaError_t status = musaPointerGetAttributes(&attr, data);
+  if (status == musaSuccess && attr.type == musaMemoryTypeDevice) {
+    return phi::GPUPlace(attr.device);
+  }
 #else
   hipPointerAttribute_t attr;
   hipError_t status = hipPointerGetAttributes(&attr, data);

@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/nvrtc.h"
 #endif
 #ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/musartc.h"
 #include "paddle/phi/backends/dynload/musa_driver.h"
-#include "paddle/phi/backends/dynload/nvrtc.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/hiprtc.h"
@@ -73,7 +73,7 @@ class GPUDeviceCode : public DeviceCode {
 #ifdef PADDLE_WITH_HIP
   bool CheckNVRTCResult(hiprtcResult result, std::string function);
 #elif defined(PADDLE_WITH_MUSA)
-  bool CheckNVRTCResult(cudartcResult result, std::string function);
+
 #else
   bool CheckNVRTCResult(nvrtcResult result, std::string function);
 #endif
