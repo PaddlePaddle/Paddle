@@ -45,13 +45,6 @@ enum class ReduceType : std::uint8_t {
 constexpr const char* ReduceTypeStrings[] = {
     "SUM", "AVG", "MAX", "MIN", "PRODUCT", "ANY", "ALL"};
 
-struct _Partial_ {
-  std::string to_string() const;
-
-  int64_t dim_{-1};
-  ReduceType type_{ReduceType::SUM};
-};
-
 class TensorDistAttr {
  public:
   TensorDistAttr() = default;
@@ -78,13 +71,13 @@ class TensorDistAttr {
   // return vector of mesh dims on which the this tensor is partial on
   const std::vector<int64_t> partial_dims() const;
 
-  const paddle::flat_hash_map<int64_t, _Partial_>& partial_status() const {
+  const paddle::flat_hash_map<int64_t, ReduceType>& partial_status() const {
     return partial_status_;
   }
 
   // by map
   void set_partial_status(
-      const paddle::flat_hash_map<int64_t, _Partial_>& partial_status);
+      const paddle::flat_hash_map<int64_t, ReduceType>& partial_status);
 
   // by each dim
   void set_partial_status(const std::vector<int64_t>& dims,
@@ -160,8 +153,8 @@ class TensorDistAttr {
   std::map<std::string, bool> annotated_;
   // partial map would be small (less than mesh.size)
   // iterate operation (copy and comparision) would more frequency than random
-  // element access. <key: dim on mesh, value: partial object>
-  paddle::flat_hash_map<int64_t, _Partial_> partial_status_;
+  // element access. <key: dim on mesh, value: reduce type>
+  paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
@@ -172,12 +165,6 @@ inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
 bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs);
 
 inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
-  return !operator==(lhs, rhs);
-}
-
-bool operator==(const _Partial_& lhs, const _Partial_& rhs);
-
-inline bool operator!=(const _Partial_& lhs, const _Partial_& rhs) {
   return !operator==(lhs, rhs);
 }
 

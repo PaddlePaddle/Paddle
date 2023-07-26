@@ -90,7 +90,7 @@ const std::vector<int64_t> TensorDistAttr::partial_dims() const {
 }
 
 void TensorDistAttr::set_partial_status(
-    const paddle::flat_hash_map<int64_t, _Partial_>& partial_status) {
+    const paddle::flat_hash_map<int64_t, ReduceType>& partial_status) {
   partial_status_ = partial_status;
 }
 
@@ -102,8 +102,7 @@ void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
           "Trying to Set dim %d as Partial which is already a Partial dim.",
           dim));
     }
-    _Partial_ partial = {dim, type};
-    partial_status_.emplace(dim, partial);
+    partial_status_.emplace(dim, type);
   }
 }
 
@@ -225,11 +224,10 @@ bool TensorDistAttr::verify_partial_status() const {
   VLOG(4) << "[TensorDistAttr verify_partial_status] "
           << partial_status_string();
   for (auto& itr : partial_status_) {
-    if (itr.second.dim_ < 0 || itr.second.dim_ >= process_mesh_.ndim()) {
+    if (itr.first < 0 || itr.first >= process_mesh_.ndim()) {
       return false;
     }
-    if (itr.second.type_ < ReduceType::SUM ||
-        itr.second.type_ <= ReduceType::ALL) {
+    if (itr.second < ReduceType::SUM || itr.second <= ReduceType::ALL) {
       return false;
     }
   }
@@ -316,16 +314,6 @@ void TensorDistAttr::parse_from_string(const std::string& data) {
   from_proto(proto);
 }
 
-bool operator==(const _Partial_& lhs, const _Partial_& rhs) {
-  if (lhs.dim_ != rhs.dim_) {
-    return false;
-  }
-  if (lhs.type_ != rhs.type_) {
-    return false;
-  }
-  return true;
-}
-
 bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   if (lhs.process_mesh() != rhs.process_mesh()) {
     return false;
@@ -348,17 +336,11 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
 std::string TensorDistAttr::partial_status_string() const {
   std::string partial_status_str = "[";
   for (auto& itr : partial_status_) {
-    partial_status_str += itr.second.to_string() + ", ";
+    partial_status_str += "Partial(dims:" + std::to_string(itr.first) + ", " +
+                          ReduceTypeStrings[static_cast<int>(type_)] + "), ";
   }
   partial_status_str += "]";
   return partial_status_str;
-}
-
-std::string _Partial_::to_string() const {
-  std::string partial_str = "";
-  partial_str = "Partial(dims:" + std::to_string(dim_) + ", " +
-                ReduceTypeStrings[static_cast<int>(type_)] + ")";
-  return partial_str;
 }
 
 }  // namespace auto_parallel
