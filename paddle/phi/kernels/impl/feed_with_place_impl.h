@@ -20,9 +20,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ShaddowFeedKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       DenseTensor* out) {
+void ShadowFeedKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out) {
   ctx.template Alloc<T>(out);
   if (x.place() == out->place()) {
     out->ShareDataWith(x);

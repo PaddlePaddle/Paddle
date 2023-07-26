@@ -2464,7 +2464,7 @@
   extra :
     attrs : [bool use_mkldnn=false]
 
-- op : shaddow_output
+- op : shadow_output
   inputs: {x: x}
   outputs: {out: out}
 

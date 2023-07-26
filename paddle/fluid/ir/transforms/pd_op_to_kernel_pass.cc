@@ -420,16 +420,16 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     program->block()->push_back(op);
 
     if ((*it)->name() == "pd.feed" && platform::is_gpu_place(place)) {
-      // add shaddow feed op
-      phi::KernelKey shaddow_key{
+      // add shadow feed op
+      phi::KernelKey shadow_key{
           phi::Backend::GPU,
           phi::DataLayout::ANY,
           TransToPhiDataType(
               (*it)->result(0).type().dyn_cast<DenseTensorType>().dtype())};
       std::unordered_map<std::string, ir::Attribute> attr_map{
-          {"op_name", ir::StrAttribute::get(ctx, "pd.shaddow_feed")},
-          {"kernel_name", ir::StrAttribute::get(ctx, "shaddow_feed")},
-          {"kernel_key", dialect::KernelAttribute::get(ctx, shaddow_key)}};
+          {"op_name", ir::StrAttribute::get(ctx, "pd.shadow_feed")},
+          {"kernel_name", ir::StrAttribute::get(ctx, "shadow_feed")},
+          {"kernel_key", dialect::KernelAttribute::get(ctx, shadow_key)}};
 
       auto out_type = paddle::dialect::AllocatedDenseTensorType::get(
           ctx,

@@ -1120,7 +1120,7 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
-struct ShaddowOutputOpTranscriber : public OpTranscriber {
+struct ShadowOutputOpTranscriber : public OpTranscriber {
   ir::Operation* operator()(ir::IrContext* ctx,
                             TranslationContext* param_map,
                             const OpDesc& op_desc,
@@ -1227,7 +1227,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
-  special_handlers["shaddow_output"] = ShaddowOutputOpTranscriber();
+  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();

@@ -402,7 +402,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     }
 
     auto op_desc = local_program.MutableBlock(0)->AppendOp();
-    op_desc->SetType("shaddow_output");
+    op_desc->SetType("shadow_output");
     op_desc->SetAttr("name", name);
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
@@ -458,7 +458,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
       continue;
     }
     auto op_desc = local_program.MutableBlock(0)->AppendOp();
-    op_desc->SetType("shaddow_output");
+    op_desc->SetType("shadow_output");
     op_desc->SetAttr("name", name);
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
