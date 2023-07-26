@@ -82,8 +82,8 @@ void _FusedScaleBiasReluConvBnstatsImpl(
   std::vector<int64_t> pre_padding(data_dim, 0);
   std::vector<int64_t> post_padding(data_dim, 0);
   for (size_t i = 0; i < data_dim; ++i) {
-    pre_padding[i] = static_cast<int64_t>(paddings[2 * i]);
-    post_padding[i] = static_cast<int64_t>(paddings[2 * i + 1]);
+    pre_padding[i] = static_cast<int64_t>(paddings_vec[2 * i]);
+    post_padding[i] = static_cast<int64_t>(paddings_vec[2 * i + 1]);
   }
 
   // input pointers
@@ -192,7 +192,7 @@ void _FusedScaleBiasReluConvBnstatsImpl(
   VLOG(6) << relu_op.describe();
 
   std::vector<int64_t> stride_int64 = helper::GetInt64Array(strides);
-  std::vector<int64_t> dilation_int64 = helper::GetInt64Array(dilations);
+  std::vector<int64_t> dilation_int64 = helper::GetInt64Array(dilations_vec);
   auto conv_desc = cudnn_frontend::ConvDescBuilder()
                        .setComputeType(compute_dtype)
                        .setMathMode(CUDNN_CROSS_CORRELATION)
