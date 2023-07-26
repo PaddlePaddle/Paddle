@@ -24,7 +24,6 @@ import math
 import numbers
 
 import paddle
-from . import control_flow
 from . import nn
 from . import tensor
 from ..framework import (
@@ -434,8 +433,7 @@ def piecewise_decay(boundaries, values):
                 persistable=True,
                 name="learning_rate",
             )
-            # TODO: fluid.layers.control_flow.Switch should be replaced by paddle.static.nn.case(or cond) if possible
-            with control_flow.Switch() as switch:
+            with paddle.static.nn.control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
                     boundary_val = paddle.tensor.fill_constant(
                         shape=[1],

@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {

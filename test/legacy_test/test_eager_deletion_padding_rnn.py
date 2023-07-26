@@ -21,7 +21,6 @@ import paddle
 from paddle import fluid
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 
 os.environ["CPU_NUM"] = "1"
 
@@ -83,7 +82,7 @@ class RNNConfig:
         else:
             raise ValueError('Unsupported model_type.')
 
-        if rnn_model not in ('static', 'padding', 'cudnn'):
+        if rnn_model not in ('static', 'cudnn'):
             raise ValueError('Unsupported rnn_model.')
 
         self.batch_size = 12
@@ -117,124 +116,6 @@ def lm_model(
     dropout=None,
     rnn_model='static',
 ):
-    def padding_rnn(input_embedding, len=3, init_hidden=None, init_cell=None):
-        weight_1_arr = []
-        weight_2_arr = []
-        bias_arr = []
-        hidden_array = []
-        cell_array = []
-        mask_array = []
-        for i in range(num_layers):
-            weight_1 = paddle.create_parameter(
-                [hidden_size * 2, hidden_size * 4],
-                dtype="float32",
-                name="fc_weight1_" + str(i),
-                default_initializer=paddle.nn.initializer.Uniform(
-                    low=-init_scale, high=init_scale
-                ),
-            )
-            weight_1_arr.append(weight_1)
-            bias_1 = paddle.create_parameter(
-                [hidden_size * 4],
-                dtype="float32",
-                name="fc_bias1_" + str(i),
-                default_initializer=paddle.nn.initializer.Constant(0.0),
-            )
-            bias_arr.append(bias_1)
-
-            pre_hidden = paddle.slice(
-                init_hidden, axes=[0], starts=[i], ends=[i + 1]
-            )
-            pre_cell = paddle.slice(
-                init_cell, axes=[0], starts=[i], ends=[i + 1]
-            )
-            pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
-            pre_cell = paddle.reshape(pre_cell, shape=[-1, hidden_size])
-            hidden_array.append(pre_hidden)
-            cell_array.append(pre_cell)
-
-        input_embedding = paddle.transpose(input_embedding, perm=[1, 0, 2])
-        rnn = PaddingRNN()
-
-        with rnn.step():
-            input = rnn.step_input(input_embedding)
-            for k in range(num_layers):
-                pre_hidden = rnn.memory(init=hidden_array[k])
-                pre_cell = rnn.memory(init=cell_array[k])
-                weight_1 = weight_1_arr[k]
-                bias = bias_arr[k]
-
-                nn = paddle.concat([input, pre_hidden], 1)
-                gate_input = paddle.matmul(x=nn, y=weight_1)
-
-                gate_input = paddle.add(gate_input, bias)
-                i = paddle.slice(
-                    gate_input, axes=[1], starts=[0], ends=[hidden_size]
-                )
-                j = paddle.slice(
-                    gate_input,
-                    axes=[1],
-                    starts=[hidden_size],
-                    ends=[hidden_size * 2],
-                )
-                f = paddle.slice(
-                    gate_input,
-                    axes=[1],
-                    starts=[hidden_size * 2],
-                    ends=[hidden_size * 3],
-                )
-                o = paddle.slice(
-                    gate_input,
-                    axes=[1],
-                    starts=[hidden_size * 3],
-                    ends=[hidden_size * 4],
-                )
-
-                c = pre_cell * paddle.nn.functional.sigmoid(
-                    f
-                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
-                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
-
-                rnn.update_memory(pre_hidden, m)
-                rnn.update_memory(pre_cell, c)
-
-                rnn.step_output(m)
-                rnn.step_output(c)
-
-                input = m
-
-                if dropout is not None and dropout > 0.0:
-                    input = paddle.nn.functional.dropout(
-                        input,
-                        p=dropout,
-                        mode='upscale_in_train',
-                    )
-
-            rnn.step_output(input)
-        rnnout = rnn()
-
-        last_hidden_array = []
-        last_cell_array = []
-        real_res = rnnout[-1]
-        for i in range(num_layers):
-            m = rnnout[i * 2]
-            c = rnnout[i * 2 + 1]
-            m.stop_gradient = True
-            c.stop_gradient = True
-            last_h = paddle.slice(
-                m, axes=[0], starts=[num_steps - 1], ends=[num_steps]
-            )
-            last_hidden_array.append(last_h)
-            last_c = paddle.slice(
-                c, axes=[0], starts=[num_steps - 1], ends=[num_steps]
-            )
-            last_cell_array.append(last_c)
-        real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
-        last_hidden = paddle.concat(last_hidden_array, 0)
-        last_cell = paddle.concat(last_cell_array, 0)
-
-        return real_res, last_hidden, last_cell
-
     def encoder_static(
         input_embedding, len=3, init_hidden=None, init_cell=None
     ):
@@ -381,14 +262,7 @@ def lm_model(
             mode='upscale_in_train',
         )
 
-    if rnn_model == "padding":
-        rnn_out, last_hidden, last_cell = padding_rnn(
-            x_emb,
-            len=num_steps,
-            init_hidden=init_hidden_reshape,
-            init_cell=init_cell_reshape,
-        )
-    elif rnn_model == "static":
+    if rnn_model == "static":
         rnn_out, last_hidden, last_cell = encoder_static(
             x_emb,
             len=num_steps,
@@ -621,36 +495,6 @@ class PaddingRNNTestBase(unittest.TestCase):
             train_ppl = self._train_an_epoch(epoch_id, use_program_cache)
             ppl = np.append(ppl, train_ppl)
         return ppl
-
-    def compare_padding_static_mode(self, use_program_cache=True):
-        '''
-        Test that train ppl of padding mode is same to that of static graph mode
-        '''
-        config = RNNConfig('test', 'padding')
-        with fluid.scope_guard(fluid.Scope()):
-            padding_rnn_ppl = self.train(config, use_program_cache)
-        config = RNNConfig('test', 'static')
-        with fluid.scope_guard(fluid.Scope()):
-            static_rnn_ppl = self.train(config, use_program_cache)
-        np.testing.assert_allclose(padding_rnn_ppl, static_rnn_ppl, rtol=0.001)
-
-
-class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
-    def test_padding_mode_no_eager_deletion(self):
-        '''
-        Test that train ppl of padding mode is same to that of static graph mode without eager deletion
-        '''
-        fluid.core._set_eager_deletion_mode(-1.0, 1.0, True)
-        # When parallel is True, use_program_cache does not make a difference.
-        self.compare_padding_static_mode(use_program_cache=True)
-
-    def test_padding_mode_eager_deletion(self):
-        '''
-        Test that train ppl of padding mode is same to that of static graph mode under eager deletion
-        '''
-        fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
-        # When parallel is True, use_program_cache does not make a difference.
-        self.compare_padding_static_mode(use_program_cache=True)
 
 
 if __name__ == '__main__':

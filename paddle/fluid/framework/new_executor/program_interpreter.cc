@@ -53,6 +53,8 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
+  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
@@ -219,6 +221,11 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
+FetchList ProgramInterpreter::BetaRun(
+    const std::vector<std::string>& feed_names, bool need_fetch) {
+  return {};
+}
+
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }
@@ -283,12 +290,13 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
-void ProgramInterpreter::ShareBuildResultsFrom(InterpreterBaseImpl* src) {
-  VLOG(8) << "Share BuildResults from InterpreterCore(" << src
-          << ") to InterpreterCore(" << this << ")";
-
+void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   // share op dependency
-  //   dependency_builder_.ShareDependencyFrom(src->GetDependencyBuilder());
+  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
+  dependecy_count_ = src.GetDependencyCount();
+  is_shared_ = true;
+  VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
+          << ") to InterpreterCore(" << this << ")";
 }
 
 bool ProgramInterpreter::BuildInplaceCheckVarIsOnlyInput(
@@ -319,8 +327,14 @@ ProgramInterpreter::GetWorkQueue() {
   return async_work_queue_;
 }
 
-interpreter::DependencyBuilder* ProgramInterpreter::GetDependencyBuilder() {
-  return &dependency_builder_;
+const interpreter::DependencyBuilder& ProgramInterpreter::GetDependencyBuilder()
+    const {
+  return dependency_builder_;
+}
+
+std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
+    const {
+  return dependecy_count_;
 }
 
 void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
@@ -517,9 +531,9 @@ void ProgramInterpreter::BuildOperatorDependences() {
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
-
+  dependecy_count_ = GetDependencyCount();
   if (!is_shared_) {
-    dependecy_count_ = std::make_shared<std::vector<size_t>>(instr_num, 0);
+    dependecy_count_->assign(instr_num, 0);
   }
 
   auto downstream_map = dependency_builder_.Build(vec_instruction_);
@@ -782,7 +796,7 @@ void ProgramInterpreter::BuildSkipShareLoDInfo() {
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
         if (var->IsType<phi::DenseTensor>()) {
-          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
+          if (!var->Get<phi::DenseTensor>().lod().empty()) {
             can_skip_lod = false;
             break;
           }

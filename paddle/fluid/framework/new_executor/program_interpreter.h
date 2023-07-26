@@ -48,9 +48,18 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
+  paddle::framework::FetchList BetaRun(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true) override;
+
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
-  void ShareBuildResultsFrom(InterpreterBaseImpl* src) override;
+  void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  // op dependences
+  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
+
+  std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
@@ -128,6 +137,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool is_build_{false};
   bool static_build_{false};
+  // Note(sonder): share the op dependency,
+  // event analyzer, thread scheduling and GC.
   bool is_shared_{false};
 
   const platform::Place place_;

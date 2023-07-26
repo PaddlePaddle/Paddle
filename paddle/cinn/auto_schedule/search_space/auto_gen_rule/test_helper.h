@@ -23,8 +23,8 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/scope.h"
-#include "paddle/cinn/ir/ir_schedule.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {

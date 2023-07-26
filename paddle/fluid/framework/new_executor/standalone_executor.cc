@@ -62,11 +62,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.skip_gc_vars = job->SkipGcVars();
 
     // TODO(phlrain) we only support cpu for now
-    if (FLAGS_enable_new_ir_in_executor && platform::is_cpu_place(place)) {
+    if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
       auto kernel_program =
-          paddle::dialect::PdOpLowerToKernelPass(base_program.get());
+          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
           place_, std::move(kernel_program), scope_, execution_config));
     } else {
@@ -110,10 +110,10 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     // first job to other jobs. The shared build result includes op dependency,
     // event analyzer, thread scheduling and GC.
     for (const auto& pair : type_to_id) {
-      const auto& idx = pair.second;
-      for (size_t i = 1; i < idx.size(); ++i) {
-        interpretercores_[idx[i]]->ShareBuildResultsFrom(
-            interpretercores_[idx[0]]);
+      const auto& ids = pair.second;
+      for (size_t i = 1; i < ids.size(); ++i) {
+        interpretercores_[ids[i]]->ShareBuildResultsFrom(
+            interpretercores_[ids[0]]);
       }
     }
   }
@@ -121,6 +121,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
+
+    platform::RecordEvent record_event(
+        job_type + "-" + std::to_string(job->MicroBatchId()),
+        platform::TracerEventType::UserDefined,
+        1);
 
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();

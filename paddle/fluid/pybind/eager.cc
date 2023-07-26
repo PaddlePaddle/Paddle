@@ -45,7 +45,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-using phi::distributed::auto_parallel::DistTensor;
+using phi::distributed::DistTensor;
 using phi::distributed::auto_parallel::TensorDistAttr;
 #endif
 
@@ -298,13 +298,13 @@ void InitDistTensorWithTensor(
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
-    VLOG(4) << "Same place, do ShareDataWith";
+    VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
-    VLOG(4) << "Different place, do TensorCopy";
+    VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
     egr::EagerUtils::autograd_meta(&(self->tensor))
@@ -721,7 +721,7 @@ void AutoInitStringTensorByStringTensor(
  * ** zero_copy: bool,
  * ** name: std::string,
  * ** stop_gradient: bool,
- * ** dist_attr: phi::distributed::TensorDistAttr)
+ * ** dist_attr: phi::distributed::auto_parallel::TensorDistAttr)
  * 4.
  * def __init__ (
  * ** value: ndarray)
@@ -735,7 +735,7 @@ void AutoInitStringTensorByStringTensor(
  * ** tensor: Tensor,
  * ** place: paddle::platform::Place,
  * ** name: std::string,
- * ** dist_attr: phi::distributed::TensorDistAttr)
+ * ** dist_attr: phi::distributed::auto_parallel::TensorDistAttr)
  * 7. (multi-place) (should have at least one parameter, one parameter similar
  * to case 5, zero parameter equals to case 1.)
  * def __init__ (
