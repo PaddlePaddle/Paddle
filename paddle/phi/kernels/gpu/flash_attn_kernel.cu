@@ -42,21 +42,22 @@ void FlashAttnUnpaddedKernel(
     const DenseTensor& cu_seqlens_q,
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
-    float scale,
-    float dropout,
-    bool causal,
-    bool return_softmax,
-    bool is_test,
+    const int max_seqlen_q,
+    const int max_seqlen_k,
+    const float softmax_scale,
+    const float p_dropout,
+    const bool is_causal,
+    const bool return_softmax,
+    const bool is_test,
     const std::string& rng_name,
     DenseTensor* out,
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-// #ifdef PADDLE_WITH_FLASHATTN
+#ifdef PADDLE_WITH_FLASHATTN
 #if 0
-  if (is_test) dropout = 0.0f;
+  if (is_test) p_dropout = 0.0f;
+#endif
 
   ctx.template Alloc<T>(out);
 
@@ -72,18 +73,15 @@ void FlashAttnUnpaddedKernel(
       phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
                                    "[total_seq_len, num_heads, head_dim]"));
 
-  int64_t total_q = dims[0];
-  int64_t num_heads = dims[1];
-  int64_t head_size = dims[2];
+  const int total_q = dims[0];
+  const int num_heads = dims[1];
+  const int head_size_og = dims[2];
 
-  int64_t total_k = k.dims()[0];
-  int64_t batch_size = cu_seqlens_q.numel() - 1;
+  const int total_k = k.dims()[0];
+  const int num_heads_k = k.dims()[1];
+  const int batch_size = cu_seqlens_q.numel() - 1;
 
-  int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-  if (FLAGS_cudnn_deterministic) {
-    num_splits = 1;
-  }
-  bool zero_tensors = false;
+  const bool zero_tensors = false;
 
   uint64_t seed;
   uint64_t offset;
@@ -107,98 +105,54 @@ void FlashAttnUnpaddedKernel(
     offset = seed_offset_pair.second;
   }
 
-  VLOG(4) << "FlashAttn fwd seed: " << seed << ", offset: " << offset
-          << ", num_splits:" << num_splits;
+  VLOG(4) << "FlashAttn fwd seed: " << seed << ", offset: " << offset;
 
   seed_offset->Resize({2});
   int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
   seed_offset_data[0] = static_cast<int64_t>(seed);
   seed_offset_data[1] = static_cast<int64_t>(offset);
 
-  int64_t seq_len_q = ((max_seqlen_q + 16 - 1) / 16) * 16;
+  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  const int head_size = round_multiple(head_size_og, 8);
+  const int head_size_rounded = round_multiple(head_size, 32);
+  const int seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
+  const int seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
 
-  softmax_lse->Resize({batch_size, num_heads, seq_len_q});
+  softmax_lse->Resize({batch_size, num_heads, max_seqlen_q});
   ctx.template Alloc<float>(softmax_lse);
 
   if (return_softmax) {
     // may allocate more space than *max_seqlen_k*
-    int64_t blocksize_c = head_size > 64 ? 128 : 256;
-    int64_t seq_len_k =
-        ((max_seqlen_k + blocksize_c - 1) / blocksize_c) * blocksize_c;
-    if (max_seqlen_k <= 128) {
-      seq_len_k = 128;
-    } else if (max_seqlen_k <= 256) {
-      seq_len_k = 256;
-    }
-    softmax->Resize({batch_size, num_heads, seq_len_q, seq_len_k});
+    // TODO(umiswing): return_softmax is only supported when p_dropout > 0.0
+    softmax->Resize(
+        {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
     ctx.template Alloc<T>(softmax);
   }
 
-  uint64_t workspace_size;
-
-  // TODO(kuizhiqing) pass allocation/empty func in capi to decouple
-  // calculate workspace size before execution
-  bool succ =
-      phi::dynload::flash_attn_fwd(q.data(),
-                                   k.data(),
-                                   v.data(),
-                                   nullptr,  // for calculation workspace size
-                                   cu_seqlens_q.data(),
-                                   cu_seqlens_k.data(),
-                                   total_q,
-                                   total_k,
-                                   batch_size,
-                                   num_heads,
-                                   head_size,
-                                   max_seqlen_q,
-                                   max_seqlen_k,
-                                   dropout,
-                                   scale,
-                                   zero_tensors,
-                                   causal,
-                                   is_bf16,
-                                   num_splits,
-                                   softmax_lse->data(),
-                                   return_softmax ? softmax->data() : nullptr,
-                                   nullptr,
-                                   &workspace_size,
-                                   stream,
-                                   seed,
-                                   offset);
-
-  if (!succ) {
-    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-  }
-
-  DenseTensor workspace;
-  if (workspace_size > 0) {
-    workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
-  }
-
-  succ = phi::dynload::flash_attn_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
+  const bool succ = phi::dynload::flash_attn_varlen_fwd(
+      const_cast<void*>(q.data()),
+      const_cast<void*>(k.data()),
+      const_cast<void*>(v.data()),
       out->data(),
-      cu_seqlens_q.data(),
-      cu_seqlens_k.data(),
-      total_q,
-      total_k,
+      const_cast<void*>(cu_seqlens_q.data()),
+      const_cast<void*>(cu_seqlens_k.data()),
       batch_size,
-      num_heads,
-      head_size,
       max_seqlen_q,
       max_seqlen_k,
-      dropout,
-      scale,
+      seqlen_q_rounded,
+      seqlen_k_rounded,
+      num_heads,
+      num_heads_k,
+      head_size,
+      head_size_rounded,
+      p_dropout,
+      softmax_scale,
       zero_tensors,
-      causal,
+      is_causal,
+      return_softmax,
       is_bf16,
-      num_splits,
-      softmax_lse->data(),
       return_softmax ? softmax->data() : nullptr,
-      workspace_size > 0 ? workspace.data() : nullptr,
-      &workspace_size,
+      softmax_lse->data(),
       stream,
       seed,
       offset);
