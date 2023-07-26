@@ -164,8 +164,8 @@ DEFINE_int32(cinn_profiler_state,
              "Specify the ProfilerState by Int in CINN, 0 for kDisabled, 1 for "
              "kCPU, 2 for kCUDA, 3 for kAll, default 0.");
 
-DEFINE_int32(cinn_schedule_error_message_level,
-             Int32FromEnv("FLAGS_cinn_schedule_error_message_level", 0),
+DEFINE_int32(cinn_error_message_level,
+             Int32FromEnv("FLAGS_cinn_error_message_level", 0),
              "Specify the level of printing error message in the schedule."
              "0 means short, 1 means detailed.");
 
