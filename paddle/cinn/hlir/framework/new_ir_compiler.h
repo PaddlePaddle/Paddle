@@ -50,7 +50,7 @@ class NewIRCompiler final {
                 const Target& target,
                 const std::shared_ptr<Scope>& scope)
       : program_(prog),
-        m_builder_("NewIR", target),  // TODO(dev): need unique name
+        m_builder_("NewIR", target),
         target_(target),
         scope_(scope) {}
   std::unique_ptr<Program> Build() {
@@ -103,20 +103,13 @@ class NewIRCompiler final {
       // TODO(Aurelius84): For now, use addr as name but it's not wise.
       std::string input_id = CompatibleInfo::kInputPrefix +
                              std::to_string(std::hash<::ir::Value>()(in_value));
-      // NOTE(Aurelius84): whether need to support other Type?
       auto type_info =
           in_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
       auto in_shape = phi::vectorize<int>(type_info.dims());
-      ir::Tensor temp;
       auto dtype = type_info.dtype();
-      // TODO(Aurelius84): support more type
-      if (dtype.isa<::ir::Float32Type>()) {
-        temp = lang::Placeholder<float>(input_id, in_shape);
-      } else if (dtype.isa<::ir::Int32Type>()) {
-        temp = lang::Placeholder<int>(input_id, in_shape);
-      }
-
+      ir::Tensor temp = lang::CreatePlaceHolder(
+          in_shape, utils::ConvertIRType(dtype), input_id);
       inputs.push_back(temp);
       cinn_inputs.push_back(common::CINNValue(temp));
     }
@@ -133,8 +126,7 @@ class NewIRCompiler final {
       auto out_value = op.result(i);
       auto type_info =
           out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-      // TODO(Aurelius84): need to support ::ir::Type -> common::Type
-      out_types.push_back(common::Float(32));
+      out_types.push_back(utils::ConvertIRType(type_info.dtype()));
       auto out_shape = phi::vectorize<int>(type_info.dims());
       out_shapes.push_back(std::move(out_shape));
     }
@@ -294,12 +286,10 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
       shape.push_back(Shape::dim_t(type_info.dims()[i]));
     }
     tensor->Resize(Shape{shape});
-    // TODO(Aurelius84): need convert this.
-    tensor->set_type(common::Float(32));
+    tensor->set_type(utils::ConvertIRType(type_info.dtype()));
   };
 
   for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
-    // visit OpOprands
     for (auto i = 0; i < (*it)->num_operands(); ++i) {
       auto in_value = (*it)->operand(i);
       create_var(CompatibleInfo::kInputPrefix, in_value);
