@@ -104,12 +104,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         self.cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
         cmd = 'cd {} \
-            && git clone {} \
+            && git clone --depth 1 {} \
             && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
-            && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} && make -j8 \
+            && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} -DWITH_TESTING=OFF && make -j8 \
             && cd {}'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
