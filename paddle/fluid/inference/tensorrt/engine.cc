@@ -532,6 +532,11 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
   for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
     trt_in_shape.d[i] = var_dims[i];
   }
+  // Make 0-D tensor to 1-D tensor.
+  if (trt_in_shape.nbDims == 0) {
+    trt_in_shape.nbDims = 1;
+    trt_in_shape.d[0] = 1;
+  }
   // In fact , this is not always right, because we can't determine if the 0th
   // dimension is batch. Just for run chenqu's model
   if (!this->with_dynamic_shape()) {
@@ -870,8 +875,10 @@ void TensorRTEngine::GetEngineInfo() {
       infer_engine_->createEngineInspector());
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
-  LOG(INFO) << infer_inspector->getEngineInformation(
-      nvinfer1::LayerInformationFormat::kJSON);
+  for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
+    LOG(INFO) << infer_inspector->getLayerInformation(
+        i, nvinfer1::LayerInformationFormat::kJSON);
+  }
   LOG(INFO) << "====== engine info end ======";
 #else
   LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";

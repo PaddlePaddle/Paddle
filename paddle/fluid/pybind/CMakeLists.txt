@@ -47,7 +47,8 @@ set(PYBIND_DEPS
     jit_property
     prim_utils
     static_tensor_operants
-    type_info)
+    type_info
+    auto_parallel)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -124,6 +125,7 @@ set(PYBIND_SRCS
     imperative.cc
     inference_api.cc
     ir.cc
+    graph.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc

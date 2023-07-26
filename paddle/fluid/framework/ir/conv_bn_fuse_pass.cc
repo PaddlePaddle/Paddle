@@ -347,7 +347,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    // conv_weight fp32 --> fp16
+    // conv_weight fp16 --> fp32
     auto* conv_weight_tensor =
         scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
@@ -367,7 +367,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                         input_names.end() &&
-                    conv->Op()->Input("Bias").size() > 0;
+                    !conv->Op()->Input("Bias").empty();
     bool mkldnn_with_bias = is_mkldnn && has_bias;
 
     // Create eltwise_y (conv bias) variable

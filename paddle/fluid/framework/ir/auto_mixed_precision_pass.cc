@@ -188,8 +188,10 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "c_softmax_with_cross_entropy",
       "cross_entropy",
       "cross_entropy2",
+#ifndef PADDLE_WITH_XPU
       // slower than fp32
       "conv2d_transpose",
+#endif
       // default fp32 can avoid return inf when the sum value large than 65504
       "reduce_sum",
   });
@@ -413,7 +415,8 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
           auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
           support_low_precision =
               support_low_precision &&
-              IsFP32AndFP64(static_cast<VarType::Type>(out_dtype));
+              (IsFP32AndFP64(static_cast<VarType::Type>(out_dtype)) ||
+               out_dtype == -1);
         }
 
         // If scale op's "scale" and "bias" attr value exceed the range of fp16

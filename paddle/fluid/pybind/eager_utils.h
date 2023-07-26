@@ -21,6 +21,7 @@ typedef SSIZE_T ssize_t;
 #undef copysign
 #endif
 
+#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -112,7 +113,7 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 #ifdef PADDLE_WITH_DISTRIBUTE
-PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value);
+PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(
     const phi::distributed::auto_parallel::TensorDistAttr* value);
 #endif
@@ -124,6 +125,8 @@ PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
+
+PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 
 class PyTensorHook : public egr::TensorHook {
  public:

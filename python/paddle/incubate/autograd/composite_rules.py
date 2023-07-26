@@ -193,6 +193,16 @@ def instancenorm_composite(x, scale, bias, epsilon):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
+        is_amp = True
+        x = cast(x, "float32")
+        scale = cast(scale, "float32") if scale else scale
+        bias = cast(bias, "float32") if bias else bias
+
     n, c, h, w = x.shape
     axis = tuple(range(2, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
@@ -213,6 +223,10 @@ def instancenorm_composite(x, scale, bias, epsilon):
     mean_ = reshape(mean_, [-1])
     saved_variance = 1 / sqrt_var
     saved_variance = reshape(saved_variance, [-1])
+
+    if is_amp:
+        out = cast(out, dtype)
+
     return out, mean_, saved_variance
 
 
@@ -255,9 +269,11 @@ def mean_composite(x, axis, keepdim):
     axes = axis or list(range(0, len(x.shape)))
     axes = [axes] if isinstance(axes, int) else axes
     sum_x = sum(x, axis=axes, keepdim=keepdim)
-    value_to_fill = functools.reduce(
-        operator.mul, [x.shape[axis] for axis in axes]
-    )
+    ele_nums_list = [x.shape[axis] for axis in axes]
+    if ele_nums_list == []:
+        value_to_fill = 1
+    else:
+        value_to_fill = functools.reduce(operator.mul, ele_nums_list)
     norm = fill_constant(
         shape=[],
         value=value_to_fill,
@@ -554,6 +570,8 @@ def squeeze2_composite(x, axis):
     axis can only be list, not int
     """
     rank = len(x.shape)
+    if rank == 0:
+        return [assign(x), None]
     if len(axis) == 0:
         dims = set(range(rank))
     else:

@@ -117,6 +117,12 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
+  if (int_indices_v.empty()) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
 
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
@@ -127,7 +133,7 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
-  for (int i = indices.size(); i < x.dims().size(); ++i) {
+  for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }

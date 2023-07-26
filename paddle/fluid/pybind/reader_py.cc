@@ -58,7 +58,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
   int64_t rank = tensor_shape.size();
 
   if (UNLIKELY(rank == 0)) {
-    if (desc_shape.size() != 0) {  // Tensor rank = 0 but desc does not match
+    if (!desc_shape.empty()) {  // Tensor rank = 0 but desc does not match
       return phi::vectorize<int64_t>(tensor_shape);
     } else {
       return paddle::none;

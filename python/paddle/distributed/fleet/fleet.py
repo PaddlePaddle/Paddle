@@ -105,10 +105,11 @@ class Fleet:
     Returns:
         Fleet: A Fleet instance
 
-    Example for collective training:
 
         .. code-block:: python
+            :name: code-example1
 
+            # Example1: for collective training
             import paddle
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
@@ -122,10 +123,11 @@ class Fleet:
             # do distributed training
 
 
-    Example for parameter server training:
 
         .. code-block:: python
+            :name: code-example2
 
+            # Example2: for parameter server training
             import paddle
             paddle.enable_static()
             import paddle.distributed.fleet as fleet
@@ -195,40 +197,39 @@ class Fleet:
         Returns:
             None
 
-        Examples1:
+        Examples:
 
             .. code-block:: python
+                :name: code-example1
 
                 import paddle.distributed.fleet as fleet
                 fleet.init()
 
-        Examples2:
+
 
             .. code-block:: python
+                :name: code-example2
 
                 import paddle.distributed.fleet as fleet
                 fleet.init(is_collective=True)
 
-        Examples3:
 
             .. code-block:: python
-
+                :name: code-example3
                 import paddle.distributed.fleet as fleet
                 role = fleet.PaddleCloudRoleMaker()
                 fleet.init(role)
 
-        Examples4:
 
             .. code-block:: python
-
+                :name: code-example4
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(strategy=strategy)
 
-        Examples5:
 
             .. code-block:: python
-
+                :name: code-example5
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(log_level = "DEBUG")
@@ -627,6 +628,14 @@ class Fleet:
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.barrier_worker()
         """
         self._role_maker._barrier("worker")
 
@@ -1169,6 +1178,38 @@ class Fleet:
         """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
+
+    def _get_qat_optimizer(self):
+        # imitate target optimizer retrieval
+        qat_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'qat_init'):
+                qat_optimizer = optimizer
+                break
+
+        if qat_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'qat_init'):
+                qat_optimizer = self.user_defined_optimizer
+
+        assert (
+            qat_optimizer is not None
+        ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        return qat_optimizer
+
+    def qat_init(self, place, scope=None, test_program=None):
+        """
+        Init the qat training, such as insert qdq ops and scale variables.
+
+        Args:
+            place(CUDAPlace): place is used to initialize
+                scale parameters.
+            scope(Scope): The scope is used to find parameters and variables.
+            test_program(Program): The program is used for testing.
+        """
+        qat_optimizer = self._get_qat_optimizer()
+        return qat_optimizer.qat_init(
+            place, scope=scope, test_program=test_program
+        )
 
     def _final_strategy(self):
         if "valid_strategy" not in self._context:

@@ -62,6 +62,57 @@ class XpuDeleteCastOpPass : public FusePassBase {
   */
   int ApplyCastLayerNormPass(ir::Graph* graph) const;
 
+  /*
+  ------------------------------------------------------
+  sub block:
+                      x
+                /           \
+               /             \
+              /               \
+           shape             shape
+             |                 |
+             |               slice
+           slice               |
+             | (max_dec_len)  cast
+             |          \      |
+             |           elementwise_add
+             |                 |
+             |               scale
+             |                 |
+             |                cast
+             |                 |
+              \               /
+               \             /
+                \           /
+                    fill
+
+  ------------------------------------------------------
+  After the pass is applied:
+                     x
+                     |
+                     |
+                   shape
+               /           \
+              /             \
+             /               \
+           slice            slice
+            | (max_dec_len)   |
+            |          \      |
+            |          cast   |
+            |            \    |
+            |           elementwise_add
+            |                 |
+            |                 |
+            |                scale
+            |                 |
+             \               /
+              \             /
+               \           /
+                     fill
+
+  */
+  int ApplyCastCacheKVInitializationPass(ir::Graph* graph) const;
+
   const std::string name_scope_{"xpu_delete_cast_op_pass"};
 };
 
