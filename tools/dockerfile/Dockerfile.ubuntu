@@ -168,9 +168,9 @@ RUN pip3.7 --no-cache-dir install pytest astroid isort && \
 RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
-    pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
+    pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 && \
+    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 && \
+    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1
 
 RUN pip3.7 --no-cache-dir install coverage && \
     pip3.8 --no-cache-dir install coverage && \
@@ -197,9 +197,6 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
 RUN apt-get install libprotobuf-dev -y
-
-# Install clang-tidy
-RUN apt-get install clang-tidy-10 -y
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
