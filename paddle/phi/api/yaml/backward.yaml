@@ -991,7 +991,7 @@
     func : UnchangedInferMeta
     param : [out]
   kernel :
-    func : hard_sigmoid_grad
+    func : hardsigmoid_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hardtanh_grad
@@ -1092,8 +1092,7 @@
   args : (Tensor x, Tensor[] indices, Tensor value, Tensor out_grad, bool accumulate=false)
   output : Tensor(x_grad), Tensor(value_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, value]
+    func : IndexPutGradInferMeta
   kernel :
     func : index_put_grad
     data_type : out_grad
