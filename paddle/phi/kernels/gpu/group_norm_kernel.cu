@@ -29,6 +29,32 @@ namespace phi {
 
 static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
 
+#ifdef PADDLE_CUDA_BF16
+__host__ __device__ inline float2 bfloat1622float2(const __nv_bfloat162 a) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  return __bfloat1622float2(a);
+#else
+  float hi_float;
+  float lo_float;
+  lo_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).x);
+  hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
+  return make_float2(lo_float, hi_float);
+#endif
+}
+
+__host__ __device__ inline __nv_bfloat162 float22bfloat162_rn(const float2 a) {
+  __nv_bfloat162 val;
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  val = __float22bfloat162_rn(a);
+#else
+  val.x = __float2bfloat16_rn(a.x);
+  val.y = __float2bfloat16_rn(a.y);
+#endif
+  return val;
+}
+
+#endif
+
 struct GroupSums {
   // Is it the 1st element of the group?
   int32_t flag;
@@ -128,12 +154,12 @@ inline __device__ void UpdateSum<phi::dtype::float16, 2>(
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
 
-#if defined(PADDLE_CUDA_BF16) && __CUDA_ARCH__ >= 800
+#ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
     const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
   __nv_bfloat162 h2 = *reinterpret_cast<__nv_bfloat162 const*>(srcX);
-  float2 f2 = __bfloat1622float2(h2);
+  float2 f2 = phi::bfloat1622float2(h2);
   *sum += f2.x + f2.y;
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
@@ -329,7 +355,7 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
   }
 }
 
-#if defined(PADDLE_CUDA_BF16) && __CUDA_ARCH__ >= 800
+#ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     int32_t hwBegin,
@@ -339,9 +365,9 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
-  gammaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  gammaF2 = phi::bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.gamma) + ci));
-  betaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  betaF2 = phi::bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
@@ -354,7 +380,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
         *reinterpret_cast<__nv_bfloat162 const*>(&params.srcX[offset]);
 
     // Extract the two half values.
-    float2 f2 = __bfloat1622float2(h2);
+    float2 f2 = phi::bfloat1622float2(h2);
 
     // Normalize the channels.
     f2.x = (f2.x - mean) * invStdDev;
@@ -366,7 +392,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
 
     // Store the scaled values.
     *reinterpret_cast<__nv_bfloat162*>(&params.dst[offset]) =
-        __float22bfloat162_rn(f2);
+        phi::float22bfloat162_rn(f2);
   }
 }
 #endif
@@ -882,7 +908,7 @@ void GroupNormKernel(const Context& dev_ctx,
     return;
   }
 
-#if defined(PADDLE_CUDA_BF16) && __CUDA_ARCH__ >= 800
+#ifdef PADDLE_CUDA_BF16
   if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
     GroupNormNHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        x,
