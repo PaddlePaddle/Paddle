@@ -300,7 +300,7 @@ inline void RunProgramAPI(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
-  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -315,6 +315,8 @@ inline void RunProgramAPI(
   VLOG(2) << "RunProgramOp use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+  int64_t scope_i = reinterpret_cast<std::uintptr_t>(global_inner_scope);
+  program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
@@ -490,20 +492,21 @@ inline void RunProgramGradAPI(
 ) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
-
-  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
-
   auto *out_scope_vec = &step_scope;
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
       1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
+  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+
+  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  int64_t scope_i = reinterpret_cast<std::uintptr_t>(global_inner_scope);
+  program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
 
   auto place = egr::Controller::Instance().GetExpectedPlace();
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
-  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto *forward_global_block = PADDLE_GET_CONST(
