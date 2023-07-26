@@ -360,11 +360,8 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
 
     def test_check_output(self):
         atol = 5e-3
-        inplace_atol = 5e-3
         place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, atol=atol, inplace_atol=inplace_atol
-        )
+        self.check_output_with_place(place, atol=atol)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
