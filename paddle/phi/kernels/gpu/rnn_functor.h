@@ -25,6 +25,10 @@ namespace phi {
 using gpuRNNMode_t = miopenRNNMode_t;
 using gpuDnnHandle_t = miopenHandle_t;
 using gpuDnnDataType_t = miopenDataType_t;
+#elif defined(PADDLE_WITH_MUSA)
+using gpuRNNMode_t = mudnnRNNMode_t;
+using gpuDnnHandle_t = mudnnHandle_t;
+using gpuDnnDataType_t = mudnnDataType_t;
 #else
 using gpuRNNMode_t = cudnnRNNMode_t;
 using gpuDnnHandle_t = cudnnHandle_t;
@@ -103,6 +107,9 @@ class RNNDescriptors {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::mudnnDropoutGetStatesSize(handle, &state_size));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
@@ -144,7 +151,11 @@ class RNNDescriptors {
         CUDNN_RNN_ALGO_STANDARD,
         cudnn_type));
 #else
+#ifdef PADDLE_WITH_MUSA
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSetRNNDescriptor(
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor(
+#endif
         rnn_desc_.desc(),
         hidden_size_,
         num_layers_,
@@ -166,6 +177,9 @@ class RNNDescriptors {
     size_t weights_size_;
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNParamsSize(
+        handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNParamsSize(
@@ -191,6 +205,15 @@ class RNNDescriptors {
                                                 workspace_size));
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNTrainingReserveSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::mudnnGetRNNWorkspaceSize(handle,
+                                               rnn_desc_.desc(),
+                                               seq_length_,
+                                               x_descs_.data(),
+                                               workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnGetRNNTrainingReserveSize(
+        handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetRNNWorkspaceSize(handle,
@@ -212,6 +235,16 @@ class RNNDescriptors {
   miopenRNNDescriptor_t rnn_desc() { return rnn_desc_.desc(); }
   miopenDropoutDescriptor_t dropout_desc() { return dropout_desc_.desc(); }
   miopenTensorDescriptor_t weight_desc() { return weight_desc_.desc(); }
+#elif defined(PADDLE_WITH_MUSA)
+  mudnnTensorDescriptor_t *x_descs() { return x_descs_.data(); }
+  mudnnTensorDescriptor_t *y_descs() { return y_descs_.data(); }
+  mudnnTensorDescriptor_t init_h_desc() { return init_h_desc_.desc(); }
+  mudnnTensorDescriptor_t init_c_desc() { return init_c_desc_.desc(); }
+  mudnnTensorDescriptor_t last_h_desc() { return last_h_desc_.desc(); }
+  mudnnTensorDescriptor_t last_c_desc() { return last_c_desc_.desc(); }
+  mudnnRNNDescriptor_t rnn_desc() { return rnn_desc_.desc(); }
+  mudnnDropoutDescriptor_t dropout_desc() { return dropout_desc_.desc(); }
+  mudnnTensorDescriptor_t weight_desc() { return weight_desc_.desc(); }
 #else
   cudnnTensorDescriptor_t *x_descs() { return x_descs_.data(); }
   cudnnTensorDescriptor_t *y_descs() { return y_descs_.data(); }
@@ -243,6 +276,9 @@ class RNNDescriptors {
 #ifdef PADDLE_WITH_HIP
   std::vector<miopenTensorDescriptor_t> x_descs_;
   std::vector<miopenTensorDescriptor_t> y_descs_;
+#elif defined(PADDLE_WITH_HIP)
+  std::vector<mudnnTensorDescriptor_t> x_descs_;
+  std::vector<mudnnTensorDescriptor_t> y_descs_;
 #else
   std::vector<cudnnTensorDescriptor_t> x_descs_;
   std::vector<cudnnTensorDescriptor_t> y_descs_;

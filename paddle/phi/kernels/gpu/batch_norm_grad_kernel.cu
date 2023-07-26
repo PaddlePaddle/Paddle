@@ -568,7 +568,7 @@ void BatchNormGradRawKernel(const Context &ctx,
           scale.dims()[0]));
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -650,6 +650,15 @@ void BatchNormGradRawKernel(const Context &ctx,
 //     platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
+#elif defined(PADDLE_WITH_MUSA)
+    mudnnTensorDescriptor_t data_desc_;
+    mudnnTensorDescriptor_t bn_param_desc_;
+    mudnnBatchNormMode_t mode_;
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::mudnnCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::mudnnCreateTensorDescriptor(&bn_param_desc_));
 #else
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
@@ -694,6 +703,15 @@ void BatchNormGradRawKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDeriveBNTensorDescriptor(bn_param_desc_,
 //                                                       data_desc_, mode_));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSetTensorNdDescriptor(
+        data_desc_,
+        CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4,
+        dims.data(),
+        strides.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDeriveBNTensorDescriptor(
+        bn_param_desc_, data_desc_, mode_));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
         data_desc_,
@@ -1113,6 +1131,11 @@ void BatchNormGradRawKernel(const Context &ctx,
 //     platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::mudnnDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::mudnnDestroyTensorDescriptor(bn_param_desc_));
 #else
     // clean when exit.
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1407,7 +1430,7 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1445,7 +1468,7 @@ PD_REGISTER_KERNEL(batch_norm_double_grad,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,

@@ -78,6 +78,8 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
                                      sizeof(IntT) * len,
 #ifdef PADDLE_WITH_HIP
                                      hipMemcpyDeviceToDevice,
+#elif defined(PADDLE_WITH_MUSA)
+                                     musaMemcpyDeviceToDevice,
 #else
                                      cudaMemcpyDeviceToDevice,
 #endif
@@ -86,6 +88,8 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
 // performance, but thrust::merge_by_key limited by data size
 #ifdef PADDLE_WITH_HIP
   thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::sort_by_key(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -97,6 +101,8 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
   thrust::pair<IntT*, int*> new_end =
 #ifdef PADDLE_WITH_HIP
       thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+      thrust::unique_by_key(thrust::musa::par.on(dev_ctx.stream()),
 #else
       thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -348,6 +354,8 @@ int ProductRuleBook(const Context& dev_ctx,
 // 2. remove -1
 #ifdef PADDLE_WITH_HIP
   IntT* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  IntT* last = thrust::remove(thrust::musa::par.on(dev_ctx.stream()),
 #else
   IntT* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -364,6 +372,8 @@ int ProductRuleBook(const Context& dev_ctx,
       sizeof(IntT),
 #ifdef PADDLE_WITH_HIP
       hipMemcpyDeviceToHost,
+#elif defined(PADDLE_WITH_MUSA)
+      musaMemcpyDeviceToHost,
 #else
       cudaMemcpyDeviceToHost,
 #endif
@@ -388,6 +398,8 @@ int ProductRuleBook(const Context& dev_ctx,
     IntT* bound_ptr = bound.data<IntT>();
 #ifdef PADDLE_WITH_HIP
     thrust::lower_bound(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+    thrust::lower_bound(thrust::musa::par.on(dev_ctx.stream()),
 #else
     thrust::lower_bound(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -415,6 +427,8 @@ int ProductRuleBook(const Context& dev_ctx,
 // remove -1
 #ifdef PADDLE_WITH_HIP
     IntT* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+    IntT* last = thrust::remove(thrust::musa::par.on(dev_ctx.stream()),
 #else
     IntT* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -428,6 +442,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                        sizeof(IntT),
 #ifdef PADDLE_WITH_HIP
                                        hipMemcpyDeviceToHost,
+#elif defined(PADDLE_WITH_MUSA)
+                                       musaMemcpyDeviceToHost,
 #else
                                        cudaMemcpyDeviceToHost,
 #endif
@@ -438,6 +454,8 @@ int ProductRuleBook(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::exclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -450,6 +468,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                      kernel_size * sizeof(int),
 #ifdef PADDLE_WITH_HIP
                                      hipMemcpyDeviceToHost,
+#elif defined(PADDLE_WITH_MUSA)
+                                     musaMemcpyDeviceToHost,
 #else
                                      cudaMemcpyDeviceToHost,
 #endif
@@ -460,6 +480,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                      kernel_size * sizeof(int),
 #ifdef PADDLE_WITH_HIP
                                      hipMemcpyDeviceToHost,
+#elif defined(PADDLE_WITH_MUSA)
+                                     musaMemcpyDeviceToHost,
 #else
                                      cudaMemcpyDeviceToHost,
 #endif
@@ -500,6 +522,13 @@ int ProductRuleBook(const Context& dev_ctx,
         rulebook_ptr + rulebook_rows * rulebook_cols - 1,
         sizeof(IntT),
         hipMemcpyDeviceToHost,
+        dev_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+    phi::backends::gpu::GpuMemcpyAsync(
+        &out_non_zero_num,
+        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+        sizeof(IntT),
+        musaMemcpyDeviceToHost,
         dev_ctx.stream());
 #else
     phi::backends::gpu::GpuMemcpyAsync(

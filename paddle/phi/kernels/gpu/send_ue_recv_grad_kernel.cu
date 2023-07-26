@@ -166,6 +166,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.data<T>(),
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+        musaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   musaMemcpyDeviceToDevice);
 #else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
@@ -243,6 +248,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.data<T>(),
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+        musaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   musaMemcpyDeviceToDevice);
 #else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
@@ -289,6 +299,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.data<T>(),
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+        musaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   musaMemcpyDeviceToDevice);
 #else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
@@ -358,6 +373,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.data<T>(),
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+        musaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   musaMemcpyDeviceToDevice);
 #else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
@@ -493,6 +513,9 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
 #ifdef PADDLE_WITH_HIP
   hipMemset(x_grad_data, 0, memset_bytes_x);
   hipMemset(e_grad_data, 0, memset_bytes_e);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(x_grad_data, 0, memset_bytes_x);
+  musaMemset(e_grad_data, 0, memset_bytes_e);
 #else
   cudaMemset(x_grad_data, 0, memset_bytes_x);
   cudaMemset(e_grad_data, 0, memset_bytes_e);

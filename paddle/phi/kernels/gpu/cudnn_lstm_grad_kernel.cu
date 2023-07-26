@@ -195,7 +195,11 @@ void CudnnLSTMGradKernel(
         reserve_size));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
+#ifdef PADDLE_WITH_MUSA
+        phi::dynload::mudnnRNNBackwardData(handle,
+#else
         phi::dynload::cudnnRNNBackwardData(handle,
+#endif
                                            rnn.rnn_desc(),
                                            seq_length,
                                            rnn.y_descs(),
@@ -223,7 +227,11 @@ void CudnnLSTMGradKernel(
                                            const_cast<uint8_t *>(reserve_data),
                                            reserve_size));
 
+#ifdef PADDLE_WITH_MUSA
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnRNNBackwardWeights(
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardWeights(
+#endif
         handle,
         rnn.rnn_desc(),
         seq_length,
@@ -305,7 +313,7 @@ void CudnnLSTMGradKernel(
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(
     cudnn_lstm_grad, GPU, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float) {}
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(
     cudnn_lstm_grad, GPU, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float, double) {
 }

@@ -25,6 +25,9 @@ template <typename T>
 #ifdef PADDLE_WITH_HIP
 void LSTMInferece(const bool &has_seq_length,
                   const miopenHandle_t &handle,
+#elif defined(PADDLE_WITH_MUSA)
+void LSTMInferece(const bool &has_seq_length,
+                  const mudnnHandle_t &handle,
 #else
 void LSTMInferece(const bool &has_seq_length,
                   const cudnnHandle_t &handle,
@@ -64,6 +67,48 @@ void LSTMInferece(const bool &has_seq_length,
                                                 last_c_data,
                                                 workspace_data->data<uint8_t>(),
                                                 workspace_size));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::mudnnRNNForwardInference(handle,
+                                               rnn->rnn_desc(),
+                                               seq_length,
+                                               rnn->x_descs(),
+                                               x_data,
+                                               rnn->init_h_desc(),
+                                               init_h_data,
+                                               rnn->init_c_desc(),
+                                               init_c_data,
+                                               rnn->weight_desc(),
+                                               w_data,
+                                               rnn->y_descs(),
+                                               out_data,
+                                               rnn->last_h_desc(),
+                                               last_h_data,
+                                               rnn->last_c_desc(),
+                                               last_c_data,
+                                               workspace_data->data<uint8_t>(),
+                                               workspace_size));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::mudnnRNNForwardInference(handle,
+                                               rnn->rnn_desc(),
+                                               seq_length,
+                                               rnn->x_descs(),
+                                               x_data,
+                                               rnn->init_h_desc(),
+                                               init_h_data,
+                                               rnn->init_c_desc(),
+                                               init_c_data,
+                                               rnn->weight_desc(),
+                                               w_data,
+                                               rnn->y_descs(),
+                                               out_data,
+                                               rnn->last_h_desc(),
+                                               last_h_data,
+                                               rnn->last_c_desc(),
+                                               last_c_data,
+                                               workspace_data->data<uint8_t>(),
+                                               workspace_size));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnRNNForwardInference(handle,
@@ -293,7 +338,11 @@ void CudnnLSTMKernel(
           reserve_size));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
+#ifdef PADDLE_WITH_MUSA
+          phi::dynload::mudnnRNNForwardTraining(handle,
+#else
           phi::dynload::cudnnRNNForwardTraining(handle,
+#endif
                                                 rnn.rnn_desc(),
                                                 seq_length,
                                                 rnn.x_descs(),
@@ -366,7 +415,7 @@ PD_REGISTER_KERNEL(cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float) {
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
   kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(
     cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float, double) {
   kernel->InputAt(5).SetDataType(phi::DataType::INT32);

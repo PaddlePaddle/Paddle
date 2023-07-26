@@ -401,6 +401,14 @@ void InstanceNormGradKernel(const Context &dev_ctx,
       phi::dynload::miopenCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::miopenCreateTensorDescriptor(&in_param_desc_));
+#elif defined(PADDLE_WITH_MUSA)
+  mudnnTensorDescriptor_t data_desc_;
+  mudnnTensorDescriptor_t in_param_desc_;
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnCreateTensorDescriptor(&data_desc_));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnCreateTensorDescriptor(&in_param_desc_));
 #else
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t in_param_desc_;
@@ -426,6 +434,15 @@ void InstanceNormGradKernel(const Context &dev_ctx,
       const_cast<int *>(dims.data()),
       const_cast<int *>(strides.data())));
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDeriveBNTensorDescriptor(
+      in_param_desc_, data_desc_, miopenBNSpatial));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSetTensorDescriptor(
+      data_desc_,
+      CudnnDataType<T>::type,
+      x_dims.size() > 3 ? x_dims.size() : 4,
+      const_cast<int *>(dims.data()),
+      const_cast<int *>(strides.data())));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDeriveBNTensorDescriptor(
       in_param_desc_, data_desc_, miopenBNSpatial));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
@@ -465,8 +482,13 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         saved_mean_data,
         saved_var_data));
 #else
+#ifdef PADDLE_WITH_MUSA
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnBatchNormalizationBackward(
+        dev_ctx.mudnn_handle(),
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBatchNormalizationBackward(
         dev_ctx.cudnn_handle(),
+#endif
         CUDNN_BATCHNORM_SPATIAL,
         CudnnDataType<T>::kOne(),
         CudnnDataType<T>::kZero(),
@@ -511,6 +533,11 @@ void InstanceNormGradKernel(const Context &dev_ctx,
       phi::dynload::miopenDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::miopenDestroyTensorDescriptor(in_param_desc_));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnDestroyTensorDescriptor(data_desc_));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnDestroyTensorDescriptor(in_param_desc_));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
@@ -659,7 +686,7 @@ PD_REGISTER_KERNEL(instance_norm_double_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
                    ALL_LAYOUT,

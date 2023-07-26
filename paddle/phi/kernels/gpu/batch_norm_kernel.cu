@@ -551,7 +551,7 @@ void BatchNormKernel(const Context &ctx,
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -593,6 +593,15 @@ void BatchNormKernel(const Context &ctx,
 //     platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
+#elif defined(PADDLE_WITH_MUSA)
+  mudnnTensorDescriptor_t data_desc_;
+  mudnnTensorDescriptor_t bn_param_desc_;
+  mudnnBatchNormMode_t mode_;
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnCreateTensorDescriptor(&data_desc_));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnCreateTensorDescriptor(&bn_param_desc_));
 #else
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t bn_param_desc_;
@@ -641,7 +650,7 @@ void BatchNormKernel(const Context &ctx,
     strides = {H * W * D * C, 1, W * D * C, D * C, C};
   }
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
 //     data_desc_, CudnnDataType<T>::type,
@@ -942,7 +951,7 @@ void BatchNormKernel(const Context &ctx,
 //                 ctx.GetPlace())),
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
-#else
+#else // CUDA & MUSA
       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
@@ -1206,6 +1215,11 @@ void BatchNormKernel(const Context &ctx,
 //     platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnDestroyTensorDescriptor(data_desc_));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mudnnDestroyTensorDescriptor(bn_param_desc_));
 #else
   // clean when exit.
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1256,7 +1270,7 @@ PD_REGISTER_KERNEL(batch_norm,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(batch_norm,
                    GPU,
                    ALL_LAYOUT,

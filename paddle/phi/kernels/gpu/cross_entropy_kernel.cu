@@ -763,6 +763,8 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
+#elif defined(PADDLE_WITH_MUSA)
+    mudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif
@@ -783,11 +785,19 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
         MIOPEN_SOFTMAX_LOG,
         mode));
 #else
+#ifdef PADDLE_WITH_MUSA
+    auto mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
+                                 : MUDNN_SOFTMAX_MODE_CHANNEL;
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSoftmaxForward(
+        handle,
+        MUDNN_SOFTMAX_LOG,
+#else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxForward(
         handle,
         CUDNN_SOFTMAX_LOG,
+#endif
         mode,
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
@@ -1199,6 +1209,8 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
+#elif defined(PADDLE_WITH_MUSA)
+    mudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif

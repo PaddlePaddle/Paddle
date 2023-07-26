@@ -65,7 +65,11 @@ void RNNInferece(bool has_seq_length,
                                                 workspace_size));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
+#ifdef PADDLE_WITH_MUSA
+        phi::dynload::mudnnRNNForwardInference(handle,
+#else
         phi::dynload::cudnnRNNForwardInference(handle,
+#endif
                                                rnn->rnn_desc(),
                                                seq_length,
                                                rnn->x_descs(),
@@ -154,6 +158,16 @@ void RnnKernel(const Context &dev_ctx,
     rnn_mode = miopenRNNRELU;
   else if (mode == "RNN_TANH")
     rnn_mode = miopenRNNTANH;
+#elif defined(PADDLE_WITH_MUSA)
+  gpuRNNMode_t rnn_mode = MUDNN_LSTM;
+  if (mode == "LSTM")
+    rnn_mode = MUDNN_LSTM;
+  else if (mode == "GRU")
+    rnn_mode = MUDNN_GRU;
+  else if (mode == "RNN_RELU")
+    rnn_mode = MUDNN_RNN_RELU;
+  else if (mode == "RNN_TANH")
+    rnn_mode = MUDNN_RNN_TANH;
 #else
   gpuRNNMode_t rnn_mode = CUDNN_LSTM;
   if (mode == "LSTM")
@@ -188,6 +202,8 @@ void RnnKernel(const Context &dev_ctx,
   T *last_c_data = nullptr;
 #ifdef PADDLE_WITH_HIP
   if (rnn_mode == miopenLSTM) {
+#elif defined(PADDLE_WITH_MUSA)
+  if (rnn_mode == MUDNN_LSTM) {
 #else
   if (rnn_mode == CUDNN_LSTM) {
 #endif
@@ -333,7 +349,11 @@ void RnnKernel(const Context &dev_ctx,
           reserve_size));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
+#ifdef PADDLE_WITH_MUSA
+          phi::dynload::mudnnRNNForwardTraining(handle,
+#else
           phi::dynload::cudnnRNNForwardTraining(handle,
+#endif
                                                 rnn.rnn_desc(),
                                                 seq_length,
                                                 rnn.x_descs(),
@@ -405,7 +425,7 @@ void RnnKernel(const Context &dev_ctx,
 PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float, double) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }

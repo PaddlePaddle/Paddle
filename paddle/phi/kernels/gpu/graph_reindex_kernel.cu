@@ -61,7 +61,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024;
+  int block = 1024; // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
@@ -76,6 +76,8 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
   int* item_count_ptr = reinterpret_cast<int*>(item_count->ptr());
 #ifdef PADDLE_WITH_HIP
   hipMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
 #else
   cudaMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
 #endif
@@ -97,6 +99,11 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
             item_count_ptr + num_input,
             sizeof(int),
             hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(&total_unique_items,
+             item_count_ptr + num_input,
+             sizeof(int),
+             musaMemcpyDeviceToHost);
 #else
   cudaMemcpy(&total_unique_items,
              item_count_ptr + num_input,
@@ -131,7 +138,7 @@ void FillBufferHashTable(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024;
+  int block = 1024; // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
@@ -170,7 +177,7 @@ void ResetBufferHashTable(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024;
+  int block = 1024; // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (unique_items->size() + block - 1) / block;
@@ -193,7 +200,7 @@ void ReindexSrc(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024;
+  int block = 1024; // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
@@ -293,7 +300,7 @@ void BufferReindex(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024;
+  int block = 1024; // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
@@ -364,6 +371,11 @@ void ReindexDst(const Context& dev_ctx,
               thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
               sizeof(int),
               hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemcpy(&count_i,
+               thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+               sizeof(int),
+               musaMemcpyDeviceToHost);
 #else
     cudaMemcpy(&count_i,
                thrust::raw_pointer_cast(dst_ptr.data()) + node_len,

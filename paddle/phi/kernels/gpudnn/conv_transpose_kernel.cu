@@ -30,6 +30,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/backends/gpu/rocm/mudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_mudnn_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
@@ -176,7 +179,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WTIH_MUSA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -191,6 +194,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   size_t workspace_size = 0;
 #ifdef PADDLE_WITH_HIP
   miopenConvBwdDataAlgorithm_t algo{};
+#elif defined(PADDLE_WITH_MUSA)
+  mudnnConvBwdDataAlgorithm_t algo{};
 #else
   cudnnConvolutionBwdDataAlgo_t algo{};
 #endif
@@ -224,6 +229,12 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
   using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+  workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
+  bwd_result.algo =
+      search::Find<T>(args, false, deterministic, workspace_size, ctx);
+#elif defined(PADDLE_WITH_MUSA)
+  SearchResult<mudnnConvBwdDataAlgorithm_t> bwd_result;
+  using search = SearchAlgorithm<mudnnConvBwdDataAlgorithm_t>;
   workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
@@ -262,7 +273,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
-#else   // PADDLE_WITH_HIP
+#else   // CUDA & MUSA
   ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                 args,
                                                 bwd_result,
@@ -276,7 +287,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                                                 workspace_size,
                                                 &workspace_handle,
                                                 false);
-#endif  // PADDLE_WITH_HIP
+#endif
 
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(ctx, &transformed_out, out, starts, ends, axes);
@@ -385,7 +396,7 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    double,
                    float16,
                    phi::dtype::bfloat16) {}
-#else
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(conv2d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,

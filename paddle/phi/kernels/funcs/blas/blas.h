@@ -175,7 +175,7 @@ class Blas {
              T* c,
              const int* ldc) const;
 
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   template <typename T>
   void MatMulWithHead(const phi::DenseTensor& mat_a,
                       const MatDescriptor& dim_a,
@@ -303,7 +303,7 @@ class Blas {
                    int batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
                            CBLAS_TRANSPOSE transB,
@@ -445,7 +445,7 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template CSRMM<T>(args...);
   }
 
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   template <typename... ARGS>
   void MatMulWithHead(ARGS... args) const {
     Base()->template MatMulWithHead<T>(args...);
@@ -592,4 +592,7 @@ inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
 #endif
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/blas/blas_impl.hip.h"
+#endif
+#ifdef PADDLE_WITH_MUSA
+// TODO
 #endif
