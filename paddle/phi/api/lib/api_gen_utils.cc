@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace paddle {
 namespace experimental {
@@ -192,7 +192,6 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 phi::DenseTensor* SetKernelOutput(Tensor* out, bool for_auto_parallel) {
   if (out) {
     if (out->impl() == nullptr) {
-#ifdef PADDLE_WITH_DISTRIBUTE
       if (for_auto_parallel) {
         // TODO(chenweihang): polish code, now all dist case are nullptr
         // TODO(chenweihang): polish code, dist_attr is null
@@ -205,12 +204,8 @@ phi::DenseTensor* SetKernelOutput(Tensor* out, bool for_auto_parallel) {
         out->set_impl(dist_t);
         return dist_t->mutable_value();
       } else {
-#else
-      out->set_impl(std::make_shared<phi::DenseTensor>());
-#endif
-#ifdef PADDLE_WITH_DISTRIBUTE
+        out->set_impl(std::make_shared<phi::DenseTensor>());
       }
-#endif
     }
     return static_cast<phi::DenseTensor*>(out->impl().get());
   }

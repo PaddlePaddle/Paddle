@@ -714,7 +714,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareDataForDistTensor({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_dist = PrepareDataForDistTensor({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {PREFIX_TENSOR_NAME}{input_name}_dist->mutable_value();"""
             )
         else:
             input_tensor_code = (
@@ -1144,12 +1145,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     kernel_args.append(PREFIX_TENSOR_NAME + param)
                 else:
                     if self.inputs['input_info'][param] == "const Tensor&":
-                        if for_auto_parallel is True:
-                            kernel_args.append(
-                                PREFIX_TENSOR_NAME + param + "->value()"
-                            )
-                        else:
-                            kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
+                        kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
                     elif (
                         self.inputs['input_info'][param]
                         == "const std::vector<Tensor>&"
@@ -1362,7 +1358,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             prepare_input_tensors_code,
             kernel_args,
             kernel_signature,
-        ) = self.get_kernel_args(code_indent=code_indent)
+        ) = self.get_kernel_args(
+            code_indent=code_indent, for_auto_parallel=True
+        )
 
         # 5. Dist Output Creation
         out_tensor_type_list = None

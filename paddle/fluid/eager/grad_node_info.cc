@@ -256,10 +256,14 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_in.place());
+    } else {
+      VLOG(7)
+          << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+             "non-DenseTensor argument.";
     }
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
-               "non-DenseTensor argument.";
+    VLOG(7) << "Unable to initialize the DenseTensorMeta because the Tensor "
+               "is not initialized.";
   }
 }
 
