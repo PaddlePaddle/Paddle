@@ -50,6 +50,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dq,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
+#if 0
 #ifdef PADDLE_WITH_FLASHATTN
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
@@ -165,6 +166,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   }
 
 #endif
+
+#endif
 }
 
 template <typename T, typename Context>
@@ -176,60 +179,87 @@ void FlashAttnGradKernel(const Context& ctx,
                          const DenseTensor& softmax_lse,
                          const DenseTensor& seed_offset,
                          const DenseTensor& dout,
-                         float dropout,
-                         bool causal,
+                         const float p_dropout,
+                         const bool is_causal,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
+  // TODO(umiswing): Add pad for head_dim
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
 
   auto dims = q.dims();
-  int64_t batch_size = dims[0];
-  int64_t seq_len_q = dims[1];
-  int64_t num_heads = dims[2];
-  int64_t head_size = dims[3];
+  const int batch_size = dims[0];
+  const int seqlen_q = dims[1];
+  const int num_heads = dims[2];
+  const int head_size_og = dout.dims()[3];
+  const int head_size = dims[3];
+  const int seqlen_k = k.dims()[1];
+  const int num_heads_k = k.dims()[2];
 
-  int64_t seq_len_k = k.dims()[1];
-
-  int64_t total_q = batch_size * seq_len_q;
-  int64_t total_k = batch_size * seq_len_k;
-
-  float scale = 1.0f / std::sqrt(head_size);
+  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  const int head_size_rounded = round_multiple(head_size, 32);
+  const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
+  const int seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   VLOG(4) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";
 
-  DenseTensor q_t_s, k_t_s, v_t_s;
-  q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
-  k_t_s.ShareDataWith(k).Resize({total_k, num_heads, head_size});
-  v_t_s.ShareDataWith(v).Resize({total_k, num_heads, head_size});
+  // Which should we use? head_size or head_size_rounded?
+  const float softmax_scale = 1.0f / std::sqrt(head_size);
 
-  DenseTensor cu_seqlens_q;
-  DenseTensor cu_seqlens_k;
-  ArangeNullaryKernel<int32_t, Context>(
-      ctx, 0, (batch_size + 1) * seq_len_q, seq_len_q, &cu_seqlens_q);
-  ArangeNullaryKernel<int32_t, Context>(
-      ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
+  // Does this enough?
+  ctx.template Alloc<T>(dq);
+  ctx.template Alloc<T>(dk);
+  ctx.template Alloc<T>(dv);
 
-  FlashAttnUnpaddedGradKernel<T, Context>(ctx,
-                                          q_t_s,
-                                          k_t_s,
-                                          v_t_s,
-                                          cu_seqlens_q,
-                                          cu_seqlens_k,
-                                          out,
-                                          softmax_lse,
-                                          seed_offset,
-                                          dout,
-                                          seq_len_q,
-                                          seq_len_k,
-                                          scale,
-                                          dropout,
-                                          causal,
-                                          dq,
-                                          dk,
-                                          dv);
+  cudaStream_t stream = ctx.stream();
+  bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
+
+  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
+  uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
+  uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
+
+  DenseTensor softmax_d =
+      Empty<float>(ctx, {batch_size, num_heads, seqlen_q_rounded});
+  DenseTensor dq_accum = Empty<float>(
+      ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
+
+  VLOG(4) << "FlashAttn bwd seed: " << seed << ", offset: " << offset;
+
+  const bool succ =
+      phi::dynload::flash_attn_bwd(const_cast<void*>(dout.data()),
+                                   const_cast<void*>(q.data()),
+                                   const_cast<void*>(k.data()),
+                                   const_cast<void*>(v.data()),
+                                   const_cast<void*>(out.data()),
+                                   const_cast<void*>(softmax_lse.data()),
+                                   softmax_d.data(),
+                                   dq->data(),
+                                   dk->data(),
+                                   dv->data(),
+                                   dq_accum.data(),
+                                   batch_size,
+                                   seqlen_q,
+                                   num_heads,
+                                   head_size_og,
+                                   head_size,
+                                   seqlen_k,
+                                   num_heads_k,
+                                   head_size_rounded,
+                                   seqlen_q_rounded,
+                                   seqlen_k_rounded,
+                                   p_dropout,
+                                   softmax_scale,
+                                   is_causal,
+                                   is_bf16,
+                                   stream,
+                                   seed,
+                                   offset);
+
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
 
 #endif
 }
