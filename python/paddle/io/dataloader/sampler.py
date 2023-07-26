@@ -44,34 +44,39 @@ class Sampler:
 
         .. code-block:: python
 
-            from paddle.io import Dataset, Sampler
+            >>> from paddle.io import Dataset, Sampler
 
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> class MySampler(Sampler):
+            ...     def __init__(self, data_source):
+            ...         self.data_source = data_source
+            ...
+            ...     def __iter__(self):
+            ...         return iter(range(len(self.data_source)))
+            ...
+            ...     def __len__(self):
+            ...         return len(self.data_source)
+            ...
+            >>> sampler = MySampler(data_source=RandomDataset(100))
 
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            class MySampler(Sampler):
-                def __init__(self, data_source):
-                    self.data_source = data_source
-
-                def __iter__(self):
-                    return iter(range(len(self.data_source)))
-
-                def __len__(self):
-                    return len(self.data_source)
-
-            sampler = MySampler(data_source=RandomDataset(100))
-
-            for index in sampler:
-                print(index)
+            >>> for index in sampler:
+            ...     print(index)
+            0
+            1
+            2
+            ...
+            99
 
     see `paddle.io.BatchSampler`
     see `paddle.io.DataLoader`
@@ -105,24 +110,29 @@ class SequenceSampler(Sampler):
 
         .. code-block:: python
 
-            from paddle.io import Dataset, SequenceSampler
+            >>> from paddle.io import Dataset, SequenceSampler
 
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> sampler = SequenceSampler(data_source=RandomDataset(100))
 
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            sampler = SequenceSampler(data_source=RandomDataset(100))
-
-            for index in sampler:
-                print(index)
+            >>> for index in sampler:
+            ...     print(index)
+            0
+            1
+            2
+            ...
+            99
 
     see `paddle.io.Sampler`
     """
@@ -160,25 +170,24 @@ class RandomSampler(Sampler):
 
         .. code-block:: python
 
-            from paddle.io import Dataset, RandomSampler
+            >>> from paddle.io import Dataset, RandomSampler
 
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> sampler = RandomSampler(data_source=RandomDataset(100))
 
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            sampler = RandomSampler(data_source=RandomDataset(100))
-
-            for index in sampler:
-                print(index)
-
+            >>> for index in sampler:
+            ...     print(index)
     """
 
     def __init__(
@@ -288,14 +297,14 @@ class WeightedRandomSampler(Sampler):
 
         .. code-block:: python
 
-            from paddle.io import WeightedRandomSampler
+            >>> from paddle.io import WeightedRandomSampler
 
-            sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
-                                            num_samples=5,
-                                            replacement=True)
-
-            for index in sampler:
-                print(index)
+            >>> sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
+            ...                                 num_samples=5,
+            ...                                 replacement=True)
+            ...
+            >>> for index in sampler:
+            ...     print(index)
     """
 
     def __init__(self, weights, num_samples, replacement=True):
