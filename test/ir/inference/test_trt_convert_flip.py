@@ -119,7 +119,7 @@ class TrtConvertFlipTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         self.trt_param.max_batch_size = 9
-        self.trt_param.workspace_size = 1024000
+        self.trt_param.workspace_size = 1073741824
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
