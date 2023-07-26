@@ -19,9 +19,9 @@
 
 #include "paddle/cinn/backends/extern_func_emitter.h"
 #include "paddle/cinn/backends/extern_func_emitter_builtin.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_verify.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/runtime/cpu/thread_backend.h"
@@ -162,7 +162,7 @@ void CodeGenC::Visit(const ir::Mod *op) {
   auto copied = op->b();
   optim::Simplify(&copied);
   if (copied.is_constant()) {
-    int temp = (int)(copied.get_constant());
+    int temp = static_cast<int>(copied.get_constant());
     if ((temp & (temp - 1)) == 0) {
       os() << "(";
       Print(op->a());

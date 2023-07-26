@@ -17,7 +17,7 @@
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/common/type.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/pybind/bind_utils.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -30,7 +30,6 @@ namespace cinn::pybind {
 using common::bfloat16;
 using common::CINNValue;
 using common::float16;
-using common::Object;
 using common::Target;
 using common::Type;
 using utils::GetStreamCnt;
@@ -39,7 +38,6 @@ using utils::StringFormat;
 namespace {
 void BindTarget(py::module *);
 void BindType(py::module *);
-void BindObject(py::module *);
 void BindShared(py::module *);
 void BindCinnValue(py::module *);
 
@@ -208,11 +206,6 @@ void BindType(py::module *m) {
   });
 }
 
-void BindObject(py::module *m) {
-  py::class_<Object, ObjectWrapper> object(*m, "Object");
-  object.def("type_info", &Object::type_info);
-}
-
 void BindShared(py::module *m) {
   py::class_<common::RefCount> ref_count(*m, "RefCount");
   ref_count.def(py::init<>())
@@ -236,12 +229,12 @@ inline auto __binary_op_fn_dispatch(T1 x, T2 y, F fn, std::false_type) {
 
 template <typename T1, typename T2, typename F>
 inline void __binary_op_visitor_dispatch(
-    CINNValue &v, T1 lhs, T2 rhs, F fn, std::true_type) {
+    CINNValue &v, T1 lhs, T2 rhs, F fn, std::true_type) {  // NOLINT
   v = CINNValue();
 }
 template <typename T1, typename T2, typename F>
 inline void __binary_op_visitor_dispatch(
-    CINNValue &v, T1 lhs, T2 rhs, F fn, std::false_type) {
+    CINNValue &v, T1 lhs, T2 rhs, F fn, std::false_type) {  // NOLINT
   v.Set(fn(lhs, rhs));
 }
 
@@ -367,7 +360,6 @@ void BindCinnValue(py::module *m) {
 void BindCommon(py::module *m) {
   BindTarget(m);
   BindType(m);
-  BindObject(m);
   BindShared(m);
   BindCinnValue(m);
 }

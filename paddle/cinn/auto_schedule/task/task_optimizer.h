@@ -45,7 +45,7 @@ class TaskOptimizer {
     std::string from;
     double cost;
     FunctionGroup functions;
-    Result(const std::string& from_type)
+    explicit Result(const std::string& from_type)
         : from(from_type), cost(std::numeric_limits<double>::max()) {}
   };
 

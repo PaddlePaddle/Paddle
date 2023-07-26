@@ -16,12 +16,7 @@ import logging
 import os
 from test.cinn.ops.op_test import OpTest
 
-from cinn.frontend import (
-    NetBuilder,
-    Variable,
-    get_default_graph_pass,
-    get_default_program_pass,
-)
+from cinn.frontend import NetBuilder, Variable
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="pass_test")
@@ -29,12 +24,12 @@ logger = logging.getLogger(name="pass_test")
 
 class PassTest(OpTest):
     def __init__(self, *args, **kwargs):
-        super(PassTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.init_input_data()
 
     def init_input_data(self) -> dict:
         """Set feed data"""
-        self.feed_data = dict()
+        self.feed_data = {}
         logger.warn("No Input Data")
 
     def build_program(self, builder, target):
@@ -64,7 +59,7 @@ class PassTest(OpTest):
     def get_pass_outputs(self, passes):
         pass_prog, inputs, outputs = self.run_program()
 
-        feed_list = list()
+        feed_list = []
         for var in inputs:
             self.assertIn(
                 var.name(),
@@ -82,9 +77,9 @@ class PassTest(OpTest):
     def get_pass_size(self, passes):
         pass_prog, _, outputs = self.run_program()
         fetch_ids = {str(out) for out in outputs}
-        logger.debug("Before pass {}:\n{}".format(passes, str(pass_prog)))
+        logger.debug(f"Before pass {passes}:\n{str(pass_prog)}")
         op_num = pass_prog.apply_pass(fetch_ids, self.target, passes)
-        logger.debug("After pass {}:\n{}".format(passes, str(pass_prog)))
+        logger.debug(f"After pass {passes}:\n{str(pass_prog)}")
         return op_num
 
     def check_pass_outputs(
@@ -97,9 +92,7 @@ class PassTest(OpTest):
         equal_nan=False,
     ):
         base_pass_size = self.get_pass_size(base_passes)
-        logger.debug(
-            "Pass after base pass optimize has {} ops".format(base_pass_size)
-        )
+        logger.debug(f"Pass after base pass optimize has {base_pass_size} ops")
         test_pass_size = self.get_pass_size(base_passes + test_passes)
         logger.debug(
             "Pass after base and test pass optimize has {} ops".format(

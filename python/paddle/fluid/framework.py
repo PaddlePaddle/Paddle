@@ -1260,6 +1260,7 @@ class Variable(metaclass=VariableMetaClass):
         In Static Graph Mode:
 
         .. code-block:: python
+            :name: code-example-1
 
             import paddle.fluid as fluid
             cur_program = fluid.Program()
@@ -1271,6 +1272,7 @@ class Variable(metaclass=VariableMetaClass):
         In Dygraph  Mode:
 
         .. code-block:: python
+            :name: code-example-2
 
             import paddle.fluid as fluid
             import numpy as np
@@ -2293,7 +2295,14 @@ class Variable(metaclass=VariableMetaClass):
         return _getitem_impl_(self, item)
 
     def __setitem__(self, item, value):
-        return _setitem_impl_(self, item, value)
+        from .dygraph.base import in_declarative_mode
+
+        if in_declarative_mode():
+            return _setitem_impl_(self, item, value)
+        else:
+            raise RuntimeError(
+                "In static mode, the __setitem__ (looks like: x[indices] = values) should not be used. Please use x = paddle.static.setitem(x, indices, values)"
+            )
 
     def get_value(self, scope=None):
         """
@@ -2454,6 +2463,12 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_custom_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.CustomPlace(
+                p.custom_device_type(), p.custom_device_id()
+            )
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -5743,21 +5758,22 @@ class Program:
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
-        For Example:
-          ::
+        Examples:
+            .. code-block:: python
+                :name: code-example-1
 
-            import paddle
-            import paddle.static as static
+                import paddle
+                import paddle.static as static
 
-            paddle.enable_static()
+                paddle.enable_static()
 
-            img = static.data(name='image', shape=[None, 784])
-            pred = static.nn.fc(x=img, size=10, actvation='relu')
-            loss = paddle.mean(pred)
-            # Here we use clone before Momentum
-            test_program = static.default_main_program().clone(for_test=True)
-            optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            optimizer.minimize(loss)
+                img = static.data(name='image', shape=[None, 784])
+                pred = static.nn.fc(x=img, size=10, actvation='relu')
+                loss = paddle.mean(pred)
+                # Here we use clone before Momentum
+                test_program = static.default_main_program().clone(for_test=True)
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+                optimizer.minimize(loss)
 
         Args:
 
@@ -5778,6 +5794,7 @@ class Program:
                 after :code:`clone`:
 
             .. code-block:: python
+                :name: code-example-2
 
                 import paddle
 
@@ -5795,6 +5812,7 @@ class Program:
 
             1. To clone a test program, the sample code is:
                 .. code-block:: python
+                    :name: code-example-3
 
                     import paddle
                     import paddle.static as static
@@ -5847,6 +5865,7 @@ class Program:
 
             2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
+                    :name: code-example-4
 
                     import paddle
                     import paddle.static as static
@@ -7235,30 +7254,32 @@ def program_guard(main_program, startup_program=None):
             Default: None.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
+            :name: code-example-1
 
-          import paddle
+            import paddle
 
-          paddle.enable_static()
-          main_program = paddle.static.Program()
-          startup_program = paddle.static.Program()
-          with paddle.static.program_guard(main_program, startup_program):
-              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-              hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
+            paddle.enable_static()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
+            :name: code-example-2
 
-          import paddle
+            import paddle
 
-          paddle.enable_static()
-          main_program = paddle.static.Program()
-          # does not care about startup program. Just pass a temporary value.
-          with paddle.static.program_guard(main_program, paddle.static.Program()):
-              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+            paddle.enable_static()
+            main_program = paddle.static.Program()
+            # does not care about startup program. Just pass a temporary value.
+            with paddle.static.program_guard(main_program, paddle.static.Program()):
+                data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
 
     """
     from .data_feeder import check_type
@@ -7615,8 +7636,15 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.IPUPlace(device_id)
 
+    place_info_list = place.split(':', 1)
+    device_type = place_info_list[0]
+    if device_type in core.get_all_custom_device_type():
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.CustomPlace(device_type, device_id)
+
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace and IPUPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 

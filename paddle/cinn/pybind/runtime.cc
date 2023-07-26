@@ -193,7 +193,7 @@ void BindCinnRuntime(py::module *m) {
       .def_readwrite("flag", &cinn_buffer_t::flag)
       .def_readwrite("type", &cinn_buffer_t::type)
       .def_readwrite("dimensions", &cinn_buffer_t::dimensions)
-      //.def_readwrite("dims", &cinn_buffer_t::dims)
+      // .def_readwrite("dims", &cinn_buffer_t::dims)
       .def_readwrite("lazy", &cinn_buffer_t::lazy)
       .def_readwrite("memory_size", &cinn_buffer_t::memory_size)
       .def_readwrite("align", &cinn_buffer_t::align)
@@ -228,7 +228,7 @@ void BindCinnRuntime(py::module *m) {
   m->def("cinn_x86_device_interface", &cinn_x86_device_interface)
       .def("cinn_buffer_load_float32", &cinn_buffer_load_float32)
       .def("cinn_buffer_load_float64", &cinn_buffer_load_float64);
-  //.def("cinn_buffer_slice", &cinn_buffer_slice,
+  // .def("cinn_buffer_slice", &cinn_buffer_slice,
   //     py::return_value_policy::reference);
 
   py::class_<cinn_value_t> cinn_value(*m, "cinn_value_t");

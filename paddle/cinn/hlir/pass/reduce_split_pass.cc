@@ -103,7 +103,7 @@ class ReduceSplitPass {
         auto in_shape = shape_dict.at(in->id());
         auto out_shape = shape_dict.at(out->id());
         // all preceding reduced
-        CHECK(in_shape.size() > 1);
+        CHECK_GT(in_shape.size(), 1);
         // [NHWC]->[C], only the last dim kept
         bool all_preceding_dim_reduced = true;
         for (auto i = 0; i < in_shape.size() - 1; ++i) {
@@ -122,7 +122,7 @@ class ReduceSplitPass {
             in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
         int reduce_numel = std::accumulate(
             in_shape.begin(), in_shape.end() - 1, 1, std::multiplies<int>());
-        CHECK(reduce_numel > 0);
+        CHECK_GT(reduce_numel, 0);
         // if the numel is not large enough, it is no need to split
         // if loop times is too large with reduce optimize
         int size = std::accumulate(

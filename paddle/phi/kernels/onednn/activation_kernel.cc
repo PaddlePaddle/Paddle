@@ -160,7 +160,7 @@ void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
   HardSwishOneDNNFunctor<T> functor;
-  functor(dev_ctx, x, 6, 0, out);
+  functor(dev_ctx, x, 1.0 / 6.0, 1.0 / 2.0, out);
 }
 
 template <typename T, typename Context>
@@ -178,12 +178,11 @@ void GeluKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void Relu6RawKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    float threshold,
-                    DenseTensor* out) {
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   Relu6OneDNNFunctor<T> functor;
-  functor(dev_ctx, x, 0, threshold, out);
+  functor(dev_ctx, x, 0, 6.0, out);
 }
 
 template <typename T, typename Context>
@@ -210,7 +209,7 @@ PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)

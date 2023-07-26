@@ -14,7 +14,7 @@
 
 import unittest
 
-from cinn.common import *
+from cinn.common import is_compiled_with_cudnn
 from op_mapper_test import OpMapperTest
 
 import paddle

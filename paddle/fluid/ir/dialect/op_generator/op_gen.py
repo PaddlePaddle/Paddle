@@ -43,6 +43,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
@@ -137,6 +138,14 @@ DEFINE_OP_TYPE_ID = """
 IR_DEFINE_EXPLICIT_TYPE_ID({op_name})
 """
 
+scalar_type_maps = {
+    'int': 'ir::Int32Attribute',
+    'int64_t': 'ir::Int64Attribute',
+    'float': 'ir::FloatAttribute',
+    'dobule': 'ir::DoubleAttribute',
+    'bool': 'ir::BoolAttribute',
+}
+
 
 def to_phi_and_fluid_op_name(op_item):
     # Templat: - op : phi_name (fluid_name)
@@ -150,13 +159,14 @@ def to_phi_and_fluid_op_name(op_item):
         return phi_name, fluid_name
 
 
-scalar_type_maps = {
-    'int': 'ir::Int32Attribute',
-    'int64_t': 'ir::Int64Attribute',
-    'float': 'ir::FloatAttribute',
-    'dobule': 'ir::DoubleAttribute',
-    'bool': 'ir::BoolAttribute',
-}
+def to_phi_and_fluid_grad_op_name(op_item):
+    # Templat: sum_grad (reduce_sum_grad), sum_double_grad
+    rtn = []
+    all_names = op_item.split(', ')
+    for name in all_names:
+        backward_phi_name, backward_fluid_name = to_phi_and_fluid_op_name(name)
+        rtn.append([backward_phi_name, backward_fluid_name])
+    return rtn
 
 
 # =====================================
@@ -170,9 +180,16 @@ class OpCompatParser:
 
     def get_compat(self, op_name):
         for compat in self.ops_compat:
-            phi_name, fluid_name = to_phi_and_fluid_op_name(compat['op'])
-            if op_name == phi_name:
+            forward_phi_name, forward_fluid_name = to_phi_and_fluid_op_name(
+                compat['op']
+            )
+            if op_name == forward_phi_name:
                 return compat
+            elif 'backward' in compat.keys():
+                bkw_names = to_phi_and_fluid_grad_op_name(compat['backward'])
+                for name in bkw_names:
+                    if op_name == name[0]:
+                        return compat
         return None
 
 
@@ -290,6 +307,9 @@ class OpInfoParser:
         self.inplace_map = self.parse_op_inplace_info()
         self.view_map = self.parse_op_view_info()
 
+        # parse has_custom_verify
+        self.custom_verify = self.parse_custom_verify()
+
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
             type_list
@@ -298,6 +318,11 @@ class OpInfoParser:
             assert len(type_list) == len(
                 optional_list
             ), "type list size != optional list size."
+
+    def parse_custom_verify(self):
+        if 'custom_verify' in self.op_yaml_item:
+            return self.op_yaml_item['custom_verify']
+        return False
 
     def parse_op_phi_name(self):
         if (self.parse_op_inplace_info() is None) and (
@@ -336,30 +361,26 @@ class OpInfoParser:
             for scalar_attr in self.op_compat_item['scalar'].keys():
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
                     if (
-                        self.op_compat_item['scalar'][scalar_attr]['data_type']
-                        == "std::string"
+                        scalar_attr == "depth"
+                        and self.op_phi_name[0] == "one_hot"
                     ):
-                        # see isclose and allclose in op_compat.yaml
-                        mutable_attribute_name_list.append(scalar_attr)
-                        mutable_attribute_type_list.append(
-                            ["ir::StrAttribute", "std::string"]
-                        )
+                        mutable_attribute_name_list.append("num_classes")
                     else:
-                        if (
-                            scalar_attr == "depth"
-                            and self.op_phi_name[0] == "one_hot"
-                        ):
-                            mutable_attribute_name_list.append("num_classes")
-                        else:
-                            mutable_attribute_name_list.append(scalar_attr)
-                        mutable_attribute_type_list.append(
-                            [
-                                "paddle::dialect::ScalarAttribute",
-                                self.op_compat_item['scalar'][scalar_attr][
-                                    'data_type'
-                                ],
-                            ]
-                        )
+                        mutable_attribute_name_list.append(scalar_attr)
+                    data_type = self.op_compat_item['scalar'][scalar_attr][
+                        'data_type'
+                    ]
+                    # patch for isclose and allclose
+                    if (self.op_compat_item['op'] == "isclose") or (
+                        self.op_compat_item['op'] == "allclose"
+                    ):
+                        data_type = "float"
+                    mutable_attribute_type_list.append(
+                        [
+                            "paddle::dialect::ScalarAttribute",
+                            data_type,
+                        ]
+                    )
                 # See eye in op_compat.yaml
                 else:
                     mutable_attribute_name_list.append(scalar_attr)
@@ -371,7 +392,6 @@ class OpInfoParser:
                             ],
                         ]
                     )
-
         # int_array
         if (self.op_compat_item is not None) and (
             'int_array' in self.op_compat_item
@@ -483,6 +503,7 @@ class OpInfoParser:
         output_type_map = {
             'Tensor': 'paddle::dialect::DenseTensorType',
             'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+            'SelectedRows': 'paddle::dialect::SelectedRowsType',
         }
         type_list = []
         for output_info in self.op_yaml_item['outputs']:
@@ -712,6 +733,10 @@ def OpGenerator(
             op_interfaces_str = ""
             if len(op_interfaces) > 0:
                 op_interfaces_str = "," + ",".join(op_interfaces)
+
+            if op_name[-1] == "_":
+                op_traits += ["InplaceTrait"]
+
             op_traits_str = ""
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)
@@ -963,17 +988,19 @@ def OpGenerator(
             )
 
             # generate op verify function str
-            op_verify_str = gen_verify_func_str(
-                op_class_name,
-                op_input_type_list,
-                op_input_optional_list,
-                op_mutable_attribute_name_list,
-                op_mutable_attribute_type_list,
-                op_non_mutable_attribute_name_list,
-                op_non_mutable_attribute_type_list,
-                op_output_type_list,
-                op_output_optional_list,
-            )
+            op_verify_str = ''
+            if not op_info.custom_verify:
+                op_verify_str = gen_verify_func_str(
+                    op_class_name,
+                    op_input_type_list,
+                    op_input_optional_list,
+                    op_mutable_attribute_name_list,
+                    op_mutable_attribute_type_list,
+                    op_non_mutable_attribute_name_list,
+                    op_non_mutable_attribute_type_list,
+                    op_output_type_list,
+                    op_output_optional_list,
+                )
 
             op_infer_meta_str = gen_op_infer_meta_str(op_info, op_class_name)
 
