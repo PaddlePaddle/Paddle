@@ -639,9 +639,9 @@ void BuildOpFuncList(const platform::Place& place,
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
         // TODO for test
-        if (op_type == "p_send" && platform::is_gpu_place(place)) {
-            phi::backends::gpu::GpuStreamSync(reinterpret_cast<const phi::GPUContext*>(dev_ctx)->stream());
-        }
+      //if (op_type == "p_send" && platform::is_gpu_place(place)) {
+      //    phi::backends::gpu::GpuStreamSync(reinterpret_cast<const phi::GPUContext*>(dev_ctx)->stream());
+      //}
         if (IsPhiCommOp(op)) {
             ContextManager& ctx_manager = ContextManager::Instance();
             int ring_id = op->Attr<int>("ring_id");
@@ -796,9 +796,9 @@ void BuildOpFuncList(const platform::Place& place,
             op_func_node.kernel_func_(execution_context);
           }
         }
-        if (op_type == "p_recv" && platform::is_gpu_place(place)) {
-            phi::backends::gpu::GpuStreamSync(reinterpret_cast<const phi::GPUContext*>(dev_ctx)->stream());
-        }
+      //if (op_type == "p_recv" && platform::is_gpu_place(place)) {
+      //    phi::backends::gpu::GpuStreamSync(reinterpret_cast<const phi::GPUContext*>(dev_ctx)->stream());
+      //}
         if (FLAGS_benchmark) {
             dev_ctx->Wait();
     #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
