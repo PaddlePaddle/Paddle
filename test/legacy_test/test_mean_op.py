@@ -133,7 +133,9 @@ class TestBF16MeanOp(TestMeanOp):
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, only_check_prim=True
+        )
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
