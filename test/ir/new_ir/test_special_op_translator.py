@@ -160,5 +160,39 @@ class TestOneHotOpTranscriber(unittest.TestCase):
         _ = ir.translate_to_new_ir(main_program.desc)
 
 
+class TestReduceOpTranscriber(unittest.TestCase):
+    def test_reduce_all(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                arr = np.ones([2, 2], dtype="float32")
+                x = paddle.to_tensor(arr, dtype='int32')
+                out1 = paddle.all(x)
+
+                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                np.testing.assert_array_equal(out[0], np.all(arr))
+
+    def test_with_axis(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                arr = np.ones([2, 2], dtype="float32")
+                x = paddle.to_tensor(arr, dtype='int32')
+                out1 = paddle.all(x, axis=0)
+
+                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                np.testing.assert_array_equal(out[0], np.all(arr, axis=0))
+
+
 if __name__ == "__main__":
     unittest.main()

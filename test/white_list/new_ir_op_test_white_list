@@ -139,6 +139,7 @@ test_prior_box_op
 test_psroi_pool_op
 test_put_along_axis_op
 test_range
+test_reduce_op
 test_reverse_op
 test_roi_align_op
 test_roi_pool_op
