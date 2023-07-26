@@ -71,8 +71,8 @@ class PipelineOptimizer:
                 concat = layers.concat([emb_x, emb_y], axis=1)
                 fc = paddle.static.nn.fc(x=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
                 loss = paddle.mean(fc)
-            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-            optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            optimizer = paddle.incubate.optimizer.PipelineOptimizer(optimizer)
             optimizer.minimize(loss)
 
             def train_reader():
