@@ -44,6 +44,11 @@ pipeline {
       steps {
         container('main') {
           sh 'echo Build'
+          sh '/bin/bash --login -c "cp -r $PADDLE_MUSA_REPO_PATH/third_party/. third_party \
+              && cp -r $PADDLE_MUSA_REPO_PATH/.git/modules .git"'
+          sh 'df -h'
+          sh '/bin/bash --login -c "/bin/bash \
+              paddle/scripts/paddle_build.sh build_only && find ./dist -name *whl | xargs pip3.8 install"'
         }
       }
     }
@@ -58,6 +63,7 @@ pipeline {
       steps {
         container('main') {
           sh 'echo Integration Test'
+          sh '/bin/bash --login -c "python -c "import paddle; paddle.utils.run_check()""'
         }
       }
     }

@@ -10,26 +10,26 @@ spec:
   - name: shm-volume
     emptyDir:
       medium: Memory
-      sizeLimit: 500M
+      sizeLimit: 2G
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
-          - key: gputype
+          - key: test_models
             operator: In
             values:
-            - mthreads-train
+            - s3000
   containers:
   - name: main
     tty: true
-    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:v0.1.0
+    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:v0.1.1
     imagePullPolicy: Always
     env:
-    - name: TARGET_DEVICE
-      value: musa
-    - name: PYTORCH_REPO_PATH
-      value: /home/pytorch
+    - name: PADDLE_MUSA_REPO_PATH
+      value: /home/paddle_musa
+    # - name: WITH_MUSA
+    #   value: ON
     - name: MUSA_VISIBLE_DEVICES
       value: 1,2,3
     - name: MTHREADS_VISIBLE_DEVICES
