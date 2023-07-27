@@ -253,11 +253,11 @@ when mode = 0,
 
               x--------------
               |              |
-              | condition1   |      y
+              | condition0   |       y
               |      \       |      /
               |       \      |     /
               |        \     |    /
-condition2    |       fast_where_xpu
+condition1    |       fast_where_xpu
      \        |         /
       \       |        /
        \      |       /
@@ -265,7 +265,7 @@ condition2    |       fast_where_xpu
 
 After the pass is applied,
 
-condition1  condition2
+condition0  condition1
      \          /
       \        /
           or
@@ -276,13 +276,13 @@ condition1  condition2
 
 or mode = 1,
 
-  condition1   x        y
+  condition0   x        y
        \       |      /   |
         \      |     /    |
          \     |    /     |
         fast_where_xpu    |
                |          |
- condition2    |          |
+ condition1    |          |
       \        |         /
        \       |        /
         \      |       /
@@ -290,7 +290,7 @@ or mode = 1,
 
 After the pass is applied,
 
-condition1  condition2
+condition0  condition1
      \          /
       \        /
        \      /
@@ -327,20 +327,20 @@ CascadeFastWhereXPUPattern::CascadeFastWhereXPUPattern(
   auto fast_where_xpu0 =
       pattern->NewNode(fast_where_xpu0_repr())->assert_is_op("fast_where_xpu");
   auto fast_where_xpu1 =
-      pattern->NewNode(fast_where_xpu0_repr())->assert_is_op("fast_where_xpu");
+      pattern->NewNode(fast_where_xpu1_repr())->assert_is_op("fast_where_xpu");
   // declare vairable nodes
   auto condition0 = pattern->NewNode(condition0_repr())
                         ->assert_is_op_input("fast_where_xpu", "condition");
   auto condition1 = pattern->NewNode(condition1_repr())
                         ->assert_is_op_input("fast_where_xpu", "condition");
   auto fast_where_xpu0_out = pattern->NewNode(fast_where_xpu0_out_repr())
-                                 ->assert_is_op_output("fast_where_xpu", "Out");
+                                 ->assert_is_op_output("fast_where_xpu", "out");
   auto fast_where_xpu1_out = pattern->NewNode(fast_where_xpu1_out_repr())
-                                 ->assert_is_op_output("fast_where_xpu", "Out");
+                                 ->assert_is_op_output("fast_where_xpu", "out");
   auto x = pattern->NewNode(x_repr())->assert_is_op_input("fast_where_xpu");
   auto y = pattern->NewNode(y_repr())->assert_is_op_input("fast_where_xpu");
   fast_where_xpu0->LinksFrom({condition0, x, y}).LinksTo({fast_where_xpu0_out});
-  PADDLE_ENFORCE_GE(mode,
+  PADDLE_ENFORCE_LE(mode,
                     1,
                     platform::errors::InvalidArgument(
                         "cascade mode(%d) is not supported.", mode));
@@ -356,6 +356,8 @@ CascadeFastWhereXPUPattern::CascadeFastWhereXPUPattern(
     fast_where_xpu0_out->assert_is_op_input("fast_where_xpu", "x");
     fast_where_xpu1->LinksFrom({condition1, fast_where_xpu0_out, y})
         .LinksTo({fast_where_xpu1_out});
+  } else {
+    // TODO(hong19860320) add other cases.
   }
 }
 
@@ -470,16 +472,34 @@ int CascadeFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph,
     fast_where_xpu0_out->Var()->SetShape(condition0->Var()->GetShape());
     fast_where_xpu0_out->Var()->SetDataType(condition0->Var()->GetDataType());
     // Change the first fast_where_xpu op to logical op
-    fast_where_xpu0->Op()->SetType("logical_and");
+    fast_where_xpu0->Op()->RemoveInput("condition");
+    fast_where_xpu0->Op()->RemoveInput("x");
+    fast_where_xpu0->Op()->RemoveInput("y");
+    fast_where_xpu0->Op()->RemoveOutput("out");
     fast_where_xpu0->Op()->SetInput(
         "X", std::vector<std::string>({condition0->Name()}));
     fast_where_xpu0->Op()->SetInput(
         "Y", std::vector<std::string>({condition1->Name()}));
+    fast_where_xpu0->Op()->SetOutput(
+        "Out", std::vector<std::string>({fast_where_xpu0_out->Name()}));
     // Reserve the second first_where_xpu but change its inputs
     fast_where_xpu1->Op()->SetInput(
         "condition", std::vector<std::string>({fast_where_xpu0_out->Name()}));
-    fast_where_xpu1->Op()->SetInput("x", std::vector<std::string>({x->Name()}));
-    fast_where_xpu1->Op()->SetInput("y", std::vector<std::string>({y->Name()}));
+    if (mode == 0) {
+      fast_where_xpu0->Op()->SetType("logical_or");
+      fast_where_xpu1->Op()->SetInput("x",
+                                      std::vector<std::string>({x->Name()}));
+      fast_where_xpu1->Op()->SetInput("y",
+                                      std::vector<std::string>({y->Name()}));
+    } else if (mode == 1) {
+      fast_where_xpu0->Op()->SetType("logical_and");
+      fast_where_xpu1->Op()->SetInput("x",
+                                      std::vector<std::string>({x->Name()}));
+      fast_where_xpu1->Op()->SetInput("y",
+                                      std::vector<std::string>({y->Name()}));
+    } else {
+      // TODO(hong19860320) add other cases.
+    }
     IR_NODE_UNLINK(x, fast_where_xpu0);
     IR_NODE_UNLINK(y, fast_where_xpu0);
     IR_NODE_LINK_TO(condition1, fast_where_xpu0);
@@ -516,8 +536,8 @@ void FastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(4) << "handle fast_where_xpu op fusion.";
   OneFastWhereXPUFusePass one_fast_where_xpu_fuse_pass;
   one_fast_where_xpu_fuse_pass.ApplyImpl(graph);
-  // CascadeFastWhereXPUFusePass cascade_fast_where_xpu_fuse_pass;
-  // cascade_fast_where_xpu_fuse_pass.ApplyImpl(graph);
+  CascadeFastWhereXPUFusePass cascade_fast_where_xpu_fuse_pass;
+  cascade_fast_where_xpu_fuse_pass.ApplyImpl(graph);
 }
 
 }  // namespace ir

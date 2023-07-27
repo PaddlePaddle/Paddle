@@ -24,6 +24,13 @@ namespace api {
 namespace plugin {
 
 DLL_EXPORT int add2(Context* ctx, const float* x, float* y, int len);
+template <typename T>
+DLL_EXPORT int fast_where(Context* ctx,
+                          const bool* condition,
+                          const T* x,
+                          const T* y,
+                          T* out,
+                          int64_t len);
 
 }  // namespace plugin
 }  // namespace api

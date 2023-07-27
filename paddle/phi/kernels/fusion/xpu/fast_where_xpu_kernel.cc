@@ -50,16 +50,9 @@ void FastWhereXPUKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
     condition_data = temp_data;
   }
-  int r = xpu::select<XPUType>(ctx.x_context(),
-                               condition_data,
-                               x_data,
-                               y_data,
-                               out_data,
-                               x_dims,
-                               x_dims);
-  // int r = xpu::add<XPUType>(ctx.x_context(), x_data, y_data, out_data,
-  // x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_where_xpu");
+  int r = xpu::plugin::fast_where<XPUType>(
+      ctx.x_context(), condition_data, x_data, y_data, out_data, x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_where");
 }
 
 }  // namespace fusion
@@ -70,5 +63,6 @@ PD_REGISTER_KERNEL(fast_where_xpu,
                    ALL_LAYOUT,
                    phi::fusion::FastWhereXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int) {}
 #endif
