@@ -1623,8 +1623,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     os << kv.first.impl() << " -> " << kv.second << " -> "
-       << var_name_2_id_.at(kv.second) << " -> "
-       << InnerScope()->FindVar(kv.second) << "\n";
+       << var_name_2_id_.at(kv.second) << " -> " << var << "\n";
   }
   return os.str();
 }
