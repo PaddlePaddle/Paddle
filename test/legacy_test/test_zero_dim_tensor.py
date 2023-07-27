@@ -1925,7 +1925,6 @@ class TestSundryAPI(unittest.TestCase):
         except AssertionError:
             pass
 
-        # case2:
         x = paddle.to_tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
         index = paddle.to_tensor(1)
         updates = paddle.to_tensor([[5.0, 5.0]])
@@ -1933,6 +1932,23 @@ class TestSundryAPI(unittest.TestCase):
             out = paddle.scatter(x, index, updates)
         except AssertionError:
             pass
+
+    def test_scatter_0D_index(self):
+        x = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=False)
+        index = paddle.to_tensor(1)
+        updates = paddle.to_tensor(3.0)
+        out = paddle.scatter(x, index, updates)
+        out.backward()
+        np.testing.assert_array_equal(x.grad.numpy()[1], 0.0)
+
+        x = paddle.to_tensor(
+            [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], stop_gradient=False
+        )
+        index = paddle.to_tensor(1)
+        updates = paddle.to_tensor([5.0, 5.0])
+        out = paddle.scatter(x, index, updates)
+        out.backward()
+        np.testing.assert_array_equal(x.grad.numpy()[1], [0.0, 0.0])
 
     def test_diagflat(self):
         x1 = paddle.rand([])
@@ -4173,24 +4189,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[0][1], [4.0, 4.0, 4.0])
         self.assertEqual(res[1].shape, (2, 3))
         self.assertEqual(res[2].shape, (2, 3))
-
-    def test_scatter_shape_check(self):
-        x = paddle.to_tensor([1.0, 2.0, 3.0])
-        index = paddle.to_tensor(1)
-        updates = paddle.to_tensor([3.0])
-        try:
-            out = paddle.scatter(x, index, updates)
-        except AssertionError:
-            pass
-
-        # case2:
-        x = paddle.to_tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
-        index = paddle.to_tensor(1)
-        updates = paddle.to_tensor([[5.0, 5.0]])
-        try:
-            out = paddle.scatter(x, index, updates)
-        except AssertionError:
-            pass
 
     @prog_scope()
     def test_diagflat(self):

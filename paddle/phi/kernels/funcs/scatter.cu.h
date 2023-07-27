@@ -153,11 +153,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
 
   // slice size
   size_t slice_size = 1;
-  if (index.dims().size() != 0) {
-    for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-  } else {
-    for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-  }
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
@@ -195,12 +191,8 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   // slice size
-  int64_t slice_size = 1;  // slice size
-  if (index.dims().size() != 0) {
-    for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
-  } else {
-    for (int i = 0; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
-  }
+  int64_t slice_size = 1;
+  for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
   const size_t& slice_bytes = slice_size * sizeof(T);
