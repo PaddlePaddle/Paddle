@@ -9,8 +9,10 @@ gather_srcs(
   buffer.cc
   memory.cc
   instruction.cc
+  program.cc
   parallel_compiler.cc
   graph_compiler.cc
+  new_ir_compiler.cc
   graph.cc
   node.cc
   pass.cc
