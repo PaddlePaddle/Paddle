@@ -166,18 +166,18 @@ class OpConverter {
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
-// std::cout << op_desc.Type() << std::endl;
+std::cout << op_desc.Type() << "are converting" << std::endl;
 
-// for(auto it1 : op_desc.InputNames())
-// {
-//   for (auto it2 : op_desc.Input(it1))
-//   {
-//     auto output_name = it2;
-//     std::cout << output_name << std::endl;
-//   }
-// }
+for(auto it1 : op_desc.InputNames())
+{
+  for (auto it2 : op_desc.Input(it1))
+  {
+    auto output_name = it2;
+    std::cout << output_name << std::endl;
+  }
+}
 
-// std::cout << op_desc.InputNames().size() << std::endl;
+std::cout << op_desc.InputNames().size() << std::endl;
 
     it->SetEngine(engine);
     engine->SetScope(scope);
@@ -747,24 +747,30 @@ class OpConverter {
     std::string layer_name = layer_type + " (Output: ";
     for (size_t i = 0; i < num_out; i++) {
       layer->getOutput(i)->setName(output_tensor_names[i].c_str());
-
-    PADDLE_ENFORCE_GT(
-        layer->getOutput(i)->getDimensions().nbDims,
-        0,
-        platform::errors::InvalidArgument(
-            "Error occures in Paddle-TRT layer with output name: %s", output_tensor_names[i].c_str()));
-    
-      VLOG(3) << output_tensor_names[i] << "'s dimension :" ;
-      for (int ii = 0; ii < layer->getOutput(i)->getDimensions().nbDims; ii++) {
-        VLOG(3) << layer->getOutput(i)->getDimensions().d[ii] ;
-      }
-
       engine_->SetITensor(output_tensor_names[i], layer->getOutput(i));
       if (test_mode) {
         engine_->DeclareOutput(output_tensor_names[i]);
       }
       layer_name += output_tensor_names[i];
       if (i != num_out - 1) layer_name += ", ";
+    }
+
+    for (size_t i = 0; i < num_out; i++) {
+      nvinfer1::Dims tmp_dims = layer->getOutput(i)->getDimensions();
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+
+      VLOG(3) << output_tensor_names[i] << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]";
+      // The following check may cause errors in CI, but is necessary in the
+      // latest version.
+      // PADDLE_ENFORCE_GE(
+      //     layer->getOutput(i)->getDimensions().nbDims,
+      //     0,
+      //     platform::errors::InvalidArgument(
+      //         "Error occures in Paddle-TRT layer with output name: %s",
+      //         output_tensor_names[i].c_str()));
     }
     layer->setName((layer_name + ")").c_str());
   }

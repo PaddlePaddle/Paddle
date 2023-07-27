@@ -74,7 +74,39 @@ void NaiveExecutor::Run() {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
+
+std::vector<std::string> result = {
+  "data_preprocess",
+  "img_bkb",
+  "img_neck",
+  "long_temp_fusion",
+  "ldmap_routing_fusion",
+  "ego_info_fusion",
+  "cam2bev_modules",
+
+  
+  "2d_traffic_light",
+  "pts_det_traj_head",
+  "admap_head",
+  "occ_head",
+  "2d_occ_head",
+  "pnc_head",
+  "pnc_post_process",
+  "traj_head",
+};
+bool nvtx = false;
+std::string output_name = op->OutputVars(true).front();
+
+
+
+for (auto ele:result) {
+  if(output_name.find(ele) != std::string::npos) {
+    nvtx = true;
+  }
+}
+
 #ifdef PADDLE_WITH_INFERENCE_NVTX
+if(nvtx)
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
 #endif
@@ -186,9 +218,12 @@ void NaiveExecutor::Run() {
       }
     }
 
+
 #ifdef PADDLE_WITH_INFERENCE_NVTX
+if(nvtx)
     platform::CudaNvtxRangePop();
 #endif
+
     for (auto &func : output_hookfuncs_) {
       func(op.get(), scope_);
     }

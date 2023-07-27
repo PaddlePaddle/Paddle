@@ -1119,7 +1119,11 @@ void BindPaddleInferPredictor(py::module *m) {
             return py::handle(ToPyObject(outputs));
           },
           py::arg("inputs"))
-      .def("run", [](paddle_infer::Predictor &self) { self.Run(); })
+      .def("run", [](paddle_infer::Predictor &self) { 
+         pybind11::gil_scoped_release release;
+         //pybind11::call_guard<pybind11::gil_scoped_release>();
+        self.Run(); 
+        })
       .def("clone",
            [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
