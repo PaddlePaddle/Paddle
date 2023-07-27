@@ -45,7 +45,7 @@ class TestFleetBase(unittest.TestCase):
         )
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        emb = paddle.fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=input_slot, size=[10, 9], is_sparse=True
         )
         input_x = paddle.concat(x=[input_x, emb], axis=1)
