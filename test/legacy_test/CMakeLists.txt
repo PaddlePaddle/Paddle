@@ -1270,13 +1270,8 @@ set(STATIC_BUILD_TESTS
     test_assign_pos_op
     test_bincount_op
     test_c_embedding_op
-    test_c_embedding_op_xpu
-    test_c_identity
-    test_c_split
     test_decayed_adagrad_op
     test_decoupled_py_reader
-    test_dgc_op
-    test_dgc_momentum_op
     test_eig_op
     test_eigh_op
     test_fake_quantize_op
@@ -1290,7 +1285,7 @@ set(STATIC_BUILD_TESTS
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
-    test_limit_by_capacity
+    test_limit_by_capacity_op
     test_lookup_table_bf16_op
     test_lookup_table_v2_op
     test_matmul_op
