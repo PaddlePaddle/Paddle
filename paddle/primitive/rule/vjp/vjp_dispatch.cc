@@ -48,7 +48,7 @@ std::vector<std::vector<Tensor>> tanh_vjp(
   ir::Operation* grad_op_ptr = op_res[0].owner();
   uint32_t num_res = grad_op_ptr->num_results();
   std::vector<ir::Attribute> ir_stop_gradients(num_res);
-  for (int i = 0; i < num_res; i++) {
+  for (size_t i = 0; i < num_res; i++) {
     if (stop_gradients[i]) {
       ir_stop_gradients[i] =
           ir::BoolAttribute::get(ir::IrContext::Instance(), true);
@@ -59,9 +59,15 @@ std::vector<std::vector<Tensor>> tanh_vjp(
   }
   grad_op_ptr->set_attribute(
       "stop_gradient",
-      ir::ArrayAttribute::get(ir::IrContext::Instance(), stop_gradients));
-  // 4.construct result by stop_gradients
+      ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
 
+  // 4.construct result by stop_gradients
+  res.reserve(num_res);
+  for (size_t i = 0; i < stop_gradients.size(); i++) {
+    // TODO(wanghao107): maybe slice here
+    res.emplace_back(std::vector<Tensor>{Tensor(
+        std::make_shared<primitive::experimental::DescTensor>(op_res[i]))});
+  }
   return res;
 }
 }  // namespace experimental
