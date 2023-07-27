@@ -658,12 +658,12 @@ PD_REGISTER_KERNEL(
     batch_norm_grad, CPU, ALL_LAYOUT, phi::BatchNormGradKernel, float, double) {
 }
 
-PD_DECLARE_BN_GRAD_FUNCTOR(float, CPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(double, CPU);
-
 PD_REGISTER_KERNEL(batch_norm_double_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
+
+PD_DECLARE_BN_GRAD_FUNCTOR(float, CPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, CPU);
