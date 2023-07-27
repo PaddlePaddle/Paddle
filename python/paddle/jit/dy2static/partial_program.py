@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -505,6 +506,7 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
+            print("forward ", progs[0])
             return progs[0]
         else:
             return self.infer_program
@@ -518,6 +520,8 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
+
+            print("backward ", progs[0])
             return progs[1]
         else:
             """
@@ -821,26 +825,28 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                forward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    forward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                backward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    backward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
 
     @LazyInitialized
     def _inout_var_names(self):

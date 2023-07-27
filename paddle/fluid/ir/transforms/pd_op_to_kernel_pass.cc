@@ -49,6 +49,43 @@ std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
     {"DataType::BOOL", phi::DataType::BOOL},
 };
 
+std::unordered_set<std::string> unchaned_fall_set = {"feed_with_place",
+                                                     "builtin.combine",
+                                                     "builtin.slice",
+                                                     "pd.feed",
+                                                     "pd.fetch",
+                                                     "builtin.set_parameter",
+                                                     "builtin.get_parameter",
+                                                     "pd.shadow_output"};
+
+bool NeedFallBackCpu(const std::string& kernel_fn_name,
+                     phi::KernelKey kernel_key) {
+  if (unchaned_fall_set.count(kernel_fn_name)) {
+    return false;
+  }
+  if (kernel_fn_name == "") {
+    return false;
+  }
+  if (phi::KernelFactory::Instance().HasKernel(kernel_fn_name, kernel_key)) {
+    return false;
+  }
+
+  if (kernel_key.backend() == phi::Backend::GPUDNN) {
+    kernel_key.set_backend(phi::Backend::GPU);
+
+    if (phi::KernelFactory::Instance().HasKernel(kernel_fn_name, kernel_key)) {
+      return false;
+    }
+  }
+
+  kernel_key.set_backend(phi::Backend::CPU);
+  if (phi::KernelFactory::Instance().HasKernel(kernel_fn_name, kernel_key)) {
+    return true;
+  }
+
+  return false;
+}
+
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
     const phi::Place& place,
@@ -270,7 +307,51 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     auto kernel_key =
         GetKernelKey(*it, place, map_value_pair, std::move(op_info_parser));
+
+    // if( kernel_fn_str != "")
+    // {
+    //   std::cerr << kernel_fn_str << "\t" << kernel_key << "\t" <<
+    //   NeedFallBackCpu( kernel_fn_str, kernel_key) << std::endl;
+    //   // if(! phi::KernelFactory::Instance().HasKernel( kernel_fn_str,
+    //   kernel_key ))
+    //   // {
+    //   //     std::cerr << "need trans here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! "
+    //   << kernel_fn_str << std::endl;
+    //   // }
+    // }
+
+    if (NeedFallBackCpu(kernel_fn_str, kernel_key)) {
+      kernel_key.set_backend(phi::Backend::CPU);
+    }
+
+    // if( (*it)->name() == "phi.kernel")
+    // {
+    //   kernel_key.set_backend ( phi::Backend::CPU );
+    // }
     VLOG(6) << "kernel type " << kernel_key;
+
+    // if ((*it)->name() == "pd.reshape") {
+    //   std::cerr << "change reshape" << std::endl;
+    //   kernel_key.set_backend(phi::Backend::CPU);
+    //   std::cerr << kernel_key << std::endl;
+    // }
+    if ((*it)->name() == "pd.shape") {
+      std::cerr << "change reshape" << std::endl;
+      kernel_key.set_backend(phi::Backend::CPU);
+      std::cerr << kernel_key << std::endl;
+    }
+
+    if ((*it)->name() == "pd.pool2d" || (*it)->name() == "pd.pool2d_grad") {
+      std::cerr << "change pool2d" << std::endl;
+      if (kernel_key.backend() == phi::Backend::GPUDNN &&
+          (*it)->attributes()
+                  .at("adaptive")
+                  .dyn_cast<ir::BoolAttribute>()
+                  .data() == true) {
+        kernel_key.set_backend(phi::Backend::GPU);
+      }
+      std::cerr << kernel_key << std::endl;
+    }
 
     // only for single output
     // need update new kernel key layout and data tyep
@@ -292,16 +373,33 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           std::vector<ir::Type> vec_inner_types;
           auto base_types = result_type.dyn_cast<ir::VectorType>().data();
           for (size_t j = 0; j < base_types.size(); ++j) {
-            if (base_types[j].isa<dialect::DenseTensorType>()) {
+            if (base_types[j]) {
+              if (base_types[j].isa<dialect::DenseTensorType>()) {
+                auto allocated_dense_tensor_dtype =
+                    paddle::dialect::AllocatedDenseTensorType::get(
+                        ctx,
+                        phi::TransToPhiPlace(kernel_key.backend()),
+                        base_types[j].dyn_cast<dialect::DenseTensorType>());
+                vec_inner_types.push_back(allocated_dense_tensor_dtype);
+              } else {
+                PADDLE_THROW(phi::errors::Unimplemented(
+                    "only support dense tensor in vector type for now"));
+              }
+            } else {
+              // NOTE(phlrain), kernel not support a nullptr in output
+              ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+              phi::DDim dims = {};
+              phi::DataLayout data_layout = phi::DataLayout::NCHW;
+              phi::LoD lod = {{}};
+              size_t offset = 0;
+              auto dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+                  ctx, fp32_dtype, dims, data_layout, lod, offset);
               auto allocated_dense_tensor_dtype =
                   paddle::dialect::AllocatedDenseTensorType::get(
                       ctx,
                       phi::TransToPhiPlace(kernel_key.backend()),
-                      base_types[j].dyn_cast<dialect::DenseTensorType>());
+                      dense_tensor_dtype);
               vec_inner_types.push_back(allocated_dense_tensor_dtype);
-            } else {
-              PADDLE_THROW(phi::errors::Unimplemented(
-                  "only support dense tensor in vector type for now"));
             }
           }
 
@@ -343,6 +441,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
             kernel_fn_str, kernel_key);
 
+        // if( kernel_fn_str != "" && !
+        // phi::KernelFactory::Instance().HasKernel( kernel_fn_str, kernel_key
+        // ))
+        // {
+        //    std::cerr << "need trans here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" <<
+        //    std::endl;
+        // }
+
         if (kernel.IsValid()) {
           if (new_in_type.isa<dialect::AllocatedDenseTensorType>()) {
             // allocated type
@@ -354,6 +460,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                 (op_info_parser != nullptr &&
                  !op_info_parser->IsTensorAttribute(i)) &&
                 (place != phi::TransToPhiPlace(kernel_key.backend()));
+            std::cerr << kernel_fn_str << "\t" << place << "\t"
+                      << phi::TransToPhiPlace(kernel_key.backend())
+                      << std::endl;
             if (need_trans) {
               if (paddle::experimental::NeedTransformPlace(
                       place, kernel.InputAt(i).backend, {})) {
