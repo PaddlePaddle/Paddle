@@ -17,6 +17,28 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#define PD_DECLARE_BN_GRAD_FUNCTOR(dtype, backend)                         \
+  template void phi::BatchNormGradFunctor<dtype, ::phi::backend##Context>( \
+      const ::phi::backend##Context& dev_ctx,                              \
+      const DenseTensor& x,                                                \
+      const DenseTensor& scale,                                            \
+      const DenseTensor& bias,                                             \
+      const paddle::optional<DenseTensor>& mean,                           \
+      const paddle::optional<DenseTensor>& variance,                       \
+      const DenseTensor& saved_mean,                                       \
+      const DenseTensor& saved_variance,                                   \
+      const paddle::optional<DenseTensor>& reserve_space,                  \
+      const DenseTensor& y_grad,                                           \
+      float momentum,                                                      \
+      float epsilon,                                                       \
+      const std::string& data_layout,                                      \
+      bool is_test,                                                        \
+      bool use_global_stats,                                               \
+      bool trainable_statistics,                                           \
+      bool is_inplace,                                                     \
+      DenseTensor* x_grad,                                                 \
+      DenseTensor* scale_grad,                                             \
+
 namespace phi {
 
 template <typename T, typename Context>

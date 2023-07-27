@@ -20,7 +20,6 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
@@ -1361,17 +1360,22 @@ void BatchNormDoubleGradKernel(
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
                    float,
                    phi::dtype::float16) {}
-
-PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
+
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::bfloat16, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
 
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
@@ -1388,12 +1392,11 @@ PD_REGISTER_KERNEL(batch_norm_grad,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-
+#else
 PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
 PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::bfloat16, GPU);
 PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
-#else
+
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1407,10 +1410,6 @@ PD_REGISTER_KERNEL(batch_norm_grad,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-
-PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
 #endif
 #endif
 

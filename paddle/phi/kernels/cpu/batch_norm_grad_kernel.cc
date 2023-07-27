@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -654,6 +653,9 @@ void BatchNormDoubleGradKernel(
 
 }  // namespace phi
 
+PD_DECLARE_BN_GRAD_FUNCTOR(float, CPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, CPU);
+
 PD_REGISTER_KERNEL(
     batch_norm_grad, CPU, ALL_LAYOUT, phi::BatchNormGradKernel, float, double) {
 }
@@ -664,6 +666,3 @@ PD_REGISTER_KERNEL(batch_norm_double_grad,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
-
-PD_DECLARE_BN_GRAD_FUNCTOR(float, CPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(double, CPU);
