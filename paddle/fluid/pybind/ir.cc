@@ -64,6 +64,8 @@ void BindProgram(py::module *m) {
 void BindBlock(py::module *m) {
   py::class_<Block> block(*m, "Block");
   block.def("front", &Block::front, return_value_policy::reference)
+      .def("get_program",
+           [](Block &self) { return self.GetParentOp()->GetParentProgram(); })
       .def("get_ops",
            [](Block &self) -> py::list {
              py::list op_list;

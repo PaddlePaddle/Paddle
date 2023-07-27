@@ -41,6 +41,12 @@ class TestPybind(unittest.TestCase):
         newir_program = get_ir_program()
         newir_program.print()
 
+        block = newir_program.block()
+        program = block.get_program()
+        program.print()
+
+        self.assertEqual(newir_program, program)
+
     def test_block(self):
         newir_program = get_ir_program()
         block = newir_program.block()
@@ -57,7 +63,7 @@ class TestPybind(unittest.TestCase):
         matmul_op = newir_program.block().get_ops()[1]
         add_op = newir_program.block().get_ops()[2]
         tanh_op = newir_program.block().get_ops()[3]
-        parent_block = tanh_op.get_parent()
+        parent_block = tanh_op.get_block()
         parent_ops_num = len(parent_block.get_ops())
         self.assertTrue(parent_ops_num, 4)
         self.assertTrue(tanh_op.num_results(), 1)
