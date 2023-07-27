@@ -1920,18 +1920,14 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.to_tensor([1.0, 2.0, 3.0])
         index = paddle.to_tensor(1)
         updates = paddle.to_tensor([3.0])
-        try:
+        with self.assertRaises(ValueError):
             out = paddle.scatter(x, index, updates)
-        except AssertionError:
-            pass
 
         x = paddle.to_tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
         index = paddle.to_tensor(1)
         updates = paddle.to_tensor([[5.0, 5.0]])
-        try:
+        with self.assertRaises(ValueError):
             out = paddle.scatter(x, index, updates)
-        except AssertionError:
-            pass
 
     def test_scatter_0D_index(self):
         x = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=False)
