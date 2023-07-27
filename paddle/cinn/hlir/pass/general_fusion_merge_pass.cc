@@ -1933,68 +1933,6 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
     }
   }
 
-  bool IsDependency(
-      const GroupPtr& producer_g,
-      const GroupPtr& consumer,
-      const std::unordered_set<GroupPtr, Hasher, Comparator>& consumers) {
-    std::queue<GroupPtr> candidates;
-    candidates.push(consumer);
-
-    std::unordered_set<GroupPtr, Hasher, Comparator> visited_set;
-    while (!candidates.empty()) {
-      auto& candidate = candidates.front();
-      candidates.pop();
-      for (const auto& producer_and_list : candidate->producer_groups()) {
-        if (producer_and_list.get() == producer_g.get()) {
-          continue;
-        }
-        const auto& producer =
-            std::dynamic_pointer_cast<Graph::Group>(producer_and_list);
-        if (consumers.count(producer)) {
-          return true;
-        }
-        if (!visited_set.count(producer)) {
-          visited_set.insert(producer);
-          candidates.push(producer);
-        }
-      }
-    }
-    return false;
-  }
-
-  bool IsDependencySimplify(
-      const GroupPtr& producer_g,
-      const GroupPtr& consumer,
-      const std::unordered_set<GroupPtr, Hasher, Comparator>& consumers) {
-    std::queue<GroupPtr> candidates;
-    candidates.push(consumer);
-    // check upper.
-    int check_upper_depth = producer_g.get() ? producer_g->max_depth : INT_MAX;
-    std::unordered_set<GroupPtr, Hasher, Comparator> visited_set;
-    while (!candidates.empty()) {
-      auto& candidate = candidates.front();
-      candidates.pop();
-      for (auto& producer_and_list : candidate->producer_groups()) {
-        if (producer_and_list.get() == producer_g.get()) {
-          continue;
-        }
-        const auto& producer =
-            std::dynamic_pointer_cast<Graph::Group>(producer_and_list);
-        if (producer->min_depth > check_upper_depth) {
-          continue;
-        }
-        if (consumers.count(producer)) {
-          return true;
-        }
-        if (!visited_set.count(producer)) {
-          visited_set.insert(producer);
-          candidates.push(producer);
-        }
-      }
-    }
-    return false;
-  }
-
   bool GeneralInputFuse() {
     VLOG(3) << "GeneralInputFuse...!";
     auto updated = false;
