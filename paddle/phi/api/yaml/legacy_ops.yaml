@@ -997,3 +997,13 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
+
+- op : fused_softmax_mask_upper_triangle
+  args : (Tensor X)
+  output : Tensor(Out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel:
+    func : fused_softmax_mask_upper_triangle
+  backward: fused_softmax_mask_upper_triangle_grad
+
