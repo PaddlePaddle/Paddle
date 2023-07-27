@@ -642,16 +642,16 @@ class TestSetValueItemBool1(TestSetValueApi):
         self.data[[True, False]] = self.value
 
 
-# class TestSetValueItemBool2(TestSetValueApi):
-#     def _call_setitem(self, x):
-#         x[[False, False]] = self.value
+class TestSetValueItemBool2(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[[False, False]] = self.value
 
-#     def _call_setitem_static_api(self, x):
-#         x = paddle.static.setitem(x, [False, False], self.value)
-#         return x
+    def _call_setitem_static_api(self, x):
+        x = paddle.static.setitem(x, [False, False], self.value)
+        return x
 
-#     def _get_answer(self):
-#         self.data[[False, False]] = self.value
+    def _get_answer(self):
+        self.data[[False, False]] = self.value
 
 
 class TestSetValueItemBool3(TestSetValueApi):
