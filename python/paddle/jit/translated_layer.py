@@ -1370,8 +1370,8 @@ class TranslatedLayer(layers.Layer):
             ...     batch_size=BATCH_SIZE,
             ...     shuffle=True,
             ...     drop_last=True,
-            ...     num_workers=2)
-            ...
+            ...     num_workers=2
+            ... )
             >>> # train
             >>> train(layer, loader, loss_fn, adam)
 
@@ -1578,8 +1578,8 @@ class TranslatedLayer(layers.Layer):
                 ...     batch_size=BATCH_SIZE,
                 ...     shuffle=True,
                 ...     drop_last=True,
-                ...     num_workers=2)
-                ...
+                ...     num_workers=2
+                ... )
                 >>> # train
                 >>> train(layer, loader, loss_fn, adam)
 

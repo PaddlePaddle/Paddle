@@ -870,7 +870,7 @@ def save(layer, path, input_spec=None, **configs):
             ...     def __init__(self):
             ...         super().__init__()
             ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
+            ...
             ...     @paddle.jit.to_static
             ...     def forward(self, x):
             ...         return self._linear(x)
@@ -1453,13 +1453,14 @@ def load(path, **configs):
                 >>> # create data loader
                 >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
                 >>> loader = paddle.io.DataLoader(dataset,
-                >>> feed_list=[image, label],
-                >>> places=place,
-                >>> batch_size=BATCH_SIZE,
-                >>> shuffle=True,
-                >>> drop_last=True,
-                >>> return_list=False,
-                >>> num_workers=2)
+                ...     feed_list=[image, label],
+                ...     places=place,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     return_list=False,
+                ...     num_workers=2
+                ... )
 
                 >>> # 1. train and save inference model
                 >>> for data in loader():
@@ -1491,11 +1492,12 @@ def load(path, **configs):
                 >>> loss_fn = nn.CrossEntropyLoss()
                 >>> adam = opt.Adam(learning_rate=0.001, parameters=fc.parameters())
                 >>> loader = paddle.io.DataLoader(dataset,
-                >>> places=place,
-                >>> batch_size=BATCH_SIZE,
-                >>> shuffle=True,
-                >>> drop_last=True,
-                >>> num_workers=2)
+                ...     places=place,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2
+                ... )
                 >>> for epoch_id in range(EPOCH_NUM):
                 ...     for batch_id, (image, label) in enumerate(loader()):
                 ...         out = fc(image)
