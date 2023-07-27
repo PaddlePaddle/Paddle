@@ -121,7 +121,11 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
 
   // slice size
   size_t slice_size = 1;
-  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  if (index.dims().size() != 0) {
+    for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  } else {
+    for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  }
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
@@ -194,7 +198,11 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
 
   // slice size
   size_t slice_size = 1;
-  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  if (index.dims().size() != 0) {
+    for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  } else {
+    for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  }
 
   const size_t& slice_bytes = slice_size * sizeof(T);
 

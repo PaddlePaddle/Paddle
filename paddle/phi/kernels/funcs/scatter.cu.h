@@ -153,7 +153,11 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
 
   // slice size
   size_t slice_size = 1;
-  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  if (index.dims().size() != 0) {
+    for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  } else {
+    for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  }
 
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
