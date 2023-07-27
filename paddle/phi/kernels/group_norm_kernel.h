@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "paddle/fluid/inference/tensorrt/plugin/common/groupNormPluginCommon.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -51,5 +52,19 @@ class GroupNormDirectCUDAFunctor {
                   const DataLayout data_layout);
 };
 #endif
+
+using paddle::inference::tensorrt::plugin::GroupNormNHWCParams;
+template <typename T>
+class groupNormNHWCSum {
+ public:
+  void operator()(GroupNormNHWCParams<T>* params, const gpuStream_t stream);
+};
+
+template <typename T>
+class groupNormNHWCScale {
+ public:
+  void operator()(const GroupNormNHWCParams<T>& params,
+                  const gpuStream_t stream);
+};
 
 }  // namespace phi

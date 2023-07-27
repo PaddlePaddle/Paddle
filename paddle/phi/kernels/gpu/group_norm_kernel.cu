@@ -32,6 +32,32 @@ static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
 }
 
+#ifdef PADDLE_CUDA_BF16
+__host__ __device__ inline float2 bfloat1622float2(const __nv_bfloat162 a) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  return __bfloat1622float2(a);
+#else
+  float hi_float;
+  float lo_float;
+  lo_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).x);
+  hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
+  return make_float2(lo_float, hi_float);
+#endif
+}
+
+__host__ __device__ inline __nv_bfloat162 float22bfloat162_rn(const float2 a) {
+  __nv_bfloat162 val;
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  val = __float22bfloat162_rn(a);
+#else
+  val.x = __float2bfloat16_rn(a.x);
+  val.y = __float2bfloat16_rn(a.y);
+#endif
+  return val;
+}
+
+#endif
+
 struct GroupSums {
   // Is it the 1st element of the group?
   int32_t flag;
@@ -39,51 +65,6 @@ struct GroupSums {
   float sum;
   // The sum of squares.
   float sumSq;
-};
-
-template <typename T>
-struct GroupNormNHWCParams {
-  // The output buffer. Layout NHWC.
-  T* dst;
-  // The output buffer. Layout NHWC.
-  // The input buffer. Layout NHWC.
-  T const* srcX;
-  // The input buffer. Layout NHWC.
-  // The gamma scaling factor.
-  void const* gamma;
-  // The beta term to add in GN.
-  void const* beta;
-  // The temporary buffer to do the global parallel reduction. Size:
-  // BLOCKS_PER_BATCH x C x 2.
-  float* redBuffer;
-
-  // The number of instances in the batch.
-  int32_t n;
-  // The height and width of each activation map.
-  int32_t h, w;
-  // The number of channels.
-  int32_t c;
-  // The number of groups.
-  int32_t groups;
-  // Do we apply the Silu activation function?
-  bool withSilu;
-
-  // Precomputed values and parameters to control the execution of the kernels.
-
-  // The number of activations per instance (h * w) and the number of
-  // activations per block.
-  int32_t hw, hwPerBlock;
-  // The number of channels per group and blocks per activation in the C
-  // dimension.
-  int32_t cPerBlock, cPerGroup;
-
-  // The precomputed stride between instances.
-  int32_t hwc;
-  // The inverse of hwc in floats (to compute mean/var).
-  float invHWC;
-  // The precomputed number of groups per block.
-  // epsilon, Constant for numerical stability
-  float eps;
 };
 
 struct GroupSumsOp {
@@ -135,7 +116,7 @@ template <>
 inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
     const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
   __nv_bfloat162 h2 = *reinterpret_cast<__nv_bfloat162 const*>(srcX);
-  float2 f2 = __bfloat1622float2(h2);
+  float2 f2 = phi::bfloat1622float2(h2);
   *sum += f2.x + f2.y;
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
@@ -173,7 +154,8 @@ __global__ void groupNormNHWCSumSingerChannelKernel(
 
   float2 sums = smem[threadIdx.x];
 
-  atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci], sums.x);
+  atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci],
+            sums.x * params.invHWC);
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + ci], sums.y);
 }
 
@@ -234,13 +216,15 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
       threadIdx.x * THREADS_PER_CHANNEL ==
           params.cPerBlock - THREADS_PER_CHANNEL) {
     float2 sums = smem[gi];
-    atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + gj], sums.x);
+    atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + gj],
+              sums.x * params.invHWC);
     atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
   }
 }
 
 template <typename T>
-void groupNormNHWCSum(GroupNormNHWCParams<T>* params, cudaStream_t stream) {
+void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
+                                     cudaStream_t stream) {
   dim3 grid;
   grid.x = divUp(params->c, params->cPerBlock);
   grid.y = divUp(params->hw, params->hwPerBlock);
@@ -319,6 +303,7 @@ void groupNormNHWCSum(GroupNormNHWCParams<T>* params, cudaStream_t stream) {
     }
   }
 }
+template class groupNormNHWCSum<__half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void GroupNormCompute(int32_t hwBegin,
@@ -404,9 +389,9 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
-  gammaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  gammaF2 = phi::bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.gamma) + ci));
-  betaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  betaF2 = phi::bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
@@ -419,7 +404,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
         *reinterpret_cast<__nv_bfloat162 const*>(&params.srcX[offset]);
 
     // Extract the two half values.
-    float2 f2 = __bfloat1622float2(h2);
+    float2 f2 = phi::bfloat1622float2(h2);
 
     // Normalize the channels.
     f2.x = (f2.x - mean) * invStdDev;
@@ -436,7 +421,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     }
     // Store the scaled values.
     *reinterpret_cast<__nv_bfloat162*>(&params.dst[offset]) =
-        __float22bfloat162_rn(f2);
+        phi::float22bfloat162_rn(f2);
   }
 }
 
@@ -448,24 +433,24 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
   int32_t ci =
       blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
 
-  if (ci >= params.c) {
-    return;
-  }
   // The group that thread works on and the channel in the group (modulus).
   int32_t gi = ci / params.cPerGroup;
 
-  // Load the sum and sum of squares for the group.
-  float sum = 0.F, sumSq = 0.F;
-
-  if (gi < params.groups) {
-    sum = params.redBuffer[(2 * ni + 0) * params.groups + gi];
-    sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
+  if (ci >= params.c || gi >= params.groups) {
+    return;
   }
 
-  // Compute the mean.
-  float mean = sum * params.invHWC;
+  // Load the sum and sum of squares for the group.
+
+  float mean = params.redBuffer[(2 * ni + 0) * params.groups + gi];
+  float sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
+
   // Compute the variance.
   float var = sumSq * params.invHWC - (mean * mean);
+
+  if (params.var_data != nullptr) {
+    params.var_data[ni * params.groups + gi] = var;
+  }
   // Compute the inverse of the stddev.
   float invStdDev = rsqrtf(var + params.eps);
 
@@ -478,8 +463,8 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
 }
 
 template <typename T>
-void groupNormNHWCScale(const GroupNormNHWCParams<T>& params,
-                        cudaStream_t stream) {
+void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
+                                       cudaStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
@@ -531,8 +516,9 @@ void groupNormNHWCScale(const GroupNormNHWCParams<T>& params,
     }
   }
 }
+template class groupNormNHWCScale<__half>;
 
-template <typename Context, typename T>
+template <typename T, typename Context>
 void GroupNormNHWCKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& scale,
@@ -540,7 +526,10 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
                          float epsilon,
                          int groups,
                          const std::string& data_layout_str,
-                         DenseTensor* y) {
+                         DenseTensor* y,
+                         DenseTensor* mean,
+                         DenseTensor* var) {
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   GroupNormNHWCParams<T> params_;
   params_.withSilu = false;
 
@@ -558,6 +547,12 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   params_.c = x_dims[3];
   params_.h = x_dims[1];
   params_.w = x_dims[2];
+
+  dev_ctx.template Alloc<AccT>(mean);
+  dev_ctx.template Alloc<AccT>(var);
+  auto* mean_data = mean->data<AccT>();
+  auto* var_data = var->data<AccT>();
+  params_.var_data = var_data;
 
   int32_t cPerBlock = 320;
   int32_t maxBlocksPerHW = 1024;
@@ -603,8 +598,15 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   redBuffer.Resize({1, buffer_sizes});
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
   cudaMemsetAsync(params_.redBuffer, 0, buffer_sizes * sizeof(float), stream);
-  groupNormNHWCSum<T>(&params_, stream);
-  groupNormNHWCScale<T>(params_, stream);
+  groupNormNHWCSum<T> nhwc_sum;
+  nhwc_sum(&params_, stream);
+  groupNormNHWCScale<T> nhwc_scale;
+  nhwc_scale(params_, stream);
+  cudaMemcpyAsync(mean_data,
+                  params_.redBuffer,
+                  params_.n * groups * sizeof(float),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 template <typename T, typename AccT>
@@ -801,7 +803,7 @@ template class GroupNormDirectCUDAFunctor<float, float>;
 template class GroupNormDirectCUDAFunctor<half, float>;
 #endif
 
-template <typename Context, typename T>
+template <typename T, typename Context>
 void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                 const DenseTensor& x,
                                 const paddle::optional<DenseTensor>& scale,
@@ -917,101 +919,6 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                    data_layout);
 }
 
-template <typename Context, typename T>
-class GroupNormCustomKernel {
- public:
-  GroupNormCustomKernel() = default;
-  void operator()(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const paddle::optional<DenseTensor>& scale,
-                  const paddle::optional<DenseTensor>& bias,
-                  float epsilon,
-                  int groups,
-                  const std::string& data_layout_str,
-                  DenseTensor* y,
-                  DenseTensor* mean,
-                  DenseTensor* var) {
-    GroupNormGeneralCaseKernel<Context, T>(dev_ctx,
-                                           x,
-                                           scale,
-                                           bias,
-                                           epsilon,
-                                           groups,
-                                           data_layout_str,
-                                           y,
-                                           mean,
-                                           var);
-  }
-};
-
-template <typename Context>
-class GroupNormCustomKernel<Context, phi::dtype::bfloat16> {
- public:
-  GroupNormCustomKernel() = default;
-  void operator()(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const paddle::optional<DenseTensor>& scale,
-                  const paddle::optional<DenseTensor>& bias,
-                  float epsilon,
-                  int groups,
-                  const std::string& data_layout_str,
-                  DenseTensor* y,
-                  DenseTensor* mean,
-                  DenseTensor* var) {
-    using T = phi::dtype::bfloat16;
-    const auto x_dims = x.dims();
-    if (data_layout_str == "NHWC") {
-      GroupNormNHWCKernel<Context, T>(
-          dev_ctx, x, scale, bias, epsilon, groups, data_layout_str, y);
-    } else {
-      GroupNormGeneralCaseKernel<Context, T>(dev_ctx,
-                                             x,
-                                             scale,
-                                             bias,
-                                             epsilon,
-                                             groups,
-                                             data_layout_str,
-                                             y,
-                                             mean,
-                                             var);
-    }
-  }
-};
-
-template <typename Context>
-class GroupNormCustomKernel<Context, phi::dtype::float16> {
- public:
-  GroupNormCustomKernel() = default;
-  void operator()(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const paddle::optional<DenseTensor>& scale,
-                  const paddle::optional<DenseTensor>& bias,
-                  float epsilon,
-                  int groups,
-                  const std::string& data_layout_str,
-                  DenseTensor* y,
-                  DenseTensor* mean,
-                  DenseTensor* var) {
-    using T = phi::dtype::float16;
-    const auto x_dims = x.dims();
-    if (data_layout_str == "NHWC") {
-      GroupNormNHWCKernel<Context, T>(
-          dev_ctx, x, scale, bias, epsilon, groups, data_layout_str, y);
-    } else {
-      GroupNormGeneralCaseKernel<Context, T>(dev_ctx,
-                                             x,
-                                             scale,
-                                             bias,
-                                             epsilon,
-                                             groups,
-                                             data_layout_str,
-                                             y,
-                                             mean,
-                                             var);
-    }
-  }
-};
-
 template <typename T, typename Context>
 void GroupNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -1023,7 +930,38 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
-  GroupNormCustomKernel<Context, T>()(
+  using std::is_same;
+  if (is_same<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
+    GroupNormNHWCKernel<phi::dtype::float16, Context>(dev_ctx,
+                                                      x,
+                                                      scale,
+                                                      bias,
+                                                      epsilon,
+                                                      groups,
+                                                      data_layout_str,
+                                                      y,
+                                                      mean,
+                                                      var);
+    return;
+  }
+
+#ifdef PADDLE_CUDA_BF16
+  if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
+    GroupNormNHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
+                                                       x,
+                                                       scale,
+                                                       bias,
+                                                       epsilon,
+                                                       groups,
+                                                       data_layout_str,
+                                                       y,
+                                                       mean,
+                                                       var);
+    return;
+  }
+#endif
+
+  GroupNormGeneralCaseKernel<T, Context>(
       dev_ctx, x, scale, bias, epsilon, groups, data_layout_str, y, mean, var);
 }
 
