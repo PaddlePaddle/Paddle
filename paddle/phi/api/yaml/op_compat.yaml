@@ -213,7 +213,6 @@
 - op : argmax(arg_max)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -224,7 +223,6 @@
 - op : argmin(arg_min)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -1017,9 +1015,6 @@
 
 - op : feed
   outputs: {out: Out}
-
-- op : feed_with_place
-  outputs: {out: out}
 
 - op : fft_c2c
   inputs: {x: X}
@@ -2417,10 +2412,6 @@
   extra :
     attrs : [bool use_mkldnn=false]
 
-- op : shaddow_output
-  inputs: {x: x}
-  outputs: {out: out}
-
 - op : shape
   inputs :
     input : Input
@@ -3023,7 +3014,7 @@
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label, pos_weight : pos_weight}
+    {x: X, label: Label}
   outputs :
     out : Out
 
