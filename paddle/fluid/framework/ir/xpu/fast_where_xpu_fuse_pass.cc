@@ -464,7 +464,6 @@ int CascadeFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph,
     GET_IR_NODE(fast_where_xpu0_out);
     GET_IR_NODE(fast_where_xpu1_out);
 
-    auto* block = fast_where_xpu0->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));

@@ -22,7 +22,8 @@
 namespace xpu2 {
 namespace plugin {
 
-#define CALC_MASK(offset) mask |= ((int)condition[i + offset]) << offset;
+#define CALC_MASK(offset) \
+  mask |= static_cast<int>(condition[i + offset]) << offset;
 
 static __device__ inline void do_select_16(const int8_t* condition,
                                            const int16_t* x,
