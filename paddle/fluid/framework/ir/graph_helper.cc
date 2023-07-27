@@ -345,7 +345,7 @@ size_t GraphNum(const Graph &graph) {
       traverse_nodes(cur_node->outputs);
     } else {
       ++graph_count;
-      if (g_nodes.size()) {
+      if (!g_nodes.empty()) {
         graph_nodes.emplace_back(g_nodes);
       }
       g_nodes.clear();
@@ -359,11 +359,11 @@ size_t GraphNum(const Graph &graph) {
     }
   }
 
-  if (g_nodes.size()) {
+  if (!g_nodes.empty()) {
     graph_nodes.emplace_back(g_nodes);
   }
 
-  if (FLAGS_print_sub_graph_dir.size()) {
+  if (!FLAGS_print_sub_graph_dir.empty()) {
     if (graph_nodes.size() > 1) {
       std::stringstream out;
       for (auto &g_n : graph_nodes) {

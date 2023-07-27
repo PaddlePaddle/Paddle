@@ -279,6 +279,21 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
 
+void FusedBiasActInferMeta(const MetaTensor& x,
+                           const MetaTensor& bias,
+                           const MetaTensor& dequant_scales,
+                           const MetaTensor& shift,
+                           const MetaTensor& smooth,
+                           const std::string& act_method,
+                           const std::string& compute_dtype,
+                           int rows,
+                           int cols,
+                           float quant_scale,
+                           int quant_round_type,
+                           float quant_max_bound,
+                           float quant_min_bound,
+                           MetaTensor* out);
+
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
                                       const MetaTensor& dweight,
@@ -690,17 +705,20 @@ void FusedMultiHeadAttentionVariableInferMeta(const MetaTensor& query,
                                               bool causal,
                                               MetaTensor* out);
 
-void LLMInt8MatMulInferMeta(const MetaTensor& x,
+void LLMInt8MatmulInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             MetaTensor* out);
 
-void WeightOnlyMatMulInferMeta(const MetaTensor& x,
+void WeightOnlyMatmulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
+                               const MetaTensor& weight_scale,
                                MetaTensor* out);
 
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
+                        const MetaTensor& sin,
+                        const MetaTensor& cos,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);

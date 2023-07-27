@@ -21,11 +21,11 @@ namespace allocation {
 ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
     : place_(p) {
   if (platform::is_gpu_place(place_)) {
-    buddy_allocator_.reset(new memory::detail::BuddyAllocator(
+    buddy_allocator_ = std::make_unique<memory::detail::BuddyAllocator>(
         std::unique_ptr<memory::detail::SystemAllocator>(
             new memory::detail::GPUAllocator(place_.device)),
         platform::GpuMinChunkSize(),
-        platform::GpuMaxChunkSize()));
+        platform::GpuMaxChunkSize());
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Thread local allocator only supports CUDAPlace now."));

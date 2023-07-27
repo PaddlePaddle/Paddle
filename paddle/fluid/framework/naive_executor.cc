@@ -28,7 +28,7 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 #endif
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #ifdef PADDLE_WITH_LITE
@@ -67,7 +67,7 @@ void NaiveExecutor::Run() {
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
   for (auto &op : ops_) {
@@ -105,7 +105,7 @@ for (auto ele:result) {
   }
 }
 
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
 if(nvtx)
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
@@ -218,8 +218,7 @@ if(nvtx)
       }
     }
 
-
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
 if(nvtx)
     platform::CudaNvtxRangePop();
 #endif
@@ -228,7 +227,7 @@ if(nvtx)
       func(op.get(), scope_);
     }
   }
-#ifdef PADDLE_WITH_INFERENCE_NVTX
+#ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
 #endif
 }

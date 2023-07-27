@@ -959,7 +959,7 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
 }
 
 std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
-  if (t.lod().size() > 0) {
+  if (!t.lod().empty()) {
     os << "  - lod: " << t.lod() << "\n";
   }
 
@@ -984,7 +984,7 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   do {                                                            \
     if (paddle::framework::TransToProtoVarType(tensor.dtype()) == \
         proto_type) {                                             \
-      os << "  - dtype: " << proto_type << "\n";                  \
+      os << "  - dtype: " << tensor.dtype() << "\n";              \
       paddle::framework::print_tensor<cpp_type>(os, tensor);      \
       return os;                                                  \
     }                                                             \

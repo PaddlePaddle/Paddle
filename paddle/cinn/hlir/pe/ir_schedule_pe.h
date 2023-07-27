@@ -22,8 +22,8 @@
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/pe/schedule_param.pb.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/ir/ir_schedule_util.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/stage.h"
 

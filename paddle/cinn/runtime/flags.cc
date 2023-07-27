@@ -57,6 +57,10 @@ DEFINE_bool(cinn_use_op_fusion,
             BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
             "Whether to use op fusion pass.");
 
+DEFINE_bool(general_fusion_merge_pass,
+            BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
+            "Whether to use general fusion_merge pass.");
+
 DEFINE_bool(cinn_use_common_subexpression_elimination,
             BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                         false),
@@ -84,10 +88,6 @@ DEFINE_string(cinn_check_fusion_accuracy_pass,
 DEFINE_bool(cinn_use_cuda_vectorize,
             BoolFromEnv("FLAGS_cinn_use_cuda_vectorize", false),
             "Whether use cuda vectroize on schedule config");
-
-DEFINE_bool(cinn_ir_schedule,
-            BoolFromEnv("FLAGS_cinn_ir_schedule", true),
-            "Whether use reconstructed schedule primitives.");
 
 DEFINE_bool(use_reduce_split_pass,
             BoolFromEnv("FLAGS_use_reduce_split_pass", false),
@@ -159,6 +159,11 @@ DEFINE_int32(cinn_profiler_state,
              Int32FromEnv("FLAGS_cinn_profiler_state", -1),
              "Specify the ProfilerState by Int in CINN, 0 for kDisabled, 1 for "
              "kCPU, 2 for kCUDA, 3 for kAll, default 0.");
+
+DEFINE_int32(cinn_error_message_level,
+             Int32FromEnv("FLAGS_cinn_error_message_level", 0),
+             "Specify the level of printing error message in the schedule."
+             "0 means short, 1 means detailed.");
 
 namespace cinn {
 namespace runtime {

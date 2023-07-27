@@ -17,18 +17,17 @@
 import logging
 import os
 import sys
-from ast import arg
 
 from cinn.common import is_compiled_with_cuda
 from cinn.framework import Scope
-from cinn.frontend import NetBuilder, PaddleModelConvertor
+from cinn.frontend import PaddleModelConvertor
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.static import Variable as PaddleVariable
 
 sys.path.append("/work/dev_CINN/build/python/tests")
-from test.cinn.ops.op_test import OpTest, OpTestTool
+from test.cinn.ops.op_test import OpTest
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="op_test")
@@ -308,7 +307,7 @@ class OpMapperTest(OpTest):
             if results[i] is not None and len(results[i].shape) == 0:
                 results[i] = results[i].reshape(1)
 
-        logger.debug(msg="Paddle result:")
+        logger.debug("Paddle result:")
         self.paddle_outputs = self.__remove_skip_outputs(results)
 
     def build_cinn_program(self, target):
@@ -398,7 +397,7 @@ class OpMapperTest(OpTest):
             scope=scope,
         )
 
-        logger.debug(msg="CINN result:")
+        logger.debug("CINN result:")
         self.cinn_outputs = self.__remove_skip_outputs(results)
 
     @staticmethod

@@ -40,7 +40,7 @@ class Planner:
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context
-        self._load = False
+        self._load = False  # load dist_attr from file
 
         # NOTE: [HighOrderGrad]. There are grad ops in forward phase, and it need
         # dependency of backward-forward ops in forward completion.

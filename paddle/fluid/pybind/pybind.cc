@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+#include "paddle/fluid/eager/grad_node_info.h"
+
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -776,6 +778,25 @@ PYBIND11_MODULE(libpaddle, m) {
           }
         });
 
+  py::class_<egr::GradNodeBase, std::shared_ptr<egr::GradNodeBase>>(
+      m, "GradNodeBase")
+      .def("name",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->name();
+           })
+      .def_property_readonly(
+          "next_functions",
+          [](const std::shared_ptr<egr::GradNodeBase> &self) {
+            return self->NextFunctions();
+          })
+      .def("input_meta",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->InputMeta();
+           })
+      .def("output_meta", [](const std::shared_ptr<egr::GradNodeBase> &self) {
+        return self->OutputMeta();
+      });
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
   m.def("gpu_memory_available", []() {
@@ -1009,10 +1030,10 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::XCCLCommContext::Release();
-    platform::CustomTracer::GetMap().clear();
-    platform::CustomDeviceEventResourcePool::GetMap().clear();
-    platform::CustomDeviceStreamResourcePool::GetMap().clear();
-    phi::DeviceManager::Clear();
+    platform::CustomTracer::Release();
+    platform::CustomDeviceEventResourcePool::Release();
+    platform::CustomDeviceStreamResourcePool::Release();
+    phi::DeviceManager::Release();
 #endif
   });
 
@@ -2310,6 +2331,9 @@ All parameter, weight, gradient are variables in Paddle.
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
+  m.def("register_subgraph_pass", [](const std::string &pass_type) {
+    framework::ir::Pass::AddSupportSubgraphPass(pass_type);
+  });
 
   m.def("size_of_dtype", framework::SizeOfType);
   py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
@@ -2724,7 +2748,7 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-  m.def("translate_newirprogram", &paddle::TranslateLegacyProgramToProgram);
+  m.def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram);
   BindFleetWrapper(&m);
   BindIO(&m);
   BindParallelExecutor(m);

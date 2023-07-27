@@ -36,6 +36,7 @@ class LinearTestCase(unittest.TestCase):
         self.in_features = 64
         self.out_features = 64
         self.algo = "weight_only"
+        self.bits = 8
 
     def setUp(self):
         self.config()
@@ -62,6 +63,7 @@ class LinearTestCase(unittest.TestCase):
             self.in_features,
             self.out_features,
             bias_attr=bias_attr,
+            bits=8,
             algo=self.algo,
             config=self.config,
         )
@@ -110,6 +112,16 @@ class LinearTestCase3(LinearTestCase):
         self.out_features = 64
         self.algo = "llm.int8"
         self.atol = 1e-1
+
+
+class LinearTestCase4(LinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.bias = True
+        self.in_features = 128
+        self.out_features = 64
+        self.bits = 4
 
 
 if __name__ == '__main__':

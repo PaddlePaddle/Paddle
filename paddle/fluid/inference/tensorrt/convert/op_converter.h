@@ -322,17 +322,15 @@ std::cout << op_desc.InputNames().size() << std::endl;
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        
-        if (!(engine->min_input_shape().count(input) && 
-              engine->max_input_shape().count(input) && 
+        if (!(engine->min_input_shape().count(input) &&
+              engine->max_input_shape().count(input) &&
               engine->optim_input_shape().count(input))) {
-          PADDLE_THROW(platform::errors::InvalidArgument("Cannot get %s min/max/opt shape", input));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Cannot get %s min/max/opt shape", input));
         }
-
         auto min_input_shape = engine->min_input_shape().at(input);
         auto max_input_shape = engine->max_input_shape().at(input);
         auto optim_input_shape = engine->optim_input_shape().at(input);
-
         size_t ranks = min_input_shape.size();
 
         std::vector<int64_t> input_shape;

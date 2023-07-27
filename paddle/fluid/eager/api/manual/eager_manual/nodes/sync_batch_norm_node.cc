@@ -70,8 +70,8 @@ SyncBatchNormGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(5);
   for (int i = 0; i < 5; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =
@@ -289,8 +289,8 @@ SyncBatchNormGradNode::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(5);
   for (int i = 0; i < 5; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   auto* api_output_0 =

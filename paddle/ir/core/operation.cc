@@ -205,6 +205,11 @@ std::string Operation::name() const {
   return p_name ? p_name : "";
 }
 
+Attribute Operation::attribute(const std::string &key) const {
+  IR_ENFORCE(HasAttribute(key), "operation(%s): no attribute %s", name(), key);
+  return attributes_.at(key);
+}
+
 Region *Operation::GetParentRegion() const {
   return parent_ ? parent_->GetParent() : nullptr;
 }
@@ -227,6 +232,11 @@ Region &Operation::region(unsigned index) {
   return regions_[index];
 }
 
+const Region &Operation::region(unsigned index) const {
+  assert(index < num_regions_ && "invalid region index");
+  return regions_[index];
+}
+
 void Operation::SetParent(Block *parent, const Block::iterator &position) {
   parent_ = parent;
   position_ = position;
@@ -237,6 +247,14 @@ void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
              "the num of result should be the same.");
   for (uint32_t i = 0; i < num_results_; ++i) {
     result(i).ReplaceAllUsesWith(values[i]);
+  }
+}
+
+void Operation::ReplaceAllUsesWith(const std::vector<OpResult> &op_results) {
+  IR_ENFORCE(num_results_ == op_results.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(op_results[i]);
   }
 }
 
