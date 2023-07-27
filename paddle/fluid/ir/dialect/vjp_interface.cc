@@ -32,7 +32,7 @@ std::vector<ir::OpResult> TanhOp::Vjp(ir::Operation* op,
   std::vector<ir::OpResult> res;
   res.reserve(tensor_res.size());
   // TODO(wanghao107): maybe combile here
-  for (int i = 0; i < tensor_res.size(); ++i) {
+  for (size_t i = 0; i < tensor_res.size(); ++i) {
     res.emplace_back(
         std::static_pointer_cast<primitive::experimental::DescTensor>(
             tensor_res[i][0].impl())
