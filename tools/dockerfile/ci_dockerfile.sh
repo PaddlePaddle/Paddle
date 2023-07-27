@@ -100,6 +100,7 @@ function make_ce_framework_dockcerfile(){
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i RUN chmod 777 /tmp" ${dockerfile_name}
+  sed -i "s@# install cmake@RUN wget -q --no-proxy https://paddle-ci.gz.bcebos.com/libstdc%2B%2B.so.6.0.26 \&\& cp libstdc++.so.6.0.26 /usr/local/gcc-8.2/lib64/libstdc++.so.6 \&\& ldd /usr/local/gcc-8.2/lib64/libstdc++.so.6@g" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name} 
   sed -i "${dockerfile_line}i RUN apt install -y zstd pigz libcurl4-openssl-dev gettext ninja-build" ${dockerfile_name}
