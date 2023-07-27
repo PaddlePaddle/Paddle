@@ -164,18 +164,17 @@ Conv1dXPUPattern::Conv1dXPUPattern(PDPattern* pattern,
   }
   // squeeze2 op
   ew_bias_add_out->assert_is_op_input("squeeze2", "X");
-  auto squeeze2 =
-      pattern->NewNode(squeeze2_repr())
-          ->assert_is_op("squeeze2")
-          ->assert_more([](Node* node) {
-            auto* op_desc = node->Op();
-            auto axes_array =
-                op_desc->GetAttrIfExists<std::vector<int>>("axes");
-            return axes_array == std::vector<int>{-2} ||
-                   axes_array == std::vector<int>{2};
-          });
+  auto squeeze2 = pattern->NewNode(squeeze2_repr())
+                      ->assert_is_op("squeeze2")
+                      ->assert_more([](Node* node) {
+                        auto* op_desc = node->Op();
+                        auto axes_array =
+                            op_desc->GetAttrIfExists<std::vector<int>>("axes");
+                        return axes_array == std::vector<int>{-2} ||
+                               axes_array == std::vector<int>{2};
+                      });
   auto squeeze2_out = pattern->NewNode(squeeze2_out_repr())
-                           ->assert_is_op_output("squeeze2", "Out");
+                          ->assert_is_op_output("squeeze2", "Out");
   squeeze2->LinksFrom({ew_bias_add_out}).LinksTo({squeeze2_out});
   PDNode* bn = nullptr;
   PDNode* bn_bias = nullptr;
@@ -616,13 +615,14 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv1d_xpu_op_desc.SetAttr(
         "padding_algorithm",
         conv->Op()->GetAttrIfExists<std::string>("padding_algorithm"));
-    auto conv_paddings = conv->Op()->GetAttrIfExists<std::vector<int>>("paddings");
+    auto conv_paddings =
+        conv->Op()->GetAttrIfExists<std::vector<int>>("paddings");
     if (conv_paddings.size() == 2) {
       if (conv_paddings[0] == 0) {
         conv_paddings[0] = conv_paddings[1];
       }
     }
-    std::vector<int64_t> paddings = {static_cast<int64_t>(conv_paddings[0]), static_cast<int64_t>(conv_paddings[1])};
+    std::vector<int> paddings = {conv_paddings[0], conv_paddings[1]};
     conv1d_xpu_op_desc.SetAttr("paddings", paddings);
     auto conv_dilations =
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("dilations"));
@@ -639,7 +639,8 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     conv1d_xpu_op_desc.SetAttr("strides", stride_w);
     // update graph pattern after fuse
-    std::unordered_set<const Node*> delete_nodes = {conv, conv_out, ew_bias_add, ew_bias_add_y, ew_bias_add_out, squeeze2};
+    std::unordered_set<const Node*> delete_nodes = {
+        conv, conv_out, ew_bias_add, ew_bias_add_y, ew_bias_add_out, squeeze2};
     // for x->unsqueeze-->conv2d pattern
     //                 |->conv2d
     if (conv_input->outputs.size() == 1) {

@@ -49,6 +49,7 @@ void Conv1dXPUKernel(const Context& ctx,
   int in_xw = static_cast<int>(input_dims[2]);
   int out_c = static_cast<int>(filter_dims[0]);
   int ksize_w = static_cast<int>(filter_dims[2]);
+  std::vector<int64_t> paddings_vec(std::begin(paddings), std::end(paddings));
 
   auto* input_data = reinterpret_cast<const XPUType*>(x.data<T>());
   const float* input_max_data =
@@ -64,12 +65,9 @@ void Conv1dXPUKernel(const Context& ctx,
                                      : branch_max.get_ptr()->data<float>();
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
-  VLOG(1) << "--- 1";
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  VLOG(1) << "--- 2";
   auto* out_max_data = ctx.template Alloc<float>(out_max);
-  VLOG(1) << "--- 3";
- 
+
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
     act.leaky_alpha = act_param;
@@ -88,7 +86,7 @@ void Conv1dXPUKernel(const Context& ctx,
           /* int64_t f */ out_c,
           /* int64_t ksize_w */ ksize_w,
           /* int64_t stride_w */ strides,
-          /* const std::vector<int64_t>& pad */ paddings,
+          /* const std::vector<int64_t>& pad */ paddings_vec,
           /* int64_t dilation_w */ dilations,
           /* int64_t group */ groups,
           /* const float* x_maxptr */ input_max_data,
