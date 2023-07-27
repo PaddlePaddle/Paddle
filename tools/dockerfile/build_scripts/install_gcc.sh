@@ -33,6 +33,10 @@ if [ "$1" == "gcc82" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/sanitizer_platform_limits_posix.cc.patch
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/sanitizer_platform_limits_posix.h.patch
+  patch -p0 libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc sanitizer_platform_limits_posix.cc.patch
+  patch -p0 libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.h sanitizer_platform_limits_posix.h.patch
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
   ./contrib/download_prerequisites && \
   cd .. && mkdir temp_gcc82 && cd temp_gcc82 && \
