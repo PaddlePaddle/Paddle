@@ -27,8 +27,6 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/functional.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace hlir {
 namespace op {
