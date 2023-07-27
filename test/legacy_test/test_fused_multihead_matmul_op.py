@@ -47,9 +47,7 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
-        self.Input = (
-            np.random.random((self.batch_size, h, w)).astype("float32")
-        )
+        self.Input = np.random.random((self.batch_size, h, w)).astype("float32")
         self.WQ = np.eye(w).astype("float32")
         self.KQ = np.eye(w).astype("float32")
         self.VQ = np.eye(w).astype("float32")
@@ -154,9 +152,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
-        self.Input = (
-            np.random.random((self.batch_size, h, w)).astype("float32")
-        )
+        self.Input = np.random.random((self.batch_size, h, w)).astype("float32")
         self.WQ = np.eye(w).astype("float32")
         self.KQ = np.eye(w).astype("float32")
         self.VQ = np.eye(w).astype("float32")
