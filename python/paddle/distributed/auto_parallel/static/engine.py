@@ -837,7 +837,14 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
+                print("prun startup prog", prune_startup_prog)
+                paddle.framework.set_flags(
+                    {'FLAGS_enable_new_ir_in_executor': False}
+                )
                 self._executor.run(prune_startup_prog)
+                paddle.framework.set_flags(
+                    {'FLAGS_enable_new_ir_in_executor': True}
+                )
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
@@ -976,6 +983,7 @@ class Engine:
         )
 
         cbks.on_begin('train')
+        print("main program", self.main_program)
         for epoch in range(epochs):
             logs = {}
             cbks.on_epoch_begin(epoch)
