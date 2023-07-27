@@ -199,9 +199,21 @@ void HandleForSpecialOp(
 
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    std::string name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+    paddle::framework::Variable* var = inner_scope->FindVar(name);
 
     auto feed_var_name = "feed_" + std::to_string(index);
     value_2_var_name->emplace(value, feed_var_name);
+    variable_2_var_name->emplace(var, feed_var_name);
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(feed_var_name, id);
+    variable_list->push_back(var);
+    PADDLE_ENFORCE_EQ(
+        variable_list->size(),
+        var_name_2_id->size(),
+        paddle::platform::errors::InvalidArgument(
+            "The size of variable_list and var_name_2_id map should be equal"));
   }
 
   if (op_name == "pd.feed_with_place") {
@@ -339,6 +351,9 @@ void HandleForInplaceOp(
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value value = op->result(i);
+    if (value.type().storage() == nullptr) {
+      continue;
+    }
     std::string value_name = yaml_parser.OutputNames()[i];
     if (yaml_parser.HasInplace(value_name)) {
       std::string inplace_name = yaml_parser.InplaceName(value_name);
