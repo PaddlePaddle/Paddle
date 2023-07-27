@@ -339,6 +339,7 @@ void TransStride(const Context& dev_ctx,
                              to->offset(),
                              to);
                        }));
+    delete from;
   }
 }
 
@@ -357,6 +358,7 @@ void TransStride(const Context& dev_ctx,
                                to[i]->offset(),
                                to[i]);
                          }));
+      delete from[i];
     }
   }
 }
@@ -376,6 +378,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                to->offset(),
                                to);
                          }));
+      delete from;
       return;
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -390,6 +393,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                to->offset(),
                                to);
                          }));
+      delete from;
       return;
     }
 #endif
@@ -405,6 +409,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                to->offset(),
                                to);
                          }));
+      delete from;
       return;
     }
 #endif
@@ -427,6 +432,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                  to[i]->offset(),
                                  to[i]);
                            }));
+        delete from[i];
         continue;
       }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -441,6 +447,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                  to[i]->offset(),
                                  to[i]);
                            }));
+        delete from[i];
         continue;
       }
 #endif
@@ -456,6 +463,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                  to[i]->offset(),
                                  to[i]);
                            }));
+        delete from[i];
         continue;
       }
 #endif
