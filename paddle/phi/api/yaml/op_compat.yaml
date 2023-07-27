@@ -354,6 +354,7 @@
     attrs : [bool use_mkldnn = false]
 
 - op : bilinear (bilinear_tensor_product)
+  backward: bilinear_grad (bilinear_tensor_product_grad)
   inputs :
     {x : X, y : Y,weight: Weight, bias: Bias}
   outputs :
@@ -1838,7 +1839,7 @@
       data_type : float
       support_tensor : true
 
-- op : merged_momentum_
+- op : merged_momentum_ (merged_momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -3038,11 +3039,27 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
-- op: fetch
+- op: channel_shuffle
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out}
+
+- op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
 
 - op: full_batch_size_like (fill_constant_batch_size_like)
+  inputs:
+    {input: Input}
+  outputs:
+    {out: Out}
+
+- op: logspace
+  inputs:
+    {start: Start, stop: Stop, num: Num, base: Base}
+  outputs:
+    {out: Out}
 
 - op: lu
   backward: lu_grad
@@ -3058,6 +3075,12 @@
     {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
   outputs :
     {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
+
+- op: rrelu
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out, noise: Noise}
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
