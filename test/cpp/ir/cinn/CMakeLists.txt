@@ -4,8 +4,7 @@ if(WITH_TESTING AND WITH_CINN)
     SRCS
     new_ir_compiler_test.cc
     DEPS
-    cinncore
-    pd_dialect
+    new_ir_compiler
     ir
     phi
     gtest

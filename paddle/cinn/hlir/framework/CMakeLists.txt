@@ -12,7 +12,6 @@ gather_srcs(
   program.cc
   parallel_compiler.cc
   graph_compiler.cc
-  new_ir_compiler.cc
   graph.cc
   node.cc
   pass.cc
@@ -21,6 +20,9 @@ gather_srcs(
   op_lowering_util.cc
   accuracy_checker.cc
   visualize_helper.cc)
+
+cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinncore
+                pd_dialect)
 
 if(WITH_CUDA)
   cinn_nv_test(test_hlir_framework_buffer SRCS buffer_test.cc DEPS cinncore)
