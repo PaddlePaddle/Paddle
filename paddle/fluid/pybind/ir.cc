@@ -81,9 +81,11 @@ void BindBlock(py::module *m) {
 void BindOperation(py::module *m) {
   py::class_<Operation> op(*m, "Operation");
   op.def("name", &Operation::name)
-      .def("get_parent", &Operation::GetParent, return_value_policy::reference)
+      .def("get_block", &Operation::GetParent, return_value_policy::reference)
       .def("num_results", &Operation::num_results)
+      .def("num_operands", &Operation::num_operands)
       .def("result", &Operation::result)
+      .def("operand", &Operation::op_operand)
       .def("operands",
            [](Operation &self) -> py::list {
              py::list op_list;
