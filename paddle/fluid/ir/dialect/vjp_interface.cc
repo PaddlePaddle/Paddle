@@ -19,37 +19,32 @@
 
 namespace paddle {
 namespace dialect {
-std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
-    ir::Operation* op,
-    std::vector<std::vector<ir::OpResult>> out_grads,
-    const std::vector<std::vector<int>>& stop_gradients) {
+std::vector<ir::OpResult> TanhOp::Vjp(ir::Operation* op,
+                                      std::vector<ir::OpResult> out_grads,
+                                      const std::vector<int>& stop_gradients) {
   TanhOp op_obj = op->dyn_cast<TanhOp>();
   Tensor out(
       std::make_shared<primitive::experimental::DescTensor>(op_obj.out()));
   Tensor grad_out(
-      std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
+      std::make_shared<primitive::experimental::DescTensor>(out_grads[0]));
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
-  std::vector<std::vector<ir::OpResult>> res;
+  std::vector<ir::OpResult> res;
   res.reserve(tensor_res.size());
   for (int i = 0; i < tensor_res.size(); ++i) {
-    res[i].reserve(tensor_res[i].size());
-    for (const auto& item : tensor_res[i]) {
-      res[i].emplace_back(
-          std::static_pointer_cast<primitive::experimental::DescTensor>(
-              item.impl())
-              ->getValue()
-              .dyn_cast<ir::OpResult>());
-    }
+    res.emplace_back(
+        std::static_pointer_cast<primitive::experimental::DescTensor>(
+            tensor_res[i][0].impl())
+            ->getValue()
+            .dyn_cast<ir::OpResult>());
   }
   return res;
 }
 
-std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
-    ir::Operation* op,
-    std::vector<std::vector<ir::OpResult>> out_grads,
-    const std::vector<std::vector<int>>& stop_gradients) {
-  return {{}};
+std::vector<ir::OpResult> Tanh_Op::Vjp(ir::Operation* op,
+                                       std::vector<ir::OpResult> out_grads,
+                                       const std::vector<int>& stop_gradients) {
+  return {};
 }
 }  // namespace dialect
 }  // namespace paddle
