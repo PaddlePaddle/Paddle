@@ -31,6 +31,7 @@ std::vector<ir::OpResult> TanhOp::Vjp(ir::Operation* op,
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<ir::OpResult> res;
   res.reserve(tensor_res.size());
+  // TODO(wanghao107): maybe combile here
   for (int i = 0; i < tensor_res.size(); ++i) {
     res.emplace_back(
         std::static_pointer_cast<primitive::experimental::DescTensor>(
