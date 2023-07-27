@@ -66,7 +66,6 @@ void BuildPhiContext(ir::Operation* op,
       local_scope != nullptr ? local_scope : scope;
   VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
           << inner_scope << "]";
-  // inputs include input and mutable attributes
 
   auto attr_map = op->attributes();
 
