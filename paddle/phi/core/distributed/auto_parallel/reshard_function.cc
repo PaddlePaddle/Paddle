@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
-#include <gtest/gtest.h>
-
-#include "paddle/cinn/ir/utils/ir_printer.h"
-
-namespace cinn {
-namespace optim {
-
-TEST(IrCopy, basic) {
-  Expr a(1.f);
-  auto aa = IRCopy(a);
-  LOG(INFO) << "aa " << aa;
-}
-
-}  // namespace optim
-}  // namespace cinn
+namespace phi {
+namespace distributed {}  // namespace distributed
+}  // namespace phi

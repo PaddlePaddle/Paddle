@@ -958,7 +958,8 @@ void BuildOpFuncList(
 
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
         op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
+        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -973,18 +974,20 @@ void BuildOpFuncList(
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    ::ir::BuildPhiContext<
-        phi::InferMetaContext,
-        phi::MetaTensor,
-        phi::MetaTensor,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        false>((*it),
-               value_2_name_map,
-               scope,
-               local_scope,
-               op_yaml_info_parser,
-               &(op_func_node.infer_meta_context_));
+    if (op_func_node.infer_meta_interface_) {
+      ::ir::BuildPhiContext<
+          phi::InferMetaContext,
+          phi::MetaTensor,
+          phi::MetaTensor,
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+          false>((*it),
+                 value_2_name_map,
+                 scope,
+                 local_scope,
+                 op_yaml_info_parser,
+                 &(op_func_node.infer_meta_context_));
+    }
 
     auto kernel_name =
         attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
