@@ -2920,6 +2920,13 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [2., 2.],
             #  [1., 1.]]
     """
+    x_shape = x.shape
+    index_shape = index.shape
+    updates_shape = updates.shape
+    if len(index_shape) == 0:
+        assert len(updates_shape) == (
+            len(x_shape) - 1
+        ), "When the index is a 0D tensor, the dims of updates should be x's dims - 1"
     if in_dynamic_mode():
         return _C_ops.scatter(x, index, updates, overwrite)
     else:
