@@ -16,6 +16,8 @@ include(ExternalProject)
 
 # find_package(jemalloc REQUIRED)
 
+set(ROCKSDB_TAG 6.19.fb)
+
 set(JEMALLOC_INCLUDE_DIR ${THIRD_PARTY_PATH}/install/jemalloc/include)
 set(JEMALLOC_LIBRARIES
     ${THIRD_PARTY_PATH}/install/jemalloc/lib/libjemalloc_pic.a)
@@ -55,14 +57,14 @@ if(WITH_ARM)
        native_src)
   set(ROCKSDB_PATCH_COMMAND
       git checkout -- . && git checkout ${ROCKSDB_TAG} && patch -Nd
-      ${PADDLE_SOURCE_DIR}/third_party/rocksdb/env/ < ${native_src})
+      ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/env < ${native_src})
 endif()
 ExternalProject_Add(
   extern_rocksdb
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${ROCKSDB_PREFIX_DIR}
   GIT_REPOSITORY "https://github.com/Thunderbrook/rocksdb"
-  GIT_TAG 6.19.fb
+  GIT_TAG ${ROCKSDB_TAG}
   UPDATE_COMMAND ""
   PATCH_COMMAND ${ROCKSDB_PATCH_COMMAND}
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
