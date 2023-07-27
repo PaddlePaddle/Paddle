@@ -224,7 +224,7 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
 
 template <typename T>
 void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
-                                     cudaStream_t stream) {
+                                     gpuStream_t stream) {
   dim3 grid;
   grid.x = divUp(params->c, params->cPerBlock);
   grid.y = divUp(params->hw, params->hwPerBlock);
@@ -464,7 +464,7 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
 
 template <typename T>
 void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
-                                       cudaStream_t stream) {
+                                       gpuStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.

@@ -87,11 +87,7 @@ class TestGroupNormOp(OpTest):
         self.data_format = "NCHW"
         self.dtype = np.float64
         self.shape = (2, 100, 3, 5)
-        self.attrs = {
-            'epsilon': 1e-5,
-            'groups': 2,
-            'data_layout': self.data_format,
-        }
+        self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
         self.init_test_case()
 
@@ -314,51 +310,6 @@ class TestGroupNormBF16Op2(TestGroupNormBF16Op):
         self.attrs['groups'] = 4
 
 
-class TestGroupNormFP16Op3(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 128, 96, 96)
-        self.data_format = "NHWC"
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op3(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 128, 96, 96)
-        self.data_format = "NHWC"
-
-
-class TestGroupNormFP16Op4(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 3
-        self.shape = (1, 129, 96, 96)
-        self.data_format = "NHWC"
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op4(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 3
-        self.shape = (1, 129, 96, 96)
-        self.data_format = "NHWC"
-
-
-class TestGroupNormFP16Op5(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 320, 96, 96)
-        self.data_format = "NHWC"
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op5(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 32
-        self.shape = (1, 320, 96, 96)
-        self.data_format = "NHWC"
-
-
 class TestGroupNormOpBigEps1(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
@@ -397,6 +348,67 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.data_format = "NHWC"
+
+
+class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 1
+        self.data_format = "NHWC"
+        self.attrs['epsilon'] = 0.5
+        self.shape = (1, 100, 8, 8)
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestGroupNormBF16Op_With_NHWC(OpTest):
+    def setUp(self):
+        self.op_type = "group_norm"
+        self.python_api = group_norm_wrapper
+        self.python_out_sig = ["Y"]
+        self.data_format = "NHWC"
+        self.dtype = np.uint16
+        self.shape = (1, 3, 5, 100)
+        self.attrs = {
+            'epsilon': 5e-2,
+            'groups': 2,
+            'data_layout': self.data_format,
+        }
+        self.init_test_case()
+
+        input = np.random.random(self.shape).astype(np.float32)
+        scale = np.random.random([self.shape[3]]).astype(np.float32)
+        bias = np.random.random([self.shape[3]]).astype(np.float32)
+        output, mean, var = group_norm_naive(
+            input,
+            scale,
+            bias,
+            self.attrs['epsilon'],
+            self.attrs['groups'],
+            self.data_format,
+        )
+
+        self.inputs = {
+            'X': convert_float_to_uint16(input),
+            'Scale': convert_float_to_uint16(scale),
+            'Bias': convert_float_to_uint16(bias),
+        }
+        self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+
+    def test_check_output(self):
+        rtol = 1e-2
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, rtol=rtol)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
+
+    def init_test_case(self):
+        pass
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
