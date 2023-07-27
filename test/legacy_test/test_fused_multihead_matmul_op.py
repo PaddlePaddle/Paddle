@@ -47,7 +47,7 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
-        self.Input = (np.random.random((self.batch_size, h, w)).astype("float32"))
+        self.Input = np.random.random((self.batch_size, h, w)).astype("float32")
         self.WQ = np.eye(w).astype("float32")
         self.KQ = np.eye(w).astype("float32")
         self.VQ = np.eye(w).astype("float32")
@@ -133,7 +133,7 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2e-2, check_dygraph=False)
+        self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 
 @unittest.skipIf(
@@ -152,9 +152,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
-        self.Input = (
-            np.random.random((self.batch_size, h, w)).astype("float32")
-        )
+        self.Input = np.random.random((self.batch_size, h, w)).astype("float32")
         self.WQ = np.eye(w).astype("float32")
         self.KQ = np.eye(w).astype("float32")
         self.VQ = np.eye(w).astype("float32")
@@ -237,7 +235,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2e-2, check_dygraph=False)
+        self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 
 class TestFusedMultiHeadMatmulOp2(TestFusedMultiheadMatmulOp):
