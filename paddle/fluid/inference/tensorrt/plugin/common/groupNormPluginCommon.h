@@ -24,15 +24,16 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+template <typename T = __half>
 struct GroupNormNHWCParams {
   // The output buffer. Layout NHWC.
-  __half* dst;
+  T* dst;
   // The output buffer. Layout NHWC.
-  __half* eleOut;
+  T* eleOut;
   // The input buffer. Layout NHWC.
-  __half const* srcX;
+  T const* srcX;
   // The input buffer. Layout NHWC.
-  __half const* srcY;
+  T const* srcY;
   // The gamma scaling factor.
   void const* gamma;
   // The beta term to add in GN.
@@ -40,6 +41,14 @@ struct GroupNormNHWCParams {
   // The temporary buffer to do the global parallel reduction. Size:
   // BLOCKS_PER_BATCH x C x 2.
   float* redBuffer;
+
+  // The mean
+  float* mean_data;
+  // The variance
+  float* var_data;
+
+  // The sum of var^2
+  float* temp_var_data;
 
   // The number of instances in the batch.
   int32_t n;

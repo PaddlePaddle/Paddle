@@ -64,51 +64,6 @@ struct GroupSums {
   float sumSq;
 };
 
-template <typename T>
-struct GroupNormNHWCParams {
-  // The output buffer. Layout NHWC.
-  T* dst;
-  // The input buffer. Layout NHWC.
-  T const* srcX;
-
-  // The gamma scaling factor.
-  void const* gamma;
-  // The beta term to add in GN.
-  void const* beta;
-
-  // The mean
-  float* mean_data;
-  // The variance
-  float* var_data;
-
-  // The sum of var^2
-  float* temp_var_data;
-
-  // The number of instances in the batch.
-  int32_t n;
-  // The height and width of each activation map.
-  int32_t h, w;
-  // The number of channels.
-  int32_t c;
-  // The number of groups.
-  int32_t groups;
-
-  // The number of activations per instance (h * w) and the number of
-  // activations per block.
-  int32_t hw, hwPerBlock;
-  // The number of channels per group and blocks per activation in the C
-  // dimension.
-  int32_t cPerBlock, cPerGroup;
-
-  // The precomputed stride between instances.
-  int32_t hwc;
-  // The inverse of hwc in floats (to compute mean/var).
-  float invHWC;
-  // The precomputed number of groups per block.
-  // epsilon, Constant for numerical stability
-  float eps;
-};
-
 struct GroupSumsOp {
   inline __device__ GroupSums operator()(GroupSums const& a,
                                          GroupSums const& b) {
@@ -240,8 +195,8 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
 }
 
 template <typename T>
-void groupNormNHWCSum(GroupNormNHWCParams<T>* params,
-                      const gpuStream_t stream) {
+void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
+                                     const gpuStream_t stream) {
   dim3 grid;
   grid.x = divUp(params->c, params->cPerBlock);
   grid.y = divUp(params->hw, params->hwPerBlock);
@@ -290,6 +245,7 @@ void groupNormNHWCSum(GroupNormNHWCParams<T>* params,
     }
   }
 }
+template class groupNormNHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void GroupNormCompute(int32_t hwBegin,
@@ -431,8 +387,8 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
 }
 
 template <typename T>
-void groupNormNHWCScale(const GroupNormNHWCParams<T>& params,
-                        const gpuStream_t stream) {
+void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
+                                       const gpuStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
@@ -484,6 +440,7 @@ void groupNormNHWCScale(const GroupNormNHWCParams<T>& params,
     }
   }
 }
+template class groupNormNHWCScale<half>;
 
 template <typename T, typename Context>
 void GroupNormNHWCKernel(const Context& dev_ctx,
@@ -568,8 +525,10 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
   params_.eps = epsilon;
   auto stream = dev_ctx.stream();
-  groupNormNHWCSum<T>(&params_, stream);
-  groupNormNHWCScale<T>(params_, stream);
+  groupNormNHWCSum<T> nhwc_sum;
+  nhwc_sum(&params_, stream);
+  groupNormNHWCScale<T> nhwc_scale;
+  nhwc_scale(params_, stream);
 }
 
 template <typename T, typename AccT>

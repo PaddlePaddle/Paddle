@@ -131,7 +131,7 @@ struct GroupSumsOp {
 };
 
 template <int32_t tTHREADS_PER_BLOCK>
-__global__ void skipGroupNormNHWCSumKernel(GroupNormNHWCParams params) {
+__global__ void skipGroupNormNHWCSumKernel(GroupNormNHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -224,7 +224,7 @@ __global__ void skipGroupNormNHWCSumKernel(GroupNormNHWCParams params) {
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void skipGroupNormNHWCSum(GroupNormNHWCParams const &params,
+void skipGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
                           cudaStream_t stream) {
   // Make sure the values are as we expect.
   PADDLE_ENFORCE_EQ(
@@ -282,7 +282,8 @@ void skipGroupNormNHWCSum(GroupNormNHWCParams const &params,
 }
 
 template <int32_t tTHREADS_PER_BLOCK>
-__global__ void skipGroupNormNHWCScaleKernel(GroupNormNHWCParams params) {
+__global__ void skipGroupNormNHWCScaleKernel(
+    GroupNormNHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -353,7 +354,7 @@ __global__ void skipGroupNormNHWCScaleKernel(GroupNormNHWCParams params) {
   }
 }
 
-void skipGroupNormNHWCScale(GroupNormNHWCParams const &params,
+void skipGroupNormNHWCScale(GroupNormNHWCParams<__half> const &params,
                             cudaStream_t stream) {
   // Make sure the dimensions are aligned with what we expect.
   PADDLE_ENFORCE_EQ(params.c % params.cPerBlock,
