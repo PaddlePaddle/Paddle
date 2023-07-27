@@ -85,7 +85,7 @@ about:
 """
 
         self.build_const = r"""
-pip install {}/paddle_bfloat-0.1.7.tar.gz
+pip install paddle_bfloat==0.1.7 -f {}
 """.format(
             package_path
         )
