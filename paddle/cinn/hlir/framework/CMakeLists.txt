@@ -21,8 +21,12 @@ gather_srcs(
   accuracy_checker.cc
   visualize_helper.cc)
 
-cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinncore
-                pd_dialect)
+# TODO(Aurelius84): new_ir_compiler depends on pd_dialect and could
+# not found under CINN_ONLY mode
+if(NOT CINN_ONLY)
+  cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinncore
+                  pd_dialect)
+endif()
 
 if(WITH_CUDA)
   cinn_nv_test(test_hlir_framework_buffer SRCS buffer_test.cc DEPS cinncore)
