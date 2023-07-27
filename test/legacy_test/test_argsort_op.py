@@ -544,10 +544,12 @@ class TestArgsortFP16Op(OpTest):
         self.descending = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Indices'])
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', no_grad_set=['Indices'])
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', check_dygraph=False)
 
 
 class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
@@ -592,11 +594,11 @@ class TestArgsortBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, no_check_set=['Indices'])
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=['Indices'])
+        self.check_grad_with_place(place, ['X'], 'Out', check_dygraph=False)
 
 
 class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
