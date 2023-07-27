@@ -291,14 +291,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         } else if (result_type.isa<ir::VectorType>()) {
           std::vector<ir::Type> vec_inner_types;
           auto base_types = result_type.dyn_cast<ir::VectorType>().data();
-          for (size_t j = 0; j < base_types.size(); ++j) {
-            if (base_types[j]) {
-              if (base_types[j].isa<dialect::DenseTensorType>()) {
+          for (auto& base_type : base_types) {
+            if (base_type) {
+              if (base_type.isa<dialect::DenseTensorType>()) {
                 auto allocated_dense_tensor_dtype =
                     paddle::dialect::AllocatedDenseTensorType::get(
                         ctx,
                         phi::TransToPhiPlace(kernel_key.backend()),
-                        base_types[j].dyn_cast<dialect::DenseTensorType>());
+                        base_type.dyn_cast<dialect::DenseTensorType>());
                 vec_inner_types.push_back(allocated_dense_tensor_dtype);
               } else {
                 PADDLE_THROW(phi::errors::Unimplemented(
