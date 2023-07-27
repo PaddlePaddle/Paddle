@@ -100,37 +100,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       return false;
     }
 
-    // Dont.t allow fp64!
-    {
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            auto dtype = var_desc->GetDataType();
-            if (dtype == framework::proto::VarType::FP64) {
-              return false;
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            auto dtype = var_desc->GetDataType();
-            if (dtype == framework::proto::VarType::FP64) {
-              return false;
-            }
-          }
-        }
-      }
-    }
-
     // do not support the op which is labeled the `skip_quant`
     if ((desc.HasAttr("namescope") &&
          PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -425,7 +394,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto start_var_name = desc.Input("Start")[0];
       auto* start_var_desc = block->FindVar(start_var_name);
       auto start_dtype = start_var_desc->GetDataType();
-      if (start_dtype == framework::proto::VarType::FP32) {
+      if (start_dtype == framework::proto::VarType::FP32 ||
+          start_dtype == framework::proto::VarType::FP64) {
         return false;
       }
 #endif
@@ -751,7 +721,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_dtype = x_var_desc->GetDataType();
 
       if (!(x_dtype == framework::proto::VarType::FP32 ||
-            x_dtype == framework::proto::VarType::FP16)) {
+            x_dtype == framework::proto::VarType::FP16 ||
+            x_dtype == framework::proto::VarType::FP64)) {
         return false;
       }
 
@@ -1229,16 +1200,18 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
       if (!with_dynamic_shape) {
-        // At present, only support float32 or float16 into trt.
+        // At present, only support float32 or float16 or float64 into trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
+              dtype == framework::proto::VarType::FP64 ||
               dtype == framework::proto::VarType::FP16)) {
           return false;
         }
       } else {
-        // At present, only support float32 or float16 or int32 or int64 into
-        // trt.
+        // At present, only support float32 or float16 or float64 or int32 or
+        // int64 into trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
               dtype == framework::proto::VarType::FP16 ||
+              dtype == framework::proto::VarType::FP64 ||
               dtype == framework::proto::VarType::INT32 ||
               dtype == framework::proto::VarType::INT64)) {
           return false;
@@ -1339,15 +1312,19 @@ struct SimpleOpTypeSetTeller : public Teller {
         return true;
       }
 #endif
-      if (dtype != -1 && dtype != 2 && dtype != 5) {
-        VLOG(3) << "the fill_any_like only supports int32 and float32 by "
-                   "trt8.4 below";
+      if (dtype != -1 && dtype != 2 && dtype != 3 && dtype != 5 && dtype != 6) {
+        VLOG(3)
+            << "the fill_any_like only supports int32/int64/float32/float64 by"
+               "trt8.4 below";
         return false;
       }
       if (dtype == -1) {
         if (input_type != framework::proto::VarType::INT32 &&
-            input_type != framework::proto::VarType::FP32) {
-          VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+            input_type != framework::proto::VarType::INT64 &&
+            input_type != framework::proto::VarType::FP32 &&
+            input_type != framework::proto::VarType::FP64) {
+          VLOG(3) << "the fill_any_like only supports "
+                     "int32/int64/float32/float64 by"
                      "trt8.4 below";
           return false;
         }
@@ -2245,13 +2222,19 @@ struct SimpleOpTypeSetTeller : public Teller {
       } else {
 #if IS_TRT_VERSION_GE(7000)
         if (dtype != framework::proto::VarType::INT32 &&
-            dtype != framework::proto::VarType::FP32) {
-          VLOG(3) << "reduce op input data type must be int32 or float32";
+            dtype != framework::proto::VarType::INT64 &&
+            dtype != framework::proto::VarType::FP32 &&
+            dtype != framework::proto::VarType::FP64) {
+          VLOG(3) << "reduce op input data type must be int32 or int64 or "
+                     "float32 or "
+                     "float64";
           return false;
         }
 #else
-        if (dtype != framework::proto::VarType::FP32) {
-          VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+        if (dtype != framework::proto::VarType::FP32 &&
+            dtype != framework::proto::VarType::FP64) {
+          VLOG(3) << "reduce op input data type must be float32 or float64 "
+                     "using TensorRT "
                      "< 7.0";
           return false;
         }
