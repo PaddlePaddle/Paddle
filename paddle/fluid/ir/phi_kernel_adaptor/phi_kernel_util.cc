@@ -202,6 +202,9 @@ void HandleForSpecialOp(
     std::string name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
     paddle::framework::Variable* var = inner_scope->FindVar(name);
+    PADDLE_ENFORCE(var,
+                   paddle::platform::errors::InvalidArgument(
+                       "The variable %s shoud exist", name));
 
     auto feed_var_name = "feed_" + std::to_string(index);
     value_2_var_name->emplace(value, feed_var_name);
@@ -223,6 +226,21 @@ void HandleForSpecialOp(
 
     auto value = op->result(0);
     value_2_var_name->emplace(value, var_name);
+
+    paddle::framework::Variable* var = inner_scope->FindVar(var_name);
+    PADDLE_ENFORCE(var,
+                   paddle::platform::errors::InvalidArgument(
+                       "The variable %s shoud exist", var_name));
+
+    variable_2_var_name->emplace(var, var_name);
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(var_name, id);
+    variable_list->push_back(var);
+    PADDLE_ENFORCE_EQ(
+        variable_list->size(),
+        var_name_2_id->size(),
+        paddle::platform::errors::InvalidArgument(
+            "The size of variable_list and var_name_2_id map should be equal"));
   }
 
   if (op_name == "builtin.combine") {
