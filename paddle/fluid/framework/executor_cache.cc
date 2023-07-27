@@ -427,8 +427,10 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
                                                            program.get());
 
   program_translator.Translate();
+  program->Print(std::cerr);
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+  program->Print(std::cerr);
 
   return ir_res;
 }
@@ -483,7 +485,11 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
                                                            program.get());
   program_translator.Translate();
 
+  program->Print(std::cerr);
+
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+
+  res->Print(std::cerr);
 
   return res;
 }
