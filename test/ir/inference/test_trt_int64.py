@@ -87,6 +87,9 @@ class TrtInt64Test1(TrtLayerAutoScanTest):
                                         "Out": ["slice_output_data"]
                                     },
                                     "op_attrs": dics[0],
+                                    "outputs_dtype": {
+                                        "slice_output_data": np.int64
+                                    },
                                 }
                             ]
                             ops = self.generate_op_config(ops_config)
@@ -162,6 +165,7 @@ class TrtInt64Test2(TrtLayerAutoScanTest):
                             },
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
+                            "outputs_dtype": {"slice_output_data": np.int64},
                         }
                     ]
                     ops = self.generate_op_config(ops_config)
