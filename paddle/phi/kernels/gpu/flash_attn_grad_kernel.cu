@@ -44,9 +44,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  const DenseTensor& dout,
                                  const int64_t max_seqlen_q,
                                  const int64_t max_seqlen_k,
-                                 const float softmax_scale,
-                                 const float p_dropout,
-                                 const bool is_causal,
+                                 const float scale,
+                                 const float dropout,
+                                 const bool causal,
                                  DenseTensor* dq,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
@@ -111,9 +111,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       head_size_rounded,
       seqlen_q_rounded,
       seqlen_k_rounded,
-      p_dropout,
-      softmax_scale,
-      is_causal,
+      dropout,
+      scale,
+      causal,
       is_bf16,
       stream,
       seed,
@@ -135,13 +135,12 @@ void FlashAttnGradKernel(const Context& ctx,
                          const DenseTensor& softmax_lse,
                          const DenseTensor& seed_offset,
                          const DenseTensor& dout,
-                         const float p_dropout,
-                         const bool is_causal,
+                         const float dropout,
+                         const bool causal,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
-  // TODO(umiswing): Add pad for head_dim
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
 
   auto dims = q.dims();
@@ -161,10 +160,8 @@ void FlashAttnGradKernel(const Context& ctx,
   VLOG(4) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";
 
-  // Which should we use? head_size or head_size_rounded?
-  const float softmax_scale = 1.0f / std::sqrt(head_size);
+  const float scale = 1.0f / std::sqrt(head_size);
 
-  // Does this enough?
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
   ctx.template Alloc<T>(dv);
@@ -205,9 +202,9 @@ void FlashAttnGradKernel(const Context& ctx,
                                    head_size_rounded,
                                    seqlen_q_rounded,
                                    seqlen_k_rounded,
-                                   p_dropout,
-                                   softmax_scale,
-                                   is_causal,
+                                   dropout,
+                                   scale,
+                                   causal,
                                    is_bf16,
                                    stream,
                                    seed,

@@ -44,9 +44,9 @@ void FlashAttnUnpaddedKernel(
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const int64_t max_seqlen_q,
     const int64_t max_seqlen_k,
-    const float softmax_scale,
-    const float p_dropout,
-    const bool is_causal,
+    const float scale,
+    float dropout,
+    const bool causal,
     const bool return_softmax,
     const bool is_test,
     const std::string& rng_name,
@@ -55,9 +55,7 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
-#if 0
-  if (is_test) p_dropout = 0.0f;
-#endif
+  if (is_test) dropout = 0.0f;
 
   ctx.template Alloc<T>(out);
 
@@ -123,7 +121,6 @@ void FlashAttnUnpaddedKernel(
 
   if (return_softmax) {
     // may allocate more space than *max_seqlen_k*
-    // TODO(umiswing): return_softmax is only supported when p_dropout > 0.0
     softmax->Resize(
         {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
     ctx.template Alloc<T>(softmax);
@@ -145,10 +142,10 @@ void FlashAttnUnpaddedKernel(
       num_heads_k,
       head_size,
       head_size_rounded,
-      p_dropout,
-      softmax_scale,
+      dropout,
+      scale,
       zero_tensors,
-      is_causal,
+      causal,
       return_softmax,
       is_bf16,
       return_softmax ? softmax->data() : nullptr,
@@ -170,8 +167,8 @@ void FlashAttnKernel(const Context& ctx,
                      const DenseTensor& k,
                      const DenseTensor& v,
                      const paddle::optional<DenseTensor>& fixed_seed_offset,
-                     const float p_dropout,
-                     const bool is_causal,
+                     float dropout,
+                     const bool causal,
                      const bool return_softmax,
                      const bool is_test,
                      const std::string& rng_name,
@@ -196,15 +193,12 @@ void FlashAttnKernel(const Context& ctx,
   const int seqlen_k = k.dims()[1];
   const int num_heads_k = k.dims()[2];
 
-  // should we use this scale??
-  const float softmax_scale = 1.0f / std::sqrt(head_size_og);
+  const float scale = 1.0f / std::sqrt(head_size_og);
 
   VLOG(4) << "FlashAttn fwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";
 
-#if 0
-  if (is_test) p_dropout = 0.0f;
-#endif
+  if (is_test) dropout = 0.0f;
 
   ctx.template Alloc<T>(out);
 
@@ -242,7 +236,6 @@ void FlashAttnKernel(const Context& ctx,
 
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
 
-  // we just round the size but not doing any padding, it's dangerous.
   const int head_size = round_multiple(head_size_og, 8);
   const int head_size_rounded = round_multiple(head_size, 32);
   const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
@@ -257,11 +250,6 @@ void FlashAttnKernel(const Context& ctx,
     ctx.template Alloc<T>(softmax);
   }
 
-  // it seems that we don't have to allocate workspace in fa-2
-
-#if 0
-  bool succ = phi::dynload::flash_attn_fwd();
-#endif
   bool succ =
       phi::dynload::flash_attn_fwd(const_cast<void*>(q.data()),
                                    const_cast<void*>(k.data()),
@@ -276,9 +264,9 @@ void FlashAttnKernel(const Context& ctx,
                                    num_heads_k,
                                    head_size,
                                    head_size_rounded,
-                                   p_dropout,
-                                   softmax_scale,
-                                   is_causal,
+                                   dropout,
+                                   scale,
+                                   causal,
                                    return_softmax,
                                    is_bf16,
                                    return_softmax ? softmax->data() : nullptr,
