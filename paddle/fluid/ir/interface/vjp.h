@@ -20,23 +20,22 @@ namespace dialect {
 class VjpInterface : public ir::OpInterfaceBase<VjpInterface> {
  public:
   struct Concept {
-    explicit Concept(std::vector<std::vector<ir::OpResult>> (*vjp)(
+    explicit Concept(std::vector<ir::OpResult> (*vjp)(
         ir::Operation* op,
-        std::vector<std::vector<ir::OpResult>> out_grads,
-        const std::vector<std::vector<int>>& stop_gradients))
+        std::vector<ir::OpResult> out_grads,
+        const std::vector<int>& stop_gradients))
         : vjp_(vjp) {}
-    std::vector<std::vector<ir::OpResult>> (*vjp_)(
-        ir::Operation* op,
-        std::vector<std::vector<ir::OpResult>> out_grads,
-        const std::vector<std::vector<int>>& stop_gradients);
+    std::vector<ir::OpResult> (*vjp_)(ir::Operation* op,
+                                      std::vector<ir::OpResult> out_grads,
+                                      const std::vector<int>& stop_gradients);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static std::vector<std::vector<ir::OpResult>> Vjp(
+    static std::vector<ir::OpResult> Vjp(
         ir::Operation* op,
-        std::vector<std::vector<ir::OpResult>> out_grads,
-        const std::vector<std::vector<int>>& stop_gradients) {
+        std::vector<ir::OpResult> out_grads,
+        const std::vector<int>& stop_gradients) {
       return ConcreteOp::Vjp(op, out_grads, stop_gradients);
     }
 
@@ -46,10 +45,9 @@ class VjpInterface : public ir::OpInterfaceBase<VjpInterface> {
   VjpInterface(ir::Operation* op, Concept* impl)
       : ir::OpInterfaceBase<VjpInterface>(op), impl_(impl) {}
 
-  std::vector<std::vector<ir::OpResult>> Vjp(
-      ir::Operation* op,
-      std::vector<std::vector<ir::OpResult>> out_grads,
-      const std::vector<std::vector<int>>& stop_gradients) {
+  std::vector<ir::OpResult> Vjp(ir::Operation* op,
+                                std::vector<ir::OpResult> out_grads,
+                                const std::vector<int>& stop_gradients) {
     return impl_->vjp_(op, out_grads, stop_gradients);
   }
 

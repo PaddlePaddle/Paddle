@@ -13,15 +13,24 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/primitive/ir_api/ir_api.h"
+#include "paddle/fluid/ir/dialect/ir_api.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/operation.h"
 
 namespace ir {
 namespace api {
-std::vector<std::vector<ir::OpResult>> tanh_grad(ir::OpResult out,
-                                                 ir::OpResult grad_out) {
-  std::vector<std::vector<ir::OpResult>> res;
-
+std::vector<ir::OpResult> tanh_grad(ir::OpResult out, ir::OpResult grad_out) {
+  std::vector<ir::OpResult> res;
+  // 1.get insert block
+  ir::Block* insert_block_ptr = grad_out.owner()->GetParent();
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ir::Builder builder = ir::Builder(ctx, insert_block_ptr);
+  paddle::dialect::TanhGradOp grad_op =
+      builder.Build<paddle::dialect::TanhGradOp>(out, grad_out);
+  res.push_back(grad_op.x_grad());
   return res;
 }
 }  // namespace api
