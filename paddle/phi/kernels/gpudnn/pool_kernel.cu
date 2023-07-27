@@ -243,6 +243,7 @@ void Pool2dGPUDNNKernel(const Context& ctx,
                         DenseTensor* out) {
   std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
                                    kernel_size.GetData().end());
+  std::cerr << "pool gpu dnn kernel" << std::endl;
   PoolRawGPUDNNKernel<T, Context>(ctx,
                                   x,
                                   kernel_size_val,

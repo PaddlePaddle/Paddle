@@ -280,16 +280,10 @@ def create_optimizer(cfg, params):
     l2_weight_decay = cfg.l2_weight_decay
     momentum = cfg.momentum
 
-    # optimizer = fluid.optimizer.Momentum(
-    #     #learning_rate=fluid.layers.piecewise_decay(boundaries=bd, values=lr),
-    #     learning_rate= 0.01,
-    #     momentum=momentum,
-    #     # regularization=paddle.regularizer.L2Decay(l2_weight_decay),
-    #     parameter_list=params,
-    # )
-    optimizer = fluid.optimizer.SGD(
-        # learning_rate=fluid.layers.piecewise_decay(boundaries=bd, values=lr),
-        learning_rate=0.0,
+    optimizer = fluid.optimizer.Momentum(
+        learning_rate=fluid.layers.piecewise_decay(boundaries=bd, values=lr),
+        momentum=momentum,
+        regularization=paddle.regularizer.L2Decay(l2_weight_decay),
         parameter_list=params,
     )
 
