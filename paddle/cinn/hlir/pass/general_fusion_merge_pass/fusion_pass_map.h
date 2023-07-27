@@ -15,7 +15,10 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <unordered_map>
+
+#include "glog/logging.h"
 
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/fuse_pass.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/input_fuse_pass.h"

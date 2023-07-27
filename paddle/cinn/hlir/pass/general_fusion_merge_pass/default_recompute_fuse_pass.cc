@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/default_vertical_fuse_pass.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/fusion_pass_registrar.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass_ctx.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/recompute_fuse_pass.h"
+#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/vertical_fuse_util.h"
 
 namespace cinn {
 namespace hlir {
@@ -44,7 +44,7 @@ class DefaultRecomputeFusePass final : public RecomputeFusePass {
     std::vector<OpGroupPtr> candidates;
     for (int i = 0; i < consumers.size(); ++i) {
       const auto& consumer = consumers.at(i);
-      if (!DetectFusabilityByKind(ctx, producer, consumer)) {
+      if (!VerticalFuseUtil::DetectFusabilityByKind(ctx, producer, consumer)) {
         continue;
       }
       unsafe_candidates.push_back(consumer);
@@ -60,19 +60,6 @@ class DefaultRecomputeFusePass final : public RecomputeFusePass {
         ctx->MarkFusible(producer, consumer);
       }
     }
-  }
-
-  using KindKeyT = std::pair<OpPatternKind, OpPatternKind>;
-  bool DetectFusabilityByKind(LightwareFusePassCtx* ctx,
-                              const OpGroupPtr& src,
-                              const OpGroupPtr& dst) const {
-    const KindKeyT kind_pair(src.kind(), dst.kind());
-    const auto& map = DefaultVerticalFusePass::GetConditionMap();
-    const auto& iter = map.find(kind_pair);
-    if (iter == map.end()) {
-      return false;
-    }
-    return iter->second(ctx, src, dst);
   }
 };
 

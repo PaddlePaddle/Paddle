@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/fuse_helper.h"
+#include <string>
+#include "paddle/cinn/hlir/pass/use_general_pass.h"
 
 namespace cinn {
 namespace hlir {

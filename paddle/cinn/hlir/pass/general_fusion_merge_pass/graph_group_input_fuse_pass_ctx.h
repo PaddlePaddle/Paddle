@@ -21,6 +21,8 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
+class GraphGroupInputFusePassCtx;
+
 class GraphGroupInputFusePassCtx final : public InputFusePassCtx {
  public:
   GraphGroupInputFusePassCtx(

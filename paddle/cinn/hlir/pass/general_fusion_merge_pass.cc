@@ -15,10 +15,13 @@
 #include <map>
 #include <unordered_map>
 
+#include "glog/logging.h"
+
 #include "paddle/cinn/api/op_group.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/fusion_pass_map.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/graph_group_input_fuse_pass_ctx.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/graph_group_lightware_fuse_pass_ctx.h"
+#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/input_fuse_pass.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass_ctx.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass_utils.h"

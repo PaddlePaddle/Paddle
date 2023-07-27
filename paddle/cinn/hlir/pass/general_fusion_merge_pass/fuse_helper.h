@@ -20,8 +20,6 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-class FuseHelper;
-
 using OpGroupPtr = api::OpGroup;
 
 class FuseHelper {

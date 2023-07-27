@@ -15,12 +15,11 @@
 #pragma once
 
 #include "paddle/cinn/api/op_group.h"
+#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/fuse_helper.h"
 
 namespace cinn {
 namespace hlir {
 namespace pass {
-
-class FuseHelper;
 
 using OpGroupPtr = api::OpGroup;
 
