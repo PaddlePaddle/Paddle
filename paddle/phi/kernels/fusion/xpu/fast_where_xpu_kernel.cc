@@ -15,7 +15,6 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#ifdef PADDLE_WITH_XPU_PLUGIN
 namespace phi {
 namespace fusion {
 
@@ -25,6 +24,11 @@ void FastWhereXPUKernel(const Context& ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         DenseTensor* out) {
+#ifndef PADDLE_WITH_XPU_PLUGIN
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Unsupported fast_where_xpu kernel, add -DWITH_XPU_PLUGIN=ON to cmake "
+      "options to rebuild."));
+#else
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* condition_data = condition.data<bool>();
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
@@ -53,6 +57,7 @@ void FastWhereXPUKernel(const Context& ctx,
   int r = xpu::plugin::fast_where<XPUType>(
       ctx.x_context(), condition_data, x_data, y_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_where");
+#endif
 }
 
 }  // namespace fusion
@@ -65,4 +70,3 @@ PD_REGISTER_KERNEL(fast_where_xpu,
                    float,
                    phi::dtype::float16,
                    int) {}
-#endif
