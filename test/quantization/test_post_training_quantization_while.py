@@ -152,7 +152,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
     ):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        # val_reader = paddle.dataset.mnist.train()
+
         train_dataset = paddle.vision.datasets.MNIST(
             mode='train', transform=None
         )
