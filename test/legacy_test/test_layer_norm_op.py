@@ -759,8 +759,8 @@ class TestLayerNormAPI(unittest.TestCase):
         )
         x = paddle.static.nn.layer_norm(
             x,
-            scale=False,
-            shift=False,
+            scale=True,
+            shift=True,
             begin_norm_axis=1,
             epsilon=1e-05,
             param_attr="scale",
