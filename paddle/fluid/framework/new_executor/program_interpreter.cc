@@ -193,6 +193,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       RunImpl();
     }
     is_build_ = true;
+    is_shared_results_build_ = true;
   } else {
     RunImpl();
   }
@@ -291,11 +292,16 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
+  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+    return;
+  }
   // share op dependency
   dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
   dependecy_count_ = src.GetDependencyCount();
-  is_shared_ = true;
-  VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
+  // share event analysis
+  stream_analyzer_.ShareEventInfoFrom(src.GetStreamAnalyzer());
+  is_shared_results_build_ = true;
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
           << ") to InterpreterCore(" << this << ")";
 }
 
@@ -335,6 +341,15 @@ const interpreter::DependencyBuilder& ProgramInterpreter::GetDependencyBuilder()
 std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
     const {
   return dependecy_count_;
+}
+
+const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
+    const {
+  return stream_analyzer_;
+}
+
+bool ProgramInterpreter::IsSharedResultsBuild() const {
+  return is_shared_results_build_;
 }
 
 void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
@@ -532,7 +547,7 @@ void ProgramInterpreter::BuildOperatorDependences() {
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
   dependecy_count_ = GetDependencyCount();
-  if (!is_shared_) {
+  if (!is_shared_results_build_) {
     dependecy_count_->assign(instr_num, 0);
   }
 
@@ -571,7 +586,7 @@ void ProgramInterpreter::BuildOperatorDependences() {
       }
     }
 
-    if (!is_shared_) {
+    if (!is_shared_results_build_) {
       for (size_t next_instr_id : next_instr_ids) {
         ++(*dependecy_count_)[next_instr_id];
       }
@@ -1336,6 +1351,7 @@ void ProgramInterpreter::Prepare(
     }
     BuildSkipShareLoDInfo();
     is_build_ = true;
+    is_shared_results_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
