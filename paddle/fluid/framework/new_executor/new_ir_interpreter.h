@@ -207,7 +207,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
 
-  std::vector<InstructionBase*> vec_instruction_base_;
+  std::vector<std::shared_ptr<InstructionBase>> vec_instruction_base_;
 
   std::unordered_map<::ir::Value, std::string> value_2_var_name_;
 
@@ -218,9 +218,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<Variable*> variable_list_;
 
-  interpreter::IrDependencyBuilder ir_dependency_builder_;
+  interpreter::NewIrDependencyBuilder ir_dependency_builder_;
 
-  interpreter::IrStreamAnalyzer ir_stream_analyzer_;
+  interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
 };
 
 }  // namespace framework

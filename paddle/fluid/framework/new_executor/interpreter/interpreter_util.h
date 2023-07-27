@@ -72,6 +72,10 @@ bool IsCommunicationOp(const Instruction& instr);
 
 bool IsCpuOp(const Instruction& instr);
 
+bool IsCpuOp(Instruction* instr);
+
+bool IsCpuOp(const paddle::framework::InstructionBase& instr);
+
 bool IsCpuOp(const paddle::framework::InstructionBase* instr);
 
 bool IsGradOp(const std::string& op_name);
@@ -80,7 +84,9 @@ bool IsMemcpyD2H(const Instruction& instr);
 
 bool IsMemcpyH2D(const Instruction& instr);
 
-bool IsMemcpyH2D(const paddle::framework::InstructionBase* instr);
+bool IsMemcpyH2D(Instruction* instr);
+
+bool IsMemcpyH2D(paddle::framework::InstructionBase* instr);
 
 bool IsMemcpyOp(const Instruction& instr);
 

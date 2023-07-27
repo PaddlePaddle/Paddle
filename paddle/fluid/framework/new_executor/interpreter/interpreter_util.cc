@@ -157,7 +157,15 @@ bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
 }
 
-bool IsCpuOp(const paddle::framework::InstructionBase* instr) {
+bool IsCpuOp(Instruction* instr) {
+  return platform::is_cpu_place(instr->DeviceContext().GetPlace());
+}
+
+bool IsCpuOp(const paddle::framework::InstructionBase& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+bool IsCpuOp(paddle::framework::InstructionBase* instr) {
   return platform::is_cpu_place(instr->DeviceContext().GetPlace());
 }
 
@@ -178,7 +186,11 @@ bool IsMemcpyH2D(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyH2D;
 }
 
-bool IsMemcpyH2D(const paddle::framework::InstructionBase* instr) {
+bool IsMemcpyH2D(Instruction* instr) {
+  return instr->OpBase()->Type() == kMemcpyH2D;
+}
+
+bool IsMemcpyH2D(paddle::framework::InstructionBase* instr) {
   return instr->Name() == "pd.memcpy_h2d";
 }
 
