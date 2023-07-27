@@ -33,32 +33,31 @@ static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
 }
 
-// #ifdef PADDLE_CUDA_BF16
-// __host__ __device__ inline float2 bfloat1622float2(const __nv_bfloat162 a) {
-// #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
-//   return __bfloat1622float2(a);
-// #else
-//   float hi_float;
-//   float lo_float;
-//   lo_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).x);
-//   hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
-//   return make_float2(lo_float, hi_float);
-// #endif
-// }
+#ifdef PADDLE_CUDA_BF16
+__host__ __device__ inline float2 bfloat1622float2(const __nv_bfloat162 a) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  return __bfloat1622float2(a);
+#else
+  float hi_float;
+  float lo_float;
+  lo_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).x);
+  hi_float = __internal_bfloat162float(((__nv_bfloat162_raw)a).y);
+  return make_float2(lo_float, hi_float);
+#endif
+}
 
-// __host__ __device__ inline __nv_bfloat162 float22bfloat162_rn(const float2 a)
-// {
-//   __nv_bfloat162 val;
-// #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
-//   val = __float22bfloat162_rn(a);
-// #else
-//   val.x = __float2bfloat16_rn(a.x);
-//   val.y = __float2bfloat16_rn(a.y);
-// #endif
-//   return val;
-// }
+__host__ __device__ inline __nv_bfloat162 float22bfloat162_rn(const float2 a) {
+  __nv_bfloat162 val;
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  val = __float22bfloat162_rn(a);
+#else
+  val.x = __float2bfloat16_rn(a.x);
+  val.y = __float2bfloat16_rn(a.y);
+#endif
+  return val;
+}
 
-// #endif
+#endif
 
 struct GroupSums {
   // Is it the 1st element of the group?
@@ -158,7 +157,8 @@ __global__ void groupNormNHWCSumSingerChannelKernel(
 
   float2 sums = smem[threadIdx.x];
 
-  atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci], sums.x);
+  atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci],
+            sums.x * params.invHWC);
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + ci], sums.y);
 }
 
@@ -219,14 +219,15 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
       threadIdx.x * THREADS_PER_CHANNEL ==
           params.cPerBlock - THREADS_PER_CHANNEL) {
     float2 sums = smem[gi];
-    atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + gj], sums.x);
+    atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + gj],
+              sums.x * params.invHWC);
     atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
   }
 }
 
 template <typename T>
 void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
-                                     cudaStream_t stream) {
+                                     gpuStream_t stream) {
   dim3 grid;
   grid.x = divUp(params->c, params->cPerBlock);
   grid.y = divUp(params->hw, params->hwPerBlock);
@@ -306,6 +307,7 @@ void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
   }
 }
 template class groupNormNHWCSum<__half>;
+template class groupNormNHWCSum<phi::dtype::bfloat16>;
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void GroupNormCompute(int32_t hwBegin,
@@ -444,17 +446,18 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
   int32_t gi = ci / params.cPerGroup;
 
   // Load the sum and sum of squares for the group.
-  float sum = 0.F, sumSq = 0.F;
+  float mean, sumSq = 0.F;
 
   if (gi < params.groups) {
-    sum = params.redBuffer[(2 * ni + 0) * params.groups + gi];
+    mean = params.redBuffer[(2 * ni + 0) * params.groups + gi];
     sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
   }
 
-  // Compute the mean.
-  float mean = sum * params.invHWC;
   // Compute the variance.
   float var = sumSq * params.invHWC - (mean * mean);
+  if (params.var_data != nullptr && gi < params.groups) {
+    params.var_data[ni * params.groups + gi] = var;
+  }
   // Compute the inverse of the stddev.
   float invStdDev = rsqrtf(var + params.eps);
 
@@ -468,7 +471,7 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
 
 template <typename T>
 void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
-                                       cudaStream_t stream) {
+                                       gpuStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
@@ -521,6 +524,7 @@ void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
   }
 }
 template class groupNormNHWCScale<__half>;
+template class groupNormNHWCScale<phi::dtype::bfloat16>;
 
 template <typename T, typename Context>
 void GroupNormNHWCKernel(const Context& dev_ctx,
@@ -548,18 +552,9 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<AccT>(mean);
   dev_ctx.template Alloc<AccT>(var);
-  phi::funcs::SetConstant<GPUContext, AccT> set_zero;
-  set_zero(dev_ctx, mean, static_cast<AccT>(0));
 
   params_.mean_data = mean->data<AccT>();
   params_.var_data = var->data<AccT>();
-
-  // temp_var is used to calculate the mean^2
-  DenseTensor temp_var;
-  temp_var.Resize(var->dims());
-  dev_ctx.template Alloc<AccT>(&temp_var);
-  params_.temp_var_data = temp_var.data<AccT>();
-  set_zero(dev_ctx, &temp_var, static_cast<AccT>(0));
 
   params_.n = x_dims[0];
   params_.c = x_dims[3];
@@ -614,6 +609,11 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   nhwc_sum(&params_, stream);
   groupNormNHWCScale<T> nhwc_scale;
   nhwc_scale(params_, stream);
+  cudaMemcpyAsync(params_.redBuffer,
+                  params_.mean_data,
+                  params_.n * groups * sizeof(float),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 template <typename T, typename AccT>

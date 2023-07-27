@@ -893,6 +893,7 @@ int GroupNormPluginDynamic::enqueue(
       params_.gamma = scale_gpu_;
       params_.beta = bias_gpu_;
       params_.redBuffer = static_cast<float *>(workspace);
+      params_.var_data = nullptr;
       params_.n = input_desc[0].dims.d[0];
       params_.h = input_desc[0].dims.d[2];
       params_.w = input_desc[0].dims.d[3];
@@ -916,8 +917,6 @@ int GroupNormPluginDynamic::enqueue(
       groupnorm_nhwc_sum(&params_, stream);
       phi::groupNormNHWCScale<half> groupnorm_nhwc_scale;
       groupnorm_nhwc_scale(params_, stream);
-      // phi::groupNormNHWCSum<__half>(&params_, stream);
-      // phi::groupNormNHWCScale<__half>(params_, stream);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));

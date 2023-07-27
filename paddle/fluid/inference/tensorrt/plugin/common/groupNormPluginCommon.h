@@ -47,9 +47,6 @@ struct GroupNormNHWCParams {
   // The variance
   float* var_data;
 
-  // The sum of var^2
-  float* temp_var_data;
-
   // The number of instances in the batch.
   int32_t n;
   // The height and width of each activation map.
