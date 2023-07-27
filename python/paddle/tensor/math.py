@@ -2315,7 +2315,10 @@ def outer(x, y, name=None):
             var_names = {'x': x, 'y': y}
             for name, val in var_names.items():
                 check_variable_and_dtype(
-                    val, name, ['float16', 'float32', 'float64'], 'inner'
+                    val,
+                    name,
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    'outer',
                 )
 
         __check_input(nx, ny)
