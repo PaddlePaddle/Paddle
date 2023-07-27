@@ -163,6 +163,12 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
+
+    if (op->Type() == "shaddow_output") {
+      if (!param_map_.count(op->Input("x")[0])) {
+        continue;
+      }
+    }
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
@@ -180,6 +186,9 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
+          if (!defining_op_result) {
+            continue;
+          }
           ir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
@@ -216,8 +225,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
     ir::OpResult value = value_info.value;
     if (!value) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Value of [%s] can not ber None", var_name));
+      return;
     }
     auto* defining_op = value.owner();
     PADDLE_ENFORCE_NOT_NULL(
