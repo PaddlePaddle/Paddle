@@ -126,10 +126,11 @@ class InstructionBase {
       const std::unordered_map<::ir::Value, std::vector<int>>& outputs);
 
   const std::unordered_set<::ir::Value>& NoNeedBuffer() const {
-    return no_need_buffer_;
+    return no_need_buffer_values_;
   }
-  void SetNoNeedBuffer(const std::unordered_set<::ir::Value>& no_need_buffer) {
-    no_need_buffer_ = no_need_buffer;
+  void SetNoNeedBuffer(
+      const std::unordered_set<::ir::Value>& no_need_buffer_values) {
+    no_need_buffer_values_ = no_need_buffer_values;
   }
 
   virtual void Run() = 0;
@@ -171,7 +172,7 @@ class InstructionBase {
 
   std::unordered_map<::ir::Value, std::vector<int>> output_index_;
 
-  std::unordered_set<::ir::Value> no_need_buffer_;
+  std::unordered_set<::ir::Value> no_need_buffer_values_;
 };
 
 }  // namespace framework
