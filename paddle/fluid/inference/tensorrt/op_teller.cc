@@ -2748,11 +2748,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "flip") {
-      if (!desc.HasAttr("axis")) {
-        VLOG(3) << "The necessary attributes of the flip operator axis "
-                   " is missing.";
-        return false;
-      }
       if (!with_dynamic_shape) {
         VLOG(3) << "the flip does not support "
                    "static shape yet";
