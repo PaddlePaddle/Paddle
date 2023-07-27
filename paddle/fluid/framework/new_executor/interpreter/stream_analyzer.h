@@ -28,6 +28,43 @@ namespace interpreter {
 
 enum DownstreamRunType { kDirectRun, kEventRun };
 
+class ContextManager {
+ public:
+  using DeviceContextMap =
+      std::map<Place,
+               std::shared_future<std::unique_ptr<platform::DeviceContext>>>;
+
+  static ContextManager& Instance() {
+    static ContextManager* ctx_manager = new ContextManager;
+    return *ctx_manager;
+  }
+
+  std::shared_future<std::unique_ptr<platform::DeviceContext>> Get(
+      const std::string& type,
+      const platform::Place& place,
+      int stream_priority) {
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
+    VLOG(6) << "Get dev_ctx for " << type << " - " << place;
+
+    DeviceContextMap& ctxs = ctx_pool_[type];
+    if (ctxs.find(place) == ctxs.end()) {
+      platform::EmplaceDeviceContexts(
+          &ctxs,
+          {place},
+          /*disable_setting_default_stream_for_allocator=*/true,
+          stream_priority);
+    }
+    return ctxs[place];
+  }
+
+ private:
+  ContextManager() {}
+  DISABLE_COPY_AND_ASSIGN(ContextManager);
+
+  std::mutex ctx_mtx_;
+  std::unordered_map<std::string, DeviceContextMap> ctx_pool_;
+};
+
 class StreamAnalyzer {
  public:
   using DeviceContext = platform::DeviceContext;

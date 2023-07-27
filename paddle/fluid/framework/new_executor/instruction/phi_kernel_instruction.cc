@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
@@ -34,44 +35,6 @@
 namespace paddle {
 namespace framework {
 
-using DeviceContext = paddle::platform::DeviceContext;
-
-class IrContextManager {
- public:
-  using DeviceContextMap =
-      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>;
-
-  static IrContextManager& Instance() {
-    static IrContextManager* ctx_manager = new IrContextManager;
-    return *ctx_manager;
-  }
-
-  std::shared_future<std::unique_ptr<DeviceContext>> Get(
-      const std::string& type,
-      const platform::Place& place,
-      int stream_priority) {
-    std::lock_guard<std::mutex> lk(ctx_mtx_);
-    VLOG(6) << "Get dev_ctx for " << type << " - " << place;
-
-    DeviceContextMap& ctxs = ctx_pool_[type];
-    if (ctxs.find(place) == ctxs.end()) {
-      platform::EmplaceDeviceContexts(
-          &ctxs,
-          {place},
-          /*disable_setting_default_stream_for_allocator=*/true,
-          stream_priority);
-    }
-    return ctxs[place];
-  }
-
- private:
-  IrContextManager() {}
-  DISABLE_COPY_AND_ASSIGN(IrContextManager);
-
-  std::mutex ctx_mtx_;
-  std::unordered_map<std::string, DeviceContextMap> ctx_pool_;
-};
-
 platform::DeviceContext* ParseDeviceContext(
     ir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
@@ -81,9 +44,10 @@ platform::DeviceContext* ParseDeviceContext(
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
-  IrContextManager& ctx_manager = IrContextManager::Instance();
+  interpreter::ContextManager& ctx_manager =
+      interpreter::ContextManager::Instance();
 
-  DeviceContext* dev_ctx = nullptr;
+  platform::DeviceContext* dev_ctx = nullptr;
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
