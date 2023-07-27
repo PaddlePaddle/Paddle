@@ -80,8 +80,6 @@ const std::vector<std::string>& OpYamlInfoParser::AttrParams(
   }
 }
 
-
-
 const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
   return std::get<3>(op_info_tuple_);
 }
