@@ -45,16 +45,17 @@ std::vector<std::vector<Tensor>> tanh_vjp(
       ir::api::tanh_grad(out_opres, grad_out_opres);
 
   // 3.set op stop_gradient info
-  ir::Operation* grad_op_ptr = op_res[0][0].owner();
-  std::vector<ir::Attribute> stop_gradients;
-  if (grad_op_ptr->HasAttribute("stop_gradient")) {
-    stop_gradients = grad_op_ptr->attribute("stop_gradient")
-                         .dyn_cast<ir::ArrayAttribute>()
-                         .AsVector();
-  } else {
-    stop_gradients = std::vector<ir::Attribute>(
-        grad_op_ptr->num_results(),
-        ir::BoolAttribute::get(ir::IrContext::Instance(), false));
+  ir::Operation* grad_op_ptr = op_res[0].owner();
+  uint32_t num_res = grad_op_ptr->num_results();
+  std::vector<ir::Attribute> ir_stop_gradients(num_res);
+  for (int i = 0; i < num_res; i++) {
+    if (stop_gradients[i]) {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), true);
+    } else {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), false);
+    }
   }
   grad_op_ptr->set_attribute(
       "stop_gradient",
