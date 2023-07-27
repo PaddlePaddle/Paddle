@@ -185,6 +185,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
     AppendPassWithCheck(strategy_.fuse_dot_product_attention_,
                         "fuse_dot_product_attention_pass");
+    AppendPassWithCheck(strategy_.fuse_resunit_, "fuse_resunit_pass");
 #endif
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
@@ -558,4 +559,5 @@ USE_PASS(fuse_gemm_epilogue_pass);
 #endif
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 USE_PASS(fuse_dot_product_attention_pass);
+USE_PASS(fuse_resunit_pass);
 #endif

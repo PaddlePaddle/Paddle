@@ -168,6 +168,19 @@ class InplaceAddtoOpPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
 
+@register_pass("fuse_resunit")
+class FuseResUnitPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_resunit_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 def _set_cinn_op_flag(flag_name, extra_ops):
     values = core.globals()[flag_name]
     values = [v.strip() for v in values.split(";") if v.strip()]

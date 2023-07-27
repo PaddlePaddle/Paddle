@@ -356,6 +356,10 @@ if(WITH_CUDNN_FRONTEND)
     fuse_dot_product_attention_pass
     SRCS fuse_dot_product_attention_pass.cc
     DEPS pass graph_pattern_detector)
+  cc_library(
+    fuse_resunit_pass
+    SRCS fuse_resunit_pass.cc
+    DEPS pass graph_pattern_detector)
 endif()
 
 set(GLOB_PASS_LIB

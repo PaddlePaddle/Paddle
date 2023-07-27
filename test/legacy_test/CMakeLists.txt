@@ -510,6 +510,7 @@ if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
   list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
+  list(REMOVE_ITEM TEST_OPS test_fuse_resunit_pass)
 endif()
 
 # Some ops need to check results when gc is enabled

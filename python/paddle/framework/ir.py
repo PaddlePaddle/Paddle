@@ -86,6 +86,9 @@ def apply_build_strategy(
     if build_strategy.fuse_relu_depthwise_conv and use_cuda:
         apply_pass("fuse_relu_depthwise_conv_pass")
         build_strategy.fuse_relu_depthwise_conv = False
+    if build_strategy.fuse_resunit:
+        apply_pass("fuse_resunit_pass")
+        build_strategy.fuse_resunit = False
     if build_strategy.fuse_bn_act_ops and use_cuda:
         apply_pass("fuse_bn_act_pass")
         build_strategy.fuse_bn_act_ops = False

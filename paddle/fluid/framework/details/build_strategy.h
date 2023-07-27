@@ -138,6 +138,8 @@ struct BuildStrategy {
   bool sequential_run_{false};
   // Fuse dot product attention
   bool fuse_dot_product_attention_{false};
+  // Fuse ResUnit
+  bool fuse_resunit_{false};
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means
   // that all the operators supported by MKLDNN will be

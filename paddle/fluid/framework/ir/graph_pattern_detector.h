@@ -2423,6 +2423,205 @@ struct FusedFeedForwardBwd : public PatternBase {
 #undef FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE
 #endif
 };
+// The following patterns are used to fuse Conv + BN + Add + Act
+// pattern:
+// (a) shortcut=true
+//
+//     |        |
+//  [Conv]      |
+//   [BN]       |
+//     \       /
+//       [Add]
+//       [Act]
+//          |
+//
+// (b) shortcut=false
+//    |         |
+// [Conv]     [Conv]
+//  [BN]       [BN]
+//     \       /
+//       [Add]
+//       [Act]
+//         |
+struct ConvBNAddAct : public PatternBase {
+  ConvBNAddAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bn_add_act") {}
+
+  PDNode* operator()(const std::unordered_set<std::string>& act_types,
+                     bool shortcut,
+                     bool is_training);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv1_op);
+  PATTERN_DECL_NODE(bn1_op);
+  PATTERN_DECL_NODE(conv2_op);
+  PATTERN_DECL_NODE(bn2_op);
+  PATTERN_DECL_NODE(elewise_add_op);
+  PATTERN_DECL_NODE(act_op);
+
+  // declare variable node's name
+  PATTERN_DECL_NODE(x1);
+  PATTERN_DECL_NODE(conv1_w);
+  PATTERN_DECL_NODE(conv1_out);
+  PATTERN_DECL_NODE(bn1_scale);
+  PATTERN_DECL_NODE(bn1_bias);
+  PATTERN_DECL_NODE(bn1_variance);
+  PATTERN_DECL_NODE(bn1_mean);
+  PATTERN_DECL_NODE(bn1_mean_out);
+  PATTERN_DECL_NODE(bn1_variance_out);
+  PATTERN_DECL_NODE(bn1_saved_variance);
+  PATTERN_DECL_NODE(bn1_saved_mean);
+  PATTERN_DECL_NODE(bn1_out);
+  PATTERN_DECL_NODE(x2);
+  PATTERN_DECL_NODE(conv2_w);
+  PATTERN_DECL_NODE(conv2_out);
+  PATTERN_DECL_NODE(bn2_scale);
+  PATTERN_DECL_NODE(bn2_bias);
+  PATTERN_DECL_NODE(bn2_variance);
+  PATTERN_DECL_NODE(bn2_mean);
+  PATTERN_DECL_NODE(bn2_mean_out);
+  PATTERN_DECL_NODE(bn2_variance_out);
+  PATTERN_DECL_NODE(bn2_saved_variance);
+  PATTERN_DECL_NODE(bn2_saved_mean);
+  PATTERN_DECL_NODE(bn2_out);
+  PATTERN_DECL_NODE(add_out);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// The following patterns are used to fuse Conv + BN + Act + ConvBNStats
+// pattern:
+struct ConvBNActConvBNStats : public PatternBase {
+  ConvBNActConvBNStats(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bn_act_conv_bnstats") {}
+
+  PDNode* operator()(const std::unordered_set<std::string>& act_types,
+                     bool is_training);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv_op);
+  PATTERN_DECL_NODE(bn_op);
+  PATTERN_DECL_NODE(act_op);
+  PATTERN_DECL_NODE(conv_bnstats_op);
+
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_x);
+  PATTERN_DECL_NODE(conv_w);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  PATTERN_DECL_NODE(bn_variance);
+  PATTERN_DECL_NODE(bn_mean);
+  PATTERN_DECL_NODE(bn_mean_out);
+  PATTERN_DECL_NODE(bn_variance_out);
+  PATTERN_DECL_NODE(bn_saved_variance);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_out);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// The following patterns are used to fuse dConv + dAct + dBN
+// pattern:
+struct BNActConvGrad : public PatternBase {
+  BNActConvGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_act_conv_grad") {}
+
+  PDNode* operator()(const std::unordered_set<std::string>& act_grad_types);
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv_grad);
+  PATTERN_DECL_NODE(act_grad);
+  PATTERN_DECL_NODE(batch_norm_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(d_conv_out);
+  PATTERN_DECL_NODE(conv_w);
+  PATTERN_DECL_NODE(d_conv_x);
+  PATTERN_DECL_NODE(d_conv_w);
+  PATTERN_DECL_NODE(d_act_x);
+  PATTERN_DECL_NODE(bn_x);
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_saved_variance);
+  PATTERN_DECL_NODE(d_bn_x);
+  PATTERN_DECL_NODE(d_bn_scale);
+  PATTERN_DECL_NODE(d_bn_bias);
+};
+
+// The following patterns are used to fuse BN + Add + Act + Conv backward
+// pattern, [sum] is optional, controlled by with_sum
+// (a) shortcut=true
+//     |      |
+//  [dBN]     /
+//     |     /
+//  [dAdd]---
+//     |
+//  [dReLU]
+//     |
+//  [sum (optional)]
+//     |       |
+//  [dConv]    |
+//     |       |
+//
+// (b) shortcut=false
+//     |      |
+//  [dBN]   [dBN]
+//     |     /
+//  [dAdd]---
+//     |
+//  [dReLU]
+//     |
+//  [sum (optional)]
+//     |       |
+//  [dConv]    |
+//     |       |
+struct BNAddActConvGrad : public PatternBase {
+  BNAddActConvGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_add_act_conv_grad") {}
+
+  PDNode* operator()(const std::unordered_set<std::string>& act_grad_types,
+                     bool shortcut,
+                     bool with_sum);
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv_grad);
+  PATTERN_DECL_NODE(act_grad);
+  PATTERN_DECL_NODE(elewise_add_grad);
+  PATTERN_DECL_NODE(sum);
+  PATTERN_DECL_NODE(batch_norm1_grad);
+  PATTERN_DECL_NODE(batch_norm2_grad);
+  // declare variable node's name
+  // dConv
+  PATTERN_DECL_NODE(d_conv_out);
+  PATTERN_DECL_NODE(conv_x);
+  PATTERN_DECL_NODE(conv_w);
+  PATTERN_DECL_NODE(d_conv_x);
+  PATTERN_DECL_NODE(d_conv_w);
+  // (optional) sum
+  PATTERN_DECL_NODE(sum_in_extra);
+  PATTERN_DECL_NODE(sum_out);
+  // dAct
+  PATTERN_DECL_NODE(d_act_x);
+  // dAdd
+  PATTERN_DECL_NODE(d_elewise_add_x);
+  PATTERN_DECL_NODE(d_elewise_add_y);
+  // BN 1
+  PATTERN_DECL_NODE(bn1_x);
+  PATTERN_DECL_NODE(bn1_scale);
+  PATTERN_DECL_NODE(bn1_bias);
+  PATTERN_DECL_NODE(bn1_saved_mean);
+  PATTERN_DECL_NODE(bn1_saved_variance);
+  PATTERN_DECL_NODE(d_bn1_x);
+  PATTERN_DECL_NODE(d_bn1_scale);
+  PATTERN_DECL_NODE(d_bn1_bias);
+  // (optional) BN 2
+  PATTERN_DECL_NODE(bn2_x);
+  PATTERN_DECL_NODE(bn2_scale);
+  PATTERN_DECL_NODE(bn2_bias);
+  PATTERN_DECL_NODE(bn2_saved_mean);
+  PATTERN_DECL_NODE(bn2_saved_variance);
+  PATTERN_DECL_NODE(d_bn2_x);
+  PATTERN_DECL_NODE(d_bn2_scale);
+  PATTERN_DECL_NODE(d_bn2_bias);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
