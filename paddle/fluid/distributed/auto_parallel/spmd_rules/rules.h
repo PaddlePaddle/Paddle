@@ -24,6 +24,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/split_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/transpose_spmd_rule.h"
 
 // TODO(ljz) Automatic this process in cmake file.
 namespace paddle {
@@ -154,6 +155,9 @@ REGISTER_SPMD_RULE(softmax_with_cross_entropy, CrossEntropyWithSoftmaxSPMDRule);
 // split rule
 REGISTER_SPMD_RULE(split, SplitSPMDRule);
 REGISTER_SPMD_RULE(split_with_num, SplitSPMDRule);
+
+// transpose rule
+REGISTER_SPMD_RULE(transpose, TransposeSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

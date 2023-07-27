@@ -30,8 +30,6 @@
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/utils/profiler.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace hlir {
 namespace framework {

@@ -104,6 +104,10 @@ class InterpreterBaseImpl {
       const = 0;
 
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
+
+  virtual const interpreter::StreamAnalyzer& GetStreamAnalyzer() const = 0;
+
+  virtual bool IsSharedResultsBuild() const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

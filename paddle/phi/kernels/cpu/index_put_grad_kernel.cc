@@ -16,6 +16,7 @@
 #include <numeric>
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
@@ -188,6 +189,19 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
+  if (int_indices_v.empty()) {
+    if (x_grad) {
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (value_grad) {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::vectorize(value_grad->dims()),
+                             0.0f,
+                             value_grad->dtype(),
+                             value_grad);
+    }
+    return;
+  }
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
