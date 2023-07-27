@@ -88,25 +88,13 @@ void GatherNdKernel(const Context &ctx,
 
   int ret = XPU_SUCCESS;
   if (index_type == DataType::INT32) {
-    if (x.numel() <= std::numeric_limits<int>::max()) {
-      auto deleter = [](int64_t *ptr) { delete[] ptr; };
-      std::shared_ptr<int64_t> x_vec_i64(new int64_t[x_vec.len], deleter);
-      ret = xpu::gather_nd_int<XPUType, int>(
-          ctx.x_context(),
-          reinterpret_cast<const XPUType *>(x.data<T>()),
-          index.data<int>(),
-          reinterpret_cast<XPUType *>(out->data<T>()),
-          xpu::vpi32_to_vpi64(x_vec, x_vec_i64.get()),
-          std::vector<int64_t>(index_shape.begin(), index_shape.end()));
-    } else {
-      ret = xpu::gather_nd<XPUType, int>(
-          ctx.x_context(),
-          reinterpret_cast<const XPUType *>(x.data<T>()),
-          index.data<int>(),
-          reinterpret_cast<XPUType *>(out->data<T>()),
-          x_vec,
-          index_shape);
-    }
+    ret = xpu::gather_nd<XPUType, int>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUType *>(x.data<T>()),
+        index.data<int>(),
+        reinterpret_cast<XPUType *>(out->data<T>()),
+        x_vec,
+        index_shape);
   } else {
     ret = xpu::gather_nd<XPUType, int64_t>(
         ctx.x_context(),
