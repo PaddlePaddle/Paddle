@@ -33,8 +33,13 @@ class FillAnyLikeOpConverter : public OpConverter {
 
     const int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-    if ((dtype == 2 || dtype == 3) ||
+    if ((dtype == 2) ||
         (dtype == -1 && input->getType() == nvinfer1::DataType::kINT32)) {
+      value_tensor = Add1DConstantLayer(static_cast<int32_t>(value),
+                                        output_name + "_value_tensor_");
+    } else if (dtype == 3) {
+      LOG(WARNING) << "the fill_any_like has int64 dtype, it "
+                      "will be cast to int32.";
       value_tensor = Add1DConstantLayer(static_cast<int32_t>(value),
                                         output_name + "_value_tensor_");
     } else {
