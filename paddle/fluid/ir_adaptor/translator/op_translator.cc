@@ -60,12 +60,14 @@ using OpAttributeInfo = dialect::OpAttributeInfo;
 using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
 using OpOutputInfo = dialect::OpOutputInfo;
 using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-using InputHandleFn = std::function<ir::OpResult(ir::IrContext*,
-                                                 TranslationContext*,
-                                                 const OpDesc&,
-                                                 const std::string&,
-                                                 const OpInputInfo&,
-                                                 ir::Program*)>;
+using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
+                                                  TranslationContext*,
+                                                  const OpDesc&,
+                                                  const std::string&,
+                                                  const OpInputInfo&,
+                                                  ir::Program*)>;
+using AttributeHandlerFn = std::function<ir::Attribute(
+    ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 constexpr char kTargetDialectPrefix[] = "pd.";
 constexpr char kEmptyVarName[] = "@EMPTY@";
 
@@ -291,7 +293,12 @@ struct OpTranscriber {
                                      const OpOutputMapping& arg_to_idx);
 
  public:
-  virtual InputHandleFn GetSpecialInputHandlers(std::string input_name) {
+  virtual InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) {
+    return nullptr;
+  }
+  virtual AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& input_name) {
     return nullptr;
   }
 };
@@ -300,10 +307,10 @@ ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
                                         const OpDesc& op_desc) {
   std::string target_op_name =
       kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
-  if (IsInplace(op_desc)) {
+  if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
-  VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
+  VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
           << target_op_name;
   auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
@@ -480,14 +487,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
       continue;
     }
 
-    const auto& origin_legacy_output_vars = op_desc.Output(legacy_output_name);
-    std::vector<std::string> legacy_output_vars;
-    std::copy_if(
-        origin_legacy_output_vars.begin(),
-        origin_legacy_output_vars.end(),
-        std::back_inserter(legacy_output_vars),
-        [](const auto& var_name) { return var_name != kEmptyVarName; });
-
+    const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
     // Specially process TensorArray, this because we cannot distinguish it with
@@ -534,6 +534,11 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << info.type_name << " " << legacy_output_name;
       std::vector<ir::Type> types;
       for (const auto& var_name : legacy_output_vars) {
+        if (var_name == kEmptyVarName) {
+          types.push_back(ir::Type(nullptr));
+          arg_to_idx[var_name] = cur_output_idx;
+          continue;
+        }
         VarDesc* var = block->FindVarRecursive(var_name);
         VLOG(10) << "[output translating]"
                  << "[" << op_desc.Type() << "]" << info.name << " " << var_name
@@ -560,9 +565,16 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   ir::AttributeMap attribute_map = {};
 
   for (const auto& info : op_attr_infos) {
+    if (auto handler = this->GetSpecialAttributeHandlers(info.name)) {
+      auto new_attr = handler(ctx, op_desc, info);
+      attribute_map[info.name] = new_attr;
+      continue;
+    }
+
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
-
+    VLOG(10) << "[op: " << op_desc.Type()
+             << "][attr] from: " << legacy_attr_name << " to: " << info.name;
     if (op_desc.HasAttr(legacy_attr_name)) {
       paddle::framework::Attribute legacy_attr =
           op_desc.GetAttr(legacy_attr_name);
@@ -886,7 +898,8 @@ ir::OpResult TranslateDropOutStateIn(ir::IrContext* ctx,
 
 // `rnn` has an aditional input in dynamic graph
 struct RnnOpTranscriber : public OpTranscriber {
-  InputHandleFn GetSpecialInputHandlers(std::string input_name) override {
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
     if (input_name != "dropout_state_in") {
       return nullptr;
     }
@@ -955,6 +968,39 @@ struct FeedOpTranscriber : public OpTranscriber {
   }
 };
 
+struct FeedWithPlaceOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    ir::AttributeMap attribute_map = {
+        {"name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"dtype",
+         paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
+        {"place",
+         paddle::dialect::PlaceAttribute::get(
+             ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
+    };
+
+    return attribute_map;
+  }
+
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    return {};
+  }
+};
+
 struct SplitOpTranscriber : public OpTranscriber {
   std::vector<ir::OpResult> GenerateOperationInput(
       ir::IrContext* ctx,
@@ -963,7 +1009,7 @@ struct SplitOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
       ir::Program* program) override {
-    // input of pslit is [Tensor x, IntArray sections, Scalar(int) axis)]
+    // input of split is [Tensor x, IntArray sections, Scalar(int) axis)]
 
     VLOG(10) << "[op:split][input] start";
 
@@ -977,7 +1023,8 @@ struct SplitOpTranscriber : public OpTranscriber {
     // process sections
     int num = paddle::get<int>(op_desc.GetAttr("num"));
     if (num <= 0) {
-      if (op_desc.HasInput("SectionsTensorList")) {
+      if (op_desc.HasInput("SectionsTensorList") &&
+          op_desc.Input("SectionsTensorList").size() > 0) {
         // get SectionsTensorList from input
 
         auto sec_tensor_list = op_desc.Input("SectionsTensorList");
@@ -989,7 +1036,7 @@ struct SplitOpTranscriber : public OpTranscriber {
         ir::Attribute new_attr = attribute_translator(
             "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("sections"));
         auto sec_defin_op =
-            InsertFullOperationForAttributeInput(ctx, program, new_attr);
+            InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
         op_inputs.push_back(sec_defin_op->result(0));
       }
     }
@@ -1087,17 +1134,150 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+struct ShaddowOutputOpTranscriber : public OpTranscriber {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
+    std::vector<ir::OpResult> op_inputs;
+    auto legacy_input_vars = op_desc.Input("x", true);
+
+    auto defining_info = (*param_map)[legacy_input_vars[0]];
+    op_inputs.push_back(defining_info.value);
+
+    ir::AttributeMap attribute_map = {
+        {"parameter_name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+    };
+
+    auto create_op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
+    ir::Operation* operation =
+        ir::Operation::Create(op_inputs, attribute_map, {}, create_op_info);
+    program->block()->push_back(operation);
+
+    return operation;
+  }
+};
+
+// NOTE, add_n op in legacy ops don't have a kernel, so we use a new op for now
+struct AddNOpTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name =
+        kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
+    if (IsInplace(op_desc)) {
+      target_op_name += "_";
+    } else {
+      target_op_name += "_with_kernel";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+    }
+
+    return op_info;
+  }
+};
+
+ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
+                                          TranslationContext* param_map,
+                                          const OpDesc& op_desc,
+                                          const std::string& normalized_op_name,
+                                          const OpInputInfo& input_info,
+                                          ir::Program* program) {
+  const std::string legacy_attr_name = "depth";
+  const std::string legacy_tensor_name = "depth_tensor";
+  std::vector<std::string> legacy_vars;
+  if (op_desc.HasInput(legacy_tensor_name) &&
+      op_desc.Input(legacy_tensor_name).size() > 0) {
+    legacy_vars = op_desc.Input(legacy_tensor_name);
+    IR_ENFORCE(legacy_vars.size() == 1,
+               "depth_tensor input of one hot MUST be a tensor");
+    auto var_name = legacy_vars[0];
+    IR_ENFORCE(legacy_vars.size() == 1,
+               "depth_tensor input of one hot MUST be a tensor");
+    auto defining_info = param_map->find(legacy_vars[0]);
+    IR_ENFORCE(defining_info != param_map->end(),
+               "%s should be existed in one_hot_v2 as input depth_tensor.",
+               legacy_vars[0]);
+    return defining_info->second.value;
+  }
+
+  auto& attribute_translator = AttributeTranslator::instance();
+  if (!op_desc.HasAttr(legacy_attr_name)) {
+    IR_THROW("Op %s arg %s should not be zero size",
+             op_desc.Type(),
+             legacy_attr_name);
+  }
+  paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
+  VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+           << " name: " << legacy_attr_name << " " << legacy_attr.index();
+  ir::Attribute new_attr = attribute_translator(legacy_attr);
+
+  ir::Operation* defining_op =
+      InsertFullOperationForAttributeInput(ctx, program, new_attr);
+  return defining_op->result(0);
+}
+
+struct OneHotTranscriber : public OpTranscriber {
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
+    if (input_name != "num_classes") {
+      return nullptr;
+    }
+    return TranslateNumClassesForOneHot;
+  };
+};
+
+ir::Attribute TranslateReduceAll(ir::IrContext* ctx,
+                                 const OpDesc& op_desc,
+                                 const OpAttributeInfo& attr_info) {
+  bool reduce_all = false;
+  if (op_desc.HasAttr("reduce_all")) {
+    reduce_all = paddle::get<bool>(op_desc.GetAttr("reduce_all"));
+  }
+
+  if (reduce_all) {
+    return ir::ArrayAttribute::get(ctx, std::vector<ir::Attribute>{});
+  }
+
+  auto& attribute_translator = AttributeTranslator::instance();
+  auto& op_normalizer = OpNameNormalizer::instance();
+  auto legacy_attr_name =
+      op_normalizer.GetLegacyAttrName(op_desc.Type(), attr_info.name);
+  paddle::framework::Attribute dims = op_desc.GetAttr(legacy_attr_name);
+  return attribute_translator(attr_info.type_name, dims);
+}
+
+struct ReduceOpTranscriber : public OpTranscriber {
+  AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& input_name) override {
+    if (input_name != "axis") {
+      return nullptr;
+    }
+    return TranslateReduceAll;
+  }
+};
+
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
-  special_handlers["feed"] = FeedOpTranscriber();
-  special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
-  special_handlers["split"] = SplitOpTranscriber();
+  special_handlers["feed"] = FeedOpTranscriber();
+  special_handlers["feed_with_place"] = FeedWithPlaceOpTranscriber();
+  special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
-  special_handlers["assign_value"] = AssignValueOpTranscriber();
-  special_handlers["increment"] = IncrementOpTranscriber();
+  special_handlers["one_hot_v2"] = OneHotTranscriber();
+  special_handlers["reduce_all"] = ReduceOpTranscriber();
+  special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["shaddow_output"] = ShaddowOutputOpTranscriber();
+  special_handlers["split"] = SplitOpTranscriber();
+  special_handlers["sum"] = AddNOpTranscriber();
 }
 
 }  // namespace translator

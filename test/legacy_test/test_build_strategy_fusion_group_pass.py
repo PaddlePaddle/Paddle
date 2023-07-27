@@ -16,6 +16,7 @@ import unittest
 
 from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
+import paddle
 from paddle import fluid
 from paddle.fluid import core
 
@@ -36,4 +37,5 @@ class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -25,12 +25,11 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace ir {
@@ -58,8 +57,7 @@ LoweredFunc _LoweredFunc_::Make(const std::string& name,
   n->PrepareCreateTempBufferExprs();
   n->PrepareAllocTempBufferExprs();
   n->AllocTempBuffer();
-  bool with_expr_gen_tensor = true;
-  if (FLAGS_cinn_ir_schedule) with_expr_gen_tensor = false;
+  bool with_expr_gen_tensor = false;
   n->PrepareBufferCastExprs(with_expr_gen_tensor);
   n->PrepareArgumentExprs();
   n->PrepareDeallocTempBufferExprs();

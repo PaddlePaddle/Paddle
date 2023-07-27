@@ -30,12 +30,10 @@
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {
@@ -183,17 +181,22 @@ std::vector<shape_t> InferShapeForArgmin(
     const framework::AttrMapType &attrs) {
   CHECK_EQ(inputs_shape.size(), 1UL);
   auto ndim = inputs_shape[0].size();
-  CHECK_GT(ndim, 0) << "tensor's dim must be more than 0";
   int axis;
   bool keep_dim;
 
   CHECK(attrs.find("axis") != attrs.end());
   axis = absl::get<int>(attrs.at("axis"));
-  if (axis < 0) {
-    axis = static_cast<int>(ndim) + axis;
+  if (ndim > 0) {
+    if (axis < 0) {
+      axis = static_cast<int>(ndim) + axis;
+    }
+    CHECK_LT(axis, ndim) << "Axis must be less than tensor's dim";
+    CHECK_GE(axis, 0) << "Axis must be more than 0";
+  } else {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
   }
-  CHECK_LT(axis, ndim) << "Axis must be less than tensor's dim";
-  CHECK_GE(axis, 0) << "Axis must be more than 0";
 
   CHECK(attrs.find("keep_dim") != attrs.end());
   keep_dim = absl::get<bool>(attrs.at("keep_dim"));
@@ -212,11 +215,7 @@ std::vector<shape_t> InferShapeForArgmin(
   if (keep_dim) {
     CHECK_EQ(ndim, out_shapes.size());
   } else {
-    CHECK_EQ(ndim - 1, out_shapes.size());
-  }
-
-  if (out_shapes.empty()) {
-    out_shapes.push_back(1);
+    CHECK(ndim - 1 == out_shapes.size() || ndim == 0 && out_shapes.empty());
   }
 
   return {out_shapes};

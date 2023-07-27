@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/ir/interface/infermeta.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/vjp.h"
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferMetaInterface)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::VjpInterface)

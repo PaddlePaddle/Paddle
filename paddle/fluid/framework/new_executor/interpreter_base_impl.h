@@ -80,6 +80,8 @@ class InterpreterBaseImpl {
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
+  virtual void ShareBuildResultsFrom(const InterpreterBaseImpl& src) = 0;
+
   virtual void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) = 0;
 
   virtual void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) = 0;
@@ -97,6 +99,15 @@ class InterpreterBaseImpl {
   virtual const platform::Place& GetPlace() const = 0;
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
+
+  virtual const interpreter::DependencyBuilder& GetDependencyBuilder()
+      const = 0;
+
+  virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
+
+  virtual const interpreter::StreamAnalyzer& GetStreamAnalyzer() const = 0;
+
+  virtual bool IsSharedResultsBuild() const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

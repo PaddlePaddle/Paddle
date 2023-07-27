@@ -33,9 +33,10 @@ class PhiKernelInstruction : public InstructionBase {
       ::ir::Operation* op,
       Scope* scope,
       Scope* local_scope,
-      const std::unordered_map<::ir::Value, std::string>& value_2_name_map);
-
-  const std::string& PhiOpName() const { return phi_op_name_; }
+      const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+      const std::map<std::string, int>& var_name_2_id,
+      const std::unordered_map<const paddle::framework::Variable*, std::string>&
+          variable_2_var_name);
 
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
@@ -51,7 +52,17 @@ class PhiKernelInstruction : public InstructionBase {
 
   void Run() override;
 
+  const std::string& Name() const override { return phi_op_name_; }
+
  private:
+  void InitInputsOutputsIds(
+      ::ir::Operation* op,
+      Scope* inner_scope,
+      const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+      const std::map<std::string, int>& var_name_2_id,
+      const std::unordered_map<const paddle::framework::Variable*, std::string>&
+          variable_2_var_name);
+
   std::string phi_op_name_;
 
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{

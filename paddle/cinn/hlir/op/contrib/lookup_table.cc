@@ -38,7 +38,6 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {
@@ -106,11 +105,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", B shape: " << utils::Join(tensor_B->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    std::string tensor_name = UniqName("LookupTable_out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 3U);
-      tensor_name = pack_args[2].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 3U);
+    std::string tensor_name = pack_args[2].operator std::string();
+
     ir::Tensor out = LookupTable(tensor_A, tensor_B, padding_idx, tensor_name);
     std::vector<CINNValue> res;
     stages->InsertLazily(out);

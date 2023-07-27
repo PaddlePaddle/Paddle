@@ -23,10 +23,8 @@
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
-#include "paddle/cinn/ir/ir_operators.h"
 #include "paddle/cinn/ir/layout.h"
-
-DECLARE_bool(cinn_ir_schedule);
+#include "paddle/cinn/ir/op/ir_operators.h"
 
 namespace cinn {
 namespace hlir {
@@ -60,37 +58,34 @@ std::shared_ptr<OpStrategy> StrategyForBroadcast(
                           const ir::Tensor &B,
                           const std::string &output_name,
                           const Expr &axis)) {
-  framework::CINNCompute binary_compute([=](lang::Args args,
-                                            lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of " << op_name
-                         << " compute is empty! Please check.";
-    CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U)
-        << "at least 2 input tensors for " << op_name << " compute";
-    std::string tensor_name = UniqName(op_name + "_Out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_GE(pack_args.size(), 3U) << op_name << " 's input is not enough!";
-      CHECK(pack_args[2].is_string());
-      tensor_name = pack_args[2].operator std::string();
-    }
-    Expr A_expr = pack_args[0];
-    Expr B_expr = pack_args[1];
-    CHECK(A_expr.as_tensor());
-    CHECK(B_expr.as_tensor());
-    ir::Tensor A = A_expr.as_tensor_ref();
-    ir::Tensor B = B_expr.as_tensor_ref();
-    Expr axis;
-    bool trans_a;
-    for (auto &iter : attrs.attr_store) {
-      if (iter.first == "axis") {
-        axis = Expr(absl::get<int>(iter.second));
-        break;
-      }
-    }
-    auto out = pe_func(A, B, tensor_name, axis);
-    auto stages = CreateStages({A, B, out});
-    *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
-  });
+  framework::CINNCompute binary_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty()) << "The input argument of " << op_name
+                             << " compute is empty! Please check.";
+        CINNValuePack pack_args = args[0];
+        CHECK_GE(pack_args.size(), 2U)
+            << "at least 2 input tensors for " << op_name << " compute";
+        CHECK_GE(pack_args.size(), 3U) << op_name << " 's input is not enough!";
+        CHECK(pack_args[2].is_string());
+        std::string tensor_name = pack_args[2].operator std::string();
+        Expr A_expr = pack_args[0];
+        Expr B_expr = pack_args[1];
+        CHECK(A_expr.as_tensor());
+        CHECK(B_expr.as_tensor());
+        ir::Tensor A = A_expr.as_tensor_ref();
+        ir::Tensor B = B_expr.as_tensor_ref();
+        Expr axis;
+        bool trans_a;
+        for (auto &iter : attrs.attr_store) {
+          if (iter.first == "axis") {
+            axis = Expr(absl::get<int>(iter.second));
+            break;
+          }
+        }
+        auto out = pe_func(A, B, tensor_name, axis);
+        auto stages = CreateStages({A, B, out});
+        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(binary_compute,
@@ -198,12 +193,10 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
     CINNValuePack pack_args = args[0];
     CHECK(!pack_args.empty())
         << "The input tensors of broadcast_to compute is empty! Please check.";
-    std::string tensor_name = UniqName("broadcast_to_Out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_GE(pack_args.size(), 2U);
-      CHECK(pack_args[1].is_string());
-      tensor_name = pack_args[1].operator std::string();
-    }
+    CHECK_GE(pack_args.size(), 2U);
+    CHECK(pack_args[1].is_string());
+    std::string tensor_name = pack_args[1].operator std::string();
+
     Expr A_expr = pack_args[0];
     CHECK(A_expr.as_tensor());
     ir::Tensor A = A_expr.as_tensor_ref();
@@ -323,12 +316,9 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
         CINNValuePack pack_args = args[0];
         int input_size = pack_args.size();
 
-        std::string tensor_name = UniqName("IsClose_output");
-        if (FLAGS_cinn_ir_schedule) {
-          // the last pack argument is the output tensor name
-          tensor_name = pack_args.back().operator std::string();
-          --input_size;
-        }
+        // the last pack argument is the output tensor name
+        std::string tensor_name = pack_args.back().operator std::string();
+        --input_size;
         CHECK_EQ(input_size, 2)
             << "The input number of isclose should be 2, but here "
             << input_size << "! Please check.";

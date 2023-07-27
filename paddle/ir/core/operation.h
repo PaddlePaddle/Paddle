@@ -69,9 +69,9 @@ class IR_API alignas(8) Operation final {
 
   template <typename T>
   T attribute(const std::string &name) {
-    IR_ENFORCE(attributes().count(name) > 0 && attributes().at(name).isa<T>(),
-               "Attribute is not right.");
-    return attributes().at(name).dyn_cast<T>();
+    Attribute attr = attribute(name);
+    IR_ENFORCE(attr.isa<T>(), "Attribute (%s) type is not right.", name);
+    return attr.dyn_cast<T>();
   }
 
   void set_attribute(const std::string &key, Attribute value) {
@@ -123,6 +123,8 @@ class IR_API alignas(8) Operation final {
 
   /// Replace all uses of results of this operation with the provided 'values'.
   void ReplaceAllUsesWith(const std::vector<Value> &values);
+
+  void ReplaceAllUsesWith(const std::vector<OpResult> &op_results);
 
   inline void ReplaceAllUsesWith(Value value) {
     ReplaceAllUsesWith(std::vector<Value>{value});
