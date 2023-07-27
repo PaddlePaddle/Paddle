@@ -185,8 +185,7 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     auto x_rank = x_shape.size();
     auto y_shape = add_y->Var()->GetShape();
     auto y_rank = y_shape.size();
-    if (x_rank != y_rank)
-      return;
+    if (x_rank != y_rank) return;
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;
 
