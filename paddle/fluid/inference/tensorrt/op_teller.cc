@@ -2162,7 +2162,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-<<<<<<< HEAD
 
       auto dtype = x_var_desc->GetDataType();
 
