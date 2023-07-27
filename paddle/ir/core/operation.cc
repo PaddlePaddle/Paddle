@@ -218,17 +218,8 @@ Operation *Operation::GetParentOp() const {
   return parent_ ? parent_->GetParentOp() : nullptr;
 }
 
-Program *Operation::GetParentProgram() {
-  Operation *op = this;
-  while (Operation *parent_op = op->GetParentOp()) {
-    op = parent_op;
-  }
-  ModuleOp module_op = op->dyn_cast<ModuleOp>();
-  return module_op ? module_op.program() : nullptr;
-}
-
-const Program *Operation::GetParentProgram() const {
-  Operation *op = this;
+const Program *Operation::const_GetParentProgram() const {
+  Operation *op = const_cast<Operation *>(this);
   while (Operation *parent_op = op->GetParentOp()) {
     op = parent_op;
   }

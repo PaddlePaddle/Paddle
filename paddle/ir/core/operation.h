@@ -109,17 +109,19 @@ class IR_API alignas(8) Operation final {
     return info_.HasInterface<Interface>();
   }
 
-  const Block *GetParent() const { return parent_; }
+  const Block *const_GetParent() const { return parent_; }
 
-  Block *GetParent() { return parent_; }
+  Block *GetParent() { return const_cast<Block *>(this->const_GetParent()); }
 
   Region *GetParentRegion();
 
   Operation *GetParentOp() const;
 
-  Program *GetParentProgram();
+  const Program *const_GetParentProgram() const;
 
-  const Program *GetParentProgram() const;
+  Program *GetParentProgram() {
+    return const_cast<Program *>(this->const_GetParentProgram());
+  }
 
   operator Block::iterator() { return position_; }
 
