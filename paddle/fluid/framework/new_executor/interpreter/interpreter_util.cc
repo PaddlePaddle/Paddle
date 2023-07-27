@@ -1004,7 +1004,6 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
-    std::cerr << "kernel name " << kernel_name << std::endl;
 
     if (kernel_name == "fused_softmax_mask_upper_triangle" ||
         kernel_name == "fused_softmax_mask_upper_triangle_grad") {

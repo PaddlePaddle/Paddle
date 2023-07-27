@@ -472,7 +472,6 @@ void BuildRuntimeContext(
 
   auto pd_op_name =
       op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  std::cerr << "pd op name  " << pd_op_name << std::endl;
   auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
@@ -494,10 +493,8 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    std::cerr << "input name " << legacy_attr_name << std::endl;
 
     runtime_ctx->inputs[legacy_attr_name].push_back(var);
-    std::cerr << "fin ins" << std::endl;
   }
 
   auto& output_name_list = op_yaml_info.OutputNames();
@@ -514,7 +511,6 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    std::cerr << "output name " << legacy_attr_name << std::endl;
     runtime_ctx->outputs[legacy_attr_name] = vec_tmp;
   }
 }
@@ -532,7 +528,6 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
   auto pd_op_name =
       op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  std::cerr << "pd op name  " << pd_op_name << std::endl;
   auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();

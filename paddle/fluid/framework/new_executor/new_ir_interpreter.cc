@@ -1036,7 +1036,6 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
 
     if (instr_node.PreDefineContext()) {
       VLOG(5) << "run new ir selected kernel";
-      std::cerr << instr_node.OpFunc()->phi_op_name_ << std::endl;
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
       VLOG(5) << "begin to run op " << op_func_node->phi_op_name_;
       if (op_func_node->infer_meta_interface_) {
@@ -1047,7 +1046,6 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
 
       if (op_func_node->fluid_op) {
         // run fluid op
-        std::cerr << "run fluid op" << std::endl;
         ExecutionContext exe_ctx(*(op_func_node->operator_base_.get()),
                                  *scope_,
                                  *(op_func_node->dev_ctx_),
