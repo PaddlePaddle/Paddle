@@ -38,6 +38,7 @@
       bool is_inplace,                                                     \
       DenseTensor* x_grad,                                                 \
       DenseTensor* scale_grad,                                             \
+      DenseTensor* bias_grad)
 
 namespace phi {
 
