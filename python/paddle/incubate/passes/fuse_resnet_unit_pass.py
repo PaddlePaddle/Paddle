@@ -90,7 +90,7 @@ def fuse_resnet_unit():
         varZ,
     ):
         bnX = pattern_conv_bn(x, filterX, scaleX, biasX, meanX, varX)
-        bnZ = pattern_conv_bn(x, filterZ, scaleZ, biasZ, meanZ, varZ)
+        bnZ = pattern_conv_bn(z, filterZ, scaleZ, biasZ, meanZ, varZ)
         ewadd = ir.PassDesc.OP.elementwise_add(
             X=bnX.Output("Y"), Y=bnZ.Output("Y")
         )

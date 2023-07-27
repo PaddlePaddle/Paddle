@@ -28,7 +28,6 @@ from paddle.fluid.framework import (
     in_dygraph_mode,
     program_guard,
 )
-from paddle.fluid.layers import control_flow
 from paddle.framework import core
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
@@ -275,7 +274,7 @@ def _rnn_static_graph(
 
         end = paddle.cast(end, "int64")
         cond = start_i < end
-    while_op = control_flow.While(cond)
+    while_op = paddle.static.nn.control_flow.While(cond)
 
     out_array = paddle.tensor.create_array(
         dtype=paddle.utils.flatten(inputs)[0].dtype

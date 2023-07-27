@@ -16,7 +16,6 @@
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
 void* DistTensor::AllocateFrom(Allocator* allocator,
                                DataType dtype,
@@ -59,6 +58,5 @@ void DistTensor::set_meta(const DenseTensorMeta& meta) {
   meta_ = meta;
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

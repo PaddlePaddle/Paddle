@@ -66,8 +66,10 @@ paddle::framework::Variable* CreateVar(
   }
 
   paddle::framework::Variable* var = nullptr;
+
   std::string name = var_name_prefix + "_inner_var_" +
                      std::to_string(variable_2_var_name->size());
+
   if (force_persisable || is_persisable) {
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope->root();
     var = const_cast<paddle::framework::Scope*>(inner_scope->root())->Var(name);
@@ -197,9 +199,30 @@ void HandleForSpecialOp(
 
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    std::string name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+    paddle::framework::Variable* var = inner_scope->FindVar(name);
 
     auto feed_var_name = "feed_" + std::to_string(index);
     value_2_var_name->emplace(value, feed_var_name);
+    variable_2_var_name->emplace(var, feed_var_name);
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(feed_var_name, id);
+    variable_list->push_back(var);
+    PADDLE_ENFORCE_EQ(
+        variable_list->size(),
+        var_name_2_id->size(),
+        paddle::platform::errors::InvalidArgument(
+            "The size of variable_list and var_name_2_id map should be equal"));
+  }
+
+  if (op_name == "pd.feed_with_place") {
+    VLOG(6) << "Handle for pd.feed_with_place";
+    auto var_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto value = op->result(0);
+    value_2_var_name->emplace(value, var_name);
   }
 
   if (op_name == "builtin.combine") {
@@ -250,6 +273,22 @@ void HandleForSpecialOp(
           ->Rename(orig_name, param_name);
     }
     (*value_2_var_name)[value] = param_name;
+  }
+
+  if (op_name == "pd.shaddow_output") {
+    VLOG(6) << "Handle for pd.shaddow_ouptut";
+    auto var_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto value = op->operand(0);
+    // change opreand name to param_name
+    auto orig_name = value_2_var_name->at(value);
+
+    if (inner_scope->root()->FindVar(var_name) == nullptr) {
+      const_cast<paddle::framework::Scope*>(inner_scope->root())
+          ->Rename(orig_name, var_name);
+    }
+    (*value_2_var_name)[value] = var_name;
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -312,6 +351,9 @@ void HandleForInplaceOp(
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value value = op->result(i);
+    if (value.type().storage() == nullptr) {
+      continue;
+    }
     std::string value_name = yaml_parser.OutputNames()[i];
     if (yaml_parser.HasInplace(value_name)) {
       std::string inplace_name = yaml_parser.InplaceName(value_name);
@@ -362,7 +404,8 @@ void BuildScope(const ir::Block& block,
 
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice") {
+        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
+        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,

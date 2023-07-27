@@ -2032,7 +2032,7 @@ struct LogFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.template cast<U>().unaryExpr(Log<U>());
+    out.device(d) = x.template cast<U>().unaryExpr(Log<U>()).eval();
   }
 };
 
@@ -2076,7 +2076,7 @@ struct Log2Functor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.template cast<U>().unaryExpr(Log2<U>());
+    out.device(d) = x.template cast<U>().unaryExpr(Log2<U>()).eval();
   }
 };
 
@@ -2121,7 +2121,7 @@ struct Log10Functor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.template cast<U>().unaryExpr(Log10<U>());
+    out.device(d) = x.template cast<U>().unaryExpr(Log10<U>()).eval();
   }
 };
 
@@ -2166,7 +2166,7 @@ struct Log1pFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.template cast<U>().unaryExpr(Log1p<U>());
+    out.device(d) = x.template cast<U>().unaryExpr(Log1p<U>()).eval();
   }
 };
 
