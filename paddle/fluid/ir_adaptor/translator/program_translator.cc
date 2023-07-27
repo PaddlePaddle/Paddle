@@ -226,8 +226,6 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     ir::OpResult value = value_info.value;
     if (!value) {
       return;
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Value of [%s] can not ber None", var_name));
     }
     auto* defining_op = value.owner();
     PADDLE_ENFORCE_NOT_NULL(
