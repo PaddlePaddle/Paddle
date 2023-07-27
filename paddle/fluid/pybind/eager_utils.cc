@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
-
 #include <Python.h>
+#include "paddle/ir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -49,6 +49,7 @@ extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
+extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
@@ -858,6 +859,12 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const ir::OpResult& value) {
+  auto obj = ::pybind11::cast(value);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
@@ -1425,6 +1432,21 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
         op_type,
         arg_pos + 1,
         type_name));  // NOLINT
+  }
+}
+
+ir::OpResult CastPyArg2OpResult(const std::string& op_type,
+                                PyObject* obj,
+                                size_t arg_pos) {
+  if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return ::pybind11::handle(obj).cast<ir::OpResult>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "OpResult, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 }
 
