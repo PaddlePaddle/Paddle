@@ -27,9 +27,13 @@ std::vector<ir::OpResult> tanh_grad(ir::OpResult out, ir::OpResult grad_out) {
   ir::Block* insert_block_ptr = grad_out.owner()->GetParent();
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  // 2. construct builder
   ir::Builder builder = ir::Builder(ctx, insert_block_ptr);
+
+  // 3. build op
   paddle::dialect::TanhGradOp grad_op =
       builder.Build<paddle::dialect::TanhGradOp>(out, grad_out);
+  // 4. get op's output
   res.push_back(grad_op.x_grad());
   return res;
 }
