@@ -100,5 +100,4 @@ __all__ = [  # noqa
     'sequence_enumerate',
     'sequence_reverse',
     'prelu',
-    'ExponentialMovingAverage',
 ]
