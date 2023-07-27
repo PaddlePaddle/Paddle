@@ -14,17 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 
-import cinn
-import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 import paddle
-import paddle.nn.functional as F
 
 
 @OpTestTool.skip_if(
@@ -72,7 +68,7 @@ class TestMatmulOp(OpTest):
         out = self.cinn_func(builder, x, y)
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x, y], [self.x_np, self.y_np], [out], passes=list()
+            prog, target, [x, y], [self.x_np, self.y_np], [out], passes=[]
         )
         self.cinn_outputs = res
 

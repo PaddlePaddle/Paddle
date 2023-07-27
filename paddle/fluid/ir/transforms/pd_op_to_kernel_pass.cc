@@ -26,6 +26,7 @@
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
@@ -36,11 +37,23 @@ namespace dialect {
 
 const int init_on_gpu_threashold = 1000;
 
+std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
+    {"DataType::FLOAT16", phi::DataType::FLOAT16},
+    {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
+    {"DataType::FLOAT32", phi::DataType::FLOAT32},
+    {"DataType::FLOAT64", phi::DataType::FLOAT64},
+    {"DataType::INT16", phi::DataType::INT16},
+    {"DataType::INT32", phi::DataType::INT32},
+    {"DataType::INT64", phi::DataType::INT64},
+    {"DataType::INT8", phi::DataType::INT8},
+    {"DataType::BOOL", phi::DataType::BOOL},
+};
+
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
-    const dialect::OpYamlInfoParser* op_info_parser = nullptr) {
+    std::unique_ptr<dialect::OpYamlInfoParser> op_info_parser = nullptr) {
   if (op->name() == "pd.feed") {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
@@ -52,7 +65,6 @@ phi::KernelKey GetKernelKey(
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
-
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
@@ -60,20 +72,47 @@ phi::KernelKey GetKernelKey(
     auto attr_map = op->attributes();
     auto& data_type_info = op_info_parser->OpRuntimeInfo().kernel_key_dtype;
 
-    if (data_type_info.size() > 0 && data_type_info[0] != "") {
+    if (!data_type_info.empty() && !data_type_info[0].empty()) {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
-      auto& input_map = op_info_parser->Name2Id();
+      auto& input_map = op_info_parser->InputName2Id();
 
-      if (input_map.count(slot_name)) {
+      auto find_it = Str2PhiDataType.find(slot_name);
+      if (find_it != Str2PhiDataType.end()) {
+        kernel_data_type = find_it->second;
+      } else if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
+        auto type = map_value_pair.at(op->operand(in_index)).type();
 
-        dialect::DenseTensorType type =
-            op->operand(in_index)
-                .type()
-                .dyn_cast<paddle::dialect::DenseTensorType>();
-        kernel_data_type = TransToPhiDataType(type.dtype());
+        if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          kernel_data_type = TransToPhiDataType(
+              type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                  .dtype());
+        } else if (type.isa<ir::VectorType>()) {
+          auto vec_data = type.dyn_cast<ir::VectorType>().data();
+          if (vec_data.size() == 0) {
+            kernel_data_type = phi::DataType::UNDEFINED;
+          } else {
+            if (vec_data[0].isa<paddle::dialect::AllocatedDenseTensorType>()) {
+              kernel_data_type = TransToPhiDataType(
+                  vec_data[0]
+                      .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                      .dtype());
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "Only support DenseTensorType in vector"));
+            }
+          }
+        } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+          kernel_data_type = TransToPhiDataType(
+              type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                  .dtype());
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Only support DenseTensorType, SelectedRows, VectorType"));
+        }
+
       } else {
         PADDLE_ENFORCE_EQ(attr_map.count(slot_name),
                           true,
@@ -130,8 +169,11 @@ phi::KernelKey GetKernelKey(
       if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
         continue;
       }
-
       auto input_tmp = op->operand(i);
+      // NOTE: if not input_tmp, it's an optional input
+      if (!input_tmp) {
+        continue;
+      }
       auto new_input_tmp = map_value_pair.at(input_tmp);
 
       auto input_type = new_input_tmp.type();
@@ -181,11 +223,11 @@ phi::KernelKey GetKernelKey(
   return res;
 }
 
-std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
+std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
+                                                   phi::Place place) {
   auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
 
   auto block = prog->block();
-  phi::Place cpu_place(phi::AllocationType::CPU);
 
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -202,14 +244,19 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     VLOG(6) << "op name " << (*it)->name();
     paddle::dialect::OpYamlInfoInterface op_info_interface =
         (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-    OpYamlInfoParser* op_info_parser = nullptr;
+    std::unique_ptr<OpYamlInfoParser> op_info_parser;
     if (op_info_interface) {
-      op_info_parser = new OpYamlInfoParser(op_info_interface.GetOpInfo());
+      op_info_parser.reset(new OpYamlInfoParser(op_info_interface.GetOpInfo()));
     }
+
+    std::string kernel_fn_str;
+    if (op_info_parser != nullptr) {
+      kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
+    }
+
     auto kernel_key =
-        GetKernelKey(*it, cpu_place, map_value_pair, op_info_parser);
+        GetKernelKey(*it, place, map_value_pair, std::move(op_info_parser));
     VLOG(6) << "kernel type " << kernel_key;
-    // create new Op
 
     // only for single output
     // need update new kernel key layout and data tyep
@@ -246,6 +293,13 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
           ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
           op_output_types.push_back(t1);
+        } else if (result_type.isa<dialect::SelectedRowsType>()) {
+          auto allocated_selected_rows_dtype =
+              paddle::dialect::AllocatedSelectedRowsType::get(
+                  ctx,
+                  phi::TransToPhiPlace(kernel_key.backend()),
+                  result_type.dyn_cast<dialect::SelectedRowsType>());
+          op_output_types.push_back(allocated_selected_rows_dtype);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
               "Result type only support DenseTensorType and VectorType"));
@@ -256,14 +310,18 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
 
-    std::string kernel_fn_str;
-    if (op_info_parser != nullptr) {
-      kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
-    }
-
     if ((*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         auto cur_in = (*it)->operand(i);
+        if (!cur_in) {
+          vec_inputs.push_back(ir::OpResult());
+          continue;
+        }
+        PADDLE_ENFORCE_EQ(
+            map_value_pair.count(cur_in),
+            true,
+            phi::errors::PreconditionNotMet(
+                "[%d]'s input of [%s] op MUST in map pair", i, (*it)->name()));
         auto new_in = map_value_pair.at(cur_in);
 
         auto new_in_type = new_in.type();
@@ -307,6 +365,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
             // [ todo need update here, support combine data transfomer]
+          } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
+            // do nothing here
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support allocated dense tensor type for now"));
@@ -327,6 +387,10 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       op_attribute.emplace(it1->first, it1->second);
     }
 
+    if ((*it)->HasTrait<paddle::dialect::InplaceTrait>()) {
+      op_attribute.emplace("is_inplace", ir::BoolAttribute::get(ctx, true));
+    }
+
     ir::Operation* op = ir::Operation::Create(
         vec_inputs, op_attribute, op_output_types, op_info);
 
@@ -340,6 +404,35 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     }
 
     program->block()->push_back(op);
+
+    if ((*it)->name() == "pd.feed" && platform::is_gpu_place(place)) {
+      // add shaddow feed op
+      phi::KernelKey shaddow_key{
+          phi::Backend::GPU,
+          phi::DataLayout::ANY,
+          TransToPhiDataType(
+              (*it)->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+      std::unordered_map<std::string, ir::Attribute> attr_map{
+          {"op_name", ir::StrAttribute::get(ctx, "pd.shaddow_feed")},
+          {"kernel_name", ir::StrAttribute::get(ctx, "shaddow_feed")},
+          {"kernel_key", dialect::KernelAttribute::get(ctx, shaddow_key)}};
+
+      auto out_type = paddle::dialect::AllocatedDenseTensorType::get(
+          ctx,
+          phi::TransToPhiPlace(shaddow_key.backend()),
+          (*it)->result(0).type().dyn_cast<dialect::DenseTensorType>());
+
+      ir::Operation* shaddow_op =
+          ir::Operation::Create({op->result(0)}, attr_map, {out_type}, op_info);
+
+      map_op_pair[*it] = shaddow_op;
+      program->block()->push_back(shaddow_op);
+      if ((*it)->num_results() > 0) {
+        for (size_t i = 0; i < shaddow_op->num_results(); ++i) {
+          map_value_pair[(*it)->result(i)] = shaddow_op->result(i);
+        }
+      }
+    }
   }
 
   return program;

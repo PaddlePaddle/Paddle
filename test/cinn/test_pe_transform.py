@@ -19,7 +19,6 @@ import unittest
 import cinn
 import numpy as np
 from cinn import Target, ir, lang, pe, runtime
-from cinn.common import *
 from cinn.poly import create_stages
 
 
@@ -53,14 +52,14 @@ class TestPETransform(unittest.TestCase):
     def transform_matmul_tester(
         self, fn_name, cinn_fn, np_fn, trans_a, trans_b, alpha
     ):
-        m, n, k = [
+        m, n, k = (
             ir.Expr(_)
             for _ in (
                 self.m,
                 self.n,
                 self.k,
             )
-        ]
+        )
         x_shape_expr = [k, m] if trans_a else [m, k]
         y_shape_expr = [n, k] if trans_b else [k, n]
         x = lang.Placeholder("float32", "x", x_shape_expr)

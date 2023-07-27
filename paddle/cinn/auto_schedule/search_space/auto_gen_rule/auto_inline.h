@@ -22,7 +22,7 @@
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -64,7 +64,7 @@ class AutoInline : public AutoGenRule {
                                         const std::string& block_name) override;
 
  private:
-  void Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
+  void Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);  // NOLINT
 
  private:
   std::vector<ir::Expr> all_block_realizes_;
