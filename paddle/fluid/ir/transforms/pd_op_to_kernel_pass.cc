@@ -285,7 +285,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     if ((*it)->name() == "pd.pool2d" || (*it)->name() == "pd.pool2d_grad") {
       std::cerr << "change pool2d" << std::endl;
-      kernel_key.set_backend(phi::Backend::GPU);
+      if (kernel_key.backend() == phi::Backend::GPUDNN) {
+        kernel_key.set_backend(phi::Backend::GPU);
+      }
       std::cerr << kernel_key << std::endl;
     }
 

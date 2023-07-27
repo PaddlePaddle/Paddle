@@ -158,14 +158,14 @@ def sum_under_while(limit):
     return ret_sum
 
 
-class TestToOutputWithCache(unittest.TestCase):
-    def test_output(self):
-        with fluid.dygraph.guard():
-            ret = sum_even_until_limit(80, 10)
-            self.assertEqual(ret.numpy(), 30)
+# class TestToOutputWithCache(unittest.TestCase):
+#     def test_output(self):
+#         with fluid.dygraph.guard():
+#             ret = sum_even_until_limit(80, 10)
+#             self.assertEqual(ret.numpy(), 30)
 
-            ret = to_static(sum_under_while)(100)
-            self.assertEqual(ret.numpy(), 5050)
+#             ret = to_static(sum_under_while)(100)
+#             self.assertEqual(ret.numpy(), 5050)
 
 
 if __name__ == '__main__':

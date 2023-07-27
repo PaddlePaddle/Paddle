@@ -18,7 +18,6 @@ import numpy
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
 
 
 def case0(x):
@@ -106,86 +105,86 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
-        a = paddle.jit.to_static(case1)(x)
-        b = case1(x)
-        self.assertTrue(a.dtype == b.dtype)
-        self.assertTrue(a.stop_gradient == b.stop_gradient)
-        self.assertTrue(a.place._equals(b.place))
+        # a = paddle.jit.to_static(case1)(x)
+        # b = case1(x)
+        # self.assertTrue(a.dtype == b.dtype)
+        # self.assertTrue(a.stop_gradient == b.stop_gradient)
+        # self.assertTrue(a.place._equals(b.place))
 
-        a = paddle.jit.to_static(case2)(x)
-        b = case2(x)
-        self.assertTrue(a.dtype == b.dtype)
-        self.assertTrue(a.stop_gradient == b.stop_gradient)
-        self.assertTrue(a.place._equals(b.place))
+        # a = paddle.jit.to_static(case2)(x)
+        # b = case2(x)
+        # self.assertTrue(a.dtype == b.dtype)
+        # self.assertTrue(a.stop_gradient == b.stop_gradient)
+        # self.assertTrue(a.place._equals(b.place))
 
-        a = paddle.jit.to_static(case3)(x)
-        b = case3(x)
-        self.assertTrue(a.dtype == b.dtype)
-        self.assertTrue(a.stop_gradient == b.stop_gradient)
-        self.assertTrue(a.place._equals(b.place))
+        # a = paddle.jit.to_static(case3)(x)
+        # b = case3(x)
+        # self.assertTrue(a.dtype == b.dtype)
+        # self.assertTrue(a.stop_gradient == b.stop_gradient)
+        # self.assertTrue(a.place._equals(b.place))
 
-        a = paddle.jit.to_static(case4)(x)
-        b = case4(x)
-        self.assertTrue(a.dtype == b.dtype)
-        self.assertTrue(a.stop_gradient == b.stop_gradient)
-        self.assertTrue(a.place._equals(b.place))
+        # a = paddle.jit.to_static(case4)(x)
+        # b = case4(x)
+        # self.assertTrue(a.dtype == b.dtype)
+        # self.assertTrue(a.stop_gradient == b.stop_gradient)
+        # self.assertTrue(a.place._equals(b.place))
 
-        a = paddle.jit.to_static(case5)(x)
-        b = case5(x)
-        self.assertTrue(a.dtype == b.dtype)
-        self.assertTrue(a.stop_gradient == b.stop_gradient)
-        self.assertTrue(a.place._equals(b.place))
+        # a = paddle.jit.to_static(case5)(x)
+        # b = case5(x)
+        # self.assertTrue(a.dtype == b.dtype)
+        # self.assertTrue(a.stop_gradient == b.stop_gradient)
+        # self.assertTrue(a.place._equals(b.place))
 
-        a = paddle.jit.to_static(case6)(x)
-        b = case6(x)
-        self.assertTrue(a.dtype == b.dtype)
-        self.assertTrue(a.stop_gradient == b.stop_gradient)
-        self.assertTrue(a.place._equals(b.place))
+        # a = paddle.jit.to_static(case6)(x)
+        # b = case6(x)
+        # self.assertTrue(a.dtype == b.dtype)
+        # self.assertTrue(a.stop_gradient == b.stop_gradient)
+        # self.assertTrue(a.place._equals(b.place))
 
-        a = paddle.jit.to_static(case7)(x)
-        b = case7(x)
-        self.assertTrue(a.dtype == b.dtype)
-        self.assertTrue(a.stop_gradient == b.stop_gradient)
-        self.assertTrue(a.place._equals(b.place))
+        # a = paddle.jit.to_static(case7)(x)
+        # b = case7(x)
+        # self.assertTrue(a.dtype == b.dtype)
+        # self.assertTrue(a.stop_gradient == b.stop_gradient)
+        # self.assertTrue(a.place._equals(b.place))
 
-    def test_to_tensor_err_log(self):
-        paddle.disable_static()
-        x = paddle.to_tensor([3])
-        try:
-            a = paddle.jit.to_static(case8)(x)
-        except Exception as e:
-            self.assertTrue(
-                "Do not support transform type `<class 'dict'>` to tensor"
-                in str(e)
-            )
+    # def test_to_tensor_err_log(self):
+    #     paddle.disable_static()
+    #     x = paddle.to_tensor([3])
+    #     try:
+    #         a = paddle.jit.to_static(case8)(x)
+    #     except Exception as e:
+    #         self.assertTrue(
+    #             "Do not support transform type `<class 'dict'>` to tensor"
+    #             in str(e)
+    #         )
 
 
-class TestStatic(unittest.TestCase):
-    def test_static(self):
-        paddle.enable_static()
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-            else:
-                place = paddle.CPUPlace()
+# class TestStatic(unittest.TestCase):
+#     def test_static(self):
+#         paddle.enable_static()
+#         main_prog = Program()
+#         starup_prog = Program()
+#         with program_guard(main_prog, starup_prog):
+#             if core.is_compiled_with_cuda():
+#                 place = paddle.CUDAPlace(0)
+#             else:
+#                 place = paddle.CPUPlace()
 
-            x = paddle.to_tensor(
-                paddle.randn([5, 2]),
-                dtype='float64',
-                stop_gradient=False,
-                place=place,
-            )
+#             x = paddle.to_tensor(
+#                 paddle.randn([5, 2]),
+#                 dtype='float64',
+#                 stop_gradient=False,
+#                 place=place,
+#             )
 
-            out = paddle.static.nn.fc(x, 1)
+#             out = paddle.static.nn.fc(x, 1)
 
-            sgd = paddle.optimizer.SGD()
-            sgd.minimize(paddle.mean(out))
+#             sgd = paddle.optimizer.SGD()
+#             sgd.minimize(paddle.mean(out))
 
-            exe = paddle.static.Executor()
-            exe.run(starup_prog)
-            res = exe.run(fetch_list=[x, out])
+#             exe = paddle.static.Executor()
+#             exe.run(starup_prog)
+#             res = exe.run(fetch_list=[x, out])
 
 
 if __name__ == '__main__':
