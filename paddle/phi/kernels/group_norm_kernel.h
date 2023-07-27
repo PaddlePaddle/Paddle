@@ -20,7 +20,6 @@
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-using paddle::inference::tensorrt::plugin::GroupNormNHWCParams;
 namespace phi {
 
 template <typename T, typename Context>
@@ -53,6 +52,8 @@ class GroupNormDirectCUDAFunctor {
                   const DataLayout data_layout);
 };
 #endif
+
+using paddle::inference::tensorrt::plugin::GroupNormNHWCParams;
 
 template <typename T>
 class groupNormNHWCSum {

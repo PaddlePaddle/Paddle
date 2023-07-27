@@ -118,7 +118,7 @@ template <>
 inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
     const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
   __nv_bfloat162 h2 = *reinterpret_cast<__nv_bfloat162 const*>(srcX);
-  float2 f2 = __bfloat1622float2(h2);
+  float2 f2 = phi::bfloat1622float2(h2);
   *sum += f2.x + f2.y;
   *sumSq += f2.x * f2.x + f2.y * f2.y;
 }
@@ -307,7 +307,6 @@ void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
   }
 }
 template class groupNormNHWCSum<__half>;
-template class groupNormNHWCSum<phi::dtype::bfloat16>;
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void GroupNormCompute(int32_t hwBegin,
@@ -394,9 +393,9 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
-  gammaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  gammaF2 = phi::bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.gamma) + ci));
-  betaF2 = __bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
+  betaF2 = phi::bfloat1622float2(*reinterpret_cast<__nv_bfloat162 const*>(
       reinterpret_cast<__nv_bfloat16 const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
@@ -409,7 +408,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
         *reinterpret_cast<__nv_bfloat162 const*>(&params.srcX[offset]);
 
     // Extract the two half values.
-    float2 f2 = __bfloat1622float2(h2);
+    float2 f2 = phi::bfloat1622float2(h2);
 
     // Normalize the channels.
     f2.x = (f2.x - mean) * invStdDev;
@@ -426,7 +425,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     }
     // Store the scaled values.
     *reinterpret_cast<__nv_bfloat162*>(&params.dst[offset]) =
-        __float22bfloat162_rn(f2);
+        phi::float22bfloat162_rn(f2);
   }
 }
 #endif
@@ -439,23 +438,22 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
   int32_t ci =
       blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
 
-  if (ci >= params.c) {
-    return;
-  }
   // The group that thread works on and the channel in the group (modulus).
   int32_t gi = ci / params.cPerGroup;
 
-  // Load the sum and sum of squares for the group.
-  float mean, sumSq = 0.F;
-
-  if (gi < params.groups) {
-    mean = params.redBuffer[(2 * ni + 0) * params.groups + gi];
-    sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
+  if (ci >= params.c || gi >= params.groups) {
+    return;
   }
+
+  // Load the sum and sum of squares for the group.
+
+  float mean = params.redBuffer[(2 * ni + 0) * params.groups + gi];
+  float sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
 
   // Compute the variance.
   float var = sumSq * params.invHWC - (mean * mean);
-  if (params.var_data != nullptr && gi < params.groups) {
+
+  if (params.var_data != nullptr) {
     params.var_data[ni * params.groups + gi] = var;
   }
   // Compute the inverse of the stddev.
@@ -524,7 +522,6 @@ void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
   }
 }
 template class groupNormNHWCScale<__half>;
-template class groupNormNHWCScale<phi::dtype::bfloat16>;
 
 template <typename T, typename Context>
 void GroupNormNHWCKernel(const Context& dev_ctx,
@@ -560,6 +557,12 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   params_.c = x_dims[3];
   params_.h = x_dims[1];
   params_.w = x_dims[2];
+
+  dev_ctx.template Alloc<AccT>(mean);
+  dev_ctx.template Alloc<AccT>(var);
+  auto* mean_data = mean->data<AccT>();
+  auto* var_data = var->data<AccT>();
+  params_.var_data = var_data;
 
   int32_t cPerBlock = 320;
   int32_t maxBlocksPerHW = 1024;
@@ -609,8 +612,10 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   nhwc_sum(&params_, stream);
   groupNormNHWCScale<T> nhwc_scale;
   nhwc_scale(params_, stream);
-  cudaMemcpyAsync(params_.redBuffer,
-                  params_.mean_data,
+
+  cudaMemcpyAsync(mean_data,
+                  params_.redBuffer,
+
                   params_.n * groups * sizeof(float),
                   cudaMemcpyDeviceToDevice,
                   stream);

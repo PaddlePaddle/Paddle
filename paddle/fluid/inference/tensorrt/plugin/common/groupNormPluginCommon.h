@@ -42,9 +42,6 @@ struct GroupNormNHWCParams {
   // BLOCKS_PER_BATCH x C x 2.
   float* redBuffer;
 
-  // The mean
-  float* mean_data;
-  // The variance
   float* var_data;
 
   // The number of instances in the batch.
