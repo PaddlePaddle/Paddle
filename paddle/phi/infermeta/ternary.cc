@@ -1040,19 +1040,6 @@ void ScatterInferMeta(const MetaTensor& x,
   const auto& ref_dims = x.dims();
   const auto& index_dims = index.dims();
 
-  if (index_dims.size() == 0) {
-    PADDLE_ENFORCE_EQ(
-        updates_dims.size(),
-        ref_dims.size() - 1,
-        phi::errors::InvalidArgument("When the index is a 0D tensor, the dims "
-                                     "of updates should be x's dims - 1."));
-  } else {
-    PADDLE_ENFORCE_EQ(updates_dims.size(),
-                      ref_dims.size(),
-                      phi::errors::InvalidArgument(
-                          "When the index is not a 0D tensor, the dims of "
-                          "updates should be equal with x's dims."));
-  }
   if (index_dims.size() == 2) {
     PADDLE_ENFORCE_EQ(index_dims[1],
                       1,
@@ -1088,6 +1075,17 @@ void ScatterInferMeta(const MetaTensor& x,
             "batch-size is %d.",
             updates_dims[0],
             index_dims[0]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (ref_dims.size() - 1 == updates_dims.size()),
+        true,
+        phi::errors::InvalidArgument(
+            "When the Input(Updates) is a 0D tensor, the "
+            "Input(Updates) should have the shape size as Input(X)'s "
+            "shape size - 1. But received the size of Input(x)'s shape is %d, "
+            " the size of Input(Updates)'s shape is %d.",
+            ref_dims.size(),
+            updates_dims.size()));
   }
   out->set_dims(ref_dims);
   out->share_lod(x);
