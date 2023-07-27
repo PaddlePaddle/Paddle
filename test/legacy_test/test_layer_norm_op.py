@@ -906,6 +906,10 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
         self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or not support the FastMath",
+)
 class TestFastMathLayerNormOp(unittest.TestCase):
     def check_layer_norm(
         self, dtype, x_np, scale_np, bias_np, norm_axis, has_scale, has_bias
