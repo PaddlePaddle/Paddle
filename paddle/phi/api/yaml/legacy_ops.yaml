@@ -916,6 +916,7 @@
     func : TrilInferMeta
   kernel :
     func : tril
+  inplace: (x -> out)
   backward : tril_grad
 
 - op : tril_indices
@@ -937,6 +938,7 @@
     func : TriuInferMeta
   kernel :
     func : triu
+  inplace: (x -> out)
   backward : triu_grad
 
 - op : triu_indices
