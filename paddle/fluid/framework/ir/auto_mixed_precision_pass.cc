@@ -391,25 +391,25 @@ void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
 void AutoMixedPrecisionPass::GetOpPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      auto unique_type = op_node->Op()->Type();
-      auto op_type = GetOpOriginalType(unique_type);
+      auto op_type = op_node->Op()->Type();
       bool support_low_precision = true;
-      if (op_type == "feed" || op_type == "fetch") {
+      if (GetOpOriginalType(op_type) == "feed" ||
+          GetOpOriginalType(op_type) == "fetch") {
         support_low_precision = enable_low_precision_io_;
-      } else if (op_type == "tensorrt_engine") {
+      } else if (GetOpOriginalType(op_type) == "tensorrt_engine") {
         auto enable_fp16 = op_node->Op()->GetAttrIfExists<bool>("enable_fp16");
         auto enable_int8 = op_node->Op()->GetAttrIfExists<bool>("enable_int8");
         auto low_precision_io =
             op_node->Op()->GetAttrIfExists<bool>("enable_low_precision_io");
         support_low_precision = enable_fp16 && !enable_int8 && low_precision_io;
       } else {
-        support_low_precision =
-            OpSupportPrecision(op_type, backend_, low_precision_, black_list_);
+        support_low_precision = OpSupportPrecision(
+            GetOpOriginalType(op_type), backend_, low_precision_, black_list_);
 
         std::unordered_set<std::string> check_dtype_op_blacklist(
             {"arg_max", "arg_min"});
         if (op_node->Op()->HasAttr("dtype") &&
-            !check_dtype_op_blacklist.count(op_type)) {
+            !check_dtype_op_blacklist.count(GetOpOriginalType(op_type))) {
           auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
           support_low_precision =
               support_low_precision &&
@@ -424,7 +424,7 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
 
         // If scale op's "scale" and "bias" attr value exceed the range of fp16
         // and bf16, it cannot run at low precision.
-        if (op_type == "scale") {
+        if (GetOpOriginalType(op_node->Op()->Type()) == "scale") {
           auto scale = op_node->Op()->GetAttrIfExists<float>("scale");
           auto bias = op_node->Op()->GetAttrIfExists<float>("bias");
           if (low_precision_ == phi::DataType::FLOAT16) {
@@ -464,11 +464,10 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
       }
 
       if (support_low_precision) {
-        op_run_low_precision_.insert(unique_type);
-        VLOG(4) << "support precision: " << unique_type
-                << " run at low precision";
+        op_run_low_precision_.insert(op_type);
+        VLOG(4) << "support precision: " << op_type << " run at low precision";
       } else {
-        VLOG(4) << "support precision: " << unique_type
+        VLOG(4) << "support precision: " << op_type
                 << " not run at low precision";
       }
     }
