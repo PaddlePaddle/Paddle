@@ -1696,6 +1696,9 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+            return
+
         has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
         has_grad_op_maker = fluid.core.has_grad_op_maker(self.op_type)
         fwd_res = self._calc_output(

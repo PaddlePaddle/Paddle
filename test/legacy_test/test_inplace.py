@@ -697,5 +697,141 @@ class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
             paddle.pow_(var, [2])
 
 
+class TestDygraphInplaceTriu(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.triu_(var, 0)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.triu(var, 0)
+
+
+class TestDygraphInplaceTril(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.tril_(var, 0)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.tril(var, 0)
+
+
+class TestDygraphInplaceLogit(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.logit_(var, 1e-3)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.logit(var, 1e-3)
+
+
+class TestDygraphInplaceLog(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.log_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.log(var)
+
+
+class TestDygraphInplaceLog2(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.log2_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.log2(var)
+
+
+class TestDygraphInplaceLog10(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.log10_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.log10(var)
+
+
+class TestDygraphInplaceLog1p(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.log1p_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.log1p(var)
+
+
+class TestDygraphInplaceTrunc(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.trunc_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.trunc(var)
+
+
+class TestDygraphInplaceDigamma(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.digamma_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.digamma(var)
+
+
+class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.neg_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.neg(var)
+
+
+class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.lgamma_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.lgamma(var)
+
+
+class TestDygraphInplaceFrac(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.frac_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.frac(var)
+
+
+class TestDygraphInplaceI0(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.i0_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.i0(var)
+
+
+class TestDygraphInplacePolygamma(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.polygamma_(var, 1)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.polygamma(var, 1)
+
+
+class TestDygraphInplaceHardTanh(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.hardtanh_(var, -1.0, 1.0)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.hardtanh(var, -1.0, 1.0)
+
+
+class TestDygraphInplaceLeakyRelu(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.leaky_relu_(var, 0.01)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.leaky_relu(var, 0.01)
+
+
+class TestDygraphInplaceThresholdedRelu(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.nn.functional.thresholded_relu_(var, 1.0)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.nn.functional.thresholded_relu(var, 1.0)
+
+
 if __name__ == '__main__':
     unittest.main()
