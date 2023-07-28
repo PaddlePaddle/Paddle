@@ -43,13 +43,14 @@ def _get_softmax_upper(x, fp16=True):
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
+        self.python_api = paddle.incubate.softmax_mask_fuse_upper_triangle
         x = np.random.random((1, 4, 32, 32)).astype("float16")
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
@@ -61,6 +62,7 @@ class TestSoftmaxMaskFuseOp(OpTest):
 class TestSoftmaxMaskFuseOp1(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
+        self.python_api = paddle.incubate.softmax_mask_fuse_upper_triangle
         x = np.random.random((1, 4, 32, 32))
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
@@ -68,7 +70,7 @@ class TestSoftmaxMaskFuseOp1(OpTest):
 
     def test_check_output(self):
         try:
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(core.CPUPlace(), check_dygraph=True)
         except (NotImplementedError, RuntimeError):
             pass
 
