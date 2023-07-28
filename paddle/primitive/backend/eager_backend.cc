@@ -19,6 +19,7 @@
 
 namespace paddle {
 namespace primitive {
+namespace backend {
 namespace experimental {
 
 template <>
@@ -58,5 +59,6 @@ Tensor tanh<Tensor>(const Tensor& x) {
   return ::tanh_ad_func(x);
 }
 }  // namespace experimental
+}  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

@@ -39,7 +39,12 @@
 
 namespace paddle {
 namespace primitive {
+namespace backend {
 namespace experimental {
+
+using DescTensor = paddle::primitive::experimental::DescTensor;
+using StaticCompositeContext =
+    paddle::primitive::experimental::StaticCompositeContext;
 
 template <>
 Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
@@ -101,5 +106,6 @@ Tensor tanh<DescTensor>(const Tensor& x) {
 }
 
 }  // namespace experimental
+}  // namespace backend
 }  // namespace primitive
 }  // namespace paddle
