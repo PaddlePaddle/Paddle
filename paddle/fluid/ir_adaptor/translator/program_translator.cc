@@ -209,6 +209,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
   // Currently we set stop gradient for operation that generated a value
   // connected with VarDesc
   for (const auto& [var_name, value_info] : param_map_) {
+    if (no_cast_var_names.count(var_name) != 0) continue;
     VLOG(10) << "[op translated][stop gradient]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
