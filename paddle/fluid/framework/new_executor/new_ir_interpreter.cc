@@ -252,6 +252,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
+    // Build
     std::stringstream ss;
     ss << this;
     ::ir::BuildScope(*ir_program_->block(),
@@ -264,32 +265,24 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     VLOG(4) << DebugValueInfo();
 
     BuildInstruction();
+    VLOG(4) << "Done BuildInstruction";
 
     BuildInstructionDependences();
+    VLOG(4) << "Done BuildInstructionDependences";
 
     ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
+    VLOG(4) << "Done ConstructEvents";
+
     // add event for the input var of jit program, since there are async copied
     // from gpu_pinned place to gpu place on compute stream.
-    for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-      if (dependecy_count_[i] == 0) {
-        InstructionBase* inst = vec_instruction_base_[i].get();
-        if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
-          for (auto& item : inst->Inputs()) {
-            for (auto var_id : item.second) {
-              auto name = GetNameById(var_id);
-              if (JitInputVars().count(name)) {
-                auto device_event = std::make_shared<platform::DeviceEvent>(
-                    place_, platform::GenerateDeviceEventFlag());
-                VLOG(4) << "Add input event for input: " << name << " of "
-                        << inst->Name();
-                inst->AddEventToWait(
-                    i, device_event, ir_stream_analyzer_.GetWaiterType(inst));
-              }
-            }
-          }
-        }
-      }
-    }
+    ConstructEventForJitInput();
+    VLOG(4) << "AddEventToWait for JitInputVars";
+
+    CalculateLastLiveOps();
+    VLOG(4) << "Done CalculateLastLiveOps";
+
+    AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap());
+    VLOG(4) << "Done AnalyseExecuteOrderForTrace";
 
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
@@ -314,6 +307,139 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   } else {
     return {};
   }
+}
+
+void NewIRInterpreter::CalculateLastLiveOps() {
+  // calculate last_live_ops_
+  for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx) {
+    InstructionBase* instr = vec_instruction_base_[op_idx].get();
+    std::set<size_t> gc_check_vars;
+
+    const std::unordered_map<::ir::Value, std::vector<int>>& ins =
+        instr->Inputs();
+    const std::unordered_map<::ir::Value, std::vector<int>>& outs =
+        instr->Outputs();
+    std::unordered_multimap<::ir::Value, std::vector<int>> ins_and_outs{
+        ins.begin(), ins.end()};
+    ins_and_outs.insert(outs.begin(), outs.end());
+
+    for (auto& item : ins_and_outs) {
+      for (auto var_id : item.second) {
+        // skip no_need_buffer input vars
+        if (ins.count(item.first) && instr->NoNeedBuffer().count(item.first)) {
+          continue;
+        }
+        gc_check_vars.insert(var_id);
+      }
+    }
+
+    for (auto var_id : gc_check_vars) {
+      Scope* inner_scope = InnerScope();
+      paddle::framework::Variable* var =
+          inner_scope->FindVar(GetNameById(var_id));
+      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
+          var->IsType<LoDTensorArray>()) {
+        last_live_ops_[var_id].insert(op_idx);
+      } else {
+        VLOG(4) << "not clear " << GetNameById(var_id) << " after "
+                << instr->Name() << " because its type is "
+                << framework::ToTypeName(var->Type());
+      }
+    }
+  }
+  // clear the last_live_ops list for all vars in skip_gc_vars
+  for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
+    int var_id = GetIdByName(skip_gc_var);
+    if (var_id != -1) {
+      last_live_ops_[var_id].clear();
+      VLOG(8) << "Skip gc for var: " << skip_gc_var;
+    }
+  }
+  VLOG(4) << "calculate last_live_ops_";
+
+  // shrink, find the downstream op that has no other op in the
+  // downstream list happens before it
+  // For example,
+  // b = op1(a)
+  // c = op2(a, b)
+  // in this case, a is the input of op1 and op2, we only need to check
+  // a after op2, because op2 always uses a after op1.
+  var_ref_count_.resize(variable_list_.size());
+  VLOG(4) << "last_live_ops_.size() : " << last_live_ops_.size();
+  for (auto kv : last_live_ops_) {
+    for (auto val : kv.second) {
+      VLOG(4) << "var: " << kv.first << " -> op: " << val;
+    }
+  }
+  VLOG(4) << "var_ref_count_.size() : " << var_ref_count_.size();
+  for (size_t i = 0; i < last_live_ops_.size(); ++i) {
+    std::set<size_t> minumum_last_live_ops;
+    for (auto val : last_live_ops_[i]) {
+      VLOG(4) << "last_live_ops_: " << val;
+    }
+    for (size_t item : last_live_ops_[i]) {
+      bool not_before_any = true;
+      // find the op that is not executed before any
+      for (size_t other_item : last_live_ops_[i]) {
+        if (ir_dependency_builder_.OpHappensBefore(item, other_item)) {
+          VLOG(6) << "happens_before: " << item << "->" << other_item
+                  << ", so skip " << item;
+          not_before_any = false;
+          break;
+        }
+      }
+      if (not_before_any) {
+        VLOG(6) << "last live op of var " << i << " "
+                << var_scope_.GetNameById(i) << " : " << item << " "
+                << vec_instruction_base_[item]->Name();
+        minumum_last_live_ops.insert(item);
+        vec_instruction_base_[item]->AddGCCheckVar(i);
+      }
+    }
+    last_live_ops_[i] = minumum_last_live_ops;
+    var_ref_count_[i] = last_live_ops_[i].size();
+  }
+  VLOG(4) << "calculate last_live_ops_ 2";
+
+  for (auto& dep : dependecy_count_) {
+    deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
+  }
+  for (size_t i = 0; i < variable_list_.size(); ++i) {
+    refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
+        var_ref_count_[i], variable_list_[i]));
+  }
+  VLOG(4) << "calculate last_live_ops_ 3";
+}
+
+void NewIRInterpreter::ConstructEventForJitInput() {
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      InstructionBase* inst = vec_instruction_base_[i].get();
+      if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
+        for (auto& item : inst->Inputs()) {
+          for (auto var_id : item.second) {
+            auto name = GetNameById(var_id);
+            if (JitInputVars().count(name)) {
+              auto device_event = std::make_shared<platform::DeviceEvent>(
+                  place_, platform::GenerateDeviceEventFlag());
+              VLOG(4) << "Add input event for input: " << name << " of "
+                      << inst->Name();
+              inst->AddEventToWait(
+                  i, device_event, ir_stream_analyzer_.GetWaiterType(inst));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+int NewIRInterpreter::GetIdByName(const std::string& name) const {
+  auto it = var_name_2_id_.find(name);
+  if (it != var_name_2_id_.end()) {
+    return it->second;
+  }
+  return -1;
 }
 
 void NewIRInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -896,7 +1022,7 @@ void NewIRInterpreter::Convert(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
 
-  AnalyseExecuteOrderForTrace();
+  AnalyseExecuteOrderForTrace(dependency_builder_.OpDownstreamMap());
 }
 
 void NewIRInterpreter::BuildSkipShareLoDInfo() {
@@ -1565,12 +1691,11 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 // ->(sync_run)-> OP(B) OP(O) ->(direct_run)-> OP(C) ->(direct_run)-> OP(D) If B
 // is run before C, B may always block to wait for A to finish executing, but in
 // fact, C can be executed first during this time.
-void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
+void NewIRInterpreter::AnalyseExecuteOrderForTrace(
+    std::map<size_t, std::set<size_t>> op_downstream_map) {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
-
-  auto op_downstream_map = dependency_builder_.OpDownstreamMap();
-
+  VLOG(4) << "1";
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
             << ", remain deps: " << deps_[next_id]->DynamicDep();

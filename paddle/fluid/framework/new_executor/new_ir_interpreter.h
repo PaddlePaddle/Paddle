@@ -86,6 +86,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::string GetNameById(int id) const;
 
+  int GetIdByName(const std::string& name) const;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -93,7 +95,10 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
-  void AnalyseExecuteOrderForTrace();
+  void AnalyseExecuteOrderForTrace(
+      std::map<size_t, std::set<size_t>> op_downstream_map);
+  void ConstructEventForJitInput();
+  void CalculateLastLiveOps();
 
   // inplace
   void BuildInplace();
@@ -217,6 +222,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   std::map<std::string, int> var_name_2_id_;
 
   std::vector<Variable*> variable_list_;
+
+  std::vector<int> var_ref_count_;
 
   interpreter::NewIrDependencyBuilder ir_dependency_builder_;
 
