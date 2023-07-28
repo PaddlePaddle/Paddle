@@ -104,6 +104,15 @@ inline __device__ void UpdateSum(const T* srcX, float* sum, float* sumSq) {
 }
 
 template <>
+inline __device__ void UpdateSum<__half, 1>(const __half* srcX,
+                                            float* sum,
+                                            float* sumSq) {
+  float src_data = __half2float(*srcX);
+  *sum += src_data;
+  *sumSq += src_data * src_data;
+}
+
+template <>
 inline __device__ void UpdateSum<phi::dtype::float16, 2>(
     const phi::dtype::float16* srcX, float* sum, float* sumSq) {
   __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
