@@ -51,6 +51,16 @@ void LerpKernel(const Context &ctx,
                 const DenseTensor &y,
                 const DenseTensor &weight,
                 DenseTensor *out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument("LerpKernel's input x must not empyt."));
+
+  PADDLE_ENFORCE_GT(
+      y.numel(),
+      0,
+      phi::errors::InvalidArgument("LerpKernel's input y must not empyt."));
+
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
       rank,
