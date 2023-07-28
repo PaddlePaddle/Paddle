@@ -82,10 +82,8 @@ Reshape2MatmulV2Pattern::Reshape2MatmulV2Pattern(PDPattern* pattern,
   matmul_v2->LinksFrom({matmul_x, matmul_y}).LinksTo({matmul_out});
 }
 
-struct Transpose2MatmulPattern : public PatternBase {
-  Transpose2MatmulPattern(PDPattern* pattern,
-                          const std::string& name_scope,
-                          const std::string& type);
+struct Transpose2MatmulV2Pattern : public PatternBase {
+  Transpose2MatmulV2Pattern(PDPattern* pattern, const std::string& name_scope);
 
   // declare operator node's name
   PATTERN_DECL_NODE(transpose2);
@@ -95,13 +93,11 @@ struct Transpose2MatmulPattern : public PatternBase {
   PATTERN_DECL_NODE(matmul_x);
   PATTERN_DECL_NODE(matmul_y);
   PATTERN_DECL_NODE(matmul_out);
-  std::string type_;
 };
 
-Transpose2MatmulPattern::Transpose2MatmulPattern(PDPattern* pattern,
-                                                 const std::string& name_scope,
-                                                 const std::string& type)
-    : PatternBase(pattern, name_scope, name_scope), type_(type) {
+Transpose2MatmulV2Pattern::Transpose2MatmulV2Pattern(
+    PDPattern* pattern, const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
   auto* transpose2_in = pattern->NewNode(transpose2_in_repr())
                             ->assert_is_op_input("transpose2", "X")
                             ->AsInput();
@@ -114,15 +110,15 @@ Transpose2MatmulPattern::Transpose2MatmulPattern(PDPattern* pattern,
                    axis[2] == 1;  // axis == [0, 2, 1]
           });
   auto matmul_x =
-      pattern->NewNode(matmul_x_repr())->assert_is_op_input(type, "X");
+      pattern->NewNode(matmul_x_repr())->assert_is_op_input("matmul_v2", "X");
   auto* matmul_y = pattern->NewNode(matmul_y_repr())
-                       ->assert_is_op_input(type, "Y")
+                       ->assert_is_op_input("matmul_v2", "Y")
                        ->assert_is_op_output("transpose2", "Out");
   auto* matmul = pattern->NewNode(matmul_repr())
-                     ->assert_is_op(type)
+                     ->assert_is_op("matmul_v2")
                      ->assert_op_attr<bool>("trans_y", false);
   auto* matmul_out = pattern->NewNode(matmul_out_repr())
-                         ->assert_is_op_output(type, "Out")
+                         ->assert_is_op_output("matmul_v2", "Out")
                          ->AsOutput();
   transpose2->LinksFrom({transpose2_in}).LinksTo({matmul_y});
   matmul->LinksFrom({matmul_x, matmul_y}).LinksTo({matmul_out});
@@ -166,11 +162,10 @@ void MatmulWeightTransPass::TransMatmulV2Weight(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void MatmulWeightTransPass::FuseTranspose2Matmul(
-    ir::Graph* graph, const std::string& type) const {
+void MatmulWeightTransPass::FuseTranspose2MatmulV2(ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::Transpose2MatmulPattern pattern(
-      gpd.mutable_pattern(), name_scope_, type);
+  patterns::Transpose2MatmulV2Pattern pattern(gpd.mutable_pattern(),
+                                              name_scope_);
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -211,9 +206,7 @@ void MatmulWeightTransPass::ApplyImpl(ir::Graph* graph) const {
   Init(name_scope_, graph);
 
   TransMatmulV2Weight(graph);
-  for (auto type : {"matmul", "matmul_v2"}) {
-    FuseTranspose2Matmul(graph, type);
-  }
+  FuseTranspose2MatmulV2(graph);
 }
 
 }  // namespace ir
