@@ -26,44 +26,105 @@ class FillConstantOpConverter : public OpConverter {
     VLOG(3) << "convert a fill_constant op to tensorrt fill_constant layer";
 
     framework::OpDesc op_desc(op, nullptr);
-    int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
-    std::string str_value =
-        PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
-    std::vector<int64_t> shape =
-        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-    if (str_value.empty()) {
-      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-      str_value = std::to_string(value);
-    }
-    std::unique_ptr<phi::DenseTensor> out_tensor(new phi::DenseTensor());
-    out_tensor->Resize(phi::make_ddim(shape));
-    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
-    void* trt_data = nullptr;
-    size_t trt_num;
-    if (dtype == 2 || dtype == 3) {  // int,int64
-      auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
-      for (int64_t i = 0; i < out_tensor->numel(); i++)
-        tmp_ptr[i] = std::stoi(str_value);
-      trt_dtype = nvinfer1::DataType::kINT32;
-      trt_data = static_cast<void*>(tmp_ptr);
-    } else if (dtype == 5) {  // float
-      auto* tmp_ptr = out_tensor->mutable_data<float>(platform::CPUPlace());
-      for (int64_t i = 0; i < out_tensor->numel(); i++)
-        tmp_ptr[i] = std::stof(str_value);
-      trt_data = static_cast<void*>(tmp_ptr);
-    }
+    if (op_desc.HasInput("ShapeTensorList") &&
+        op_desc.Input("ShapeTensorList").size()) {
+      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+      std::string str_value =
+          PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
+      auto output_name = op_desc.Output("Out")[0];
+      std::vector<std::string> input_names = op_desc.Input("ShapeTensorList");
+      std::vector<nvinfer1::ITensor*> output_shape_tensors;
 
-    trt_num = static_cast<size_t>(out_tensor->numel());
-    engine_->SetWeights("fill_constant_value", std::move(out_tensor));
-    TensorRTEngine::Weight weight{trt_dtype, trt_data, trt_num};
+      if (str_value == "") {
+        float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+        str_value = std::to_string(value);
+      }
+      if (str_value == "inf" || str_value == "Infinity") {
+        str_value = "50000";
+        VLOG(3) << "The fill_constant's attr str_value or value is inf, trt "
+                   "will change to 50000.";
+      } else if (str_value == "-inf" || str_value == "-Infinity") {
+        str_value = "-50000";
+        VLOG(3) << "The fill_constant's attr str_value or value is -inf, trt "
+                   "will change to -50000.";
+      }
 
-    nvinfer1::Dims trt_in_shape;
-    trt_in_shape.nbDims = shape.size();
-    for (size_t i = 0; i < shape.size(); i++) trt_in_shape.d[i] = shape[i];
-    nvinfer1::ILayer* layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "fill_constant", {output_name}, test_mode);
+      float value = std::stof(str_value);
+      for (auto input_name : input_names) {
+        auto input_tensor = engine_->GetITensor(input_name);
+        output_shape_tensors.push_back(input_tensor);
+      }
+      auto output_shape_tensor = Concat(output_shape_tensors);
+      nvinfer1::ITensor* value_tensor;
+      nvinfer1::ITensor* beta_tensor;
+
+      if (dtype == 2 || dtype == 3) {
+        value_tensor = Add1DConstantLayer(
+            std::vector<int32_t>(1, static_cast<int32_t>(value)),
+            output_name + "_value_tensor_",
+            true);
+        beta_tensor =
+            Add1DConstantLayer(std::vector<int32_t>(input_names.size(), 0),
+                               output_name + "_beta_tensor_");
+      } else {
+        value_tensor = Add1DConstantLayer(
+            std::vector<float>(1, value), output_name + "_value_tensor_", true);
+        beta_tensor =
+            Add1DConstantLayer(std::vector<float>(input_names.size(), 0),
+                               output_name + "_beta_tensor_");
+      }
+      auto layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
+      layer->setAlpha(value);
+      layer->setBeta(0.0);
+      layer->setInput(0, *output_shape_tensor);
+      layer->setInput(1, *value_tensor);
+      layer->setInput(2, *beta_tensor);
+      RreplenishLayerAndOutput(
+          layer, "fill_constant", {output_name}, test_mode);
+
+    } else {
+      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+      std::string str_value =
+          PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
+      std::vector<int64_t> shape =
+          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+      if (str_value == "") {
+        float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+        str_value = std::to_string(value);
+      }
+
+      std::unique_ptr<phi::DenseTensor> out_tensor(new phi::DenseTensor());
+      out_tensor->Resize(phi::make_ddim(shape));
+      nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
+      void* trt_data = nullptr;
+      size_t trt_num;
+      if (dtype == 2 || dtype == 3) {  // int,int64
+        auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
+        for (int64_t i = 0; i < out_tensor->numel(); i++)
+          tmp_ptr[i] = std::stoi(str_value);
+        trt_dtype = nvinfer1::DataType::kINT32;
+        trt_data = static_cast<void*>(tmp_ptr);
+      } else if (dtype == 5) {  // float
+        auto* tmp_ptr = out_tensor->mutable_data<float>(platform::CPUPlace());
+        for (int64_t i = 0; i < out_tensor->numel(); i++)
+          tmp_ptr[i] = std::stof(str_value);
+        trt_data = static_cast<void*>(tmp_ptr);
+      }
+
+      trt_num = static_cast<size_t>(out_tensor->numel());
+      engine_->SetWeights("fill_constant_value", std::move(out_tensor));
+      TensorRTEngine::Weight weight{trt_dtype, trt_data, trt_num};
+
+      nvinfer1::Dims trt_in_shape;
+      trt_in_shape.nbDims = shape.size();
+      for (size_t i = 0; i < shape.size(); i++) trt_in_shape.d[i] = shape[i];
+      nvinfer1::ILayer* layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
+      auto output_name = op_desc.Output("Out")[0];
+      RreplenishLayerAndOutput(
+          layer, "fill_constant", {output_name}, test_mode);
+    }
   }
 };
 

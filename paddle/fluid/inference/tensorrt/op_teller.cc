@@ -1672,7 +1672,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (fill_constant_inputs.find("ShapeTensorList") !=
           fill_constant_inputs.end()) {
-        if (!desc.Input("ShapeTensorList").empty()) return false;
+        if (!desc.Input("ShapeTensorList").empty()) {
+          VLOG(3) << "The fill_constant has ShapeTensorList input.";
+        }
       }
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
