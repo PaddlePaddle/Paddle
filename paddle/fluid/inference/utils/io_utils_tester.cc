@@ -145,6 +145,7 @@ TEST(shape_info_io, read_and_write) {
                                           min_value,
                                           max_value,
                                           opt_value,
+                                          dtype_info,
                                           names,
                                           names);
 
@@ -154,6 +155,7 @@ TEST(shape_info_io, read_and_write) {
                                                             &opt_shape,
                                                             &min_value,
                                                             &max_value,
-                                                            &opt_value);
+                                                            &opt_value,
+                                                            &dtype_info);
                , paddle::platform::EnforceNotMet);
 }
