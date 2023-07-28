@@ -160,7 +160,9 @@ void BindValue(py::module *m) {
 
 void BindOpOperand(py::module *m) {
   py::class_<OpOperand> op_operand(*m, "OpOperand");
-  op_operand.def("source", &OpOperand::source)
+  op_operand
+      .def("source",
+           [](OpOperand &self) { return self.source().dyn_cast<OpResult>(); })
       .def("set_source", [](OpOperand &self, const OpResult &result) {
         self.set_source(result);
       });
