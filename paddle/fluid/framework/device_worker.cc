@@ -92,7 +92,7 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                std::string& out_val,  // NOLINT
                                char separator,
                                bool need_leading_separator,
-                               int num_decimals = 9) {
+                               int num_decimals) {
   char buf[MAX_FLOAT_BUFF_SIZE];
   auto count = tensor->numel();
   if (start < 0 || end > count) {
