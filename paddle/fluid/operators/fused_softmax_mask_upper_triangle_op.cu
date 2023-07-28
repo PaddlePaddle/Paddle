@@ -479,7 +479,7 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* grad_y =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* softmax_rst = context.Input<phi::DenseTensor>("Softmax");
+    auto* softmax_rst = context.Input<phi::DenseTensor>("Out");
 
     auto* grad_x_data = grad_x->mutable_data<T>(context.GetPlace());
     auto* grad_y_data = grad_y->data<T>();
