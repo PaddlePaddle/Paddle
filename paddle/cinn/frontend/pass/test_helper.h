@@ -24,7 +24,6 @@
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/pass.h"
-#include "paddle/cinn/hlir/pass/use_general_pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 
 namespace cinn::frontend {
