@@ -259,6 +259,63 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_scale=224,
             )
 
+    def test_distribute_fpn_proposals_error2(self):
+        program = Program()
+        with program_guard(program):
+            fpn_rois = paddle.static.data(
+                name='min_max_level_error1',
+                shape=[10, 4],
+                dtype='float32',
+                lod_level=1,
+            )
+            self.assertRaises(
+                AssertionError,
+                paddle.vision.ops.distribute_fpn_proposals,
+                fpn_rois=fpn_rois,
+                min_level=0,
+                max_level=-1,
+                refer_level=4,
+                refer_scale=224,
+            )
+
+    def test_distribute_fpn_proposals_error3(self):
+        program = Program()
+        with program_guard(program):
+            fpn_rois = paddle.static.data(
+                name='min_max_level_error2',
+                shape=[10, 4],
+                dtype='float32',
+                lod_level=1,
+            )
+            self.assertRaises(
+                AssertionError,
+                paddle.vision.ops.distribute_fpn_proposals,
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=2,
+                refer_level=4,
+                refer_scale=224,
+            )
+
+    def test_distribute_fpn_proposals_error4(self):
+        program = Program()
+        with program_guard(program):
+            fpn_rois = paddle.static.data(
+                name='min_max_level_error3',
+                shape=[10, 4],
+                dtype='float32',
+                lod_level=1,
+            )
+            self.assertRaises(
+                AssertionError,
+                paddle.vision.ops.distribute_fpn_proposals,
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=500,
+                refer_level=4,
+                refer_scale=224,
+            )
+
 
 if __name__ == '__main__':
     paddle.enable_static()
