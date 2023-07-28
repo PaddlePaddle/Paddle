@@ -1696,10 +1696,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           fill_constant_inputs.end()) {
         if (desc.Input("ShapeTensor").size()) return false;
       }
-      if (fill_constant_inputs.find("ShapeTensorList") !=
-          fill_constant_inputs.end()) {
-        if (desc.Input("ShapeTensorList").size()) return false;
-      }
+
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : 5;
@@ -1786,28 +1783,25 @@ struct SimpleOpTypeSetTeller : public Teller {
       //   }
       // }
 
-
-      if(pad_size == 8){
+      if (pad_size == 8) {
         for (int i = 0; i < 2; i++) {
           if (paddings[i] != 0) {
             return false;
           }
         }
         bool flag_nchw = (paddings[2] == 0) && (paddings[3] == 0);
-        bool flag_nhwc = ((paddings[2] != 0) || (paddings[3] != 0)) && ((paddings[6] == 0) && (paddings[7] == 0));
-        if(!(flag_nchw || flag_nhwc)){
+        bool flag_nhwc = ((paddings[2] != 0) || (paddings[3] != 0)) &&
+                         ((paddings[6] == 0) && (paddings[7] == 0));
+        if (!(flag_nchw || flag_nhwc)) {
           return false;
         }
-      }else{
+      } else {
         for (int i = 0; i < pad_size - 4; i++) {
           if (paddings[i] != 0) {
             return false;
           }
         }
       }
-
-
-
     }
 
     if (op_type == "pad3d") {
