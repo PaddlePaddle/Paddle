@@ -51,6 +51,7 @@ class MatmulWeightTransPass : public FusePassBase {
 
  private:
   void TransMatmulV2Weight(ir::Graph* graph) const;
+  void FuseTranspose2Matmul(ir::Graph* graph, const std::string& type) const;
 
   const std::string name_scope_{"matmul_weight_trans_pass"};
 };
