@@ -111,6 +111,8 @@ void PaddleDialect::initialize() {
 }
 
 void PaddleDialect::PrintType(ir::Type type, std::ostream &os) const {
+  os << type.dialect().name();
+  os << '.';
   if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
     os << "tensor<";
     for (auto d : phi::vectorize(tensor_type.dims())) {
