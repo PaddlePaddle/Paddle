@@ -1060,7 +1060,7 @@ void ScatterInferMeta(const MetaTensor& x,
         (ref_dims.size() == updates_dims.size()),
         true,
         phi::errors::InvalidArgument(
-            "When the Input(Updates) is not a 0D tensor, the "
+            "When the Input(Index) is not a 0D tensor, the "
             "Input(X) and Input(Updates) should have the same shape size, "
             "but received the size of Input(x)'s shape is %d, the size of "
             "Input(Updates)'s shape is %d.",
@@ -1080,7 +1080,7 @@ void ScatterInferMeta(const MetaTensor& x,
         (ref_dims.size() - 1 == updates_dims.size()),
         true,
         phi::errors::InvalidArgument(
-            "When the Input(Updates) is a 0D tensor, the "
+            "When the Input(Index) is a 0D tensor, the "
             "Input(Updates) should have the shape size as Input(X)'s "
             "shape size - 1. But received the size of Input(x)'s shape is %d, "
             " the size of Input(Updates)'s shape is %d.",
