@@ -508,7 +508,10 @@ def cos(x, name=None):
         return _C_ops.cos(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'cos'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'cos',
         )
         helper = LayerHelper('cos', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -875,7 +878,17 @@ def sin(x, name=None):
         return _C_ops.sin(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sin'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'sin',
         )
         helper = LayerHelper('sin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1039,7 +1052,17 @@ def tan(x, name=None):
         return _C_ops.tan(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'tan'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'tan',
         )
         helper = LayerHelper('tan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
