@@ -223,11 +223,13 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void RunInstructionBase(InstructionBase* instr_node);
 
-  void RecordMemcpyD2H(const InstructionBase* instr_node);
+  void RecordMemcpyD2H(InstructionBase* instr_node);
 
   ::ir::Value GetValueByName(const std::string& var_name);
 
-  void CheckGC(const InstructionBase* instr);
+  void CheckGC(InstructionBase* instr);
+
+  void RecordStreamForGC(Instruction* instr);
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
