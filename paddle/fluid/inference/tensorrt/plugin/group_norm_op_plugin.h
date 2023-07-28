@@ -287,7 +287,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
-  GroupNormNHWCParams<__half> params_;
+  GroupNormNHWCParams<half> params_;
   bool with_silu_;
   bool with_fp16_;
   bool with_int8_;

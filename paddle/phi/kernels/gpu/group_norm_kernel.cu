@@ -104,9 +104,9 @@ inline __device__ void UpdateSum(const T* srcX, float* sum, float* sumSq) {
 }
 
 template <>
-inline __device__ void UpdateSum<__half, 1>(const __half* srcX,
-                                            float* sum,
-                                            float* sumSq) {
+inline __device__ void UpdateSum<half, 1>(const half* srcX,
+                                          float* sum,
+                                          float* sumSq) {
   float src_data = __half2float(*srcX);
   *sum += src_data;
   *sumSq += src_data * src_data;
@@ -314,7 +314,7 @@ void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
     }
   }
 }
-template class groupNormNHWCSum<__half>;
+template class groupNormNHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void GroupNormCompute(int32_t hwBegin,
@@ -529,7 +529,7 @@ void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
     }
   }
 }
-template class groupNormNHWCScale<__half>;
+template class groupNormNHWCScale<half>;
 
 template <typename T, typename Context>
 void GroupNormNHWCKernel(const Context& dev_ctx,
@@ -615,11 +615,19 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   nhwc_sum(&params_, stream);
   groupNormNHWCScale<T> nhwc_scale;
   nhwc_scale(params_, stream);
-  cudaMemcpyAsync(mean_data,
-                  params_.redBuffer,
-                  params_.n * groups * sizeof(float),
-                  cudaMemcpyDeviceToDevice,
-                  stream);
+#ifdef PADDLE_WITH_HIP
+  phi::backends::gpu::GpuMemcpyAsync(mean_data,
+                                     params_.redBuffer,
+                                     params_.n * groups * sizeof(float),
+                                     hipMemcpyDeviceToHost,
+                                     stream);
+#else
+  phi::backends::gpu::GpuMemcpyAsync(mean_data,
+                                     params_.redBuffer,
+                                     params_.n * groups * sizeof(float),
+                                     cudaMemcpyDeviceToHost,
+                                     stream);
+#endif
 }
 
 template <typename T, typename AccT>

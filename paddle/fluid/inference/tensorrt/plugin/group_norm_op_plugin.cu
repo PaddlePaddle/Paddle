@@ -665,8 +665,8 @@ int GroupNormPluginDynamic::enqueue(
       params_.withSilu = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
-      params_.gamma = scale_gpu_;
-      params_.beta = bias_gpu_;
+      params_.gamma = reinterpret_cast<half *>(scale_gpu_);
+      params_.beta = reinterpret_cast<half *>(bias_gpu_);
       params_.redBuffer = static_cast<float *>(workspace);
       params_.var_data = nullptr;
       params_.n = input_desc[0].dims.d[0];
@@ -690,9 +690,9 @@ int GroupNormPluginDynamic::enqueue(
                       2 * sizeof(float) * params_.n * groups_,
                       stream);
 
-      phi::groupNormNHWCSum<__half> nhwc_sum;
+      phi::groupNormNHWCSum<half> nhwc_sum;
       nhwc_sum(&params_, stream);
-      phi::groupNormNHWCScale<__half> nhwc_scale;
+      phi::groupNormNHWCScale<half> nhwc_scale;
       nhwc_scale(params_, stream);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
