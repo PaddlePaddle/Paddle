@@ -569,27 +569,24 @@ void StreamAnalyzer::ShareEventInfoFrom(const StreamAnalyzer& src) {
 ///        For new ir        ///
 /// ======================== ///
 void NewIrStreamAnalyzer::ConstructEvents(
-    std::vector<std::shared_ptr<paddle::framework::InstructionBase>>*
+    const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
         instructions) {
   if (!is_event_info_build_) {
-    std::vector<std::shared_ptr<paddle::framework::InstructionBase>>
-        cross_step_merged_instructions = *instructions;
-    for (auto instr : *instructions) {
-      cross_step_merged_instructions.emplace_back(instr);
-    }
-
     std::vector<paddle::framework::InstructionBase*>
         cross_step_merged_instructions_ptr;
-    for (auto instr : cross_step_merged_instructions) {
-      cross_step_merged_instructions_ptr.push_back(instr.get());
+    for (auto& instr : instructions) {
+      cross_step_merged_instructions_ptr.emplace_back(instr.get());
+    }
+    for (auto& instr : instructions) {
+      cross_step_merged_instructions_ptr.emplace_back(instr.get());
     }
 
     NewIrDependencyBuilder dependency_builder;
-    dependency_builder.Build(cross_step_merged_instructions);
+    dependency_builder.Build(cross_step_merged_instructions_ptr);
     const std::map<size_t, std::set<size_t>>& downstream_map =
         dependency_builder.OpDownstreamMap();
 
-    const size_t instr_num = cross_step_merged_instructions.size();
+    const size_t instr_num = cross_step_merged_instructions_ptr.size();
     std::vector<std::vector<std::vector<size_t>>> run_type_info(
         instr_num,
         std::vector<std::vector<size_t>>(
@@ -613,20 +610,20 @@ void NewIrStreamAnalyzer::ConstructEvents(
       size_t waiter_instr_id = waiter_item.first;
       std::set<size_t>& recorder_instr_ids = waiter_item.second;
 
-      if (waiter_instr_id >= instructions->size()) {
-        waiter_instr_id -= instructions->size();
+      if (waiter_instr_id >= instructions.size()) {
+        waiter_instr_id -= instructions.size();
       }
 
       for (size_t recorder_instr_id : recorder_instr_ids) {
         // Redundant record
-        if (recorder_instr_id >= instructions->size()) {
+        if (recorder_instr_id >= instructions.size()) {
           continue;
         }
 
         paddle::framework::InstructionBase* recorder_instr =
-            instructions->at(recorder_instr_id).get();
+            instructions.at(recorder_instr_id).get();
         paddle::framework::InstructionBase* waiter_instr =
-            instructions->at(waiter_instr_id).get();
+            instructions.at(waiter_instr_id).get();
         platform::DeviceType waiter_type = GetWaiterType(waiter_instr);
 
         if (instr2event.find(recorder_instr_id) == instr2event.end()) {

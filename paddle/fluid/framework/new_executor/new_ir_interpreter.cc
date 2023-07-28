@@ -267,7 +267,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
 
     BuildInstructionDependences();
 
-    ir_stream_analyzer_.ConstructEvents(&vec_instruction_base_);
+    ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
     // add event for the input var of jit program, since there are async copied
     // from gpu_pinned place to gpu place on compute stream.
     for (size_t i = 0; i < dependecy_count_.size(); ++i) {
@@ -1635,7 +1635,7 @@ void NewIRInterpreter::BuildInstruction() {
         continue;
       }
       vec_instruction_base_.emplace_back(
-          std::make_shared<PhiKernelInstruction>(op_idx++,
+          std::make_unique<PhiKernelInstruction>(op_idx++,
                                                  place_,
                                                  (*it),
                                                  scope_,
@@ -1668,7 +1668,12 @@ void NewIRInterpreter::BuildInstructionDependences() {
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
   dependecy_count_ = std::vector<size_t>(instr_num, 0);
-  auto downstream_map = ir_dependency_builder_.Build(vec_instruction_base_);
+
+  std::vector<paddle::framework::InstructionBase*> instructions_ptr;
+  for (auto& instr : vec_instruction_base_) {
+    instructions_ptr.push_back(instr.get());
+  }
+  auto downstream_map = ir_dependency_builder_.Build(instructions_ptr);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
     InstructionBase* cur_instr = vec_instruction_base_[instr_id].get();

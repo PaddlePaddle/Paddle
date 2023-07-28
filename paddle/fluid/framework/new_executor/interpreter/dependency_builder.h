@@ -110,14 +110,12 @@ class NewIrDependencyBuilder : public DependencyBuilder {
   // build op dependencies and return the mapping from op to its downstream-op
   // set
   const std::map<size_t, std::set<size_t>>& Build(
-      const std::vector<std::shared_ptr<paddle::framework::InstructionBase>>&
-          instructions);
+      std::vector<paddle::framework::InstructionBase*> instructions);
 
   void BuildDownstreamMap();
 
  private:
-  const std::vector<std::shared_ptr<paddle::framework::InstructionBase>>*
-      instructions_;  // not_own
+  std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned
 };
 
 }  // namespace interpreter

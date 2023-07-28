@@ -132,7 +132,7 @@ class NewIrStreamAnalyzer {
   ~NewIrStreamAnalyzer() {}
 
   void ConstructEvents(
-      std::vector<std::shared_ptr<paddle::framework::InstructionBase>>*
+      const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
           instructions);
 
   platform::DeviceType GetWaiterType(

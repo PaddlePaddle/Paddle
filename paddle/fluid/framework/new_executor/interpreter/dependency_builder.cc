@@ -381,10 +381,8 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
 
   VLOG(8) << prior_op_idx << "->" << posterior_op_idx;
   VLOG(8) << "Add dependency from "
-          << instructions_->at(prior_op_idx).OpBase()->Type() << "("
-          << prior_op_idx << ") to "
-          << instructions_->at(posterior_op_idx).OpBase()->Type() << "("
-          << posterior_op_idx << ")";
+          << "prior_op_idx(" << prior_op_idx << ") to "
+          << "posterior_op_idx(" << posterior_op_idx << ")";
 }
 
 void DependencyBuilder::BuildDownstreamMap() {
@@ -549,23 +547,22 @@ void DependencyBuilder::UpdateVarMinRwOp(
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-NewIrDependencyBuilder::NewIrDependencyBuilder() : instructions_(nullptr) {
+NewIrDependencyBuilder::NewIrDependencyBuilder() {
   is_build_ = false;
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
 }
 
 const std::map<size_t, std::set<size_t>>& NewIrDependencyBuilder::Build(
-    const std::vector<std::shared_ptr<paddle::framework::InstructionBase>>&
-        instructions) {
+    std::vector<paddle::framework::InstructionBase*> instructions) {
   if (is_build_) {
     return *op_downstream_map_;
   }
 
   std::tie(op_downstream_map_, op_happens_before_) = GetDependency();
 
-  instructions_ = &instructions;
-  op_num_ = instructions_->size();
+  instructions_ = instructions;
+  op_num_ = instructions_.size();
 
   ops_before_.assign(op_num_, {});
   ops_behind_.assign(op_num_, {});
@@ -616,7 +613,7 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
     remove_duplicate.clear();
     // step1: update the op2dependences structure
     for (auto& item :
-         instructions_->at(op_idx)->Inputs()) {  // for all inputs(read only)
+         instructions_.at(op_idx)->Inputs()) {  // for all inputs(read only)
       for (auto var : item.second) {
         if (var2recent_write_op.count(var))
           op2dependences[op_idx].insert(var2recent_write_op[var]);
@@ -624,7 +621,7 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
     }
 
     for (auto& item :
-         instructions_->at(op_idx)->Outputs()) {  // for all write vars
+         instructions_.at(op_idx)->Outputs()) {  // for all write vars
       for (auto var : item.second) {
         if (var2min_rw_op.count(var)) {
           for (auto dep_op : var2min_rw_op[var]) {
@@ -636,7 +633,7 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
 
     // step2: update 2 var2xxxx data structure
     for (auto& item :
-         instructions_->at(op_idx)->Outputs()) {  // for all write vars
+         instructions_.at(op_idx)->Outputs()) {  // for all write vars
       for (auto var : item.second) {
         var2recent_write_op[var] = op_idx;
         var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
@@ -645,7 +642,7 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
     }
 
     for (auto& item :
-         instructions_->at(op_idx)->Inputs()) {  // for all inputs(read only)
+         instructions_.at(op_idx)->Inputs()) {  // for all inputs(read only)
       for (auto var : item.second) {
         if (remove_duplicate.count(var) ==
             0) {  // var in input list and in output list, so remove it.
