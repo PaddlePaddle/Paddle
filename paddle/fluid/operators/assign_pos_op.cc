@@ -78,6 +78,3 @@ namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(assign_pos,
                              ops::AssignPosOp,
                              ops::AssignPosOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    assign_pos, CPU, ALL_LAYOUT, ops::AssignPosOpCPUKernel, int, int64_t) {}

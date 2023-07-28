@@ -23,10 +23,7 @@ namespace operators {
 template <typename T, typename DeviceContext>
 class AssignPosOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support assign pos op for cpu kernel now."));
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace operators
