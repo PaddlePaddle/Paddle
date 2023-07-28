@@ -297,6 +297,7 @@ TEST(FastWhereXPUFusePass, cascade_fast_where_xpu_case1) {
 }
 
 #undef APPLY_PASS
+#undef VERIFY_GRAPH
 
 }  // namespace ir
 }  // namespace framework
