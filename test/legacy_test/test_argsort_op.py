@@ -547,7 +547,6 @@ class TestArgsortFP16Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
         self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
