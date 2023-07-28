@@ -16,7 +16,7 @@
 
 namespace phi {
 
-KernelSignature RReluOpArgumentMapping(
+KernelSignature PruneGateByCapacityOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("prune_gate_by_capacity",
                          {"GateIdx", "ExpertCount"},
@@ -26,4 +26,5 @@ KernelSignature RReluOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(rrelu, phi::RReluOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(prune_gate_by_capacity,
+                           phi::PruneGateByCapacityOpArgumentMapping);
