@@ -170,6 +170,9 @@ class TrainerDesc:
     def _set_is_dump_in_simple_mode(self, is_dump_in_simple_mode):
         self.proto_desc.is_dump_in_simple_mode = is_dump_in_simple_mode
 
+    def _set_dump_num_decimals(self, dump_num_decimals):
+        self.proto_desc.dump_num_decimals = dump_num_decimals
+
     def _set_dump_fields_path(self, path):
         self.proto_desc.dump_fields_path = path
 

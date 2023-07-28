@@ -70,7 +70,8 @@ void PrintLodTensor(phi::DenseTensor* tensor,
                     int64_t end,
                     std::string& output_str,  // NOLINT
                     char separator = ',',
-                    bool need_leading_separator = false);
+                    bool need_leading_separator = false,
+                    int num_decimals = 9);
 std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
 bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
 
@@ -244,6 +245,7 @@ class DeviceWorker {
 
   int dump_mode_ = 0;
   int dump_interval_ = 10000;
+  int dump_num_decimals_ = 9;
   ChannelWriter<std::string> writer_;
   const size_t tensor_iterator_thread_num = 16;
   platform::DeviceContext* dev_ctx_ = nullptr;

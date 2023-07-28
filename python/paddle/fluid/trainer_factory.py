@@ -117,6 +117,10 @@ class TrainerFactory:
                     trainer._set_is_dump_in_simple_mode(
                         opt_info["is_dump_in_simple_mode"]
                     )
+                if opt_info.get("dump_num_decimals") is not None:
+                    trainer._set_dump_num_decimals(
+                        opt_info["dump_num_decimals"]
+                    )
                 if opt_info.get("enable_random_dump") is not None:
                     trainer._set_enable_random_dump(
                         opt_info["enable_random_dump"]

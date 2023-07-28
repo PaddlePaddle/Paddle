@@ -61,7 +61,8 @@ void PrintLodTensorType(phi::DenseTensor* tensor,
                         int64_t end,
                         std::string& out_val,  // NOLINT
                         char separator = ',',
-                        bool need_leading_separator = true) {
+                        bool need_leading_separator = true,
+                        int num_decimals = 9) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -90,8 +91,9 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                int64_t end,
                                std::string& out_val,  // NOLINT
                                char separator,
-                               bool need_leading_separator) {
-  std::array<char, MAX_FLOAT_BUFF_SIZE> buf;
+                               bool need_leading_separator,
+                               int num_decimals = 9) {
+  char buf[MAX_FLOAT_BUFF_SIZE];
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -105,8 +107,9 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
         tensor->data<float>()[i] < FLOAT_EPS) {
       out_val += "0";
     } else {
-      sprintf(buf.data(), "%.9f", tensor->data<float>()[i]);  // NOLINT
-      out_val += buf.data();
+      std::string format = "%." + std::to_string(num_decimals) + "f";
+      sprintf(buf, &format[0], tensor->data<float>()[i]);  // NOLINT
+      out_val += buf;
     }
   }
 }
@@ -138,7 +141,8 @@ void PrintLodTensorIntType(phi::DenseTensor* tensor,
                            int64_t end,
                            std::string& out_val,  // NOLINT
                            char separator = ',',
-                           bool need_leading_separator = true) {
+                           bool need_leading_separator = true,
+                           int num_decimals = 9) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -189,10 +193,11 @@ void PrintLodTensor(phi::DenseTensor* tensor,
                     int64_t end,
                     std::string& out_val,  // NOLINT
                     char separator,
-                    bool need_leading_separator) {
+                    bool need_leading_separator,
+                    int num_decimals) {
   if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
     PrintLodTensorType<float>(
-        tensor, start, end, out_val, separator, need_leading_separator);
+        tensor, start, end, out_val, separator, need_leading_separator, num_decimals);
   } else if (framework::TransToProtoVarType(tensor->dtype()) ==
              proto::VarType::INT64) {
     PrintLodTensorIntType(
@@ -278,6 +283,7 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
     }
   }
   dump_interval_ = desc.dump_interval();
+  dump_num_decimals_ = desc.dump_num_decimals();
 }
 
 void DeviceWorker::DumpField(const Scope& scope,
@@ -335,7 +341,8 @@ void DeviceWorker::DumpField(const Scope& scope,
 
         if (!ars[i].empty()) ars[i] += "\t";
         // ars[i] += '[';
-        PrintLodTensor(tensor, bound.first, bound.second, ars[i], ' ', false);
+        PrintLodTensor(tensor, bound.first, bound.second, ars[i], ' ', false,
+                       dump_num_decimals_);
         // ars[i] += ']';
         // ars[i] += "<" + PrintLodTensor(tensor, bound.first, bound.second, '
         // ', false) + ">";
