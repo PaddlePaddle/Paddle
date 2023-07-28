@@ -85,5 +85,5 @@ void AssignPosKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    prune_gate_by_capacity, GPU, ALL_LAYOUT, phi::AssignPosKernel, int64_t) {}
+PD_REGISTER_KERNEL(assign_pos, GPU, ALL_LAYOUT, phi::AssignPosKernel, int64_t) {
+}
