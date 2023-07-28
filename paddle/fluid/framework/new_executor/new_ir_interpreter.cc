@@ -1561,6 +1561,14 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+
+  std::stringstream ss;
+  ss << "trace order: ";
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    ss << trace_execute_order_[idx] << " -> ";
+  }
+  ss << "end\n";
+  VLOG(6) << ss.str();
 }
 
 /// ======================== ///
@@ -1898,9 +1906,8 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         }
       }
       if (not_before_any) {
-        VLOG(6) << "last live op of var " << i << " "
-                << var_scope_.GetNameById(i) << " : " << item << " "
-                << vec_instruction_base_[item]->Name();
+        VLOG(6) << "last live op of var " << i << " " << GetNameById(i) << " : "
+                << item << " " << vec_instruction_base_[item]->Name();
         minumum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
       }
@@ -2018,6 +2025,7 @@ void NewIRInterpreter::BetaRunImpl() {
   VLOG(4) << "Tracing Instruction List";
 
   TraceInstructionList(vec_instruction_base_);
+  VLOG(4) << "Done BetaRunImpl";
 }
 
 void NewIRInterpreter::TraceInstructionList(
@@ -2037,12 +2045,11 @@ void NewIRInterpreter::TraceInstructionList(
     }
   }
 
-  // TODO(phlrain) use orignal order for now, use better dependecy
-  for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
-       ++instr_id) {
-    /// auto instr_id = trace_execute_order_[idx];
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto instr_id = trace_execute_order_[idx];
     InstructionBase* instr_node = vec_instruction_base_.at(instr_id).get();
 
+    VLOG(6) << "Run InstructionBase " << instr_id;
     RunInstructionBase(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
@@ -2061,6 +2068,7 @@ void NewIRInterpreter::TraceInstructionList(
     VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
   }
+  VLOG(4) << "Done TraceInstructionList";
 }
 
 void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
@@ -2075,7 +2083,9 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     VLOG(5) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
+      VLOG(4) << "done instruction node run";
       CheckGC(instr_node);
+      VLOG(4) << "done CheckGC";
       interpreter::LogDeviceMemoryStats(place_);
     }
     VLOG(5) << "after run kernel";
