@@ -394,8 +394,6 @@ class TestPoissonBF16Op(OpTest):
         self.config()
         x = np.full([2048, 1024], self.lam, dtype="float32")
         out = np.ones([2048, 1024], dtype="float32")
-        x = convert_uint16_to_float(convert_float_to_uint16(x))
-        out = convert_uint16_to_float(convert_float_to_uint16(out))
         self.attrs = {}
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
@@ -407,7 +405,9 @@ class TestPoissonBF16Op(OpTest):
         self.dtype = np.uint16
 
     def verify_output(self, outs):
-        hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
+        hist, prob = output_hist(
+            convert_uint16_to_float(np.array(outs[0])), self.lam, self.a, self.b
+        )
         np.testing.assert_allclose(hist, prob, rtol=0.01)
 
     def test_check_output(self):
