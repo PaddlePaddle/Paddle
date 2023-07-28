@@ -241,12 +241,6 @@ __global__ void SoftmaxMaskFuseUpperTriangleGradGPUKernel(const T* grad_input,
 }
 
 template <typename T, typename DeviceContext>
-class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {}
-};
-
-template <typename T, typename DeviceContext>
 class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
