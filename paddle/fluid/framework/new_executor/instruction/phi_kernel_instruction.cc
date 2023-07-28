@@ -213,7 +213,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
         variable_2_var_name) {
   std::unordered_map<ir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
-    ir::Value value = op->operand(i);
+    ir::Value value = op->operand_source(i);
     if (value) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),

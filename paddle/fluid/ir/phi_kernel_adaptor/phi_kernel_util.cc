@@ -97,7 +97,7 @@ void CheckInputVars(
   size_t input_num = op->num_operands();
   if (input_num > 0) {
     for (size_t i = 0; i < input_num; ++i) {
-      auto value = op->operand(i);
+      auto value = op->operand_source(i);
       if (value) {
         PADDLE_ENFORCE_NE(
             value_2_var_name.find(value),
@@ -235,7 +235,7 @@ void HandleForSpecialOp(
     tensor_array->clear();
     size_t input_num = op->num_operands();
     for (size_t i = 0; i < input_num; ++i) {
-      auto value = op->operand(i);
+      auto value = op->operand_source(i);
       PADDLE_ENFORCE_EQ(
           value_2_var_name->count(value),
           true,
@@ -252,7 +252,7 @@ void HandleForSpecialOp(
                           .dyn_cast<ir::StrAttribute>()
                           .AsString();
 
-    auto value = op->operand(0);
+    auto value = op->operand_source(0);
     // change opreand name to param_name
     auto orig_name = value_2_var_name->at(value);
 
@@ -268,7 +268,7 @@ void HandleForSpecialOp(
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
-    auto value = op->operand(0);
+    auto value = op->operand_source(0);
     // change opreand name to param_name
     auto orig_name = value_2_var_name->at(value);
 
@@ -292,7 +292,7 @@ void HandleForSpecialOp(
   if (op_name == "builtin.slice") {
     VLOG(6) << "Handle for builtin.slice";
     auto out_value = op->result(0);
-    auto in_value = op->operand(0);
+    auto in_value = op->operand_source(0);
     PADDLE_ENFORCE_EQ(value_2_var_name->count(in_value),
                       true,
                       phi::errors::PreconditionNotMet(
@@ -343,7 +343,7 @@ void HandleForInplaceOp(
     if (yaml_parser.HasInplace(value_name)) {
       std::string inplace_name = yaml_parser.InplaceName(value_name);
       ir::Value inplace_value =
-          op->operand(yaml_parser.InputName2Id().at(inplace_name));
+          op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
       std::string var_name = value_2_var_name->at(inplace_value);
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << var_name << ")";

@@ -64,7 +64,7 @@ void BindProgram(py::module *m) {
 void BindBlock(py::module *m) {
   py::class_<Block> block(*m, "Block");
   block.def("front", &Block::front, return_value_policy::reference)
-      .def("get_program",
+      .def("get_parent_program",
            [](Block &self) { return self.GetParentOp()->GetParentProgram(); })
       .def("get_ops",
            [](Block &self) -> py::list {
@@ -83,16 +83,19 @@ void BindBlock(py::module *m) {
 void BindOperation(py::module *m) {
   py::class_<Operation> op(*m, "Operation");
   op.def("name", &Operation::name)
-      .def("get_block", &Operation::GetParent, return_value_policy::reference)
-      .def("num_results", &Operation::num_results)
+      .def("get_parent_block",
+           &Operation::GetParent,
+           return_value_policy::reference)
       .def("num_operands", &Operation::num_operands)
+      .def("num_results", &Operation::num_results)
+      .def("operand", &Operation::operand)
       .def("result", &Operation::result)
-      .def("operand", &Operation::op_operand)
+      .def("operand_source", &Operation::operand_source)
       .def("operands",
            [](Operation &self) -> py::list {
              py::list op_list;
              for (uint32_t i = 0; i < self.num_operands(); i++) {
-               op_list.append(self.op_operand(i));
+               op_list.append(self.operand(i));
              }
              return op_list;
            })
@@ -101,6 +104,14 @@ void BindOperation(py::module *m) {
              py::list op_list;
              for (uint32_t i = 0; i < self.num_results(); i++) {
                op_list.append(self.result(i));
+             }
+             return op_list;
+           })
+      .def("operands_source",
+           [](Operation &self) -> py::list {
+             py::list op_list;
+             for (uint32_t i = 0; i < self.num_operands(); i++) {
+               op_list.append(self.operand_source(i));
              }
              return op_list;
            })

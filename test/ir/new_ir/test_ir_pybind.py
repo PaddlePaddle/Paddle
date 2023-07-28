@@ -42,8 +42,7 @@ class TestPybind(unittest.TestCase):
         newir_program.print()
 
         block = newir_program.block()
-        program = block.get_program()
-        program.print()
+        program = block.get_parent_program()
 
         self.assertEqual(newir_program, program)
 
@@ -63,7 +62,7 @@ class TestPybind(unittest.TestCase):
         matmul_op = newir_program.block().get_ops()[1]
         add_op = newir_program.block().get_ops()[2]
         tanh_op = newir_program.block().get_ops()[3]
-        parent_block = tanh_op.get_block()
+        parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.get_ops())
         self.assertTrue(parent_ops_num, 4)
         self.assertTrue(tanh_op.num_results(), 1)
@@ -92,6 +91,10 @@ class TestPybind(unittest.TestCase):
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertTrue(
             tanh_op.operands()[0].source().get_defining_op(), "pd.matmul"
+        )
+        self.assertEqual(
+            tanh_op.operands()[0].source().get_defining_op(),
+            tanh_op.operands_source()[0].get_defining_op(),
         )
         self.assertTrue(add_op.result(0).use_empty(), False)
 

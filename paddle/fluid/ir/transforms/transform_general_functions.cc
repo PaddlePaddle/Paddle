@@ -64,7 +64,7 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
       index < op->num_operands(),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand(index).GetDefiningOp();
+  return op->operand_source(index).GetDefiningOp();
 }
 
 Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index) {
