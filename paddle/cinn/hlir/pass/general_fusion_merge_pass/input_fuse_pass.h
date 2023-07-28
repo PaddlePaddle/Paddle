@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,29 +14,28 @@
 
 #pragma once
 
-#include <string>
-#include <string_view>
+#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/fuse_pass.h"
 
-namespace paddle {
-namespace translator {
+namespace cinn {
+namespace hlir {
+namespace pass {
 
-static std::string UnderscoreToCamelCase(std::string str) {
-  std::string camel_case;
-  bool next_upper = true;
-  for (char c : str) {
-    if (c == '_') {
-      next_upper = true;
-    } else {
-      if (next_upper) {
-        camel_case += toupper(c);
-        next_upper = false;
-      } else {
-        camel_case += c;
-      }
-    }
-  }
-  return camel_case;
-}
+class InputFusePassCtx;
 
-}  // namespace translator
-}  // namespace paddle
+class InputFusePass : public FusePass {
+ public:
+  virtual ~InputFusePass() = default;
+
+  virtual void operator()(InputFusePassCtx* ctx) const = 0;
+
+  const std::string FuseMode() const final { return "InputFuse"; }
+
+  virtual int Benefit() const = 0;
+
+ protected:
+  InputFusePass() = default;
+};
+
+}  // namespace pass
+}  // namespace hlir
+}  // namespace cinn

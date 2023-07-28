@@ -53,6 +53,7 @@ class TestCombineOp(unittest.TestCase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -104,8 +105,8 @@ class TestFeedOp(unittest.TestCase):
 
 class TestSelectedRows(unittest.TestCase):
     def test_with_new_ir(self):
-        paddle.enable_static()
         # TODO(phlrain): support selected rows in GPU
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -143,9 +144,11 @@ class TestAddGradOp(unittest.TestCase):
                 x = paddle.static.data("x", [2, 2], dtype="float32")
                 y = paddle.static.data("y", [2, 2], dtype="float32")
                 x.stop_gradient = False
+
                 z = x * y
 
                 paddle.static.gradients(z, x)
+
             np_a = np.random.rand(2, 2).astype("float32")
             np_b = np.random.rand(2, 2).astype("float32")
             out = exe.run(
@@ -162,7 +165,6 @@ class TestAddGradOp(unittest.TestCase):
 class TestNewIrDygraph(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.disable_static()
-        # paddle.device.set_device("cpu")
 
         @paddle.jit.to_static
         def func(x, y):
@@ -221,6 +223,7 @@ class TestSplitOp(unittest.TestCase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+
         exe = paddle.static.Executor(place)
 
         main_program = paddle.static.Program()
@@ -246,6 +249,7 @@ class TestJitSaveOp(unittest.TestCase):
 
         linear = paddle.nn.Linear(10, 10)
         path = "example_model/linear"
+
         paddle.jit.save(
             linear,
             path,
