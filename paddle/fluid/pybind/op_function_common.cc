@@ -416,7 +416,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj,
             i));
       }
     }
-  } else if (PySequence_Check(obj)) {
+  } else if (PySequence_Check(obj) && !PyObject_TypeCheck(obj, p_tensor_type)) {
     Py_ssize_t len = PySequence_Size(obj);
     value.reserve(len);
     PyObject* item = nullptr;
@@ -492,7 +492,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
             i));
       }
     }
-  } else if (PySequence_Check(obj)) {
+  } else if (PySequence_Check(obj) && !PyObject_TypeCheck(obj, p_tensor_type)) {
     Py_ssize_t len = PySequence_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
@@ -571,7 +571,7 @@ std::vector<float> CastPyArg2Floats(PyObject* obj,
             i));
       }
     }
-  } else if (PySequence_Check(obj)) {
+  } else if (PySequence_Check(obj) && !PyObject_TypeCheck(obj, p_tensor_type)) {
     Py_ssize_t len = PySequence_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
@@ -646,7 +646,7 @@ std::vector<double> CastPyArg2Float64s(PyObject* obj,
             i));
       }
     }
-  } else if (PySequence_Check(obj)) {
+  } else if (PySequence_Check(obj) && !PyObject_TypeCheck(obj, p_tensor_type)) {
     Py_ssize_t len = PySequence_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {

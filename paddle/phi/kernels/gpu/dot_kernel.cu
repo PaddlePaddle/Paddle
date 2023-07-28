@@ -31,6 +31,9 @@ void DotKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  if (out->numel() <= 0) {
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   if (out->dims().size() == 0) {
     auto eigen_out = phi::EigenScalar<T>::From(*out);
