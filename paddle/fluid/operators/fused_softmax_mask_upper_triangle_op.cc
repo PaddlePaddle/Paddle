@@ -102,10 +102,3 @@ REGISTER_OPERATOR(
     ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_softmax_mask_upper_triangle_grad,
                   ops::SoftmaxMaskFuseUpperTriangleOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(fused_softmax_mask_upper_triangle,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::SoftmaxMaskFuseUpperTriangleCPUKernel,
-                          float,
-                          double) {}
