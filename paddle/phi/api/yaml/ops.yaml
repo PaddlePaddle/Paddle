@@ -827,18 +827,6 @@
   inplace: (x -> out)
   backward : expm1_grad
 
-- op : feed_with_place
-  args : (int64_t index, DataType dtype, str name, Place place)
-  output : Tensor(out)
-  infer_meta :
-    func : FeedWithPlaceInferMeta
-    param : [index, dtype]
-  kernel:
-    func : feed_with_place
-    param : [index, dtype]
-    data_type : dtype
-    backend : place
-
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
@@ -1887,6 +1875,18 @@
   kernel :
     func : pixel_shuffle
   backward : pixel_shuffle_grad
+
+- op : placeholder
+  args : (int64_t index, DataType dtype, str name, Place place)
+  output : Tensor(out)
+  infer_meta :
+    func : FeedWithPlaceInferMeta
+    param : [index, dtype]
+  kernel:
+    func : placeholder
+    param : [index, dtype]
+    data_type : dtype
+    backend : place
 
 - op : poisson
   args : (Tensor x)

@@ -12,14 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/feed_with_place_kernel.h"
+#include "paddle/phi/kernels/placeholder_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
+#include "paddle/phi/kernels/impl/placeholder_impl.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void PlaceholderKernel(const Context& ctx,
+                       int64_t index,
+                       phi::DataType data_type,
+                       DenseTensor* out) {}
+
+template <typename T, typename Context>
+void ShaddowOutputKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         DenseTensor* out) {}
+}  // namespace phi
+
+PD_REGISTER_KERNEL(
+    placeholder, CPU, ALL_LAYOUT, phi::PlaceholderKernel, float) {}
 
 PD_REGISTER_KERNEL(shaddow_feed,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::ShaddowFeedKernel,
                    bool,
@@ -31,3 +48,6 @@ PD_REGISTER_KERNEL(shaddow_feed,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {}
+
+PD_REGISTER_KERNEL(
+    shaddow_output, CPU, ALL_LAYOUT, phi::ShaddowOutputKernel, float) {}

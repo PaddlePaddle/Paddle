@@ -18,12 +18,12 @@ import paddle
 from paddle.fluid.layer_helper import LayerHelper
 
 
-def feed_with_place():
-    helper = LayerHelper('feed_with_place', **locals())
+def placeholder():
+    helper = LayerHelper('placeholder', **locals())
 
     out = helper.create_variable_for_type_inference('float32')
     helper.append_op(
-        type='feed_with_place',
+        type='placeholder',
         inputs={},
         outputs={'out': out},
         attrs={
@@ -46,7 +46,7 @@ class TestNewIr(unittest.TestCase):
         new_scope = paddle.static.Scope()
         with paddle.static.scope_guard(new_scope):
             with paddle.static.program_guard(main_program):
-                out = feed_with_place()
+                out = placeholder()
 
 
 if __name__ == "__main__":

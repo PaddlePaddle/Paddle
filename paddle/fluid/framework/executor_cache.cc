@@ -377,7 +377,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     auto place = in_t.place().GetType();
 
     auto op_desc = block->PrependOp();
-    op_desc->SetType("feed_with_place");
+    op_desc->SetType("placeholder");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
@@ -444,7 +444,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
       continue;
     }
     auto op_desc = block->PrependOp();
-    op_desc->SetType("feed_with_place");
+    op_desc->SetType("placeholder");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
