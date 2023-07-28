@@ -482,7 +482,7 @@ void BuildRuntimeContext(
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
-    ir::Value ptr = op->operand(index);
+    ir::Value ptr = op->operand_source(index);
 
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
@@ -538,7 +538,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
-    ir::Value ptr = op->operand(index);
+    ir::Value ptr = op->operand_source(index);
 
     auto in_var_name = name_map.at(ptr);
 
