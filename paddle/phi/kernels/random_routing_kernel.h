@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/random_routing_op.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#pragma once
 
-namespace paddle {
-namespace operators {
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-template <typename T, typename DeviceContext>
-class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {}
-};
+namespace phi {
 
-}  // namespace operators
-}  // namespace paddle
+template <typename T, typename Context>
+void RandomRoutingKernel(const Context& dev_ctx,
+                         const DenseTensor& prob,
+                         const DenseTensor& topk_value,
+                         const DenseTensor& topk_idx,
+                         DenseTensor* out);
+
+}  // namespace phi
