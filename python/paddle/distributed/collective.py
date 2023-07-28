@@ -151,9 +151,7 @@ def _new_process_group_impl(
     if backend == "gloo":
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL.create(
-            store, genv.device_id, rank, world_size, group_id
-        )
+        pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
 
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -347,6 +345,7 @@ def _init_parallel_env(backend):
                 store, "0", rank, world_size
             )
         elif backend == "nccl":
+            core.CommContextManager.set_cuda_device_id(dev_id)
             core.CommContextManager.create_nccl_comm_context(
-                store, dev_id, "0", rank, world_size
+                store, "0", rank, world_size
             )

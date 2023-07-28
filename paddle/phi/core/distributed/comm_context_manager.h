@@ -48,10 +48,11 @@ class CommContextManager {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
-                                    int dev_id,
                                     const std::string& unique_comm_key,
                                     int rank,
                                     int size);
+
+  static void SetCUDADeviceId(int dev_id);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)

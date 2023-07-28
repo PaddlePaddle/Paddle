@@ -37,13 +37,15 @@ namespace phi {
 namespace distributed {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+void CommContextManager::SetCUDADeviceId(int dev_id) {
+  phi::backends::gpu::SetDeviceId(dev_id);
+}
+
 void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
-    int dev_id,
     const std::string& unique_comm_key,
     int rank,
     int size) {
-  phi::backends::gpu::SetDeviceId(dev_id);
   ncclUniqueId nccl_id;
   if (rank == 0) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
