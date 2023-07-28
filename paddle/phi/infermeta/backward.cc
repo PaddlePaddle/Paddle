@@ -728,7 +728,7 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   value_grad->set_dtype(value.dtype());
   value_grad->set_layout(value.layout());
 
-  if (bias) {
+  if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
     const int64_t bias_seq_length = bias.dims()[1];
     const int64_t bias_num_head = bias.dims()[2];
@@ -1202,7 +1202,24 @@ void IndexAddGradInferMeta(const MetaTensor& index,
   }
 }
 
-void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+void IndexPutGradInferMeta(const MetaTensor& x,
+                           const std::vector<const MetaTensor*>& indices,
+                           const MetaTensor& value,
+                           const MetaTensor& out_grad,
+                           bool accumulate,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (value_grad) {
+    value_grad->share_meta(value);
+  }
+}
+
+void FusedRopeGradInferMeta(const MetaTensor& sin,
+                            const MetaTensor& cos,
+                            const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
                             MetaTensor* dq,

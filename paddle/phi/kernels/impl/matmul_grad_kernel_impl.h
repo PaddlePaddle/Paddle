@@ -97,13 +97,14 @@ static DenseTensor FoldHeadAndLastDims(const Context& dev_ctx,
 }
 
 template <typename Context, typename T>
-void MatMul(const Context& dev_ctx,
-            const DenseTensor& a,
-            bool trans_a,
-            const DenseTensor& b,
-            bool trans_b,
-            DenseTensor* out,
-            bool flag = false) {
+typename std::enable_if<!std::is_integral<T>::value>::type MatMul(
+    const Context& dev_ctx,
+    const DenseTensor& a,
+    bool trans_a,
+    const DenseTensor& b,
+    bool trans_b,
+    DenseTensor* out,
+    bool flag = false) {
   dev_ctx.template Alloc<T>(out);
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);

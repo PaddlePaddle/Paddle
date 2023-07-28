@@ -53,6 +53,10 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                 return np.random.random([1, 3, 64, 64]).astype(np.int32)
             elif dtype == 0:
                 return np.random.random([1, 3, 64, 64]).astype(np.bool_)
+            elif dtype == 3:
+                return np.random.random([1, 3, 64, 64]).astype(np.int64)
+            elif dtype == 6:
+                return np.random.random([1, 3, 64, 64]).astype(np.float64)
 
         for keep_dim in [True, False]:
             for dim in [
@@ -67,7 +71,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                 [3, 4, 5],
             ]:
                 for reduce_all in [True, False]:
-                    for out_dtype in [-1, 0, 2, 5]:
+                    for out_dtype in [-1, 0, 2, 5, 3, 6]:
                         if out_dtype != 0:
                             reduce_type_list = [
                                 "reduce_max",

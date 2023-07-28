@@ -74,7 +74,7 @@ class CWaitComputeOp : public framework::OperatorBase {
 
 class CWaitComputeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) Dependency of the variable need to sync")
         .AsDuplicable();
     AddOutput("Out", "(Tensor) Dependency of the variable need to sync")

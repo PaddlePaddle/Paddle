@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

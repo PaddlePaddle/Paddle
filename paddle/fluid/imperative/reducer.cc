@@ -819,8 +819,6 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   }
 }
 
-// TODO(liuyuhui): If BKCL support non-blocking communication, it should be
-// fixed as same as multi gpus card training.
 void Reducer::MarkGroupReady(size_t group_index) {
   PADDLE_ENFORCE_GE(
       group_index,

@@ -129,8 +129,12 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        res = self.dygraph_func(self.input)
+        func = (
+            paddle.jit.to_static(self.dygraph_func)
+            if to_static
+            else self.dygraph_func
+        )
+        res = func(self.input)
         return res.numpy()
 
     def run_static_mode(self):

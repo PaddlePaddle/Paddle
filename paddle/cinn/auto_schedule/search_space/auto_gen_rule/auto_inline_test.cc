@@ -30,17 +30,15 @@
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 #include "test/cpp/cinn/concrete_program_builder.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace auto_schedule {
@@ -155,7 +153,6 @@ TEST(AutoInline, AddReluInline) {
 
   frontend::Program program = builder.Build();
 
-  FLAGS_cinn_ir_schedule = true;
   auto graph = std::make_shared<Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 

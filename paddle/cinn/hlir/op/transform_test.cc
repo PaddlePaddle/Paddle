@@ -40,8 +40,6 @@
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -86,40 +84,18 @@ TEST(SliceAssign, SliceAssign_Op) {
 
   std::string func_name = "slice_assign";
 
-  if (FLAGS_cinn_ir_schedule) {
-    std::string out_name = "output";
-    common::CINNValuePack cinn_input =
-        common::CINNValuePack{{common::CINNValue(input.tensor()),
-                               common::CINNValue(assign.tensor()),
-                               common::CINNValue(out_name)}};
-    std::vector<std::string> input_output_names{"input", "assign", out_name};
+  std::string out_name = "output";
+  common::CINNValuePack cinn_input =
+      common::CINNValuePack{{common::CINNValue(input.tensor()),
+                             common::CINNValue(assign.tensor()),
+                             common::CINNValue(out_name)}};
+  std::vector<std::string> input_output_names{"input", "assign", out_name};
 
-    auto funcs = framework::GetFuncFromImpl(
-        impl, cinn_input, inputs, input_output_names, func_name, target);
+  auto funcs = framework::GetFuncFromImpl(
+      impl, cinn_input, inputs, input_output_names, func_name, target);
 
-    for (auto func : funcs) {
-      LOG(INFO) << "Test Operator_BroadcastTo's Strategy, func is :\n" << func;
-    }
-  } else {
-    common::CINNValuePack cinn_input =
-        common::CINNValuePack{{common::CINNValue(input.tensor()),
-                               common::CINNValue(assign.tensor())}};
-    common::CINNValuePack rets = impl->fcompute(cinn_input);
-    rets = impl->fschedule(rets);
-
-    // the last element is a StageMap
-    for (int i = 0; i < rets->size() - 1; i++) {
-      Expr temp = rets[i];
-      if (!temp.as_tensor_ref()->buffer.defined()) {
-        inputs.push_back(temp.as_tensor_ref());
-      }
-    }
-
-    auto func = lang::LowerVec(
-        "slice_assign", rets.back(), inputs, {}, {}, nullptr, target);
-    for (auto& f : func) {
-      LOG(INFO) << "Test Strategy Codegen:\n" << f;
-    }
+  for (auto func : funcs) {
+    LOG(INFO) << "Test Operator_BroadcastTo's Strategy, func is :\n" << func;
   }
 }
 
