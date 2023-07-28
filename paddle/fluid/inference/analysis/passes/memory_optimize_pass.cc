@@ -22,9 +22,8 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/inference/analysis/pass_result_info.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -57,7 +56,7 @@ typedef struct {
 // The traversal order also affect the lifecycles, so different sort_kind is
 // used.
 void MemoryOptimizePass::CollectLifeCycle(
-    Argument *argument,
+    Argument* argument,
     std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
   framework::ir::Graph* graph = argument->main_graph_ptr();
@@ -122,26 +121,28 @@ void MemoryOptimizePass::CollectLifeCycle(
             << (persis_byte / (1 << 20)) << "MB";
 }
 
-void MemoryOptimizePass::CollectVarInfo(
-                                                Argument *argument, 
-                                                space_table_t* space_table, 
-                                                shape_table_t* shape_table, 
-                                                dtype_table_t *dtype_info) const {
+void MemoryOptimizePass::CollectVarInfo(Argument* argument,
+                                        space_table_t* space_table,
+                                        shape_table_t* shape_table,
+                                        dtype_table_t* dtype_info) const {
   framework::ir::Graph* graph = argument->main_graph_ptr();
   const int fake_batch_size = 1;
-  
+
   std::map<std::string, std::vector<int32_t>> max_shape;
 
-  if(argument->use_gpu() && argument->use_tensorrt() && argument->tensorrt_tuned_dynamic_shape()){ // turn on tensorrt dynamic shape
+  if (argument->use_gpu() && argument->use_tensorrt() &&
+      argument
+          ->tensorrt_tuned_dynamic_shape()) {  // turn on tensorrt dynamic shape
     // get shape information and dtype information from the specified file.
-    DeserializeShapeRangeInfo(argument->tensorrt_shape_range_info_path(), 
-                                    nullptr,
-                                    &max_shape, 
-                                    nullptr, 
-                                    nullptr,
-                                    nullptr,
-                                    nullptr,
-                                    dtype_info);
+    paddle::inference::DeserializeShapeRangeInfo(
+        argument->tensorrt_shape_range_info_path(),
+        nullptr,
+        &max_shape,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        dtype_info);
   }
 
   auto valid_var = [&](framework::ir::Node* node) -> bool {
@@ -201,27 +202,30 @@ void MemoryOptimizePass::CollectVarInfo(
       if (node->Var()->Persistable()) continue;
 
       std::vector<int32_t> shape;
-      if(argument->use_gpu() && argument->use_tensorrt() && argument->tensorrt_tuned_dynamic_shape() && 
-          max_shape.count(node->Var()->Name())){ // turn on tensorrt dynamic shape
+      if (argument->use_gpu() && argument->use_tensorrt() &&
+          argument->tensorrt_tuned_dynamic_shape() &&
+          max_shape.count(
+              node->Var()->Name())) {  // turn on tensorrt dynamic shape
         shape = max_shape[node->Var()->Name()];
-      } else{ //turn off tensorrt dynamic shape
+      } else {  // turn off tensorrt dynamic shape
         // int64 -> int32
         std::vector<int64_t> shape_int64 = node->Var()->GetShape();
-        std::transform(shape_int64.begin(), shape_int64.end(), back_inserter(shape), [](int64_t i){
-          return static_cast<int32_t>(i);
-        }); 
+        std::transform(shape_int64.begin(),
+                       shape_int64.end(),
+                       back_inserter(shape),
+                       [](int64_t i) { return static_cast<int32_t>(i); });
 
         for (auto& v : shape) {
           if (v < 0) {
-            v = fake_batch_size; // If TRT dynamic shape is not enabled, 
-                                          // then set the dimensions with a value of -1 in the varaible to 1
+            v = fake_batch_size;  // If TRT dynamic shape is not enabled,
+                                  // then set the dimensions with a value of -1
+                                  // in the varaible to 1
           }
         }
-        
-      } 
+      }
 
       (*shape_table)[node->Var()->Name()] = shape;
-      
+
       int size = std::accumulate(
           shape.begin(), shape.end(), 1, std::multiplies<int>());
       (*space_table)[node->Var()->Name()] =
@@ -319,12 +323,15 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
-  pass_res_info->Set(
-      argument->root_predictor_id(), "memory_optimize_pass_node2cluster", node2cluster);
-  pass_res_info->Set(
-      argument->root_predictor_id(), "memory_optimize_pass_shape_table", shape_table);
-      pass_res_info->Set(
-      argument->root_predictor_id(), "memory_optimize_pass_dtype_table", dtype_table);
+  pass_res_info->Set(argument->root_predictor_id(),
+                     "memory_optimize_pass_node2cluster",
+                     node2cluster);
+  pass_res_info->Set(argument->root_predictor_id(),
+                     "memory_optimize_pass_shape_table",
+                     shape_table);
+  pass_res_info->Set(argument->root_predictor_id(),
+                     "memory_optimize_pass_dtype_table",
+                     dtype_table);
 
   return;
 }

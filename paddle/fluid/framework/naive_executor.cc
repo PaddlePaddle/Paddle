@@ -87,9 +87,6 @@ void NaiveExecutor::Run() {
         if (it.first->memory_size() >
             cluster_buffer_[it.second]->memory_size()) { 
           
-          std::cout <<"\033[31mdense tensor is initialized?:\033[0m " << cluster_buffer_[it.second]->IsInitialized() << std::endl;
-          std::cout << "\033[31mdense tenser memory size:\033[0m " << cluster_buffer_[it.second]->memory_size() << std::endl;
-          std::cout << "\033[31mdense tenser dims:\033[0m " << cluster_buffer_[it.second]->dims().to_str() << std::endl;
           cluster_buffer_[it.second] = it.first;
           int updated_cluster_id = it.second;
 
@@ -251,9 +248,11 @@ void NaiveExecutor::MakeReusePlan(
     std::vector<int> shape = shape_table[cluster_names[i]];
     int size = std::accumulate(
           shape.begin(), shape.end(), 1, std::multiplies<int>());
-    if(!dtype_table.empty()) ctx->Alloc(cluster_buffer_[i], dtype_table.at(cluster_names[i]), size);
-    else ctx->Alloc(cluster_buffer_[i], phi::DataType::INT8, size);; // when TRT dynamic shape is not enabled, 
-                                                                              // use phi::DataType::INT8 to avoid excessive memory allocation.
+    if(!dtype_table.empty()) {
+      ctx->Alloc(cluster_buffer_[i], dtype_table.at(cluster_names[i]), size);
+    }else {
+          ctx->Alloc(cluster_buffer_[i], phi::DataType::INT8, size); // when TRT dynamic shape is not enabled, use phi::DataType::INT8 to avoid excessive memory allocation.
+    }
     cluster_buffer_[i]->Resize({{phi::make_ddim(shape_table[cluster_names[i]])}});
   }
 
