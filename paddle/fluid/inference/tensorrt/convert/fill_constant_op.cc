@@ -32,7 +32,8 @@ class FillConstantOpConverter : public OpConverter {
       std::string str_value =
           PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
       auto output_name = op_desc.Output("Out")[0];
-
+      VLOG(3) << "The fill_constant has ShapeTensorList input, output name is "
+              << output_name << ".";
       std::vector<std::string> input_names = op_desc.Input("ShapeTensorList");
       std::vector<nvinfer1::ITensor*> output_shape_tensors;
 
@@ -41,11 +42,13 @@ class FillConstantOpConverter : public OpConverter {
         str_value = std::to_string(value);
       }
       if (str_value == "inf" || str_value == "Infinity") {
-        // str_value = std::to_string(std::numeric_limits<float>::max());
         str_value = "50000";
+        VLOG(3) << "The fill_constant's attr str_value or value is inf, trt "
+                   "will change to 50000.";
       } else if (str_value == "-inf" || str_value == "-Infinity") {
-        // str_value = std::to_string(std::numeric_limits<float>::min());
         str_value = "-50000";
+        VLOG(3) << "The fill_constant's attr str_value or value is -inf, trt "
+                   "will change to -50000.";
       }
 
       float value = std::stof(str_value);
