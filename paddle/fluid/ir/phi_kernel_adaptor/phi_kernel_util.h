@@ -284,14 +284,8 @@ void BuildPhiContext(ir::Operation* op,
   } else {
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
-      if (!out_ptr) {
-        phi::DenseTensor* ptr = nullptr;
-        OutType out_ptr(ptr);
-        ctx->EmplaceBackOutput(out_ptr);
-        continue;
-      }
-
-      if (!name_map.count(out_ptr)) {
+      auto out_type = out_ptr.type();
+      if (!out_type) {
         phi::DenseTensor* ptr = nullptr;
         OutType out_ptr(ptr);
         ctx->EmplaceBackOutput(out_ptr);
@@ -299,12 +293,7 @@ void BuildPhiContext(ir::Operation* op,
       }
       auto name = name_map.at(out_ptr);
       VLOG(6) << "ctx->EmplaceBackOutput: " << name;
-      auto out_type = out_ptr.type();
-      if (!out_type) {
-        phi::DenseTensor* ptr = nullptr;
-        OutType out_ptr(ptr);
-        ctx->EmplaceBackOutput(out_ptr);
-      } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
         ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
             &(inner_scope->FindVar(name)->Get<phi::DenseTensor>()))));
       } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
