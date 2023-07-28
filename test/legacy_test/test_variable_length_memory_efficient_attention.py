@@ -104,10 +104,6 @@ class TestMemEffAttentionVariableAPI(unittest.TestCase):
         self.scale = 1.0 / np.sqrt(self.shape[-1])
 
     def test_all(self):
-        print(
-            f"Test All case shape {self.shape} dtype {self.dtype} name {self.name}"
-        )
-
         paddle.disable_static()
 
         query = np.random.random(self.shape)
