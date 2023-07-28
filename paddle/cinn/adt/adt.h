@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <tuple>
 #include <variant>
 #include <vector>
@@ -51,13 +52,50 @@ class Union {
 };
 
 template <typename... Ts>
-using Tuple = std::tuple<Ts...>;
+class Tuple final {
+ public:
+  template <typename... Args>
+  Tuple(Args&&... args)
+      : tuple_(
+            std::make_shared<std::tuple<Ts...>>(std::forward<Args>(args)...)) {}
+
+ protected:
+  std::shared_ptr<std::tuple<Ts...>> tuple_;
+};
 
 template <typename T>
 using List = std::vector<T>;
 
 template <typename T>
 using Box = std::shared_ptr<T>;
+
+template <typename T>
+class Tagged {
+ public:
+  template <typename ValueT>
+  explicit Tagged(ValueT&& value) : value_(value) {}
+
+  const T& value() const { return value_; }
+
+ private:
+  T value_;
+};
+
+#define DEFINE_ADT_TAG(name)            \
+  template <typename T>                 \
+  class name final : public Tagged<T> { \
+    using Tagged<T>::Tagged;            \
+  };
+
+DEFINE_ADT_TAG(In);
+DEFINE_ADT_TAG(Out);
+DEFINE_ADT_TAG(Var);
+using Name = std::string;
+
+namespace tag {
+// tag.Broadcasted T = Tagged T
+DEFINE_ADT_TAG(Broadcasted);
+}  // namespace tag
 
 }  // namespace adt
 }  // namespace cinn

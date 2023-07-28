@@ -75,20 +75,12 @@ using DimSize = int64_t;
 // Stride = Int64
 using Stride = int64_t;
 
-// BroadcastedDimSize = Int64
-using BroadcastedDimSize = int64_t;
+// Tensor = (const Graph::NodeData*, [[(DimSize, Stride)]])
+using Tensor =
+    Tuple<const hlir::framework::NodeData*, List<List<Tuple<DimSize, Stride>>>>;
 
-// Tensor = const Graph::NodeData*
-using Tensor = const hlir::framework::NodeData*;
-
-// Arg = (Tensor, [(DimSize, Stride, BroadcastedDimSize)])
-using Arg = Tuple<Tensor, List<Tuple<DimSize, Stride, BroadcastedDimSize>>>;
-
-// InArgs = [Arg]
-using InArgs = List<Arg>;
-
-// OutArgs = [Arg]
-using OutArgs = List<Arg>;
+// Arg = (Tensor, [[tag.Broadcasted DimSize]])
+using Arg = Tuple<Tensor, List<List<tag::Broadcasted<DimSize>>>>;
 
 // MemoryBarrier = {}    // (Sync Thread)
 class MemoryBarrier final {};
@@ -106,8 +98,8 @@ class StmtNode;
 // Stmt = Box StmtNode
 using Stmt = Box<StmtNode>;
 
-// OpStmtNode = (Op, InArgs, OutArgs)
-using OpStmtNode = Tuple<Op, InArgs, OutArgs>;
+// OpStmtNode = (Op, In [Arg], Out [Arg])
+using OpStmtNode = Tuple<Op, In<List<Arg>>, Out<List<Arg>>>;
 
 // MapStmtNode = ([ScheduleDescriptor], [Stmt])
 using MapStmtNode = Tuple<List<ScheduleDescriptor>, List<Stmt>>;
@@ -117,8 +109,8 @@ class StmtNode final : public Union<OpStmtNode, MapStmtNode> {
   using Union<OpStmtNode, MapStmtNode>::Union;
 };
 
-// Kernel = (MapStmtNode, InArgs, OutArgs)
-using Kernel = Tuple<MapStmtNode, InArgs, OutArgs>;
+// Kernel = (MapStmtNode, In [Arg], Out [Arg])
+using Kernel = Tuple<MapStmtNode, In<List<Arg>>, Out<List<Arg>>>;
 
 // InterfaceADT = Kernel
 using InterfaceADT = Kernel;

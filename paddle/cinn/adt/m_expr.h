@@ -23,14 +23,11 @@ namespace cinn {
 namespace adt {
 namespace m_expr {
 
-// UniqueName = std::string
-using UniqueName = std::string;
+// SymbolicScheduleType = Var Name
+using SymbolicScheduleType = Var<Name>;
 
-// SymbolicScheduleType = (UniqueName,)
-using SymbolicScheduleType = Tuple<UniqueName>;
-
-// SymbolicScheduleSize = (UniqueName,)
-using SymbolicScheduleSize = Tuple<UniqueName>;
+// SymbolicScheduleSize = Var Name
+using SymbolicScheduleSize = Var<Name>;
 
 // SymbolicSchedulePolicy = [(SymbolicScheduleType, SymbolicScheduleSize)]
 using SymbolicSchedulePolicy =
@@ -44,37 +41,26 @@ using DimPatternKind = m_ir::DimPatternKind;
 using SymbolicScheduleDescriptor =
     Tuple<DimPatternKind, SymbolicSchedulePolicy>;
 
-// SymbolicDimSize = (UniqueName,)
-using SymbolicDimSize = Tuple<UniqueName>;
+// SymbolicDimSize = Var Name
+using SymbolicDimSize = Var<Name>;
 
-// SymbolicStride = (UniqueName,)
-using SymbolicStride = Tuple<UniqueName>;
+// SymbolicStride = Var Name
+using SymbolicStride = Var<Name>;
 
-// SymbolicBroadcastedDimSize = (UniqueName,)
-using SymbolicBroadcastedDimSize = Tuple<UniqueName>;
+// Tensor = (const Graph::NodeData*, [[(SymbolicDimSize, SymbolicStride)]])
+using Tensor =
+    Tuple<m_ir::Tensor, List<List<Tuple<SymbolicDimSize, SymbolicStride>>>>;
 
-// Tensor = const Graph::NodeData*
-using Tensor = m_ir::Tensor;
-
-// Arg = (Tensor, [(SymbolicDimSize, SymbolicStride,
-// SymbolicBroadcastedDimSize)])
-using Arg = Tuple<
-    Tensor,
-    List<Tuple<SymbolicDimSize, SymbolicStride, SymbolicBroadcastedDimSize>>>;
-
-// InArgs = [Arg]
-using InArgs = List<Arg>;
-
-// OutArgs = [Arg]
-using OutArgs = List<Arg>;
+// Arg = (Tensor, [[tag.Broadcasted SymbolicDimSize]])
+using Arg = Tuple<Tensor, List<List<tag::Broadcasted<SymbolicDimSize>>>>;
 
 // Op = const Graph::Node* | BuiltinReduceRelatedOp | MemoryBarrier
 // BuiltinReduceRelatedOp = Zeros | InplaceAdd
 // MemoryBarrier = {}    // (Sync Thread)
 using Op = m_ir::Op;
 
-// OpStmtNode = (Op, InArgs, OutArgs)
-using OpStmtNode = Tuple<Op, InArgs, OutArgs>;
+// OpStmtNode = (Op, In [Arg], Out [Arg])
+using OpStmtNode = Tuple<Op, In<List<Arg>>, Out<List<Arg>>>;
 
 // MapStmtNode = ([SymbolicScheduleDescriptor], OpStmtNode])
 using MapStmtNode = Tuple<List<SymbolicScheduleDescriptor>, OpStmtNode>;

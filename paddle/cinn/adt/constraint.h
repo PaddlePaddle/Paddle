@@ -63,8 +63,8 @@ using ConcreteDimSize = int64_t;
 // DimSize = SymbolicDimSize | ConcreteDimSize
 using DimSize = Union<SymbolicDimSize, ConcreteDimSize>;
 
-// SymbolicStride = Product SymbolicDimSize
-using SymbolicStride = Product<SymbolicDimSize>;
+// SymbolicStride = Product DimSize
+using SymbolicStride = Product<DimSize>;
 
 // ConcreteStride = Int64
 using ConcreteStride = int64_t;
@@ -91,16 +91,15 @@ using ConcreteScheduleSize = int64_t;
 // ScheduleSize = SymbolicScheduleSize | ConcreteScheduleSize
 using ScheduleSize = Union<SymbolicScheduleSize, ConcreteScheduleSize>;
 
-// Equation = Equal DimSize
-//          | Equal Stride
-//          | Equal (Product DimSize)
+// DimSizeEquation = Equal DimSize | Equal (Product DimSize)
+using DimSizeEquation = Union<Equal<DimSize>, Equal<Product<DimSize>>>;
+
+// Equation = DimSizeEquation
 //          | Equal ScheduleType
 //          | Equal ScheduleSize
 //          | Equal (Product DimSize) (Product ScheduleSize)
 // clang-format off
-using Equation = Union<Equal<DimSize>,
-                       Equal<Stride>,
-                       Equal<Product<DimSize>>,
+using Equation = Union<DimSizeEquation,
                        Equal<ScheduleType>,
                        Equal<ScheduleSize>,
                        Equal<Product<DimSize>, Product<ScheduleSize>>>;
