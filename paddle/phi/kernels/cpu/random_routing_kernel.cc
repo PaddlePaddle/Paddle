@@ -25,11 +25,8 @@ void RandomRoutingKernel(const Context& dev_ctx,
                          const DenseTensor& topk_value,
                          const DenseTensor& topk_idx,
                          DenseTensor* out) {
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  PADDLE_ENFORCE_EQ(
-      is_gpu_place,
-      true,
-      phi::errors::Unimplemented("random routing op only supports GPU now."));
+  PADDLE_THROW(phi::errors::Unavailable(
+      "Do not support expert count op for cpu kernel now."));
 }
 
 }  // namespace fusion
