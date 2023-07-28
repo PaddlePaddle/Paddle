@@ -98,16 +98,7 @@ static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void UpdateSum(const T* srcX, float* sum, float* sumSq) {
-  float src_data = static_cast<float>(*srcX);
-  *sum += src_data;
-  *sumSq += src_data * src_data;
-}
-
-template <>
-inline __device__ void UpdateSum<half, 1>(const half* srcX,
-                                          float* sum,
-                                          float* sumSq) {
-  float src_data = __half2float(*srcX);
+  const float src_data = static_cast<const float>(*srcX);
   *sum += src_data;
   *sumSq += src_data * src_data;
 }
@@ -323,28 +314,28 @@ inline __device__ void GroupNormCompute(int32_t hwBegin,
                                         const GroupNormNHWCParams<T>& params,
                                         float mean,
                                         float invStdDev) {
-  float gamma, beta;
-
-  gamma = static_cast<float>(*(reinterpret_cast<T const*>(params.gamma) + ci));
-  beta = static_cast<float>(*(reinterpret_cast<T const*>(params.beta) + ci));
+  const float gamma = static_cast<const float>(
+      *(reinterpret_cast<T const*>(params.gamma) + ci));
+  const float beta =
+      static_cast<const float>(*(reinterpret_cast<T const*>(params.beta) + ci));
 
   for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
     // The src/dst offset.
     int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
-    float src_data = static_cast<float>(params.srcX[offset]);
+    const float src_data = static_cast<const float>(params.srcX[offset]);
 
     // Normalize the channels.
-    src_data = (src_data - mean) * invStdDev;
+    float dst_data = (src_data - mean) * invStdDev;
     // Scale by gamma and add beta.
-    src_data = gamma * src_data + beta;
+    dst_data = gamma * dst_data + beta;
 
     // Apply Silu if needed.
     if (params.withSilu) {
-      src_data = src_data * sigmoid(src_data);
+      dst_data = dst_data * sigmoid(dst_data);
     }
 
     // Store the scaled values.
-    *reinterpret_cast<T*>(&params.dst[offset]) = src_data;
+    *reinterpret_cast<T*>(&params.dst[offset]) = dst_data;
   }
 }
 
