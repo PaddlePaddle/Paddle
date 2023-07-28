@@ -27,7 +27,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-template <typename T = __half>
+template <typename T>
 struct GroupNormNHWCParams {
   // The output buffer. Layout NHWC.
   T* dst;
