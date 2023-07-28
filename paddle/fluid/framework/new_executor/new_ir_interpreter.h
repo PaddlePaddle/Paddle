@@ -16,6 +16,7 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
+#include "paddle/ir/core/value.h"
 
 namespace ir {
 class Program;
@@ -207,11 +208,26 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   /// ======================== ///
   std::string DebugValueInfo();
 
+  void PreAnalysis();
+
   void BuildInstruction();
 
   void BuildInstructionDependences();
 
   void NewIrLoopRunImpl();
+
+  void BetaRunImpl();
+
+  void TraceInstructionList(
+      const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
+
+  void RunInstructionBase(InstructionBase* instr_node);
+
+  void RecordMemcpyD2H(const InstructionBase* instr_node);
+
+  ::ir::Value GetValueByName(const std::string& var_name);
+
+  void CheckGC(const InstructionBase* instr);
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 

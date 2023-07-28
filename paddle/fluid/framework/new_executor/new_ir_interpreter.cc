@@ -38,6 +38,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/ir/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
@@ -261,6 +262,12 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                                     bool need_fetch) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
     // Build
@@ -278,29 +285,15 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     BuildInstruction();
     VLOG(4) << "Done BuildInstruction";
 
-    BuildInstructionDependences();
-    VLOG(4) << "Done BuildInstructionDependences";
-
-    ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
-    VLOG(4) << "Done ConstructEvents";
-
-    // add event for the input var of jit program, since there are async copied
-    // from gpu_pinned place to gpu place on compute stream.
-    ConstructEventForJitInput();
-    VLOG(4) << "AddEventToWait for JitInputVars";
-
-    CalculateLastLiveOps();
-    VLOG(4) << "Done CalculateLastLiveOps";
-
-    AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
-                                ir_instruction_scheduling_priority_less);
-    VLOG(4) << "Done AnalyseExecuteOrderForTrace";
+    PreAnalysis();
+    VLOG(4) << "Done PreAnalysis";
 
     // Run
-    NewIrLoopRunImpl();
+    BetaRunImpl();
   } else {
-    NewIrLoopRunImpl();
+    BetaRunImpl();
   }
+
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
@@ -310,6 +303,14 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::IsCUDAGraphCapturing()) {
+      PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Cannot fetch data when using CUDA Graph."));
+    }
+#endif
     return fetch_list;
   } else {
     return {};
@@ -321,6 +322,115 @@ void NewIRInterpreter::NewIrLoopRunImpl() {
        ++instr_id) {
     vec_instruction_base_[instr_id]->Run();
   }
+}
+
+void NewIRInterpreter::BetaRunImpl() {
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
+  }
+
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+  VLOG(4) << "Tracing Instruction List";
+
+  TraceInstructionList(vec_instruction_base_);
+}
+
+void NewIRInterpreter::TraceInstructionList(
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i).get());
+    }
+  }
+
+  // TODO(phlrain) use orignal order for now, use better dependecy
+  for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+       ++instr_id) {
+    /// auto instr_id = trace_execute_order_[idx];
+    const InstructionBase* instr_node =
+        vec_instruction_base_.at(instr_id).get();
+
+    RunInstructionBase(instr_node);
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      break;
+    }
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+}
+
+void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
+  platform::RecordEvent instruction_event(
+      instr_node->Name(), platform::TracerEventType::Operator, 1);
+
+  SetDeviceId(instr_node->DeviceContext().GetPlace());
+
+  try {
+    instr_node->WaitEvent(place_);
+
+    VLOG(5) << "begin to run op " << instr_node->Name();
+    if (!instr_node->IsArtificial()) {
+      instr_node->Run();
+      CheckGC(instr_node);
+      interpreter::LogDeviceMemoryStats(place_);
+    }
+    VLOG(5) << "after run kernel";
+    instr_node->RecordEvent(place_);
+  } catch (platform::EnforceNotMet& ex) {
+    LOG(WARNING) << instr_node->Name() << " raises an EnforceNotMet exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+  } catch (platform::EOFException&) {
+    exception_holder_.Catch(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << instr_node->Name() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::current_exception());
+  } catch (...) {
+    LOG(WARNING) << instr_node->Name() << " raises an unknown exception";
+    exception_holder_.Catch(std::current_exception());
+  }
+}
+
+void NewIRInterpreter::PreAnalysis() {
+  BuildInstructionDependences();
+  VLOG(4) << "Done BuildInstructionDependences";
+
+  ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
+  VLOG(4) << "Done ConstructEvents";
+
+  // add event for the input var of jit program, since there are async copied
+  // from gpu_pinned place to gpu place on compute stream.
+  ConstructEventForJitInput();
+  VLOG(4) << "AddEventToWait for JitInputVars";
+
+  CalculateLastLiveOps();
+  VLOG(4) << "Done CalculateLastLiveOps";
+
+  AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
+                              ir_instruction_scheduling_priority_less);
+  VLOG(4) << "Done AnalyseExecuteOrderForTrace";
 }
 
 void NewIRInterpreter::CalculateLastLiveOps() {
@@ -1541,6 +1651,44 @@ void NewIRInterpreter::CheckGC(const Instruction& instr) {
   }
 }
 
+::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
+  for (auto kv : value_2_var_name_) {
+    if (kv.second == var_name) {
+      return kv.first;
+    }
+  }
+  return nullptr;
+}
+
+void NewIRInterpreter::CheckGC(const InstructionBase* instr) {
+  platform::RecordEvent record(
+      "CheckGC", platform::TracerEventType::UserDefined, 10);
+  // TODO(zhangbo): RecordStreamForGC
+  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  //   RecordStreamForGC(instr);
+  // #endif
+
+  for (auto var_id : instr->GCCheckVars()) {
+    VLOG(4) << "GC:" << GetNameById(var_id) << ", id:" << var_id
+            << ", ref:" << refs_[var_id]->DynamicRef();
+    bool is_ready = refs_[var_id]->CheckAndDecrease();
+    // ignore all persistable var while GCphi
+    ::ir::Value value = GetValueByName(GetNameById(var_id));
+    if (value && value.GetDefiningOp()->attributes().count("is_persisable") &&
+        value.GetDefiningOp()
+            ->attributes()
+            .at("is_persisable")
+            .dyn_cast<::ir::BoolAttribute>()
+            .data()) {
+      continue;
+    }
+    if (is_ready) {
+      VLOG(6) << "Async delete variable with name : " << GetNameById(var_id);
+      gc_->Add(refs_[var_id]->Var(), instr);
+    }
+  }
+}
+
 void NewIRInterpreter::Prepare(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
@@ -1683,6 +1831,21 @@ void NewIRInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
           "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
       VLOG(3) << "Record event on default stream in jit_input_var at op: "
               << instr_node.OpBase()->Type();
+      event.event_->Record(default_dev_ctx);
+    }
+  }
+}
+
+void NewIRInterpreter::RecordMemcpyD2H(const InstructionBase* instr_node) {
+  // NOTE(zhiqiu): hot fix for jit input var
+  if (instr_node->Name() == "pd.memcpy_d2h") {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* default_dev_ctx = pool.Get(place_);
+    for (auto& event : instr_node->EventsToWait()) {
+      platform::RecordEvent record(
+          "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+      VLOG(3) << "Record event on default stream in jit_input_var at op: "
+              << instr_node->Name();
       event.event_->Record(default_dev_ctx);
     }
   }

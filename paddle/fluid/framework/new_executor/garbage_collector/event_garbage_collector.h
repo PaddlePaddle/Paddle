@@ -26,8 +26,15 @@ class InterpreterCoreEventGarbageCollector
  public:
   InterpreterCoreEventGarbageCollector(
       const std::vector<Instruction>& vec_instruction);
+
+  InterpreterCoreEventGarbageCollector(
+      const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction);
+
   ~InterpreterCoreEventGarbageCollector();
+
   void Add(Variable* var, const Instruction& instruction) override;
+
+  void Add(Variable* var, const InstructionBase* instruction) override;
 
  private:
   void Add(Variable* var,

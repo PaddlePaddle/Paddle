@@ -23,6 +23,8 @@ class InterpreterCoreFastGarbageCollector
  public:
   void Add(Variable* var, const Instruction& instr) override;
 
+  void Add(Variable* var, const InstructionBase* instr) override;
+
  private:
   void Add(Variable* var);
   void Add(Garbage garbage);

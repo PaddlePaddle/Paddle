@@ -37,6 +37,19 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
   }
 }
 
+InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
+  WorkQueueOptions options(/*name*/ "GarbageCollector",
+                           /*num_threads*/ 1,
+                           /*allow_spinning*/ true,
+                           /*track_task*/ false);
+  queue_ = CreateSingleThreadedWorkQueue(options);
+  for (auto& instruc : vec_instruction) {
+    gc_event_.emplace_back(instruc->DeviceContext().GetPlace(),
+                           platform::GenerateDeviceEventFlag());
+  }
+}
+
 InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
   queue_.reset(nullptr);
 }
@@ -51,6 +64,18 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
                         instr.Id(),
                         gc_event_.size()));
   Add(var, &gc_event_.at(instr.Id()), &instr.DeviceContext());
+}
+
+void InterpreterCoreEventGarbageCollector::Add(Variable* var,
+                                               const InstructionBase* instr) {
+  PADDLE_ENFORCE_LT(instr->Id(),
+                    gc_event_.size(),
+                    platform::errors::OutOfRange(
+                        "The index should be less than the size of gc event "
+                        ", but got index is %d and size is %d",
+                        instr->Id(),
+                        gc_event_.size()));
+  Add(var, &gc_event_.at(instr->Id()), &instr->DeviceContext());
 }
 
 void InterpreterCoreEventGarbageCollector::Add(
