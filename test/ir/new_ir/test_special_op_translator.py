@@ -39,7 +39,7 @@ class TestCastOpTranscriber(unittest.TestCase):
 
 
 class TestElementwiseOpTranscriber(unittest.TestCase):
-    def test_elementwise(self):
+    def test_elementwise_without_y_grad(self):
         place = core.Place()
         place.set_place(paddle.CPUPlace())
         exe = paddle.static.Executor(place)
@@ -61,7 +61,37 @@ class TestElementwiseOpTranscriber(unittest.TestCase):
                 mean = paddle.mean(out1)
                 paddle.static.append_backward(mean)
 
-                print(main_program, flush=True)
+                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                np.testing.assert_allclose(
+                    out[0],
+                    x_data + y_data.reshape(100, 1, 1),
+                    rtol=1e-6,
+                    atol=1e-6,
+                )
+
+    def test_elementwise_with_y_grad(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x_data = np.random.rand(100, 2, 3)
+                y_data = np.random.rand(100)
+                x = paddle.to_tensor(x_data, dtype='float32')
+                x.stop_gradient = False
+                y = paddle.to_tensor(y_data, dtype='float32')
+                y.stop_gradient = False
+
+                out1 = paddle.tensor.math._elementwise_op(
+                    LayerHelper('elementwise_add', x=x, y=y, axis=0)
+                )
+                out1.stop_gradient = False
+                mean = paddle.mean(out1)
+                paddle.static.append_backward(mean)
+
                 out = exe.run(main_program, {}, fetch_list=[out1.name])
                 np.testing.assert_allclose(
                     out[0],
