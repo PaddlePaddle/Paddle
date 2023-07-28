@@ -2284,7 +2284,7 @@ void BindImperative(py::module *m_ptr) {
                    kernelsig_ins, kernelsig_attrs, kernelsig_outs);
              }
            })
-      .def("trace",
+      .def("trace_del",
            [](imperative::Tracer &self,
               const std::string &type,
               const PyNameVarBaseMap &ins,
@@ -2306,7 +2306,7 @@ void BindImperative(py::module *m_ptr) {
                                                  inplace_map);
              }
            })
-      .def("trace",
+      .def("trace_del",
            [](imperative::Tracer &self,
               const std::string &type,
               const PyNameVarBaseMap &ins,
@@ -2328,7 +2328,7 @@ void BindImperative(py::module *m_ptr) {
                                                  inplace_map);
              }
            })
-      .def("trace",
+      .def("trace_del",
            [](imperative::Tracer &self,
               const std::string &type,
               const PyNameVarBaseMap &ins,
@@ -2350,7 +2350,7 @@ void BindImperative(py::module *m_ptr) {
                                                  inplace_map);
              }
            })
-      .def("trace",
+      .def("trace_del",
            [](imperative::Tracer &self,
               const std::string &type,
               const PyNameVarBaseMap &ins,
@@ -2372,7 +2372,7 @@ void BindImperative(py::module *m_ptr) {
                                                  inplace_map);
              }
            })
-      .def("trace",
+      .def("trace_del",
            [](imperative::Tracer &self,
               const std::string &type,
               const PyNameVarBaseMap &ins,
