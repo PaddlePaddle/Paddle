@@ -647,7 +647,7 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
-      m, "VarBase", R"DOC()DOC");
+      m, "VarBase_del", R"DOC()DOC");
   g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
   varbase.def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
