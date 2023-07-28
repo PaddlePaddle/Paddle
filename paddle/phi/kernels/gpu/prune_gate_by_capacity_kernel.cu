@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/prune_gate_by_capacity_kernel.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/prune_gate_by_capacity_kernel.h"
 
 namespace phi {
 
@@ -48,8 +49,8 @@ template <typename Context, typename T1>
 class PruneGateByCapacityFunctor {
  public:
   PruneGateByCapacityFunctor(const Context& dev_ctx,
-                             const DenseTensor* gate_idx,
-                             DenseTensor* expert_count_out,
+                             const phi::DenseTensor* gate_idx,
+                             phi::DenseTensor* expert_count_out,
                              T1* new_gate_idx_data)
       : dev_ctx_(dev_ctx),
         gate_idx_(gate_idx),
@@ -80,6 +81,19 @@ class PruneGateByCapacityFunctor {
   T1* new_gate_idx_data_;
 };
 
+template <typename Visitor>
+static void VisitType(phi::DataType type, Visitor visitor) {
+  if (type == phi::DataType::INT64) {
+    visitor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The received values gate_id type %s can not meet input requirements. "
+        "Because the given gate_id data type of operators must be "
+        "int64. Please input appropriate gate_id again! ",
+        "framework::DataTypeToString(type)"));
+  }
+}
+
 template <typename T, typename Context>
 void PruneGateByCapacityKernel(const Context& dev_ctx,
                                const DenseTensor& gate_idx,
@@ -88,17 +102,16 @@ void PruneGateByCapacityKernel(const Context& dev_ctx,
                                int64_t n_worker,
                                DenseTensor* new_gate_idx) {
   auto* gate_idx_ptr = &gate_idx;
-  auto* expert_count_ptr = &expert_count;
   // auto* expert_count_out =
   // context.Output<phi::DenseTensor>("ExpertCountOut");
-  auto* new_gate_idx_data = dev_ctx.template Alloc<T>(new_gate_idx->numel());
+  auto* new_gate_idx_data = dev_ctx.template Alloc<T>(new_gate_idx);
 
   phi::DenseTensor expert_count_out;
   phi::Copy(
-      dev_ctx, *expert_count_ptr, dev_ctx.GetPlace(), false, &expert_count_out);
+      dev_ctx, expert_count, dev_ctx.GetPlace(), false, &expert_count_out);
   PruneGateByCapacityFunctor<Context, T> functor(
-      dev_ctx, gate_idx_ptr, expert_count_out, new_gate_idx_data);
-  phi::VisitDataType(expert_count_ptr->type(), functor);
+      dev_ctx, gate_idx_ptr, &expert_count_out, new_gate_idx_data);
+  VisitType(expert_count.type(), functor);
 }
 
 }  // namespace phi
@@ -106,5 +119,5 @@ void PruneGateByCapacityKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(prune_gate_by_capacity,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedAttentionGradKernel,
+                   phi::PruneGateByCapacityKernel,
                    int64_t) {}

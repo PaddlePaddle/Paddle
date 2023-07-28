@@ -125,10 +125,3 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(prune_gate_by_capacity,
                              ops::PruneGateByCapacityOp,
                              ops::PruneGateByCapacityOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(prune_gate_by_capacity,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PruneGateByCapacityCPUKernel,
-                          int,
-                          int64_t) {}
