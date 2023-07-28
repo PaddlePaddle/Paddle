@@ -14,11 +14,13 @@
 #pragma once
 
 #include "paddle/ir/core/program.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace dialect {
 
-std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog);
+std::unique_ptr<ir::Program> PdOpLowerToKernelPass(
+    ir::Program* prog, phi::Place place = phi::CPUPlace());
 
 }  // namespace dialect
 }  // namespace paddle

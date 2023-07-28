@@ -37,6 +37,7 @@ DECLARE_bool(cinn_use_custom_call);
 DECLARE_bool(use_reduce_split_pass);
 DECLARE_bool(cinn_use_dense_merge_pass);
 DECLARE_string(cinn_custom_call_deny_ops);
+DECLARE_bool(general_fusion_merge_pass);
 
 namespace cinn {
 namespace frontend {
@@ -96,7 +97,11 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
 
   if (FLAGS_cinn_use_op_fusion) {
     options.graph_passes.emplace_back("OpFusionPass");
-    options.graph_passes.emplace_back("FusionMergePass");
+    if (FLAGS_general_fusion_merge_pass) {
+      options.graph_passes.emplace_back("GeneralFusionMergePass");
+    } else {
+      options.graph_passes.emplace_back("FusionMergePass");
+    }
   } else {
     options.graph_passes.emplace_back("BuildNonFusedGroupsPass");
   }

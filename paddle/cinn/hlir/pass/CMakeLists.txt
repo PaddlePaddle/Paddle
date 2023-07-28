@@ -1,3 +1,5 @@
+add_subdirectory(general_fusion_merge_pass)
+
 core_gather_headers()
 
 gather_srcs(
@@ -9,6 +11,7 @@ gather_srcs(
   const_propagate.cc
   op_fusion_pass.cc
   fusion_merge_pass.cc
+  general_fusion_merge_pass.cc
   dot_merger.cc
   check_fusion_accuracy_pass.cc
   custom_call_pass.cc

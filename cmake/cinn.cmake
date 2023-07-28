@@ -174,8 +174,8 @@ if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
   if(WITH_MKLDNN)
-    target_link_libraries(cinnapi mkldnn)
-    add_dependencies(cinnapi mkldnn)
+    target_link_libraries(cinnapi ${MKLDNN_LIB})
+    add_dependencies(cinnapi ${MKLDNN_PROJECT})
   endif()
 endif()
 
@@ -224,8 +224,8 @@ function(gen_cinncore LINKTYPE)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
     add_dependencies(${CINNCORE_TARGET} cinn_mklml)
     if(WITH_MKLDNN)
-      target_link_libraries(${CINNCORE_TARGET} mkldnn)
-      add_dependencies(${CINNCORE_TARGET} mkldnn)
+      target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
+      add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
     endif()
   endif()
 
@@ -302,7 +302,8 @@ if(PUBLISH_LIBS)
       ${CMAKE_BINARY_DIR}/paddle/cinn/auto_schedule/libauto_schedule_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libauto_schedule_proto.a
     COMMAND
-      cmake -E copy ${CMAKE_BINARY_DIR}/paddle/cinn/ir/libschedule_desc_proto.a
+      cmake -E copy
+      ${CMAKE_BINARY_DIR}/paddle/cinn/ir/schedule/libschedule_desc_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libschedule_desc_proto.a
     COMMENT "distribute libcinncore_static.a and related header files." DEPENDS
             cinncore_static)

@@ -36,9 +36,15 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
-from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    HOOK_ACTION,
+    FusedCommBuffer,
+    assign_group_by_size,
+)
 
 __all__ = []
+
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 
 
 # assume only the first stage and last stage need data, and data consumption is ordred
@@ -295,15 +301,18 @@ class PipelineParallel(MetaParallelBase):
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
-
-        act = HOOK_ACTION.ALL_REDUCE if dp else HOOK_ACTION.REDUCE
-
-        fused_parameter_group = {}
+        # Note: after sharding change to reduce operation, here need to be cleared
+        act = (
+            HOOK_ACTION.ALL_REDUCE
+            if (dp or not g_shard_use_reduce)
+            else HOOK_ACTION.REDUCE
+        )
 
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
 
+            fused_parameter_group = {}
             parameter_list = [
                 p for p in model.parameters() if not p.stop_gradient
             ]
@@ -324,9 +333,11 @@ class PipelineParallel(MetaParallelBase):
 
             for dst in fused_parameter_group:
                 parameter_list = fused_parameter_group[dst]
-                if not dp:
+                if act != HOOK_ACTION.ALL_REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
+                else:
+                    dst = -1
                 var_groups = assign_group_by_size(parameter_list)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
@@ -505,7 +516,7 @@ class PipelineParallel(MetaParallelBase):
         if self._comm_overlap:
             assert len(self._comm_buffers) > 0
             for buffer in self._comm_buffers:
-                buffer.scale_and_split_grads()
+                buffer.scale_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -1246,7 +1257,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._comm_overlap:
                 assert len(self._comm_buffers) > 0
                 for buffer in self._comm_buffers:
-                    buffer.scale_and_split_grads()
+                    buffer.scale_grads()
 
             if static_scheduler:
                 self._reset_counter()

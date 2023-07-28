@@ -117,6 +117,7 @@ namespace {  // NOLINT
 TRT_DT FluidDataType2TRT(FluidDT type) {
   switch (type) {
     case FluidDT::VarType_Type_FP32:
+    case FluidDT::VarType_Type_FP64:
       return TRT_DT::kFLOAT;
     case FluidDT::VarType_Type_INT32:
     case FluidDT::VarType_Type_INT64:
@@ -524,6 +525,10 @@ class TensorRTEngine {
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
+      // Make 0-D tensor to 1-D tensor.
+      if (input_shape.size() == 0) {
+        input_shape.push_back(1);
+      }
       bool min_change = false;
       bool max_change = false;
       std::vector<int> bak_min_shape;
