@@ -81,6 +81,9 @@ void MultiHeadAttentionVariableForwardKernel(
     if (mask && !KernelType::kAddMask) {
       return;
     }
+    if (!mask && KernelType::kAddMask) {
+      return;
+    }
     if (KernelType::kMaskBroadcastRow) {
       // not support mask_broad_cast
       return;
