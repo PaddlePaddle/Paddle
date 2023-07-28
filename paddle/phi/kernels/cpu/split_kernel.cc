@@ -29,8 +29,11 @@ PD_REGISTER_KERNEL(split,
                    bool,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(split_with_num,
                    CPU,

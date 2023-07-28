@@ -44,8 +44,6 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
     "fetch",
 };
 
-constexpr char kAttrStopGradients[] = "stop_gradient";
-
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      ir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
