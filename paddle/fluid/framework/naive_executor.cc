@@ -254,9 +254,6 @@ void NaiveExecutor::MakeReusePlan(
     if(!dtype_table.empty()) ctx->Alloc(cluster_buffer_[i], dtype_table.at(cluster_names[i]), size);
     else ctx->Alloc(cluster_buffer_[i], phi::DataType::INT8, size);; // when TRT dynamic shape is not enabled, 
                                                                               // use phi::DataType::INT8 to avoid excessive memory allocation.
-    // if(!dtype_table.empty()) cluster_buffer_[i]->mutable_data(place_, dtype_table.at(cluster_names[i]), size);
-    // else cluster_buffer_[i]->mutable_data(place_, phi::DataType::INT8, size); // when TRT dynamic shape is not enabled, 
-    //                                                                           // use phi::DataType::INT8 to avoid excessive memory allocation.
     cluster_buffer_[i]->Resize({{phi::make_ddim(shape_table[cluster_names[i]])}});
   }
 
