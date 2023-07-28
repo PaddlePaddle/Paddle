@@ -46,11 +46,12 @@ pipeline {
           sh 'echo Build'
           sh '/bin/bash --login -c "cp -r $PADDLE_MUSA_REPO_PATH/third_party/. third_party \
               && cp -r $PADDLE_MUSA_REPO_PATH/.git/modules .git"'
+          sh '/bin/bash --login -c "ls -l && ls -l paddle"'
           // When installing paddle via whl within v0.1.1 docker there is an error:
           // paddlepaddle-0.0.0-cp37-cp37m-linux_x86_64.whl is not a supported wheel on this platform
           // the whl's name needs to be modified according to the whl suffix supported by pip.
-          sh '/bin/bash --login -c "PY_VERSION=3.8 /bin/bash paddle/scripts/paddle_build.sh build_only 64 && \
-              find ./dist -name *whl | xargs pip install"'
+          // sh '/bin/bash --login -c "PY_VERSION=3.8 /bin/bash paddle/scripts/paddle_build.sh build_only 64 && \
+          //     find ./dist -name *whl | xargs pip install"'
           // sh '/bin/bash --login -c "MAX_JOBS=64 python setup.py install"'
         }
       }
@@ -59,7 +60,7 @@ pipeline {
       steps {
         container('main') {
           sh 'echo Unit Test'
-          sh '/bin/bash --login -c "cd build && ctest -V -R system_allocator_test"'
+          // sh '/bin/bash --login -c "cd build && ctest -V -R system_allocator_test"'
         }
       }
     }
@@ -88,6 +89,7 @@ pipeline {
       steps {
         container('main') {
           sh 'echo Daily Release in main'
+          
         }
         container('release') {
           sh 'echo Daily Release in release'

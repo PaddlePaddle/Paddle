@@ -16,10 +16,10 @@ spec:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
-          - key: test_models
+          - key: gputype
             operator: In
             values:
-            - s3000
+            - mthreads-train
   containers:
   - name: main
     tty: true
