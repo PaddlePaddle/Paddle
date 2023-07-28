@@ -71,6 +71,13 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 
   const bool zero_tensors = false;
 
+  // TODO(umiswing): add shape check
+  PADDLE_ENFORCE_EQ(
+      head_size_og,
+      head_size,
+      phi::errors::InvalidArgument(
+          "flash_attn_bwd receive input with head_size_og == head_size"));
+
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
   uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
@@ -155,6 +162,13 @@ void FlashAttnGradKernel(const Context& ctx,
   const int head_size_rounded = round_multiple(head_size, 32);
   const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
   const int seqlen_k_rounded = round_multiple(seqlen_k, 128);
+
+  // TODO(umiswing): add shape check
+  PADDLE_ENFORCE_EQ(
+      head_size_og,
+      head_size,
+      phi::errors::InvalidArgument(
+          "flash_attn_bwd receive input with head_size_og == head_size"));
 
   VLOG(4) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";

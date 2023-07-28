@@ -73,12 +73,15 @@ void FlashAttnUnpaddedKernel(
 
   const int total_q = dims[0];
   const int num_heads = dims[1];
-  const int head_size_og = dims[2];
+  const int head_size = dims[2];
 
   const int total_k = k.dims()[0];
   const int num_heads_k = k.dims()[1];
   const int batch_size = cu_seqlens_q.numel() - 1;
 
+  // TODO(umiswing): add shape check
+
+  // fa-2 always sets zero_tensors to false
   const bool zero_tensors = false;
 
   uint64_t seed;
@@ -111,7 +114,6 @@ void FlashAttnUnpaddedKernel(
   seed_offset_data[1] = static_cast<int64_t>(offset);
 
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-  const int head_size = round_multiple(head_size_og, 8);
   const int head_size_rounded = round_multiple(head_size, 32);
   const int seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
   const int seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
@@ -188,11 +190,13 @@ void FlashAttnKernel(const Context& ctx,
   const int batch_size = dims[0];
   const int seqlen_q = dims[1];
   const int num_heads = dims[2];
-  const int head_size_og = dims[3];
+  const int head_size = dims[3];
   const int seqlen_k = k.dims()[1];
   const int num_heads_k = k.dims()[2];
 
-  const float scale = 1.0f / std::sqrt(head_size_og);
+  // TODO(umiswing): Add check shape
+
+  const float scale = 1.0f / std::sqrt(head_size);
 
   VLOG(4) << "FlashAttn fwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";
@@ -235,7 +239,6 @@ void FlashAttnKernel(const Context& ctx,
 
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
 
-  const int head_size = round_multiple(head_size_og, 8);
   const int head_size_rounded = round_multiple(head_size, 32);
   const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
   const int seqlen_k_rounded = round_multiple(seqlen_k, 128);
