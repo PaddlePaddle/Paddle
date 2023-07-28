@@ -65,6 +65,19 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
+
+      auto block = base_program->block();
+      for (auto it = block->begin(); it != block->end(); ++it) {
+        if ((*it)->name() == "pd.fetch") {
+          fetch_var_names_.push_back((*it)
+                                         ->attributes()
+                                         .at("name")
+                                         .dyn_cast<ir::StrAttribute>()
+                                         .AsString() +
+                                     "@fetch");
+        }
+      }
+
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
@@ -130,11 +143,23 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   // return Fetch Tensors
-  auto* fetch_var = scope_->FindVar(interpreter::kFetchVarName);
-  if (fetch_var) {
-    return std::move(*fetch_var->GetMutable<framework::FetchList>());
+
+  if (FLAGS_enable_new_ir_in_executor) {
+    framework::FetchList fetch_res;
+
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = scope_->FindVar(var_name);
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
+    }
+
+    return fetch_res;
   } else {
-    return {};
+    auto* fetch_var = scope_->FindVar(interpreter::kFetchVarName);
+    if (fetch_var) {
+      return std::move(*fetch_var->GetMutable<framework::FetchList>());
+    } else {
+      return {};
+    }
   }
 }
 
