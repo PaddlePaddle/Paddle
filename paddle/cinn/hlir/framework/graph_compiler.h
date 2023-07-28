@@ -31,6 +31,7 @@
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/parallel_compiler.h"
+#include "paddle/cinn/hlir/framework/program.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/lang/packed_func.h"
@@ -39,56 +40,6 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
-
-/**
- * The Program is the runtime instance for running a computation.
- */
-class Program {
- public:
-  /**
-   * Constructor.
-   * @param scope The scope containing all the runtime variables.
-   * @param instrs The instructions belonging to this program.
-   */
-  Program(const std::shared_ptr<Scope>& scope,
-          std::vector<std::unique_ptr<Instruction>>&& instrs);
-
-  void PreRun(
-      const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr);
-
-  void Export(const std::vector<std::string>& persistent_vars,
-              const std::string& filename);
-
-  /**
-   * Execute the program -- that is running all the instructions inside it.
-   */
-  void Execute(
-      const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr,
-      void* stream = nullptr,
-      bool use_cache = true);
-
-  void ExecuteTest(int repeat_);
-
-  /**
-   * Get the number of instructions.
-   */
-  size_t size() const { return instrs_.size(); }
-
-  const std::vector<std::unique_ptr<Instruction>>& GetPreRunInstructions() {
-    return prerun_instrs_;
-  }
-  const std::vector<std::unique_ptr<Instruction>>& GetRunInstructions() {
-    return instrs_;
-  }
-
- private:
-  // We need to hold scope to assure tensors alive used in instructions.
-  std::shared_ptr<Scope> scope_;
-  // prerun instructions
-  std::vector<std::unique_ptr<Instruction>> prerun_instrs_;
-  // only runtime instructions
-  std::vector<std::unique_ptr<Instruction>> instrs_;
-};
 
 /**
  * GraphCompiler compiles a graph and generate the runtime Program.
