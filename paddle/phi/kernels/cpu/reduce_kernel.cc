@@ -29,6 +29,10 @@ void ReduceKernel(const Context& dev_ctx,
                   int root,
                   int reduce_type,
                   DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
 #if defined(PADDLE_WITH_GLOO)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
