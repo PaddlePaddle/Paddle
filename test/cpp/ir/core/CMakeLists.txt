@@ -30,6 +30,7 @@ cc_test_old(
   ir_exe_test.cc
   DEPS
   pd_op_to_kernel_pass
+  program_translator
   pd_dialect
   phi_kernel_adaptor
   ir
