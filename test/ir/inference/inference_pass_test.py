@@ -58,9 +58,8 @@ class InferencePassTest(unittest.TestCase):
         self, dirname, feeded_var_names, target_vars, executor, program, scope
     ):
         with fluid.scope_guard(scope):
-            # save models as combined to ensure that
-            # there won't be too many useless files
-            # after finishing a couple of tests.
+            # save models as combined but sometimes params is null
+            # To adapt to this situation, the path needs to be adjusted to the old version format.
             feeded_vars = []
             for var in program.list_vars():
                 if var.name in feeded_var_names:
@@ -73,12 +72,6 @@ class InferencePassTest(unittest.TestCase):
                 executor,
                 program=program,
             )
-
-            # for debug, remove it later
-            print("===========================")
-            files = os.listdir(self.temp_dir.name)
-            for file in files:
-                print(file)
 
             # if the param save is null
             # replace model_path to old version
@@ -94,10 +87,6 @@ class InferencePassTest(unittest.TestCase):
                 model_path_old = os.path.join(save_dirname, "__model__")
                 if not os.path.exists(model_path_old):
                     os.rename(model_path, model_path_old)
-            print("------------------------------")
-            files = os.listdir(self.temp_dir.name)
-            for file in files:
-                print(file)
 
     def _get_paddle_outs(self, executor, program, scope):
         '''
@@ -144,6 +133,7 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig.
         '''
+        # To adapt to save_inference_model
         param_file = self.path + ".pdiparams"
         if not os.path.exists(param_file):
             config = AnalysisConfig(self.path)
