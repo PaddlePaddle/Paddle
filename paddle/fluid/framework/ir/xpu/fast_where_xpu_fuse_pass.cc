@@ -38,8 +38,8 @@ namespace ir {
 namespace patterns {
 
 /*
-fuse cast+scale+mul+mul+add ops to fast_where_xpu op reduce memory access.
-For example:
+Fuse cast+scale+mul+mul+add ops to fast_where_xpu op reduce memory access.
+Case 0: when mode = 0,
             condition
                |
               cast
@@ -57,13 +57,13 @@ For example:
 
 After the pass is applied,
 
-condition    x       y
+condition    y       x
      \       |      /
       \      |     /
        \     |    /
       fast_where_xpu
 
-or,
+Case 1: when mode = 1,
 
           condition
               |
@@ -82,13 +82,13 @@ or,
 
 After the pass is applied,
 
-condition    y       x
+condition    x       y
      \       |      /
       \      |     /
        \     |    /
       fast_where_xpu
 
-or,
+Case 2: when mode = 0,
 
           condition
              |
@@ -107,6 +107,81 @@ or,
 
 After the pass is applied,
 
+condition    y       x
+     \       |      /
+      \      |     /
+       \     |    /
+      fast_where_xpu
+
+Case 3: when mode = 1,
+
+        condition
+            |
+          cast
+            |
+         /     \
+        /      scale
+       /          \
+      /    x       \      y
+      \   /         \    /
+       mul0          mul1
+          \          /
+           \        /
+            \      /
+               add
+
+After the pass is applied,
+
+condition    x       y
+     \       |      /
+      \      |     /
+       \     |    /
+      fast_where_xpu
+
+Case 4: when mode = 0,
+
+       condition
+           |
+         cast
+           |
+     /          \
+  scale          \
+   /              \
+  /     x    y     \
+  \    /      \    /
+    mul0       mul1
+      \         /
+       \       /
+        \     /
+          add
+
+After the pass is applied,
+
+condition    y       x
+     \       |      /
+      \      |     /
+       \     |    /
+      fast_where_xpu
+
+Case 5: when mode = 1,
+
+      condition
+          |
+         cast
+          |
+     /          \
+    /          scale
+   /              \
+  /     x    y     \
+  \    /      \    /
+    mul0       mul1
+      \         /
+       \       /
+        \     /
+          add
+
+After the pass is applied,
+
 condition    x       y
      \       |      /
       \      |     /
@@ -115,7 +190,9 @@ condition    x       y
 
 */
 struct OneFastWhereXPUPattern : public PatternBase {
-  OneFastWhereXPUPattern(PDPattern* pattern, const std::string& name_scope);
+  OneFastWhereXPUPattern(PDPattern* pattern,
+                         const std::string& name_scope,
+                         int mode);
   // declare operator node's name
   PATTERN_DECL_NODE(cast);
   PATTERN_DECL_NODE(scale);
@@ -124,26 +201,30 @@ struct OneFastWhereXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(add);
   // declare variable node's name
   // cast
-  PATTERN_DECL_NODE(cast_in);
+  PATTERN_DECL_NODE(condition);
   PATTERN_DECL_NODE(cast_out);
   // scale
   PATTERN_DECL_NODE(scale_out);
   // mul0
-  PATTERN_DECL_NODE(mul0_x);
+  PATTERN_DECL_NODE(x);
   PATTERN_DECL_NODE(mul0_out);
   // mul1
-  PATTERN_DECL_NODE(mul1_x);
+  PATTERN_DECL_NODE(y);
   PATTERN_DECL_NODE(mul1_out);
   // add
   PATTERN_DECL_NODE(add_out);
+
+ private:
+  int mode_{0};
 };
 
 OneFastWhereXPUPattern::OneFastWhereXPUPattern(PDPattern* pattern,
-                                               const std::string& name_scope)
-    : PatternBase(pattern, name_scope, name_scope) {
+                                               const std::string& name_scope,
+                                               int mode)
+    : PatternBase(pattern, name_scope, name_scope), mode_(mode) {
   // cast
-  auto cast_in =
-      pattern->NewNode(cast_in_repr())->assert_is_op_input("cast", "X");
+  auto condition =
+      pattern->NewNode(condition_repr())->assert_is_op_input("cast", "X");
   auto cast_out = pattern->NewNode(cast_out_repr())
                       ->assert_is_op_output("cast", "Out")
                       ->assert_is_op_input("scale", "X")
@@ -168,11 +249,11 @@ OneFastWhereXPUPattern::OneFastWhereXPUPattern(PDPattern* pattern,
           ->assert_more([](Node* n) {
             auto bias_val = PADDLE_GET_CONST(float, n->Op()->GetAttr("bias"));
             auto scale_val = PADDLE_GET_CONST(float, n->Op()->GetAttr("scale"));
-            return bias_val == 1 && scale_val == -1;
+            return fabs(bias_val - 1.0f) <= 1e-5f &&
+                   fabs(scale_val + 1.0f) <= 1e-5f;
           });
   // mul0
-  auto mul0_x =
-      pattern->NewNode(mul0_x_repr())->assert_is_op_input("elementwise_mul");
+  auto x = pattern->NewNode(x_repr())->assert_is_op_input("elementwise_mul");
   auto mul0_out = pattern->NewNode(mul0_out_repr())
                       ->assert_is_op_output("elementwise_mul", "Out")
                       ->assert_is_op_input("elementwise_add");
@@ -183,9 +264,7 @@ OneFastWhereXPUPattern::OneFastWhereXPUPattern(PDPattern* pattern,
                     auto node2 = node->inputs[1];
                     auto node1_shape = node1->Var()->GetShape();
                     auto node2_shape = node2->Var()->GetShape();
-                    if (node1_shape.size() != node2_shape.size() &&
-                        node1_shape.size() != 2)
-                      return false;
+                    if (node1_shape.size() != node2_shape.size()) return false;
                     for (size_t i = 0; i < node1_shape.size(); i++) {
                       if (node1_shape[i] != node2_shape[i] &&
                           (node1_shape[i] != 1 && node2_shape[i] != 1)) {
@@ -195,8 +274,7 @@ OneFastWhereXPUPattern::OneFastWhereXPUPattern(PDPattern* pattern,
                     return true;
                   });
   // mul1
-  auto mul1_x =
-      pattern->NewNode(mul1_x_repr())->assert_is_op_input("elementwise_mul");
+  auto y = pattern->NewNode(y_repr())->assert_is_op_input("elementwise_mul");
   auto mul1_out = pattern->NewNode(mul1_out_repr())
                       ->assert_is_op_output("elementwise_mul", "Out")
                       ->assert_is_op_input("elementwise_add");
@@ -207,9 +285,7 @@ OneFastWhereXPUPattern::OneFastWhereXPUPattern(PDPattern* pattern,
                     auto node2 = node->inputs[1];
                     auto node1_shape = node1->Var()->GetShape();
                     auto node2_shape = node2->Var()->GetShape();
-                    if (node1_shape.size() != node2_shape.size() &&
-                        node1_shape.size() != 2)
-                      return false;
+                    if (node1_shape.size() != node2_shape.size()) return false;
                     for (size_t i = 0; i < node1_shape.size(); i++) {
                       if (node1_shape[i] != node2_shape[i] &&
                           (node1_shape[i] != 1 && node2_shape[i] != 1)) {
@@ -224,32 +300,38 @@ OneFastWhereXPUPattern::OneFastWhereXPUPattern(PDPattern* pattern,
   auto add = pattern->NewNode(add_repr())
                  ->assert_is_op("elementwise_add")
                  ->assert_more([](Node* node) {
-                   // add -> in -> mul -> in
                    auto node_in1 = node->inputs[0];
                    auto node_in2 = node->inputs[1];
                    if (node_in1->inputs.size() == 1 &&
                        node_in1->inputs[0]->Op()->Type() == "elementwise_mul" &&
                        node_in2->inputs.size() == 1 &&
                        node_in2->inputs[0]->Op()->Type() == "elementwise_mul") {
-                     auto mul1 = node_in1->inputs[0];
-                     auto mul2 = node_in2->inputs[0];
-                     auto shape1 = mul1->inputs[1]->Var()->GetShape();
-                     auto shape2 = mul2->inputs[1]->Var()->GetShape();
+                     auto shape1 = node_in1->Var()->GetShape();
+                     auto shape2 = node_in2->Var()->GetShape();
                      return shape1 == shape2;
                    }
                    return false;
                  });
-  cast->LinksFrom({cast_in}).LinksTo({cast_out});
+  cast->LinksFrom({condition}).LinksTo({cast_out});
   scale->LinksFrom({cast_out}).LinksTo({scale_out});
-  mul0->LinksFrom({mul0_x, cast_out}).LinksTo({mul0_out});
-  mul1->LinksFrom({mul1_x, scale_out}).LinksTo({mul1_out});
+  PADDLE_ENFORCE_LE(
+      mode,
+      1,
+      platform::errors::InvalidArgument(
+          "one_fast_where_xpu_fuse_pass mode(%d) is not supported.", mode));
+  if (mode == 0) {
+    mul0->LinksFrom({x, scale_out}).LinksTo({mul0_out});
+    mul1->LinksFrom({y, cast_out}).LinksTo({mul1_out});
+  } else if (mode == 1) {
+    mul0->LinksFrom({x, cast_out}).LinksTo({mul0_out});
+    mul1->LinksFrom({y, scale_out}).LinksTo({mul1_out});
+  }
   add->LinksFrom({mul0_out, mul1_out}).LinksTo({add_out});
 }
 
 /*
-fuse cascade fast_where_xpu ops to one fast_where_xpu op reduce memory access.
-For example:
-when mode = 0,
+Fuse cascade fast_where_xpu ops to one fast_where_xpu op reduce memory access.
+Case 0: when mode = 0,
 
               x--------------
               |              |
@@ -257,11 +339,11 @@ when mode = 0,
               |      \       |      /
               |       \      |     /
               |        \     |    /
-condition1    |       fast_where_xpu
+condition1    |       fast_where_xpu0
      \        |         /
       \       |        /
        \      |       /
-        fast_where_xpu
+        fast_where_xpu1
 
 After the pass is applied,
 
@@ -274,19 +356,19 @@ condition0  condition1
               \      |     /
               fast_where_xpu
 
-or mode = 1,
+Case 1: when mode = 1,
 
   condition0   x        y
        \       |      /   |
         \      |     /    |
          \     |    /     |
-        fast_where_xpu    |
+        fast_where_xpu0   |
                |          |
  condition1    |          |
       \        |         /
        \       |        /
         \      |       /
-        fast_where_xpu
+        fast_where_xpu1
 
 After the pass is applied,
 
@@ -299,6 +381,34 @@ condition0  condition1
              \       |      /
               \      |     /
               fast_where_xpu
+
+Other cases:
+
+              x ---------------------
+              |                      |
+              | condition0   y       |
+              |      \       |      /
+              |       \      |     /
+              |        \     |    /
+condition1    |       fast_where_xpu0
+     \        |         /
+      \       |        /
+       \      |       /
+        fast_where_xpu1
+
+                ----------
+               |          |
+  condition0   x       y  |
+       \       |      /   |
+        \      |     /    |
+         \     |    /     |
+        fast_where_xpu0   |
+               |          |
+ condition1    |          |
+      \        |         /
+       \       |        /
+        \      |       /
+        fast_where_xpu1
 
 */
 struct CascadeFastWhereXPUPattern : public PatternBase {
@@ -337,27 +447,24 @@ CascadeFastWhereXPUPattern::CascadeFastWhereXPUPattern(
                                  ->assert_is_op_output("fast_where_xpu", "out");
   auto fast_where_xpu1_out = pattern->NewNode(fast_where_xpu1_out_repr())
                                  ->assert_is_op_output("fast_where_xpu", "out");
-  auto x = pattern->NewNode(x_repr())->assert_is_op_input("fast_where_xpu");
-  auto y = pattern->NewNode(y_repr())->assert_is_op_input("fast_where_xpu");
+  auto x =
+      pattern->NewNode(x_repr())->assert_is_op_input("fast_where_xpu", "x");
+  auto y =
+      pattern->NewNode(y_repr())->assert_is_op_input("fast_where_xpu", "y");
   fast_where_xpu0->LinksFrom({condition0, x, y}).LinksTo({fast_where_xpu0_out});
-  PADDLE_ENFORCE_LE(mode,
-                    1,
-                    platform::errors::InvalidArgument(
-                        "cascade mode(%d) is not supported.", mode));
+  PADDLE_ENFORCE_LE(
+      mode,
+      1,
+      platform::errors::InvalidArgument(
+          "cascade_fast_where_xpu_fuse_pass mode(%d) is not supported.", mode));
   if (mode == 0) {
-    x->assert_is_op_input("fast_where_xpu", "x");
-    y->assert_is_op_input("fast_where_xpu", "y");
     fast_where_xpu0_out->assert_is_op_input("fast_where_xpu", "y");
     fast_where_xpu1->LinksFrom({condition1, x, fast_where_xpu0_out})
         .LinksTo({fast_where_xpu1_out});
   } else if (mode == 1) {
-    x->assert_is_op_input("fast_where_xpu", "x");
-    y->assert_is_op_input("fast_where_xpu", "y");
     fast_where_xpu0_out->assert_is_op_input("fast_where_xpu", "x");
     fast_where_xpu1->LinksFrom({condition1, fast_where_xpu0_out, y})
         .LinksTo({fast_where_xpu1_out});
-  } else {
-    // TODO(hong19860320) add other cases.
   }
 }
 
@@ -368,14 +475,15 @@ class OneFastWhereXPUFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  int ApplySubgraph(ir::Graph* graph) const;
+  int ApplySubgraph(ir::Graph* graph, int mode) const;
 
   const std::string name_scope_{"one_fast_where_xpu_fuse_pass"};
 };
 
-int OneFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph) const {
+int OneFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph, int mode) const {
   GraphPatternDetector gpd;
-  patterns::OneFastWhereXPUPattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::OneFastWhereXPUPattern pattern(
+      gpd.mutable_pattern(), name_scope_, mode);
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -388,32 +496,34 @@ int OneFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph) const {
     GET_IR_NODE(add);
     // declare variable node's name
     // scale
-    GET_IR_NODE(cast_in);
+    GET_IR_NODE(condition);
     GET_IR_NODE(cast_out);
     GET_IR_NODE(scale_out);
     // mul0
-    GET_IR_NODE(mul0_x);
+    GET_IR_NODE(x);
     GET_IR_NODE(mul0_out);
     // mul1
-    GET_IR_NODE(mul1_x);
+    GET_IR_NODE(y);
     GET_IR_NODE(mul1_out);
     // add
     GET_IR_NODE(add_out);
 
     auto* block = add->Op()->Block();
-    auto* scope = param_scope();
-    PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
     framework::OpDesc fast_where_xpu_op_desc(block);
     fast_where_xpu_op_desc.SetType("fast_where_xpu");
-    fast_where_xpu_op_desc.SetInput("condition", {cast_in->Name()});
-    fast_where_xpu_op_desc.SetInput("x", {mul0_x->Name()});
-    fast_where_xpu_op_desc.SetInput("y", {mul1_x->Name()});
+    fast_where_xpu_op_desc.SetInput("condition", {condition->Name()});
+    if (mode == 0) {
+      fast_where_xpu_op_desc.SetInput("x", {y->Name()});
+      fast_where_xpu_op_desc.SetInput("y", {x->Name()});
+    } else if (mode == 1) {
+      fast_where_xpu_op_desc.SetInput("x", {x->Name()});
+      fast_where_xpu_op_desc.SetInput("y", {y->Name()});
+    }
     fast_where_xpu_op_desc.SetOutput("out", {add_out->Name()});
     auto fast_where_xpu_op_node = graph->CreateOpNode(&fast_where_xpu_op_desc);
-    IR_NODE_LINK_TO(mul0_x, fast_where_xpu_op_node);
-    IR_NODE_LINK_TO(mul1_x, fast_where_xpu_op_node);
-    IR_NODE_LINK_TO(cast_in, fast_where_xpu_op_node);
+    IR_NODE_LINK_TO(x, fast_where_xpu_op_node);
+    IR_NODE_LINK_TO(y, fast_where_xpu_op_node);
+    IR_NODE_LINK_TO(condition, fast_where_xpu_op_node);
     IR_NODE_LINK_TO(fast_where_xpu_op_node, add_out);
     std::unordered_set<const Node*> delete_nodes = {
         cast, cast_out, scale, scale_out, mul0, mul0_out, mul1, mul1_out, add};
@@ -430,7 +540,9 @@ void OneFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   int found_subgraph_count = 0;
-  found_subgraph_count += ApplySubgraph(graph);
+  for (auto mode : {0, 1}) {
+    found_subgraph_count += ApplySubgraph(graph, mode);
+  }
   AddStatis(found_subgraph_count);
 }
 
@@ -464,9 +576,6 @@ int CascadeFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph,
     GET_IR_NODE(fast_where_xpu0_out);
     GET_IR_NODE(fast_where_xpu1_out);
 
-    auto* scope = param_scope();
-    PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
     // Reuse variables
     fast_where_xpu0_out->Var()->SetShape(condition0->Var()->GetShape());
     fast_where_xpu0_out->Var()->SetDataType(condition0->Var()->GetDataType());
@@ -484,20 +593,12 @@ int CascadeFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph,
     // Reserve the second first_where_xpu but change its inputs
     fast_where_xpu1->Op()->SetInput(
         "condition", std::vector<std::string>({fast_where_xpu0_out->Name()}));
+    fast_where_xpu1->Op()->SetInput("x", std::vector<std::string>({x->Name()}));
+    fast_where_xpu1->Op()->SetInput("y", std::vector<std::string>({y->Name()}));
     if (mode == 0) {
       fast_where_xpu0->Op()->SetType("logical_or");
-      fast_where_xpu1->Op()->SetInput("x",
-                                      std::vector<std::string>({x->Name()}));
-      fast_where_xpu1->Op()->SetInput("y",
-                                      std::vector<std::string>({y->Name()}));
     } else if (mode == 1) {
       fast_where_xpu0->Op()->SetType("logical_and");
-      fast_where_xpu1->Op()->SetInput("x",
-                                      std::vector<std::string>({x->Name()}));
-      fast_where_xpu1->Op()->SetInput("y",
-                                      std::vector<std::string>({y->Name()}));
-    } else {
-      // TODO(hong19860320) add other cases.
     }
     IR_NODE_UNLINK(x, fast_where_xpu0);
     IR_NODE_UNLINK(y, fast_where_xpu0);
@@ -516,11 +617,16 @@ void CascadeFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-  int found_subgraph_count = 0;
-  for (auto mode : {0, 1}) {
-    found_subgraph_count += ApplySubgraph(graph, mode);
-  }
-  AddStatis(found_subgraph_count);
+  int total_found_subgraph_count = 0;
+  int cur_found_subgraph_count = 0;
+  do {
+    cur_found_subgraph_count = 0;
+    for (auto mode : {0, 1}) {
+      cur_found_subgraph_count += ApplySubgraph(graph, mode);
+    }
+    total_found_subgraph_count += cur_found_subgraph_count;
+  } while (cur_found_subgraph_count > 0);
+  AddStatis(total_found_subgraph_count);
 }
 
 class FastWhereXPUFusePass : public FusePassBase {
