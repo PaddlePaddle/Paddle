@@ -125,7 +125,6 @@ set(PYBIND_SRCS
     imperative.cc
     inference_api.cc
     static_op_function.cc
-    ops_api.cc
     ir.cc
     graph.cc
     bind_fleet_executor.cc

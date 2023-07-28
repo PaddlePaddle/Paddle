@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/fluid/pybind/static_op_function.h"
+#include <Python.h>
 #include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -44,6 +43,22 @@ PyObject *static_api_mean(PyObject *self, PyObject *args, PyObject *kwargs) {
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
     return nullptr;
+  }
+}
+
+static PyObject *mean(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_mean(self, args, kwargs);
+}
+
+static PyMethodDef OpsAPI[] = {{"mean",
+                                (PyCFunction)(void (*)(void))mean,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for mean."},
+                               {nullptr, nullptr, 0, nullptr}};
+
+void BindOpsAPI(pybind11::module *module) {
+  if (PyModule_AddFunctions(module->ptr(), OpsAPI) < 0) {
+    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
   }
 }
 
