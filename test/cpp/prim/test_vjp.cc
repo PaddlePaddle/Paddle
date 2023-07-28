@@ -55,13 +55,13 @@ TEST(VJP, TanhBackwardTest) {
   paddle::dialect::FullOp op3 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  paddle::dialect::VjpInterface tanh_vjp_interface =
-      op2->dyn_cast<paddle::dialect::VjpInterface>();
-
   std::vector<int> stop_gradients{0};
   std::vector<ir::OpResult> out_grads{op3.out()};
-  std::vector<ir::OpResult> grad_res =
-      tanh_vjp_interface.Vjp(op2.operation(), out_grads, stop_gradients);
+
+  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh");
+  auto tanh_vjp_interface_impl =
+      op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+  tanh_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
 
   std::ostringstream print_stream;
   program.Print(print_stream);

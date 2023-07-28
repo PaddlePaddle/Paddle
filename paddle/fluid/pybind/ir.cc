@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/vjp.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/program.h"
@@ -220,6 +221,51 @@ void BindUtils(pybind11::module *m) {
           "DenseTensorType"));
     }
   });
+  m->def(
+      "call_vjp",
+      [](ir::Operation &fwd_op,
+         std::vector<ir::OpResult> &out_grads,
+         const std::vector<int> &stop_gradients) {
+        py::list res;
+        ir::IrContext *ctx = ir::IrContext::Instance();
+        ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
+        auto vjp_interface_impl =
+            fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+        if (vjp_interface_impl == nullptr) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The vjp function is not registered in %s op ", fwd_op.name()));
+        }
+        std::vector<ir::OpResult> vjp_res =
+            vjp_interface_impl->vjp_(&fwd_op, out_grads, stop_gradients);
+        PADDLE_ENFORCE_GE(
+            stop_gradients.size(),
+            vjp_res.size(),
+            phi::errors::InvalidArgument(
+                "The size of stop_gradients should be greater than vjp_res "
+                "size."
+                "But the size of stop_gradients: %d, vjp_res size: %d",
+                stop_gradients.size(),
+                vjp_res.size()));
+        size_t res_size = stop_gradients.size();
+        int j = 0;
+        for (size_t i = 0; i < res_size; ++i) {
+          if (stop_gradients[i]) {
+            res.append(nullptr);
+          } else {
+            res.append(vjp_res[j]);
+            ++j;
+          }
+        }
+        PADDLE_ENFORCE_EQ(j,
+                          vjp_res.size(),
+                          phi::errors::InvalidArgument(
+                              "The size of vjp_res should be the same with "
+                              "zero nums in stop_gradients container."
+                              "But zero nums: %d, vjp_res size: %d",
+                              j,
+                              vjp_res.size()));
+        return res;
+      });
 }
 
 void BindNewIR(pybind11::module *m) {

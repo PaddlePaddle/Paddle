@@ -25,6 +25,7 @@ from paddle.fluid.core import (
     get_op_result_shape,
     get_op_result_dtype,
     translate_to_new_ir,
+    call_vjp,
 )  # noqa: F401
 
 __all__ = [  # noqa
@@ -37,5 +38,6 @@ __all__ = [  # noqa
     'Type',
     'get_op_result_shape',
     'get_op_result_dtype',
+    'call_vjp',
     'translate_to_new_ir',
 ]
