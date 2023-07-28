@@ -115,17 +115,17 @@ class BufferedLineFileReader {
     FILEReader reader(fp);
     return read_lines<FILEReader>(&reader, func, skip_lines);
   }
-  uint64_t file_size(void) { return total_len_; }
+  uint64_t file_size() { return total_len_; }
   void set_sample_rate(float r) { sample_rate_ = r; }
   size_t get_sample_line() { return sample_line_; }
-  bool is_error(void) { return (error_line_ > 10); }
+  bool is_error() { return (error_line_ > 10); }
 
  private:
   SampleFunc get_sample_func() {
     if (std::abs(sample_rate_ - 1.0f) < 1e-5f) {
-      return [this](void) { return true; };
+      return []() { return true; };
     }
-    return [this](void) {
+    return [this]() {
       return (uniform_distribution_(random_engine_) < sample_rate_);
     };
   }
@@ -2155,7 +2155,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
     LoadIntoMemoryByCommand();
   }
 }
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib() {
   if (true) {
     // user defined file format analysis
     LoadIntoMemoryByFile();
@@ -2164,7 +2164,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
   }
 }
 
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
 #if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
     (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
@@ -2237,7 +2237,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 #endif
 }
 
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine() {
 #ifdef _LINUX
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
@@ -2333,7 +2333,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
 #endif
 }
 
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand() {
 #ifdef _LINUX
   std::string filename;
   BufferedLineFileReader line_reader;
@@ -3222,7 +3222,7 @@ void MiniBatchGpuPack::pack_instance(const SlotRecord* ins_vec, int num) {
   transfer_to_gpu();
 }
 
-void MiniBatchGpuPack::transfer_to_gpu(void) {
+void MiniBatchGpuPack::transfer_to_gpu() {
   copy_host2device(&value_.d_uint64_lens, buf_.h_uint64_lens);
   copy_host2device(&value_.d_uint64_keys, buf_.h_uint64_keys);
   copy_host2device(&value_.d_uint64_offset, buf_.h_uint64_offset);

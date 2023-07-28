@@ -32,7 +32,6 @@
 #include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(auto_schedule_use_cost_model);
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace auto_schedule {
@@ -70,8 +69,6 @@ class TestAutoTuner : public ::testing::Test {
 
   void SetUp() override {
     srand(0);
-    // AutoTuner is combined with new IR Schedule
-    FLAGS_cinn_ir_schedule = true;
     std::unordered_set<std::string> fetch_ids;
     auto program = CreateAddReluProgram();
     auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);

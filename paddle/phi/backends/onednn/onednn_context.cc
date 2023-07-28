@@ -52,7 +52,7 @@ OneDNNContextThreadLocals::Body::~Body() {
 void OneDNNContextThreadLocals::Body::set_cur_mkldnn_session_id(size_t sid) {
   cur_mkldnn_session_id = sid;
 }
-size_t OneDNNContextThreadLocals::Body::get_cur_mkldnn_session_id(void) {
+size_t OneDNNContextThreadLocals::Body::get_cur_mkldnn_session_id() {
   return cur_mkldnn_session_id;
 }
 
@@ -70,11 +70,11 @@ void OneDNNContextThreadLocals::Body::set_cur_paddle_data_layout(
   cur_paddle_data_layout = dl;
 }
 
-DataLayout OneDNNContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
+DataLayout OneDNNContextThreadLocals::Body::get_cur_paddle_data_layout() {
   return cur_paddle_data_layout;
 }
 
-void OneDNNContextThreadLocals::Body::log_lib_version(void) {
+void OneDNNContextThreadLocals::Body::log_lib_version() {
   if (!said_once) {
     said_once = true;
     auto dv = dnnl::version();
@@ -239,7 +239,7 @@ struct OneDNNContext::Impl {
     return;
   }
 
-  unsigned int GetCachedObjectsNumber(void) const {
+  unsigned int GetCachedObjectsNumber() const {
     unsigned int num_entries = 0;
     for (auto const& l3 : *p_blobmap_) {
       for (auto const& l2 : *(l3.second)) {
@@ -412,7 +412,7 @@ void OneDNNContext::SetBlob(const std::string& name,
   impl_->SetBlob(name, data);
 }
 
-unsigned int OneDNNContext::GetCachedObjectsNumber(void) const {
+unsigned int OneDNNContext::GetCachedObjectsNumber() const {
   return impl_->GetCachedObjectsNumber();
 }
 
