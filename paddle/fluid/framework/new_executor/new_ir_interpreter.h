@@ -96,7 +96,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
   void AnalyseExecuteOrderForTrace(
-      std::map<size_t, std::set<size_t>> op_downstream_map);
+      std::map<size_t, std::set<size_t>> op_downstream_map,
+      InstructionSchedulingPriorityLess compare);
   void ConstructEventForJitInput();
   void CalculateLastLiveOps();
 
@@ -209,6 +210,10 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void BuildInstruction();
 
   void BuildInstructionDependences();
+
+  void NewIrLoopRunImpl();
+
+  InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
 

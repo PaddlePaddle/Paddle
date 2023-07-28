@@ -90,6 +90,17 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
 
+  ir_instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
+    SchedulingPriority lhs_scheduling_priority =
+        vec_instruction_base_[lhs]->GetSchedulingPriority();
+    SchedulingPriority rhs_scheduling_priority =
+        vec_instruction_base_[rhs]->GetSchedulingPriority();
+    if (lhs_scheduling_priority == rhs_scheduling_priority) {
+      return lhs < rhs;
+    }
+    return lhs_scheduling_priority > rhs_scheduling_priority;
+  };
+
   PrepareForCUDAGraphCapture();
 }
 
@@ -281,18 +292,14 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     CalculateLastLiveOps();
     VLOG(4) << "Done CalculateLastLiveOps";
 
-    AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap());
+    AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
+                                ir_instruction_scheduling_priority_less);
     VLOG(4) << "Done AnalyseExecuteOrderForTrace";
 
-    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
-         ++instr_id) {
-      vec_instruction_base_[instr_id]->Run();
-    }
+    // Run
+    NewIrLoopRunImpl();
   } else {
-    for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
-         ++instr_id) {
-      vec_instruction_base_[instr_id]->Run();
-    }
+    NewIrLoopRunImpl();
   }
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
@@ -306,6 +313,13 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     return fetch_list;
   } else {
     return {};
+  }
+}
+
+void NewIRInterpreter::NewIrLoopRunImpl() {
+  for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
+       ++instr_id) {
+    vec_instruction_base_[instr_id]->Run();
   }
 }
 
@@ -1022,7 +1036,8 @@ void NewIRInterpreter::Convert(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
 
-  AnalyseExecuteOrderForTrace(dependency_builder_.OpDownstreamMap());
+  AnalyseExecuteOrderForTrace(dependency_builder_.OpDownstreamMap(),
+                              instruction_scheduling_priority_less);
 }
 
 void NewIRInterpreter::BuildSkipShareLoDInfo() {
@@ -1692,7 +1707,8 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 // is run before C, B may always block to wait for A to finish executing, but in
 // fact, C can be executed first during this time.
 void NewIRInterpreter::AnalyseExecuteOrderForTrace(
-    std::map<size_t, std::set<size_t>> op_downstream_map) {
+    std::map<size_t, std::set<size_t>> op_downstream_map,
+    InstructionSchedulingPriorityLess compare) {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   VLOG(4) << "1";
@@ -1703,7 +1719,7 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
   };
 
   std::vector<size_t> trace_order;
-  SchedulingQueue ready_ops(instruction_scheduling_priority_less);
+  SchedulingQueue ready_ops(compare);
 
   for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
     if (dependecy_count_[instr_id] == 0) {
