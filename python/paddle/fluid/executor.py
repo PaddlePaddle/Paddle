@@ -1071,7 +1071,12 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+                if os.getenv("FLAGS_enable_new_ir_in_executor"):
+                    core.set_feed_variable(
+                        scope, cur_feed, feed_target_name, idx
+                    )
+                else:
+                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
                 break
 
