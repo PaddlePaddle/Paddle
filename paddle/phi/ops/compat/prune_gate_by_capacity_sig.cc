@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+namespace phi {
 
-namespace paddle {
-namespace operators {
+KernelSignature RReluOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("prune_gate_by_capacity",
+                         {"GateIdx", "ExpertCount"},
+                         {"n_expert", "n_worker"},
+                         {"NewGateIdx"});
+}
 
-template <typename T, typename DeviceContext>
-class PruneGateByCapacityCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {}
-};
+}  // namespace phi
 
-}  // namespace operators
-}  // namespace paddle
+PD_REGISTER_ARG_MAPPING_FN(rrelu, phi::RReluOpArgumentMapping);
