@@ -16,9 +16,12 @@
  */
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_fp16.h>
+#endif
 #include <stdint.h>
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
