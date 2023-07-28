@@ -29,7 +29,7 @@ class IR_API ModuleOp : public ir::Op<ModuleOp> {
   using Op::Op;
   static const char *name() { return "builtin.module"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  const std::array<char *, attributes_num> attributes_name = {"program"};
   void Verify() const;
   Program *program();
   Block *block();
@@ -50,7 +50,7 @@ class IR_API GetParameterOp : public ir::Op<GetParameterOp> {
   using Op::Op;
   static const char *name() { return "builtin.get_parameter"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  const std::array<char *, attributes_num> attributes_name = {"parameter_name"};
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     const std::string &name,

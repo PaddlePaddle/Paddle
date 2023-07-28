@@ -20,8 +20,6 @@
 
 namespace ir {
 
-const char *ModuleOp::attributes_name[attributes_num] = {"program"};
-
 Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
   auto iter = attr.find("program");
@@ -66,9 +64,6 @@ void ModuleOp::Verify() const {
   // Verify outputs:
   IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
 }
-
-const char *GetParameterOp::attributes_name[attributes_num] = {
-    "parameter_name"};
 
 void GetParameterOp::Build(Builder &builder,
                            OperationArgument &argument,
