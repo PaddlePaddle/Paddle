@@ -30,7 +30,7 @@
 namespace ir {
 
 namespace {
-constexpr char newline[] = "\n";
+constexpr char newline[] = "\n";  // NOLINT
 }  // namespace
 
 void BasicIrPrinter::PrintType(Type type) {

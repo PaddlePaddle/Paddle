@@ -33,11 +33,11 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 
-PHI_DEFINE_bool(enable_host_event_recorder_hook,
+PHI_DEFINE_bool(enable_host_event_recorder_hook,  // NOLINT
                 false,
                 "enable HostEventRecorder, hook Profiler");
 
-PHI_DEFINE_bool(enable_record_op_info,
+PHI_DEFINE_bool(enable_record_op_info,  // NOLINT
                 false,
                 "enable operator supplement info recorder");
 

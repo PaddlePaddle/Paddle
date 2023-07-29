@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <array>
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -60,9 +61,9 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
   y_data += x_offset;
 
   // using float for all inter compute
-  float data[kLocalBatchSize][kLocalIterations];
-  T temp_data[kOneLoadingCounts];
-  T temp_mask[kOneLoadingCounts];
+  std::array<std::array<float, kLocalIterations>, kLocalBatchSize> data;
+  std::array<T, kOneLoadingCounts> temp_data;
+  std::array<T, kOneLoadingCounts> temp_mask;
 
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
@@ -95,7 +96,7 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
 
   // compute max_value
   // max value for each batch for current warp
-  float samples_max_value[kLocalBatchSize];
+  std::array<float, kLocalBatchSize> samples_max_value;
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
     samples_max_value[i] = data[i][0];
@@ -110,7 +111,7 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
   warp_reduce<float, kLocalBatchSize, warp_size, MaxOP>(samples_max_value);
 
   // compute the sum for each batch for current warp
-  float samples_sum[kLocalBatchSize]{0.0f};
+  std::array<float, kLocalBatchSize> samples_sum{0.0f};
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
 #pragma unroll
@@ -123,7 +124,7 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
   warp_reduce<float, kLocalBatchSize, warp_size, AddOP>(samples_sum);
 
   // load the result from device back to host
-  T samples_out[kOneLoadingCounts];
+  std::array<T, kOneLoadingCounts> samples_out;
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
     if (i >= local_batches) break;

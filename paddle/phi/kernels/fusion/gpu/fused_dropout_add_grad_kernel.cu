@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <array>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_add_utils.h"
@@ -111,8 +112,8 @@ __global__ void VectorizedDropoutBackward(const size_t n,
   using SType = curandStatePhilox4_32_10_t;
 #endif
 
-  float rands[kCount];
-  T x_y[kCount * 2];
+  std::array<float, kCount> rands;
+  std::array<T, kCount * 2> x_y;
 
   using Rand = phi::funcs::uniform_distribution<float>;
   using Cast = kps::IdentityFunctor<T>;

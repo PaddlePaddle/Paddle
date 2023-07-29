@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -109,7 +110,7 @@
   using ::fLS::StringFlagDestructor;                                  \
   static union {                                                      \
     void* align;                                                      \
-    char s[sizeof(clstring)];                                         \
+    std::array<char, sizeof(clstring)> s;                             \
   } s_##name[2];                                                      \
   clstring* const FLAGS_no##name =                                    \
       ::fLS::dont_pass0toDEFINE_string(s_##name[0].s, val);           \

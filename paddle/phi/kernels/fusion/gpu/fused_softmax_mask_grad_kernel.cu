@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <array>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_softmax_mask_utils.h"
@@ -50,10 +51,12 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
   softmax_rst += offset;
 
   // using float for all inter compute
-  float grad_input_reg[kLocalBatchSize][kLocalIterations]{0.0f};
-  float softmax_rst_reg[kLocalBatchSize][kLocalIterations]{0.0f};
-  T temp_grad_input[kOneLoadingCounts];
-  T temp_softmax_rst[kOneLoadingCounts];
+  std::array<std::array<float, kLocalIterations>, kLocalBatchSize>
+      grad_input_reg{0.0f};
+  std::array<std::array<float, kLocalIterations>, kLocalBatchSize>
+      softmax_rst_reg{0.0f};
+  std::array<T, kOneLoadingCounts> temp_grad_input;
+  std::array<T, kOneLoadingCounts> temp_softmax_rst;
 
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
@@ -63,9 +66,9 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
       int data_index = kOneLoadingCounts * local_idx + ii * WARP_SIZE;
       if (data_index < batch_data) {
-        load_data(temp_grad_input,
+        load_data(temp_grad_input.data(),
                   grad_input + i * key_seq_len + ii * warp_size);
-        load_data(temp_softmax_rst,
+        load_data(temp_softmax_rst.data(),
                   softmax_rst + i * key_seq_len + ii * warp_size);
 
 #pragma unroll
@@ -83,7 +86,7 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
     }
   }
 
-  float samples_sum[kLocalBatchSize];
+  std::array<float, kLocalBatchSize> samples_sum;
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
     samples_sum[i] = grad_input_reg[i][0];
@@ -92,7 +95,7 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
       samples_sum[i] += grad_input_reg[i][ii];
     }
   }
-  warp_reduce<float, kLocalBatchSize, warp_size, AddOP>(samples_sum);
+  warp_reduce<float, kLocalBatchSize, warp_size, AddOP>(samples_sum.data());
 
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
@@ -102,14 +105,15 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
       int data_index = kOneLoadingCounts * local_idx + ii * warp_size;
       if (data_index < key_seq_len) {
         // compute gradients
-        T samples_out[kOneLoadingCounts];
+        std::array<T, kOneLoadingCounts> samples_out;
 #pragma unroll
         for (int counter = 0; counter < kOneLoadingCounts; ++counter) {
           samples_out[counter] =
               grad_input_reg[i][ii + counter] -
               softmax_rst_reg[i][ii + counter] * samples_sum[i];
         }
-        load_data(grad_output + i * key_seq_len + ii * warp_size, samples_out);
+        load_data(grad_output + i * key_seq_len + ii * warp_size,
+                  samples_out.data());
       }
     }
   }
