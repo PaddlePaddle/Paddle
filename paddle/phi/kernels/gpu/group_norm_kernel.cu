@@ -338,12 +338,10 @@ inline __device__ void GroupNormCompute(int32_t hwBegin,
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.gamma) + ci));
   float beta =
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
-  printf("gamma: %f   %f   %f    %f\n", gamma, beta, mean, invStdDev);
   for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
     // The src/dst offset.
     int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
     const float src_data = phi::__2float<T>(params.srcX[offset]);
-    printf("src_data: %d   %f \n", offset, src_data);
     // Normalize the channels.
     float dst_data = (src_data - mean) * invStdDev;
     // Scale by gamma and add beta.
