@@ -37,6 +37,7 @@ class InterpreterCore {
                   const ExecutionConfig& execution_config = ExecutionConfig());
   // This constructor is for New IR.
   InterpreterCore(const platform::Place& place,
+                  const std::vector<std::string>& fetch_var_names,
                   std::unique_ptr<::ir::Program> ir_prog,
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
@@ -80,6 +81,8 @@ class InterpreterCore {
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 
   std::unique_ptr<InterpreterBaseImpl> impl_;
+
+  std::vector<std::string> fetch_var_names_;
 };
 
 }  // namespace framework

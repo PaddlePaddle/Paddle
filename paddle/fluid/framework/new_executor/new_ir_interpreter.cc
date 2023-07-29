@@ -42,16 +42,19 @@
 namespace paddle {
 namespace framework {
 
-NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
-                                   std::unique_ptr<::ir::Program> ir_prog,
-                                   framework::Scope* scope,
-                                   const ExecutionConfig& execution_config)
+NewIRInterpreter::NewIRInterpreter(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    std::unique_ptr<::ir::Program> ir_prog,
+    framework::Scope* scope,
+    const ExecutionConfig& execution_config)
     : place_(place),
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
-      ir_program_(std::move(ir_prog)) {
+      ir_program_(std::move(ir_prog)),
+      fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
@@ -228,20 +231,33 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
-  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var && need_fetch) {
-    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-    if (platform::IsCUDAGraphCapturing()) {
-      PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Cannot fetch data when using CUDA Graph."));
+  if (FLAGS_enable_new_ir_in_executor) {
+    framework::FetchList fetch_res;
+
+    if (need_fetch) {
+      for (auto& var_name : fetch_var_names_) {
+        auto* var = inner_scope->FindVar(var_name);
+        fetch_res.push_back(var->Get<phi::DenseTensor>());
+      }
     }
-#endif
-    return fetch_list;
+    return fetch_res;
   } else {
-    return {};
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var && need_fetch) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
+#endif
+      return fetch_list;
+    } else {
+      return {};
+    }
   }
 }
 

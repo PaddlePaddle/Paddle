@@ -69,19 +69,33 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
         if ((*it)->name() == "pd.fetch") {
-          fetch_var_names_.push_back((*it)
-                                         ->attributes()
-                                         .at("name")
-                                         .dyn_cast<ir::StrAttribute>()
-                                         .AsString() +
-                                     "@fetch");
+          size_t index = (*it)
+                             ->attributes()
+                             .at("col")
+                             .dyn_cast<ir::Int32Attribute>()
+                             .data();
+
+          if (fetch_var_names_.size() < index + 1) {
+            fetch_var_names_.resize(index + 1);
+          }
+
+          fetch_var_names_[index] = (*it)
+                                        ->attributes()
+                                        .at("name")
+                                        .dyn_cast<ir::StrAttribute>()
+                                        .AsString() +
+                                    "@fetch";
         }
       }
 
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
-      interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
-          place_, std::move(kernel_program), scope_, execution_config));
+      interpretercores_.emplace_back(
+          std::make_shared<InterpreterCore>(place_,
+                                            fetch_var_names_,
+                                            std::move(kernel_program),
+                                            scope_,
+                                            execution_config));
     } else {
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
