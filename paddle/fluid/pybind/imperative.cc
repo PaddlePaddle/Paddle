@@ -858,9 +858,8 @@ void BindImperative(py::module *m_ptr) {
                   self->SetOverridedStopGradient(false);
                 }
               } else if (py::isinstance<py::array>(value_obj)) {
-                auto value_tensor = std::shared_ptr<imperative::VarBase>(
-                    new imperative::VarBase(false,
-                                            tracer->GenerateUniqueName()));
+                auto value_tensor = std::make_shared<imperative::VarBase>(
+                    false, tracer->GenerateUniqueName());
                 py::object value = value_obj;
                 if (self->DataType() == framework::proto::VarType::FP32) {
                   if (!py::isinstance<py::array_t<float>>(value_obj)) {
@@ -1030,9 +1029,8 @@ void BindImperative(py::module *m_ptr) {
 
              auto out = slice_axes.empty() && !list_select_flag
                             ? self
-                            : std::shared_ptr<imperative::VarBase>(
-                                  new imperative::VarBase(
-                                      tracer->GenerateUniqueName()));
+                            : std::make_shared<imperative::VarBase>(
+                                  tracer->GenerateUniqueName());
 
              if (!slice_axes.empty()) {
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
@@ -1102,10 +1100,10 @@ void BindImperative(py::module *m_ptr) {
 
                imperative::NameVarBaseMap ins = {{"X", {out}}};
                framework::AttributeMap attrs = {{"axes", none_axes}};
-               auto new_out = std::shared_ptr<imperative::VarBase>(
-                   new imperative::VarBase(tracer->GenerateUniqueName()));
-               auto out_xshape = std::shared_ptr<imperative::VarBase>(
-                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto new_out = std::make_shared<imperative::VarBase>(
+                   tracer->GenerateUniqueName());
+               auto out_xshape = std::make_shared<imperative::VarBase>(
+                   tracer->GenerateUniqueName());
                imperative::NameVarBaseMap outs = {{"Out", {new_out}},
                                                   {"XShape", {out_xshape}}};
                tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
@@ -1115,8 +1113,8 @@ void BindImperative(py::module *m_ptr) {
 
              // the index is a list
              if (list_select_flag) {
-               auto select_index = std::shared_ptr<imperative::VarBase>(
-                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto select_index = std::make_shared<imperative::VarBase>(
+                   tracer->GenerateUniqueName());
                auto *idx_tensor =
                    select_index->MutableVar()->GetMutable<phi::DenseTensor>();
                auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
@@ -2580,8 +2578,8 @@ void BindImperative(py::module *m_ptr) {
       "to_uva_tensor",
       [](const py::object &obj, int device_id) {
         const auto &tracer = imperative::GetCurrentTracer();
-        auto new_tensor = std::shared_ptr<imperative::VarBase>(
-            new imperative::VarBase(tracer->GenerateUniqueName()));
+        auto new_tensor =
+            std::make_shared<imperative::VarBase>(tracer->GenerateUniqueName());
         auto array = obj.cast<py::array>();
         if (py::isinstance<py::array_t<int32_t>>(array)) {
           SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);

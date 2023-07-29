@@ -225,8 +225,8 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                       reserve_space_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<SyncBatchNormGradNode>(new SyncBatchNormGradNode(6, 5));
+    auto grad_node = std::shared_ptr<SyncBatchNormGradNode>(  // NOLINT
+        new SyncBatchNormGradNode(6, 5));
 
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
@@ -567,8 +567,8 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                       reserve_space_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<SyncBatchNormGradNode>(new SyncBatchNormGradNode(6, 5));
+    auto grad_node = std::shared_ptr<SyncBatchNormGradNode>(  // NOLINT
+        new SyncBatchNormGradNode(6, 5));
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());
     // SetAttributes if needed
     grad_node->SetAttributemomentum(momentum);

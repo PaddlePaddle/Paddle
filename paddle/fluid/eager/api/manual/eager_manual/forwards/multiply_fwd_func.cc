@@ -132,8 +132,8 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
+    auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
+        new MultiplyGradNode(1, 2));
     // Set for forward trace
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
@@ -297,8 +297,8 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
+    auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
+        new MultiplyGradNode(1, 2));
     // Set for forward trace
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
@@ -459,8 +459,8 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
+    auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
+        new MultiplyGradNode(1, 2));
     // Set for forward trace
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());

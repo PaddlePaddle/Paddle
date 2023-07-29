@@ -158,7 +158,7 @@ MultiplyGradNode::operator()(
           1);
 
       // Node Construction
-      auto grad_node = std::shared_ptr<MultiplyDoubleGradNode>(
+      auto grad_node = std::shared_ptr<MultiplyDoubleGradNode>(  // NOLINT
           new MultiplyDoubleGradNode(2, 3));
       // SetAttributes if needed
       grad_node->SetAttributeaxis(axis);

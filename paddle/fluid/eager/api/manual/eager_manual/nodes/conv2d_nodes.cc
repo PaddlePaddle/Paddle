@@ -123,7 +123,7 @@ Conv2dGradNodeFinal::operator()(
         1);
 
     // Node Construction
-    auto grad_node = std::shared_ptr<Conv2dDoubleGradNodeFinal>(
+    auto grad_node = std::shared_ptr<Conv2dDoubleGradNodeFinal>(  // NOLINT
         new Conv2dDoubleGradNodeFinal(2, 3));
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
