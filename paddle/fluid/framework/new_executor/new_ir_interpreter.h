@@ -229,7 +229,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void CheckGC(InstructionBase* instr);
 
-  void RecordStreamForGC(Instruction* instr);
+  void RecordStreamForGC(InstructionBase* instr);
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 

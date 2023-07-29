@@ -1691,7 +1691,7 @@ void NewIRInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   }
 }
 
-void NewIRInterpreter::RecordStreamForGC(Instruction* instr) {
+void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   PADDLE_THROW(platform::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
