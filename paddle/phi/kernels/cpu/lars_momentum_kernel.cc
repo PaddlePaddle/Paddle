@@ -34,7 +34,7 @@ void LarsMomentumKernel(const Context& dev_ctx,
                         float rescale_grad,
                         std::vector<DenseTensor*> param_out,
                         std::vector<DenseTensor*> velocity_out,
-                        paddle::optional<DenseTensor>* master_param_out) {
+                        std::vector<DenseTensor*> master_param_out) {
   int op_num = param.size();
   T mu_ = static_cast<T>(mu);
   for (int i = 0; i < op_num; ++i) {

@@ -34,6 +34,6 @@ void LarsMomentumKernel(const Context& dev_ctx,
                         float rescale_grad,
                         std::vector<DenseTensor*> param_out,
                         std::vector<DenseTensor*> velocity_out,
-                        paddle::optional<DenseTensor>* master_param_out);
+                        std::vector<DenseTensor*> master_param_out);
 
 }  // namespace phi
