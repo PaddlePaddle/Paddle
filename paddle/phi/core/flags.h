@@ -119,7 +119,7 @@
       MAYBE_STRIPPED_HELP(txt),                                    \
       __FILE__,                                                    \
       FLAGS_no##name,                                              \
-      new (s_##name[1].s) clstring(*FLAGS_no##name));              \
+      new (s_##name[1].s.data()) clstring(*FLAGS_no##name));       \
   static StringFlagDestructor d_##name(s_##name[0].s.data(),       \
                                        s_##name[1].s.data());      \
   extern PHI_EXPORT_FLAG clstring& FLAGS_##name;                   \
