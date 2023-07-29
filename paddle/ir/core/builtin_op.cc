@@ -20,6 +20,8 @@
 
 namespace ir {
 
+const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
+
 Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
   auto iter = attr.find("program");
@@ -65,6 +67,9 @@ void ModuleOp::Verify() const {
   IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
 }
 
+const char *GetParameterOp::attributes_name[attributes_num] = {  // NOLINT
+    "parameter_name"};
+
 void GetParameterOp::Build(Builder &builder,
                            OperationArgument &argument,
                            const std::string &name,
@@ -89,7 +94,7 @@ void GetParameterOp::Verify() const {
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 }
 
-const char *SetParameterOp::attributes_name[attributes_num] = {
+const char *SetParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
 void SetParameterOp::Build(Builder &builder,             // NOLINT
@@ -156,7 +161,7 @@ void CombineOp::Verify() const {
   }
 }
 
-const char *SliceOp::attributes_name[attributes_num] = {"index"};
+const char *SliceOp::attributes_name[attributes_num] = {"index"};  // NOLINT
 void SliceOp::Verify() const {
   // inputs.size() == 1
   auto input_size = num_operands();
@@ -202,7 +207,7 @@ void SliceOp::Verify() const {
       output_type);
 }
 
-const char *ConstantOp::attributes_name[attributes_num] = {"value"};
+const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT
 
 void ConstantOp::Build(Builder &builder,
                        OperationArgument &argument,
