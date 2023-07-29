@@ -278,7 +278,7 @@ bool CUDAGraph::IsValidCapturing() {
 static std::string ConcatPath(const std::string &dirname,
                               const std::string &filename) {
 #ifdef _WIN32
-  const std::array<char, 1> kFileSep = {"\\"};
+  const std::array<char, 2> kFileSep = {"\\"};
 #else
   const std::array<char, 1> kFileSep = {"/"};
 #endif
