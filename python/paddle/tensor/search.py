@@ -109,6 +109,7 @@ def argsort(x, axis=-1, descending=False, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
             ],
             'argsort',
         )
