@@ -358,6 +358,7 @@ class Layer:
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(100)
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
@@ -373,6 +374,18 @@ class Layer:
             >>> out = mylayer(x)
             >>> mylayer.train()  # set mylayer._dropout to train mode
             >>> out = mylayer(x)
+            >>> print(out)
+            Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[-3.44879317],
+            [ 0.        ],
+            [ 0.        ],
+            [-0.73825276],
+            [ 0.        ],
+            [ 0.        ],
+            [ 0.64444798],
+            [-3.22185946],
+            [ 0.        ],
+            [-0.68077987]])
     """
 
     def __init__(self, name_scope=None, dtype="float32"):
@@ -420,7 +433,7 @@ class Layer:
             .. code-block:: python
 
                 >>> import paddle
-
+                >>> paddle.seed(100)
                 >>> class MyLayer(paddle.nn.Layer):
                 ...     def __init__(self):
                 ...         super().__init__()
@@ -438,6 +451,18 @@ class Layer:
                 >>> out = mylayer(x)
                 >>> mylayer.train()  # set mylayer._dropout to train mode
                 >>> out = mylayer(x)
+                >>> print(out)
+                Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[-3.44879317],
+                [ 0.        ],
+                [ 0.        ],
+                [-0.73825276],
+                [ 0.        ],
+                [ 0.        ],
+                [ 0.64444798],
+                [-3.22185946],
+                [ 0.        ],
+                [-0.68077987]])
 
         """
         # global setting in dygraph
@@ -462,7 +487,7 @@ class Layer:
             .. code-block:: python
 
                 >>> import paddle
-
+                >>> paddle.seed(100)
                 >>> class MyLayer(paddle.nn.Layer):
                 ...     def __init__(self):
                 ...         super().__init__()
@@ -480,16 +505,16 @@ class Layer:
                 >>> out = mylayer(x)
                 >>> print(out)
                 Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-                [[ 0.25878859],
-                [-0.65052122],
-                [ 0.25738224],
-                [ 0.85571742],
-                [-0.23117605],
-                [-0.37686184],
-                [-0.51507902],
-                [-0.58553475],
-                [-0.46382904],
-                [-0.21246351]])
+                [[-1.72439659],
+                [ 0.31532824],
+                [ 0.01192369],
+                [-0.36912638],
+                [-1.63426113],
+                [-0.93169814],
+                [ 0.32222399],
+                [-1.61092973],
+                [ 0.77209264],
+                [-0.34038994]])
 
         """
         # global setting in dygraph
@@ -542,15 +567,15 @@ class Layer:
                 [0.9 0.9]]
                 OrderedDict([('0.weight', Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
-                      [[0.89999998, 0.89999998],
-                        [0.89999998, 0.89999998]])), ('0.bias', Parameter containing:
+                [[0.89999998, 0.89999998],
+                [0.89999998, 0.89999998]])), ('0.bias', Parameter containing:
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
-                      [0., 0.])), ('1.weight', Parameter containing:
+                [0., 0.])), ('1.weight', Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
-                      [[0.89999998, 0.89999998],
-                        [0.89999998, 0.89999998]])), ('1.bias', Parameter containing:
+                [[0.89999998, 0.89999998],
+                [0.89999998, 0.89999998]])), ('1.bias', Parameter containing:
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
-                      [0., 0.]))])
+                [0., 0.]))])
 
         """
         for layer in self.children():
@@ -739,13 +764,13 @@ class Layer:
                 ...     print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
                 w_tmp Parameter containing:
                 Tensor(shape=[1, 1], dtype=float16, place=Place(cpu), stop_gradient=False,
-                      [[1.17578125]])
+                [[1.17578125]])
                 _linear.weight Parameter containing:
                 Tensor(shape=[1, 1], dtype=float16, place=Place(cpu), stop_gradient=False,
-                      [[1.21582031]])
+                [[1.21582031]])
                 _linear.bias Parameter containing:
                 Tensor(shape=[1], dtype=float16, place=Place(cpu), stop_gradient=False,
-                      [0.])
+                [0.])
         """
         temp_attr = copy.deepcopy(attr)
         if isinstance(temp_attr, str) and temp_attr == "":
@@ -873,14 +898,14 @@ class Layer:
             .. code-block:: python
 
                 >>> import paddle
-
+                >>> paddle.seed(100)
                 >>> linear = paddle.nn.Linear(1,1)
                 >>> print(linear.parameters())
                 [Parameter containing:
                 Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-                      [[-0.18173444]]), Parameter containing:
+                [[0.18551230]]), Parameter containing:
                 Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
-                      [0.])]
+                [0.])]
 
         """
         ret = [
@@ -997,7 +1022,7 @@ class Layer:
             .. code-block:: python
 
                 >>> import paddle
-
+                >>> paddle.seed(100)
                 >>> fc1 = paddle.nn.Linear(10, 3)
                 >>> fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
                 >>> model = paddle.nn.Sequential(fc1, fc2)
@@ -1005,27 +1030,27 @@ class Layer:
                 ...     print(name, param)
                 0.weight Parameter containing:
                 Tensor(shape=[10, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
-                [[ 0.60125196,  0.22654629, -0.20705757],
-                [-0.10164011,  0.30217230, -0.16510487],
-                [-0.04738939, -0.57520163, -0.53963262],
-                [ 0.02594322, -0.13399726, -0.29196092],
-                [ 0.58227694,  0.25263619,  0.44362724],
-                [-0.16698343, -0.67148495,  0.34447956],
-                [ 0.11273116,  0.10740697,  0.15194970],
-                [ 0.56314528,  0.61558437,  0.13670468],
-                [-0.66398329,  0.09829873, -0.21384749],
-                [-0.19103202,  0.66520774, -0.28439409]])
+                [[ 0.07276392, -0.39791510, -0.66356444],
+                [ 0.02143478, -0.18519843, -0.32485050],
+                [-0.42249614,  0.08450919, -0.66838276],
+                [ 0.38208580, -0.24303678,  0.55127048],
+                [ 0.47745085,  0.62117910, -0.08336520],
+                [-0.28653207,  0.47237599, -0.05868882],
+                [-0.14385653,  0.29945642,  0.12832761],
+                [-0.21237159,  0.38539791, -0.62760031],
+                [ 0.02637231,  0.20621127,  0.43255770],
+                [-0.19984481, -0.26259184, -0.29696006]])
                 0.bias Parameter containing:
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [0., 0., 0.])
                 1.weight Parameter containing:
                 Tensor(shape=[3, 10], dtype=float32, place=Place(cpu), stop_gradient=False,
-                [[-0.57051450,  0.00369132, -0.22904709,  0.10724431, -0.28410816,
-                  0.33593917, -0.01844406, -0.27190107,  0.26995122,  0.22367388],
-                [ 0.66380203,  0.03938526,  0.03525102,  0.43833244, -0.66850066,
-                  0.57159758,  0.25614274, -0.40932009, -0.17263639, -0.03728086],
-                [-0.33317488,  0.07425684,  0.57093656, -0.64021528, -0.38394678,
-                  0.03640646, -0.30764586, -0.01802897, -0.58225149,  0.12820458]])
+                [[ 0.01985580, -0.40268910,  0.41172385, -0.47249708, -0.09002256,
+                -0.00533628, -0.52048630,  0.62360322,  0.20848787, -0.02033746],
+                [ 0.58281910,  0.12841827,  0.12907702,  0.02325618, -0.07746267,
+                  0.31950659, -0.37924835, -0.59209681, -0.11732036, -0.58378261],
+                [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
+                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
         params_set = set()
         named_sublayers = (
@@ -1390,7 +1415,7 @@ class Layer:
             .. code-block:: python
 
                 >>> import paddle
-
+                >>> paddle.seed(100)
                 >>> class MyLayer(paddle.nn.Layer):
                 ...     def __init__(self):
                 ...         super().__init__()
@@ -1406,10 +1431,10 @@ class Layer:
                 ...     print(name, param)
                 w_tmp Parameter containing:
                 Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-                [[0.34499371]])
+                [[-1.01448846]])
                 _linear.weight Parameter containing:
                 Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-                [[0.72621334]])
+                [[0.18551230]])
                 _linear.bias Parameter containing:
                 Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [0.])
@@ -1678,9 +1703,7 @@ class Layer:
                 ...
                 >>> mylayer = Mylayer()
                 >>> print(dir(mylayer))
-                输出内容过长， 已自动对输出内容进行截断
-                ['__call__', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__',
-
+                ['__call__', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_apply', '_buffers', '_build_once', '_built', '_cast_to_low_precison', '_customized_attrs', '_dtype', '_dygraph_call_func', '_forward_post_hooks', '_forward_pre_hooks', '_full_name', '_helper', '_init_in_dynamic_mode', '_loaddict_holder', '_non_persistable_buffer_names_set', '_obtain_parameters_buffers', '_op_recorder', '_original_funcs', '_parameters', '_set_op_attrs', '_startup_program', '_state_dict_hooks', '_state_dict_impl', '_sub_layers', '_to_impl', '_transform', 'add_parameter', 'add_sublayer', 'apply', 'backward', 'bfloat16', 'buffers', 'children', 'clear_gradients', 'conv2d', 'create_parameter', 'create_tensor', 'create_variable', 'embedding', 'eval', 'extra_repr', 'float', 'float16', 'forward', 'full_name', 'h_0', 'linear1', 'linear2', 'load_dict', 'named_buffers', 'named_children', 'named_parameters', 'named_sublayers', 'parameters', 'register_buffer', 'register_forward_post_hook', 'register_forward_pre_hook', 'register_state_dict_hook', 'set_dict', 'set_state_dict', 'state_dict', 'sublayers', 'to', 'to_static_state_dict', 'train', 'training']
         """
         method = dir(self.__class__)
         attrs = list(self.__dict__.keys())
@@ -2385,7 +2408,7 @@ class Layer:
                 Model(
                 (linear): Linear(in_features=1, out_features=1, dtype=float32)
                 (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
-                s)
+                )
         '''
 
         if paddle.amp.is_bfloat16_supported() is False:

@@ -51,21 +51,20 @@ class Identity(Layer):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(100)
             >>> input_tensor = paddle.randn(shape=[3, 2])
             >>> layer = paddle.nn.Identity()
             >>> out = layer(input_tensor)
             >>> print(input_tensor)
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 1.08428387, -0.52219968],
-            [-1.56003848,  0.89213942],
-            [-0.16578501,  0.14524525]])
+            [[-1.41661501,  0.25904641],
+            [ 0.00979547, -0.30324230],
+            [-1.34256756, -0.76540256]])
             >>> print(out)
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 1.08428387, -0.52219968],
-            [-1.56003848,  0.89213942],
-            [-0.16578501,  0.14524525]])
-
+            [[-1.41661501,  0.25904641],
+            [ 0.00979547, -0.30324230],
+            [-1.34256756, -0.76540256]])
 
     """
 
@@ -125,7 +124,7 @@ class Linear(Layer):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(100)
             >>> # Define the linear layer.
             >>> weight_attr = paddle.ParamAttr(
             ...     name="weight",
@@ -134,17 +133,23 @@ class Linear(Layer):
             ...     name="bias",
             ...     initializer=paddle.nn.initializer.Constant(value=1.0))
             >>> linear = paddle.nn.Linear(2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
-            >>> # linear.weight: [[0.5 0.5 0.5 0.5]
-            >>> #                 [0.5 0.5 0.5 0.5]]
-            >>> # linear.bias: [1. 1. 1. 1.]
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0.50000000, 0.50000000, 0.50000000, 0.50000000],
+            [0.50000000, 0.50000000, 0.50000000, 0.50000000]])
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [1., 1., 1., 1.])
 
             >>> x = paddle.randn((3, 2), dtype="float32")
             >>> y = linear(x)
             >>> print(y)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [[ 1.35181427,  1.35181427,  1.35181427,  1.35181427],
-            [-0.12212300, -0.12212300, -0.12212300, -0.12212300],
-            [ 0.79879332,  0.79879332,  0.79879332,  0.79879332]])
+            [[ 0.42121571,  0.42121571,  0.42121571,  0.42121571],
+            [ 0.85327661,  0.85327661,  0.85327661,  0.85327661],
+            [-0.05398512, -0.05398512, -0.05398512, -0.05398512]])
     """
 
     def __init__(
@@ -241,7 +246,7 @@ class LinearCompress(Layer):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(100)
             >>> # Define the linear layer.
             >>> paddle.set_default_dtype('float16')
             >>> weight_attr = paddle.ParamAttr(
@@ -973,32 +978,32 @@ class Dropout2D(Layer):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(100)
             >>> x = paddle.rand([2, 2, 1, 3], dtype="float32")
             >>> print(x)
             Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[0.10052059, 0.93890846, 0.45351565]],
-            [[0.47507706, 0.45021373, 0.11331241]]],
-            [[[0.53358698, 0.97375143, 0.34997326]],
-              [[0.24758087, 0.52628899, 0.17970420]]]])
+            [[[[0.55355281, 0.20714243, 0.01162981]],
+            [[0.51577556, 0.36369765, 0.26091650]]],
+            [[[0.18905126, 0.56219709, 0.00808361]],
+            [[0.78120756, 0.32112977, 0.90572405]]]])
 
             >>> m = paddle.nn.Dropout2D(p=0.5)
             >>> y_train = m(x)
             >>> print(y_train)
             Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[0.        , 0.        , 0.        ]],
-            [[0.95015413, 0.90042746, 0.22662482]]],
-            [[[1.06717396, 1.94750285, 0.69994652]],
+            [[[[1.10710561, 0.41428486, 0.02325963]],
+            [[1.03155112, 0.72739530, 0.52183300]]],
+            [[[0.        , 0.        , 0.        ]],
             [[0.        , 0.        , 0.        ]]]])
 
             >>> m.eval()  # switch the model to test phase
             >>> y_test = m(x)
             >>> print(y_test)
             Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[0.10052059, 0.93890846, 0.45351565]],
-            [[0.47507706, 0.45021373, 0.11331241]]],
-            [[[0.53358698, 0.97375143, 0.34997326]],
-            [[0.24758087, 0.52628899, 0.17970420]]]])
+            [[[[0.55355281, 0.20714243, 0.01162981]],
+            [[0.51577556, 0.36369765, 0.26091650]]],
+            [[[0.18905126, 0.56219709, 0.00808361]],
+            [[0.78120756, 0.32112977, 0.90572405]]]])
     """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
