@@ -68,6 +68,16 @@ __host__ __device__ inline float __2float<__half>(const __half a) {
   return __half2float(a);
 }
 
+template <typename T>
+__host__ __device__ inline T __2dst(const float a) {
+  return static_cast<T>(a);
+}
+
+template <>
+__host__ __device__ inline __half __2dst<__half>(const float a) {
+  return __float2half(a);
+}
+
 struct GroupSums {
   // Is it the 1st element of the group?
   int32_t flag;
@@ -328,12 +338,12 @@ inline __device__ void GroupNormCompute(int32_t hwBegin,
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.gamma) + ci));
   float beta =
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
-
+  printf("gamma: %f   %f   %f    %f\n", gamma, beta, mean, invStdDev);
   for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
     // The src/dst offset.
     int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
     const float src_data = phi::__2float<T>(params.srcX[offset]);
-
+    printf("src_data: %d   %f \n", offset, src_data);
     // Normalize the channels.
     float dst_data = (src_data - mean) * invStdDev;
     // Scale by gamma and add beta.
@@ -345,7 +355,7 @@ inline __device__ void GroupNormCompute(int32_t hwBegin,
     }
 
     // Store the scaled values.
-    *reinterpret_cast<T*>(&params.dst[offset]) = dst_data;
+    *reinterpret_cast<T*>(&params.dst[offset]) = phi::__2dst<T>(dst_data);
   }
 }
 
@@ -611,7 +621,11 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   int buffer_sizes = 2 * params_.n * groups;
   redBuffer.Resize({1, buffer_sizes});
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
-  cudaMemsetAsync(params_.redBuffer, 0, buffer_sizes * sizeof(float), stream);
+#ifdef PADDLE_WITH_HIP
+  hipMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
+#else
+  cudaMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
+#endif
   groupNormNHWCSum<T> nhwc_sum;
   nhwc_sum(&params_, stream);
   groupNormNHWCScale<T> nhwc_scale;
