@@ -1922,7 +1922,7 @@ class Model:
 
         if eval_data is not None and isinstance(eval_data, Dataset):
             eval_sampler = DistributedBatchSampler(
-                eval_data, batch_size=eval_batch_size
+                eval_data, batch_size=eval_batch_size, drop_last=drop_last,
             )
             eval_loader = DataLoader(
                 eval_data,
