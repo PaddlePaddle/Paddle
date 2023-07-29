@@ -21,6 +21,10 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/gpu/musa/musa_helper.h"
+#endif
+
 namespace phi {
 namespace funcs {
 

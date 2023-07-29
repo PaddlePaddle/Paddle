@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if 0
 #include "paddle/phi/kernels/cudnn_lstm_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/cudnn_lstm_utils.h"
 
 namespace phi {
-
 template <typename T, typename Context>
 void CudnnLSTMGradKernel(
     const Context &ctx,
@@ -309,7 +309,6 @@ void CudnnLSTMGradKernel(
 }
 
 }  // namespace phi
-
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(
     cudnn_lstm_grad, GPU, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float) {}
@@ -317,4 +316,5 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     cudnn_lstm_grad, GPU, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float, double) {
 }
+#endif
 #endif

@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
+#ifdef PADDLE_WITH_CUDA
+// HIP and MUSA not support cusolver
 
 #include "paddle/phi/kernels/cholesky_kernel.h"
 

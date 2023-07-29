@@ -18,7 +18,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "thrust/device_vector.h"
 #endif
 
@@ -156,7 +156,7 @@ void FFTFillConj(const DeviceContext& ctx,
     _is_fft_axis[i] = true;
   }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   const thrust::device_vector<int64_t> src_strides_g(src_strides_v);
   const auto src_strides = thrust::raw_pointer_cast(src_strides_g.data());
   const thrust::device_vector<int64_t> dst_strides_g(dst_strides_v);

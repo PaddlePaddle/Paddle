@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/squeeze_kernel.h"
 #include "paddle/phi/kernels/unsqueeze_kernel.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #endif
 
@@ -55,7 +55,7 @@ struct ReduceSumForSolvelGrad<CPUContext, T> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 struct ReduceSumForSolvelGrad<GPUContext, T> {
   void operator()(const GPUContext& dev_ctx,

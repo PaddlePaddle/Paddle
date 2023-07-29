@@ -221,7 +221,7 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
                                  CPU,
                                  ALL_LAYOUT,
                                  phi::TransferLayoutKernel<phi::CPUContext>) {}
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
                                  GPU,
                                  ALL_LAYOUT,

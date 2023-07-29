@@ -61,7 +61,7 @@ CUDA_ATOMIC_WRAPPER(Add, int64_t) {
       static_cast<unsigned long long int>(val));            // NOLINT
 }
 
-#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600)
+#if defined(__HIPCC__) || defined(__MUSACC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600)
 USE_CUDA_ATOMIC(Add, double);
 #else
 CUDA_ATOMIC_WRAPPER(Add, double) {
@@ -231,21 +231,23 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr,
 
 // NOTE(zhangbo): cuda do not have atomicCAS for __nv_bfloat16.
 inline static __device__ uint32_t bf16_add_to_low_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 low_half;
-  // the bfloat16 in lower 16bits
-  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
-  low_half =
-      static_cast<phi::dtype::bfloat16>(static_cast<float>(low_half) + x);
-  return (val & 0xFFFF0000u) | low_half.x;
+  return 0;
+  //phi::dtype::bfloat16 low_half;
+  //// the bfloat16 in lower 16bits
+  //low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  //low_half =
+  //    static_cast<phi::dtype::bfloat16>(static_cast<float>(low_half) + x);
+  //return (val & 0xFFFF0000u) | low_half.x;
 }
 
 inline static __device__ uint32_t bf16_add_to_high_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 high_half;
-  // the bfloat16 in higher 16bits
-  high_half.x = static_cast<uint16_t>(val >> 16);
-  high_half =
-      static_cast<phi::dtype::bfloat16>(static_cast<float>(high_half) + x);
-  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+  return 0;
+  //phi::dtype::bfloat16 high_half;
+  //// the bfloat16 in higher 16bits
+  //high_half.x = static_cast<uint16_t>(val >> 16);
+  //high_half =
+  //    static_cast<phi::dtype::bfloat16>(static_cast<float>(high_half) + x);
+  //return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
 #if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
@@ -264,54 +266,54 @@ CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
                                     PDBF16ToCUDABF16(val)));
 }
 #else
-CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
-  // concrete packed bfloat16 value may exsits in lower or higher 16bits
-  // of the 32bits address.
-  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
-      reinterpret_cast<char *>(address) -
-      (reinterpret_cast<uintptr_t>(address) & 0x02));
-  float val_f = static_cast<float>(val);
-  uint32_t old = *address_as_ui;
-  uint32_t sum;
-  uint32_t newval;
-  uint32_t assumed;
-  if (((uintptr_t)address & 0x02) == 0) {
-    // the bfloat16 value stay at lower 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_add_to_low_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old & 0xFFFFu;
-    return ret;
-  } else {
-    // the bfloat16 value stay at higher 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_add_to_high_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old >> 16;
-    return ret;
-  }
-}
+//CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
+//  // concrete packed bfloat16 value may exsits in lower or higher 16bits
+//  // of the 32bits address.
+//  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+//      reinterpret_cast<char *>(address) -
+//      (reinterpret_cast<uintptr_t>(address) & 0x02));
+//  float val_f = static_cast<float>(val);
+//  uint32_t old = *address_as_ui;
+//  uint32_t sum;
+//  uint32_t newval;
+//  uint32_t assumed;
+//  if (((uintptr_t)address & 0x02) == 0) {
+//    // the bfloat16 value stay at lower 16 bits of the address.
+//    do {
+//      assumed = old;
+//      old = atomicCAS(
+//          address_as_ui, assumed, bf16_add_to_low_half(assumed, val_f));
+//    } while (old != assumed);
+//    phi::dtype::bfloat16 ret;
+//    ret.x = old & 0xFFFFu;
+//    return ret;
+//  } else {
+//    // the bfloat16 value stay at higher 16 bits of the address.
+//    do {
+//      assumed = old;
+//      old = atomicCAS(
+//          address_as_ui, assumed, bf16_add_to_high_half(assumed, val_f));
+//    } while (old != assumed);
+//    phi::dtype::bfloat16 ret;
+//    ret.x = old >> 16;
+//    return ret;
+//  }
+//}
 #endif
 
-CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
-  float *real = reinterpret_cast<float *>(address);
-  float *imag = real + 1;
-  return complex<float>(CudaAtomicAdd(real, val.real),
-                        CudaAtomicAdd(imag, val.imag));
-}
-
-CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
-  double *real = reinterpret_cast<double *>(address);
-  double *imag = real + 1;
-  return complex<double>(CudaAtomicAdd(real, val.real),
-                         CudaAtomicAdd(imag, val.imag));
-}
+//CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
+//  float *real = reinterpret_cast<float *>(address);
+//  float *imag = real + 1;
+//  return complex<float>(CudaAtomicAdd(real, val.real),
+//                        CudaAtomicAdd(imag, val.imag));
+//}
+//
+//CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
+//  double *real = reinterpret_cast<double *>(address);
+//  double *imag = real + 1;
+//  return complex<double>(CudaAtomicAdd(real, val.real),
+//                         CudaAtomicAdd(imag, val.imag));
+//}
 
 // For atomicMax
 USE_CUDA_ATOMIC(Max, int);
@@ -449,55 +451,57 @@ CUDA_ATOMIC_WRAPPER(Max, phi::dtype::float16) {
 #endif
 
 inline static __device__ uint32_t bf16_max_to_low_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 low_half;
-  // The bfloat16 in lower 16bits
-  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
-  low_half =
-      static_cast<phi::dtype::bfloat16>(max(static_cast<float>(low_half), x));
-  return (val & 0xFFFF0000u) | low_half.x;
+  return 0;
+  //phi::dtype::bfloat16 low_half;
+  //// The bfloat16 in lower 16bits
+  //low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  //low_half =
+  //    static_cast<phi::dtype::bfloat16>(max(static_cast<float>(low_half), x));
+  //return (val & 0xFFFF0000u) | low_half.x;
 }
 
 inline static __device__ uint32_t bf16_max_to_high_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 high_half;
-  // The bfloat16 in higher 16bits
-  high_half.x = static_cast<uint16_t>(val >> 16);
-  high_half =
-      static_cast<phi::dtype::bfloat16>(max(static_cast<float>(high_half), x));
-  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+  return 0;
+  //phi::dtype::bfloat16 high_half;
+  //// The bfloat16 in higher 16bits
+  //high_half.x = static_cast<uint16_t>(val >> 16);
+  //high_half =
+  //    static_cast<phi::dtype::bfloat16>(max(static_cast<float>(high_half), x));
+  //return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
-CUDA_ATOMIC_WRAPPER(Max, phi::dtype::bfloat16) {
-  if (*address >= val) {
-    return *address;
-  }
-  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
-      reinterpret_cast<char *>(address) -
-      (reinterpret_cast<uintptr_t>(address) & 0x02));
-  float val_f = static_cast<float>(val);
-  uint32_t old = *address_as_ui;
-  uint32_t assumed;
-  if (((uintptr_t)address & 0x02) == 0) {
-    // The bfloat16 value stay at lower 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_max_to_low_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old & 0xFFFFu;
-    return ret;
-  } else {
-    // The bfloat16 value stay at higher 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_max_to_high_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old >> 16;
-    return ret;
-  }
-}
+//CUDA_ATOMIC_WRAPPER(Max, phi::dtype::bfloat16) {
+//  if (*address >= val) {
+//    return *address;
+//  }
+//  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+//      reinterpret_cast<char *>(address) -
+//      (reinterpret_cast<uintptr_t>(address) & 0x02));
+//  float val_f = static_cast<float>(val);
+//  uint32_t old = *address_as_ui;
+//  uint32_t assumed;
+//  if (((uintptr_t)address & 0x02) == 0) {
+//    // The bfloat16 value stay at lower 16 bits of the address.
+//    do {
+//      assumed = old;
+//      old = atomicCAS(
+//          address_as_ui, assumed, bf16_max_to_low_half(assumed, val_f));
+//    } while (old != assumed);
+//    phi::dtype::bfloat16 ret;
+//    ret.x = old & 0xFFFFu;
+//    return ret;
+//  } else {
+//    // The bfloat16 value stay at higher 16 bits of the address.
+//    do {
+//      assumed = old;
+//      old = atomicCAS(
+//          address_as_ui, assumed, bf16_max_to_high_half(assumed, val_f));
+//    } while (old != assumed);
+//    phi::dtype::bfloat16 ret;
+//    ret.x = old >> 16;
+//    return ret;
+//  }
+//}
 
 // For atomicMin
 USE_CUDA_ATOMIC(Min, int);
@@ -635,55 +639,57 @@ CUDA_ATOMIC_WRAPPER(Min, phi::dtype::float16) {
 #endif
 
 inline static __device__ uint32_t bf16_min_to_low_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 low_half;
-  // The bfloat16 in lower 16bits
-  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
-  low_half =
-      static_cast<phi::dtype::bfloat16>(min(static_cast<float>(low_half), x));
-  return (val & 0xFFFF0000u) | low_half.x;
+  return 0;
+  //phi::dtype::bfloat16 low_half;
+  //// The bfloat16 in lower 16bits
+  //low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  //low_half =
+  //    static_cast<phi::dtype::bfloat16>(min(static_cast<float>(low_half), x));
+  //return (val & 0xFFFF0000u) | low_half.x;
 }
 
 inline static __device__ uint32_t bf16_min_to_high_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 high_half;
-  // The bfloat16 in higher 16bits
-  high_half.x = static_cast<uint16_t>(val >> 16);
-  high_half =
-      static_cast<phi::dtype::bfloat16>(min(static_cast<float>(high_half), x));
-  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+  return 0;
+  //phi::dtype::bfloat16 high_half;
+  //// The bfloat16 in higher 16bits
+  //high_half.x = static_cast<uint16_t>(val >> 16);
+  //high_half =
+  //    static_cast<phi::dtype::bfloat16>(min(static_cast<float>(high_half), x));
+  //return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
-CUDA_ATOMIC_WRAPPER(Min, phi::dtype::bfloat16) {
-  if (*address <= val) {
-    return *address;
-  }
-  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
-      reinterpret_cast<char *>(address) -
-      (reinterpret_cast<uintptr_t>(address) & 0x02));
-  float val_f = static_cast<float>(val);
-  uint32_t old = *address_as_ui;
-  uint32_t assumed;
-  if (((uintptr_t)address & 0x02) == 0) {
-    // The bfloat16 value stay at lower 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_min_to_low_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old & 0xFFFFu;
-    return ret;
-  } else {
-    // The bfloat16 value stay at higher 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_min_to_high_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old >> 16;
-    return ret;
-  }
-}
+//CUDA_ATOMIC_WRAPPER(Min, phi::dtype::bfloat16) {
+//  if (*address <= val) {
+//    return *address;
+//  }
+//  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+//      reinterpret_cast<char *>(address) -
+//      (reinterpret_cast<uintptr_t>(address) & 0x02));
+//  float val_f = static_cast<float>(val);
+//  uint32_t old = *address_as_ui;
+//  uint32_t assumed;
+//  if (((uintptr_t)address & 0x02) == 0) {
+//    // The bfloat16 value stay at lower 16 bits of the address.
+//    do {
+//      assumed = old;
+//      old = atomicCAS(
+//          address_as_ui, assumed, bf16_min_to_low_half(assumed, val_f));
+//    } while (old != assumed);
+//    phi::dtype::bfloat16 ret;
+//    ret.x = old & 0xFFFFu;
+//    return ret;
+//  } else {
+//    // The bfloat16 value stay at higher 16 bits of the address.
+//    do {
+//      assumed = old;
+//      old = atomicCAS(
+//          address_as_ui, assumed, bf16_min_to_high_half(assumed, val_f));
+//    } while (old != assumed);
+//    phi::dtype::bfloat16 ret;
+//    ret.x = old >> 16;
+//    return ret;
+//  }
+//}
 
 #ifdef PADDLE_WITH_CUDA
 /*

@@ -39,6 +39,9 @@ if(NOT APPLE)
       list(APPEND HIP_SRCS cupti.cc)
     endif()
   endif()
+  if(WITH_MUSA)
+    list(APPEND MUSA_SRCS musa_driver.cc musartc.cc)
+  endif()
 endif()
 
 if(TENSORRT_FOUND)
@@ -57,6 +60,15 @@ if(WITH_ROCM)
   hip_library(
     dynload_cuda
     SRCS ${HIP_SRCS}
+    DEPS dynamic_loader phi)
+  cc_library(
+    dynload_warpctc
+    SRCS warpctc.cc
+    DEPS dynamic_loader warpctc phi)
+elseif(WITH_MUSA)
+  musa_library(
+    dynload_cuda
+    SRCS ${MUSA_SRCS}
     DEPS dynamic_loader phi)
   cc_library(
     dynload_warpctc

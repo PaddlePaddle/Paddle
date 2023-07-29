@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
 #include <thrust/extrema.h>
@@ -143,7 +143,7 @@ static void ModeAssign(const Type& input_height,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 static void GetModebySort(const phi::GPUContext& dev_ctx,
                           const DenseTensor* input_tensor,

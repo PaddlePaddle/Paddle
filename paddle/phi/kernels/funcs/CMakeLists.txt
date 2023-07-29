@@ -1,4 +1,4 @@
-#add_subdirectory(eigen)
+add_subdirectory(eigen)
 add_subdirectory(blas)
 add_subdirectory(lapack)
 add_subdirectory(detail)

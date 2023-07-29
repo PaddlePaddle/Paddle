@@ -181,6 +181,8 @@ void CumprodGradKernel(const Context &dev_ctx,
 // Step 1: find cummax-ed zero mask of x
 #ifdef PADDLE_WITH_CUDA
   const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+  const auto &exec_policy = thrust::musa::par.on(dev_ctx.stream());
 #else
   const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif

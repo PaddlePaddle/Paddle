@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "thrust/device_vector.h"
 #endif
@@ -117,7 +117,7 @@ struct KronOpFunctor {
 
     const int64_t *p_stride_x = nullptr, *p_stride_y = nullptr,
                   *p_stride_out = nullptr, *p_shape_y = nullptr;
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
     thrust::device_vector<int64_t> d_stride_x(ndims);
     thrust::device_vector<int64_t> d_stride_y(ndims);
     thrust::device_vector<int64_t> d_stride_out(ndims);

@@ -669,6 +669,21 @@ PD_REGISTER_KERNEL(instance_norm_double_grad,
                    phi::InstanceNormDoubleGradKernel,
                    float,
                    phi::dtype::float16) {}
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(instance_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(instance_norm_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormDoubleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 #elif CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
@@ -686,7 +701,7 @@ PD_REGISTER_KERNEL(instance_norm_double_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else // CUDA & MUSA
+#else // CUDA
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
                    ALL_LAYOUT,

@@ -57,8 +57,8 @@ PD_REGISTER_KERNEL(
     min, GPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
 #endif
 
-#if defined(PADDLE_WITH_MUSA)
-PD_REGISTER_KERNEL()
+#if defined(PADDLE_WITH_MUSAAA)
+PD_REGISTER_KERNEL(
     min, GPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t, phi::dtype::float16) {}
 #endif
 

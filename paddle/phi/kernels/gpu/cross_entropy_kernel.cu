@@ -19,6 +19,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
+#ifdef __MUSACC__
+#include "cub/cub.cuh"
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
@@ -1477,6 +1480,13 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(cross_entropy_with_softmax,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CrossEntropyWithSoftmaxKernel,
+                   float,
+                   phi::dtype::float16) {}
+#elif defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
                    ALL_LAYOUT,

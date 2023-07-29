@@ -848,7 +848,7 @@ struct InverseFloorDivideFunctor<dtype::bfloat16> {
   }
 };
 
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T, typename MPType>
 inline HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {

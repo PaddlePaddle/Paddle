@@ -414,6 +414,17 @@ struct EnforceNotMet : public std::exception {
       abort();                                                     \
     }                                                              \
   } while (0)
+#elif defined(__MUSACC__)
+#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)               \
+  do {                                                             \
+    if (!(_IS_NOT_ERROR)) {                                        \
+      printf("Error: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__,                                             \
+             __LINE__,                                             \
+             #_IS_NOT_ERROR,                                       \
+             ##__VA_ARGS__);                                       \
+    }                                                              \
+  } while (0)
 #else
 #define PADDLE_ENFORCE(COND, ...)                               \
   do {                                                          \

@@ -26,6 +26,8 @@
 #elif defined(PADDLE_WITH_MUSA)
 #include <musa_runtime.h>
 #include <mublas.h>
+#include <mudnn.h>
+using mudnnHandle_t = ::musa::dnn::Handle*;
 //TODO(Xiaokang Shang)
 #else
 #include <cuda_runtime.h>
@@ -91,9 +93,10 @@ DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
 DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
                      cudnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
 #endif
 
+DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle, mublasHandle_t); // TODO(MTAI)
+DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle, mublasHandle_t);
 
 // TODO(Ming Huang): Since there is no blasLt handler,

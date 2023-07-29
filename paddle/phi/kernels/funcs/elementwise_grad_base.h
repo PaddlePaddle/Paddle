@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -405,7 +405,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
       dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy)});
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 // Suppose only has contiguous dims
 static inline bool CheckContiguousDims(const std::vector<int> &broadcast_pos) {
   for (int i = 1; i < broadcast_pos.size(); ++i) {

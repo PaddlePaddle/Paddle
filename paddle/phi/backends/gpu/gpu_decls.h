@@ -24,6 +24,7 @@ namespace phi {
   using GPU_TYPE = ROCM_TYPE;
 
 #elif defined(PADDLE_WITH_MUSA)
+  //using mudnnHandle_t = ::musa::dnn::Handle;
   using mudnnHandle_t = bool**;
   using mublasLtHandle_t = bool**;
   using musparseHandle_t = bool**;

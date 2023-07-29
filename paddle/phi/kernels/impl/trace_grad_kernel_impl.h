@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #endif
@@ -120,7 +120,7 @@ void TraceGradKernel(const Context& ctx,
   int64_t diag_size = len2 < len1 ? len2 : len1;
   int64_t pos = std::abs(offset) * offset_stride;
   if (diag_size > 0) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
     thrust::device_vector<int64_t> output_vec(vectorize(output_stride));
     const int64_t* output_arr = thrust::raw_pointer_cast(output_vec.data());
     thrust::device_vector<int64_t> input_vec(vectorize(input_stride));

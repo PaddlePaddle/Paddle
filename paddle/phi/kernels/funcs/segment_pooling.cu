@@ -24,7 +24,7 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
-
+#if 0
 using Tensor = DenseTensor;
 
 template <typename T, typename Index, int DimTileSize>
@@ -61,7 +61,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
         }
         if (j > 0) {
           if (last_segment_id == first_segment_id) {
-            phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+            //phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
           } else {
             *(summed_ids + last_segment_id) = sum;
           }
@@ -71,7 +71,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
       sum += T(1);
       last_segment_id = current_segment_id;
     }
-    phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+    //phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
   }
 }
 
@@ -112,8 +112,8 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
               last_segment_id * inner_dim_size + segment_offset;
 
           if (last_segment_id == first_segment_id) {
-            phi::CudaAtomicAdd(output + output_index,
-                               sum / *(summed_ids + last_segment_id));
+            //phi::CudaAtomicAdd(output + output_index,
+            //                   sum / *(summed_ids + last_segment_id));
           } else {
             *(output + output_index) = sum / *(summed_ids + last_segment_id);
           }
@@ -124,8 +124,8 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
       last_segment_id = current_segment_id;
     }
     Index output_index = last_segment_id * inner_dim_size + segment_offset;
-    phi::CudaAtomicAdd(output + output_index,
-                       sum / *(summed_ids + last_segment_id));
+    //phi::CudaAtomicAdd(output + output_index,
+    //                   sum / *(summed_ids + last_segment_id));
   }
 }
 
@@ -236,7 +236,8 @@ class SumPool {
   DEVICE inline T initial() { return static_cast<T>(0); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y + x; }
   DEVICE inline T atomic(T* address, const T val) {
-    return phi::CudaAtomicAdd(address, val);
+    //return phi::CudaAtomicAdd(address, val);
+    return val;
   }
 };
 
@@ -466,6 +467,6 @@ template class SegmentPoolGradFunctor<GPU, float16, int>;
 template class SegmentPoolGradFunctor<GPU, float16, int64_t>;
 template class SegmentPoolGradFunctor<GPU, phi::dtype::bfloat16, int>;
 template class SegmentPoolGradFunctor<GPU, phi::dtype::bfloat16, int64_t>;
-
+#endif
 }  // namespace funcs
 }  // namespace phi

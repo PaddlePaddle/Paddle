@@ -231,6 +231,23 @@ void AucKernel(const Context &dev_ctx,
             sizeof(int64_t),
         cudaMemcpyDeviceToDevice);
   }
+#elif defined(PADDLE_WITH_MUSA)
+  if (stat_pos_in_tensor != stat_pos_out) {
+    musaMemcpy(
+        origin_stat_pos,
+        pos_in_data,
+        ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
+            sizeof(int64_t),
+        musaMemcpyDeviceToDevice);
+  }
+  if (stat_neg_in_tensor != stat_neg_out) {
+    musaMemcpy(
+        origin_stat_neg,
+        neg_in_data,
+        ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
+            sizeof(int64_t),
+        musaMemcpyDeviceToDevice);
+  }
 #else
   if (stat_pos_in_tensor != stat_pos_out) {
     hipMemcpy(

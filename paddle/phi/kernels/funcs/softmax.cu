@@ -147,10 +147,10 @@ template class SoftmaxCUDNNFunctor<float, phi::GPUContext>;
 template class SoftmaxCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<float, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
-#if CUDNN_VERSION_MIN(8, 1, 0)
-template class SoftmaxCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
-#endif
+//#if CUDNN_VERSION_MIN(8, 1, 0)
+//template class SoftmaxCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
+//template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
+//#endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP

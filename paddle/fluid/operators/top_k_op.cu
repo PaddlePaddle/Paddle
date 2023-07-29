@@ -18,6 +18,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
+#ifdef __MUSACC__
+#include "cub/cub.cuh"
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 #endif

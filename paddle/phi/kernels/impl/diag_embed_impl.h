@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #endif
@@ -105,7 +105,7 @@ void DiagEmbedKernel(const Context& dev_ctx,
   strides.push_back(stride[dim1_] + stride[dim2_]);
   const auto dims = vectorize(x.dims());
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   thrust::device_vector<int64_t> dims_vec(dims);
   const int64_t* dims_arr = thrust::raw_pointer_cast(dims_vec.data());
   thrust::device_vector<int64_t> strides_vec(strides);

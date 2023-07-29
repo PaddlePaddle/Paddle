@@ -217,7 +217,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 #ifdef PADDLE_WITH_HIP
   hipError_t result = hipHostMalloc(&p, size, hipHostMallocPortable);
 #elif defined(PADDLE_WITH_MUSA)
-  musaError_t result = musaHostMalloc(&p, size, musaHostMallocPortable);
+  musaError_t result = musaHostAlloc(&p, size, musaHostAllocPortable);
 #else
   cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 #endif
@@ -261,9 +261,18 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
         platform::errors::Fatal(
             "hipFreeHost failed in GPUPinnedAllocator, error code is %d", err));
   }
+#elif defined(PADDLE_WITH_MUSA)
+  err = musaFreeHost(p);
+  if (err != musaErrorMusartUnloading) {
+    PADDLE_ENFORCE_EQ(
+        err,
+        0,
+        platform::errors::Fatal(
+            "musaFreeHost failed in GPUPinnedAllocator, error code is %d",
+            err));
+  }
 #else
   err = cudaFreeHost(p);
-
   // Purposefully allow cudaErrorCudartUnloading, because
   // that is returned if you ever call cudaFreeHost after the
   // driver has already shutdown. This happens only if the

@@ -24,7 +24,7 @@ void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostFree(allocation->ptr()));
 #elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(musaHostFree(allocation->ptr()));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaFreeHost(allocation->ptr()));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(allocation->ptr()));
 #endif
@@ -40,7 +40,7 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostMalloc(&ptr, size, hipHostMallocPortable));
 #elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(musaHostMalloc(&ptr, size, musaHostMallocPortable));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaHostAlloc(&ptr, size, musaHostAllocPortable));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
 #endif

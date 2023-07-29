@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#if 0
 #include "paddle/phi/kernels/cudnn_lstm_kernel.h"
 
 #include "glog/logging.h"
@@ -422,4 +422,5 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
   kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }
+#endif
 #endif

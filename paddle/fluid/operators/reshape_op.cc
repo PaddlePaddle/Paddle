@@ -761,7 +761,7 @@ REGISTER_OPERATOR(reshape2_grad_grad,
                   ops::ReshapeDoubleGradOpNoNeedBufferVarInferer,
                   Reshape2DoubleGradInferShapeFunctor);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape,
                                 float,
                                 ops::ReshapeKernel,

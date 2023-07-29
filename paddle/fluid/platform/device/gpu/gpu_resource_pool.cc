@@ -102,7 +102,7 @@ CudaEventResourcePool::CudaEventResourcePool() {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
 #elif defined(PADDLE_WITH_MUSA)
-      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
+      PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(event));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 #endif

@@ -903,7 +903,7 @@ void HeavisideGradKernel(const Context& dev_ctx,
           HeavisideGradDy<T>());
 }
 
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {

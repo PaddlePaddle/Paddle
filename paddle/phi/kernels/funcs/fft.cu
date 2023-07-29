@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#ifdef PADDLE_WITH_CUDA
 #include <cmath>
 
 #include "paddle/phi/kernels/funcs/fft.h"
@@ -349,3 +349,4 @@ template struct FFTR2CFunctor<phi::GPUContext, double, complex128_t>;
 
 }  // namespace funcs
 }  // namespace phi
+#endif

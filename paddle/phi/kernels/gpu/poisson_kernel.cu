@@ -15,6 +15,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
+#ifdef __MUSACC__
+#include <murand_kernel.h>
+#endif
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
 #endif

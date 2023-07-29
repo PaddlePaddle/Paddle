@@ -19,6 +19,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include <cub/block/block_scan.cuh>
 #endif
+#ifdef __MUSACC__
+#include <cub/block/block_scan.cuh>
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;

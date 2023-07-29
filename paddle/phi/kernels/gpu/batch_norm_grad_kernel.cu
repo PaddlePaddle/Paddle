@@ -678,6 +678,8 @@ void BatchNormGradRawKernel(const Context &ctx,
 #ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // mode_ = miopenBNSpatial;
+#elif defined(PADDLE_WITH_MUSA)
+
 #elif CUDNN_VERSION_MIN(7, 0, 1)
     if (FLAGS_cudnn_batchnorm_spatial_persistent) {
       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
@@ -795,6 +797,8 @@ void BatchNormGradRawKernel(const Context &ctx,
 //         d_bias->template mutable_data<BatchNormParamType<T>>(
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
+#elif defined(PADDLE_WITH_MUSA)
+
 #else
     }
     // CUDNN only support small batch size
@@ -1383,6 +1387,20 @@ void BatchNormDoubleGradKernel(
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(batch_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(batch_norm_grad_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormGradRawKernel,
+                   float,
+                   phi::dtype::float16) {}
+#elif defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,

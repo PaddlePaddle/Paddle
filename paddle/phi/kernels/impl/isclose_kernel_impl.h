@@ -86,7 +86,7 @@ struct IscloseFunctor<phi::CPUContext, T> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 __global__ void IscloseCUDAKernel(const T* in_data,
                                   const T* other_data,

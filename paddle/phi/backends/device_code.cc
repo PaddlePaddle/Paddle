@@ -80,7 +80,7 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
   }
   for (auto& p : set) {
     if (p.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
       device_codes_.emplace(p, DeviceCodeMap());
 #else
       PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -90,40 +90,40 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
   GPUDeviceCode::CheckAvailableStatus();
 #endif
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
-#ifdef PADDLE_WITH_HIP
-static bool CheckCUDADriverResult(hipError_t result,
-                                  std::string caller,
-                                  std::string kernel_name = "") {
-  if (result != hipSuccess) {
-    const char* error = nullptr;
-    error = dynload::hipGetErrorString(result);
-#elif defined(PADDLE_WITH_MUSA)
-static bool CheckCUDADriverResult(MUresult result,
-                                  std::string caller,
-                                  std::string kernel_name = "") {
-  if (result != MUSA_SUCCESS) {
-    const char* error = nullptr;
-    muGetErrorString(result, &error);
-#else
-static bool CheckCUDADriverResult(CUresult result,
-                                  std::string caller,
-                                  std::string kernel_name = "") {
-  if (result != CUDA_SUCCESS) {
-    const char* error = nullptr;
-    dynload::cuGetErrorString(result, &error);
-#endif
-    LOG_FIRST_N(WARNING, 1) << "Call " << caller << " for < " << kernel_name
-                            << " > failed: " << error << " (" << result << ")";
-    return false;
-  }
-  return true;
-}
+//#ifdef PADDLE_WITH_HIP
+//static bool CheckCUDADriverResult(hipError_t result,
+//                                  std::string caller,
+//                                  std::string kernel_name = "") {
+//  if (result != hipSuccess) {
+//    const char* error = nullptr;
+//    error = dynload::hipGetErrorString(result);
+//#elif defined(PADDLE_WITH_MUSA)
+////static bool CheckCUDADriverResult(MUresult result,
+////                                  std::string caller,
+////                                  std::string kernel_name = "") {
+////  if (result != MUSA_SUCCESS) {
+////    const char* error = nullptr;
+////    muGetErrorString(result, &error);
+//#else
+//static bool CheckCUDADriverResult(CUresult result,
+//                                  std::string caller,
+//                                  std::string kernel_name = "") {
+//  if (result != CUDA_SUCCESS) {
+//    const char* error = nullptr;
+//    dynload::cuGetErrorString(result, &error);
+//#endif
+//    LOG_FIRST_N(WARNING, 1) << "Call " << caller << " for < " << kernel_name
+//                            << " > failed: " << error << " (" << result << ")";
+//    return false;
+//  }
+//  return true;
+//}
 
 bool GPUDeviceCode::available_ = false;
 void GPUDeviceCode::CheckAvailableStatus() {
@@ -148,19 +148,19 @@ void GPUDeviceCode::CheckAvailableStatus() {
   int driver_version = 0;
   int dirver_major = 0;
   int driver_minor = 0;
-#ifdef PADDLE_WITH_HIP
-  hipError_t driver_result = dynload::hipDriverGetVersion(&driver_version);
-  if (driver_result == hipSuccess) {
-#elif defined(PADDLE_WITH_MUSA)
-  MUresult driver_result = muDriverGetVersion(&driver_version);
-  if (driver_result == MUSA_SUCCESS) {
-#else
-  CUresult driver_result = dynload::cuDriverGetVersion(&driver_version);
-  if (driver_result == CUDA_SUCCESS) {
-#endif
-    dirver_major = driver_version / 1000;
-    driver_minor = (driver_version % 1000) / 10;
-  }
+//#ifdef PADDLE_WITH_HIP
+//  hipError_t driver_result = dynload::hipDriverGetVersion(&driver_version);
+//  if (driver_result == hipSuccess) {
+//#elif defined(PADDLE_WITH_MUSA)
+//  MUresult driver_result = muDriverGetVersion(&driver_version);
+//  if (driver_result == MUSA_SUCCESS) {
+//#else
+//  CUresult driver_result = dynload::cuDriverGetVersion(&driver_version);
+//  if (driver_result == CUDA_SUCCESS) {
+//#endif
+//    dirver_major = driver_version / 1000;
+//    driver_minor = (driver_version % 1000) / 10;
+//  }
 
   LOG_FIRST_N(INFO, 1) << "CUDA Driver Version: " << dirver_major << "."
                        << driver_minor << "; NVRTC Version: " << nvrtc_major
@@ -176,18 +176,18 @@ void GPUDeviceCode::CheckAvailableStatus() {
   }
 
   int count = 0;
-#ifdef PADDLE_WITH_HIP
-  if (CheckCUDADriverResult(dynload::hipGetDeviceCount(&count),
-                            "hipGetDeviceCount")) {
-#elif defined(PADDLE_WITH_MUSA)
-  if (CheckCUDADriverResult(muDeviceGetCount(&count),
-                            "muDeviceGetCount")) {
-#else
-  if (CheckCUDADriverResult(dynload::cuDeviceGetCount(&count),
-                            "cuDeviceGetCount")) {
-#endif
-    available_ = true;
-  }
+//#ifdef PADDLE_WITH_HIP
+//  if (CheckCUDADriverResult(dynload::hipGetDeviceCount(&count),
+//                            "hipGetDeviceCount")) {
+//#elif defined(PADDLE_WITH_MUSA)
+//  if (CheckCUDADriverResult(muDeviceGetCount(&count),
+//                            "muDeviceGetCount")) {
+//#else
+//  if (CheckCUDADriverResult(dynload::cuDeviceGetCount(&count),
+//                            "cuDeviceGetCount")) {
+//#endif
+//    available_ = true;
+//  }
 }
 
 static std::string FindCUDAIncludePath() {
@@ -465,21 +465,21 @@ void GPUDeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
       errors::External("Fail to launch kernel %s (in hipModuleLaunchKernel.)",
                        name_.c_str()));
 #elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_EQ(
-      muLaunchKernel(function_,
-                              num_blocks,
-                              1,
-                              1,  // grid dim
-                              num_threads_,
-                              1,
-                              1,                  // block dim
-                              0,                  // shared memory
-                              dev_ctx->stream(),  // stream
-                              args->data(),       // arguments
-                              nullptr),
-      MUSA_SUCCESS,
-      errors::External("Fail to launch kernel %s (in muLaunchKernel.)",
-                       name_.c_str()));
+  //PADDLE_ENFORCE_EQ(
+  //    muLaunchKernel(function_,
+  //                            num_blocks,
+  //                            1,
+  //                            1,  // grid dim
+  //                            num_threads_,
+  //                            1,
+  //                            1,                  // block dim
+  //                            0,                  // shared memory
+  //                            dev_ctx->stream(),  // stream
+  //                            args->data(),       // arguments
+  //                            nullptr),
+  //    MUSA_SUCCESS,
+  //    errors::External("Fail to launch kernel %s (in muLaunchKernel.)",
+  //                     name_.c_str()));
 #else
   PADDLE_ENFORCE_EQ(
       dynload::cuLaunchKernel(function_,
