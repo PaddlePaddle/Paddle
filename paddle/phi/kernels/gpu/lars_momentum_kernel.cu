@@ -1,22 +1,25 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/lars_momentum_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/utils/optional.h"
 
 #if CUDA_VERSION >= 11000
 #include <cooperative_groups.h>
@@ -30,8 +33,7 @@ limitations under the License. */
 
 #define LARS_MAX_MERGED_OPS 60
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 template <typename T>
 using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -253,7 +255,7 @@ __forceinline__ __device__ void MomentumUpdate(
                                                               master_param_out);
   } else {
     if (std::is_same<T, float>::value ||
-        std::is_same<T, paddle::platform::float16>::value) {
+        std::is_same<T, dtype::float16>::value) {
       /* TODO(limingshu): pointer cast may damage memory accessing for fp16 */
       VectorizeLarsUpdate<T, MT, /*VecSize=*/4, /*IsAmp=*/false>(
           grad,
@@ -419,7 +421,7 @@ __global__ void MomentumLarsKernel(const T* param,
 }
 
 template <typename T, typename MT>
-inline void SeparatedLarsMomentumOpCUDAKernel(const phi::GPUContext& cuda_ctx,
+inline void SeparatedLarsMomentumOpCUDAKernel(const GPUContext& cuda_ctx,
                                               const T* param_data,
                                               T* param_out_data,
                                               const MT* velocity_data,
@@ -474,216 +476,209 @@ inline void SeparatedLarsMomentumOpCUDAKernel(const phi::GPUContext& cuda_ctx,
                               is_amp);
 }
 
-template <typename T, typename DeviceContext>
-class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
+template <typename T, typename Context>
+void LarsMomentumKernel(const Context& dev_ctx,
+                        const std::vector<const DenseTensor*>& param,
+                        const std::vector<const DenseTensor*>& velocity,
+                        const std::vector<const DenseTensor*>& learning_rate,
+                        const std::vector<const DenseTensor*>& grad,
+                        const paddle::optional<DenseTensor>& master_param,
+                        const std::vector<float>& weight_decay_arr,
+                        float mu,
+                        float lars_coeff,
+                        float epsilon,
+                        bool multi_precision,
+                        float rescale_grad,
+                        std::vector<DenseTensor*> param_out,
+                        std::vector<DenseTensor*> velocity_out,
+                        paddle::optional<DenseTensor>* master_param_out) {
   using MT = MultiPrecisionType<T>;
+  int num_blocks_per_sm = 0;
+  int sm_num = dev_ctx.GetSMCount();
+  // phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+  //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
+  phi::DenseTensor tmp_buffer_t;
+  auto* p_buffer = dev_ctx.template Alloc<MT>(tmp_buffer_t);
+  auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
 
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    int num_blocks_per_sm = 0;
-    bool multi_precision = ctx.Attr<bool>("multi_precision");
-    auto& cuda_ctx = ctx.template device_context<phi::GPUContext>();
-    int sm_num = cuda_ctx.GetSMCount();
-    phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
-        {LARS_BLOCK_SIZE << 1}, cuda_ctx);
-    auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
-    auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
+  MT mu_ = static_cast<MT>(mu);
+  MT lars_coeff_ = static_cast<MT>(lars_coeff);
+  MT epsilon_ = static_cast<MT>(epsilon);
+  MT rescale_grad_ = static_cast<MT>(rescale_grad);
 
-    MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
-    MT lars_coeff = static_cast<MT>(ctx.Attr<float>("lars_coeff"));
-    MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
-    MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
-
-    auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
-    auto grad = ctx.MultiInput<phi::DenseTensor>("Grad");
-    auto param = ctx.MultiInput<phi::DenseTensor>("Param");
-    auto velocity = ctx.MultiInput<phi::DenseTensor>("Velocity");
-    auto param_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
-    auto velocity_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
-    auto learning_rate = ctx.MultiInput<phi::DenseTensor>("LearningRate");
-    auto master_param = ctx.MultiInput<phi::DenseTensor>("MasterParam");
-    auto master_param_out = ctx.MultiOutput<phi::DenseTensor>("MasterParamOut");
-
-    int op_num = grad.size();
+  int op_num = grad.size();
 #if CUDA_VERSION >= 11000
-    if (op_num > 1) {
-      LarsParamWarpper<T, MT> lars_warpper;
-      PADDLE_ENFORCE_LT(
-          op_num,
-          LARS_MAX_MERGED_OPS,
-          platform::errors::InvalidArgument(
-              "The maximum number of merged-ops supported is (%d), but"
-              "lars op required for trainning this model is (%d)\n",
-              LARS_MAX_MERGED_OPS,
-              op_num));
+  if (op_num > 1) {
+    LarsParamWarpper<T, MT> lars_warpper;
+    PADDLE_ENFORCE_LT(
+        op_num,
+        LARS_MAX_MERGED_OPS,
+        errors::InvalidArgument(
+            "The maximum number of merged-ops supported is (%d), but"
+            "lars op required for trainning this model is (%d)\n",
+            LARS_MAX_MERGED_OPS,
+            op_num));
 
-      /* Implementation of lars optimizer consists of following two steps:
-        1. Figure out the L2 norm statistic result of grad data and param data.
-        2. Update param and velocity with usage of L2 norm statistic result.
-      Step1 and step2 can be merged with api provided by nvida
-        cudaLaunchCooperativeKernel:
-        - The thread quantity shall less than pyhsical SM limited threads
-        - Launche as thread-block can synchronizlly execute. */
-      cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-          &num_blocks_per_sm,
-          MergedMomentumLarsKernel<T, MT>,
-          LARS_BLOCK_SIZE,
-          sizeof(MT) << 1);
+    /* Implementation of lars optimizer consists of following two steps:
+      1. Figure out the L2 norm statistic result of grad data and param data.
+      2. Update param and velocity with usage of L2 norm statistic result.
+    Step1 and step2 can be merged with api provided by nvida
+      cudaLaunchCooperativeKernel:
+      - The thread quantity shall less than pyhsical SM limited threads
+      - Launche as thread-block can synchronizlly execute. */
+    cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        &num_blocks_per_sm,
+        MergedMomentumLarsKernel<T, MT>,
+        LARS_BLOCK_SIZE,
+        sizeof(MT) << 1);
 
-      size_t total_numel = 0;
+    size_t total_numel = 0;
+    for (int i = 0; i < op_num; ++i) {
+      size_t temp_numel = param[i]->numel();
+      total_numel += temp_numel;
+      lars_warpper.numel_arr[i] = temp_numel;
+      lars_warpper.g_arr[i] = grad[i]->data<T>();
+      lars_warpper.lr_arr[i] = learning_rate[i]->data<MT>();
+      lars_warpper.p_out_arr[i] = dev_ctx.template Alloc<T>(param_out[i]);
+      lars_warpper.v_out_arr[i] = dev_ctx.template Alloc<T>(velocity_out[i]);
+      lars_warpper.weight_decay_arr[i] = static_cast<MT>(weight_decay_arr[i]);
+      PADDLE_ENFORCE_EQ(
+          param[i]->data<T>(),
+          lars_warpper.p_out_arr[i],
+          errors::InvalidArgument(
+              "Input(Param) and Output(ParamOut) must be the same Tensors."));
+      PADDLE_ENFORCE_EQ(velocity[i]->data<MT>(),
+                        lars_warpper.v_out_arr[i],
+                        errors::InvalidArgument(
+                            "Input(Velocity) and Output(VelocityOut) must be "
+                            "the same Tensors."));
+    }
+    int64_t avg_numel = total_numel / op_num;
+    LarsThreadConfig<float> lars_thread_config(
+        avg_numel, sm_num, num_blocks_per_sm);
+    for (int i = 0; i < op_num; ++i) {
+      lars_warpper.repeat_arr[i] =
+          lars_thread_config.GetRepeatTimes(lars_warpper.numel_arr[i]);
+    }
+    if (multi_precision) {
       for (int i = 0; i < op_num; ++i) {
-        size_t temp_numel = param[i]->numel();
-        total_numel += temp_numel;
-        lars_warpper.numel_arr[i] = temp_numel;
-        lars_warpper.g_arr[i] = grad[i]->data<T>();
-        lars_warpper.lr_arr[i] = learning_rate[i]->data<MT>();
-        lars_warpper.p_out_arr[i] =
-            param_out[i]->mutable_data<T>(ctx.GetPlace());
-        lars_warpper.v_out_arr[i] =
-            velocity_out[i]->mutable_data<MT>(ctx.GetPlace());
-        lars_warpper.weight_decay_arr[i] = static_cast<MT>(weight_decay_arr[i]);
-        PADDLE_ENFORCE_EQ(
-            param[i]->data<T>(),
-            lars_warpper.p_out_arr[i],
-            platform::errors::InvalidArgument(
-                "Input(Param) and Output(ParamOut) must be the same Tensors."));
-        PADDLE_ENFORCE_EQ(velocity[i]->data<MT>(),
-                          lars_warpper.v_out_arr[i],
-                          platform::errors::InvalidArgument(
-                              "Input(Velocity) and Output(VelocityOut) must be "
-                              "the same Tensors."));
+        lars_warpper.master_p_out_arr[i] =
+            dev_ctx.template Alloc<T>(master_param_out[i]);
+        PADDLE_ENFORCE_EQ(master_param[i]->data<MT>(),
+                          lars_warpper.master_p_out_arr[i],
+                          errors::InvalidArgument(
+                              "Input(MasterParam) and Output(MasterParamOut) "
+                              "must be the same Tensors."));
       }
-      int64_t avg_numel = total_numel / op_num;
-      LarsThreadConfig<float> lars_thread_config(
-          avg_numel, sm_num, num_blocks_per_sm);
-      for (int i = 0; i < op_num; ++i) {
-        lars_warpper.repeat_arr[i] =
-            lars_thread_config.GetRepeatTimes(lars_warpper.numel_arr[i]);
-      }
-      if (multi_precision) {
-        for (int i = 0; i < op_num; ++i) {
-          lars_warpper.master_p_out_arr[i] =
-              master_param_out[i]->mutable_data<MT>(ctx.GetPlace());
-          PADDLE_ENFORCE_EQ(master_param[i]->data<MT>(),
-                            lars_warpper.master_p_out_arr[i],
-                            platform::errors::InvalidArgument(
-                                "Input(MasterParam) and Output(MasterParamOut) "
-                                "must be the same Tensors."));
-        }
-      }
-      void* cuda_param[] = {reinterpret_cast<void*>(&lars_warpper),
+    }
+    void* cuda_param[] = {reinterpret_cast<void*>(&lars_warpper),
+                          reinterpret_cast<void*>(&p_buffer),
+                          reinterpret_cast<void*>(&g_buffer),
+                          reinterpret_cast<void*>(&op_num),
+                          reinterpret_cast<void*>(&mu_),
+                          reinterpret_cast<void*>(&lars_coeff_),
+                          reinterpret_cast<void*>(&epsilon_),
+                          reinterpret_cast<void*>(&rescale_grad_),
+                          reinterpret_cast<void*>(&multi_precision)};
+    // Lanuch all sm theads, and thead of each block synchronizedly cooperate.
+    cudaLaunchCooperativeKernel(
+        reinterpret_cast<void*>(MergedMomentumLarsKernel<T, MT>),
+        lars_thread_config.grid_for_lars,
+        LARS_BLOCK_SIZE,
+        cuda_param,
+        0,
+        dev_ctx.stream());
+  } else {
+    auto* param_data = param[0]->data<T>();
+    auto* grad_data = grad[0]->data<T>();
+    auto* velocity_data = velocity[0]->data<MT>();
+    auto* lr = learning_rate[0]->data<MT>();
+    auto* param_out_data = dev_ctx.template Alloc<T>(param_out[0]);
+    auto* velocity_out_data = dev_ctx.template Alloc<T>(velocity_out[0]);
+    const MT* master_param_data =
+        multi_precision ? master_param[0]->data<MT>() : nullptr;
+    MT* master_param_out_data =
+        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[0]);
+                        : nullptr;
+                        int64_t numel = param[0]->numel();
+                        MT lars_weight_decay = weight_decay_arr[0];
+
+                        // Figure out how many blocks can be active in each sm.
+                        cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+                            &num_blocks_per_sm,
+                            MomentumLarsKernel<T, MT>,
+                            LARS_BLOCK_SIZE,
+                            sizeof(MT) << 1);
+                        LarsThreadConfig<float> lars_thread_config(
+                            numel, sm_num, num_blocks_per_sm);
+                        int repeat_times =
+                            lars_thread_config.GetRepeatTimes(numel);
+                        int thresh = 0;
+                        void* cuda_param[] = {
+                            reinterpret_cast<void*>(&param_data),
+                            reinterpret_cast<void*>(&grad_data),
+                            reinterpret_cast<void*>(&velocity_data),
+                            reinterpret_cast<void*>(&param_out_data),
+                            reinterpret_cast<void*>(&velocity_out_data),
+                            reinterpret_cast<void*>(&master_param_data),
+                            reinterpret_cast<void*>(&master_param_out_data),
+                            reinterpret_cast<void*>(&lr),
                             reinterpret_cast<void*>(&p_buffer),
                             reinterpret_cast<void*>(&g_buffer),
-                            reinterpret_cast<void*>(&op_num),
-                            reinterpret_cast<void*>(&mu),
-                            reinterpret_cast<void*>(&lars_coeff),
-                            reinterpret_cast<void*>(&epsilon),
-                            reinterpret_cast<void*>(&rescale_grad),
+                            reinterpret_cast<void*>(&mu_),
+                            reinterpret_cast<void*>(&lars_coeff_),
+                            reinterpret_cast<void*>(&lars_weight_decay),
+                            reinterpret_cast<void*>(&epsilon_),
+                            reinterpret_cast<void*>(&rescale_grad_),
+                            reinterpret_cast<void*>(&repeat_times),
+                            reinterpret_cast<void*>(
+                                &thresh),  // Just a placeholder
+                            reinterpret_cast<void*>(&numel),
                             reinterpret_cast<void*>(&multi_precision)};
-      // Lanuch all sm theads, and thead of each block synchronizedly cooperate.
-      cudaLaunchCooperativeKernel(
-          reinterpret_cast<void*>(MergedMomentumLarsKernel<T, MT>),
-          lars_thread_config.grid_for_lars,
-          LARS_BLOCK_SIZE,
-          cuda_param,
-          0,
-          cuda_ctx.stream());
-    } else {
-      auto* param_data = param[0]->data<T>();
-      auto* grad_data = grad[0]->data<T>();
-      auto* velocity_data = velocity[0]->data<MT>();
-      auto* lr = learning_rate[0]->data<MT>();
-      auto* param_out_data = param_out[0]->mutable_data<T>(ctx.GetPlace());
-      auto* velocity_out_data =
-          velocity_out[0]->mutable_data<MT>(ctx.GetPlace());
-      const MT* master_param_data =
-          multi_precision ? master_param[0]->data<MT>() : nullptr;
-      MT* master_param_out_data =
-          multi_precision
-              ? master_param_out[0]->mutable_data<MT>(ctx.GetPlace())
-              : nullptr;
-      int64_t numel = param[0]->numel();
-      MT lars_weight_decay = weight_decay_arr[0];
-
-      // Figure out how many blocks can be active in each sm.
-      cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm,
-                                                    MomentumLarsKernel<T, MT>,
-                                                    LARS_BLOCK_SIZE,
-                                                    sizeof(MT) << 1);
-      LarsThreadConfig<float> lars_thread_config(
-          numel, sm_num, num_blocks_per_sm);
-      int repeat_times = lars_thread_config.GetRepeatTimes(numel);
-      int thresh = 0;
-      void* cuda_param[] = {
-          reinterpret_cast<void*>(&param_data),
-          reinterpret_cast<void*>(&grad_data),
-          reinterpret_cast<void*>(&velocity_data),
-          reinterpret_cast<void*>(&param_out_data),
-          reinterpret_cast<void*>(&velocity_out_data),
-          reinterpret_cast<void*>(&master_param_data),
-          reinterpret_cast<void*>(&master_param_out_data),
-          reinterpret_cast<void*>(&lr),
-          reinterpret_cast<void*>(&p_buffer),
-          reinterpret_cast<void*>(&g_buffer),
-          reinterpret_cast<void*>(&mu),
-          reinterpret_cast<void*>(&lars_coeff),
-          reinterpret_cast<void*>(&lars_weight_decay),
-          reinterpret_cast<void*>(&epsilon),
-          reinterpret_cast<void*>(&rescale_grad),
-          reinterpret_cast<void*>(&repeat_times),
-          reinterpret_cast<void*>(&thresh),  // Just a placeholder
-          reinterpret_cast<void*>(&numel),
-          reinterpret_cast<void*>(&multi_precision)};
-      // Lanuch all sm theads.
-      cudaLaunchCooperativeKernel(
-          reinterpret_cast<void*>(MomentumLarsKernel<T, MT>),
-          lars_thread_config.grid_for_lars,
-          LARS_BLOCK_SIZE,
-          cuda_param,
-          0,
-          cuda_ctx.stream());
-    }
-#else
-    for (int i = 0; i < op_num; ++i) {
-      const MT* master_param_data =
-          multi_precision ? master_param[i]->data<MT>() : nullptr;
-      MT* master_param_out_data =
-          multi_precision
-              ? master_param_out[i]->mutable_data<MT>(ctx.GetPlace())
-              : nullptr;
-      SeparatedLarsMomentumOpCUDAKernel<T, MT>(
-          cuda_ctx,
-          param[i]->data<T>(),
-          param_out[i]->mutable_data<T>(ctx.GetPlace()),
-          velocity[i]->data<MT>(),
-          velocity_out[i]->mutable_data<MT>(ctx.GetPlace()),
-          grad[i]->data<T>(),
-          learning_rate[i]->data<MT>(),
-          p_buffer,
-          g_buffer,
-          mu,
-          lars_coeff,
-          weight_decay_arr[i],
-          epsilon,
-          rescale_grad,
-          param[i]->numel(),
-          master_param_data,
-          master_param_out_data,
-          multi_precision);
-    }
-#endif
+                        // Lanuch all sm theads.
+                        cudaLaunchCooperativeKernel(
+                            reinterpret_cast<void*>(MomentumLarsKernel<T, MT>),
+                            lars_thread_config.grid_for_lars,
+                            LARS_BLOCK_SIZE,
+                            cuda_param,
+                            0,
+                            dev_ctx.stream());
   }
-};
+#else
+  for (int i = 0; i < op_num; ++i) {
+    const MT* master_param_data =
+        multi_precision ? master_param[i]->data<MT>() : nullptr;
+    MT* master_param_out_data =
+        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[i]);
+                        : nullptr;
+                        SeparatedLarsMomentumOpCUDAKernel<T, MT>(
+                            dev_ctx,
+                            param[i]->data<T>(),
+                            dev_ctx.template Alloc<T>(param_out[i]),
+                            velocity[i]->data<MT>(),
+                            dev_ctx.template Alloc<T>(velocity_out[i]),
+                            grad[i]->data<T>(),
+                            learning_rate[i]->data<MT>(),
+                            p_buffer,
+                            g_buffer,
+                            mu_,
+                            lars_coeff_,
+                            weight_decay_arr[i],
+                            epsilon_,
+                            rescale_grad_,
+                            param[i]->numel(),
+                            master_param_data,
+                            master_param_out_data,
+                            multi_precision);
+  }
+#endif
+}
+}  // namespace phi
 
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(lars_momentum,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::LarsMomentumOpCUDAKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+PD_REGISTER_KERNEL(lars_momentum,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LarsMomentumKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

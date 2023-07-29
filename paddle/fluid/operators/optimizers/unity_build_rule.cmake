@@ -16,7 +16,6 @@ register_unity_group(
 register_unity_group(
   cu
   ftrl_op.cu
-  lars_momentum_op.cu
   momentum_op.cu
   sgd_op.cu
   proximal_adagrad_op.cu
