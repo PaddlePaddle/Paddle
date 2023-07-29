@@ -20,27 +20,27 @@
 
 #define DESTROY_ONE_DIM_ARRAY(type)                                           \
   void PD_OneDimArray##type##Destroy(__pd_take PD_OneDimArray##type* array) { \
-    if (array != NULL) {                                                      \
+    if (array != nullptr) {                                                   \
       delete[] array->data;                                                   \
       delete array;                                                           \
     }                                                                         \
   }
-#define CONVERT_VEC_TO_ONE_DIM_ARRAY(type, Type, vec_type)   \
-  __pd_give PD_OneDimArray##Type* CvtVecToOneDimArray##Type( \
-      const std::vector<vec_type>& vec) {                    \
-    PD_OneDimArray##Type* array = new PD_OneDimArray##Type;  \
-    array->size = vec.size();                                \
-    array->data = vec.empty() ? NULL : new type[vec.size()]; \
-    for (size_t index = 0; index < vec.size(); ++index) {    \
-      array->data[index] = vec[index];                       \
-    }                                                        \
-    return array;                                            \
+#define CONVERT_VEC_TO_ONE_DIM_ARRAY(type, Type, vec_type)      \
+  __pd_give PD_OneDimArray##Type* CvtVecToOneDimArray##Type(    \
+      const std::vector<vec_type>& vec) {                       \
+    PD_OneDimArray##Type* array = new PD_OneDimArray##Type;     \
+    array->size = vec.size();                                   \
+    array->data = vec.empty() ? nullptr : new type[vec.size()]; \
+    for (size_t index = 0; index < vec.size(); ++index) {       \
+      array->data[index] = vec[index];                          \
+    }                                                           \
+    return array;                                               \
   }
 #define CONVERT_ONE_DIM_ARRAY_TO_VEC(type, Type, vec_type)   \
   std::vector<vec_type> CvtOneDimArrayToVec##Type(           \
       __pd_keep const PD_OneDimArray##Type* array) {         \
     std::vector<vec_type> vec;                               \
-    if (array != NULL) {                                     \
+    if (array != nullptr) {                                  \
       vec.resize(array->size);                               \
       for (size_t index = 0; index < array->size; ++index) { \
         vec[index] = array->data[index];                     \
@@ -68,7 +68,7 @@ ONE_DIM_ARRAY_UTILS_FUNC_IMPL(int64_t, Int64, int64_t)
 #undef DESTROY_ONE_DIM_ARRAY
 
 void PD_OneDimArrayCstrDestroy(__pd_take PD_OneDimArrayCstr* array) {
-  if (array != NULL) {
+  if (array != nullptr) {
     if (array->size != 0) {
       for (size_t index = 0; index < array->size; ++index) {
         delete[] array->data[index];
@@ -80,11 +80,11 @@ void PD_OneDimArrayCstrDestroy(__pd_take PD_OneDimArrayCstr* array) {
 }
 
 void PD_CstrDestroy(__pd_take PD_Cstr* cstr) {
-  if (cstr != NULL) {
+  if (cstr != nullptr) {
     if (cstr->size != 0) {
       cstr->size = 0;
       delete[] cstr->data;
-      cstr->data = NULL;
+      cstr->data = nullptr;
     }
     delete cstr;
   }
@@ -95,7 +95,7 @@ __pd_give PD_OneDimArrayCstr* CvtVecToOneDimArrayCstr(
     const std::vector<std::string>& vec) {
   PD_OneDimArrayCstr* array = new PD_OneDimArrayCstr;
   array->size = vec.size();
-  array->data = vec.empty() ? NULL : new char*[vec.size()];
+  array->data = vec.empty() ? nullptr : new char*[vec.size()];
   for (size_t index = 0u; index < vec.size(); ++index) {
     array->data[index] = new char[vec[index].size() + 1];
     memcpy(array->data[index], vec[index].c_str(), vec[index].size() + 1);
@@ -116,7 +116,7 @@ __pd_give PD_Cstr* CvtStrToCstr(const std::string& str) {
   PD_Cstr* cstr = new PD_Cstr;
   if (str.empty()) {
     cstr->size = 0;
-    cstr->data = NULL;
+    cstr->data = nullptr;
   } else {
     cstr->size = str.length() + 1;
     cstr->data = new char[str.length() + 1];
@@ -128,7 +128,7 @@ __pd_give PD_Cstr* CvtStrToCstr(const std::string& str) {
 
 #define DESTROY_TWO_DIM_ARRAY(type)                                           \
   void PD_TwoDimArray##type##Destroy(__pd_take PD_TwoDimArray##type* array) { \
-    if (array != NULL) {                                                      \
+    if (array != nullptr) {                                                   \
       if (array->size != 0) {                                                 \
         for (size_t index = 0; index < array->size; ++index) {                \
           PD_OneDimArray##type##Destroy(array->data[index]);                  \
@@ -138,22 +138,23 @@ __pd_give PD_Cstr* CvtStrToCstr(const std::string& str) {
       delete array;                                                           \
     }                                                                         \
   }
-#define CONVERT_VEC_TO_TWO_DIM_ARRAY(type, Type, vec_type)                    \
-  __pd_give PD_TwoDimArray##Type* CvtVecToTwoDimArray##Type(                  \
-      const std::vector<std::vector<vec_type>>& vec) {                        \
-    PD_TwoDimArray##Type* array = new PD_TwoDimArray##Type;                   \
-    array->size = vec.size();                                                 \
-    array->data = vec.empty() ? NULL : new PD_OneDimArray##Type*[vec.size()]; \
-    for (size_t index = 0; index < vec.size(); ++index) {                     \
-      array->data[index] = CvtVecToOneDimArray##Type(vec[index]);             \
-    }                                                                         \
-    return array;                                                             \
+#define CONVERT_VEC_TO_TWO_DIM_ARRAY(type, Type, vec_type)             \
+  __pd_give PD_TwoDimArray##Type* CvtVecToTwoDimArray##Type(           \
+      const std::vector<std::vector<vec_type>>& vec) {                 \
+    PD_TwoDimArray##Type* array = new PD_TwoDimArray##Type;            \
+    array->size = vec.size();                                          \
+    array->data =                                                      \
+        vec.empty() ? nullptr : new PD_OneDimArray##Type*[vec.size()]; \
+    for (size_t index = 0; index < vec.size(); ++index) {              \
+      array->data[index] = CvtVecToOneDimArray##Type(vec[index]);      \
+    }                                                                  \
+    return array;                                                      \
   }
 #define CONVERT_TWO_DIM_ARRAY_TO_VEC(type, Type, vec_type)            \
   std::vector<std::vector<vec_type>> CvtTwoDimArrayToVec##Type(       \
       __pd_keep const PD_TwoDimArray##Type* array) {                  \
     std::vector<std::vector<vec_type>> vec;                           \
-    if (array != NULL && array->size != 0) {                          \
+    if (array != nullptr && array->size != 0) {                       \
       vec.resize(array->size);                                        \
       for (size_t index = 0; index < array->size; ++index) {          \
         vec[index] = CvtOneDimArrayToVec##Type((array->data)[index]); \
@@ -182,17 +183,17 @@ extern "C" {
 #endif
 
 void PD_IOInfoDestroy(__pd_take PD_IOInfo* io_info) {
-  if (io_info != NULL) {
+  if (io_info != nullptr) {
     PD_CstrDestroy(io_info->name);
-    io_info->name = NULL;
+    io_info->name = nullptr;
     PD_OneDimArrayInt64Destroy(io_info->shape);
-    io_info->shape = NULL;
+    io_info->shape = nullptr;
     delete io_info;
   }
 }
 
 void PD_IOInfosDestroy(__pd_take PD_IOInfos* io_infos) {
-  if (io_infos != NULL) {
+  if (io_infos != nullptr) {
     if (io_infos->size != 0) {
       for (size_t index = 0; index < io_infos->size; ++index) {
         PD_IOInfoDestroy(io_infos->io_info[index]);
@@ -200,7 +201,7 @@ void PD_IOInfosDestroy(__pd_take PD_IOInfos* io_infos) {
       io_infos->size = 0;
     }
     delete[] io_infos->io_info;
-    io_infos->io_info = NULL;
+    io_infos->io_info = nullptr;
     delete io_infos;
   }
 }

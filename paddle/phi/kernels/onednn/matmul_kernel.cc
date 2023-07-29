@@ -407,7 +407,7 @@ class MulPrimitiveFactory {
   memory Reorder(const memory::desc &src_desc,
                  const memory::desc &dst_desc,
                  void *src_data,
-                 void *dst_data = NULL) {
+                 void *dst_data = nullptr) {
     auto src_mem = memory(src_desc, engine_, src_data);
     auto dst_mem = dst_data ? memory(dst_desc, engine_, dst_data)
                             : memory(dst_desc, engine_);

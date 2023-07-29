@@ -291,7 +291,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       const platform::BKCLCommunicator *multi_bkcl_ctxs,
 #endif
       ir::Graph *result) const {
-    details::FusedAllReduceOpHandle *op_handle = NULL;
+    details::FusedAllReduceOpHandle *op_handle = nullptr;
     if (is_grad_merge) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle = new details::FusedGradMergeAllReduceOpHandle(

@@ -55,7 +55,7 @@ __pd_give PD_Config* PD_ConfigCreate() {
 }
 
 void PD_ConfigDestroy(__pd_take PD_Config* pd_config) {
-  if (pd_config != NULL) {
+  if (pd_config != nullptr) {
     delete reinterpret_cast<Config*>(pd_config);
   }
 }
