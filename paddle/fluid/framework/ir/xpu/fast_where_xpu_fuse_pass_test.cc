@@ -57,7 +57,7 @@ namespace ir {
                         #y,                                                   \
                         y_name));
 
-TEST(FastWhereXPUFusePass, one_fast_where_xpu_case0) {
+TEST(FastWhereXPUFusePass, one_case0) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition =
@@ -78,7 +78,7 @@ TEST(FastWhereXPUFusePass, one_fast_where_xpu_case0) {
   VERIFY_GRAPH(y, x)
 }
 
-TEST(FastWhereXPUFusePass, one_fast_where_xpu_case1) {
+TEST(FastWhereXPUFusePass, one_case1) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition =
@@ -99,7 +99,7 @@ TEST(FastWhereXPUFusePass, one_fast_where_xpu_case1) {
   VERIFY_GRAPH(x, y)
 }
 
-TEST(FastWhereXPUFusePass, one_fast_where_xpu_case2) {
+TEST(FastWhereXPUFusePass, one_case2) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition =
@@ -120,7 +120,7 @@ TEST(FastWhereXPUFusePass, one_fast_where_xpu_case2) {
   VERIFY_GRAPH(y, x)
 }
 
-TEST(FastWhereXPUFusePass, one_fast_where_xpu_case3) {
+TEST(FastWhereXPUFusePass, one_case3) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition =
@@ -141,7 +141,7 @@ TEST(FastWhereXPUFusePass, one_fast_where_xpu_case3) {
   VERIFY_GRAPH(x, y)
 }
 
-TEST(FastWhereXPUFusePass, one_fast_where_xpu_case4) {
+TEST(FastWhereXPUFusePass, one_case4) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition =
@@ -162,7 +162,7 @@ TEST(FastWhereXPUFusePass, one_fast_where_xpu_case4) {
   VERIFY_GRAPH(y, x)
 }
 
-TEST(FastWhereXPUFusePass, one_fast_where_xpu_case5) {
+TEST(FastWhereXPUFusePass, one_case5) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition =
@@ -224,7 +224,7 @@ TEST(FastWhereXPUFusePass, one_fast_where_xpu_case5) {
                         #y,                                                   \
                         y_name));
 
-TEST(FastWhereXPUFusePass, cascade_fast_where_xpu_case0) {
+TEST(FastWhereXPUFusePass, cascade_case0) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition0 =
@@ -260,7 +260,7 @@ TEST(FastWhereXPUFusePass, cascade_fast_where_xpu_case0) {
   VERIFY_GRAPH(logical_or, x, y)
 }
 
-TEST(FastWhereXPUFusePass, cascade_fast_where_xpu_case1) {
+TEST(FastWhereXPUFusePass, cascade_case1) {
   Layers layers;
   auto* block = layers.Block();
   auto* condition0 =
