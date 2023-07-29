@@ -72,15 +72,14 @@ typedef struct bbox_shape { /* Contour axis-aligned bounding box */
 
 /* Horizontal edge state transitions within scanbeam boundary */
 const std::array<std::array<h_state, 6>, 3> next_h_state = {
-    /*        ABOVE     BELOW     CROSS */
-    /*        L   R     L   R     L   R */
-    /* NH */
-    {BH, TH, TH, BH, NH, NH},
-    /* BH */
-    {NH, NH, NH, NH, TH, TH},
-    /* TH */
-    {NH, NH, NH, NH, BH, BH}};
-
+    {/*        ABOVE     BELOW     CROSS */
+     /*        L   R     L   R     L   R */
+     /* NH */
+     {{BH, TH, TH, BH, NH, NH}},
+     /* BH */
+     {{NH, NH, NH, NH, TH, TH}},
+     /* TH */
+     {NH, NH, NH, NH, BH, BH}}};
 /*
 ===========================================================================
                              Private Functions
@@ -946,7 +945,7 @@ void gpc_polygon_clip(gpc_op op,
   std::array<h_state, 2> horiz;
   std::array<int, 2> in;
   std::array<int, 2> exists;
-  std::array<int, 2> paritay = {LEFT, LEFT};
+  std::array<int, 2> parity = {LEFT, LEFT};
   int c = 0;
   int v = 0;
   int contributing = 0;
