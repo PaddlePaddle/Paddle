@@ -346,7 +346,7 @@ void Executor::Run(const ProgramDesc& program,
   ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
   std::unique_ptr<ProgramDesc> unique_ptr_of_copy_program;
   if (!has_feed_ops || !has_fetch_ops) {
-    unique_ptr_of_copy_program.reset(new ProgramDesc(program));
+    unique_ptr_of_copy_program = std::make_unique<ProgramDesc>(program);
     copy_program = unique_ptr_of_copy_program.get();
   }
   auto* global_block = copy_program->MutableBlock(0);
@@ -494,26 +494,28 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(place_, max_memory_size));
+        gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place_,
+                                                             max_memory_size);
       } else {
-        gc.reset(new DefaultStreamGarbageCollector(place_, max_memory_size));
+        gc = std::make_unique<DefaultStreamGarbageCollector>(place_,
+                                                             max_memory_size);
       }
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
     } else if (platform::is_cpu_place(place_)) {
-      gc.reset(new CPUGarbageCollector(place_, max_memory_size));
+      gc = std::make_unique<CPUGarbageCollector>(place_, max_memory_size);
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      gc.reset(new XPUGarbageCollector(place_, max_memory_size));
+      gc = std::make_unique<XPUGarbageCollector>(place_, max_memory_size);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
     } else if (platform::is_ipu_place(place_)) {
 #ifdef PADDLE_WITH_IPU
-      gc.reset(new IPUGarbageCollector(place_, max_memory_size));
+      gc = std::make_unique<IPUGarbageCollector>(place_, max_memory_size);
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
@@ -522,12 +524,12 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (IsFastEagerDeletionModeEnabled()) {
         VLOG(4) << "Use unsafe fast gc for " << place_ << ".";
-        gc.reset(new CustomDeviceUnsafeFastGarbageCollector(place_,
-                                                            max_memory_size));
+        gc = std::make_unique<CustomDeviceUnsafeFastGarbageCollector>(
+            place_, max_memory_size);
       } else {
         VLOG(4) << "Use default stream gc for " << place_ << ".";
-        gc.reset(
-            new CustomDefaultStreamGarbageCollector(place_, max_memory_size));
+        gc = std::make_unique<CustomDefaultStreamGarbageCollector>(
+            place_, max_memory_size);
       }
 #else
       PADDLE_THROW(platform::errors::Unimplemented("No CustomDevice gc found"));

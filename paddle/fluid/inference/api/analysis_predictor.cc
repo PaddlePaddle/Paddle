@@ -600,7 +600,7 @@ bool AnalysisPredictor::PrepareScope(
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
-    scope_.reset(new paddle::framework::Scope());
+    scope_ = std::make_unique<paddle::framework::Scope>();
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -641,7 +641,7 @@ bool AnalysisPredictor::PrepareProgram(
 }
 
 bool AnalysisPredictor::CreateExecutor() {
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  executor_ = std::make_unique<paddle::framework::NaiveExecutor>(place_);
   return true;
 }
 
@@ -722,8 +722,8 @@ bool AnalysisPredictor::PrepareFleetExecutor() {
   if (config_.dist_config().nranks() > 1 && !CommInit()) {
     return false;
   }
-  task_node_.reset(new distributed::TaskNode(inference_program_.get(),
-                                             config_.dist_config().rank()));
+  task_node_ = std::make_unique<distributed::TaskNode>(
+      inference_program_.get(), config_.dist_config().rank());
   // With auto cut, there is no concept of pp, no need to add dependency.
   task_node_->SetType("Compute");
   task_node_->Init(config_.use_feed_fetch_ops_enabled());
@@ -736,7 +736,7 @@ bool AnalysisPredictor::PrepareFleetExecutor() {
     rank_info->set_ip_port(config_.dist_config().trainer_endpoints()[i]);
     id_to_rank.insert({i, i});
   }
-  fleet_exe_.reset(new distributed::FleetExecutor(executor_desc_));
+  fleet_exe_ = std::make_unique<distributed::FleetExecutor>(executor_desc_);
   // NOTE: Vars of feed fetch ops are not persistable,
   // which will result in that those vars will be created in
   // the subscope (microscope) in fleet executor. This will
@@ -1341,7 +1341,7 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
 void AnalysisPredictor::PrepareArgument() {
   VLOG(3) << "AnalysisPredictor::PrepareArgument";
   // Init std::unique_ptr argument_.
-  argument_.reset(new Argument);
+  argument_ = std::make_unique<Argument>();
   argument_->SetUseGPU(config_.use_gpu());
   argument_->SetUseCutlass(config_.use_cutlass_);
   argument_->SetUseFcPadding(config_.use_fc_padding());
@@ -2420,7 +2420,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
   } else {
     proto.ParseFromString(config_.prog_file());
   }
-  inference_program_.reset(new framework::ProgramDesc(proto));
+  inference_program_ = std::make_unique<framework::ProgramDesc>(proto);
   return true;
 }
 
@@ -3106,7 +3106,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
           "The predictor pool size should be greater than 1, but it's (%d)",
           size));
   Config copy_config(config);
-  main_pred_.reset(new Predictor(config));
+  main_pred_ = std::make_unique<Predictor>(config);
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
       Config config_tmp(copy_config);

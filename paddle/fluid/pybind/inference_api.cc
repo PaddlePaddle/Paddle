@@ -499,8 +499,7 @@ void BindInferenceApi(py::module *m) {
   m->def("create_predictor",
          [](const paddle_infer::Config &config)
              -> std::unique_ptr<paddle_infer::Predictor> {
-           auto pred = std::unique_ptr<paddle_infer::Predictor>(
-               new paddle_infer::Predictor(config));
+           auto pred = std::make_unique<paddle_infer::Predictor>(config);
            return pred;
          });
   m->def(

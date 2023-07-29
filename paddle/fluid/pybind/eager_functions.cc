@@ -513,8 +513,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize phi tensor operants successfully";
   }
 

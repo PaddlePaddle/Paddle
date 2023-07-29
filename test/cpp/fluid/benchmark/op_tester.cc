@@ -63,7 +63,7 @@ void OpTester::Init(const OpTesterConfig &config) {
   }
 
   framework::InitDevices();
-  scope_.reset(new paddle::framework::Scope());
+  scope_ = std::make_unique<paddle::framework::Scope>();
 
   op_ = framework::OpRegistry::CreateOp(op_desc_);
   CreateVariables(scope_.get());

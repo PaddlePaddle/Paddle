@@ -95,10 +95,10 @@ bool NativePaddlePredictor::Init(
     paddle::framework::InitMemoryMethod();
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
-    scope_.reset(new paddle::framework::Scope());
+    scope_ = std::make_unique<paddle::framework::Scope>();
   }
 
-  executor_.reset(new paddle::framework::Executor(place_));
+  executor_ = std::make_unique<paddle::framework::Executor>(place_);
 
   // Initialize the inference program
   if (!config_.model_dir.empty()) {

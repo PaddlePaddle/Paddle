@@ -30,7 +30,7 @@ static std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
   graphs.reserve(place_num);
   for (size_t i = 0; i < place_num; ++i) {
     ProgramDesc empty;
-    graphs.emplace_back(std::unique_ptr<ir::Graph>(new ir::Graph(empty)));
+    graphs.emplace_back(std::make_unique<ir::Graph>(empty));
     auto &g = graphs.back();
     g->Set(kGraphVars, new GraphVars(1UL));
     g->Set(kGraphDepVars, new GraphDepVars);

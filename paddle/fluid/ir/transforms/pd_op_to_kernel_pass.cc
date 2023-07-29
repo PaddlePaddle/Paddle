@@ -260,7 +260,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
     std::unique_ptr<OpYamlInfoParser> op_info_parser;
     if (op_info_interface) {
-      op_info_parser.reset(new OpYamlInfoParser(op_info_interface.GetOpInfo()));
+      op_info_parser =
+          std::make_unique<OpYamlInfoParser>(op_info_interface.GetOpInfo());
     }
 
     std::string kernel_fn_str;
