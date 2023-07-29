@@ -18,6 +18,7 @@
 #include <cstdint>  // for int64_t
 #include <numeric>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/hostdevice.h"
 
 namespace phi {
@@ -45,10 +46,11 @@ HOSTDEVICE inline size_t LowerBound(const T1 *x, size_t num, const T2 &val) {
   // https://en.cppreference.com/w/cpp/algorithm/lower_bound
   auto *first = x;
   int64_t count = static_cast<int64_t>(num);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   while (count > 0) {
     int64_t step = (count >> 1);
     auto *it = first + step;
-    if (static_cast<float>(*it) < static_cast<float>(val)) {
+    if (static_cast<MPType>(*it) < static_cast<MPType>(val)) {
       first = ++it;
       count -= (step + 1);
     } else {
@@ -68,10 +70,11 @@ HOSTDEVICE inline size_t UpperBound(const T1 *x, size_t num, const T2 &val) {
   // https://en.cppreference.com/w/cpp/algorithm/upper_bound
   auto *first = x;
   int64_t count = static_cast<int64_t>(num);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   while (count > 0) {
     auto step = (count >> 1);
     auto *it = first + step;
-    if (static_cast<float>(val) < static_cast<float>(*it)) {
+    if (static_cast<MPType>(val) < static_cast<MPType>(*it)) {
       count = step;
     } else {
       first = ++it;
