@@ -58,6 +58,16 @@ __host__ __device__ inline __nv_bfloat162 float22bfloat162_rn(const float2 a) {
 
 #endif
 
+template <typename T>
+__host__ __device__ inline float __2float(const T a) {
+  return static_cast<float>(a);
+}
+
+template <>
+__host__ __device__ inline float __2float<__half>(const __half a) {
+  return __half2float(a);
+}
+
 struct GroupSums {
   // Is it the 1st element of the group?
   int32_t flag;
@@ -98,7 +108,7 @@ static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void UpdateSum(const T* srcX, float* sum, float* sumSq) {
-  const float src_data = static_cast<const float>(*srcX);
+  float src_data = phi::__2float<T>(*srcX);
   *sum += src_data;
   *sumSq += src_data * src_data;
 }
@@ -314,15 +324,15 @@ inline __device__ void GroupNormCompute(int32_t hwBegin,
                                         const GroupNormNHWCParams<T>& params,
                                         float mean,
                                         float invStdDev) {
-  const float gamma = static_cast<const float>(
-      *(reinterpret_cast<T const*>(params.gamma) + ci));
-  const float beta =
-      static_cast<const float>(*(reinterpret_cast<T const*>(params.beta) + ci));
+  float gamma =
+      phi::__2float<T>(*(reinterpret_cast<T const*>(params.gamma) + ci));
+  float beta =
+      phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
 
   for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
     // The src/dst offset.
     int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
-    const float src_data = static_cast<const float>(params.srcX[offset]);
+    const float src_data = phi::__2float<T>(params.srcX[offset]);
 
     // Normalize the channels.
     float dst_data = (src_data - mean) * invStdDev;
