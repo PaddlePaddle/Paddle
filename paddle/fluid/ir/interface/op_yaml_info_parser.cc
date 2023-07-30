@@ -96,10 +96,6 @@ const std::vector<int>& OpYamlInfoParser::NoNeedBufferIds() const {
   return no_need_buffer_ids_;
 }
 
-const std::vector<int>& OpYamlInfoParser::NoNeedBufferIds() const {
-  return no_need_buffer_ids_;
-}
-
 bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
   auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
   for (size_t i = 0; i < inplace_info.size(); i++) {
