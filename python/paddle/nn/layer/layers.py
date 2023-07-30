@@ -1048,9 +1048,9 @@ class Layer:
                 [[ 0.01985580, -0.40268910,  0.41172385, -0.47249708, -0.09002256,
                 -0.00533628, -0.52048630,  0.62360322,  0.20848787, -0.02033746],
                 [ 0.58281910,  0.12841827,  0.12907702,  0.02325618, -0.07746267,
-                  0.31950659, -0.37924835, -0.59209681, -0.11732036, -0.58378261],
+                0.31950659, -0.37924835, -0.59209681, -0.11732036, -0.58378261],
                 [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
-                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
+                0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
         params_set = set()
         named_sublayers = (
@@ -1703,7 +1703,7 @@ class Layer:
                 ...
                 >>> mylayer = Mylayer()
                 >>> print(dir(mylayer))
-                ['__call__', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setstate__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_apply', '_buffers', '_build_once', '_built', '_cast_to_low_precison', '_customized_attrs', '_dtype', '_dygraph_call_func', '_forward_post_hooks', '_forward_pre_hooks', '_full_name', '_helper', '_init_in_dynamic_mode', '_loaddict_holder', '_non_persistable_buffer_names_set', '_obtain_parameters_buffers', '_op_recorder', '_original_funcs', '_parameters', '_set_op_attrs', '_startup_program', '_state_dict_hooks', '_state_dict_impl', '_sub_layers', '_to_impl', '_transform', 'add_parameter', 'add_sublayer', 'apply', 'backward', 'bfloat16', 'buffers', 'children', 'clear_gradients', 'conv2d', 'create_parameter', 'create_tensor', 'create_variable', 'embedding', 'eval', 'extra_repr', 'float', 'float16', 'forward', 'full_name', 'h_0', 'linear1', 'linear2', 'load_dict', 'named_buffers', 'named_children', 'named_parameters', 'named_sublayers', 'parameters', 'register_buffer', 'register_forward_post_hook', 'register_forward_pre_hook', 'register_state_dict_hook', 'set_dict', 'set_state_dict', 'state_dict', 'sublayers', 'to', 'to_static_state_dict', 'train', 'training']
+                ['__call__', '__class__', '__delattr__', '__dict__', ..., 'training']
         """
         method = dir(self.__class__)
         attrs = list(self.__dict__.keys())
@@ -2286,8 +2286,8 @@ class Layer:
                 >>> model = Model()
                 >>> model.float()
                 Model(
-                (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
-                (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                    (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
                 )
         '''
 
@@ -2342,8 +2342,8 @@ class Layer:
                 >>> model = Model()
                 >>> model.float16()
                 Model(
-                (linear): Linear(in_features=1, out_features=1, dtype=paddle.float16)
-                (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                    (linear): Linear(in_features=1, out_features=1, dtype=paddle.float16)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
                 )
         '''
 
@@ -2406,8 +2406,8 @@ class Layer:
                 >>> model = Model()
                 >>> model.bfloat16()
                 Model(
-                (linear): Linear(in_features=1, out_features=1, dtype=float32)
-                (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                    (linear): Linear(in_features=1, out_features=1, dtype=float32)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
                 )
         '''
 
