@@ -39,6 +39,8 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::XPU;
     case AllocationType::IPU:
       return Backend::IPU;
+    case AllocationType::UNDEFINED:
+      return Backend::UNDEFINED;
     case AllocationType::CUSTOM:
       return static_cast<Backend>(
           static_cast<size_t>(Backend::NUM_BACKENDS) +
