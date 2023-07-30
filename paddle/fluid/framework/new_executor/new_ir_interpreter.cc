@@ -1045,7 +1045,18 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
             &(op_func_node->infer_meta_context_));
       }
       VLOG(5) << "after run infer meta";
-      (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+
+      if (op_func_node->fluid_op) {
+        // run fluid op
+        ExecutionContext exe_ctx(*(op_func_node->operator_base_.get()),
+                                 *scope_,
+                                 *(op_func_node->dev_ctx_),
+                                 *(op_func_node->runtime_ctx_.get()));
+        (*(op_func_node->phi_kernel_))(&exe_ctx);
+
+      } else {
+        (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+      }
       VLOG(5) << "after run kernel";
     } else if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
