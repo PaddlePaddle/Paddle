@@ -168,6 +168,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (x_shape.empty() && unary_list.find(op_type) != unary_list.end()) {
         VLOG(3) << op_type
                 << " op does not support 0 dim input when TensorRT < 8.6.";
+        std::cout << "trt version = "
+                  << (NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 +
+                      NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD)
+                  << std::endl;
         return false;
       }
 #endif
@@ -2207,11 +2211,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
-
-      } else {
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
-            !PADDLE_GET_CONST(bool, desc.GetAttr("keep_dim")))
-          return false;
       }
 
       auto dtype = x_var_desc->GetDataType();

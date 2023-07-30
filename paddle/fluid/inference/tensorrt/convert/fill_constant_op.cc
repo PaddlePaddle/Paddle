@@ -53,8 +53,12 @@ class FillConstantOpConverter : public OpConverter {
       for (auto input_name : input_names) {
         auto input_tensor = engine_->GetITensor(input_name);
         output_shape_tensors.push_back(input_tensor);
+        VLOG(3) << "fill_constant's input tensor name is " << input_name
+                << " type = " << static_cast<int32_t>(input_tensor->getType());
       }
       auto output_shape_tensor = Concat(output_shape_tensors);
+      VLOG(3) << "fill_constant's output_shape_tensor type = "
+              << static_cast<int32_t>(output_shape_tensor->getType());
       nvinfer1::ITensor* value_tensor;
       nvinfer1::ITensor* beta_tensor;
 
@@ -100,13 +104,13 @@ class FillConstantOpConverter : public OpConverter {
       void* trt_data = nullptr;
       size_t trt_num;
       if (dtype == 2 || dtype == 3) {  // int,int64
-        auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
+        auto* tmp_ptr = out_tensor->data<int>();
         for (int64_t i = 0; i < out_tensor->numel(); i++)
           tmp_ptr[i] = std::stoi(str_value);
         trt_dtype = nvinfer1::DataType::kINT32;
         trt_data = static_cast<void*>(tmp_ptr);
       } else if (dtype == 5) {  // float
-        auto* tmp_ptr = out_tensor->mutable_data<float>(platform::CPUPlace());
+        auto* tmp_ptr = out_tensor->data<float>();
         for (int64_t i = 0; i < out_tensor->numel(); i++)
           tmp_ptr[i] = std::stof(str_value);
         trt_data = static_cast<void*>(tmp_ptr);
