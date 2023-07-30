@@ -565,7 +565,7 @@ void LarsMomentumKernel(
       for (int i = 0; i < op_num; ++i) {
         lars_warpper.master_p_out_arr[i] =
             dev_ctx.template Alloc<T>(master_param_out[i]);
-        PADDLE_ENFORCE_EQ(master_param[i]->data<MT>(),
+        PADDLE_ENFORCE_EQ(master_param.get()[i]->data<MT>(),
                           lars_warpper.master_p_out_arr[i],
                           errors::InvalidArgument(
                               "Input(MasterParam) and Output(MasterParamOut) "
@@ -597,7 +597,7 @@ void LarsMomentumKernel(
     auto* param_out_data = dev_ctx.template Alloc<T>(param_out[0]);
     auto* velocity_out_data = dev_ctx.template Alloc<T>(velocity_out[0]);
     const MT* master_param_data =
-        multi_precision ? master_param[0]->data<MT>() : nullptr;
+        multi_precision ? master_param.get()[0]->data<MT>() : nullptr;
     MT* master_param_out_data =
         multi_precision ? dev_ctx.template Alloc<T>(master_param_out[0])
                         : nullptr;
@@ -645,7 +645,7 @@ void LarsMomentumKernel(
 #else
   for (int i = 0; i < op_num; ++i) {
     const MT* master_param_data =
-        multi_precision ? master_param[i]->data<MT>() : nullptr;
+        multi_precision ? master_param.get()[i]->data<MT>() : nullptr;
     MT* master_param_out_data =
         multi_precision ? dev_ctx.template Alloc<T>(master_param_out[i]);
                         : nullptr;
