@@ -16,7 +16,6 @@
 
 #include <thrust/execution_policy.h>
 #include <thrust/reduce.h>
-#include <array>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -39,7 +38,7 @@ __global__ void AccuracyCudaKernel(const int N,
                                    int* total_data) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   int count = 0;
-  __shared__ std::array<int, BlockSize> total;
+  __shared__ int total[BlockSize];  // NOLINT
 
   // support only 1 block
   for (int i = threadIdx.x; i < (N); i += BlockSize) {
