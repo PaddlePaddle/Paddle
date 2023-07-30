@@ -53,6 +53,42 @@ XDOCTEST_CONFIG = {
 }
 
 
+def _patch_global_state(debug, verbose):
+    # patch xdoctest global_state
+    from xdoctest import global_state
+
+    _debug_xdoctest = debug and verbose > 2
+    global_state.DEBUG = _debug_xdoctest
+    global_state.DEBUG_PARSER = global_state.DEBUG_PARSER and _debug_xdoctest
+    global_state.DEBUG_CORE = global_state.DEBUG_CORE and _debug_xdoctest
+    global_state.DEBUG_RUNNER = global_state.DEBUG_RUNNER and _debug_xdoctest
+    global_state.DEBUG_DOCTEST = global_state.DEBUG_DOCTEST and _debug_xdoctest
+
+
+def _patch_tensor_place():
+    from xdoctest import checker
+
+    pattern_tensor = re.compile(
+        r"""
+        (Tensor\(.*?place=)     # Tensor start
+        (.*?)                   # Place=(XXX)
+        (\,.*?\))
+        """,
+        re.X | re.S,
+    )
+
+    _check_match = checker._check_match
+
+    def check_match(got, want, runstate=None):
+        return _check_match(
+            got=pattern_tensor.sub(r'\1Place(cpu)\3', got),
+            want=pattern_tensor.sub(r'\1Place(cpu)\3', want),
+            runstate=runstate,
+        )
+
+    checker._check_match = check_match
+
+
 class Xdoctester(DocTester):
     """A Xdoctest doctester."""
 
@@ -63,6 +99,8 @@ class Xdoctester(DocTester):
         target='codeblock',
         mode='native',
         verbose=2,
+        patch_global_state=True,
+        patch_tensor_place=True,
         **config,
     ):
         self.debug = debug
@@ -73,21 +111,11 @@ class Xdoctester(DocTester):
         self.verbose = verbose
         self.config = {**XDOCTEST_CONFIG, **(config or {})}
 
-        # patch xdoctest global_state
-        from xdoctest import global_state
+        if patch_global_state:
+            _patch_global_state(self.debug, self.verbose)
 
-        _debug_xdoctest = debug and verbose > 2
-        global_state.DEBUG = _debug_xdoctest
-        global_state.DEBUG_PARSER = (
-            global_state.DEBUG_PARSER and _debug_xdoctest
-        )
-        global_state.DEBUG_CORE = global_state.DEBUG_CORE and _debug_xdoctest
-        global_state.DEBUG_RUNNER = (
-            global_state.DEBUG_RUNNER and _debug_xdoctest
-        )
-        global_state.DEBUG_DOCTEST = (
-            global_state.DEBUG_DOCTEST and _debug_xdoctest
-        )
+        if patch_tensor_place:
+            _patch_tensor_place()
 
         self.docstring_parser = functools.partial(
             xdoctest.core.parse_docstr_examples, style=self.style

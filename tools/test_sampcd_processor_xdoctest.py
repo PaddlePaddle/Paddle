@@ -17,6 +17,7 @@
 import os
 import unittest
 
+import xdoctest
 from sampcd_processor_utils import get_test_results
 from sampcd_processor_xdoctest import Xdoctester
 
@@ -143,6 +144,196 @@ class TestXdoctester(unittest.TestCase):
 
 
 class TestGetTestResults(unittest.TestCase):
+    def test_patch_tensor(self):
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(style='freeform', target='codeblock')
+        doctester.prepare(test_capacity)
+
+        docstrings_to_test = {
+            'gpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.20000000])
+
+            """,
+            'cpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+
+            """,
+            'gpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+
+            """,
+            'cpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'gpu_to_cpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor([[1,2,3], [2,3,4], [3,4,5]])
+                    >>> # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    >>> # [[1, 2, 3],
+                    >>> # [2, 3, 4],
+                    >>> # [3, 4, 5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+                    [[1, 2, 3],
+                    [2, 3, 4],
+                    [3, 4, 5]])
+            """,
+            'cpu_to_gpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor([[1,2,3], [2,3,4], [3,4,5]])
+                    >>> # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+                    >>> # [[1, 2, 3],
+                    >>> # [2, 3, 4],
+                    >>> # [3, 4, 5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [[1, 2, 3],
+                    [2, 3, 4],
+                    [3, 4, 5]])
+            """,
+        }
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 6)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5 = test_results
+
+        self.assertIn('gpu_to_gpu', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('cpu_to_cpu', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('gpu_to_cpu', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        self.assertIn('cpu_to_gpu', tr_3.name)
+        self.assertTrue(tr_3.passed)
+
+        self.assertIn('gpu_to_cpu_array', tr_4.name)
+        self.assertTrue(tr_4.passed)
+
+        self.assertIn('cpu_to_gpu_array', tr_5.name)
+        self.assertTrue(tr_5.passed)
+
+        # reload xdoctest.checker
+        import importlib
+
+        importlib.reload(xdoctest.checker)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform', target='codeblock', patch_tensor_place=False
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 6)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5 = test_results
+
+        self.assertIn('gpu_to_gpu', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('cpu_to_cpu', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('gpu_to_cpu', tr_2.name)
+        self.assertFalse(tr_2.passed)
+
+        self.assertIn('cpu_to_gpu', tr_3.name)
+        self.assertFalse(tr_3.passed)
+
+        self.assertIn('gpu_to_cpu_array', tr_4.name)
+        self.assertFalse(tr_4.passed)
+
+        self.assertIn('cpu_to_gpu_array', tr_5.name)
+        self.assertFalse(tr_5.passed)
+
     def test_run_cpu(self):
         _clear_environ()
 
