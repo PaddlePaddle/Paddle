@@ -42,7 +42,7 @@ file(GLOB kernel_primitive_h "primitive/*.h")
 file(
   GLOB kernel_cu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "gpu/a*.cu")
+  "gpu/scale_kernel.cu")
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
@@ -121,10 +121,10 @@ file(
   "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc"
   "sparse/xpu/*.cc")
 
-#if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
-#  collect_srcs(kernels_srcs SRCS ${kernel_cu})
-#  kernel_declare("${kernel_cu}")
-#endif()
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
+  collect_srcs(kernels_srcs SRCS ${kernel_cu})
+  kernel_declare("${kernel_cu}")
+endif()
 
 if(WITH_XPU)
   if(WITH_XPU_KP)

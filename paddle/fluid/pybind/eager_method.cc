@@ -230,6 +230,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+#elif defined(PADDLE_WITH_MUSA)
+    gpuMemcpyKind kind = musaMemcpyDeviceToHost;
 #endif
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";

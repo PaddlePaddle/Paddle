@@ -131,7 +131,7 @@ struct NumTraits<float16> : GenericNumTraits<float16> {
     return phi::dtype::raw_uint16_to_float16(0x7c01);
   }
 };
-#if 0
+
 namespace numext {
 
 //////////// bfloat methods /////////////
@@ -435,7 +435,7 @@ HOSTDEVICE inline float16 maxi(const float16& a, const float16& b) {
 }
 
 }  // namespace numext
-#endif
+
 }  // namespace Eigen
 
 #endif  // __xpu__

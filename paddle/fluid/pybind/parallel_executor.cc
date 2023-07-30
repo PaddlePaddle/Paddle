@@ -130,7 +130,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
-#ifndef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"

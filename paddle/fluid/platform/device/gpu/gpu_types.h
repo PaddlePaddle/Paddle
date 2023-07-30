@@ -27,7 +27,7 @@
 #include <musa_runtime.h>
 #include <mublas.h>
 #include <mudnn.h>
-using mudnnHandle_t = ::musa::dnn::Handle*;
+using mudnnHandle_t = class Handle*;
 //TODO(Xiaokang Shang)
 #else
 #include <cuda_runtime.h>

@@ -25,10 +25,10 @@ namespace phi {
 
 #elif defined(PADDLE_WITH_MUSA)
   //using mudnnHandle_t = ::musa::dnn::Handle;
-  using mudnnHandle_t = bool**;
-  using mublasLtHandle_t = bool**;
-  using musparseHandle_t = bool**;
-  using musolverDnHandle_t = bool**;
+  //using mudnnHandle_t = bool**;
+  //using mublasLtHandle_t = bool**;
+  //using musparseHandle_t = bool**;
+  //using musolverDnHandle_t = bool**;
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
   using GPU_TYPE = MUSA_TYPE;
 

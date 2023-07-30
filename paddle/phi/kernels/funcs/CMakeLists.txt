@@ -8,12 +8,18 @@ file(
   GLOB func_cc_srcs
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "*.cc")
+#if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
+#  file(
+#    GLOB func_cu_srcs
+#    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+#    "*.cu")
+#endif()
 if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   file(
     GLOB func_cu_srcs
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "*.cu")
+    "concat_and_split_functor.cu")
 endif()
 
-#collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})
-collect_srcs(kernels_srcs SRCS ${func_cc_srcs})
+collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})
+#collect_srcs(kernels_srcs SRCS ${func_cc_srcs})
