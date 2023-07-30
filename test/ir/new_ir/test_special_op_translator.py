@@ -194,5 +194,21 @@ class TestReduceOpTranscriber(unittest.TestCase):
                 np.testing.assert_array_equal(out[0], np.all(arr, axis=0))
 
 
+class TestIndexPutOpTranscriber(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.randn([2, 3])
+                indices = [paddle.randint(0, 2, [2]), paddle.randint(0, 1, [2])]
+                value = paddle.randn([2])
+                y = paddle.index_put(x, indices, value, False)
+
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+
 if __name__ == "__main__":
     unittest.main()

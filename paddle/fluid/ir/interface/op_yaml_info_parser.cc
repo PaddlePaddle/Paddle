@@ -89,7 +89,11 @@ const std::map<std::string, int>& OpYamlInfoParser::InputName2Id() const {
 }
 
 const std::map<std::string, int>& OpYamlInfoParser::OutputName2Id() const {
-  return input_name2id_;
+  return output_name2id_;
+}
+
+const std::vector<int>& OpYamlInfoParser::NoNeedBufferIds() const {
+  return no_need_buffer_ids_;
 }
 
 const std::vector<int>& OpYamlInfoParser::NoNeedBufferIds() const {

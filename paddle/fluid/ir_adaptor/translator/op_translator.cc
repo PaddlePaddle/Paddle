@@ -307,7 +307,7 @@ ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
                                         const OpDesc& op_desc) {
   std::string target_op_name =
       kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
-  if (IsInplace(op_desc)) {
+  if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
   VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
