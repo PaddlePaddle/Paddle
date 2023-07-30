@@ -647,27 +647,27 @@ void LarsMomentumKernel(
     const MT* master_param_data =
         multi_precision ? master_param.get()[i]->data<MT>() : nullptr;
     MT* master_param_out_data =
-        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[i]);
+        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[i])
                         : nullptr;
-                        SeparatedLarsMomentumOpCUDAKernel<T, MT>(
-                            dev_ctx,
-                            param[i]->data<T>(),
-                            dev_ctx.template Alloc<T>(param_out[i]),
-                            velocity[i]->data<MT>(),
-                            dev_ctx.template Alloc<T>(velocity_out[i]),
-                            grad[i]->data<T>(),
-                            learning_rate[i]->data<MT>(),
-                            p_buffer,
-                            g_buffer,
-                            mu_,
-                            lars_coeff_,
-                            weight_decay_arr[i],
-                            epsilon_,
-                            rescale_grad_,
-                            param[i]->numel(),
-                            master_param_data,
-                            master_param_out_data,
-                            multi_precision);
+    SeparatedLarsMomentumOpCUDAKernel<T, MT>(
+        dev_ctx,
+        param[i]->data<T>(),
+        dev_ctx.template Alloc<T>(param_out[i]),
+        velocity[i]->data<MT>(),
+        dev_ctx.template Alloc<T>(velocity_out[i]),
+        grad[i]->data<T>(),
+        learning_rate[i]->data<MT>(),
+        p_buffer,
+        g_buffer,
+        mu_,
+        lars_coeff_,
+        weight_decay_arr[i],
+        epsilon_,
+        rescale_grad_,
+        param[i]->numel(),
+        master_param_data,
+        master_param_out_data,
+        multi_precision);
   }
 #endif
 }
