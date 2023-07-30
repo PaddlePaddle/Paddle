@@ -49,6 +49,11 @@ class TestXdoctester(unittest.TestCase):
         docstring_target = "# xdoctest: -SKIP\n"
         self.assertEqual(docstring_output, docstring_target)
 
+        docstring_input = '# doctest: +SKIP("skip this test...")\n'
+        docstring_output = doctester.convert_directive(docstring_input)
+        docstring_target = '# xdoctest: +SKIP("skip this test...")\n'
+        self.assertEqual(docstring_output, docstring_target)
+
         docstring_input = """
             placeholder
 

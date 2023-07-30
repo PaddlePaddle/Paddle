@@ -95,19 +95,13 @@ class Xdoctester(DocTester):
 
         self.directive_pattern = re.compile(
             r"""
-            (?<=(\#\s{1}))  # positive lookbehind, directive begins
-            (doctest)   # directive prefix, which should be replaced
-            (?= # positive lookahead, directive content
-                (
-                    :\s+
-                    [\+\-]
-                    (REQUIRES|SKIP)
-                    (\((env\s*:\s*(CPU|GPU|XPU|DISTRIBUTED)\s*,?\s*)+\))?
-                )
-                \s*\n+
-            )""",
+            (?<=(\#\s))     # positive lookbehind, directive begins
+            (doctest)       # directive prefix, which should be replaced
+            (?=(:\s*.*\n))  # positive lookahead, directive content
+            """,
             re.X,
         )
+
         self.directive_prefix = 'xdoctest'
 
     def convert_directive(self, docstring: str) -> str:
