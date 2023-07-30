@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <algorithm>
-#include <array>
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -40,7 +39,7 @@ __global__ void batch_transpose_kernel(T* output,
                                        int swizzle) {
   const int num = M * N;
   // "+1" to avoid smem bank conflict
-  __shared__ std::array<T, static_cast<int>(32 * (32 + 1))> shbuf;
+  __shared__ T shbuf[32 * (32 + 1)];  // NOLINT
   const int32_t tid = threadIdx.y * blockDim.x + threadIdx.x;
   const int32_t wid = tid / 32;
   const int32_t lid = tid % 32;
