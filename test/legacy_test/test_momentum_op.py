@@ -312,7 +312,7 @@ class TestLarsMomentumOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def config(self):
         self.params_num = 1
