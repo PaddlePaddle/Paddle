@@ -97,7 +97,7 @@ class QATOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss,
             startup_program=startup_program,
-            parameter=parameter_list,
+            parameters=parameter_list,
             no_grad_set=no_grad_set,
         )
         device = paddle.device.get_device()
