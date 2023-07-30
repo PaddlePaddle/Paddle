@@ -57,6 +57,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   switch (backend) {
     case phi::Backend::CPU:
       return phi::CPUPlace();
+    case phi::Backend::UNDEFINED:
+      return phi::Place();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case phi::Backend::GPU:
       return phi::GPUPlace(
