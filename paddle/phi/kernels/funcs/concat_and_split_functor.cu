@@ -59,7 +59,7 @@ static inline void GetBlockDims(const phi::GPUContext& context,
 template <typename T, int Size>
 struct PointerWrapper {
  public:
-  const std::array<void*, Size> ins_addr;
+  const void* ins_addr[Size];  // NOLINT
   __device__ inline const void* operator[](int i) const { return ins_addr[i]; }
 
   PointerWrapper() {}
