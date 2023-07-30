@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -25,7 +27,7 @@ void FastWhereXPUKernel(const Context& ctx,
                         const DenseTensor& y,
                         DenseTensor* out) {
 #ifndef PADDLE_WITH_XPU_PLUGIN
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(paddle::platform::errors::Unimplemented(
       "Unsupported fast_where_xpu kernel, add -DWITH_XPU_PLUGIN=ON to cmake "
       "options to rebuild."));
 #else
