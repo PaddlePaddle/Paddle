@@ -128,8 +128,13 @@ def _patch_float_precision(digits):
 
     def _sub_number(match_obj, digits):
         match_str = match_obj.group()
+
         if 'j' in match_str or 'J' in match_str:
-            match_num = complex(match_str)
+            try:
+                match_num = complex(match_str)
+            except ValueError:
+                return match_str
+
             return (
                 str(
                     complex(
@@ -141,7 +146,10 @@ def _patch_float_precision(digits):
                 .strip(')')
             )
         else:
-            return str(round(float(match_str), digits))
+            try:
+                return str(round(float(match_str), digits))
+            except ValueError:
+                return match_str
 
     sub_number = functools.partial(_sub_number, digits=digits)
 
