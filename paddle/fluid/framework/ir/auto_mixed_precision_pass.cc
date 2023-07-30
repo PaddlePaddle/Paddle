@@ -406,10 +406,7 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
         support_low_precision = OpSupportPrecision(
             GetOpOriginalType(op_type), backend_, low_precision_, black_list_);
 
-        std::unordered_set<std::string> check_dtype_op_blacklist(
-            {"arg_max", "arg_min"});
-        if (op_node->Op()->HasAttr("dtype") &&
-            !check_dtype_op_blacklist.count(GetOpOriginalType(op_type))) {
+        if (op_node->Op()->HasAttr("dtype")) {
           auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
           support_low_precision =
               support_low_precision &&
