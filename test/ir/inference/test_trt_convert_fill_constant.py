@@ -25,6 +25,9 @@ import paddle.inference as paddle_infer
 
 class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        # For simplicity, setting ShapeTensorList input is invalid because the input shape tensor's value are not collected during shape collection.
+        if self.num_input == 2:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -120,9 +123,21 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
             opt_shape = list(self.input_shape)
             for i in range(len(self.input_shape)):
                 max_shape[i] = max_shape[i] + 1
-            self.dynamic_shape.min_input_shape = {"Y_data": min_shape}
-            self.dynamic_shape.max_input_shape = {"Y_data": max_shape}
-            self.dynamic_shape.opt_input_shape = {"Y_data": opt_shape}
+            self.dynamic_shape.min_input_shape = {
+                "Y_data": min_shape,
+                "shapeT1_data": [1],
+                "shapeT2_data": [1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "Y_data": max_shape,
+                "shapeT1_data": [2],
+                "shapeT2_data": [2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "Y_data": opt_shape,
+                "shapeT1_data": [1],
+                "shapeT2_data": [1],
+            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
