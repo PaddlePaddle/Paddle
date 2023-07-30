@@ -101,15 +101,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
-        dnn_embedding = paddle.static.nn.embedding(
-            is_distributed=False,
+        dnn_embedding = paddle.static.nn.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
-            is_sparse=True,
             padding_idx=0,
         )
         dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
@@ -129,15 +127,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embedding = paddle.static.nn.embedding(
-            is_distributed=False,
+        lr_embedding = paddle.static.nn.sparse_embedding(
             input=lr_data,
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
-            is_sparse=True,
             padding_idx=0,
         )
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(

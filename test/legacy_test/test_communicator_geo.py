@@ -36,14 +36,13 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             name='x1', shape=[-1, 1], dtype='int64', lod_level=1
         )
 
-        emb = paddle.static.nn.embedding(
+        emb = paddle.static.nn.sparse_embedding(
             input=x1,
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
-            is_sparse=True,
         )
 
         pool = paddle.static.nn.sequence_lod.sequence_pool(
