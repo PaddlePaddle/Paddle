@@ -43,8 +43,9 @@ void FastWhereXPUKernel(const Context& ctx,
           y.dims(),
           "]"));
 #ifndef PADDLE_WITH_XPU_PLUGIN
-  LOG(WARNING) << "Add -DWITH_XPU_PLUGIN=ON to build "
-                  "xpu::plugin::fast_where(), or use xpu::select() instead.";
+  LOG(WARNING)
+      << "Add -DWITH_XPU_PLUGIN=ON to build xpu::plugin::fast_where(), or use "
+         "xpu::select() instead, which leads low performance.";
   int r = xpu::select<XPUType>(ctx.x_context(),
                                condition_data,
                                x_data,
