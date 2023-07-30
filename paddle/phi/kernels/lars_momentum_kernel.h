@@ -20,20 +20,21 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LarsMomentumKernel(const Context& dev_ctx,
-                        const std::vector<const DenseTensor*>& param,
-                        const std::vector<const DenseTensor*>& velocity,
-                        const std::vector<const DenseTensor*>& learning_rate,
-                        const std::vector<const DenseTensor*>& grad,
-                        const paddle::optional<DenseTensor>& master_param,
-                        const std::vector<float>& weight_decay_arr,
-                        float mu,
-                        float lars_coeff,
-                        float epsilon,
-                        bool multi_precision,
-                        float rescale_grad,
-                        std::vector<DenseTensor*> param_out,
-                        std::vector<DenseTensor*> velocity_out,
-                        std::vector<DenseTensor*> master_param_out);
+void LarsMomentumKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& velocity,
+    const std::vector<const DenseTensor*>& learning_rate,
+    const std::vector<const DenseTensor*>& grad,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const std::vector<float>& weight_decay_arr,
+    float mu,
+    float lars_coeff,
+    float epsilon,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> velocity_out,
+    std::vector<DenseTensor*> master_param_out);
 
 }  // namespace phi

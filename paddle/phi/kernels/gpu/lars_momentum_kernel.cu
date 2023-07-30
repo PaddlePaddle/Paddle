@@ -477,29 +477,30 @@ inline void SeparatedLarsMomentumOpCUDAKernel(const GPUContext& cuda_ctx,
 }
 
 template <typename T, typename Context>
-void LarsMomentumKernel(const Context& dev_ctx,
-                        const std::vector<const DenseTensor*>& param,
-                        const std::vector<const DenseTensor*>& velocity,
-                        const std::vector<const DenseTensor*>& learning_rate,
-                        const std::vector<const DenseTensor*>& grad,
-                        const paddle::optional<DenseTensor>& master_param,
-                        const std::vector<float>& weight_decay_arr,
-                        float mu,
-                        float lars_coeff,
-                        float epsilon,
-                        bool multi_precision,
-                        float rescale_grad,
-                        std::vector<DenseTensor*> param_out,
-                        std::vector<DenseTensor*> velocity_out,
-                        std::vector<DenseTensor*> master_param_out) {
+void LarsMomentumKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& velocity,
+    const std::vector<const DenseTensor*>& learning_rate,
+    const std::vector<const DenseTensor*>& grad,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const std::vector<float>& weight_decay_arr,
+    float mu,
+    float lars_coeff,
+    float epsilon,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> velocity_out,
+    std::vector<DenseTensor*> master_param_out) {
   using MT = MultiPrecisionType<T>;
   int num_blocks_per_sm = 0;
   int sm_num = dev_ctx.GetSMCount();
   // phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
   phi::DenseTensor tmp_buffer_t;
-  auto* p_buffer = dev_ctx.template Alloc<MT>(tmp_buffer_t);
-  auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
+  MT* p_buffer = dev_ctx.template Alloc<MT>(tmp_buffer_t);
+  MT* g_buffer = p_buffer + LARS_BLOCK_SIZE;
 
   MT mu_ = static_cast<MT>(mu);
   MT lars_coeff_ = static_cast<MT>(lars_coeff);
@@ -598,51 +599,48 @@ void LarsMomentumKernel(const Context& dev_ctx,
     const MT* master_param_data =
         multi_precision ? master_param[0]->data<MT>() : nullptr;
     MT* master_param_out_data =
-        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[0]);
+        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[0])
                         : nullptr;
-                        int64_t numel = param[0]->numel();
-                        MT lars_weight_decay = weight_decay_arr[0];
+    int64_t numel = param[0]->numel();
+    MT lars_weight_decay = weight_decay_arr[0];
 
-                        // Figure out how many blocks can be active in each sm.
-                        cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-                            &num_blocks_per_sm,
-                            MomentumLarsKernel<T, MT>,
-                            LARS_BLOCK_SIZE,
-                            sizeof(MT) << 1);
-                        LarsThreadConfig<float> lars_thread_config(
-                            numel, sm_num, num_blocks_per_sm);
-                        int repeat_times =
-                            lars_thread_config.GetRepeatTimes(numel);
-                        int thresh = 0;
-                        void* cuda_param[] = {
-                            reinterpret_cast<void*>(&param_data),
-                            reinterpret_cast<void*>(&grad_data),
-                            reinterpret_cast<void*>(&velocity_data),
-                            reinterpret_cast<void*>(&param_out_data),
-                            reinterpret_cast<void*>(&velocity_out_data),
-                            reinterpret_cast<void*>(&master_param_data),
-                            reinterpret_cast<void*>(&master_param_out_data),
-                            reinterpret_cast<void*>(&lr),
-                            reinterpret_cast<void*>(&p_buffer),
-                            reinterpret_cast<void*>(&g_buffer),
-                            reinterpret_cast<void*>(&mu_),
-                            reinterpret_cast<void*>(&lars_coeff_),
-                            reinterpret_cast<void*>(&lars_weight_decay),
-                            reinterpret_cast<void*>(&epsilon_),
-                            reinterpret_cast<void*>(&rescale_grad_),
-                            reinterpret_cast<void*>(&repeat_times),
-                            reinterpret_cast<void*>(
-                                &thresh),  // Just a placeholder
-                            reinterpret_cast<void*>(&numel),
-                            reinterpret_cast<void*>(&multi_precision)};
-                        // Lanuch all sm theads.
-                        cudaLaunchCooperativeKernel(
-                            reinterpret_cast<void*>(MomentumLarsKernel<T, MT>),
-                            lars_thread_config.grid_for_lars,
-                            LARS_BLOCK_SIZE,
-                            cuda_param,
-                            0,
-                            dev_ctx.stream());
+    // Figure out how many blocks can be active in each sm.
+    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm,
+                                                  MomentumLarsKernel<T, MT>,
+                                                  LARS_BLOCK_SIZE,
+                                                  sizeof(MT) << 1);
+    LarsThreadConfig<float> lars_thread_config(
+        numel, sm_num, num_blocks_per_sm);
+    int repeat_times = lars_thread_config.GetRepeatTimes(numel);
+    int thresh = 0;
+    void* cuda_param[] = {
+        reinterpret_cast<void*>(&param_data),
+        reinterpret_cast<void*>(&grad_data),
+        reinterpret_cast<void*>(&velocity_data),
+        reinterpret_cast<void*>(&param_out_data),
+        reinterpret_cast<void*>(&velocity_out_data),
+        reinterpret_cast<void*>(&master_param_data),
+        reinterpret_cast<void*>(&master_param_out_data),
+        reinterpret_cast<void*>(&lr),
+        reinterpret_cast<void*>(&p_buffer),
+        reinterpret_cast<void*>(&g_buffer),
+        reinterpret_cast<void*>(&mu_),
+        reinterpret_cast<void*>(&lars_coeff_),
+        reinterpret_cast<void*>(&lars_weight_decay),
+        reinterpret_cast<void*>(&epsilon_),
+        reinterpret_cast<void*>(&rescale_grad_),
+        reinterpret_cast<void*>(&repeat_times),
+        reinterpret_cast<void*>(&thresh),  // Just a placeholder
+        reinterpret_cast<void*>(&numel),
+        reinterpret_cast<void*>(&multi_precision)};
+    // Lanuch all sm theads.
+    cudaLaunchCooperativeKernel(
+        reinterpret_cast<void*>(MomentumLarsKernel<T, MT>),
+        lars_thread_config.grid_for_lars,
+        LARS_BLOCK_SIZE,
+        cuda_param,
+        0,
+        dev_ctx.stream());
   }
 #else
   for (int i = 0; i < op_num; ++i) {
