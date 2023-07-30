@@ -112,8 +112,8 @@ __global__ void VectorizedDropoutBackward(const size_t n,
   using SType = curandStatePhilox4_32_10_t;
 #endif
 
-  std::array<float, kCount> rands;
-  std::array<T, kCount * 2> x_y;
+  float rands[kCount];  // NOLINT
+  T x_y[kCount * 2];    // NOLINT
 
   using Rand = phi::funcs::uniform_distribution<float>;
   using Cast = kps::IdentityFunctor<T>;
