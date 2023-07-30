@@ -59,7 +59,6 @@ namespace ir {
 
 TEST(FastWhereXPUFusePass, one_case0) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition =
       layers.data("condition", {20, 1}, false, proto::VarType::BOOL);
   auto* x = layers.data("x", {20, 7});
@@ -73,6 +72,7 @@ TEST(FastWhereXPUFusePass, one_case0) {
   auto* mul1_out = layers.elementwise_mul(y, cast_out);
   mul1_out->SetShape({20, 7});
   auto* add_out = layers.elementwise_add(mul0_out, mul1_out);
+  add_out->SetShape({20, 7});
 
   APPLY_PASS
   VERIFY_GRAPH(y, x)
@@ -80,7 +80,6 @@ TEST(FastWhereXPUFusePass, one_case0) {
 
 TEST(FastWhereXPUFusePass, one_case1) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition =
       layers.data("condition", {20, 1}, false, proto::VarType::BOOL);
   auto* x = layers.data("x", {20, 7});
@@ -94,6 +93,7 @@ TEST(FastWhereXPUFusePass, one_case1) {
   auto* mul1_out = layers.elementwise_mul(y, scale_out);
   mul1_out->SetShape({20, 7});
   auto* add_out = layers.elementwise_add(mul0_out, mul1_out);
+  add_out->SetShape({20, 7});
 
   APPLY_PASS
   VERIFY_GRAPH(x, y)
@@ -101,7 +101,6 @@ TEST(FastWhereXPUFusePass, one_case1) {
 
 TEST(FastWhereXPUFusePass, one_case2) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition =
       layers.data("condition", {20, 1}, false, proto::VarType::BOOL);
   auto* x = layers.data("x", {20, 7});
@@ -115,6 +114,7 @@ TEST(FastWhereXPUFusePass, one_case2) {
   auto* mul1_out = layers.elementwise_mul(cast_out, y);
   mul1_out->SetShape({20, 7});
   auto* add_out = layers.elementwise_add(mul0_out, mul1_out);
+  add_out->SetShape({20, 7});
 
   APPLY_PASS
   VERIFY_GRAPH(y, x)
@@ -122,7 +122,6 @@ TEST(FastWhereXPUFusePass, one_case2) {
 
 TEST(FastWhereXPUFusePass, one_case3) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition =
       layers.data("condition", {20, 1}, false, proto::VarType::BOOL);
   auto* x = layers.data("x", {20, 7});
@@ -136,6 +135,7 @@ TEST(FastWhereXPUFusePass, one_case3) {
   auto* mul1_out = layers.elementwise_mul(scale_out, y);
   mul1_out->SetShape({20, 7});
   auto* add_out = layers.elementwise_add(mul0_out, mul1_out);
+  add_out->SetShape({20, 7});
 
   APPLY_PASS
   VERIFY_GRAPH(x, y)
@@ -143,7 +143,6 @@ TEST(FastWhereXPUFusePass, one_case3) {
 
 TEST(FastWhereXPUFusePass, one_case4) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition =
       layers.data("condition", {20, 1}, false, proto::VarType::BOOL);
   auto* x = layers.data("x", {20, 7});
@@ -157,6 +156,7 @@ TEST(FastWhereXPUFusePass, one_case4) {
   auto* mul1_out = layers.elementwise_mul(y, cast_out);
   mul1_out->SetShape({20, 7});
   auto* add_out = layers.elementwise_add(mul0_out, mul1_out);
+  add_out->SetShape({20, 7});
 
   APPLY_PASS
   VERIFY_GRAPH(y, x)
@@ -164,7 +164,6 @@ TEST(FastWhereXPUFusePass, one_case4) {
 
 TEST(FastWhereXPUFusePass, one_case5) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition =
       layers.data("condition", {20, 1}, false, proto::VarType::BOOL);
   auto* x = layers.data("x", {20, 7});
@@ -178,6 +177,7 @@ TEST(FastWhereXPUFusePass, one_case5) {
   auto* mul1_out = layers.elementwise_mul(y, scale_out);
   mul1_out->SetShape({20, 7});
   auto* add_out = layers.elementwise_add(mul0_out, mul1_out);
+  add_out->SetShape({20, 7});
 
   APPLY_PASS
   VERIFY_GRAPH(x, y)
@@ -226,7 +226,6 @@ TEST(FastWhereXPUFusePass, one_case5) {
 
 TEST(FastWhereXPUFusePass, cascade_case0) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition0 =
       layers.data("condition0", {20, 1}, false, proto::VarType::BOOL);
   auto* condition1 =
@@ -262,7 +261,6 @@ TEST(FastWhereXPUFusePass, cascade_case0) {
 
 TEST(FastWhereXPUFusePass, cascade_case1) {
   Layers layers;
-  auto* block = layers.Block();
   auto* condition0 =
       layers.data("condition0", {20, 1}, false, proto::VarType::BOOL);
   auto* condition1 =

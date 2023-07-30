@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/errors.h"
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -26,11 +25,6 @@ void FastWhereXPUKernel(const Context& ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         DenseTensor* out) {
-#ifndef PADDLE_WITH_XPU_PLUGIN
-  PADDLE_THROW(paddle::platform::errors::Unimplemented(
-      "Unsupported fast_where_xpu kernel, add -DWITH_XPU_PLUGIN=ON to cmake "
-      "options to rebuild."));
-#else
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* condition_data = condition.data<bool>();
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
@@ -48,6 +42,18 @@ void FastWhereXPUKernel(const Context& ctx,
           "] and y_dims=[",
           y.dims(),
           "]"));
+#ifndef PADDLE_WITH_XPU_PLUGIN
+  LOG(WARNING) << "Add -DWITH_XPU_PLUGIN=ON to build "
+                  "xpu::plugin::fast_where(), or use xpu::select() instead.";
+  int r = xpu::select<XPUType>(ctx.x_context(),
+                               condition_data,
+                               x_data,
+                               y_data,
+                               out_data,
+                               condition_dims,
+                               x_dims);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
+#else
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   if (condition_dims != x_dims) {
     bool* temp_data = RAII_GUARD.alloc_l3_or_gm<bool>(x.numel());
