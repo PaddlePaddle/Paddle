@@ -215,7 +215,8 @@ class Accuracy(Metric):
             >>> correct = m.compute(x, y)
             >>> m.update(correct)
             >>> res = m.accumulate()
-            >>> print(res) # 0.75
+            >>> print(res)
+            0.75
 
         .. code-block:: python
             :name: code-model-api-example
@@ -362,7 +363,8 @@ class Precision(Metric):
             >>> m = paddle.metric.Precision()
             >>> m.update(x, y)
             >>> res = m.accumulate()
-            >>> print(res) # 1.0
+            >>> print(res)
+            1.0
 
         .. code-block:: python
             :name: code-model-api-example
@@ -493,7 +495,8 @@ class Recall(Metric):
             >>> m = paddle.metric.Recall()
             >>> m.update(x, y)
             >>> res = m.accumulate()
-            >>> print(res) # 2.0 / 3.0
+            >>> print(res)
+            0.6666666666666666
 
         .. code-block:: python
             :name: code-model-api-example
@@ -794,7 +797,8 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             >>> predictions = paddle.to_tensor([[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]], dtype='float32')
             >>> label = paddle.to_tensor([[2], [0]], dtype="int64")
             >>> result = paddle.metric.accuracy(input=predictions, label=label, k=1)
-            >>> # 0.5
+            >>> print(result)
+            0.5
     """
     if label.dtype == paddle.int32:
         label = paddle.cast(label, paddle.int64)
