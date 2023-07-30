@@ -525,6 +525,9 @@ class TestArgsortBF16OP(OpTest):
         self.op_type = "argsort"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
         self.dtype = np.uint16
         self.descending = False
         self.attrs = {"axis": self.axis, "descending": self.descending}
