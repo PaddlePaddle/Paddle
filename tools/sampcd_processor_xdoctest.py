@@ -79,6 +79,9 @@ def _patch_tensor_place():
     _check_output = checker.check_output
 
     def check_output(got, want, runstate=None):
+        if not want:  # nocover
+            return True
+
         return _check_output(
             got=pattern_tensor.sub(r'\1Place(cpu)\3', got),
             want=pattern_tensor.sub(r'\1Place(cpu)\3', want),
@@ -143,6 +146,9 @@ def _patch_float_precision(digits):
     sub_number = functools.partial(_sub_number, digits=digits)
 
     def check_output(got, want, runstate=None):
+        if not want:  # nocover
+            return True
+
         return _check_output(
             got=pattern_number.sub(sub_number, got),
             want=pattern_number.sub(sub_number, want),
@@ -298,7 +304,7 @@ class Xdoctester(DocTester):
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         logger.addHandler(stdout_handler)
         logger.info("----------------End of the Check--------------------")
-        if whl_error is not None:
+        if whl_error is not None and whl_error:
             logger.info("%s is not in whl.", whl_error)
             logger.info("")
             logger.info("Please check the whl package and API_PR.spec!")
