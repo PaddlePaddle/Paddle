@@ -1038,6 +1038,8 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
       VLOG(5) << "run new ir selected kernel";
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
       VLOG(5) << "begin to run op " << op_func_node->phi_op_name_;
+      std::cerr << "begin to run op " << op_func_node->phi_op_name_
+                << std::endl;
       if (op_func_node->infer_meta_interface_) {
         op_func_node->infer_meta_interface_->infer_meta_(
             &(op_func_node->infer_meta_context_));

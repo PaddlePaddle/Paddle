@@ -529,8 +529,12 @@ inline void RunProgramGradAPI(
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
     if (FLAGS_enable_new_ir_in_executor) {
-      auto res = paddle::framework::ConstructBackwardIrProgram(
-          backward_global_block, out_grad, x_grad, params_grad);
+      auto res =
+          paddle::framework::ConstructBackwardIrProgram(backward_global_block,
+                                                        out_grad,
+                                                        x_grad,
+                                                        params_grad,
+                                                        global_inner_scope);
 
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(

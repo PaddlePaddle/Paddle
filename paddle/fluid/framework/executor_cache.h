@@ -248,7 +248,8 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,
-    const std::vector<paddle::Tensor*>& params_grad);
+    const std::vector<paddle::Tensor*>& params_grad,
+    const paddle::framework::Scope* scope);
 
 }  // namespace framework
 }  // namespace paddle

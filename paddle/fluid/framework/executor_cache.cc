@@ -438,7 +438,8 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::Tensor *> &x_grad,
-    const std::vector<paddle::Tensor *> &params_grad) {
+    const std::vector<paddle::Tensor *> &params_grad,
+    const paddle::framework::Scope *scope) {
   auto ir_ctx = ::ir::IrContext::Instance();
   auto program = std::make_unique<::ir::Program>(ir_ctx);
 
@@ -459,6 +460,39 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
     op_desc->SetAttr("place", static_cast<int>(place));
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
+  }
+
+  // get feed with data
+  std::set<std::string> set_parameter_names;
+  for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
+    for (const auto &n : op_desc->Inputs()) {
+      const auto &input_var_names = n.second;
+      for (const auto &var_name : input_var_names) {
+        set_parameter_names.insert(var_name);
+      }
+    }
+  }
+
+  for (auto &var_name : set_parameter_names) {
+    if (scope->FindVar(var_name)) {
+      auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
+      if (!tensor.initialized()) {
+        continue;
+      }
+
+      auto place = tensor.place().GetType();
+      if (var_name == "@EMPTY@") {
+        continue;
+      }
+      auto op_desc = local_program.MutableBlock(0)->PrependOp();
+      op_desc->SetType("feed_with_place");
+      op_desc->SetAttr("index", 0);
+      // TODO(phlrain) : using tensor dtype
+      op_desc->SetAttr("dtype", 0);
+      op_desc->SetAttr("place", static_cast<int>(place));
+      op_desc->SetAttr("name", var_name);
+      op_desc->SetOutput("out", {var_name});
+    }
   }
 
   std::vector<std::string> param_grad_names;
