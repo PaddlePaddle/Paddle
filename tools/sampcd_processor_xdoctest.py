@@ -48,8 +48,7 @@ XDOCTEST_CONFIG = {
             "paddle.device.set_device('cpu')",
         ]
     ),
-    "analysis": "auto",
-    "options": "+IGNORE_WHITESPACE",
+    "default_runtime_state": {"IGNORE_WHITESPACE": True},
 }
 
 
@@ -77,16 +76,80 @@ def _patch_tensor_place():
         re.X | re.S,
     )
 
-    _check_match = checker._check_match
+    _check_output = checker.check_output
 
-    def check_match(got, want, runstate=None):
-        return _check_match(
+    def check_output(got, want, runstate=None):
+        return _check_output(
             got=pattern_tensor.sub(r'\1Place(cpu)\3', got),
             want=pattern_tensor.sub(r'\1Place(cpu)\3', want),
             runstate=runstate,
         )
 
-    checker._check_match = check_match
+    checker.check_output = check_output
+
+
+def _patch_float_precision(digits):
+    from xdoctest import checker
+
+    pattern_number = re.compile(
+        r"""
+        (?:
+            (?<=[\s*\[\(\'\"\:])                        # number starts
+            (?:                                         # int/float or complex-real
+                (?:
+                    [+-]?
+                    (?:
+                        (?: \d*\.\d+) | (?: \d+\.?)     # int/float
+                    )
+                )
+                (?:[Ee][+-]?\d+)?
+            )
+            (?:                                         # complex-imag
+                (?:
+                    (?:
+                        [+-]?
+                        (?:
+                            (?: \d*\.\d+) | (?: \d+\.?)
+                        )
+                    )
+                    (?:[Ee][+-]?\d+)?
+                )
+            (?:[Jj])
+            )?
+        )
+        """,
+        re.X | re.S,
+    )
+
+    _check_output = checker.check_output
+
+    def _sub_number(match_obj, digits):
+        match_str = match_obj.group()
+        if 'j' in match_str or 'J' in match_str:
+            match_num = complex(match_str)
+            return (
+                str(
+                    complex(
+                        round(match_num.real, digits),
+                        round(match_num.imag, digits),
+                    )
+                )
+                .strip('(')
+                .strip(')')
+            )
+        else:
+            return str(round(float(match_str), digits))
+
+    sub_number = functools.partial(_sub_number, digits=digits)
+
+    def check_output(got, want, runstate=None):
+        return _check_output(
+            got=pattern_number.sub(sub_number, got),
+            want=pattern_number.sub(sub_number, want),
+            runstate=runstate,
+        )
+
+    checker.check_output = check_output
 
 
 class Xdoctester(DocTester):
@@ -101,6 +164,8 @@ class Xdoctester(DocTester):
         verbose=2,
         patch_global_state=True,
         patch_tensor_place=True,
+        patch_float_precision=True,
+        patch_float_digits=5,
         **config,
     ):
         self.debug = debug
@@ -116,6 +181,9 @@ class Xdoctester(DocTester):
 
         if patch_tensor_place:
             _patch_tensor_place()
+
+        if patch_float_precision:
+            _patch_float_precision(patch_float_digits)
 
         self.docstring_parser = functools.partial(
             xdoctest.core.parse_docstr_examples, style=self.style
