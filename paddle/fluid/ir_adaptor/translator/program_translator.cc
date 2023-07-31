@@ -189,6 +189,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           if (!defining_op_result) {
             continue;
           }
+
           ir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
