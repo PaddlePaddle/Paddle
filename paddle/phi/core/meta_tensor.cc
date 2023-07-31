@@ -46,6 +46,14 @@ DDim MetaTensor::dims() const {
   }
 }
 
+DDim MetaTensor::strides() const {
+  ValidCheck(*this);
+  if (dynamic_cast<DenseTensor*>(tensor_)) {
+    return dynamic_cast<DenseTensor*>(tensor_)->strides();
+  }
+  return DDim();
+}
+
 DataType MetaTensor::dtype() const {
   ValidCheck(*this);
   return tensor_->dtype();
@@ -59,8 +67,12 @@ DataLayout MetaTensor::layout() const {
 void MetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
-        dims;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->dims = dims;
+    if (!strided_kernel_used_) {
+      meta->strides = meta->calc_strides(dims);
+    }
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
@@ -75,6 +87,14 @@ void MetaTensor::set_dims(const DDim& dims) {
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
+  }
+}
+
+void MetaTensor::set_strides(const DDim& strides) {
+  ValidCheck(*this);
+  if (dynamic_cast<DenseTensor*>(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(dynamic_cast<DenseTensor*>(tensor_))
+        ->strides = strides;
   }
 }
 
@@ -105,14 +125,21 @@ void MetaTensor::set_dtype(DataType dtype) {
 void MetaTensor::set_layout(DataLayout layout) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
-        ->layout = layout;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->layout = layout;
+    if (!strided_kernel_used_) {
+      meta->strides = meta->calc_strides(meta->dims);
+    }
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(
-        static_cast<SelectedRows*>(tensor_)->mutable_value())
-        ->layout = layout;
+    auto meta = DenseTensorUtils::GetMutableMeta(
+        static_cast<SelectedRows*>(tensor_)->mutable_value());
+    meta->layout = layout;
+    if (!strided_kernel_used_) {
+      meta->strides = meta->calc_strides(meta->dims);
+    }
   } else if (phi::SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->layout = layout;
@@ -192,15 +219,25 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
       auto* selected_rows_in = static_cast<SelectedRows*>(in_tensor_base);
       selected_rows_out->set_rows(selected_rows_in->rows());
       selected_rows_out->set_height(selected_rows_in->height());
-      DenseTensorUtils::GetMutableMeta(
-          static_cast<SelectedRows*>(tensor_)->mutable_value())
-          ->dims = selected_rows_in->mutable_value()->dims();
+      auto meta = DenseTensorUtils::GetMutableMeta(
+          static_cast<SelectedRows*>(tensor_)->mutable_value());
+      meta->dims = selected_rows_in->mutable_value()->dims();
+      if (!strided_kernel_used_) {
+        meta->strides = meta->calc_strides(meta->dims);
+      }
     } else {
       set_dims(meta_tensor.dims());
     }
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported sharing dims for `%s`.", tensor_->type_info().name()));
+  }
+}
+
+void MetaTensor::share_strides(const MetaTensor& meta_tensor) {
+  ValidCheck(*this);
+  if (phi::DenseTensor::classof(tensor_)) {
+    set_strides(meta_tensor.strides());
   }
 }
 

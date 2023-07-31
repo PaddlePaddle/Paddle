@@ -178,6 +178,17 @@
     func : as_real
   backward : as_real_grad
 
+- op : as_strided
+  args : (Tensor input, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0)
+  output : Tensor
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : as_strided
+  backward : as_strided_grad
+  no_need_buffer : input
+
 - op : asin
   args : (Tensor x)
   output : Tensor(out)
@@ -1231,6 +1242,16 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+
+- op : index_select_strided
+  args : (Tensor x, int64_t index, int axis = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexSelectStridedInferMeta
+  kernel :
+    func : index_select_strided
+    data_type : x
+  backward : index_select_strided_grad
 
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
@@ -2503,6 +2524,17 @@
     data_type : x
   backward : temporal_shift_grad
 
+- op : tensor_unfold
+  args : (Tensor input, int64_t axis, int64_t size, int64_t step)
+  output : Tensor
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : tensor_unfold
+  backward : tensor_unfold_grad
+  no_need_buffer : input
+
 - op : thresholded_relu
   args : (Tensor x, float threshold = 1.0)
   output : Tensor(out)
@@ -2649,6 +2681,29 @@
   data_transform :
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
+
+- op : view_dtype
+  args : (Tensor input, DataType dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : view_dtype
+    data_type : input
+  backward : view_dtype_grad
+  no_need_buffer : input
+
+- op : view_shape
+  args : (Tensor input, int64_t[] dims = {})
+  output : Tensor(out)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : view_shape
+  backward : view_shape_grad
+  no_need_buffer : input
 
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
