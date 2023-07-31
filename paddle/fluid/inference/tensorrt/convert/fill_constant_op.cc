@@ -93,20 +93,21 @@ class FillConstantOpConverter : public OpConverter {
         float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
         str_value = std::to_string(value);
       }
-
+      auto* dev_ctx = static_cast<phi::CPUContext*>(
+          platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
       std::unique_ptr<phi::DenseTensor> out_tensor(new phi::DenseTensor());
       out_tensor->Resize(phi::make_ddim(shape));
       nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
       void* trt_data = nullptr;
       size_t trt_num;
       if (dtype == 2 || dtype == 3) {  // int,int64
-        auto* tmp_ptr = out_tensor->data<int>();
+        auto* tmp_ptr = dev_ctx->template HostAlloc<int>(out_tensor.get());
         for (int64_t i = 0; i < out_tensor->numel(); i++)
           tmp_ptr[i] = std::stoi(str_value);
         trt_dtype = nvinfer1::DataType::kINT32;
         trt_data = static_cast<void*>(tmp_ptr);
       } else if (dtype == 5) {  // float
-        auto* tmp_ptr = out_tensor->data<float>();
+        auto* tmp_ptr = dev_ctx->template HostAlloc<float>(out_tensor.get());
         for (int64_t i = 0; i < out_tensor->numel(); i++)
           tmp_ptr[i] = std::stof(str_value);
         trt_data = static_cast<void*>(tmp_ptr);
