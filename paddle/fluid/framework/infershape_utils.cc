@@ -290,7 +290,9 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
     if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->dims = dims;
+      meta->strides = meta->calc_strides(dims);
     } else if (var->IsType<phi::SelectedRows>()) {
       var->GetMutable<phi::SelectedRows>()->set_height(dims[0]);
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -355,10 +357,12 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
     if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->layout = layout;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
+      meta->layout = layout;
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
@@ -424,8 +428,10 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
           static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();
       selected_rows->set_rows(input_selected_rows.rows());
       selected_rows->set_height(input_selected_rows.height());
-      phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value())
-          ->dims = input_selected_rows.value().dims();
+      auto meta =
+          phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
+      meta->dims = input_selected_rows.value().dims();
+      meta->strides = meta->calc_strides(meta->dims);
     }
   }
 }

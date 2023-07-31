@@ -372,6 +372,10 @@ def _getitem_impl_(var, item):
         Sliced variable
     """
     from .framework import default_main_program, Variable
+    from .dygraph.base import in_declarative_mode
+
+    if in_declarative_mode() and hasattr(var, "is_view_var"):
+        var.is_view_var = True
 
     if isinstance(item, list):
         if not is_one_dim_list(item, int):
@@ -495,7 +499,13 @@ def _getitem_impl_(var, item):
                 from ..tensor import index_select
 
                 if slice_item.dtype == paddle.bool:
-                    return get_value_for_bool_tensor(var, slice_item)
+                    if in_declarative_mode():
+                        tmp = get_value_for_bool_tensor(var, slice_item)
+                        if hasattr(tmp, "is_view_var"):
+                            tmp.is_view_var = True
+                        return tmp
+                    else:
+                        return get_value_for_bool_tensor(var, slice_item)
                 else:
                     if len(slice_item.shape) == 1:
                         return index_select(var, index=slice_item, axis=0)
@@ -526,7 +536,13 @@ def _getitem_impl_(var, item):
                     item
                 )
             )
-        return slice_info.get_item(var)
+        if in_declarative_mode():
+            tmp = slice_info.get_item(var)
+            if hasattr(tmp, "is_view_var"):
+                tmp.is_view_var = True
+            return tmp
+        else:
+            return slice_info.get_item(var)
 
     inputs = {'Input': [var]}
     attrs = {
@@ -607,6 +623,8 @@ def _getitem_impl_(var, item):
 
         out = unsqueeze(out, axis=none_axes)
 
+    if in_declarative_mode() and hasattr(out, "is_view_var"):
+        out.is_view_var = True
     return out
 
 
