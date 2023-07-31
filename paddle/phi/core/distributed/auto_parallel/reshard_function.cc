@@ -12,31 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
-#include <string>
-#include <string_view>
-
-namespace paddle {
-namespace translator {
-
-static std::string UnderscoreToCamelCase(std::string str) {
-  std::string camel_case;
-  bool next_upper = true;
-  for (char c : str) {
-    if (c == '_') {
-      next_upper = true;
-    } else {
-      if (next_upper) {
-        camel_case += toupper(c);
-        next_upper = false;
-      } else {
-        camel_case += c;
-      }
-    }
-  }
-  return camel_case;
-}
-
-}  // namespace translator
-}  // namespace paddle
+namespace phi {
+namespace distributed {}  // namespace distributed
+}  // namespace phi

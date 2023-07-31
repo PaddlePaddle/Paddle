@@ -213,7 +213,6 @@
 - op : argmax(arg_max)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -224,7 +223,6 @@
 - op : argmin(arg_min)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -265,6 +263,10 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : assert
+  inputs :
+    {cond : Cond, data : Data}
 
 - op : assign
   backward : assign_grad
@@ -350,6 +352,7 @@
     attrs : [bool use_mkldnn = false]
 
 - op : bilinear (bilinear_tensor_product)
+  backward: bilinear_grad (bilinear_tensor_product_grad)
   inputs :
     {x : X, y : Y,weight: Weight, bias: Bias}
   outputs :
@@ -644,18 +647,6 @@
     {input : Logits, label : Label}
   outputs :
     {softmax : Softmax, loss : Loss}
-
-- op : cummax
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
-
-- op : cummin
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
 
 - op : cumprod
   backward : cumprod_grad
@@ -1341,30 +1332,6 @@
   outputs :
     {out : Out, residual : Residual}
 
-- op : i0
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i0e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
 - op : imag
   backward : imag_grad
   inputs :
@@ -1831,7 +1798,7 @@
       data_type : float
       support_tensor : true
 
-- op : merged_momentum_
+- op : merged_momentum_ (merged_momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -1973,12 +1940,6 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : nextafter
-  inputs :
-    {x : x, y : y}
-  outputs :
-    out : out
-
 - op : nll_loss
   backward : nll_loss_grad
   inputs :
@@ -2082,12 +2043,6 @@
     x : X
   outputs :
     out : Out
-
-- op : polygamma
-  inputs :
-    x : x
-  outputs :
-    out : out
 
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
@@ -2844,10 +2799,6 @@
   outputs :
     out : Out
 
-- op : tril_indices
-  outputs :
-    out : out
-
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2863,10 +2814,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : triu_indices
-  outputs :
-    out : out
 
 - op : trunc
   inputs :
@@ -2993,12 +2940,6 @@
   outputs :
     {warpctcgrad : WarpCTCGrad, loss : Loss}
 
-- op : warprnnt
-  inputs :
-    {input : input, label : label,  input_lengths : input_lengths, label_lengths : label_lengths}
-  outputs :
-    {loss : loss, warprnntgrad : warprnntgrad}
-
 - op : where
   backward : where_grad
   inputs :
@@ -3027,11 +2968,27 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
-- op: fetch
+- op: channel_shuffle
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out}
+
+- op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
 
 - op: full_batch_size_like (fill_constant_batch_size_like)
+  inputs:
+    {input: Input}
+  outputs:
+    {out: Out}
+
+- op: logspace
+  inputs:
+    {start: Start, stop: Stop, num: Num, base: Base}
+  outputs:
+    {out: Out}
 
 - op: lu
   backward: lu_grad
@@ -3048,10 +3005,16 @@
   outputs :
     {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
+- op: rrelu
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out, noise: Noise}
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label, pos_weight : pos_weight}
+    {x: X, label: Label}
   outputs :
     out : Out
 

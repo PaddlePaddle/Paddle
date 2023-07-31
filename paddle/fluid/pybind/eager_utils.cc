@@ -859,7 +859,7 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value) {
+PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
@@ -1006,10 +1006,9 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
   }
 }
 
-PyObject* ToPyObject(egr::GradNodeBase* grad_node) {
+PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node) {
   py::object py_obj = py::cast(grad_node, py::return_value_policy::reference);
-  py::handle py_handle = py::handle(py_obj);
-  PyObject* py_grad_node = py_handle.ptr();
+  PyObject* py_grad_node = py_obj.release().ptr();
   Py_INCREF(py_grad_node);
   return py_grad_node;
 }

@@ -21,8 +21,6 @@ from paddle.fluid.dygraph.base import (
     in_declarative_mode,
 )
 from paddle.fluid.framework import Variable, core, default_main_program
-from paddle.fluid.layers import control_flow
-from paddle.fluid.layers.control_flow import while_loop
 
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
@@ -181,7 +179,9 @@ def _run_paddle_while(
         return_name_ids, loop_vars
     )  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
-    loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
+    from paddle.static.nn import while_loop
+
+    loop_vars = while_loop(new_cond_fn, new_body_fn, loop_vars)
     helper.set(return_name_ids, loop_vars)
     return loop_vars
 
@@ -820,6 +820,8 @@ def _run_paddle_pop(array, *args):
 
     new_array = _slice_tensor_array(array, 0, idx)
     i = idx + 1
+    from paddle.static.nn import while_loop
+
     _, new_array = while_loop(cond, body, [i, new_array])
     paddle.assign(new_array, output=array)
 

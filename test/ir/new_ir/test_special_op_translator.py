@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle import ir
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -33,10 +34,7 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
@@ -53,10 +51,7 @@ class TestEmbeddingOpTranscriber(unittest.TestCase):
                 )
                 output = embedding(x)
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestIncrementOpTranscriber(unittest.TestCase):
@@ -70,10 +65,7 @@ class TestIncrementOpTranscriber(unittest.TestCase):
                 data = paddle.zeros(shape=[1], dtype='float32')
                 counter = paddle.increment(data)
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestAssignValueOpTranscriber(unittest.TestCase):
@@ -90,10 +82,7 @@ class TestAssignValueOpTranscriber(unittest.TestCase):
                     stop_gradient=False,
                 )
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestRnnOpTranscriber(unittest.TestCase):
@@ -110,10 +99,29 @@ class TestRnnOpTranscriber(unittest.TestCase):
                 cell = paddle.nn.SimpleRNNCell(16, 32)
                 y, h = cell(x, prev_h)
 
-                default_job = core.Job("default")
-                type_to_program = {"default": main_program.desc}
-                plan = core.Plan([default_job], type_to_program)
-                new_exe = core.StandaloneExecutor(place, plan, new_scope)
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+
+class TestEmptyVarTranslate(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x1 = paddle.rand(shape=[3, 3], dtype="float32")
+                x1.stop_gradient = False
+                weight = paddle.full(
+                    shape=[3, 3], fill_value="0.5", dtype="float32"
+                )
+                y = paddle.nn.functional.linear(x1, weight)
+                y.stop_gradient = True
+                out1 = paddle.concat(x=[x1, y], axis=1)
+                out2 = paddle.mean(out1)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+                sgd_optimizer.minimize(out2)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 class TestOneHotOpTranscriber(unittest.TestCase):
@@ -132,7 +140,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
 
     def test_normal_attribute(self):
         place = core.Place()
@@ -149,7 +157,57 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = paddle.fluid.core.translate_newirprogram(main_program.desc)
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+
+class TestReduceOpTranscriber(unittest.TestCase):
+    def test_reduce_all(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                arr = np.ones([2, 2], dtype="float32")
+                x = paddle.to_tensor(arr, dtype='int32')
+                out1 = paddle.all(x)
+
+                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                np.testing.assert_array_equal(out[0], np.all(arr))
+
+    def test_with_axis(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                arr = np.ones([2, 2], dtype="float32")
+                x = paddle.to_tensor(arr, dtype='int32')
+                out1 = paddle.all(x, axis=0)
+
+                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                np.testing.assert_array_equal(out[0], np.all(arr, axis=0))
+
+
+class TestIndexPutOpTranscriber(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.randn([2, 3])
+                indices = [paddle.randint(0, 2, [2]), paddle.randint(0, 1, [2])]
+                value = paddle.randn([2])
+                y = paddle.index_put(x, indices, value, False)
+
+        _ = ir.translate_to_new_ir(main_program.desc)
 
 
 if __name__ == "__main__":

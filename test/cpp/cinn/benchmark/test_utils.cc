@@ -24,8 +24,6 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/timer.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace tests {
 using ir::Tensor;
@@ -87,117 +85,88 @@ Module OpBenchmarkTester::CreateCinnModule(
     auto impl = hlir::framework::OpStrategy::SelectImpl(
         strategy[op](attrs, input_tensors, out_types, input_shapes_, target_));
 
-    if (FLAGS_cinn_ir_schedule) {
-      std::string output_name = "out";
-      std::vector<common::CINNValue> temp_inputs;
-      std::vector<ir::Tensor> all_arg_tensors;
-      std::vector<std::string> input_output_names;
-      for (const auto& tensor : input_tensors) {
-        temp_inputs.emplace_back(tensor);
-        all_arg_tensors.push_back(tensor);
-        input_output_names.push_back(tensor->name);
+    std::string output_name = "out";
+    std::vector<common::CINNValue> temp_inputs;
+    std::vector<ir::Tensor> all_arg_tensors;
+    std::vector<std::string> input_output_names;
+    for (const auto& tensor : input_tensors) {
+      temp_inputs.emplace_back(tensor);
+      all_arg_tensors.push_back(tensor);
+      input_output_names.push_back(tensor->name);
+    }
+    temp_inputs.emplace_back(output_name);
+    common::CINNValuePack cinn_inputs = common::CINNValuePack{temp_inputs};
+    input_output_names.push_back(output_name);
+
+    // 1.Call Op's Compute function, using the default stages and LowerVec to
+    // get IR tree.
+    common::CINNValuePack C = impl->fcompute(cinn_inputs);
+
+    // 2. Collect tensors and arguments
+    // Add output tensors to all_arg_tensors
+    for (int i = 0; i < C->size() - 1; i++) {
+      ir::Expr temp = C[i];
+      // checkout whether the tensor is with buffer.
+      if (!temp.as_tensor_ref()->buffer.defined() ||
+          target_ != common::DefaultNVGPUTarget()) {
+        all_arg_tensors.push_back(temp.as_tensor_ref());
       }
-      temp_inputs.emplace_back(output_name);
-      common::CINNValuePack cinn_inputs = common::CINNValuePack{temp_inputs};
-      input_output_names.push_back(output_name);
+    }
 
-      // 1.Call Op's Compute function, using the default stages and LowerVec to
-      // get IR tree.
-      common::CINNValuePack C = impl->fcompute(cinn_inputs);
+    stages = C.back();
+    auto funcs = lang::LowerVec(
+        op_name_, stages, all_arg_tensors, {}, {}, nullptr, target_, true);
 
-      // 2. Collect tensors and arguments
-      // Add output tensors to all_arg_tensors
-      for (int i = 0; i < C->size() - 1; i++) {
-        ir::Expr temp = C[i];
-        // checkout whether the tensor is with buffer.
-        if (!temp.as_tensor_ref()->buffer.defined() ||
-            target_ != common::DefaultNVGPUTarget()) {
-          all_arg_tensors.push_back(temp.as_tensor_ref());
-        }
-      }
+    std::vector<common::CINNValue> schedule_inputs;
+    for (int i = 0; i < C.size() - 1; ++i) {
+      CHECK(C[i].is_tensor());
+      schedule_inputs.push_back(common::CINNValue(C[i]));
+    }
+    for (auto& f : funcs) {
+      schedule_inputs.push_back(common::CINNValue(f->body));
+    }
 
-      stages = C.back();
-      auto funcs = lang::LowerVec(
-          op_name_, stages, all_arg_tensors, {}, {}, nullptr, target_, true);
+    // 3. Call Op's Schedule function, optimizing the IR tree by new IR
+    // schedule
+    common::CINNValuePack expr_pack =
+        impl->fschedule(common::CINNValuePack{schedule_inputs});
 
-      std::vector<common::CINNValue> schedule_inputs;
-      for (int i = 0; i < C.size() - 1; ++i) {
-        CHECK(C[i].is_tensor());
-        schedule_inputs.push_back(common::CINNValue(C[i]));
-      }
-      for (auto& f : funcs) {
-        schedule_inputs.push_back(common::CINNValue(f->body));
-      }
-
-      // 3. Call Op's Schedule function, optimizing the IR tree by new IR
-      // schedule
-      common::CINNValuePack expr_pack =
-          impl->fschedule(common::CINNValuePack{schedule_inputs});
-
-      // 4. Optimize the LoweredFunc
-      std::vector<ir::LoweredFunc> res;
-      for (int i = 0; i < expr_pack.size(); i++) {
+    // 4. Optimize the LoweredFunc
+    std::vector<ir::LoweredFunc> res;
+    for (int i = 0; i < expr_pack.size(); i++) {
 #ifdef CINN_WITH_CUDA
-        optim::OptimizeExprGPU(&(funcs[i]->body));
+      optim::OptimizeExprGPU(&(funcs[i]->body));
 #endif
-        if (funcs.size() > expr_pack.size()) {
-          auto new_args = lang::GetArgs(funcs[i]->body, input_output_names);
-          funcs[i]->args = new_args;
-        }
-        auto temp_buffers =
-            lang::GetTempBuffers(all_arg_tensors, stages, funcs[i]->body);
-        funcs[i]->temp_bufs = temp_buffers;
-        funcs[i]->PrepareBufferCastExprs();
-        res.push_back(funcs[i]);
+      if (funcs.size() > expr_pack.size()) {
+        auto new_args = lang::GetArgs(funcs[i]->body, input_output_names);
+        funcs[i]->args = new_args;
       }
-      for (int i = 0; i < res.size(); i++) {
-        res[i] = optim::Optimize(Expr(funcs[i]), target_, false)
-                     .as_lowered_func_ref();
-      }
+      auto temp_buffers =
+          lang::GetTempBuffers(all_arg_tensors, stages, funcs[i]->body);
+      funcs[i]->temp_bufs = temp_buffers;
+      funcs[i]->PrepareBufferCastExprs();
+      res.push_back(funcs[i]);
+    }
+    for (int i = 0; i < res.size(); i++) {
+      res[i] =
+          optim::Optimize(Expr(funcs[i]), target_, false).as_lowered_func_ref();
+    }
 
-      for (auto func : res) {
-        builder.AddFunction(func);
-
-        for (const auto& arg : func->args) {
-          std::vector<int> output_shape;
-          if (arg.io == ir::Argument::IO::kOutput) {
-            for (auto& shape_dim : arg.buffer_arg()->shape) {
-              LOG(INFO) << shape_dim << ",";
-              CHECK(shape_dim.is_constant());
-              output_shape.push_back(
-                  static_cast<int>(shape_dim.get_constant()));
-            }
-            output_shapes_.push_back(output_shape);
-            break;
-          }
-        }
-      }
-    } else {
-      std::vector<common::CINNValue> temp_inputs;
-      for (auto& tensor : input_tensors) {
-        temp_inputs.push_back(common::CINNValue(tensor));
-      }
-      common::CINNValuePack C =
-          impl->fcompute(common::CINNValuePack(temp_inputs));
-      stages = C.back();
-      C = impl->fschedule(C);
-      for (int i = 0; i < C->size() - 1; i++) {
-        ir::Expr temp = C[i];
-        stages->InsertLazily(temp.as_tensor_ref());
-        std::vector<Expr> output_shape_expr =
-            temp.as_tensor_ref()->domain_without_reduce_axis();
-        std::vector<int> output_shape;
-        for (auto& shape : output_shape_expr) {
-          LOG(INFO) << shape;
-          output_shape.push_back(common::AutoSimplify(shape).as_int32());
-        }
-        output_shapes_.push_back(output_shape);
-        rets.push_back(temp.as_tensor_ref());
-      }
-      auto func = Lower(op_name_, stages, rets);
-      LOG(INFO) << "After Lower, func is: \n" << func;
-
+    for (auto func : res) {
       builder.AddFunction(func);
+
+      for (const auto& arg : func->args) {
+        std::vector<int> output_shape;
+        if (arg.io == ir::Argument::IO::kOutput) {
+          for (auto& shape_dim : arg.buffer_arg()->shape) {
+            LOG(INFO) << shape_dim << ",";
+            CHECK(shape_dim.is_constant());
+            output_shape.push_back(static_cast<int>(shape_dim.get_constant()));
+          }
+          output_shapes_.push_back(output_shape);
+          break;
+        }
+      }
     }
   } else {
     stages = CreateStages(input_tensors);

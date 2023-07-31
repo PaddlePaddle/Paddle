@@ -1033,7 +1033,8 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor)
+  DEPS parallel_executor standalone_executor phi_kernel_adaptor
+       pd_op_to_kernel_pass ir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)

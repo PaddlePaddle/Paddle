@@ -89,7 +89,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
     Py_INCREF(py_func_);
   }
 
-  ~PyVariableWrapperHook() {
+  ~PyVariableWrapperHook() override {
     py::gil_scoped_acquire gil;
     Py_DECREF(py_func_);
   }

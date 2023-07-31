@@ -37,15 +37,14 @@ else:
     from .pp_utils import p2p_communication as p2p
 
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
+    HOOK_ACTION,
+    FusedCommBuffer,
     assign_group_by_size,
 )
 
-from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer
-
 __all__ = []
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 
 
 # assume only the first stage and last stage need data, and data consumption is ordred
@@ -334,9 +333,11 @@ class PipelineParallel(MetaParallelBase):
 
             for dst in fused_parameter_group:
                 parameter_list = fused_parameter_group[dst]
-                if not dp:
+                if act != HOOK_ACTION.ALL_REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
+                else:
+                    dst = -1
                 var_groups = assign_group_by_size(parameter_list)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
@@ -515,7 +516,7 @@ class PipelineParallel(MetaParallelBase):
         if self._comm_overlap:
             assert len(self._comm_buffers) > 0
             for buffer in self._comm_buffers:
-                buffer.scale_and_split_grads()
+                buffer.scale_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -1256,7 +1257,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._comm_overlap:
                 assert len(self._comm_buffers) > 0
                 for buffer in self._comm_buffers:
-                    buffer.scale_and_split_grads()
+                    buffer.scale_grads()
 
             if static_scheduler:
                 self._reset_counter()

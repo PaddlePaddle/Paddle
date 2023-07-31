@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/ir_copy.h"
+#pragma once
 
-#include <gtest/gtest.h>
-
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass.h"
 
 namespace cinn {
-namespace optim {
+namespace hlir {
+namespace pass {
 
-TEST(IrCopy, basic) {
-  Expr a(1.f);
-  auto aa = IRCopy(a);
-  LOG(INFO) << "aa " << aa;
-}
+class VerticalFusePass : public LightwareFusePass {
+ public:
+  virtual ~VerticalFusePass() = default;
 
-}  // namespace optim
+  virtual void operator()(LightwareFusePassCtx* ctx) const = 0;
+
+  const std::string FuseMode() const final { return "VerticalFuse"; }
+
+  virtual int Benefit() const = 0;
+
+ protected:
+  VerticalFusePass() = default;
+};
+
+}  // namespace pass
+}  // namespace hlir
 }  // namespace cinn

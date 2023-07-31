@@ -1211,13 +1211,21 @@ class OpTest(unittest.TestCase):
             return
 
         set_flags({"FLAGS_enable_new_ir_in_executor": True})
-
+        new_scope = paddle.static.Scope()
         executor = Executor(place)
+        new_program = None
+        if isinstance(program, paddle.static.CompiledProgram):
+            new_program = fluid.CompiledProgram(
+                program._program, build_strategy=program._build_strategy
+            )
+        else:
+            new_program = program.clone()
         ir_outs = executor.run(
-            program,
+            new_program,
             feed=feed_map,
             fetch_list=fetch_list,
             return_numpy=False,
+            scope=new_scope,
         )
         assert len(outs) == len(
             ir_outs
@@ -1686,6 +1694,9 @@ class OpTest(unittest.TestCase):
             None
         """
         if getattr(self, "no_need_check_inplace", False):
+            return
+
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
             return
 
         has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
