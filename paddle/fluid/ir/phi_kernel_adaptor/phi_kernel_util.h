@@ -32,12 +32,12 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/phi/core/kernel_context.h"
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/fluid/framework/operator.h"
 
 #include "glog/logging.h"
 
@@ -51,16 +51,18 @@ void BuildScope(const ir::Block& block,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list);
 
-void BuildRuntimeContext(ir::Operation* op,
-                     const std::unordered_map<ir::Value, std::string>& name_map,
-                     paddle::framework::Scope* scope,
-                     paddle::framework::Scope* local_scope,
-                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-                     paddle::framework::RuntimeContext* runtime_ctx); 
+void BuildRuntimeContext(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    paddle::framework::Scope* scope,
+    paddle::framework::Scope* local_scope,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    paddle::framework::RuntimeContext* runtime_ctx);
 
-std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase( ir::Operation* op,
-                    const std::unordered_map<ir::Value, std::string>& name_map,
-                    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
+std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
 template <typename Context,
           typename InType,
@@ -287,18 +289,30 @@ void BuildPhiContext(ir::Operation* op,
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString() ==
        "pd.fetch")) {
     // process fetch op
-    auto fetch_var = inner_scope->FindVar("fetch");
-    auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    int index =
-        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(index)));
-    ctx->EmplaceBackOutput(out_tensor);
+    // auto fetch_var = inner_scope->FindVar("fetch");
+    // auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
+    // int index =
+    //     op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    // std::cerr << "fetch index " << index << "\t" << fetch_list->size() <<
+    // std::endl; auto* out_tensor = &(PADDLE_GET(phi::DenseTensor,
+    // fetch_list->at(index)));
+
+    auto fetch_var = inner_scope->FindVar("fetch_0");
+    auto* out_tensor = &(fetch_var->Get<phi::DenseTensor>());
+    std::cerr << "pointer" << out_tensor << std::endl;
+    std::cerr << "type " << out_tensor->type_info().name() << std::endl;
+    phi::MetaTensor t1(out_tensor);
+    t1.set_dtype(phi::DataType::FLOAT32);
+    std::cerr << t1.dtype() << std::endl;
+
+    ctx->EmplaceBackOutput(OutType(out_tensor));
   } else {
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
       if (!out_ptr) {
         phi::DenseTensor* ptr = nullptr;
         OutType out_ptr(ptr);
+        std::cerr << "emplac nullptr" << std::endl;
         ctx->EmplaceBackOutput(out_ptr);
         continue;
       }
@@ -306,6 +320,7 @@ void BuildPhiContext(ir::Operation* op,
       if (!name_map.count(out_ptr)) {
         phi::DenseTensor* ptr = nullptr;
         OutType out_ptr(ptr);
+        std::cerr << "emp place null ptr " << std::endl;
         ctx->EmplaceBackOutput(out_ptr);
         continue;
       }

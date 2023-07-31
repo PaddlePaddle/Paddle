@@ -156,6 +156,12 @@ FetchList NewIRInterpreter::Run(
     ClearLoDTensorArrayInLocalScope();
   }
 
+  auto* fetch_var1 = local_scope_->FindVar("fetch_0");
+  framework::FetchList fetch_list_res;
+  fetch_list_res.push_back(fetch_var1->Get<phi::DenseTensor>());
+  std::cerr << "fetc list res " << fetch_list_res.size() << std::endl;
+  return fetch_list_res;
+
   // return Fetch Tensors
   auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
   if (fetch_var) {
@@ -228,6 +234,15 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
+
+  auto* fetch_var1 = inner_scope->FindVar("fetch_0");
+  framework::FetchList fetch_list_res;
+  std::cerr << "loss" << fetch_var1->Get<phi::DenseTensor>().data<float>()[0]
+            << std::endl;
+  fetch_list_res.push_back(fetch_var1->Get<phi::DenseTensor>());
+  std::cerr << "fetc list res " << fetch_list_res.size() << std::endl;
+  return fetch_list_res;
+
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
@@ -1044,17 +1059,17 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
             &(op_func_node->infer_meta_context_));
       }
       VLOG(5) << "after run infer meta";
-      
-      if( op_func_node->fluid_op )
-      {
-        // run fluid op 
-        std::cerr  << "run fluid op" << std::endl;      
-        ExecutionContext exe_ctx(*(op_func_node->operator_base_.get()), *scope_, *(op_func_node->dev_ctx_), *(op_func_node->runtime_ctx_.get()) );
-         (*(op_func_node->phi_kernel_))( &exe_ctx );      
-      
-      }
-      else
-      {
+      std::cerr << "after infere meta" << std::endl;
+      if (op_func_node->fluid_op) {
+        // run fluid op
+        std::cerr << "run fluid op" << std::endl;
+        ExecutionContext exe_ctx(*(op_func_node->operator_base_.get()),
+                                 *scope_,
+                                 *(op_func_node->dev_ctx_),
+                                 *(op_func_node->runtime_ctx_.get()));
+        (*(op_func_node->phi_kernel_))(&exe_ctx);
+
+      } else {
         (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
       }
       VLOG(5) << "after run kernel";

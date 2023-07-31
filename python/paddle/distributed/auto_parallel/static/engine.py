@@ -837,7 +837,7 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
-                print("prun startup prog", prune_startup_prog)
+                # print("prun startup prog", prune_startup_prog)
                 paddle.framework.set_flags(
                     {'FLAGS_enable_new_ir_in_executor': False}
                 )
@@ -994,25 +994,29 @@ class Engine:
                 ):
                     cbks.on_batch_begin('train', step, logs)
                     try:
+                        print("train start")
                         outs = self._executor.run(
                             self.main_program,
                             fetch_list=fetch_names,
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy,
                         )
+                        print(
+                            "train fin fin !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                        )
                     except core.EOFException:
                         break
-                    lr = auto_utils.get_lr(self.optimizer)
-                    logs = self._prepare_logger(
-                        outs,
-                        epoch,
-                        step,
-                        lr,
-                        fetch_names,
-                        fetch_indices,
-                        self._mode,
-                    )
-                    cbks.on_batch_end('train', step, logs)
+                    # lr = auto_utils.get_lr(self.optimizer)
+                    # logs = self._prepare_logger(
+                    #     outs,
+                    #     epoch,
+                    #     step,
+                    #     lr,
+                    #     fetch_names,
+                    #     fetch_indices,
+                    #     self._mode,
+                    # )
+                    # cbks.on_batch_end('train', step, logs)
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(
@@ -1399,6 +1403,8 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
+        print("main prog", self.main_program)
+        print("step start")
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -1406,6 +1412,7 @@ class Engine:
             use_program_cache=self._strategy.use_cache,
             return_numpy=self._strategy.return_numpy,
         )
+        print("fin on step")
         logs = self._prepare_logger(
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )

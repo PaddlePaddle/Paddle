@@ -161,6 +161,8 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
     set_layout(meta_tensor.layout());
     share_lod(meta_tensor);
   } else {
+    std::cerr << "poinrer  " << tensor_ << std::endl;
+    std::cerr << tensor_->type_info().name() << std::endl;
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported sharing meta for `%s`.", tensor_->type_info().name()));
   }

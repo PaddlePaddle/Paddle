@@ -4519,7 +4519,9 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
+  std::cerr << "before share" << std::endl;
   out->share_meta(x);
+  std::cerr << "after share" << std::endl;
 }
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]

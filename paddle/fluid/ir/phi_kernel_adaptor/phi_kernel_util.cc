@@ -40,9 +40,9 @@
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
 #include "paddle/phi/core/enforce.h"
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/op_info.h"
 #include "glog/logging.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace ir {
 
@@ -187,13 +187,17 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
-    auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
-                   ->Var("fetch");
+    // auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
+    //                ->Var("fetch");
+    auto var = inner_scope->Var("fetch");
     VLOG(6) << "Create var: fetch in scope " << inner_scope->root();
     auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
     int index =
         op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
     fetch_list->resize(index + 1);
+
+    var = inner_scope->Var("fetch_0");
+    var->GetMutable<phi::DenseTensor>();
   }
 
   if (op_name == "pd.feed") {
@@ -454,39 +458,37 @@ void BuildScope(const ir::Block& block,
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
 }
 
-void BuildRuntimeContext(ir::Operation* op,
-                     const std::unordered_map<ir::Value, std::string>& name_map,
-                     paddle::framework::Scope* scope,
-                     paddle::framework::Scope* local_scope,
-                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-                     paddle::framework::RuntimeContext* runtime_ctx)
-{
+void BuildRuntimeContext(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    paddle::framework::Scope* scope,
+    paddle::framework::Scope* local_scope,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    paddle::framework::RuntimeContext* runtime_ctx) {
   paddle::framework::Scope* inner_scope =
       local_scope != nullptr ? local_scope : scope;
   VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
           << inner_scope << "]";
-        
 
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(true);
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  auto pd_op_name = op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+  auto pd_op_name =
+      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
   std::cerr << "pd op name  " << pd_op_name << std::endl;
-  auto fluid_op_name = pd_op_name.substr(3); // pd_op_name start with "pd.xxx"
+  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
-  
-  for(auto& name: vec_kernel_fn_tensor_params)
-  {
+  for (auto& name : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(name),
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
     ir::Value ptr = op->operand(index);
-  
+
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
 
@@ -495,19 +497,18 @@ void BuildRuntimeContext(ir::Operation* op,
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
-    auto legacy_attr_name =
-      op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     std::cerr << "input name " << legacy_attr_name << std::endl;
-    
-    runtime_ctx->inputs[ legacy_attr_name ].push_back(var);
+
+    runtime_ctx->inputs[legacy_attr_name].push_back(var);
     std::cerr << "fin ins" << std::endl;
   }
 
-  auto& output_name_list =  op_yaml_info.OutputNames();  
-  for( size_t i = 0; i < output_name_list.size(); ++i) {
-    auto name = output_name_list[i];    
+  auto& output_name_list = op_yaml_info.OutputNames();
+  for (size_t i = 0; i < output_name_list.size(); ++i) {
+    auto name = output_name_list[i];
     ir::Value ptr = op->result(i);
-  
+
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
 
@@ -516,65 +517,62 @@ void BuildRuntimeContext(ir::Operation* op,
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
-     auto legacy_attr_name =
-      op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     std::cerr << "output name " << legacy_attr_name << std::endl;
     runtime_ctx->outputs[legacy_attr_name] = vec_tmp;
   }
 }
 
-std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase( ir::Operation* op,
-                    const std::unordered_map<ir::Value, std::string>& name_map,
-                    const paddle::dialect::OpYamlInfoParser& op_yaml_info)
-{
+std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
   paddle::framework::VariableNameMap in_name_map;
-  paddle::framework::VariableNameMap  out_name_map;
+  paddle::framework::VariableNameMap out_name_map;
   paddle::framework::AttributeMap attr_map;
-   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(true);
+  auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(true);
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  auto pd_op_name = op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+  auto pd_op_name =
+      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
   std::cerr << "pd op name  " << pd_op_name << std::endl;
-  auto fluid_op_name = pd_op_name.substr(3); // pd_op_name start with "pd.xxx"
+  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
-  for(auto& name: vec_kernel_fn_tensor_params)
-  {
+  for (auto& name : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(name),
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
     ir::Value ptr = op->operand(index);
-  
+
     auto in_var_name = name_map.at(ptr);
-    
-    auto legacy_attr_name =
-      op_normalizer.GetLegacyArgName(fluid_op_name, name);
+
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     in_name_map[legacy_attr_name].push_back(in_var_name);
   }
 
   // build attribute
 
-  auto& output_name_list =  op_yaml_info.OutputNames();  
-  for( size_t i = 0; i < output_name_list.size(); ++i) {
-    auto name = output_name_list[i];    
+  auto& output_name_list = op_yaml_info.OutputNames();
+  for (size_t i = 0; i < output_name_list.size(); ++i) {
+    auto name = output_name_list[i];
     ir::Value ptr = op->result(i);
-  
+
     auto out_var_name = name_map.at(ptr);
-    auto legacy_attr_name =
-      op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    out_name_map[legacy_attr_name].push_back( out_var_name);
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    out_name_map[legacy_attr_name].push_back(out_var_name);
   }
 
-  auto& op_info = paddle::framework::OpInfoMap::Instance().Get( fluid_op_name );
-  auto ptr = op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
-  
-  std::shared_ptr<paddle::framework::OperatorBase> res( ptr );
-  return res;
+  auto& op_info = paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
+  auto ptr =
+      op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
 
+  std::shared_ptr<paddle::framework::OperatorBase> res(ptr);
+  return res;
 }
 
 }  // namespace ir
