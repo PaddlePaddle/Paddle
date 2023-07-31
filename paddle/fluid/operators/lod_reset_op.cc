@@ -240,7 +240,6 @@ REGISTER_OPERATOR(lod_reset,
                   ops::LoDResetOp,
                   ops::LoDResetOpMaker,
                   ops::LoDResetGradMaker<paddle::framework::OpDesc>,
-                  ops::LoDResetGradMaker<paddle::imperative::OpBase>,
                   ops::LoDResetOpVarTypeInference,
                   ops::LoDResetInplaceInferer);
 REGISTER_OPERATOR(lod_reset_grad,

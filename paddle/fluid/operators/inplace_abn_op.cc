@@ -603,7 +603,6 @@ REGISTER_OPERATOR(inplace_abn,
                   ops::InplaceABNOpMaker,
                   ops::InplaceABNOpInferVarType,
                   ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,
-                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>,
                   InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 

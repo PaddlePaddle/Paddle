@@ -562,6 +562,5 @@ REGISTER_OPERATOR(resnet_basic_block,
                   ops::ResNetBasicBlockOp,
                   ops::ResNetBasicBlockOpMaker,
                   ops::ResNetBasicBlockOpInferVarType,
-                  ops::ResNetBasicBlockGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ResNetBasicBlockGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ResNetBasicBlockGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(resnet_basic_block_grad, ops::ResNetBasicBlockGradOp);

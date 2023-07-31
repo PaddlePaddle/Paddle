@@ -117,8 +117,7 @@ REGISTER_OPERATOR(
     add_position_encoding,
     ops::AddPositionEncodingOp,
     ops::AddPositionEncodingOpMaker,
-    ops::AddPositionEncodingGradOpMaker<paddle::framework::OpDesc>,
-    ops::AddPositionEncodingGradOpMaker<paddle::imperative::OpBase>);
+    ops::AddPositionEncodingGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(add_position_encoding_grad, ops::AddPositionEncodingOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(add_position_encoding,

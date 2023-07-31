@@ -189,6 +189,5 @@ REGISTER_OPERATOR(deformable_conv_v1,
                   ops::DeformableConvV1Op,
                   ops::DeformableConvV1OpMaker,
                   ops::DeformableConvV1GradOpMaker<paddle::framework::OpDesc>,
-                  ops::DeformableConvV1GradOpMaker<paddle::imperative::OpBase>,
                   DeformableConvV1InferShapeFunctor);
 REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvV1GradOp);

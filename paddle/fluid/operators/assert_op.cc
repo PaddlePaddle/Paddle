@@ -124,5 +124,4 @@ REGISTER_OPERATOR(
     ops::AssertOp,
     ops::AssertOpProtoMaker,
     ops::AssertOpInferShape,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

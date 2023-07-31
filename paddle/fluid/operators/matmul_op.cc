@@ -908,12 +908,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(matmul,
                   ops::MatMulOp,
                   ops::MatMulOpMaker,
-                  ops::MatMulOpGradMaker<paddle::framework::OpDesc>,
-                  ops::MatMulOpGradMaker<paddle::imperative::OpBase>);
+                  ops::MatMulOpGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(matmul_grad,
                   ops::MatMulOpGrad,
-                  ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::MatMulOpDoubleGradMaker<paddle::imperative::OpBase>);
+                  ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(matmul_grad_grad, ops::MatMulOpDoubleGrad);
 REGISTER_OP_CPU_KERNEL(matmul,
                        ops::MatMulKernel<phi::CPUContext, float>,

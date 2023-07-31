@@ -188,8 +188,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool,
                   ops::SequencePoolOp,
                   ops::SequencePoolOpMaker,
-                  ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sequence_pool_grad,
                   ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInferer);

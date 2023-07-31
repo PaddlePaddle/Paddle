@@ -267,7 +267,6 @@ REGISTER_OPERATOR(
     ops::TransposeOp,
     ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     TransposeInferShapeFunctor);
 
 REGISTER_OPERATOR(transpose_grad,
@@ -279,11 +278,9 @@ REGISTER_OPERATOR(transpose2,
                   ops::Transpose2Op,
                   ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2GradMaker<paddle::imperative::OpBase>,
                   ops::Transpose2CompositeGradOpMaker);
 REGISTER_OPERATOR(transpose2_grad,
                   ops::Transpose2OpGrad,
                   ops::TransposeGradInferVarType,
                   ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>,
                   Transpose2GradInferShapeFunctor);

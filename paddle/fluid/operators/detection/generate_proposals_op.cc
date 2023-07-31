@@ -322,8 +322,7 @@ REGISTER_OPERATOR(
     generate_proposals,
     ops::GenerateProposalsOp,
     ops::GenerateProposalsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OP_CPU_KERNEL(generate_proposals,
                        ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);

@@ -276,7 +276,6 @@ REGISTER_OPERATOR(sequence_expand,
                   ops::SequenceExpandOp,
                   ops::SequenceExpandOpMaker,
                   ops::SequenceExpandOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SequenceExpandOpGradMaker<paddle::imperative::OpBase>,
                   ops::SequenceExpandOpNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(sequence_expand_grad,
                   ops::SequenceExpandOpGrad,

@@ -57,5 +57,4 @@ REGISTER_OPERATOR(
     fused_transpose,
     ops::Transpose2Op,
     ops::FusedTransposeOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

@@ -173,7 +173,6 @@ REGISTER_OPERATOR(cvm,
                   ops::CVMOp,
                   ops::CVMOpMaker,
                   ops::CVMGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CVMGradOpMaker<paddle::imperative::OpBase>,
                   ops::CVMNoNeedBufferVarInferer);
 
 REGISTER_OPERATOR(cvm_grad,

@@ -126,5 +126,4 @@ REGISTER_OPERATOR(
     conv2d_inception_fusion,
     ops::ConvInceptionFusionOp,
     ops::ConvInceptionFusionOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

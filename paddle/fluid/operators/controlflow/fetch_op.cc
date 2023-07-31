@@ -167,5 +167,4 @@ REGISTER_OPERATOR(
     fetch,
     paddle::operators::FetchOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FetchOpInfoMaker);

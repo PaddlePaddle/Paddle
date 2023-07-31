@@ -109,8 +109,7 @@ REGISTER_OPERATOR(
     polygon_box_transform,
     ops::PolygonBoxTransformOp,
     ops::PolygonBoxTransformOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(polygon_box_transform,
                           CPU,

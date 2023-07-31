@@ -290,5 +290,4 @@ REGISTER_OPERATOR(
     fused_fc_elementwise_layernorm,
     ops::FusedFCElementwiseLayerNormOp,
     ops::FusedFCElementwiseLayerNormOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

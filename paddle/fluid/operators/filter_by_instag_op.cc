@@ -157,8 +157,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(filter_by_instag,
                   ops::FilterByInstagOp,
                   ops::FilterByInstagOpMaker,
-                  ops::FilterByInstagGradOpMaker<paddle::framework::OpDesc>,
-                  ops::FilterByInstagGradOpMaker<paddle::imperative::OpBase>);
+                  ops::FilterByInstagGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(filter_by_instag_grad, ops::FilterByInstagOpGrad);
 

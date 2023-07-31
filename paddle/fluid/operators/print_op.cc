@@ -180,7 +180,6 @@ REGISTER_OPERATOR(print,
                   ops::PrintOp,
                   ops::PrintOpProtoAndCheckMaker,
                   ops::PrintOpGradientMaker<paddle::framework::OpDesc>,
-                  ops::PrintOpGradientMaker<paddle::imperative::OpBase>,
                   ops::PrintOpInferShape,
                   ops::PrintOpVarTypeInference);
 

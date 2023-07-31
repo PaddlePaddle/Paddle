@@ -141,8 +141,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_reshape,
                   ops::SequenceReshapeOp,
                   ops::SequenceReshapeOpMaker,
-                  ops::SequenceReshapeGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SequenceReshapeGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SequenceReshapeGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sequence_reshape_grad, ops::SequenceReshapeGradOp);
 PD_REGISTER_STRUCT_KERNEL(sequence_reshape,
                           CPU,

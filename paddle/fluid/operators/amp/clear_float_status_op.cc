@@ -72,8 +72,7 @@ REGISTER_OPERATOR(
     clear_float_status,
     ops::ClearFloatStatusOp,
     ops::ClearFloatStatusMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     clear_float_status, CPU, ALL_LAYOUT, ops::ClearFloatStatusKernel, float) {}

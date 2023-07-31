@@ -118,7 +118,6 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_split,
                   ops::CSplitOp,
                   ops::CSplitOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CSplitOpGradMaker<paddle::imperative::OpBase>,
                   ops::CSplitOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(c_split,

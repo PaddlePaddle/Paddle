@@ -84,7 +84,6 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(mp_allreduce_sum,
                   ops::MpAllReduceSumOp,
                   ops::MpAllReduceSumOpGradMaker<paddle::framework::OpDesc>,
-                  ops::MpAllReduceSumOpGradMaker<paddle::imperative::OpBase>,
                   ops::MpAllReduceSumOpMaker,
                   ops::MpAllReduceSumInplaceInferer);
 

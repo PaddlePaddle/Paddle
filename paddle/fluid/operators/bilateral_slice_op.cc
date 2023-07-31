@@ -193,8 +193,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilateral_slice,
                   ops::BilateralSliceOp,
                   ops::BilateralSliceOpMaker,
-                  ops::BilateralSliceGradMaker<paddle::framework::OpDesc>,
-                  ops::BilateralSliceGradMaker<paddle::imperative::OpBase>);
+                  ops::BilateralSliceGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(bilateral_slice_grad, ops::BilateralSliceOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(bilateral_slice,

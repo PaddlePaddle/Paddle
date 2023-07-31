@@ -150,8 +150,7 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(center_loss,
                   ops::CenterLossOp,
                   ops::CenterLossOpMaker,
-                  ops::CenterLossOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CenterLossOpGradMaker<paddle::imperative::OpBase>);
+                  ops::CenterLossOpGradMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(center_loss_grad,
                   ops::CenterLossGradOp,

@@ -580,8 +580,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(gru,
                   ops::GRUOp,
                   ops::GRUOpMaker,
-                  ops::GRUGradOpMaker<paddle::framework::OpDesc>,
-                  ops::GRUGradOpMaker<paddle::imperative::OpBase>);
+                  ops::GRUGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(gru_grad,
                   ops::GRUGradOp,
                   ops::GRUGradOpNoNeedBufferVarInferer);

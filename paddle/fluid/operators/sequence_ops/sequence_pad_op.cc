@@ -280,8 +280,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pad,
                   ops::SequencePadOp,
                   ops::SequencePadOpMaker,
-                  ops::SequencePadGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SequencePadGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SequencePadGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sequence_pad_grad,
                   ops::SequencePadGradOp,
                   ops::SequencePadGradOpNoNeedBufferVarsInferer);

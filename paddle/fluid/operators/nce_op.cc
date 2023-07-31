@@ -314,8 +314,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(nce,
                   ops::NCEOp,
                   ops::NCEOpMaker,
-                  ops::NCEGradOpMaker<paddle::framework::OpDesc>,
-                  ops::NCEGradOpMaker<paddle::imperative::OpBase>);
+                  ops::NCEGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(nce_grad,
                   ops::NCEOpGrad,
                   ops::NCEOpGradVarTypeInference,

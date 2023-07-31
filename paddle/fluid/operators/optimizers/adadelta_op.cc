@@ -98,5 +98,4 @@ REGISTER_OPERATOR(
     ops::AdadeltaOp,
     ops::AdadeltaOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AdadeltaInferMetaFunctor);

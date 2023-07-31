@@ -75,5 +75,4 @@ REGISTER_OPERATOR(
     ops::LogspaceOp,
     ops::LogspaceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     LogspaceInferShapeFunctor);

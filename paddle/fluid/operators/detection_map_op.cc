@@ -222,8 +222,7 @@ REGISTER_OPERATOR(
     detection_map,
     ops::DetectionMAPOp,
     ops::DetectionMAPOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     detection_map, CPU, ALL_LAYOUT, ops::DetectionMAPOpKernel, float, double) {}

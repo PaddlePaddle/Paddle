@@ -645,32 +645,28 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_interp,
                   ops::InterpolateOp,
                   ops::InterpolateOpMaker,
-                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(bilinear_interp_grad,
                   ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(nearest_interp,
                   ops::InterpolateOp,
                   ops::InterpolateOpMaker,
-                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(nearest_interp_grad,
                   ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(trilinear_interp,
                   ops::InterpolateOp,
                   ops::InterpolateOpMaker,
-                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(trilinear_interp_grad,
                   ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(bicubic_interp,
                   ops::InterpolateOp,
                   ops::InterpolateOpMaker,
-                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(bicubic_interp_grad,
                   ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInferer);
@@ -698,8 +694,7 @@ REGISTER_OP_CPU_KERNEL(trilinear_interp_grad,
 REGISTER_OPERATOR(linear_interp,
                   ops::InterpolateOp,
                   ops::InterpolateOpMaker,
-                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(linear_interp_grad,
                   ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInferer);

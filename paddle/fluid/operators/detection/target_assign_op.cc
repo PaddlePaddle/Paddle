@@ -184,8 +184,7 @@ REGISTER_OPERATOR(
     target_assign,
     ops::TargetAssignOp,
     ops::TargetAssignOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     target_assign, CPU, ALL_LAYOUT, ops::TargetAssignKernel, int, float) {}

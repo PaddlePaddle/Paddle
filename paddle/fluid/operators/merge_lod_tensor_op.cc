@@ -263,12 +263,10 @@ REGISTER_OPERATOR(merge_lod_tensor,
                   ops::MergeLoDTensorOp,
                   ops::MergeLoDTensorOpProtoMaker,
                   ops::MergeLoDTensorInferShape,
-                  ops::MergeLoDTensorGradMaker<paddle::framework::OpDesc>,
-                  ops::MergeLoDTensorGradMaker<paddle::imperative::OpBase>);
+                  ops::MergeLoDTensorGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(
     merge_lod_tensor_infer,
     ops::MergeLoDTensorInferOp,
     ops::MergeLoDTensorOpProtoMaker,
     ops::MergeLoDTensorInferShape,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

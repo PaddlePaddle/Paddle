@@ -113,5 +113,4 @@ REGISTER_OPERATOR(select_input,
                   ops::SelectInputOp,
                   ops::SelectInputOpProtoMaker,
                   ops::SelectInputInferShape,
-                  ops::SelectInputGradMaker<paddle::framework::OpDesc>,
-                  ops::SelectInputGradMaker<paddle::imperative::OpBase>);
+                  ops::SelectInputGradMaker<paddle::framework::OpDesc>);

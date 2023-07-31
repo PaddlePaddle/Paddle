@@ -483,12 +483,10 @@ REGISTER_OPERATOR(slice,
                   ops::SliceOp,
                   ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SliceOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceCompositeGradOpMaker,
                   ops::SliceOpVarTypeInference);
 REGISTER_OPERATOR(slice_grad,
                   ops::SliceOpGrad,
                   ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpGradNoNeedBufferVarsInferer,
                   ops::SliceOpGradVarTypeInference);

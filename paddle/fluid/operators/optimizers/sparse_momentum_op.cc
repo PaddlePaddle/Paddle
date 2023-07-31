@@ -116,7 +116,6 @@ REGISTER_OPERATOR(
     ops::SparseMomentumOp,
     ops::SparseMomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SparseMomentumOpInferVarType);
 PD_REGISTER_STRUCT_KERNEL(sparse_momentum,
                           CPU,

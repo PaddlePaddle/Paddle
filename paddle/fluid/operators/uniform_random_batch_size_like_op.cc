@@ -185,7 +185,6 @@ REGISTER_OPERATOR(
     ops::UniformRandomBatchSizeLikeOp,
     ops::UniformRandomBatchSizeLikeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::BatchSizeLikeNoNeedBufferVarsInferer);
 
 PD_REGISTER_STRUCT_KERNEL(uniform_random_batch_size_like,

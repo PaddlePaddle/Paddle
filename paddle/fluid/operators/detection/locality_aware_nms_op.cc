@@ -518,8 +518,7 @@ REGISTER_OPERATOR(
     locality_aware_nms,
     ops::LocalityAwareNMSOp,
     ops::LocalityAwareNMSOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(locality_aware_nms,
                           CPU,
                           ALL_LAYOUT,

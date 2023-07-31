@@ -224,10 +224,8 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    split_lod_tensor,
-    ops::SplitLoDTensorOp,
-    ops::SplitLoDTensorOpProtoMaker,
-    ops::SplitLoDTensorInferShape,
-    ops::SplitLoDTensorArrayGradMaker<paddle::framework::OpDesc>,
-    ops::SplitLoDTensorArrayGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(split_lod_tensor,
+                  ops::SplitLoDTensorOp,
+                  ops::SplitLoDTensorOpProtoMaker,
+                  ops::SplitLoDTensorInferShape,
+                  ops::SplitLoDTensorArrayGradMaker<paddle::framework::OpDesc>);

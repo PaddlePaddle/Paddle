@@ -249,5 +249,4 @@ REGISTER_OPERATOR(
     ops::FusedMatmulOp,
     ops::FusedMatmulOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     FusedMatmulInferShapeFunctor);

@@ -876,20 +876,17 @@ REGISTER_OPERATOR(
     fake_quantize_abs_max,
     ops::FakeQuantOrWithDequantAbsMaxOp,
     ops::FakeQuantOrWithDequantAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_abs_max,
                           CPU,
                           ALL_LAYOUT,
                           ops::FakeQuantizeAbsMaxKernel,
                           float) {}
 
-REGISTER_OPERATOR(
-    fake_quantize_dequantize_abs_max,
-    ops::FakeQuantOrWithDequantAbsMaxOp,
-    ops::FakeQuantOrWithDequantAbsMaxOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fake_quantize_dequantize_abs_max,
+                  ops::FakeQuantOrWithDequantAbsMaxOp,
+                  ops::FakeQuantOrWithDequantAbsMaxOpMaker,
+                  ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
                           CPU,
                           ALL_LAYOUT,
@@ -900,8 +897,7 @@ REGISTER_OPERATOR(
     fake_quantize_range_abs_max,
     ops::FakeQuantizeRangeAbsMaxOp,
     ops::FakeQuantizeRangeAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_range_abs_max,
                           CPU,
                           ALL_LAYOUT,
@@ -912,20 +908,17 @@ REGISTER_OPERATOR(
     fake_quantize_moving_average_abs_max,
     ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
     ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_moving_average_abs_max,
                           CPU,
                           ALL_LAYOUT,
                           ops::FakeQuantizeMovingAverageAbsMaxKernel,
                           float) {}
 
-REGISTER_OPERATOR(
-    fake_quantize_dequantize_moving_average_abs_max,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
+                  ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_moving_average_abs_max,
                           CPU,
                           ALL_LAYOUT,
@@ -936,20 +929,17 @@ REGISTER_OPERATOR(
     fake_channel_wise_quantize_abs_max,
     ops::FakeChannelWiseQuantizeAbsMaxOp,
     ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_quantize_abs_max,
                           CPU,
                           ALL_LAYOUT,
                           ops::FakeChannelWiseQuantizeAbsMaxKernel,
                           float) {}
 
-REGISTER_OPERATOR(
-    moving_average_abs_max_scale,
-    ops::MovingAverageAbsMaxScaleOp,
-    ops::MovingAverageAbsMaxScaleOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(moving_average_abs_max_scale,
+                  ops::MovingAverageAbsMaxScaleOp,
+                  ops::MovingAverageAbsMaxScaleOpMaker,
+                  ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
                           CPU,
                           ALL_LAYOUT,
@@ -964,12 +954,10 @@ PD_REGISTER_STRUCT_KERNEL(stright_throuth_estimator_grad,
                           ops::StrightThroughEstimatorGradKernel,
                           float) {}
 
-REGISTER_OPERATOR(
-    fake_channel_wise_quantize_dequantize_abs_max,
-    ops::FakeChannelWiseQuantizeDequantizeAbsMaxOp,
-    ops::FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker,
-    ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fake_channel_wise_quantize_dequantize_abs_max,
+                  ops::FakeChannelWiseQuantizeDequantizeAbsMaxOp,
+                  ops::FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker,
+                  ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_quantize_dequantize_abs_max,
                           CPU,
                           ALL_LAYOUT,

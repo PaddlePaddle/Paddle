@@ -158,8 +158,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_fc,
                   ops::BatchFCOp,
                   ops::BatchFCOpMaker,
-                  ops::BatchFCGradOpMaker<paddle::framework::OpDesc>,
-                  ops::BatchFCGradOpMaker<paddle::imperative::OpBase>);
+                  ops::BatchFCGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(batch_fc_grad,
                   ops::BatchFCGradOp,

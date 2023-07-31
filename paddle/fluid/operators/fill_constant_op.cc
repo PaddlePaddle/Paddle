@@ -181,8 +181,7 @@ REGISTER_OPERATOR(
     ops::FillConstantOp,
     ops::FillConstantOpMaker,
     ops::FillConstantOpVarTypeInference,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(

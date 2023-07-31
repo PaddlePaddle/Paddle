@@ -139,8 +139,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm_unit,
                   ops::LstmUnitOp,
                   ops::LstmUnitOpMaker,
-                  ops::LstmUnitGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LstmUnitGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LstmUnitGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(lstm_unit_grad, ops::LstmUnitGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(

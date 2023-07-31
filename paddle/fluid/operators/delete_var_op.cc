@@ -69,6 +69,5 @@ REGISTER_OPERATOR(
     delete_var,
     paddle::operators::DeleteVarOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::DeleteVarOpInfoMaker,
     paddle::operators::DeleteVarOpShapeInference);

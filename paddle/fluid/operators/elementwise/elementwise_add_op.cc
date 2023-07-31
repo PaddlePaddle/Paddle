@@ -201,28 +201,24 @@ REGISTER_OPERATOR(elementwise_add,
                   ::paddle::operators::ElementwiseAddOpMaker,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_addGradMaker<::paddle::framework::OpDesc>,
-                  elementwise_addGradMaker<::paddle::imperative::OpBase>,
                   ::paddle::operators::ElementwiseAddCompositeGradOpMaker,
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(
-    elementwise_add_grad,
-    ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer,
-    ops::ElementwiseGradNoBufVarsInferer,
-    ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>,
-    ops::ElementwiseAddCompositeDoubleGradOpMaker);
+REGISTER_OPERATOR(elementwise_add_grad,
+                  ops::ElementwiseOpGrad,
+                  ops::ElementwiseGradOpInplaceInferer,
+                  ops::ElementwiseGradNoBufVarsInferer,
+                  ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseAddCompositeDoubleGradOpMaker);
 
 REGISTER_OPERATOR(
     elementwise_add_grad_grad,
     ops::ElementwiseOpDoubleGradWithoutDXDY,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseDoubleGradNoBufVarsInferer,
-    ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseAddTripleGradMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(elementwise_add_triple_grad,
                   ops::ElementwiseOpTripleGrad,
@@ -235,8 +231,7 @@ REGISTER_OPERATOR(
     grad_add,
     paddle::operators::ElementwiseOp,
     paddle::operators::ElementwiseAddOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OP_VERSION(elementwise_add)
     .AddCheckpoint(

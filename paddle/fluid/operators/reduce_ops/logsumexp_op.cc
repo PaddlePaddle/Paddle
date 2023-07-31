@@ -103,6 +103,5 @@ REGISTER_OPERATOR(logsumexp,
                   ops::LogsumexpOp,
                   ops::LogsumexpOpMaker,
                   ops::LogsumexpGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LogsumexpGradOpMaker<paddle::imperative::OpBase>,
                   LogsumexpInferShapeFunctor);
 REGISTER_OPERATOR(logsumexp_grad, ops::LogsumexpGrapOp);

@@ -396,8 +396,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(lrn,
                   ops::LRNOp,
                   ops::LRNOpMaker<float>,
-                  ops::LRNGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LRNGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LRNGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
 

@@ -133,8 +133,7 @@ REGISTER_OPERATOR(
     sequence_topk_avg_pooling,
     ops::SequenceTopkAvgPoolingOp,
     ops::SequenceTopkAvgPoolingOpMaker,
-    ops::SequenceTopkAvgPoolGradOpMaker<paddle::framework::OpDesc>,
-    ops::SequenceTopkAvgPoolGradOpMaker<paddle::imperative::OpBase>);
+    ops::SequenceTopkAvgPoolGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
                   ops::SequenceTopkAvgPoolingGradOp);
 PD_REGISTER_STRUCT_KERNEL(sequence_topk_avg_pooling,

@@ -864,19 +864,17 @@ struct DivideFunctor {
 
 namespace ops = paddle::operators;
 
-#define REGISTER_REDUCE_OP(op_name)                                           \
-  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {                \
-   protected:                                                                 \
-    virtual std::string GetName() const { return #op_name; }                  \
-    virtual std::string GetOpType() const { return "Reduce " #op_name; }      \
-  };                                                                          \
-  REGISTER_OPERATOR(                                                          \
-      op_name,                                                                \
-      ops::ReduceBaseOp,                                                      \
-      __##op_name##Maker__,                                                   \
-      paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>, \
-      paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase,       \
-                                            true>);                           \
+#define REGISTER_REDUCE_OP(op_name)                                            \
+  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {                 \
+   protected:                                                                  \
+    virtual std::string GetName() const { return #op_name; }                   \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; }       \
+  };                                                                           \
+  REGISTER_OPERATOR(                                                           \
+      op_name,                                                                 \
+      ops::ReduceBaseOp,                                                       \
+      __##op_name##Maker__,                                                    \
+      paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>); \
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
 
 #define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                    \
@@ -889,5 +887,4 @@ namespace ops = paddle::operators;
       op_name,                                                           \
       ops::ReduceBaseOp##__VA_ARGS__,                                    \
       __##op_name##Maker__,                                              \
-      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
-      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

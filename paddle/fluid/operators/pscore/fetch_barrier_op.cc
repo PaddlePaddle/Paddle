@@ -81,6 +81,5 @@ REGISTER_OPERATOR(
     fetch_barrier,
     ops::FetchBarrierOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FetchBarrierOpMaker,
     ops::FetchBarrierOpShapeInference);

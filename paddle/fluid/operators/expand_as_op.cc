@@ -139,8 +139,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand_as,
                   ops::ExpandAsOp,
                   ops::ExpandAsOpMaker,
-                  ops::ExpandAsGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ExpandAsGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ExpandAsGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(expand_as_grad,
                   ops::ExpandAsGradOp,
                   ops::ExpandAsGradNoNeedBufVarsInferer);

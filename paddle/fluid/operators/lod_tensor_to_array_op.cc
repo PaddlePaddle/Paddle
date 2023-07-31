@@ -281,5 +281,4 @@ REGISTER_OPERATOR(lod_tensor_to_array,
                   ops::LoDTensorToArrayOpProtoMaker,
                   ops::LoDTensorToArrayInferShape,
                   ops::LoDTensorToArrayInferVarType,
-                  ops::LoDTensorToArrayGradMaker<paddle::framework::OpDesc>,
-                  ops::LoDTensorToArrayGradMaker<paddle::imperative::OpBase>);
+                  ops::LoDTensorToArrayGradMaker<paddle::framework::OpDesc>);

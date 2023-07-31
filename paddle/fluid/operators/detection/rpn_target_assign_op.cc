@@ -1234,8 +1234,7 @@ REGISTER_OPERATOR(
     rpn_target_assign,
     ops::RpnTargetAssignOp,
     ops::RpnTargetAssignOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(rpn_target_assign,
                           CPU,
                           ALL_LAYOUT,
@@ -1246,8 +1245,7 @@ REGISTER_OPERATOR(
     retinanet_target_assign,
     ops::RetinanetTargetAssignOp,
     ops::RetinanetTargetAssignOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(retinanet_target_assign,
                           CPU,
                           ALL_LAYOUT,

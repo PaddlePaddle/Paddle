@@ -115,6 +115,5 @@ REGISTER_OPERATOR(
     listen_and_serv,
     ops::ListenAndServOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::ListenAndServOpMaker,
     ops::ListenAndServOpShapeInference);

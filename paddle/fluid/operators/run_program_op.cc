@@ -252,8 +252,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(run_program,
                   ops::RunProgramOp,
                   ops::RunProgramOpMaker,
-                  ops::RunProgramGradOpMaker<paddle::framework::OpDesc>,
-                  ops::RunProgramGradOpMaker<paddle::imperative::OpBase>);
+                  ops::RunProgramGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 
 /* see [Why use single type kernel] */

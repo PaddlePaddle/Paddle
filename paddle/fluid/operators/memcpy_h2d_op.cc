@@ -119,7 +119,6 @@ REGISTER_OPERATOR(
     ops::MemcpyH2DOpProtoMaker,
     ops::MemcpyH2DInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyH2DInferShapeFunctor);
 
 #ifdef PADDLE_WITH_IPU

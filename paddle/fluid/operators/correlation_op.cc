@@ -183,8 +183,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(correlation,
                   ops::CorrelationOp,
                   ops::CorrelationOpMaker,
-                  ops::CorrelationOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CorrelationOpGradMaker<paddle::imperative::OpBase>);
+                  ops::CorrelationOpGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(

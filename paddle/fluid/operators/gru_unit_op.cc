@@ -317,8 +317,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(gru_unit,
                   ops::GRUUnitOp,
                   ops::GRUUnitOpMaker,
-                  ops::GRUUnitGradOpMaker<paddle::framework::OpDesc>,
-                  ops::GRUUnitGradOpMaker<paddle::imperative::OpBase>);
+                  ops::GRUUnitGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(gru_unit_grad,
                   ops::GRUUnitGradOp,
                   ops::GRUUnitGradOpNoNeedBufferVarInferer);

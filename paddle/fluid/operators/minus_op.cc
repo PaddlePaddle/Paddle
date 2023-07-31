@@ -114,38 +114,6 @@ class MinusGradDescMaker : public framework::GradOpDescMakerBase {
   }
 };
 
-class MinusGradMaker : public imperative::GradOpBaseMakerBase {
- public:
-  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
-
-  std::shared_ptr<imperative::GradOpNode> operator()() const override {
-    auto x_g = this->InputGrad("X");
-    auto y_g = this->InputGrad("Y");
-
-    auto node = this->NewGradNode();
-
-    if (!x_g.empty()) {
-      imperative::TracedGradOp op(node);
-      op.SetType("scale");
-      op.SetInput("X", this->OutputGrad("Out"));
-      op.SetOutput("Out", x_g);
-      op.SetAttr("scale", 1.0f);
-      op.SetDefaultAttrsMap(DefaultAttrsMap());
-    }
-
-    if (!y_g.empty()) {
-      imperative::TracedGradOp op(node);
-      op.SetType("scale");
-      op.SetInput("X", this->OutputGrad("Out"));
-      op.SetOutput("Out", y_g);
-      op.SetAttr("scale", -1.0f);
-      op.SetDefaultAttrsMap(DefaultAttrsMap());
-    }
-
-    return node;
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 

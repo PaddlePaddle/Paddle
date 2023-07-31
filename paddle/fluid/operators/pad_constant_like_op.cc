@@ -239,8 +239,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(pad_constant_like,
                   ops::PadConstantLikeOp,
                   ops::PadConstantLikeOpMaker,
-                  ops::PadConstantLikeOpGradMaker<paddle::framework::OpDesc>,
-                  ops::PadConstantLikeOpGradMaker<paddle::imperative::OpBase>);
+                  ops::PadConstantLikeOpGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(pad_constant_like_grad, ops::PadConstantLikeOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(pad_constant_like,

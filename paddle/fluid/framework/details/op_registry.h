@@ -63,7 +63,6 @@ using OpRegistryClasses = std::tuple<                                // NOLINT
     TypePair<OperatorBase, kOperator>,                               // NOLINT
     TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
     TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
-    TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
     TypePair<prim::CompositeGradOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
     TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
     TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
@@ -244,15 +243,10 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 
     info->use_default_grad_op_desc_maker_ =
         std::is_base_of<DefaultGradOpMaker<OpDesc, true>, T>::value ||
-        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value ||
-        std::is_base_of<DefaultGradOpMaker<imperative::OpBase, true>,
-                        T>::value ||
-        std::is_base_of<DefaultGradOpMaker<imperative::OpBase, false>,
-                        T>::value;
+        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value;
 
     info->use_empty_grad_op_desc_maker_ =
-        std::is_base_of<EmptyGradOpMaker<OpDesc>, T>::value ||
-        std::is_base_of<EmptyGradOpMaker<imperative::OpBase>, T>::value;
+        std::is_base_of<EmptyGradOpMaker<OpDesc>, T>::value;
   }
 };
 

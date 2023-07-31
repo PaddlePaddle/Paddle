@@ -189,8 +189,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_unpad,
                   ops::SequenceUnpadOp,
                   ops::SequenceUnpadOpMaker,
-                  ops::SequenceUnpadGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SequenceUnpadGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SequenceUnpadGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sequence_unpad_grad,
                   ops::SequenceUnpadGradOp,
                   ops::SequenceUnpadGradOpNoNeedBufferVarsInferer);

@@ -203,5 +203,4 @@ REGISTER_OPERATOR(
     ops::ReadInferShape,
     ops::ReadOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::ReadInferVarType);

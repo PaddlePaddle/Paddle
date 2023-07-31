@@ -402,8 +402,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstmp,
                   ops::LSTMPOp,
                   ops::LSTMPOpMaker,
-                  ops::LSTMPGradMaker<paddle::framework::OpDesc>,
-                  ops::LSTMPGradMaker<paddle::imperative::OpBase>);
+                  ops::LSTMPGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
 PD_REGISTER_STRUCT_KERNEL(
     lstmp, CPU, ALL_LAYOUT, ops::LSTMPKernel, float, double) {}

@@ -258,8 +258,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv_shift,
                   ops::ConvShiftOp,
                   ops::ConvShiftOpMaker,
-                  ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ConvShiftGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
 PD_REGISTER_STRUCT_KERNEL(
     conv_shift, CPU, ALL_LAYOUT, ops::ConvShiftKernel, float) {}

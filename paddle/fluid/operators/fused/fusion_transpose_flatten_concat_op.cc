@@ -128,5 +128,4 @@ REGISTER_OPERATOR(
     fusion_transpose_flatten_concat,
     ops::TransposeFlattenConcatFusionOp,
     ops::TransposeFlattenConcatFusionOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

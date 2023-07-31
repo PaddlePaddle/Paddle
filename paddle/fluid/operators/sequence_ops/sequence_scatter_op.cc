@@ -181,8 +181,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_scatter,
                   ops::SequenceScatterOp,
                   ops::SequenceScatterOpMaker,
-                  ops::SequenceScatterGradMaker<paddle::framework::OpDesc>,
-                  ops::SequenceScatterGradMaker<paddle::imperative::OpBase>);
+                  ops::SequenceScatterGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sequence_scatter_grad,
                   ops::SequenceScatterGradOp,
                   ops::SequenceScatterGradNoNeedBufferVarsInferer);

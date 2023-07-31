@@ -87,6 +87,5 @@ REGISTER_OPERATOR(
     send_barrier,
     ops::SendBarrierOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SendBarrierOpMaker,
     ops::SendBarrierOpShapeInference);

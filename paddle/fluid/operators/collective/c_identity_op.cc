@@ -84,7 +84,6 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_identity,
                   ops::CIdentityOp,
                   ops::CIdentityOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
                   ops::CIdentityOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(c_identity,

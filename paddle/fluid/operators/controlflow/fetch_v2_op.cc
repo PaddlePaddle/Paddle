@@ -229,8 +229,7 @@ REGISTER_OPERATOR(
     fetch_v2,
     ops::FetchV2Op,
     ops::FetchV2OpProtoMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(fetch_v2,
                           CPU,

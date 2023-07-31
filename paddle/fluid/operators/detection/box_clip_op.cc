@@ -102,8 +102,7 @@ REGISTER_OPERATOR(
     box_clip,
     ops::BoxClipOp,
     ops::BoxClipOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     box_clip, CPU, ALL_LAYOUT, ops::BoxClipKernel, float, double) {}

@@ -144,8 +144,7 @@ namespace op = paddle::operators;
 REGISTER_OPERATOR(sequence_concat,
                   op::SequenceConcatOp,
                   op::SeqConcatOpMaker,
-                  op::SeqConcatGradOpMaker<paddle::framework::OpDesc>,
-                  op::SeqConcatGradOpMaker<paddle::imperative::OpBase>);
+                  op::SeqConcatGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(sequence_concat,
                           CPU,
                           ALL_LAYOUT,

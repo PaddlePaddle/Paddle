@@ -172,8 +172,7 @@ REGISTER_OPERATOR(
     anchor_generator,
     ops::AnchorGeneratorOp,
     ops::AnchorGeneratorOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(anchor_generator,
                           CPU,

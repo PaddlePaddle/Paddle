@@ -100,7 +100,6 @@ REGISTER_OPERATOR(
     depend,
     ops::DependOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::DependOpProtoMaker,
     ops::DependOpShapeInference,
     ops::DependNoNeedBufferVarsInferer);

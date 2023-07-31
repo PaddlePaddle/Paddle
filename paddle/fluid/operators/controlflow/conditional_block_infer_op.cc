@@ -116,5 +116,4 @@ REGISTER_OPERATOR(
     conditional_block_infer,
     ops::ConditionalBlockInferOp,
     ops::ConditionalBlockOpProtoMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

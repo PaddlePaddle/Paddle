@@ -106,8 +106,7 @@ REGISTER_OPERATOR(
     spp,
     ops::SppOp,
     ops::SppOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>);
 REGISTER_OPERATOR(spp_grad, ops::SppOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(spp, CPU, ALL_LAYOUT, ops::SppKernel, float, double) {

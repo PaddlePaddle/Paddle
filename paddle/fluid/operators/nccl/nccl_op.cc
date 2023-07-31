@@ -241,7 +241,6 @@ REGISTER_OPERATOR(
     ncclInit,
     ops::NCCLInitOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::NCCLInitOpMaker,
     ops::NCCLInitOpVarTypeInference,
     ops::NCCLInitOpShapeInference);

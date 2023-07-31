@@ -425,8 +425,7 @@ REGISTER_OPERATOR(cross_entropy,
                   ops::CrossEntropyOpBase,
                   ops::CrossEntropyOpMaker,
                   ops::CrossEntropyOpInferVarType,
-                  ops::CrossEntropyGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CrossEntropyGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CrossEntropyGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 PD_REGISTER_STRUCT_KERNEL(
     cross_entropy, CPU, ALL_LAYOUT, ops::CrossEntropyOpKernel, float, double) {}
@@ -441,8 +440,7 @@ REGISTER_OPERATOR(cross_entropy2,
                   ops::CrossEntropyOp2,
                   ops::CrossEntropyOpMaker2,
                   ops::CrossEntropyOpInferVarType,
-                  ops::CrossEntropyGradOpMaker2<paddle::framework::OpDesc>,
-                  ops::CrossEntropyGradOpMaker2<paddle::imperative::OpBase>);
+                  ops::CrossEntropyGradOpMaker2<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(cross_entropy_grad2, ops::CrossEntropyGradientOp2);
 PD_REGISTER_STRUCT_KERNEL(cross_entropy2,
                           CPU,

@@ -760,8 +760,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(data_norm,
                   ops::DataNormOp,
                   ops::DataNormOpMaker,
-                  ops::DataNormGradMaker<paddle::framework::OpDesc>,
-                  ops::DataNormGradMaker<paddle::imperative::OpBase>);
+                  ops::DataNormGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(

@@ -240,8 +240,7 @@ REGISTER_OPERATOR(
     precision_recall,
     ops::PrecisionRecallOp,
     ops::PrecisionRecallOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(precision_recall,
                           CPU,
                           ALL_LAYOUT,

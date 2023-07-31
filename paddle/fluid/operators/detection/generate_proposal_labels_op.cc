@@ -809,8 +809,7 @@ REGISTER_OPERATOR(
     generate_proposal_labels,
     ops::GenerateProposalLabelsOp,
     ops::GenerateProposalLabelsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(generate_proposal_labels,
                           CPU,
                           ALL_LAYOUT,

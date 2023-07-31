@@ -91,7 +91,6 @@ REGISTER_OPERATOR(channel_shuffle,
                   ops::ChannelShuffleOp,
                   ops::ChannelShuffleOpMaker,
                   ops::ChannelShuffleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ChannelShuffleGradOpMaker<paddle::imperative::OpBase>,
                   ChannelShuffleInferShapeFunctor);
 
 DECLARE_INFER_SHAPE_FUNCTOR(channel_shuffle_grad,

@@ -246,7 +246,6 @@ REGISTER_OPERATOR(set_value,
                   ops::SetValue,
                   ops::SetValueMaker,
                   ops::SetValueGradMaker<paddle::framework::OpDesc>,
-                  ops::SetValueGradMaker<paddle::imperative::OpBase>,
                   ops::SetValueOpInplaceInferer,
                   SetValueInferShapeFunctor);
 

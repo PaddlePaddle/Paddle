@@ -239,7 +239,6 @@ REGISTER_OPERATOR(cudnn_lstm,
                   ops::CudnnLSTMOp,
                   ops::CudnnLSTMOpMaker,
                   ops::CudnnLSTMGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>,
                   CudnnLSTMInferShapeFunctor);
 
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);

@@ -456,8 +456,7 @@ REGISTER_OPERATOR(
     fused_elemwise_activation,
     ops::FusedElemwiseActivationOp,
     ops::FusedElemwiseActivationMaker,
-    ops::FusedElemwiseActivationGradMaker<paddle::framework::OpDesc>,
-    ops::FusedElemwiseActivationGradMaker<paddle::imperative::OpBase>);
+    ops::FusedElemwiseActivationGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fused_elemwise_activation_grad,
                   ops::FusedElemwiseActivationOpGrad);
 
@@ -480,8 +479,7 @@ REGISTER_OPERATOR(
     fused_elemwise_add_activation,
     ops::FusedElemwiseAddActivationOp,
     ops::FusedElemwiseAddActivationMaker,
-    ops::FusedElemwiseAddActivationGradMaker<paddle::framework::OpDesc>,
-    ops::FusedElemwiseAddActivationGradMaker<paddle::imperative::OpBase>);
+    ops::FusedElemwiseAddActivationGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
                   ops::FusedElemwiseAddActivationNoNeddBufVarInferer,
                   ops::FusedElemwiseAddActivationOpGrad);

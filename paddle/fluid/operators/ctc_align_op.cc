@@ -126,8 +126,7 @@ REGISTER_OPERATOR(
     ctc_align,
     ops::CTCAlignOp,
     ops::CTCAlignOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     ctc_align, CPU, ALL_LAYOUT, ops::CTCAlignKernel, int, int64_t) {}

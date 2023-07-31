@@ -89,8 +89,7 @@ REGISTER_OPERATOR(
     read_file,
     ops::ReadFileOp,
     ops::ReadFileOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>)
 
 PD_REGISTER_STRUCT_KERNEL(
     read_file, CPU, ALL_LAYOUT, ops::CPUReadFileKernel, uint8_t) {}

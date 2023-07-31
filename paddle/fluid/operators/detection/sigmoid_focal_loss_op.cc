@@ -259,8 +259,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sigmoid_focal_loss,
                   ops::SigmoidFocalLossOp,
                   ops::SigmoidFocalLossOpMaker,
-                  ops::SigmoidFocalLossGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SigmoidFocalLossGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SigmoidFocalLossGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sigmoid_focal_loss_grad, ops::SigmoidFocalLossGradOp);
 PD_REGISTER_STRUCT_KERNEL(sigmoid_focal_loss,
                           CPU,

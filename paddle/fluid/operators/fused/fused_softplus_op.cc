@@ -65,5 +65,4 @@ REGISTER_OPERATOR(
     fused_softplus,
     ops::FusedSoftplusOp,
     ops::FusedSoftplusOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

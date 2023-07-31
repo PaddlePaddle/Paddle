@@ -70,8 +70,7 @@ REGISTER_OPERATOR(
     alloc_float_status,
     ops::AllocFloatStatusOp,
     ops::AllocFloatStatusMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     alloc_float_status, CPU, ALL_LAYOUT, ops::AllocFloatStatusKernel, float) {}

@@ -82,7 +82,6 @@ REGISTER_OPERATOR(
     ops::PartialAllGatherOp,
     ops::PartialAllGatherOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PartialAllGatherOpInplaceInferer)
 
 PD_REGISTER_STRUCT_KERNEL(partial_allgather,

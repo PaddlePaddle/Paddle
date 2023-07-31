@@ -95,7 +95,6 @@ REGISTER_OPERATOR(
     ops::DistributeFpnProposalsOp,
     ops::DistributeFpnProposalsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     DistributeFpnProposalsInferShapeFunctor);
 REGISTER_OP_VERSION(distribute_fpn_proposals)
     .AddCheckpoint(

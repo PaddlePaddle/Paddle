@@ -191,7 +191,6 @@ REGISTER_OPERATOR(mul,
                   ops::MulOpMaker,
                   ops::MulOpInferVarType,
                   ops::MulOpGradMaker<paddle::framework::OpDesc>,
-                  ops::MulOpGradMaker<paddle::imperative::OpBase>,
                   MulInferShapeFunctor);
 
 DECLARE_INFER_SHAPE_FUNCTOR(mul_grad,
@@ -200,7 +199,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(mul_grad,
 REGISTER_OPERATOR(mul_grad,
                   ops::MulGradOp,
                   ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::MulDoubleGradMaker<paddle::imperative::OpBase>,
                   MulGradInferShapeFunctor);
 
 REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);

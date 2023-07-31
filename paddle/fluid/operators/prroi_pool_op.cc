@@ -192,8 +192,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(prroi_pool,
                   ops::PRROIPoolOp,
                   ops::PRROIPoolOpMaker,
-                  ops::PRROIPoolGradMaker<paddle::framework::OpDesc>,
-                  ops::PRROIPoolGradMaker<paddle::imperative::OpBase>);
+                  ops::PRROIPoolGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(prroi_pool_grad, ops::PRROIPoolGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(prroi_pool,

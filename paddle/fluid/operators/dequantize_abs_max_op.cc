@@ -106,8 +106,7 @@ REGISTER_OPERATOR(
     dequantize_abs_max,
     ops::DequantizeMaxAbsOp,
     ops::DequantizeMaxAbsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(dequantize_abs_max,
                           CPU,

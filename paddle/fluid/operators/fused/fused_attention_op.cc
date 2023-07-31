@@ -816,8 +816,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_attention,
                   ops::FusedAttentionOp,
                   ops::FusedAttentionOpMaker,
-                  ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
-                  ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
+                  ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fused_attention_grad,
                   ops::FusedAttentionGradOp,
                   ops::FusedAttentionGradNoNeedBufferInferer);

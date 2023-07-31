@@ -153,8 +153,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_slice,
                   ops::SequenceSliceOp,
                   ops::SequenceSliceOpMaker,
-                  ops::SequenceSliceGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SequenceSliceGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SequenceSliceGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sequence_slice_grad,
                   ops::SequenceSliceGradOp,
                   ops::SequenceSliceGradNoNeedBufferVarsInferer);

@@ -97,5 +97,4 @@ REGISTER_OPERATOR(
     paddle::operators::LoDRankTableOpProtoMaker,
     paddle::operators::LoDRankTableInferShape,
     paddle::operators::LoDRankTableInferVarType,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

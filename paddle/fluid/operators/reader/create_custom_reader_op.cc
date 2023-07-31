@@ -211,5 +211,4 @@ REGISTER_OPERATOR(
     ops::CreateCustomReaderOpMaker,
     ops::CustomReaderInferShape,
     ops::CustomReaderInferVarType,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>)

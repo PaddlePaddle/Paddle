@@ -226,8 +226,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(lookup_table,
                   ops::LookupTableOp,
                   ops::LookupTableOpMaker,
-                  ops::LookupTableGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LookupTableGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LookupTableGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(lookup_table_grad,
                   ops::LookupTableOpGrad,

@@ -91,8 +91,7 @@ REGISTER_OPERATOR(
     ops::FillZerosLikeOp2,
     ops::FillZerosLikeOp2Maker,
     ops::FillZerosLikeOp2NoNeedBufferVarsInferer,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(fill_zeros_like,
                           CPU,

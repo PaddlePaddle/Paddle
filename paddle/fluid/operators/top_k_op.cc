@@ -166,8 +166,7 @@ REGISTER_OPERATOR(top_k,
                   ops::TopkOp,
                   ops::TopkOpMaker,
                   ops::TopkInferVarType,
-                  ops::TopkGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TopkGradOpMaker<paddle::imperative::OpBase>);
+                  ops::TopkGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(top_k_grad, ops::TopkOpGrad);
 

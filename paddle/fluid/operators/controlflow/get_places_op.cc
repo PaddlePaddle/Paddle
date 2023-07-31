@@ -133,5 +133,4 @@ REGISTER_OPERATOR(
     ops::GetPlacesOpProtoMaker,
     ops::GetPlacesInferVarType,
     ops::GetPlacesInferShape,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

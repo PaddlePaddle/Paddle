@@ -88,8 +88,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(l1_norm,
                   ops::L1NormOp,
                   ops::L1NormOpMaker,
-                  ops::L1NormGradMaker<paddle::framework::OpDesc>,
-                  ops::L1NormGradMaker<paddle::imperative::OpBase>);
+                  ops::L1NormGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(l1_norm_grad, ops::L1NormGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(l1_norm, CPU, ALL_LAYOUT, ops::L1NormKernel, float) {}

@@ -89,8 +89,7 @@ REGISTER_OPERATOR(
     similarity_focus,
     ops::SimilarityFocusOp,
     ops::SimilarityFocusOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(similarity_focus,
                           CPU,
                           ALL_LAYOUT,

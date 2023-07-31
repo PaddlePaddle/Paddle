@@ -265,7 +265,6 @@ REGISTER_OPERATOR(hierarchical_sigmoid,
                   ops::HierarchicalSigmoidOp,
                   ops::HierarchicalSigmoidOpMaker<int>,
                   ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
-                  ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>,
                   HierarchicalSigmoidInferShapeFunctor);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad,
                   ops::HierarchicalSigmoidGradOp,

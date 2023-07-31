@@ -346,7 +346,6 @@ REGISTER_OPERATOR(affine_channel,
                   ops::AffineChannelOp,
                   ops::AffineChannelOpMaker,
                   ops::AffineChannelGradMaker<paddle::framework::OpDesc>,
-                  ops::AffineChannelGradMaker<paddle::imperative::OpBase>,
                   ops::AffineChannelInplaceInferer);
 REGISTER_OPERATOR(affine_channel_grad,
                   ops::AffineChannelOpGrad,

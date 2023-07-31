@@ -229,8 +229,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(tree_conv,
                   ops::TreeConvOp,
                   ops::TreeConvOpMaker,
-                  ops::TreeConvGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TreeConvGradOpMaker<paddle::imperative::OpBase>);
+                  ops::TreeConvGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(tree_conv_grad, ops::TreeConvGradOp);
 

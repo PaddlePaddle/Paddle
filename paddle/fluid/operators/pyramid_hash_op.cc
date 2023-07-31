@@ -580,8 +580,7 @@ namespace frm = paddle::framework;
 REGISTER_OPERATOR(pyramid_hash,
                   ops::PyramidHashOP,
                   ops::PyramidHashOpMaker,
-                  ops::PyramidHashGradOpMaker<paddle::framework::OpDesc>,
-                  ops::PyramidHashGradOpMaker<paddle::imperative::OpBase>);
+                  ops::PyramidHashGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(

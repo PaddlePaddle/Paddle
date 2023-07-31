@@ -178,10 +178,8 @@ REGISTER_OPERATOR(pad,
                   ops::PadOp,
                   ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
-                  ops::PadOpGradMaker<paddle::imperative::OpBase>,
                   ops::PadCompositeGradOpMaker,
                   PadInferShapeFunctor);
 REGISTER_OPERATOR(pad_grad,
                   ops::PadOpGrad,
-                  ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
+                  ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>);

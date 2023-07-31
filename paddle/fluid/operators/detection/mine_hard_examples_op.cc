@@ -400,8 +400,7 @@ REGISTER_OPERATOR(
     mine_hard_examples,
     ops::MineHardExamplesOp,
     ops::MineHardExamplesOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(mine_hard_examples,
                           CPU,

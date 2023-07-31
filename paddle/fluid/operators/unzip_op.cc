@@ -157,8 +157,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(unzip,
                   ops::unzipOp,
                   ops::unzipOpMaker,
-                  ops::unzipGradOpMaker<paddle::framework::OpDesc>,
-                  ops::unzipGradOpMaker<paddle::imperative::OpBase>);
+                  ops::unzipGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(unzip_grad, ops::unzipGradientOp);
 

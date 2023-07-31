@@ -142,12 +142,10 @@ class PushBoxExtendedSparseOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    pull_box_extended_sparse,
-    ops::PullBoxExtendedSparseOp,
-    ops::PullBoxExtendedSparseOpMaker,
-    ops::PushBoxExtendedSparseOpMaker<paddle::framework::OpDesc>,
-    ops::PushBoxExtendedSparseOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pull_box_extended_sparse,
+                  ops::PullBoxExtendedSparseOp,
+                  ops::PullBoxExtendedSparseOpMaker,
+                  ops::PushBoxExtendedSparseOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(push_box_extended_sparse, ops::PushBoxExtendedSparseOp);
 

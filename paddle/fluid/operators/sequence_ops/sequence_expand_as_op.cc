@@ -199,13 +199,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    sequence_expand_as,
-    ops::SequenceExpandAsOp,
-    ops::SequenceExpandAsOpMaker,
-    ops::SequenceExpandAsOpGradOpMaker<paddle::framework::OpDesc>,
-    ops::SequenceExpandAsOpGradOpMaker<paddle::imperative::OpBase>,
-    ops::SequenceExpandAsOpNoNeedBufferVarsInferer);
+REGISTER_OPERATOR(sequence_expand_as,
+                  ops::SequenceExpandAsOp,
+                  ops::SequenceExpandAsOpMaker,
+                  ops::SequenceExpandAsOpGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceExpandAsOpNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(sequence_expand_as_grad,
                   ops::SequenceExpandAsOpGrad,
                   ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);

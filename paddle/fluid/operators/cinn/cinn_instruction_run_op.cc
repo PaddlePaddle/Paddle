@@ -116,8 +116,7 @@ REGISTER_OPERATOR(
     cinn_instruction_run,
     ops::CinnInstructionRunOp,
     ops::CinnInstructionRunOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(cinn_instruction_run,
                           CPU,

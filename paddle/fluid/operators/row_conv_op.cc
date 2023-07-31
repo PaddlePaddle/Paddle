@@ -346,8 +346,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(row_conv,
                   ops::RowConvOp,
                   ops::RowConvOpMaker,
-                  ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
-                  ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
+                  ops::RowConvGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 PD_REGISTER_STRUCT_KERNEL(
     row_conv, CPU, ALL_LAYOUT, ops::RowConvKernel, float) {}

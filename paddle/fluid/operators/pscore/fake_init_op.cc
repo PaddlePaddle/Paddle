@@ -80,5 +80,4 @@ REGISTER_OPERATOR(
     ops::FakeInitInferShape,
     ops::FakeInitOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FakeInitOpVarTypeInference);

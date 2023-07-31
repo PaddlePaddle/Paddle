@@ -275,8 +275,7 @@ REGISTER_OPERATOR(
     fake_dequantize_max_abs,
     ops::FakeDequantizeMaxAbsOp,
     ops::FakeDequantizeMaxAbsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
                           CPU,
                           ALL_LAYOUT,
@@ -288,8 +287,7 @@ REGISTER_OPERATOR(
     fake_channel_wise_dequantize_max_abs,
     ops::FakeChannelWiseDequantizeMaxAbsOp,
     ops::FakeChannelWiseDequantizeMaxAbsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_dequantize_max_abs,
                           CPU,
                           ALL_LAYOUT,

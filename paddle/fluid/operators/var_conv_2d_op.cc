@@ -528,8 +528,7 @@ namespace frm = paddle::framework;
 REGISTER_OPERATOR(var_conv_2d,
                   ops::VarConv2dOP,
                   ops::VarConv2dOpMaker,
-                  ops::VarConv2dGradMaker<paddle::framework::OpDesc>,
-                  ops::VarConv2dGradMaker<paddle::imperative::OpBase>);
+                  ops::VarConv2dGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(

@@ -178,8 +178,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(margin_rank_loss,
                   ops::MarginRankLossOp,
                   ops::MarginRankLossOpMaker<float>,
-                  ops::MarginRankLossGradMaker<paddle::framework::OpDesc>,
-                  ops::MarginRankLossGradMaker<paddle::imperative::OpBase>);
+                  ops::MarginRankLossGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(

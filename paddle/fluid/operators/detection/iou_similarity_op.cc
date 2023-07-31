@@ -111,8 +111,7 @@ REGISTER_OPERATOR(
     iou_similarity,
     ops::IOUSimilarityOp,
     ops::IOUSimilarityOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     iou_similarity, CPU, ALL_LAYOUT, ops::IOUSimilarityKernel, float, double) {}

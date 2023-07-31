@@ -269,8 +269,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sample_logits,
                   ops::SampleLogitsOp,
                   ops::SampleLogitsOpMaker,
-                  ops::SampleLogitsGradMaker<paddle::framework::OpDesc>,
-                  ops::SampleLogitsGradMaker<paddle::imperative::OpBase>);
+                  ops::SampleLogitsGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(sample_logits_grad, ops::SampleLogitsOpGrad);
 PD_REGISTER_STRUCT_KERNEL(
     sample_logits, CPU, ALL_LAYOUT, ops::SampleLogitsKernel, float, double) {}

@@ -90,5 +90,4 @@ REGISTER_OPERATOR(
     paddle::operators::SequenceMaskOp,
     paddle::operators::SequenceMaskOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     SequenceMaskInferShapeFunctor);

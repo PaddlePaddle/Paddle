@@ -197,8 +197,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(partial_concat,
                   ops::PartialConcatOp,
                   ops::PartialConcatOpMaker,
-                  ops::PartialConcatGradMaker<paddle::framework::OpDesc>,
-                  ops::PartialConcatGradMaker<paddle::imperative::OpBase>);
+                  ops::PartialConcatGradMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(partial_concat_grad, ops::PartialConcatGradOp);
 

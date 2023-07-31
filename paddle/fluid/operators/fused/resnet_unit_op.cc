@@ -460,6 +460,5 @@ REGISTER_OPERATOR(resnet_unit,
                   ops::ResNetUnitOp,
                   ops::ResNetUnitOpMaker,
                   ops::ResNetUnitOpInferVarType,
-                  ops::ResNetUnitGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ResNetUnitGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ResNetUnitGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(resnet_unit_grad, ops::ResNetUnitGradOp);

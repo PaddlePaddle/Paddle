@@ -140,8 +140,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_sparse,
                   ops::PullSparseOp,
                   ops::PullSparseOpMaker,
-                  ops::PushSparseOpMaker<paddle::framework::OpDesc>,
-                  ops::PushSparseOpMaker<paddle::imperative::OpBase>);
+                  ops::PushSparseOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(push_sparse, ops::PushSparseOp);
 PD_REGISTER_STRUCT_KERNEL(
     pull_sparse, CPU, ALL_LAYOUT, ops::PullSparseCPUKernel, float) {}

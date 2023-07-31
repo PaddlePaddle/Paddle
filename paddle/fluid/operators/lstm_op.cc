@@ -355,8 +355,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm,
                   ops::LSTMOp,
                   ops::LSTMOpMaker,
-                  ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LSTMGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(

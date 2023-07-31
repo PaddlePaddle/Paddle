@@ -67,8 +67,7 @@ REGISTER_OPERATOR(
     share_data,
     ops::ShareDataOp,
     ops::ShareDataOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(share_data,
                           CPU,
                           ALL_LAYOUT,

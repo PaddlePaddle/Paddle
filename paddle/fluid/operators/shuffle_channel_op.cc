@@ -118,8 +118,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(shuffle_channel,
                   ops::ShuffleChannelOp,
                   ops::ShuffleChannelOpMaker,
-                  ops::ShuffleChannelGradMaker<paddle::framework::OpDesc>,
-                  ops::ShuffleChannelGradMaker<paddle::imperative::OpBase>);
+                  ops::ShuffleChannelGradMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 

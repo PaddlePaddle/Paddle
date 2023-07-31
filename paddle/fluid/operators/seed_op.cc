@@ -51,8 +51,7 @@ REGISTER_OPERATOR(
     seed,
     ops::SeedOp,
     ops::SeedOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(seed, CPU, ALL_LAYOUT, ops::CPUSeedKernel, int) {}
 
 /* ==========================  register checkpoint ===========================*/

@@ -222,8 +222,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(smooth_l1_loss,
                   ops::SmoothL1LossOp,
                   ops::SmoothL1LossOpMaker,
-                  ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>,
-                  ops::SmoothL1LossGradMaker<paddle::imperative::OpBase>);
+                  ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
 PD_REGISTER_STRUCT_KERNEL(
     smooth_l1_loss, CPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}

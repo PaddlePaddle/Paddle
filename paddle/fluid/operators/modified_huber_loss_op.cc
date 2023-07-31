@@ -168,12 +168,10 @@ class ModifiedHuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    modified_huber_loss,
-    ops::ModifiedHuberLossOp,
-    ops::ModifiedHuberLossOpMaker,
-    ops::ModifiedHuberLossGradOpMaker<paddle::framework::OpDesc>,
-    ops::ModifiedHuberLossGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(modified_huber_loss,
+                  ops::ModifiedHuberLossOp,
+                  ops::ModifiedHuberLossOpMaker,
+                  ops::ModifiedHuberLossGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(

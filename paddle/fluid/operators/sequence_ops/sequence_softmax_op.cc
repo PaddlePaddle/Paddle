@@ -144,8 +144,7 @@ REGISTER_OPERATOR(
     sequence_softmax,
     ops::SequenceSoftmaxOp,
     ops::SequenceSoftmaxOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>);
 REGISTER_OPERATOR(sequence_softmax_grad,
                   ops::SequenceSoftmaxGradOp,
                   ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);

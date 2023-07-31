@@ -87,5 +87,4 @@ REGISTER_OPERATOR(
     ops::LoDArrayLengthOp,
     ops::LoDArrayLengthInferShape,
     ops::LoDArrayLengthProtoMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

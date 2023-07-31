@@ -295,7 +295,6 @@ REGISTER_OPERATOR(
     reorder_lod_tensor_by_rank,
     ops::ReorderLoDTensorByRankTableOp,
     ops::ReorderLodTensorByRankGradOpMaker<paddle::framework::OpDesc>,
-    ops::ReorderLodTensorByRankGradOpMaker<paddle::imperative::OpBase>,
     ops::ReorderLoDTensorByRankTableOpProtoMaker,
     ops::IdentityInferShape);
 REGISTER_OPERATOR(reorder_lod_tensor_by_rank_grad,

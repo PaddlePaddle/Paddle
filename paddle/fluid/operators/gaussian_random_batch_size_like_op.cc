@@ -96,7 +96,6 @@ REGISTER_OPERATOR(
     paddle::operators::GaussianRandomBatchSizeLikeOp,
     paddle::operators::GaussianRandomBatchSizeLikeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer);
 
 namespace ops = paddle::operators;

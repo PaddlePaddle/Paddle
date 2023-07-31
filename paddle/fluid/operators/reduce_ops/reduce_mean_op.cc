@@ -65,29 +65,7 @@ class ReduceMeanDoubleGradDescMaker : public framework::GradOpDescMakerBase {
     return ops;
   }
 };
-class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
- public:
-  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::shared_ptr<imperative::GradOpNode> operator()() const override {
-    auto out_grads = InputGrad(framework::GradVarName("Out"));
-    if (!out_grads.empty()) {
-      auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
-      auto node = this->NewGradNode();
-      {
-        imperative::TracedGradOp op(node);
-        op.SetType("reduce_mean");
-        op.SetInput("X", x_gg);
-        op.SetAttrMap(Attrs());
-        op.SetDefaultAttrsMap(DefaultAttrsMap());
-        op.SetOutput("Out", out_grads);
-      }
-      return node;
-    } else {
-      return nullptr;
-    }
-  }
-};
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
@@ -107,10 +85,8 @@ REGISTER_OPERATOR(reduce_mean,
                   ops::ReduceBaseOp,
                   __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>,
                   ReduceMeanInferShapeFunctor);
 REGISTER_OPERATOR(reduce_mean_grad,
                   ops::ReduceGradOp,
                   ops::ReduceMeanDoubleGradDescMaker,
-                  ops::ReduceMeanDoubleGradOpBaseMaker,
                   ops::ReduceMeanGradNoNeedBufferVarInferer);

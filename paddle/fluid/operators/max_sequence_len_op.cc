@@ -81,5 +81,4 @@ REGISTER_OPERATOR(
     paddle::operators::MaxSeqenceLenOp,
     paddle::operators::MaxSeqenceLenOpProtoMaker,
     paddle::operators::MaxSeqenceLenInferShape,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

@@ -139,5 +139,4 @@ REGISTER_OPERATOR(
     ops::MemcpyOpProtoMaker,
     ops::MemcpyInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyInferShapeFunctor);

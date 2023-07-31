@@ -259,8 +259,7 @@ REGISTER_OPERATOR(
     density_prior_box,
     ops::DensityPriorBoxOp,
     ops::DensityPriorBoxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(density_prior_box,
                           CPU,

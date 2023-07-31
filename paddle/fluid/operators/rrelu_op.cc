@@ -122,7 +122,6 @@ REGISTER_OPERATOR(rrelu,
                   ops::RReluOp,
                   ops::RReluOpMaker,
                   ops::RReluGradOpMaker<paddle::framework::OpDesc>,
-                  ops::RReluGradOpMaker<paddle::imperative::OpBase>,
                   RReluInferShapeFunctor);
 
 DECLARE_INFER_SHAPE_FUNCTOR(rrelu_grad,

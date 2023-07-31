@@ -147,8 +147,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(hinge_loss,
                   ops::HingeLossOp,
                   ops::HingeLossOpMaker<float>,
-                  ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
-                  ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
+                  ops::HingeLossGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(

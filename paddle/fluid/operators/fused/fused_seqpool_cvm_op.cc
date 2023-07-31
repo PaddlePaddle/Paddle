@@ -286,8 +286,7 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(fused_seqpool_cvm,
                   ops::FusedSeqpoolCVMOp,
                   ops::FusedSeqpoolCVMOpMaker,
-                  ops::FusedSeqpoolCVMGradOpMaker<paddle::framework::OpDesc>,
-                  ops::FusedSeqpoolCVMGradOpMaker<paddle::imperative::OpBase>);
+                  ops::FusedSeqpoolCVMGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fused_seqpool_cvm_grad, ops::FusedSeqpoolCVMGradOp)
 
 PD_REGISTER_STRUCT_KERNEL(fused_seqpool_cvm,

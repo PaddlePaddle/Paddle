@@ -262,8 +262,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_conv,
                   ops::SequenceConvOp,
                   ops::SequenceConvOpMaker,
-                  ops::SequenceConvGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SequenceConvGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SequenceConvGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(sequence_conv_grad,
                   ops::SequenceConvGradOp,

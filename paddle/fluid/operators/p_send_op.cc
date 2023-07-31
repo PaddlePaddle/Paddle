@@ -80,7 +80,6 @@ REGISTER_OPERATOR(
     ops::PSendOp,
     ops::PSendOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     PSendInferShapeFunctor);
 
 REGISTER_OPERATOR(
@@ -88,5 +87,4 @@ REGISTER_OPERATOR(
     ops::PSendArrayOp,
     ops::PSendArrayOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     PSendArrayInferShapeFunctor);

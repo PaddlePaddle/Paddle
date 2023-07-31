@@ -348,8 +348,6 @@ namespace plat = paddle::platform;
       ops::ActivationOpInferVarType,                                        \
       ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
                                  paddle::framework::OpDesc>,                \
-      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
-                                 paddle::imperative::OpBase>,               \
       std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
                        ops::ActFwdInplaceInferer,                           \
                        void>::type);                                        \
@@ -366,8 +364,6 @@ namespace plat = paddle::platform;
       ops::ActivationOpInferVarType,                                   \
       ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
                                  paddle::framework::OpDesc>,           \
-      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
-                                 paddle::imperative::OpBase>,          \
       ops::OP_NAME##CompositeGradOpMaker,                              \
       std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(), \
                        ops::ActFwdInplaceInferer,                      \

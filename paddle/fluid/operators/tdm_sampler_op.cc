@@ -134,8 +134,7 @@ REGISTER_OPERATOR(
     tdm_sampler,
     ops::TDMSamplerOp,
     ops::TDMSamplerOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(tdm_sampler,
                           CPU,

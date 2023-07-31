@@ -273,13 +273,11 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(unsqueeze,
                   ops::UnsqueezeOp,
                   ops::UnsqueezeOpMaker,
-                  ops::UnsqueezeGradOpMaker<paddle::framework::OpDesc>,
-                  ops::UnsqueezeGradOpMaker<paddle::imperative::OpBase>);
+                  ops::UnsqueezeGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(unsqueeze_grad,
                   ops::UnsqueezeGradOp,
                   ops::UnsqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::UnsqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::UnsqueezeGradOpNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(

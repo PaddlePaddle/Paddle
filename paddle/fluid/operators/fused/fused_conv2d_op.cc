@@ -143,7 +143,6 @@ REGISTER_OPERATOR(
     ops::FusedConvOp,
     ops::FusedConvOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     FusedConv2DInferShapeFunctor);
 
 // fused_conv3d is only used for onednn inference.
@@ -152,5 +151,4 @@ REGISTER_OPERATOR(
     ops::FusedConvOp,
     ops::FusedConvOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     FusedConv3DInferShapeFunctor);

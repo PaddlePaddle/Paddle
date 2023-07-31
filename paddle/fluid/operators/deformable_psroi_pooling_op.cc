@@ -352,8 +352,7 @@ REGISTER_OPERATOR(
     deformable_psroi_pooling,
     ops::DeformablePSROIPoolOp,
     ops::DeformablePSROIPoolOpMaker,
-    ops::DeformablePSROIPoolGradOpMaker<paddle::framework::OpDesc>,
-    ops::DeformablePSROIPoolGradOpMaker<paddle::imperative::OpBase>);
+    ops::DeformablePSROIPoolGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(deformable_psroi_pooling_grad,
                   ops::DeformablePSROIPoolGradOp);
 

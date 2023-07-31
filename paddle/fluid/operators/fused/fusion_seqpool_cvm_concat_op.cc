@@ -169,8 +169,7 @@ REGISTER_OPERATOR(
     fusion_seqpool_cvm_concat,
     ops::FusionSeqPoolCVMConcatOp,
     ops::FusionSeqPoolCVMConcatOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(fusion_seqpool_cvm_concat,
                           CPU,

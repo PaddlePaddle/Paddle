@@ -1087,28 +1087,6 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           return maker();
         };
 
-    // GradOpBaseMaker
-    info.dygraph_grad_op_maker_ =
-        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
-            const std::string& type,
-            const imperative::NameVarBaseMap& var_base_map_in,
-            const imperative::NameVarBaseMap& var_base_map_out,
-            const framework::AttributeMap& attrs,
-            const framework::AttributeMap& default_attrs,
-            const std::map<std::string, std::string>& inplace_map) {
-          CustomGradOpMaker<paddle::imperative::OpBase> maker(type,
-                                                              var_base_map_in,
-                                                              var_base_map_out,
-                                                              attrs,
-                                                              inplace_map,
-                                                              grad_op_name,
-                                                              grad_op_inputs,
-                                                              grad_op_outputs,
-                                                              is_double_grad);
-          maker.SetDygraphDefaultAttrsMap(default_attrs);
-          return maker();
-        };
-
     /* Grad op register */
     OpInfo grad_info;
 

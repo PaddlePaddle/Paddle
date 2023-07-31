@@ -227,8 +227,7 @@ REGISTER_OPERATOR(
     quantize_linear,
     ops::QuantizeLinearOp,
     ops::QuantizeLinearOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     quantize_linear, CPU, ALL_LAYOUT, ops::QuantizeLinearKernel, float) {}
@@ -237,8 +236,7 @@ REGISTER_OPERATOR(
     dequantize_linear,
     ops::QuantizeLinearOp,
     ops::QuantizeLinearOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(dequantize_linear,
                           CPU,

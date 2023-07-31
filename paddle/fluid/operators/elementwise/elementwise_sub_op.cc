@@ -150,18 +150,15 @@ REGISTER_OPERATOR(elementwise_sub,
                   ::paddle::operators::ElementwiseSubOpMaker,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_subGradMaker<::paddle::framework::OpDesc>,
-                  elementwise_subGradMaker<::paddle::imperative::OpBase>,
                   ::paddle::operators::ElementwiseSubCompositeGradOpMaker,
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
-REGISTER_OPERATOR(
-    elementwise_sub_grad,
-    ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer,
-    ops::ElementwiseGradNoBufVarsInferer,
-    ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>,
-    ops::ElementwiseSubCompositeDoubleGradOpMaker);
+REGISTER_OPERATOR(elementwise_sub_grad,
+                  ops::ElementwiseOpGrad,
+                  ops::ElementwiseGradOpInplaceInferer,
+                  ops::ElementwiseGradNoBufVarsInferer,
+                  ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseSubCompositeDoubleGradOpMaker);
 
 REGISTER_OPERATOR(elementwise_sub_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,

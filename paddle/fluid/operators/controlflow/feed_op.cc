@@ -209,7 +209,6 @@ REGISTER_OPERATOR(
     feed,
     paddle::operators::FeedOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(

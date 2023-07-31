@@ -161,8 +161,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(fsp,
                   ops::FSPOp,
                   ops::FSPOpMaker,
-                  ops::FSPGradOpMaker<paddle::framework::OpDesc>,
-                  ops::FSPGradOpMaker<paddle::imperative::OpBase>);
+                  ops::FSPGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
 
 PD_REGISTER_STRUCT_KERNEL(

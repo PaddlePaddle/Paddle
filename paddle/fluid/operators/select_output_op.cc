@@ -127,5 +127,4 @@ REGISTER_OPERATOR(select_output,
                   ops::SelectOutputOp,
                   ops::SelectOutputOpProtoMaker,
                   ops::SelectOutputInferShape,
-                  ops::SelectOutputGradMaker<paddle::framework::OpDesc>,
-                  ops::SelectOutputGradMaker<paddle::imperative::OpBase>);
+                  ops::SelectOutputGradMaker<paddle::framework::OpDesc>);

@@ -142,8 +142,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_gpups_sparse,
                   ops::PullGpuPSSparseOp,
                   ops::PullGpuPSSparseOpMaker,
-                  ops::PushGpuPSSparseOpMaker<paddle::framework::OpDesc>,
-                  ops::PushGpuPSSparseOpMaker<paddle::imperative::OpBase>);
+                  ops::PushGpuPSSparseOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(push_gpups_sparse, ops::PushGpuPSSparseOp);
 
 PD_REGISTER_STRUCT_KERNEL(pull_gpups_sparse,

@@ -129,14 +129,12 @@ REGISTER_OPERATOR(elementwise_div,
                   ops::ElementwiseDivOpMaker,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseDivCompositeGradOpMaker,
-                  ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(
     elementwise_div_grad,
     ops::ElementwiseOpGrad,
-    ops::ElementwiseDivDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseDivDoubleGradMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseDivDoubleGradMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(elementwise_div_grad_grad,
                   ops::ElementwiseDivOpDoubleGrad,

@@ -244,8 +244,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(cos_sim,
                   ops::CosSimOp,
                   ops::CosSimOpMaker,
-                  ops::CosSimGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CosSimGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CosSimGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 PD_REGISTER_STRUCT_KERNEL(cos_sim, CPU, ALL_LAYOUT, ops::CosSimKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(

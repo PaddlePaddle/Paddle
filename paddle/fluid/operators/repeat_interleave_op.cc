@@ -168,8 +168,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(repeat_interleave,
                   ops::RepeatInterleaveOp,
                   ops::RepeatInterleaveOpMaker,
-                  ops::RepeatInterleaveGradMaker<paddle::framework::OpDesc>,
-                  ops::RepeatInterleaveGradMaker<paddle::imperative::OpBase>);
+                  ops::RepeatInterleaveGradMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(repeat_interleave_grad,
                   ops::RepeatInterleaveGradOp,

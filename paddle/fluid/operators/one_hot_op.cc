@@ -133,8 +133,7 @@ REGISTER_OPERATOR(
     one_hot,
     ops::OneHotOp,
     ops::OneHotOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OP_CPU_KERNEL(one_hot,
                        ops::OneHotKernel<phi::CPUContext, int>,
                        ops::OneHotKernel<phi::CPUContext, int64_t>);

@@ -686,8 +686,7 @@ REGISTER_OPERATOR(
     roi_perspective_transform,
     ops::ROIPerspectiveTransformOp,
     ops::ROIPerspectiveTransformOpMaker,
-    ops::ROIPerspectiveTransformGradMaker<paddle::framework::OpDesc>,
-    ops::ROIPerspectiveTransformGradMaker<paddle::imperative::OpBase>);
+    ops::ROIPerspectiveTransformGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
 PD_REGISTER_STRUCT_KERNEL(roi_perspective_transform,

@@ -157,8 +157,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(stft,
                   ops::StftOp,
                   ops::StftOpMaker,
-                  ops::StftGradOpMaker<paddle::framework::OpDesc>,
-                  ops::StftGradOpMaker<paddle::imperative::OpBase>);
+                  ops::StftGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(stft_grad, ops::StftGradOp);
 

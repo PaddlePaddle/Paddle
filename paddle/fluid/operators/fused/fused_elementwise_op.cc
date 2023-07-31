@@ -67,29 +67,25 @@ REGISTER_OPERATOR(
     ops::ElementwiseOp,
     ops::FusedElementwiseOpMaker,
     ops::ElementwiseOpInferVarType,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(
     fused_elementwise_sub,
     ops::ElementwiseOp,
     ops::FusedElementwiseOpMaker,
     ops::ElementwiseOpInferVarType,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(
     fused_elementwise_mul,
     ops::ElementwiseOp,
     ops::FusedElementwiseOpMaker,
     ops::ElementwiseOpInferVarType,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(
     fused_elementwise_div,
     ops::ElementwiseOp,
     ops::FusedElementwiseOpMaker,
     ops::ElementwiseOpInferVarType,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);

@@ -19,8 +19,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_reverse,
                   ops::SequenceReverseOp,
                   ops::SequenceReverseOpMaker,
-                  ops::SequenceReverseGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SequenceReverseGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SequenceReverseGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(sequence_reverse,
                           CPU,

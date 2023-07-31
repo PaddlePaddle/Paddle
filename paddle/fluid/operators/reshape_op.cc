@@ -708,7 +708,6 @@ REGISTER_OPERATOR(
     ops::ReshapeOp,
     ops::ReshapeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape_grad,
                   ops::ReshapeGradOp,
@@ -741,14 +740,12 @@ REGISTER_OPERATOR(reshape2,
                   ops::Reshape2Op,
                   ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
-                  ops::Reshape2GradMaker<paddle::imperative::OpBase>,
                   ops::Reshape2InferVarType,
                   ops::Reshape2CompositeGradOpMaker,
                   ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad,
                   ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeGradInplaceInferer);
 
 DECLARE_INFER_SHAPE_FUNCTOR(reshape2_grad_grad,

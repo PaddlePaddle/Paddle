@@ -219,8 +219,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(space_to_depth,
                   ops::SpaceToDepthOp,
                   ops::SpaceToDepthOpMaker,
-                  ops::SpaceToDepthGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SpaceToDepthGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SpaceToDepthGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(space_to_depth_grad,
                   ops::SpaceToDepthGradOp,
                   ops::SpaceToDepthGradOpNoBufferVarsInferer);

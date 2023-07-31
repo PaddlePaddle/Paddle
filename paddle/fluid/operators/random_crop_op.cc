@@ -93,8 +93,7 @@ REGISTER_OPERATOR(
     random_crop,
     ops::RandomCropOp,
     ops::RandomCropOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(random_crop,
                           CPU,

@@ -178,8 +178,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(bpr_loss,
                   ops::BprLossOp,
                   ops::BprLossOpMaker,
-                  ops::BprLossGradMaker<paddle::framework::OpDesc>,
-                  ops::BprLossGradMaker<paddle::imperative::OpBase>);
+                  ops::BprLossGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(bpr_loss_grad, ops::BprLossGradientOp);
 
 PD_REGISTER_STRUCT_KERNEL(

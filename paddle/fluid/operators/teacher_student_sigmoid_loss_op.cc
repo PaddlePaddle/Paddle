@@ -243,8 +243,7 @@ REGISTER_OPERATOR(
     teacher_student_sigmoid_loss,
     ops::TeacherStudentSigmoidLossOp,
     ops::TeacherStudentSigmoidLossOpMaker,
-    ops::TeacherStudentSigmoidLossGradOpMaker<paddle::framework::OpDesc>,
-    ops::TeacherStudentSigmoidLossGradOpMaker<paddle::imperative::OpBase>);
+    ops::TeacherStudentSigmoidLossGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(teacher_student_sigmoid_loss_grad,
                   ops::TeacherStudentSigmoidLossGradientOp);

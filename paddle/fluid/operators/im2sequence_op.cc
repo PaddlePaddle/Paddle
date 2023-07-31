@@ -192,8 +192,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(im2sequence,
                   ops::Im2SequenceOp,
                   ops::Im2SequenceOpMaker,
-                  ops::Im2SequenceGradMaker<paddle::framework::OpDesc>,
-                  ops::Im2SequenceGradMaker<paddle::imperative::OpBase>);
+                  ops::Im2SequenceGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
 
 PD_REGISTER_STRUCT_KERNEL(

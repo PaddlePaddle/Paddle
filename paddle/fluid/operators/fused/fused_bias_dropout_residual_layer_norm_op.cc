@@ -252,7 +252,6 @@ REGISTER_OPERATOR(
     fused_bias_dropout_residual_layer_norm,
     ops::FusedBiasDropoutResidualLnOp,
     ops::FusedBiasDropoutResidualLnOpMaker,
-    ops::FusedBiasDropoutResidualLnGradOpMaker<paddle::framework::OpDesc>,
-    ops::FusedBiasDropoutResidualLnGradOpMaker<paddle::imperative::OpBase>);
+    ops::FusedBiasDropoutResidualLnGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fused_bias_dropout_residual_layer_norm_grad,
                   ops::FusedBiasDropoutResidualLnGradOp);

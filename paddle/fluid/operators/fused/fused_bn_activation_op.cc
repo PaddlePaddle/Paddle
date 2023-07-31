@@ -319,11 +319,9 @@ phi::KernelKey FusedBatchNormActGradOp::GetExpectedKernelType(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    fused_batch_norm_act,
-    ops::FusedBatchNormActOp,
-    ops::FusedBatchNormActOpMaker,
-    ops::FusedBatchNormActOpInferVarType,
-    ops::FusedBatchNormActGradOpMaker<paddle::framework::OpDesc>,
-    ops::FusedBatchNormActGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fused_batch_norm_act,
+                  ops::FusedBatchNormActOp,
+                  ops::FusedBatchNormActOpMaker,
+                  ops::FusedBatchNormActOpInferVarType,
+                  ops::FusedBatchNormActGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fused_batch_norm_act_grad, ops::FusedBatchNormActGradOp);

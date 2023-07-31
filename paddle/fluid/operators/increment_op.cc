@@ -93,5 +93,4 @@ REGISTER_OPERATOR(increment,
                   ops::IncrementOp,
                   ops::IncrementOpMaker,
                   ops::IncrementGradOpMaker<paddle::framework::OpDesc>,
-                  ops::IncrementGradOpMaker<paddle::imperative::OpBase>,
                   IncrementInferShapeFunctor);

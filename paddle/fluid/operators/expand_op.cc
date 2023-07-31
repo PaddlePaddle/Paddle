@@ -265,12 +265,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand,
                   ops::ExpandOp,
                   ops::ExpandOpMaker,
-                  ops::ExpandGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ExpandGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ExpandGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(expand_grad,
                   ops::ExpandGradOp,
                   ops::ExpandDoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ExpandDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ExpandGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(expand,
                        ops::ExpandKernel<phi::CPUContext, float>,

@@ -138,8 +138,7 @@ REGISTER_OPERATOR(
     collect_fpn_proposals,
     ops::CollectFpnProposalsOp,
     ops::CollectFpnProposalsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(collect_fpn_proposals,
                           CPU,
                           ALL_LAYOUT,

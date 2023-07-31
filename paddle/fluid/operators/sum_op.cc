@@ -211,33 +211,6 @@ class SumGradDescMaker : public framework::GradOpDescMakerBase {
   }
 };
 
-class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
- public:
-  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
-
-  std::shared_ptr<imperative::GradOpNode> operator()() const override {
-    auto x_grads = InputGrad("X", false);
-    using InputGradsType = decltype(x_grads);
-
-    if (!x_grads.empty()) {
-      auto node = this->NewGradNode();
-      node->reserve(x_grads.size());
-      auto og = OutputGrad("Out");
-      for (auto& x_grad : x_grads) {
-        imperative::TracedGradOp op(node);
-        op.SetType("scale");
-        op.SetInput("X", og);
-        op.SetOutput("Out", InputGradsType{x_grad});
-        op.SetAttr("scale", 1.0f);
-        op.SetDefaultAttrsMap(DefaultAttrsMap());
-      }
-      return node;
-    } else {
-      return nullptr;
-    }
-  }
-};
-
 DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 
 }  // namespace operators

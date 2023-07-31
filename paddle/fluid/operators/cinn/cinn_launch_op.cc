@@ -199,8 +199,7 @@ REGISTER_OPERATOR(
     ops::CinnLaunchOp,
     ops::CinnLaunchOpMaker,
     ops::CinnLaunchOpNoBufVarsInferer,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 /* see [Why use single type kernel] */
 PD_REGISTER_STRUCT_KERNEL(
     cinn_launch, CPU, ALL_LAYOUT, ops::CinnLaunchOpKernel, float) {}

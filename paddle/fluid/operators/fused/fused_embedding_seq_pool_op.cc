@@ -195,7 +195,6 @@ REGISTER_OPERATOR(
     fused_embedding_seq_pool,
     ops::FusedEmbeddingSeqPoolOp,
     ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::framework::OpDesc>,
-    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::imperative::OpBase>,
     ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,

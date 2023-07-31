@@ -669,8 +669,7 @@ REGISTER_OPERATOR(
     retinanet_detection_output,
     ops::RetinanetDetectionOutputOp,
     ops::RetinanetDetectionOutputOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 PD_REGISTER_STRUCT_KERNEL(retinanet_detection_output,
                           CPU,
                           ALL_LAYOUT,

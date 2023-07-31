@@ -112,8 +112,7 @@ REGISTER_OPERATOR(
     dequantize_log,
     ops::DequantizeLogOp,
     ops::DequantizeLogOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(
     dequantize_log, CPU, ALL_LAYOUT, ops::DequantizeLogKernel, int8_t) {}

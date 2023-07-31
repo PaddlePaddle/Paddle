@@ -282,7 +282,6 @@ REGISTER_OPERATOR(
     ops::FusedBatchNormAddActOp,
     ops::FusedBatchNormAddActOpMaker,
     ops::FusedBatchNormAddActOpInferVarType,
-    ops::FusedBatchNormAddActGradOpMaker<paddle::framework::OpDesc>,
-    ops::FusedBatchNormAddActGradOpMaker<paddle::imperative::OpBase>);
+    ops::FusedBatchNormAddActGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(fused_bn_add_activation_grad,
                   ops::FusedBatchNormAddActGradOp);

@@ -111,6 +111,5 @@ REGISTER_OPERATOR(
     send,
     ops::SendOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SendOpMaker,
     ops::SendOpShapeInference);

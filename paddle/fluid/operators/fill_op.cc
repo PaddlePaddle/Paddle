@@ -76,8 +76,7 @@ REGISTER_OPERATOR(
     ops::FillOp,
     ops::FillOpMaker,
     ops::FillOpVarTypeInference,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OP_CPU_KERNEL(fill,
                        ops::FillKernel<float>,
                        ops::FillKernel<double>,

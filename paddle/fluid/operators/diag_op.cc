@@ -57,8 +57,7 @@ REGISTER_OPERATOR(
     diag,
     ops::DiagOp,
     ops::DiagOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OP_CPU_KERNEL(diag,
                        ops::DiagKernel<phi::CPUContext, int>,
                        ops::DiagKernel<phi::CPUContext, float>,

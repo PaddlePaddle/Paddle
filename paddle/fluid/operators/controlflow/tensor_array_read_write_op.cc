@@ -254,11 +254,9 @@ REGISTER_OPERATOR(write_to_array,
                   ops::WriteToArrayInferShape,
                   ops::WriteToArrayOpProtoMaker,
                   ops::WriteToArrayGradMaker<paddle::framework::OpDesc>,
-                  ops::WriteToArrayGradMaker<paddle::imperative::OpBase>,
                   ops::WriteToArrayInferVarType);
 REGISTER_OPERATOR(read_from_array,
                   ops::ReadFromArrayOp,
                   ops::ReadFromArrayInferShape,
                   ops::ReadFromArrayProtoMaker,
-                  ops::ReadFromArrayGradMaker<paddle::framework::OpDesc>,
-                  ops::ReadFromArrayGradMaker<paddle::imperative::OpBase>);
+                  ops::ReadFromArrayGradMaker<paddle::framework::OpDesc>);

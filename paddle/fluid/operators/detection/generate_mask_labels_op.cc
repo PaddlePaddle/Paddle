@@ -531,8 +531,7 @@ REGISTER_OPERATOR(
     generate_mask_labels,
     ops::GenerateMaskLabelsOp,
     ops::GenerateMaskLabelsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(generate_mask_labels,
                           CPU,

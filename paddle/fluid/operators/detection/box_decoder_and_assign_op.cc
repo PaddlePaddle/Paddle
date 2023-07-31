@@ -222,8 +222,7 @@ REGISTER_OPERATOR(
     box_decoder_and_assign,
     ops::BoxDecoderAndAssignOp,
     ops::BoxDecoderAndAssignOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
 
 PD_REGISTER_STRUCT_KERNEL(box_decoder_and_assign,
                           CPU,

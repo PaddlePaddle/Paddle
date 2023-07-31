@@ -185,8 +185,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(rank_attention,
                   ops::RankAttentionOp,
                   ops::RankAttentionOpMaker,
-                  ops::RankAttentionGradOpMaker<paddle::framework::OpDesc>,
-                  ops::RankAttentionGradOpMaker<paddle::imperative::OpBase>);
+                  ops::RankAttentionGradOpMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(rank_attention_grad,
                   ops::RankAttentionGradOp,

@@ -199,8 +199,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(partial_sum,
                   ops::PartialSumOp,
                   ops::PartialSumOpMaker,
-                  ops::PartialSumGradMaker<paddle::framework::OpDesc>,
-                  ops::PartialSumGradMaker<paddle::imperative::OpBase>);
+                  ops::PartialSumGradMaker<paddle::framework::OpDesc>);
 
 REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
 

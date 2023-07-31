@@ -167,5 +167,4 @@ REGISTER_OPERATOR(
     ops::FusedAdamOp,
     ops::FusedAdamOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     FusedAdamInferShapeFunctor);
