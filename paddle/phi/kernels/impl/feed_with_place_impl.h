@@ -20,6 +20,9 @@
 
 namespace phi {
 
+const char kForward[] = "FORWARD";
+const char kBackward[] = "BACKWARD";
+
 template <typename T, typename Context>
 void ShaddowFeedKernel(const Context& ctx,
                        const DenseTensor& x,
@@ -50,10 +53,10 @@ void PrintKernel(const Context& ctx,
   phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
   out->set_lod(x.lod());
 
-  // if ((is_forward && print_phase == kBackward) ||
-  //     (!is_forward && print_phase == kForward)) {
-  //   return;
-  // }
+  if ((is_forward && print_phase == kBackward) ||
+      (!is_forward && print_phase == kForward)) {
+    return;
+  }
 
   // TODO(phlrain): support first_n using a input tensor
   // if (first_n > 0 && ++times_ > first_n) return;
