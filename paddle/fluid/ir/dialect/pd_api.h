@@ -14,22 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_utils.h"
+#include <vector>
 
-namespace phi {
+#include "paddle/ir/core/value.h"
 
-template <typename T, typename Context>
-void ShadowFeedKernel(const Context& ctx,
-                      const DenseTensor& x,
-                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  if (x.place() == out->place()) {
-    out->ShareDataWith(x);
-    out->set_lod(x.lod());
-  } else {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
-  }
-}
+namespace paddle {
+namespace dialect {
 
-}  // namespace phi
+ir::OpResult mean(ir::OpResult x,
+                  std::vector<int64_t> axis = {},
+                  bool keepdim = false);
+
+}  // namespace dialect
+}  // namespace paddle

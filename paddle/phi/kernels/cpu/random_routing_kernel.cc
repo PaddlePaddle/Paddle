@@ -12,22 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/feed_with_place_kernel.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/random_routing_kernel.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
 
-PD_REGISTER_KERNEL(shadow_feed,
-                   GPU,
+namespace phi {
+namespace fusion {
+
+template <typename T, typename Context>
+void RandomRoutingKernel(const Context& dev_ctx,
+                         const DenseTensor& prob,
+                         const DenseTensor& topk_value,
+                         const DenseTensor& topk_idx,
+                         DenseTensor* out) {
+  PADDLE_THROW(phi::errors::Unavailable(
+      "Do not support expert count op for cpu kernel now."));
+}
+
+}  // namespace fusion
+}  // namespace phi
+
+PD_REGISTER_KERNEL(random_routing,
+                   CPU,
                    ALL_LAYOUT,
-                   phi::ShadowFeedKernel,
-                   bool,
+                   phi::fusion::RandomRoutingKernel,
                    float,
-                   int32_t,
-                   int64_t,
-                   double,
-                   phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
+                   double) {}
