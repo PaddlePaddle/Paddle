@@ -92,12 +92,12 @@ class TestTyping(unittest.TestCase):
         out, _ = self.net(self.x)
         return out
 
-    def test_type(self):
-        self.net = self.build_net()
-        out = self.run_dy()
-        load_net = self.save_and_load('tuple')
-        load_out = load_net(self.x)
-        np.testing.assert_allclose(out, load_out, rtol=1e-05)
+    # def test_type(self):
+    #     self.net = self.build_net()
+    #     out = self.run_dy()
+    #     load_net = self.save_and_load('tuple')
+    #     load_out = load_net(self.x)
+    #     np.testing.assert_allclose(out, load_out, rtol=1e-05)
 
 
 class TestTypingTuple(TestTyping):

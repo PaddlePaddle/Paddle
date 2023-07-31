@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/tensor_formatter.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 class DenseTensor;

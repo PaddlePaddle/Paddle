@@ -18,6 +18,12 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/feed_with_place_impl.h"
 
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
+
+const char kForward[] = "FORWARD";
+const char kBackward[] = "BACKWARD";
+const char kBoth[] = "BOTH";
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -39,6 +45,20 @@ PD_REGISTER_KERNEL(shaddow_feed,
                    CPU,
                    ALL_LAYOUT,
                    phi::ShaddowFeedKernel,
+                   bool,
+                   float,
+                   int32_t,
+                   int64_t,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
+PD_REGISTER_KERNEL(print_kernel,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PrintKernel,
                    bool,
                    float,
                    int32_t,

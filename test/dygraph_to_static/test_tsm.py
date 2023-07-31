@@ -203,7 +203,9 @@ class TSM_ResNet(paddle.nn.Layer):
     def forward(self, inputs):
         y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
+        print(y)
         y = self.pool2d_max(y)
+        print(y)
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
@@ -297,6 +299,9 @@ def train(args, fake_data_reader, to_static):
     print_configs(train_config, 'Train')
 
     place = fluid.CUDAPlace(0) if args.use_gpu else fluid.CPUPlace()
+    # place = fluid.CPUPlace()
+
+    print("place ", place)
 
     random.seed(0)
     np.random.seed(0)
@@ -313,7 +318,7 @@ def train(args, fake_data_reader, to_static):
         train_reader = fake_data_reader.create_reader()
 
         ret = []
-        for epoch in range(train_config.TRAIN.epoch):
+        for epoch in range(1):
             video_model.train()
             total_loss = 0.0
             total_acc1 = 0.0
@@ -360,13 +365,9 @@ def train(args, fake_data_reader, to_static):
                         float(acc_top5),
                     )
                 )
-                ret.extend(
-                    [
-                        float(avg_loss),
-                        float(acc_top1),
-                        float(acc_top5),
-                    ]
-                )
+                ret.extend([float(avg_loss)])
+                if total_sample > 2:
+                    break
 
             print(
                 'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.format(

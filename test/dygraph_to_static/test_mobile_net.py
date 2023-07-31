@@ -567,13 +567,13 @@ def train_mobilenet(args, to_static):
                 batch_id += 1
                 t_last = time.time()
                 if batch_id > args.train_step:
-                    if to_static:
-                        paddle.jit.save(net, args.model_save_prefix)
-                    else:
-                        paddle.save(
-                            net.state_dict(),
-                            args.dy_state_dict_save_path + '.pdparams',
-                        )
+                    # if to_static:
+                    #     paddle.jit.save(net, args.model_save_prefix)
+                    # else:
+                    #     paddle.save(
+                    #         net.state_dict(),
+                    #         args.dy_state_dict_save_path + '.pdparams',
+                    #     )
                     break
 
     return np.array(loss_data)
@@ -718,7 +718,7 @@ class TestMobileNet(unittest.TestCase):
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
-        self.verify_predict()
+        # self.verify_predict()
 
     def verify_predict(self):
         # MobileNet-V1

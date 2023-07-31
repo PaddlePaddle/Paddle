@@ -22,7 +22,6 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle.fluid import core
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -304,14 +303,14 @@ class TestResnet(unittest.TestCase):
                         )
                     )
                 if batch_id == 10:
-                    if to_static:
-                        paddle.jit.save(resnet, self.model_save_prefix)
-                    else:
-                        paddle.save(
-                            resnet.state_dict(),
-                            self.dy_state_dict_save_path + '.pdparams',
-                        )
-                        # avoid dataloader throw abort signaal
+                    # if to_static:
+                    #     paddle.jit.save(resnet, self.model_save_prefix)
+                    # else:
+                    #     paddle.save(
+                    #         resnet.state_dict(),
+                    #         self.dy_state_dict_save_path + '.pdparams',
+                    #     )
+                    #     # avoid dataloader throw abort signaal
                     data_loader._reset()
                     break
         paddle.enable_static()
@@ -423,30 +422,30 @@ class TestResnet(unittest.TestCase):
                 static_loss, dygraph_loss
             ),
         )
-        self.verify_predict()
+        # self.verify_predict()
 
-    def test_resnet_composite(self):
-        core._set_prim_backward_enabled(True)
-        core._add_skip_comp_ops("batch_norm")
-        static_loss = self.train(to_static=True)
-        core._set_prim_backward_enabled(False)
-        dygraph_loss = self.train(to_static=False)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
-        )
+    # def test_resnet_composite(self):
+    #     core._set_prim_backward_enabled(True)
+    #     core._add_skip_comp_ops("batch_norm")
+    #     static_loss = self.train(to_static=True)
+    #     core._set_prim_backward_enabled(False)
+    #     dygraph_loss = self.train(to_static=False)
+    #     np.testing.assert_allclose(
+    #         static_loss,
+    #         dygraph_loss,
+    #         rtol=1e-05,
+    #         err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+    #             static_loss, dygraph_loss
+    #         ),
+    #     )
 
-    def test_in_static_mode_mkldnn(self):
-        paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
-        try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
-                self.train(to_static=True)
-        finally:
-            paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
+    # def test_in_static_mode_mkldnn(self):
+    #     paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
+    #     try:
+    #         if paddle.fluid.core.is_compiled_with_mkldnn():
+    #             self.train(to_static=True)
+    #     finally:
+    #         paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':

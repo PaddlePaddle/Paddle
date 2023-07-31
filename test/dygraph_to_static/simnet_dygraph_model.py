@@ -43,7 +43,7 @@ class EmbeddingLayer:
         emb = paddle.nn.Embedding(
             self.dict_size,
             self.emb_dim,
-            sparse=True,
+            sparse=False,
             padding_idx=self.padding_idx,
             weight_attr=attr.ParamAttr(
                 name=self.name,

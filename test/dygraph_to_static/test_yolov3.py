@@ -83,6 +83,7 @@ def train(to_static):
     np.random.seed(0)
 
     place = fluid.CUDAPlace(0) if cfg.use_gpu else fluid.CPUPlace()
+
     with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = 1000
         fluid.default_main_program().random_seed = 1000

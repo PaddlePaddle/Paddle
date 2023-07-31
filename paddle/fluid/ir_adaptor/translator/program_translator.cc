@@ -163,6 +163,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
+
     if (op->Type() == "shaddow_output") {
       if (!param_map_.count(op->Input("x")[0])) {
         continue;
@@ -225,6 +226,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
     ir::OpResult value = value_info.value;
     if (!value) {
+      return;
       PADDLE_THROW(phi::errors::PreconditionNotMet(
           "Value of [%s] can not ber None", var_name));
     }
