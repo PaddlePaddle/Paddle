@@ -104,6 +104,15 @@ std::vector<int64_t> Tensor::shape() const {
   return phi::vectorize<int64_t>(dims);
 }
 
+const phi::DDim &Tensor::strides() const {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->strides();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support strides operation on DenseTensor now."));
+  }
+}
+
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   LOG_FIRST_N(WARNING, 1)
       << "The function of resetting the shape of the uninitialized "
