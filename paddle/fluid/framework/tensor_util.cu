@@ -1,1 +1,1 @@
-paddle/fluid/framework/tensor_util.cc
+tensor_util.cc
