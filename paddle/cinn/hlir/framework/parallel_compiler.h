@@ -31,7 +31,15 @@ namespace framework {
 
 class ParallelCompiler {
  public:
+  enum class Stage {
+    DEFAULT,
+    LOWERING,
+    CODEGEN_AND_JIT,
+    BUILD_INSTRUCTION,
+  };
+
   struct CompileOptions {
+    ParallelCompiler::Stage stage = ParallelCompiler::Stage::DEFAULT;
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   };
 

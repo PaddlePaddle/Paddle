@@ -102,6 +102,10 @@ class GraphCompiler final {
 
   struct CompilationResult {
     std::unique_ptr<Program> runtime_program;
+    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    std::vector<std::string> source_codes;
+    std::vector<std::string> source_ptxs;
+    std::vector<std::unique_ptr<Instruction>> instructions;
   };
 
   struct CompileOptions {
@@ -109,6 +113,8 @@ class GraphCompiler final {
     bool with_instantiate_variables = false;
     bool with_buffer_handle_instruction_inserted = false;
     bool remove_unused_variables = true;
+    // Compile stage
+    ParallelCompiler::Stage stage = ParallelCompiler::Stage::DEFAULT;
     // nodes group, it may come from the result of op fusion or graph tuning.
     // nodes in a group will be built into an Instruction
     std::vector<std::shared_ptr<Graph::Group>> groups;
@@ -126,6 +132,21 @@ class GraphCompiler final {
                           void* stream = nullptr);
 
   std::unique_ptr<Program> Build(const std::string& code = "");
+
+  CompilationResult Lowering(
+      const CompileOptions& options,
+      std::unordered_set<std::string>&& fetch_var_ids = {},
+      void* stream = nullptr);
+
+  CompilationResult CodegenAndJit(
+      const CompileOptions& options,
+      std::unordered_set<std::string>&& fetch_var_ids = {},
+      void* stream = nullptr);
+
+  CompilationResult BuildInstruction(
+      const CompileOptions& options,
+      std::unordered_set<std::string>&& fetch_var_ids = {},
+      void* stream = nullptr);
 
   const std::shared_ptr<Scope>& GetScope() const { return scope_; }
 

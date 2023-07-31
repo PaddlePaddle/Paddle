@@ -76,10 +76,25 @@ void ParallelCompiler::RunTask(ParallelCompiler::Task* task) {
   VLOG(2) << "Stark run sub-task, Thread Id : " << std::this_thread::get_id();
   VLOG(4) << "Start Lowering";
   task->Lowering();
+  if (option_.stage == ParallelCompiler::Stage::LOWERING) {
+    VLOG(4) << "Just lowering, finish sub task on thread: "
+            << std::this_thread::get_id();
+    return;
+  }
   VLOG(4) << "Start CodegenAndJit";
   task->CodegenAndJit();
+  if (option_.stage == ParallelCompiler::Stage::CODEGEN_AND_JIT) {
+    VLOG(4) << "Just codegen and jit, finish sub task on thread: "
+            << std::this_thread::get_id();
+    return;
+  }
   VLOG(4) << "Start BuildInstruction";
   task->BuildInstruction();
+  if (option_.stage == ParallelCompiler::Stage::BUILD_INSTRUCTION) {
+    VLOG(4) << "Just build instruction, finish sub task on thread: "
+            << std::this_thread::get_id();
+    return;
+  }
   VLOG(2) << "Finish run sub-task, Thread Id : " << std::this_thread::get_id();
 }
 
