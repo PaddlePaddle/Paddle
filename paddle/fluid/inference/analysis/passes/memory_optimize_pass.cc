@@ -42,6 +42,8 @@ using framework::ir::Graph;
 using framework::ir::Node;
 using framework::ir::TopologyVarientSort;
 using space_table_t = MemoryOptimizePass::space_table_t;
+using shape_table_t = MemoryOptimizePass::shape_table_t;
+using dtype_table_t = MemoryOptimizePass::dtype_table_t;
 
 typedef struct {
   std::string name;
