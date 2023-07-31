@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from functools import wraps
 
 import numpy as np
 
-from paddle import set_flags, static
+from paddle import static
 from paddle.fluid import core
 
 
@@ -27,9 +28,9 @@ def test_with_new_ir(func):
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
                 new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
-                set_flags({new_ir_flag: True})
+                os.environ[new_ir_flag] = 'True'
                 ir_outs = func(*args, **kwargs)
-                set_flags({new_ir_flag: False})
+                del os.environ[new_ir_flag]
         return ir_outs
 
     return impl
@@ -41,9 +42,10 @@ def test_and_compare_with_new_ir(func):
         outs = func(*args, **kwargs)
         if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
             return outs
-        ir_outs = test_with_new_ir(func)(*args, **kwargs)
-        if ir_outs is None:
+        # only run in CI-Coverage
+        if os.environ.get('FLAGS_NEW_IR_DY2ST_TEST', None) is None:
             return outs
+        ir_outs = test_with_new_ir(func)(*args, **kwargs)
         for i in range(len(outs)):
             np.testing.assert_array_equal(
                 outs[i],
