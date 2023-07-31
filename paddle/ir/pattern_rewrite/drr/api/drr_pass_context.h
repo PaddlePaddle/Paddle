@@ -19,8 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace cinn {
-namespace hlir {
+namespace ir {
 namespace drr {
 
 class Op;
@@ -55,16 +54,21 @@ class DrrPassContext : public std::enable_shared_from_this<DrrPassContext> {
       const std::unordered_map<std::string, Attribute>& attributes = {});
   const drr::Tensor& ResultTensorPattern(const std::string& tensor_id);
 
-  std::unique_ptr<SourcePatternGraph> source_pattern_graph_;
+  std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   std::vector<std::unique_ptr<const Constrain>> constraints_;
-  std::unique_ptr<ResultPatternGraph> result_pattern_graph_;
+  std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
   std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
 };
 
+class DrrPass {
+ public:
+  virtual void operator()(DrrPassContext* ctx) const;
+};
+
 class Attribute {
  public:
-  Attribute(const std::string& id) : attr_id_(id) {}
+  explicit Attribute(const std::string& id) : attr_id_(id) {}
 
  private:
   std::string attr_id_;
@@ -108,21 +112,29 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
  public:
   const std::string& DebugName() const;
 
-  const id_type& id() const { return tensor_id_; }
+  Tensor& operator=(const Tensor& other) = delete;
 
-  std::weak_ptr<const OpCall> producer() const { return producer_; }
-
-  void set_producer(std::weak_ptr<const OpCall> producer) {
-    producer_ = producer;
+  void operator=(Tensor& other) const {  // NOLINT
+    other.tensor_id_ = tensor_id_;
   }
 
-  const std::vector<std::weak_ptr<const OpCall>>& consumers() const {
+  const id_type& id() const { return tensor_id_; }
+
+  std::weak_ptr<OpCall> producer() const { return producer_; }
+
+  void set_producer(std::weak_ptr<OpCall> producer) { producer_ = producer; }
+
+  const std::unordered_set<std::weak_ptr<const OpCall>>& consumers() const {
     return consumers_;
   }
 
   void set_consumables(
-      const std::vector<std::weak_ptr<const OpCall>>& consumers) {
+      const std::unordered_set<std::weak_ptr<const OpCall>>& consumers) {
     consumers_ = consumers;
+  }
+
+  void AddConsumer(std::weak_ptr<const OpCall> consumer) {
+    consumers_.insert(consumer);
   }
 
  private:
@@ -131,8 +143,8 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
   explicit Tensor(const id_type& tensor_id) : tensor_id_(tensor_id) {}
 
   id_type tensor_id_;
-  std::weak_ptr<const OpCall> producer_;
-  std::vector<std::weak_ptr<const OpCall>> consumers_;
+  std::weak_ptr<OpCall> producer_;
+  std::unordered_set<std::weak_ptr<const OpCall>> consumers_;
 };
 
 class OpCall : public std::enable_shared_from_this<OpCall> {
@@ -169,6 +181,8 @@ class ResultPattern {
     return ctx_->ResultTensorPattern(tensor_id);
   }
 
+  Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
+
  private:
   friend class SourcePattern;
 
@@ -191,11 +205,13 @@ class SourcePattern {
     return ctx_->SourceTensorPattern(tensor_id);
   }
 
+  Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
+
  private:
+  friend class DrrPassContext;
   explicit SourcePattern(DrrPassContext* ctx) : ctx_(ctx) {}
   DrrPassContext* ctx_;
 };
 
 }  // namespace drr
-}  // namespace hlir
-}  // namespace cinn
+}  // namespace ir

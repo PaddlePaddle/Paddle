@@ -13,13 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include <functional>
-#include <memory>
 
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
 
-namespace cinn {
-namespace hlir {
+namespace ir {
 namespace drr {
 
 class Constrain;
@@ -31,19 +28,44 @@ using id_type = std::string;
 
 class SourcePatternGraph {
  public:
-  void AddOpCall(const std::shared_ptr<drr::OpCall>& op_call) {
-    owned_op_call_.insert(op_call);
+  const drr::OpCall& AddOpCall(const std::shared_ptr<drr::OpCall>& op_call) {
+    owned_op_call_.push_back(op_call);
+    for (const auto& input : op_call->inputs()) {
+      const auto& tensor_id = input.lock()->id();
+      id2owned_tensor_[tensor_id]->AddConsumer(op_call);
+
+      if (input.lock()->producer().use_count() == 0) {
+        input_tensors.insert(tensor_id);
+      }
+      if (output_tensors.find(tensor_id) != output_tensors.end()) {
+        output_tensors.erase(tensor_id);
+      }
+    }
+    for (auto& output : op_call->outputs()) {
+      id2owned_tensor_[output.lock()->id()]->set_producer(op_call);
+    }
+    return *owned_op_call_.back();
   }
 
-  std::weak_ptr<OpCall> SinkNode() const {
-    return output_tensors.begin()->producer();
+  void MergeTensor(drr::Tensor* value_tensor, drr::Tensor* name_tensor) {}
+
+  const drr::Tensor& AddTensor(const std::shared_ptr<drr::Tensor>& tensor) {
+    if (id2owned_tensor_.find(tensor->id()) == id2owned_tensor_.end()) {
+      id2owned_tensor_[tensor->id()] = tensor;
+    }
+    output_tensors.insert(tensor->id());
+    return *id2owned_tensor_[tensor->id()];
+  }
+
+  std::weak_ptr<OpCall> AnchorNode() const {
+    return id2owned_tensor_.at(*output_tensors.begin())->producer();
   }
 
  private:
   friend class DrrPassContext;
 
   std::unordered_map<id_type, std::shared_ptr<Tensor>> id2owned_tensor_;
-  std::unordered_set<std::shared_ptr<OpCall>> owned_op_call_;
+  std::vector<std::shared_ptr<OpCall>> owned_op_call_;
   std::unordered_set<id_type> input_tensors;
   std::unordered_set<id_type> output_tensors;
 };
@@ -60,5 +82,4 @@ class Constrain {
 };
 
 }  // namespace drr
-}  // namespace hlir
-}  // namespace cinn
+}  // namespace ir

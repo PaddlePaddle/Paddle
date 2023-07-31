@@ -16,8 +16,7 @@
 
 #include "paddle/ir/pattern_rewrite/drr/source_pattern.h"
 
-namespace cinn {
-namespace hlir {
+namespace ir {
 namespace drr {
 
 const Op& DrrPassContext::SourceOpPattern(
@@ -25,19 +24,15 @@ const Op& DrrPassContext::SourceOpPattern(
     std::unordered_map<std::string, const Attribute&> attributes = {}) {
   owned_ops_.push_back(std::make_shared<drr::Op>(
       op_type, attributes, [&](const std::shared_ptr<OpCall>& op_call) {
-        source_pattern_graph_->owned_op_call_.insert(op_call);
+        source_pattern_graph_->AddOpCall(op_call);
       }));
   return *owned_ops_.back();
 }
 
 const drr::Tensor& DrrPassContext::SourceTensorPattern(
     const std::string& tensor_id) {
-  if (source_pattern_graph_->id2owned_tensor_.find(tensor_id) ==
-      source_pattern_graph_->id2owned_tensor_.end()) {
-    source_pattern_graph_->id2owned_tensor_[tensor_id] =
-        std::make_shared<drr::Tensor>(tensor_id);
-  }
-  return *source_pattern_graph_->id2owned_tensor_[tensor_id];
+  return source_pattern_graph_->AddTensor(
+      std::make_shared<drr::Tensor>(tensor_id));
 }
 
 const Op& DrrPassContext::ResultOpPattern(
@@ -45,21 +40,16 @@ const Op& DrrPassContext::ResultOpPattern(
     std::unordered_map<std::string, const Attribute&> attributes = {}) {
   owned_ops_.push_back(std::make_shared<drr::Op>(
       op_type, attributes, [&](const std::shared_ptr<OpCall>& op_call) {
-        result_pattern_graph_->owned_op_call_.insert(op_call);
+        result_pattern_graph_->AddOpCall(op_call);
       }));
   return *owned_ops_.back();
 }
 
 const drr::Tensor& DrrPassContext::SourceTensorPattern(
     const std::string& tensor_id) {
-  if (result_pattern_graph_->id2owned_tensor_.find(tensor_id) ==
-      result_pattern_graph_->id2owned_tensor_.end()) {
-    result_pattern_graph_->id2owned_tensor_[tensor_id] =
-        std::make_shared<drr::Tensor>(tensor_id);
-  }
-  return *result_pattern_graph_->id2owned_tensor_[tensor_id];
+  return result_pattern_graph_->AddTensor(
+      std::make_shared<drr::Tensor>(tensor_id));
 }
 
 }  // namespace drr
-}  // namespace hlir
-}  // namespace cinn
+}  // namespace ir

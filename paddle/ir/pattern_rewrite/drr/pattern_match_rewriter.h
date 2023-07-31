@@ -20,46 +20,23 @@ namespace cinn {
 namespace hlir {
 namespace drr {
 
-class PatternMatchRewriter {
- public:
-  PatternMatchRewriter(const SourcePatternGraph* source_pattern_graph,
-                       const std::vector<Constrain*>& constraints,
-                       const ResultPatternGraph* result_pattern_graph)
-      : source_pattern_graph_(source_pattern_graph),
-        constraints_(constraints),
-        result_pattern_graph_(result_pattern_graph) {}
-
-  bool Apply(ir::Program* program) {
-    // step 1
-    auto result = MatchPattern(source_pattern_graph_, program);
-    // step 2
-    if (ConstrainsCheck(result, constraints_)) {
-      // step 3
-      RewritePattern(result_pattern_graph_, result);
-      return true;
-    }
-    return false;
-  }
-
- private:
-  const SourcePatternGraph* source_pattern_graph_;
-  const std::vector<Constrain*>& constraints_;
-  const ResultPatternGraph* result_pattern_graph_;
-};
-
 class DrrDagRewritePattern : public ir::RewritePattern {
  public:
-  DrrDagRewritePattern(const SourcePatternGraph* source_pattern_graph,
+  DrrDagRewritePattern(IrContext* context,
+                       PatternBenefit benefit,
+                       const SourcePatternGraph* source_pattern_graph,
                        const std::vector<Constrain*>& constraints,
                        const ResultPatternGraph* result_pattern_graph)
-      : source_pattern_graph(source_pattern_graph),
+      : RewritePattern(
+            source_pattern_graph_->AnchorNode().name(), benefit, context, {}),
+        source_pattern_graph(source_pattern_graph),
         constraints(constraints),
         result_pattern_graph(result_pattern_graph) {}
 
   bool MatchAndRewrite(paddle::dialect::TransposeOp op,
                        ir::PatternRewriter& rewriter) const override {
     // Match
-    auto sink = source_pattern_graph_->SinkNode();
+    auto sink = source_pattern_graph_->AnchorNode();
     std::unordered_map<const OpCall*, const ir::Operation*> op_map;
     std::unordered_map<const Tensor*, const ir::Value*> tensor_map;
     auto bfs = [](const OpCall* sink, const ir::Operation* op) {
@@ -101,18 +78,25 @@ class DrrDagRewritePattern : public ir::RewritePattern {
     return true;
   }
 
-  ir::Operation* CreateOp(const OpCall& op_call) {
-    if (op_call.name() == "Transpose") {
-      return new paddle::dialect::TransposeOp();
-    } else if (op_call.name() == "TransposeNCHW") {
-    }
-  }
-
  private:
   const SourcePatternGraph* source_pattern_graph_;
   const std::vector<Constrain*>& constraints_;
   const ResultPatternGraph* result_pattern_graph_;
 };
+
+template <class PASS>
+DrrDagRewritePattern CreateDrrDagRewritePattern(IrContext* context) {
+  DrrPassContext ctx;
+  PASS pass;
+  pass(ctx);
+  return DrrDagRewritePattern(context,
+                              1,
+                              ctx.source_pattern_graph(),
+                              ctx.constraints(),
+                              ctx.result_pattern_graph());
+}
+
+pass = CreateDrrDagRewritePattern<FoldBroadcastToConstantPass>();
 
 }  // namespace drr
 }  // namespace hlir

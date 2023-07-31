@@ -13,3 +13,26 @@
 // limitations under the License.
 
 #pragma once
+
+#pragma once
+
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
+#include "paddle/ir/pattern_rewrite/drr/source_pattern_graph.h"
+
+namespace ir {
+namespace drr {
+
+class Constrain;
+class MatchContext;
+class OpCall;
+class Tensor;
+
+using id_type = std::string;
+
+class ResultPatternGraph : public SourcePatternGraph {
+ public:
+ private:
+};
+
+}  // namespace drr
+}  // namespace ir
