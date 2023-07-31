@@ -475,6 +475,9 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
     std::string legacy_output_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
+    VLOG(10) << "[op:" << op_desc.Type() << "][output]" << info.name << " "
+             << legacy_output_name;
+
     // return empty type if this arg is optional and not shown in OpDesc
     if (!op_desc.HasOutput(legacy_output_name)) {
       VLOG(10) << "[output translating]"
@@ -491,11 +494,19 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
     const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
+    VLOG(10) << "[op:" << op_desc.Type() << "][output]" << info.name << " "
+             << legacy_output_name << " " << legacy_output_vars.size() << " "
+             << is_vector;
+
     // Specially process TensorArray, this because we cannot distinguish it with
     // Vector<DenseTensor> by other conditions but we cannot support it like
     // Vector<DenseTensor>
     if (legacy_output_vars.size() == 1) {
       VarDesc* var = block->FindVarRecursive(legacy_output_vars[0]);
+      IR_ENFORCE(var != nullptr,
+                 "[op:%s] Output %s should not be null",
+                 op_desc.Type(),
+                 legacy_output_vars[0]);
       if (var->GetType() ==
           paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
         ir::Type translated_var_type =
@@ -519,6 +530,10 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
 
       auto& var_name = legacy_output_vars[0];
       VarDesc* var = block->FindVarRecursive(var_name);
+      IR_ENFORCE(var != nullptr,
+                 "[op:%s] Output %s should not be null",
+                 op_desc.Type(),
+                 var_name);
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name << " " << var_name
                << " " << var->GetType();
@@ -1136,7 +1151,7 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
-struct ShaddowOutputOpTranscriber : public OpTranscriber {
+struct ShadowOutputOpTranscriber : public OpTranscriber {
   ir::Operation* operator()(ir::IrContext* ctx,
                             TranslationContext* param_map,
                             const OpDesc& op_desc,
@@ -1463,7 +1478,7 @@ OpTranslator::OpTranslator() {
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
-  special_handlers["shaddow_output"] = ShaddowOutputOpTranscriber();
+  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
 

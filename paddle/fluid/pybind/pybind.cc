@@ -195,7 +195,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -2748,7 +2747,6 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-  m.def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram);
   BindFleetWrapper(&m);
   BindIO(&m);
   BindParallelExecutor(m);
