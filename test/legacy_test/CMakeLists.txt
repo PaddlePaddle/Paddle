@@ -1282,9 +1282,7 @@ set(STATIC_BUILD_TESTS
     test_fuse_bn_act_pass
     test_fused_feedforward_op
     test_fused_feedforward_pass
-    test_imperative_optimizer
     test_lamb_op
-    test_layer_norm_op
     test_limit_by_capacity_op
     test_lookup_table_bf16_op
     test_lookup_table_v2_op
