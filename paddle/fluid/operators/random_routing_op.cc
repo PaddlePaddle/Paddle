@@ -96,10 +96,3 @@ REGISTER_OPERATOR(
     ops::RandomRoutingOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     ops::RandomRoutingInplaceInferer)
-
-PD_REGISTER_STRUCT_KERNEL(random_routing,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::RandomRoutingOpCPUKernel,
-                          float,
-                          double) {}
