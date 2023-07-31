@@ -466,9 +466,9 @@ def ihfft(x, n=None, axis=-1, norm="backward", name=None):
         >>> spectrum = paddle.to_tensor([10.0, -5.0, 0.0, -1.0, 0.0, -5.0])
         >>> print(paddle.fft.ifft(spectrum))
         Tensor(shape=[6], dtype=complex64, place=Place(cpu), stop_gradient=True,
-               [(-0.1666666716337204+0j),  (1-0j),
-               (2.3333334922790527-0j),  (3.5+0j),
-               (2.3333334922790527+0j),  (1+0j)])
+                [(-0.1666666716337204+0j),  (1-0j)                 ,
+                (2.3333334922790527-0j),  (3.5+0j)               ,
+                (2.3333334922790527+0j),  (1+0j)                 ])
 
         >>> print(paddle.fft.ihfft(spectrum))
         Tensor(shape = [4], dtype = complex64, place = Place(cpu), stop_gradient = True,
@@ -852,9 +852,9 @@ def ihfftn(x, s=None, axes=None, norm="backward", name=None):
         >>> spectrum = paddle.to_tensor([10.0, -5.0, 0.0, -1.0, 0.0, -5.0])
         >>> print(paddle.fft.ifft(spectrum))
         Tensor(shape=[6], dtype=complex64, place=Place(cpu), stop_gradient=True,
-                [(-0.1666666716337204+0j),  (1-0j),
-                (2.3333334922790527-0j),  (3.5+0j),
-                (2.3333334922790527+0j),  (1+0j)])
+            [(-0.1666666716337204+0j),  (1-0j)                 ,
+                (2.3333334922790527-0j),  (3.5+0j)               ,
+                (2.3333334922790527+0j),  (1+0j)                 ])
 
         >>> print(paddle.fft.ihfft(spectrum))
         Tensor(shape = [4], dtype = complex64, place = Place(cpu), stop_gradient = True,
