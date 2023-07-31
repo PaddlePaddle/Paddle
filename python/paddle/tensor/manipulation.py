@@ -545,7 +545,7 @@ def unstack(x, axis=0, num=None):
         raise ValueError(
             '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
         )
-    if num < 0 or num > x.shape[axis]:
+    if num is not None and (num < 0 or num > x.shape[axis]):
         raise ValueError(f'`num` must be in the range [0, {x.shape[axis]})')
     if in_dynamic_mode():
         if num is None:
