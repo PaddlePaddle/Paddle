@@ -1385,15 +1385,6 @@ void NewIRInterpreter::CheckGC(const Instruction& instr) {
   }
 }
 
-::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
-  for (auto kv : value_2_var_name_) {
-    if (kv.second == var_name) {
-      return kv.first;
-    }
-  }
-  return nullptr;
-}
-
 void NewIRInterpreter::Prepare(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
