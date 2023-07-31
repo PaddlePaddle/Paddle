@@ -205,8 +205,11 @@ TEST(MatmulSPMDRule, Ctor) {
             std::vector<int64_t>({-1, -1, 1, -1}));
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
             std::vector<int64_t>({0}));
+  VLOG(4) << infered_dist_attrs.second[0].to_string();
   infered_dist_attrs.second[0].clean_partial_status();
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), false);
+  infered_dist_attrs.second[0].set_partial_status(std::vector<int64_t>({1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].verify_partial_status(), false);
   VLOG(4) << "test9 done." << std::endl << std::endl << std::endl;
 
   // abcmk[-1, -1, 1, 0], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] =
