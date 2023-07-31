@@ -214,6 +214,7 @@
   infer_meta :
     func : Atan2InferMeta
   kernel :
+  inplace: (x -> out)
     func : atan2
   backward : atan2_grad
 
