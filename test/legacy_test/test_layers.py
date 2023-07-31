@@ -452,13 +452,13 @@ class TestLayer(LayerTest):
             )
             dy_ret1 = conv2d1(base.to_variable(images))
             dy_ret2 = conv2d2(base.to_variable(images))
-
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv2d1_weight_np = conv2d1.weight.numpy()
             conv2d1_bias = conv2d1.bias
-
-            assert not np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy())
+            self.assertFalse(
+                np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy())
+            )
             conv2d2.weight.set_value(conv2d1_weight_np)
             np.testing.assert_array_equal(
                 conv2d1_weight_np, conv2d2.weight.numpy()
@@ -583,8 +583,7 @@ class TestLayer(LayerTest):
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y)
             )
             dy_rlt2 = paddle.nn.functional.sigmoid(dy_rlt2)
-
-            assert not np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy())
+            self.assertFalse(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
             btp2.weight.set_value(btp1.weight.numpy())
             btp2.bias.set_value(btp1.bias)
             dy_rlt1 = btp1(
@@ -638,8 +637,8 @@ class TestLayer(LayerTest):
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
-        self.assertTrue(np.allclose(static_rlt2[0], static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value[0], static_rlt))
+        np.testing.assert_allclose(static_rlt2, static_rlt)
+        np.testing.assert_allclose(dy_rlt_value, static_rlt)
 
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")
@@ -652,11 +651,9 @@ class TestLayer(LayerTest):
             )
             rep1 = emb1(base.to_variable(inp_word))
             rep2 = emb2(base.to_variable(inp_word))
-
-            assert not np.array_equal(emb1.weight.numpy(), custom_weight)
+            self.assertFalse(np.array_equal(emb1.weight.numpy(), custom_weight))
             np.testing.assert_array_equal(emb2.weight.numpy(), custom_weight)
-
-            assert not np.array_equal(rep1.numpy(), rep2.numpy())
+            self.assertFalse(np.array_equal(rep1.numpy(), rep2.numpy()))
             emb2.weight.set_value(emb1.weight.numpy())
             rep2 = emb2(base.to_variable(inp_word))
             np.testing.assert_array_equal(rep1.numpy(), rep2.numpy())
@@ -757,13 +754,13 @@ class TestLayer(LayerTest):
             )
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
-
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv3d1_weight_np = conv3d1.weight.numpy()
             conv3d1_bias = conv3d1.bias
-
-            assert not np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy())
+            self.assertFalse(
+                np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy())
+            )
             conv3d2.weight.set_value(conv3d1_weight_np)
             np.testing.assert_array_equal(
                 conv3d1_weight_np, conv3d2.weight.numpy()
@@ -1008,13 +1005,13 @@ class TestLayer(LayerTest):
             )
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
-
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
 
             conv3d1_weight_np = conv3d1.weight.numpy()
             conv3d1_bias = conv3d1.bias
-
-            assert not np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy())
+            self.assertFalse(
+                np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy())
+            )
             conv3d2.weight.set_value(conv3d1_weight_np)
             np.testing.assert_array_equal(
                 conv3d1_weight_np, conv3d2.weight.numpy()
