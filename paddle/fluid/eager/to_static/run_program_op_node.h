@@ -480,8 +480,6 @@ inline void RunProgramAPI(
 }
 
 inline void RunProgramGradAPI(
-    const std::vector<paddle::Tensor> &x UNUSED,
-    const std::vector<paddle::Tensor> &params UNUSED,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
@@ -694,13 +692,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     for (size_t i = 0; i < out_grad_names.size(); ++i) {
       hooked_grads[0][i].set_name(out_grad_names[i]);
     }
-    RunProgramGradAPI(x_,
-                      params_,
-                      hooked_grads[0],
-                      step_scope_,
-                      attrs_,
-                      x_grad_ptr,
-                      params_grad_ptr);
+    RunProgramGradAPI(
+        hooked_grads[0], step_scope_, attrs_, x_grad_ptr, params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 
     executed_ = true;
