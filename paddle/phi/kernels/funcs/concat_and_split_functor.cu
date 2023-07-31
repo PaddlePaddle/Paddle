@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include <array>
 
 #include "glog/logging.h"
 
@@ -59,7 +58,7 @@ static inline void GetBlockDims(const phi::GPUContext& context,
 template <typename T, int Size>
 struct PointerWrapper {
  public:
-  const void* ins_addr[Size];  // NOLINT
+  const void* ins_addr[Size];
   __device__ inline const void* operator[](int i) const { return ins_addr[i]; }
 
   PointerWrapper() {}
@@ -123,7 +122,7 @@ struct PointerToPointer {
 template <typename T, typename IndexT, int Size>
 struct PADDLE_ALIGN(256) PointerAndColWrapper {
  public:
-  std::array<IndexT, Size> col_length;
+  IndexT col_length[Size];
   PointerAndColWrapper(const phi::GPUContext& ctx,
                        const std::vector<phi::DenseTensor>& ins,
                        const IndexT& inputs_col_num,
@@ -187,7 +186,7 @@ struct alignas(MovSize) Packed {
     // do nothing
   }
   union {
-    std::array<char, MovSize> buf;
+    char buf[MovSize];
   };
 };
 
