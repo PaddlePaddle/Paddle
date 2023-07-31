@@ -476,11 +476,11 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
   for (auto &var_name : set_parameter_names) {
     if (scope->FindVar(var_name)) {
       auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
-      if (!tensor.initialized()) {
-        continue;
+      phi::AllocationType place(phi::AllocationType::UNDEFINED);
+      if (tensor.initialized()) {
+        place = tensor.place().GetType();
       }
 
-      auto place = tensor.place().GetType();
       if (var_name == "@EMPTY@") {
         continue;
       }
