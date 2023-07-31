@@ -53,12 +53,8 @@ class FillConstantOpConverter : public OpConverter {
       for (auto input_name : input_names) {
         auto input_tensor = engine_->GetITensor(input_name);
         output_shape_tensors.push_back(input_tensor);
-        VLOG(3) << "fill_constant's input tensor name is " << input_name
-                << " type = " << static_cast<int32_t>(input_tensor->getType());
       }
       auto output_shape_tensor = Concat(output_shape_tensors);
-      VLOG(3) << "fill_constant's output_shape_tensor type = "
-              << static_cast<int32_t>(output_shape_tensor->getType());
       nvinfer1::ITensor* value_tensor;
       nvinfer1::ITensor* beta_tensor;
 
