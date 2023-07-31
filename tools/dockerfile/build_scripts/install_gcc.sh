@@ -30,7 +30,7 @@ else
 fi
 
 if [ "$1" == "gcc82" ]; then
-  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
+  wget -q --no-proxy https://paddle-docker-tar.bj.bcebos.com/gcc/gcc-8.2.0.tar.xz 
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
