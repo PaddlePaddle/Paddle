@@ -20,10 +20,6 @@
 
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
-const char kForward[] = "FORWARD";
-const char kBackward[] = "BACKWARD";
-const char kBoth[] = "BOTH";
-
 namespace phi {
 
 template <typename T, typename Context>

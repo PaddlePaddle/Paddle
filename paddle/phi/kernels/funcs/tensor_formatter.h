@@ -22,7 +22,7 @@ class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace operators {
+namespace funcs {
 
 class TensorFormatter {
  public:
@@ -54,5 +54,5 @@ class TensorFormatter {
   bool print_tensor_layout_ = true;
 };
 
-}  // namespace operators
+}  // namespace funcs
 }  // namespace paddle
