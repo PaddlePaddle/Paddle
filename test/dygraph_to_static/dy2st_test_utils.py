@@ -17,7 +17,7 @@ from functools import wraps
 
 import numpy as np
 
-from paddle import static
+from paddle import set_flags, static
 from paddle.fluid import core
 
 
@@ -29,8 +29,10 @@ def test_with_new_ir(func):
             with static.program_guard(static.Program()):
                 new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
                 os.environ[new_ir_flag] = 'True'
+                set_flags({new_ir_flag: True})
                 ir_outs = func(*args, **kwargs)
                 del os.environ[new_ir_flag]
+                set_flags({new_ir_flag: False})
         return ir_outs
 
     return impl
