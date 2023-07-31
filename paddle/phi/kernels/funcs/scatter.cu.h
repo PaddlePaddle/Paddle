@@ -195,12 +195,8 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   // slice size
-  int64_t slice_size = 1;  // slice size
-  if (index.dims().size() != 0) {
-    for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
-  } else {
-    for (int i = 0; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
-  }
+  int64_t slice_size = 1;
+  for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
   const size_t& slice_bytes = slice_size * sizeof(T);
