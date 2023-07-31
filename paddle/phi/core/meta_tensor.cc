@@ -154,7 +154,7 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
 void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   VLOG(3) << "is dist tensor: "
-          << phi::distributed::auto_parallel::DistTensor::classof(tensor_);
+          << phi::distributed::DistTensor::classof(tensor_);
   VLOG(3) << "tensor name: " << tensor_->type_info().name();
   if (phi::DenseTensor::classof(tensor_) ||
       phi::SelectedRows::classof(tensor_) ||

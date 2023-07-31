@@ -243,15 +243,14 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   return nullptr;
 }
 
-std::shared_ptr<phi::distributed::auto_parallel::DistTensor>
-PrepareDataForDistTensor(const Tensor& input,
-                         const phi::TensorArgDef& target_args_def,
-                         const TransformFlag& transform_flag) {
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
   if (tensor_in) {
-    phi::distributed::auto_parallel::DistTensor* dist_tensor =
-        static_cast<phi::distributed::auto_parallel::DistTensor*>(
-            tensor_in.get());
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     phi::DenseTensor& dense_tensor = *(dist_tensor->mutable_value());
     VLOG(3) << "tensor in initialized, enter branch";
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
@@ -264,8 +263,7 @@ PrepareDataForDistTensor(const Tensor& input,
                               dense_tensor.place(),
                               transform_flag))) {
       VLOG(3) << "no need to transform, return orignal";
-      return std::static_pointer_cast<
-          phi::distributed::auto_parallel::DistTensor>(tensor_in);
+      return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
     }
     phi::DenseTensor out =
         TransformData(&dense_tensor, target_args_def, transform_flag);
@@ -273,7 +271,7 @@ PrepareDataForDistTensor(const Tensor& input,
     // but the local meta in DenseTensor maybe changed, such as layout
     // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
     VLOG(3) << "return transformed tensor";
-    return std::make_shared<phi::distributed::auto_parallel::DistTensor>(
+    return std::make_shared<phi::distributed::DistTensor>(
         std::make_shared<phi::DenseTensor>(std::move(out)),
         dist_tensor->meta(),
         dist_tensor->dist_attr());

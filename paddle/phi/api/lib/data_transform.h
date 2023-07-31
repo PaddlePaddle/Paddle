@@ -81,10 +81,10 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
-std::shared_ptr<phi::distributed::auto_parallel::DistTensor>
-PrepareDataForDistTensor(const Tensor& input,
-                         const phi::TensorArgDef& target_args_def,
-                         const TransformFlag& transform_flag);
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
 
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,

@@ -199,8 +199,7 @@ phi::DenseTensor* SetKernelOutput(Tensor* out, bool for_auto_parallel) {
         auto dist_attr =
             std::make_shared<phi::distributed::auto_parallel::TensorDistAttr>();
         auto dist_t =
-            std::make_shared<phi::distributed::auto_parallel::DistTensor>(
-                dense_t, dist_attr);
+            std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
         out->set_impl(dist_t);
         return dist_t->mutable_value();
       } else {
