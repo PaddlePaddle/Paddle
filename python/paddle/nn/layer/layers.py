@@ -544,6 +544,7 @@ class Layer:
 
                 >>> import paddle
                 >>> import paddle.nn as nn
+                >>> paddle.seed(2023)
 
                 >>> net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
 
@@ -557,12 +558,12 @@ class Layer:
                 >>> net.apply(init_weights)
 
                 >>> print(net.state_dict())
-                before init weight: [[-0.64915746 -0.7679572 ]
-                [ 0.93066823 -0.52798367]]
+                before init weight: [[ 0.89611185  0.04935038]
+                [-0.5888344   0.99266374]]
                 after init weight: [[0.9 0.9]
                 [0.9 0.9]]
-                before init weight: [[ 0.2462784  -0.60751754]
-                [-0.13863313  0.72662246]]
+                before init weight: [[-0.18615901 -0.22924072]
+                [ 1.1517721   0.59859073]]
                 after init weight: [[0.9 0.9]
                 [0.9 0.9]]
                 OrderedDict([('0.weight', Parameter containing:
@@ -576,7 +577,6 @@ class Layer:
                 [0.89999998, 0.89999998]])), ('1.bias', Parameter containing:
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [0., 0.]))])
-
         """
         for layer in self.children():
             layer.apply(fn)
@@ -748,6 +748,7 @@ class Layer:
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.seed(2023)
 
                 >>> class MyLayer(paddle.nn.Layer):
                 ...     def __init__(self):
@@ -763,13 +764,13 @@ class Layer:
                 >>> for name, param in mylayer.named_parameters():
                 ...     print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
                 w_tmp Parameter containing:
-                Tensor(shape=[1, 1], dtype=float16, place=Place(cpu), stop_gradient=False,
-                [[1.17578125]])
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.06979191]])
                 _linear.weight Parameter containing:
-                Tensor(shape=[1, 1], dtype=float16, place=Place(cpu), stop_gradient=False,
-                [[1.21582031]])
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[1.26729357]])
                 _linear.bias Parameter containing:
-                Tensor(shape=[1], dtype=float16, place=Place(cpu), stop_gradient=False,
+                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [0.])
         """
         temp_attr = copy.deepcopy(attr)
@@ -818,7 +819,7 @@ class Layer:
                 ...         paddle.assign( out, self.back_var)
                 ...
                 ...         return out
-                ...
+
         """
         if name is not None:
             var_name = ".".join([self._full_name, name])
@@ -870,7 +871,7 @@ class Layer:
                 ...         paddle.assign( out, self.back_var)
                 ...
                 ...         return out
-                ...
+
         """
         if name is not None:
             var_name = ".".join([self._full_name, name])

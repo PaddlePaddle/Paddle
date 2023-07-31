@@ -1071,16 +1071,6 @@ class Dropout3D(Layer):
 
             >>> m = paddle.nn.Dropout3D(p=0.5)
             >>> y_train = m(x)
-            >>> print(y_train)
-            Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[[0. , 2. , 4. ],
-            [6. , 8. , 10.]],
-            [[12., 14., 16.],
-            [18., 20., 22.]]],
-            [[[0. , 0. , 0. ],
-            [0. , 0. , 0. ]],
-            [[0. , 0. , 0. ],
-            [0. , 0. , 0. ]]]]])
 
             >>> m.eval()  # switch the model to test phase
             >>> y_test = m(x)
@@ -1144,14 +1134,14 @@ class AlphaDropout(Layer):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(2023)
             >>> x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
             >>> m = paddle.nn.AlphaDropout(p=0.5)
             >>> y_train = m(x)
             >>> print(y_train)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.77919382,  1.66559887],
-            [-0.77919382, -0.77919382]])
+            [[-0.10721093,  1.66559887],
+            [-0.77919382,  1.66559887]])
 
             >>> m.eval()  # switch the model to test phase
             >>> y_test = m(x)
