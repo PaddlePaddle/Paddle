@@ -28,6 +28,7 @@ class OpCall;
 class Constrain;
 class SourcePattern;
 class ResultPattern;
+class PatternGraph;
 class SourcePatternGraph;
 class ResultPatternGraph;
 
@@ -74,51 +75,60 @@ class Attribute {
   std::string attr_id_;
 };
 
+class TensorShape : public Attribute {
+ public:
+  explicit TensorShape(const std::string& tensor_id)
+      : Attribute(tensor_id + "_shape_"), tensor_id_(tensor_id) {}
+
+ private:
+  std::string tensor_id_;
+};
+
 class Op : public std::enable_shared_from_this<Op> {
  public:
-  void operator()(const Tensor& arg, const Tensor* out) const {
-    std::vector<std::weak_ptr<const Tensor>> inputs{arg.shared_from_this()};
-    std::vector<std::weak_ptr<const Tensor>> outputs{out->shared_from_this()};
-    add_op_call_fn_(
-        std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
-  }
+  void operator()(const Tensor& arg, const Tensor* out) const;
 
-  // const Tensor& operator()(const Tensor& arg) const;
+  Tensor& operator()() const;
+
+  Tensor& operator()(const Tensor& arg) const;
   // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
   // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
   // Tensor& arg2) const; const Tensor& operator()(const Tensor& arg0, const
   // Tensor& arg1, const Tensor& arg2, const Tensor& arg3) const; const Tensor&
   // operator()(const Tensor& arg0, const Tensor& arg1, const Tensor& arg2,
-  // const Tensor& arg3, const Tensor& arg4) const; void operator()(const
-  // std::vector<const Tensor>& args, const std::vector<const Tensor*>& outputs)
-  // const;
+  // const Tensor& arg3, const Tensor& arg4) const;
+  // void operator()(const std::vector<Tensor>& args, const
+  // std::vector<Tensor*>& outputs) const;
 
  private:
   friend class SourcePattern;
 
   Op(const std::string& op_type_name,
      const std::unordered_map<std::string, Attribute>& attributes,
-     const std::function<void(std::shared_ptr<OpCall>)>& add_op_call_fn)
+     PatternGraph* pattern_graph)
       : op_type_name_(op_type_name),
         attributes_(attributes),
-        add_op_call_fn_(add_op_call_fn) {}
+        pattern_graph_(pattern_graph) {}
 
+  static int64_t count;
   std::string op_type_name_;
   std::unordered_map<std::string, Attribute> attributes_;
-  std::function<void(std::shared_ptr<OpCall>)> add_op_call_fn_;
+  PatternGraph* pattern_graph_;
 };
 
 class Tensor : public std::enable_shared_from_this<Tensor> {
  public:
   const std::string& DebugName() const;
 
+  TensorShape shape() const { return TensorShape(id()); }
+
   Tensor& operator=(const Tensor& other) = delete;
 
-  void operator=(Tensor& other) const {  // NOLINT
-    other.tensor_id_ = tensor_id_;
-  }
+  void operator=(Tensor& other) const;  // NOLINT
 
   const id_type& id() const { return tensor_id_; }
+
+  void set_id(const id_type& id) { tensor_id_ = id; }
 
   std::weak_ptr<OpCall> producer() const { return producer_; }
 
@@ -139,12 +149,17 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
 
  private:
   friend class DrrPassContext;
+  friend class Op;
 
-  explicit Tensor(const id_type& tensor_id) : tensor_id_(tensor_id) {}
+  // explicit Tensor(const id_type& tensor_id) : tensor_id_(tensor_id) {}
+
+  Tensor(const id_type& tensor_id, PatternGraph* pattern_graph)
+      : tensor_id_(tensor_id), pattern_graph_(pattern_graph) {}
 
   id_type tensor_id_;
   std::weak_ptr<OpCall> producer_;
   std::unordered_set<std::weak_ptr<const OpCall>> consumers_;
+  PatternGraph* pattern_graph_;
 };
 
 class OpCall : public std::enable_shared_from_this<OpCall> {
