@@ -19,30 +19,29 @@ import numpy as np
 
 import paddle
 
+# class TestNewIr(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         paddle.enable_static()
+#         place = (
+#             paddle.CUDAPlace(0)
+#             if paddle.is_compiled_with_cuda()
+#             else paddle.CPUPlace()
+#         )
+#         exe = paddle.static.Executor(place)
 
-class TestNewIr(unittest.TestCase):
-    def test_with_new_ir(self):
-        paddle.enable_static()
-        place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-        exe = paddle.static.Executor(place)
+#         main_program = paddle.static.Program()
+#         new_scope = paddle.static.Scope()
+#         with paddle.static.scope_guard(new_scope):
+#             with paddle.static.program_guard(main_program):
+#                 x = paddle.ones([2, 2], dtype="float32")
+#                 y = paddle.ones([2, 2], dtype="float32")
 
-        main_program = paddle.static.Program()
-        new_scope = paddle.static.Scope()
-        with paddle.static.scope_guard(new_scope):
-            with paddle.static.program_guard(main_program):
-                x = paddle.ones([2, 2], dtype="float32")
-                y = paddle.ones([2, 2], dtype="float32")
+#                 z = x + y
+#             out = exe.run(main_program, {}, fetch_list=[z.name])
 
-                z = x + y
-            out = exe.run(main_program, {}, fetch_list=[z.name])
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
 
-        gold_res = np.ones([2, 2], dtype="float32") * 2
-
-        np.testing.assert_array_equal(out[0], gold_res)
+#         np.testing.assert_array_equal(out[0], gold_res)
 
 
 # class TestCombineOp(unittest.TestCase):
@@ -162,26 +161,26 @@ class TestNewIr(unittest.TestCase):
 #         np.testing.assert_array_equal(out[0], gold_res)
 
 
-# class TestNewIrDygraph(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.disable_static()
+class TestNewIrDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
 
-#         @paddle.jit.to_static
-#         def func(x, y):
-#             return x + y
+        @paddle.jit.to_static
+        def func(x, y):
+            return x + y
 
-#         x = paddle.ones([2, 2], dtype='float32')
-#         y = paddle.ones([2, 2], dtype='float32')
-#         z = func(x, y)
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        z = func(x, y)
 
-#         gold_res = np.ones([2, 2], dtype="float32") * 2
-#         self.assertEqual(
-#             np.array_equal(
-#                 z.numpy(),
-#                 gold_res,
-#             ),
-#             True,
-#         )
+        gold_res = np.ones([2, 2], dtype="float32") * 2
+        self.assertEqual(
+            np.array_equal(
+                z.numpy(),
+                gold_res,
+            ),
+            True,
+        )
 
 
 # class TestNewIrBackwardDygraph(unittest.TestCase):

@@ -233,7 +233,19 @@ void HandleForSpecialOp(
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto value = op->result(0);
+    VLOG(0) << "var_name is:" << var_name;
     value_2_var_name->emplace(value, var_name);
+
+    paddle::framework::Variable* var = inner_scope->FindVar(var_name);
+    variable_2_var_name->emplace(var, var_name);
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(var_name, id);
+    variable_list->push_back(var);
+    PADDLE_ENFORCE_EQ(
+        variable_list->size(),
+        var_name_2_id->size(),
+        paddle::platform::errors::InvalidArgument(
+            "The size of variable_list and var_name_2_id map should be equal"));
   }
 
   if (op_name == "builtin.combine") {
@@ -282,8 +294,23 @@ void HandleForSpecialOp(
     if (inner_scope->root()->FindVar(param_name) == nullptr) {
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
+      VLOG(6) << "set_parameter rename var: " << orig_name << " -> "
+              << param_name;
     }
     (*value_2_var_name)[value] = param_name;
+
+    for (auto kv : (*variable_2_var_name)) {
+      if (kv.second == orig_name) {
+        (*variable_2_var_name)[kv.first] = param_name;
+      }
+    }
+
+    for (auto kv : *(var_name_2_id)) {
+      if (kv.first == orig_name) {
+        var_name_2_id->emplace(param_name, kv.second);
+      }
+    }
+    var_name_2_id->erase(orig_name);
   }
 
   if (op_name == "pd.shaddow_output") {
@@ -300,6 +327,19 @@ void HandleForSpecialOp(
           ->Rename(orig_name, var_name);
     }
     (*value_2_var_name)[value] = var_name;
+
+    for (auto kv : (*variable_2_var_name)) {
+      if (kv.second == orig_name) {
+        (*variable_2_var_name)[kv.first] = var_name;
+      }
+    }
+
+    for (auto kv : *(var_name_2_id)) {
+      if (kv.first == orig_name) {
+        var_name_2_id->emplace(var_name, kv.second);
+      }
+    }
+    var_name_2_id->erase(orig_name);
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -310,6 +350,17 @@ void HandleForSpecialOp(
                           .AsString();
     auto value = op->result(0);
     value_2_var_name->emplace(value, param_name);
+
+    paddle::framework::Variable* var = inner_scope->FindVar(param_name);
+    variable_2_var_name->emplace(var, param_name);
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(param_name, id);
+    variable_list->push_back(var);
+    PADDLE_ENFORCE_EQ(
+        variable_list->size(),
+        var_name_2_id->size(),
+        paddle::platform::errors::InvalidArgument(
+            "The size of variable_list and var_name_2_id map should be equal"));
   }
 
   if (op_name == "builtin.slice") {

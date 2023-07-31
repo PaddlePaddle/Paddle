@@ -1643,6 +1643,19 @@ void NewIRInterpreter::BuildInstruction() {
 }
 
 std::string NewIRInterpreter::DebugValueInfo() {
+  VLOG(0) << "value -> var_name";
+  for (auto kv : value_2_var_name_) {
+    VLOG(0) << kv.first.impl() << " -> " << kv.second;
+  }
+  VLOG(0) << "var_name -> id";
+  for (auto kv : var_name_2_id_) {
+    VLOG(0) << kv.first << " -> " << kv.second;
+  }
+  VLOG(0) << "var* ";
+  for (Variable* var : variable_list_) {
+    VLOG(0) << var;
+  }
+
   std::stringstream os;
   os << "value info of interpretercore " << this << "\n"
      << "value -> var_name -> id -> variable*"
@@ -2004,6 +2017,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+    VLOG(0) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
     BuildInstruction();
