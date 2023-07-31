@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/flags.h"
@@ -492,9 +493,7 @@ EagerReducer::EagerReducer(
   for (size_t global_var_index = 0; global_var_index < tensors_.size();
        ++global_var_index) {
     auto tensor = tensors_[global_var_index];
-    auto reduce_hook = [=](void) -> void {
-      this->AddDistHook(global_var_index);
-    };
+    auto reduce_hook = [=]() -> void { this->AddDistHook(global_var_index); };
 
     const auto &grad_node = GetGradNodeFromTensor(&tensor);
 
@@ -835,8 +834,18 @@ void EagerReducer::MarkVarReady(const size_t var_index,
     const auto length = group.length_[inside_group_index];
     if (is_used_var) {
       auto *autograd_meta = tensors_[var_index].get_autograd_meta();
-      auto &grad_tensor =
+      paddle::Tensor grad_tensor =
           static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
+      if (grad_tensor.is_dense_tensor()) {
+        const auto &tensor_impl = grad_tensor.impl();
+        auto dense_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
+        if (!dense_tensor->meta().is_contiguous()) {
+          grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
+              paddle::experimental::Trans2Contiguous(*dense_tensor))));
+        }
+      }
+
       group_tensor
           .ShareDataWith(*(
               std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
@@ -851,6 +860,17 @@ void EagerReducer::MarkVarReady(const size_t var_index,
       if (HasGrad(var_index)) {
         VLOG(3) << "Tensor[" << tensors_[var_index].name() << "] has grad";
         auto grad_tensor = egr::EagerUtils::mutable_grad(tensors_[var_index]);
+
+        if (grad_tensor->is_dense_tensor()) {
+          const auto &tensor_impl = grad_tensor->impl();
+          auto dense_tensor =
+              std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
+          if (!dense_tensor->meta().is_contiguous()) {
+            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(std::move(
+                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+          }
+        }
+
         group_tensor
             .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
                 grad_tensor->impl())))
