@@ -12,24 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/ir/core/builder.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_utils.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void ShadowFeedKernel(const Context& ctx,
-                      const DenseTensor& x,
-                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  if (x.place() == out->place()) {
-    out->ShareDataWith(x);
-    out->set_lod(x.lod());
-  } else {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
-  }
+namespace paddle {
+namespace dialect {
+ir::OpResult mean(ir::OpResult x, std::vector<int64_t> axis, bool keepdim) {
+  paddle::dialect::MeanOp mean_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::MeanOp>(
+          x, axis, keepdim);
+  return mean_op.result(0);
 }
 
-}  // namespace phi
+}  // namespace dialect
+}  // namespace paddle

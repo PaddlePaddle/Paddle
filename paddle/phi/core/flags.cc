@@ -1269,6 +1269,18 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
                          false,
                          "Enable new IR in executor");
 
+/**
+ * Using new IR API in Python
+ * Name: enable_new_ir_api
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, New IR API will be used in Python
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
+                         false,
+                         "Enable new IR API in Python");
+
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_beta_run,
                          true,
                          "Enable new IR in executor");

@@ -247,15 +247,15 @@ void HandleForSpecialOp(
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable" << inner_scope;
 
-    int index =
-        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
     std::string name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
     paddle::framework::Variable* var = inner_scope->FindVar(name);
+    PADDLE_ENFORCE(var,
+                   paddle::platform::errors::InvalidArgument(
+                       "The variable %s shoud exist", name));
 
-    auto feed_var_name = "feed_" + std::to_string(index);
     AddNewData(value,
-               feed_var_name,
+               name,
                var,
                value_2_var_name,
                variable_2_var_name,
@@ -269,9 +269,7 @@ void HandleForSpecialOp(
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto value = op->result(0);
-    VLOG(0) << "var_name is:" << var_name;
-    value_2_var_name->emplace(value, var_name);
-
+    VLOG(6) << "var_name is:" << var_name;
     paddle::framework::Variable* var = inner_scope->FindVar(var_name);
     AddNewData(value,
                var_name,
@@ -339,8 +337,8 @@ void HandleForSpecialOp(
                var_name_2_id);
   }
 
-  if (op_name == "pd.shaddow_output") {
-    VLOG(6) << "Handle for pd.shaddow_ouptut";
+  if (op_name == "pd.shadow_output") {
+    VLOG(6) << "Handle for pd.shadow_ouptut";
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
@@ -483,7 +481,7 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
+        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,

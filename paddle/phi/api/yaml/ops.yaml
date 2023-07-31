@@ -2256,14 +2256,14 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
 
-- op : shaddow_output
+- op : shadow_output
   args : (Tensor x, str name)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel:
-    func : shaddow_output
+    func : shadow_output
     param : [x]
 
 - op : shape
