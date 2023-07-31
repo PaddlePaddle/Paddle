@@ -45,6 +45,7 @@ file(
   "gpu/s*.cu.cc"
   "gpu/c*.cu"
   "gpu/s*.cu"
+  "gpu/abs_kernel.cu"
   "gpu/full_kernel.cu"
   "gpu/matmul_kernel.cu"
   "gpu/expand_kernel.cu"

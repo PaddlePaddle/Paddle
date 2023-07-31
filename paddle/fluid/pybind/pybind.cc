@@ -231,7 +231,7 @@ bool IsCompiledWithAVX() {
 }
 
 bool IsCompiledWithCUDA() {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   return false;
 #else
   return true;
@@ -1563,7 +1563,7 @@ All parameter, weight, gradient are variables in Paddle.
           "create",
           [](paddle::platform::CUDAPlace &place)
               -> paddle::platform::DeviceContext * {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPlace in CPU only version, "
                 "Please recompile or reinstall Paddle with CUDA support."));
@@ -1597,7 +1597,7 @@ All parameter, weight, gradient are variables in Paddle.
           "create",
           [](paddle::platform::CUDAPinnedPlace &place)
               -> paddle::platform::DeviceContext * {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPinnedPlace in CPU only version, "
                 "Please recompile or reinstall Paddle with CUDA support."));

@@ -168,20 +168,20 @@ void InitGpuProperties(Place place,
   auto compile_musa_version =
       (MUSA_VERSION / 1000) * 10 + (MUSA_VERSION % 100) / 10;
 #if defined(__linux__)
-  PADDLE_ENFORCE_EQ(
-      (local_musa_version / 10 < compile_musa_version / 10) &&
-          (mudnn_dso_ver / 1000 < MUDNN_VERSION / 1000),
-      false,
-      phi::errors::InvalidArgument(
-          "The installed Paddle is compiled with MUDA%d/muDNN%d,"
-          "but MUSA/muDNN version in your machine is MUSA%d/muDNN%d. "
-          "which will cause serious incompatible bug. "
-          "Please recompile or reinstall Paddle with compatible MUSA/muDNN "
-          "version.",
-          compile_musa_version / 10,
-          MUDNN_VERSION / 1000,
-          local_musa_version / 10,
-          mudnn_dso_ver / 1000));
+  //PADDLE_ENFORCE_EQ(
+  //    (local_musa_version / 10 < compile_musa_version / 10) &&
+  //        (mudnn_dso_ver / 1000 < MUDNN_VERSION / 1000),
+  //    false,
+  //    phi::errors::InvalidArgument(
+  //        "The installed Paddle is compiled with MUDA%d/muDNN%d,"
+  //        "but MUSA/muDNN version in your machine is MUSA%d/muDNN%d. "
+  //        "which will cause serious incompatible bug. "
+  //        "Please recompile or reinstall Paddle with compatible MUSA/muDNN "
+  //        "version.",
+  //        compile_musa_version / 10,
+  //        MUDNN_VERSION / 1000,
+  //        local_musa_version / 10,
+  //        mudnn_dso_ver / 1000));
 #endif
   if (local_musa_version < compile_musa_version) {
     LOG_FIRST_N(WARNING, 1)

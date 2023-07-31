@@ -21,6 +21,8 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
+#include <mudnn.h>
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -67,6 +69,30 @@ void Float32Bfloat16OrFloat16AddCudaFunctor(const Context& dev_ctx,
   }
 }
 
+// TODO(MTAI): The following code is temporary, which is just a demo for MUSA.
+// It will be removed later.
+using muTensor = ::musa::dnn::Tensor;
+using BINARY_MODE = ::musa::dnn::Binary::Mode;
+muTensor CreateMUTensor(const DenseTensor& tensor) {
+  muTensor mu_tensor;
+  switch (tensor.dtype()) {
+    case DataType::FLOAT32:
+      mu_tensor.SetType(muTensor::Type::FLOAT);
+      break;
+    case DataType::INT32:
+      mu_tensor.SetType(muTensor::Type::INT32);
+      break;
+    case DataType::INT64:
+      mu_tensor.SetType(muTensor::Type::INT64);
+      break;
+    default:
+      std::cerr << "=========mismatch dtype in add kernel=====\n";
+      throw;
+  }
+  mu_tensor.SetAddr(tensor.data());
+  return mu_tensor;
+}
+
 template <typename T, typename Context>
 void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
@@ -80,7 +106,18 @@ void AddKernel(const Context& dev_ctx,
     Float32Bfloat16OrFloat16AddCudaFunctor<Type, Context>(dev_ctx, x, y, out);
   } else {
 #endif
-    AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+    // AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+  dev_ctx.template Alloc<T>(out);
+  using muHandle = ::musa::dnn::Handle;
+  ::musa::dnn::Handle h;
+  muTensor musa_self = CreateMUTensor(x);
+  muTensor musa_other = CreateMUTensor(y);
+  muTensor musa_out = CreateMUTensor(*out);
+
+  ::musa::dnn::Binary binary_op;
+  binary_op.SetMode(BINARY_MODE::ADD);
+  binary_op.Run(h, musa_out, musa_self, musa_other);
+
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
