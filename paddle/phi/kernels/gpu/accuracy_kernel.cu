@@ -38,7 +38,7 @@ __global__ void AccuracyCudaKernel(const int N,
                                    int* total_data) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   int count = 0;
-  __shared__ int total[BlockSize];  // NOLINT
+  __shared__ int total[BlockSize];
 
   // support only 1 block
   for (int i = threadIdx.x; i < (N); i += BlockSize) {

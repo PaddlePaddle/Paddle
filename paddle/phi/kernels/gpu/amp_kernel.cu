@@ -40,7 +40,7 @@ __global__ void CheckFiniteAndUnscale(const T** xs,
   const int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   // copy starts array from global memory to shared memory
-  extern __shared__ int64_t s_starts[];  // NOLINT
+  extern __shared__ int64_t s_starts[];
   for (int i = threadIdx.x; i <= size; i += blockDim.x) {
     s_starts[i] = starts[i];
   }
@@ -117,7 +117,7 @@ __global__ void FusedFillIf(T** outs,
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   // copy starts array from global memory to shared memory
-  extern __shared__ int64_t s_starts[];  // NOLINT
+  extern __shared__ int64_t s_starts[];
   for (int i = threadIdx.x; i <= xs_size; i += blockDim.x) {
     s_starts[i] = starts[i];
   }

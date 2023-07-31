@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <array>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_add_utils.h"
@@ -97,8 +96,8 @@ __global__ void VectorizedDropoutForward(const size_t n,
   curand_init(seed, idx + THREAD_ID_X, increment, &state);
   using SType = curandStatePhilox4_32_10_t;
 #endif
-  std::array<T, kCount * 2> dst_res;
-  std::array<float, kCount> rands;
+  T dst_res[kCount * 2];
+  float rands[kCount];
 
   using Rand = phi::funcs::uniform_distribution<float>;
   int deal_size = BLOCK_NUM_X * kCount;

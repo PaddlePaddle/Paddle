@@ -39,7 +39,7 @@ __global__ void batch_transpose_kernel(T* output,
                                        int swizzle) {
   const int num = M * N;
   // "+1" to avoid smem bank conflict
-  __shared__ T shbuf[32 * (32 + 1)];  // NOLINT
+  __shared__ T shbuf[32 * (32 + 1)];
   const int32_t tid = threadIdx.y * blockDim.x + threadIdx.x;
   const int32_t wid = tid / 32;
   const int32_t lid = tid % 32;
