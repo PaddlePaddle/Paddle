@@ -358,6 +358,11 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         self.shape = (1, 100, 8, 8)
         self.dtype = np.float16
 
+    def test_check_output(self):
+        atol = 1e-3
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=atol)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
