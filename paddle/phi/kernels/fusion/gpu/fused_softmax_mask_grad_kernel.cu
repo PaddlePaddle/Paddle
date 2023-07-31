@@ -55,8 +55,8 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
       grad_input_reg{0.0f};
   std::array<std::array<float, kLocalIterations>, kLocalBatchSize>
       softmax_rst_reg{0.0f};
-  std::array<T, kOneLoadingCounts> temp_grad_input;
-  std::array<T, kOneLoadingCounts> temp_softmax_rst;
+  T temp_grad_input[kOneLoadingCounts];   // NOLINT
+  T temp_softmax_rst[kOneLoadingCounts];  // NOLINT
 
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
@@ -66,9 +66,9 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
       int data_index = kOneLoadingCounts * local_idx + ii * WARP_SIZE;
       if (data_index < batch_data) {
-        load_data(temp_grad_input.data(),
+        load_data(temp_grad_input,
                   grad_input + i * key_seq_len + ii * warp_size);
-        load_data(temp_softmax_rst.data(),
+        load_data(temp_softmax_rst,
                   softmax_rst + i * key_seq_len + ii * warp_size);
 
 #pragma unroll
