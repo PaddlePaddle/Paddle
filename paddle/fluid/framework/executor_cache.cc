@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
+
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -412,8 +414,13 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
                                                            program.get());
 
   program_translator.Translate();
+  program->Print(std::cout);
+  std::cout << std::endl;
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+
+  ir_res->Print(std::cout);
+  std::cout << std::endl;
 
   return ir_res;
 }
@@ -468,8 +475,12 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
                                                            program.get());
   program_translator.Translate();
 
-  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+  program->Print(std::cout);
+  std::cout << std::endl;
 
+  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+  res->Print(std::cout);
+  std::cout << std::endl;
   return res;
 }
 
