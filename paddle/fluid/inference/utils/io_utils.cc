@@ -185,13 +185,11 @@ void SerializeShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>> &opt_shape,
     const std::map<std::string, std::vector<int32_t>> &min_value,
     const std::map<std::string, std::vector<int32_t>> &max_value,
-    const std::map<std::string, std::vector<int32_t>> &opt_value,
-    const std::map<std::string, phi::DataType>& dtype_info) {
+    const std::map<std::string, std::vector<int32_t>> &opt_value) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
   for (auto it : min_shape) {
     auto *s = shape_range_infos.add_shape_range_info();
     s->set_name(it.first);
-    s->set_dtype(static_cast<int>(dtype_info.at(it.first)));
     for (size_t i = 0; i < it.second.size(); ++i) {
       s->add_min_shape(it.second[i]);
       s->add_max_shape(max_shape.at(it.first)[i]);
@@ -229,64 +227,47 @@ void DeserializeShapeRangeInfo(
     std::map<std::string, std::vector<int32_t>> *opt_shape,
     std::map<std::string, std::vector<int32_t>> *min_value,
     std::map<std::string, std::vector<int32_t>> *max_value,
-    std::map<std::string, std::vector<int32_t>> *opt_value,
-    std::map<std::string, phi::DataType> *dtype_info) {
+    std::map<std::string, std::vector<int32_t>> *opt_value) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
   DeserializeShapeRangeInfo(path, &shape_range_infos);
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
     auto info = shape_range_infos.shape_range_info(i);
     auto name = info.name();
-    if(dtype_info){ // add dtype
-      auto dtype = info.dtype();
-      dtype_info->insert(std::make_pair(name, static_cast<phi::DataType>(dtype)));
-    }
-    
-    if (min_shape&&min_shape->count(name) || max_shape&&max_shape->count(name) ||
-        opt_shape&&opt_shape->count(name)) {
+    if (min_shape->count(name) || max_shape->count(name) ||
+        opt_shape->count(name)) {
       continue;
     } else {
-      std::vector<int32_t> tmp;
-      if(min_value) {
-        tmp.resize(info.min_shape_size());
-        for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_shape(k);
-        min_shape->insert(std::make_pair(name, tmp));
-      }
-      if(max_shape){
-        tmp.resize(info.max_shape_size());
-        for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_shape(k);
-        max_shape->insert(std::make_pair(name, tmp));
-      }
-      if(opt_shape){
-        tmp.resize(info.opt_shape_size());
-        for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_shape(k);
-        opt_shape->insert(std::make_pair(name, tmp));
-      }
-      
+      std::vector<int32_t> tmp(info.min_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_shape(k);
+      min_shape->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.max_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_shape(k);
+      max_shape->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.opt_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_shape(k);
+      opt_shape->insert(std::make_pair(name, tmp));
     }
   }
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
     auto info = shape_range_infos.shape_range_info(i);
     auto name = info.name();
-    if (min_value&&min_value->count(name) || max_value&&max_value->count(name) ||
-        opt_value&&opt_value->count(name)) {
+    if (min_value->count(name) || max_value->count(name) ||
+        opt_value->count(name)) {
       continue;
     } else {
-      std::vector<int32_t> tmp;
-      if(min_value){
-        tmp.resize(info.min_value_size());
-        for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_value(k);
-        min_value->insert(std::make_pair(name, tmp));
-      }
-      if(max_value){
-        tmp.resize(info.max_value_size());
-        for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_value(k);
-        max_value->insert(std::make_pair(name, tmp));
-      }
-      if(opt_value){
-        tmp.resize(info.opt_value_size());
-        for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_value(k);
-        opt_value->insert(std::make_pair(name, tmp));
-      }
+      std::vector<int32_t> tmp(info.min_value_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_value(k);
+      min_value->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.max_value_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_value(k);
+      max_value->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.opt_value_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_value(k);
+      opt_value->insert(std::make_pair(name, tmp));
     }
   }
 }
@@ -299,7 +280,6 @@ void UpdateShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>> &min_value,
     const std::map<std::string, std::vector<int32_t>> &max_value,
     const std::map<std::string, std::vector<int32_t>> &opt_value,
-    const std::map<std::string, phi::DataType> &dtype_info, 
     const std::vector<std::string> &names,
     const std::vector<std::string> &tensor_names) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
@@ -309,28 +289,23 @@ void UpdateShapeRangeInfo(
     bool has_name = false;
     for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
       auto *info = shape_range_infos.mutable_shape_range_info(i);
-      if (info->name() == name) { 
+      if (info->name() == name) {
         info->clear_min_shape();
         info->clear_max_shape();
         info->clear_opt_shape();
-        if(dtype_info.count(name)) info->clear_dtype();
         for (size_t j = 0; j < min_shape.at(name).size(); ++j)
           info->add_min_shape(min_shape.at(name)[j]);
         for (size_t j = 0; j < max_shape.at(name).size(); ++j)
           info->add_max_shape(max_shape.at(name)[j]);
         for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
           info->add_opt_shape(opt_shape.at(name)[j]);
-        if(dtype_info.count(name)) info->set_dtype(static_cast<int>(dtype_info.at(name)));
         has_name = true;
         break;
       }
     }
-    if (!has_name) { 
+    if (!has_name) {
       auto *info = shape_range_infos.add_shape_range_info();
       info->set_name(name);
-      info->set_dtype(static_cast<int>(phi::DataType::FLOAT32)); // TODO(liuxuejian):This type is not sure how to obtain in trtEngineOp, 
-                                                                // let's use phi::DataType::FLOAT32 by default, 
-                                                                // and it seems it won't reach here?
       for (size_t j = 0; j < min_shape.at(name).size(); ++j)
         info->add_min_shape(min_shape.at(name)[j]);
       for (size_t j = 0; j < max_shape.at(name).size(); ++j)

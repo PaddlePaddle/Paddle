@@ -433,8 +433,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           PrepareTRTEngine(*anc, trt_engine);
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
-            std::map<std::string, phi::DataType> empty_dtype_info; // TODO(liuxuejian): It seems that only the variable's shape will be changed here, but not its dtype.
-                                                                   // So, provide an empty dtype_info to match the UpdateShapeRangeInfo function parameter?
             inference::UpdateShapeRangeInfo(shape_range_info_path_,
                                             trt_engine->min_input_shape(),
                                             trt_engine->max_input_shape(),
@@ -442,7 +440,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                             trt_engine->min_shape_tensor(),
                                             trt_engine->max_shape_tensor(),
                                             trt_engine->optim_shape_tensor(),
-                                            empty_dtype_info,
                                             shape_changed_name,
                                             tensor_changed_name);
           }
@@ -505,8 +502,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                &opt_input_shape,
                                                &min_shape_tensor,
                                                &max_shape_tensor,
-                                               &opt_shape_tensor,
-                                               nullptr);
+                                               &opt_shape_tensor);
 
         calib_res->engine_.reset(new TensorRTEngine(max_batch_size_,
                                                     workspace_size_,

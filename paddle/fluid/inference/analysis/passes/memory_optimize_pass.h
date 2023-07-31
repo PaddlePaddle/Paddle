@@ -45,7 +45,6 @@ class MemoryOptimizePass : public AnalysisPass {
  public:
   using space_table_t = std::unordered_map<std::string, size_t>;
   using shape_table_t = std::unordered_map<std::string, std::vector<int32_t>>;
-  using dtype_table_t = std::map<std::string, phi::DataType>;
   using lifecycle_t = std::pair<int, int>;
 
   virtual ~MemoryOptimizePass() = default;
@@ -61,8 +60,7 @@ class MemoryOptimizePass : public AnalysisPass {
 
   void CollectVarInfo(Argument *argument,
                             space_table_t *space_table, 
-                            shape_table_t *shape_table,
-                            dtype_table_t *dtype_info) const;
+                            shape_table_t *shape_table) const;
 
  public:
   std::string repr() const override;

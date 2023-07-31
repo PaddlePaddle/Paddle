@@ -43,7 +43,6 @@ using framework::ir::Node;
 using framework::ir::TopologyVarientSort;
 using space_table_t = MemoryOptimizePass::space_table_t;
 using shape_table_t = MemoryOptimizePass::shape_table_t;
-using dtype_table_t = MemoryOptimizePass::dtype_table_t;
 
 typedef struct {
   std::string name;
@@ -125,12 +124,15 @@ void MemoryOptimizePass::CollectLifeCycle(
 
 void MemoryOptimizePass::CollectVarInfo(Argument* argument,
                                         space_table_t* space_table,
-                                        shape_table_t* shape_table,
-                                        dtype_table_t* dtype_info) const {
+                                        shape_table_t* shape_table) const {
   framework::ir::Graph* graph = argument->main_graph_ptr();
   const int fake_batch_size = 1;
-
+  std::map<std::string, std::vector<int32_t>> min_shape;
   std::map<std::string, std::vector<int32_t>> max_shape;
+  std::map<std::string, std::vector<int32_t>> opt_shape;
+  std::map<std::string, std::vector<int32_t>> min_value;
+  std::map<std::string, std::vector<int32_t>> max_value;
+  std::map<std::string, std::vector<int32_t>> opt_value;
 
   if (argument->use_gpu() && argument->use_tensorrt() &&
       argument
@@ -138,13 +140,12 @@ void MemoryOptimizePass::CollectVarInfo(Argument* argument,
     // get shape information and dtype information from the specified file.
     paddle::inference::DeserializeShapeRangeInfo(
         argument->tensorrt_shape_range_info_path(),
-        nullptr,
+        &min_shape,
         &max_shape,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        dtype_info);
+        &opt_shape,
+        &min_value,
+        &max_value,
+        &opt_value);
   }
 
   auto valid_var = [&](framework::ir::Node* node) -> bool {
@@ -225,7 +226,6 @@ void MemoryOptimizePass::CollectVarInfo(Argument* argument,
           }
         }
       }
-
       (*shape_table)[node->Var()->Name()] = shape;
 
       int size = std::accumulate(
@@ -316,12 +316,11 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   std::unordered_map<std::string, lifecycle_t> lifecycles;
   space_table_t space_table;
   shape_table_t shape_table;
-  dtype_table_t dtype_table;
   std::unordered_map<std::string, std::string> node2cluster;
   std::unordered_map<std::string, int> cluster_size;
 
   CollectLifeCycle(argument, &lifecycles, sort_kind);
-  CollectVarInfo(argument, &space_table, &shape_table, &dtype_table);
+  CollectVarInfo(argument, &space_table, &shape_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
@@ -331,9 +330,6 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   pass_res_info->Set(argument->root_predictor_id(),
                      "memory_optimize_pass_shape_table",
                      shape_table);
-  pass_res_info->Set(argument->root_predictor_id(),
-                     "memory_optimize_pass_dtype_table",
-                     dtype_table);
 
   return;
 }

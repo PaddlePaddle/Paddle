@@ -101,7 +101,6 @@ TEST(shape_info_io, read_and_write) {
   const std::string path = "test_shape_info_io";
   std::map<std::string, std::vector<int32_t>> min_shape, max_shape, opt_shape;
   std::map<std::string, std::vector<int32_t>> min_value, max_value, opt_value;
-  std::map<std::string, phi::DataType> dtype_info;
   min_shape.insert(
       std::make_pair("test1", std::vector<int32_t>{1, 3, 112, 112}));
   max_shape.insert(
@@ -114,17 +113,14 @@ TEST(shape_info_io, read_and_write) {
       std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
   opt_value.insert(
       std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
-  dtype_info.insert(std::make_pair("test1", phi::DataType::FLOAT32));
-  
   paddle::inference::SerializeShapeRangeInfo(
-      path, min_shape, max_shape, opt_shape, min_value, max_value, opt_value, dtype_info);
+      path, min_shape, max_shape, opt_shape, min_value, max_value, opt_value);
   min_shape.clear();
   max_shape.clear();
   opt_shape.clear();
   min_value.clear();
   max_value.clear();
   opt_value.clear();
-  dtype_info.clear();
   opt_shape.insert(
       std::make_pair("test2", std::vector<int32_t>{1, 3, 224, 224}));
   paddle::inference::DeserializeShapeRangeInfo(path,
@@ -133,8 +129,7 @@ TEST(shape_info_io, read_and_write) {
                                                &opt_shape,
                                                &min_value,
                                                &max_value,
-                                               &opt_value,
-                                               &dtype_info);
+                                               &opt_value);
 
   min_shape.insert(std::make_pair("test1", std::vector<int32_t>{1, 3, 56, 56}));
   std::vector<std::string> names{"test1"};
@@ -145,7 +140,6 @@ TEST(shape_info_io, read_and_write) {
                                           min_value,
                                           max_value,
                                           opt_value,
-                                          dtype_info,
                                           names,
                                           names);
 
@@ -155,7 +149,6 @@ TEST(shape_info_io, read_and_write) {
                                                             &opt_shape,
                                                             &min_value,
                                                             &max_value,
-                                                            &opt_value,
-                                                            &dtype_info);
+                                                            &opt_value);
                , paddle::platform::EnforceNotMet);
 }

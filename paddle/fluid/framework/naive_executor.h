@@ -70,8 +70,7 @@ class NaiveExecutor {
 
   void MakeReusePlan(
       const std::unordered_map<std::string, std::string>& reuse_table,
-      std::unordered_map<std::string, std::vector<int>>& shape_table,
-      std::map<std::string, phi::DataType>& dtype_table);
+      std::unordered_map<std::string, std::vector<int>>& shape_table);
 
   void ResetTrtOps(int num);
 

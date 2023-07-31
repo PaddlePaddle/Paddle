@@ -34,8 +34,7 @@ class PassResultInfoForRuntime {
       paddle::variant<std::string,
                       std::vector<std::string>,
                       std::unordered_map<std::string, std::string>,
-                      std::unordered_map<std::string, std::vector<int>>,
-                      std::map<std::string, phi::DataType>>;
+                      std::unordered_map<std::string, std::vector<int>>>;
 
   static PassResultInfoForRuntime* Instance() {
     static PassResultInfoForRuntime info;

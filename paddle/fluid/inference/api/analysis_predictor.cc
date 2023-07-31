@@ -709,10 +709,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     auto shape_table = 
         pass_res_info->Get<std::unordered_map<std::string, std::vector<int>>>(
             root_predictor_id_, "memory_optimize_pass_shape_table");
-    auto dtype_table = 
-        pass_res_info->Get<std::map<std::string, phi::DataType>>(
-            root_predictor_id_, "memory_optimize_pass_dtype_table");
-    executor_->MakeReusePlan(reuse_table, shape_table, dtype_table);
+    executor_->MakeReusePlan(reuse_table, shape_table);
   }
 
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
@@ -2225,8 +2222,6 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     auto tensor = new_var->Get<phi::DenseTensor>();
     if (!tensor.initialized()) return;
 
-    // 收集dtype
-    dtype_info_[input_name] = tensor.dtype();
 
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
@@ -2382,8 +2377,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
                                      opt_shapes,
                                      min_values,
                                      max_values,
-                                     opt_values,
-                                     dtype_info_);
+                                     opt_values);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
