@@ -7,6 +7,10 @@ spec:
   volumes:
   - name: artifacts
     emptyDir: { }
+  - name: inference-demo-data
+    hostPath:
+      path: /data/paddle_musa/inference_demo
+      type: DirectoryOrCreate
   - name: shm-volume
     emptyDir:
       medium: Memory
@@ -51,6 +55,10 @@ spec:
       readOnly: false
     - mountPath: /dev/shm
       name: shm-volume
+    - mountPath: /home/data/paddle_musa/.cache/build
+      name: inference-demo-data
+      readOnly: true
+
   # Container named "release".
   - name: release
     image: sh-harbor.mthreads.com/mt-ai/ops/torch_musa_oss_release:latest
