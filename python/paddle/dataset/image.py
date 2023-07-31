@@ -230,6 +230,7 @@ def center_crop(im, size, is_color=True):
 
     .. code-block:: python
 
+        >>> im = load_image('cat.jpg')
         >>> im = center_crop(im, 224)
 
     :param im: the input image with HWC layout.
@@ -258,6 +259,7 @@ def random_crop(im, size, is_color=True):
 
     .. code-block:: python
 
+        >>> im = load_image('cat.jpg')
         >>> im = random_crop(im, 224)
 
     :param im: the input image with HWC layout.
@@ -287,6 +289,7 @@ def left_right_flip(im, is_color=True):
 
     .. code-block:: python
 
+        >>> im = load_image('cat.jpg')
         >>> im = left_right_flip(im)
 
     :param im: input image with HWC layout or HW layout for gray image
@@ -311,6 +314,7 @@ def simple_transform(
 
     .. code-block:: python
 
+        >>> im = load_image('cat.jpg')
         >>> im = simple_transform(im, 256, 224, True)
 
     :param im: The input image with HWC layout.

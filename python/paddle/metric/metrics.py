@@ -799,7 +799,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             >>> result = paddle.metric.accuracy(input=predictions, label=label, k=1)
             >>> print(result)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    0.50000000)
+            0.50000000)
     """
     if label.dtype == paddle.int32:
         label = paddle.cast(label, paddle.int64)
