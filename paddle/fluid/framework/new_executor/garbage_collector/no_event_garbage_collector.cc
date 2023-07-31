@@ -36,6 +36,11 @@ void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
   Add(var, &instr.DeviceContext());
 }
 
+void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
+                                                 const InstructionBase* instr) {
+  Add(var, &instr->DeviceContext());
+}
+
 void InterpreterCoreNoEventGarbageCollector::Add(
     Variable* var, const platform::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {

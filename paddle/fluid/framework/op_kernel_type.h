@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
@@ -24,6 +25,8 @@ limitations under the License. */
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_factory.h"
+
+DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace framework {
@@ -149,6 +152,10 @@ inline bool NeedTransformBackend(const phi::Backend& type_for_var_backend,
   return !backends_are_same_class(type_for_var_backend, expected_backend);
 }
 
+inline bool NeedTransform2Contiguous(bool is_contiguous) {
+  return FLAGS_use_stride_kernel && !is_contiguous;
+}
+
 inline bool NeedTransform(const phi::KernelKey& kernel_type_for_var,
                           const phi::KernelKey& expected_kernel_key,
                           const phi::DenseTensor& tensor) {
@@ -157,7 +164,8 @@ inline bool NeedTransform(const phi::KernelKey& kernel_type_for_var,
                               tensor) ||
          NeedTransformDataType(kernel_type_for_var, expected_kernel_key) ||
          NeedTransformLayout(kernel_type_for_var.layout(),
-                             expected_kernel_key.layout());
+                             expected_kernel_key.layout()) ||
+         NeedTransform2Contiguous(tensor.meta().is_contiguous());
 }
 
 }  // namespace framework
