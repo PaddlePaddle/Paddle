@@ -28,7 +28,7 @@ class TrtConvertQuantizeDequantizeTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         # only TRT > 8.0 has quantize / dequantize layers
-        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8000:
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8517:
             return False
         return True
 
