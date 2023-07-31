@@ -257,10 +257,10 @@ void FusedSoftmaxMaskFuseUpperTriangleGradKernel(const Context& dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_softmax_mask_upper_triangle,
+PD_REGISTER_KERNEL(fused_softmax_mask_upper_triangle_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::FusedSoftmaxMaskFuseUpperTriangleKernel,
+                   phi::fusion::FusedSoftmaxMaskFuseUpperTriangleGradKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
