@@ -1268,3 +1268,11 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
                          false,
                          "Enable new IR in executor");
+
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_beta_run,
+                         false,
+                         "Enable new IR in executor");
+
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_loop_run,
+                         false,
+                         "Enable new IR in executor");

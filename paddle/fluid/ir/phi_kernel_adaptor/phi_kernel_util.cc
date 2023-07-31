@@ -187,13 +187,21 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
-    auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
-                   ->Var("fetch");
-    VLOG(6) << "Create var: fetch in scope " << inner_scope->root();
-    auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-    int index =
-        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    fetch_list->resize(index + 1);
+    auto fetch_src_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto fetch_var_name = fetch_src_name + "@fetch";
+    auto* var = const_cast<paddle::framework::Scope*>(inner_scope->root())
+                    ->Var(fetch_var_name);
+    var->GetMutable<phi::DenseTensor>();
+    auto value = op->result(0);
+
+    value_2_var_name->emplace(value, fetch_var_name);
+
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(fetch_var_name, id);
+    variable_list->push_back(var);
+    variable_2_var_name->emplace(var, fetch_var_name);
   }
 
   if (op_name == "pd.feed") {

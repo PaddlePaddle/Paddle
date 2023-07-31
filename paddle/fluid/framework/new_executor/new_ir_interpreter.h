@@ -35,6 +35,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
  public:
   NewIRInterpreter(const platform::Place& place,
+                   const std::vector<std::string>& fetch_var_names,
                    std::unique_ptr<::ir::Program> ir_prog,
                    Scope* scope,
                    const ExecutionConfig& execution_config = ExecutionConfig());
@@ -251,6 +252,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   interpreter::NewIrDependencyBuilder ir_dependency_builder_;
 
   interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
+
+  std::vector<std::string> fetch_var_names_;
 };
 
 }  // namespace framework
