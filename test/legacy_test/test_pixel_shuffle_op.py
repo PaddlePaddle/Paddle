@@ -264,16 +264,14 @@ class TestPixelShuffleAPI(unittest.TestCase):
                 feed={"x": self.x_1_np},
                 fetch_list=out_1,
                 use_prune=True,
-            )
+            )[0]
 
             res_2 = exe.run(
                 fluid.default_main_program(),
                 feed={"x2": self.x_2_np},
                 fetch_list=out_2,
                 use_prune=True,
-            )
-            res_1 = res_1[0]
-            res_2 = res_2[0]
+            )[0]
 
             np.testing.assert_allclose(res_1, out_1_np, rtol=1e-5, atol=1e-8)
             np.testing.assert_allclose(res_2, out_2_np, rtol=1e-5, atol=1e-8)

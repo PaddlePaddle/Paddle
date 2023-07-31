@@ -106,8 +106,7 @@ class TestMaskedSelectAPI(unittest.TestCase):
             feed={"x": np_x, "mask": np_mask},
             fetch_list=[out],
         )
-        res = res[0] if len(res) == 1 else res
-        np.testing.assert_allclose(res, np_out)
+        self.assertEqual(np.allclose(res, np_out), True)
 
 
 class TestMaskedSelectError(unittest.TestCase):

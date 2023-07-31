@@ -57,23 +57,20 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 scale = np.array([1]).astype("float32")
                 bias = np.array([0]).astype("float32")
                 data = np.random.random(shape).astype("float32")
-                res_1 = group_norm_naive_for_general_dimension(
+                expect_res1 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=6
                 )
-                res_2 = group_norm_naive_for_general_dimension(
+                expect_res2 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=2
                 )
-
-                res_1 = res_1[0] if len(res_1) == 1 else res_1
-                res_2 = res_2[0] if len(res_2) == 1 else res_2
 
                 gn1 = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
                 gn2 = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
                 data_pd = paddle.to_tensor(data)
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
-                np.testing.assert_allclose(result1, res_1, atol=1e-5)
-                np.testing.assert_allclose(result2, res_2, atol=1e-5)
+                self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
+                self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
 
 
 class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
@@ -99,15 +96,12 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
                 scale = np.array([1]).astype("float32")
                 bias = np.array([0]).astype("float32")
                 data = np.random.random(shape).astype("float32")
-                res_1 = group_norm_naive_for_general_dimension(
+                expect_res1 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=6
                 )
-                res_2 = group_norm_naive_for_general_dimension(
+                expect_res2 = group_norm_naive_for_general_dimension(
                     data, scale, bias, epsilon=1e-5, groups=2
                 )
-
-                res_1 = res_1[0] if len(res_1) == 1 else res_1
-                res_2 = res_2[0] if len(res_2) == 1 else res_2
 
                 gn1 = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
                 gn2 = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
@@ -119,8 +113,8 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
                 data_pd = paddle.to_tensor(data.astype('float16'))
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
-                np.testing.assert_allclose(result1, res_1, rtol=1e-2, atol=1e-3)
-                np.testing.assert_allclose(result2, res_2, rtol=1e-2, atol=1e-3)
+                self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
+                self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
 
 
 class TestGroupNormDimException(unittest.TestCase):
