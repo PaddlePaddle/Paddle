@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
+from paddle.fluid.framework import Variable
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -105,13 +105,13 @@ class Uniform(distribution.Distribution):
             check_type(
                 low,
                 'low',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
             check_type(
                 high,
                 'high',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
 
@@ -169,9 +169,9 @@ class Uniform(distribution.Distribution):
         batch_shape = list((self.low + self.high).shape)
         if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.low + self.high, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = paddle.shape(self.low + self.high)[0].item()
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
