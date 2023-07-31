@@ -23,4 +23,10 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
                                              const DenseTensor& x,
                                              DenseTensor* out);
 
+template <typename T, typename Context>
+void FusedSoftmaxMaskFuseUpperTriangleGradKernel(const Context& dev_ctx,
+                                                 const DenseTensor& out,
+                                                 const DenseTensor& out_grad,
+                                                 DenseTensor* x_grad);
+
 }  // namespace phi
