@@ -31,14 +31,13 @@ from ..fluid.data_feeder import (
 )
 from ..framework import (
     LayerHelper,
-    _dygraph_tracer,
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
-from .manipulation import cast
+from .manipulation import cast, cast_
 from .ops import abs  # noqa: F401
 from .ops import abs_  # noqa: F401
 from .ops import acos  # noqa: F401
@@ -882,6 +881,22 @@ def divide(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
+@inplace_apis_in_dygraph_only
+def divide_(x, y, name=None):
+    r"""
+    Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_divide`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.divide_(x, y)
+
+
 def floor_divide(x, y, name=None):
     """
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
@@ -925,6 +940,22 @@ def floor_divide(x, y, name=None):
         return _C_ops.floor_divide(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def floor_divide_(x, y, name=None):
+    r"""
+    Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_divide`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.floor_divide_(x, y)
 
 
 def remainder(x, y, name=None):
@@ -986,6 +1017,16 @@ def remainder_(x, y, name=None):
 
 mod = remainder  # noqa: F841
 floor_mod = remainder  # noqa: F841
+mod_ = remainder_  # noqa: F841
+mod_.__doc__ = r"""
+    Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_mod`.
+    """
+floor_mod_ = remainder_  # noqa: F841
+floor_mod_.__doc__ = r"""
+    Inplace version of ``floor_mod_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_mod_`.
+    """
 
 
 def multiply(x, y, name=None):
@@ -1047,10 +1088,6 @@ def multiply_(x, y, name=None):
     Inplace version of ``multiply`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_multiply`.
     """
-
-    assert (
-        _dygraph_tracer()._has_grad is False
-    ), "The current inplace version of multiply_ needs to be used in the context of paddle.no_grad() since inplace multiply_grad is not yet supported."
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -3852,6 +3889,25 @@ def cumsum(x, axis=None, dtype=None, name=None):
         return _cum_sum_(**kwargs)
 
 
+@inplace_apis_in_dygraph_only
+def cumsum_(x, axis=None, dtype=None, name=None):
+    r"""
+    Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cumprod`.
+    """
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast_(x, dtype)
+
+    if in_dynamic_mode():
+        if axis is None:
+            axis = -1
+        return _C_ops.cumsum_(x, axis, flatten, False, False)
+
+
 def cummax(x, axis=None, dtype='int64', name=None):
     """
     The cumulative max of the elements along a given axis.
@@ -4194,6 +4250,19 @@ def cumprod(x, dim=None, dtype=None, name=None):
             attrs={'dim': dim},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def cumprod_(x, dim=None, dtype=None, name=None):
+    r"""
+    Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cumprod`.
+    """
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast_(x, dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.cumprod_(x, dim)
 
 
 def isfinite(x, name=None):
@@ -5026,6 +5095,23 @@ def atan2(x, y, name=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
         return out
+
+
+@inplace_apis_in_dygraph_only
+def atan2_(x, y, name=None):
+    r"""
+    Inplace version of ``atan2`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_atan2`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.atan2_(x, y)
 
 
 def logit(x, eps=None, name=None):
@@ -6634,6 +6720,7 @@ def polygamma(x, n, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def polygamma_(x, n, name=None):
     r"""
     Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
@@ -6705,3 +6792,23 @@ def ldexp(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
+
+
+@inplace_apis_in_dygraph_only
+def ldexp_(x, y, name=None):
+    r"""
+    Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_polygamma`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+    if x.dtype == paddle.float64 or y.dtype == paddle.float64:
+        out_dtype = paddle.float64
+    else:
+        out_dtype = paddle.get_default_dtype()
+    x = paddle.cast_(x, dtype=out_dtype)
+    y = paddle.cast(y, dtype=out_dtype)
+    two = paddle.to_tensor(2, dtype=out_dtype)
+    return paddle.multiply_(x, paddle.pow(two, y))

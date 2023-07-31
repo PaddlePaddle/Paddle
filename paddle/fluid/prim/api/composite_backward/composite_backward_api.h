@@ -336,7 +336,6 @@ void sum_grad(const Tensor& x,
 template <typename T>
 void divide_grad(const Tensor& x,
                  const Tensor& y,
-                 const Tensor& out,
                  const Tensor& out_grad,
                  int axis,
                  Tensor* dx,

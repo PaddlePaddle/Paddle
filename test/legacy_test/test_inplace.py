@@ -833,5 +833,169 @@ class TestDygraphInplaceThresholdedRelu(TestDygraphInplaceWithContinuous):
         return paddle.nn.functional.thresholded_relu(var, 1.0)
 
 
+class TestDygraphInplaceAtan2(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.atan2_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.atan2(var, self.y)
+
+
+class TestDygraphInplaceLogicAnd(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+        self.y = paddle.randn([10, 20, 1])
+
+    def test_forward_result(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        no_inplace_var = self.non_inplace_api_processing(var)
+        inplace_var = self.inplace_api_processing(var)
+        inplace_var_bool = paddle.cast(inplace_var, 'bool')
+        np.testing.assert_array_equal(
+            no_inplace_var.numpy(), inplace_var_bool.numpy()
+        )
+
+    def inplace_api_processing(self, var):
+        return paddle.logical_and_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.logical_and(var, self.y)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestDygraphInplaceLogicOr(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.logical_or_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.logical_or(var, self.y)
+
+
+class TestDygraphInplaceLogicXor(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.logical_xor_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.logical_xor(var, self.y)
+
+
+class TestDygraphInplaceLogicNot(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.logical_not_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.logical_not(var)
+
+
+class TestDygraphInplaceLessThan(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.less_than_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.less_than(var, self.y)
+
+
+class TestDygraphInplaceLessEqual(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.less_equal_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.less_equal(var, self.y)
+
+
+class TestDygraphInplaceGreaterEqual(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.greater_equal_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.greater_equal(var, self.y)
+
+
+class TestDygraphInplaceGreaterThan(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.greater_than_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.greater_than(var, self.y)
+
+
+class TestDygraphInplaceEqual(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.equal_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.equal(var, self.y)
+
+
+class TestDygraphInplaceNotEqual(TestDygraphInplaceLogicAnd):
+    def inplace_api_processing(self, var):
+        return paddle.not_equal_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.not_equal(var, self.y)
+
+
+class TestDygraphInplaceDivide(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.divide_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.divide(var, self.y)
+
+
+class TestDygraphInplaceFloorDivide(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.floor_divide_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.floor_divide(var, self.y)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestDygraphInplaceLdExp(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.ldexp_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.ldexp(var, self.y)
+
+
 if __name__ == '__main__':
     unittest.main()

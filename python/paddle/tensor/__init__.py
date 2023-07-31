@@ -94,6 +94,7 @@ from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
 from .manipulation import cast  # noqa: F401
+from .manipulation import cast_  # noqa: F401
 from .manipulation import concat  # noqa: F401
 from .manipulation import expand  # noqa: F401
 from .manipulation import broadcast_to  # noqa: F401
