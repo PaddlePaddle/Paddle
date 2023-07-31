@@ -278,8 +278,8 @@ void HandleForSpecialOp(
     (*value_2_var_name)[value] = param_name;
   }
 
-  if (op_name == "pd.shaddow_output") {
-    VLOG(6) << "Handle for pd.shaddow_ouptut";
+  if (op_name == "pd.shadow_output") {
+    VLOG(6) << "Handle for pd.shadow_ouptut";
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
@@ -408,7 +408,7 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
+        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,

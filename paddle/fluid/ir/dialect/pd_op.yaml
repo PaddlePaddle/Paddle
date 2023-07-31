@@ -277,7 +277,7 @@
   backward: null
 
 
-- name: shaddow_feed
+- name: shadow_feed
   inputs:
   - typename: Tensor
     name: x
@@ -293,7 +293,7 @@
     func: UnchangedInferMeta
     param: [x]
   kernel:
-    func: [shaddow_feed]
+    func: [shadow_feed]
     param: [x]
     backend: null
     layout: null
