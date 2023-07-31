@@ -58,11 +58,11 @@ class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
 
   using OneDNNHandlerNoCachingT<T, dnnl::sum>::AcquireDstMemory;
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(void) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory() {
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc());
   }
 
-  inline int GetNumInputs(void) { return num_inputs_; }
+  inline int GetNumInputs() { return num_inputs_; }
 
  private:
   int num_inputs_;

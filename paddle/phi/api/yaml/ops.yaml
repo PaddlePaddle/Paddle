@@ -672,11 +672,12 @@
 
 - op : digamma
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : digamma
+  inplace: (x -> out)
   backward : digamma_grad
 
 - op : dirichlet
@@ -1114,12 +1115,13 @@
 
 - op : hardtanh
   args : (Tensor x, float t_min=0, float t_max=24)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : hardtanh
+  inplace: (x -> out)
   backward : hardtanh_grad
 
 - op : heaviside
@@ -1156,6 +1158,7 @@
     func : UnchangedInferMeta
   kernel :
     func : i0
+  inplace: (x -> out)
   backward : i0_grad
 
 - op : i0e
@@ -1368,12 +1371,13 @@
 
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02f)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : leaky_relu
+  inplace: (x -> out)
   backward : leaky_relu_grad
 
 - op : lerp
@@ -1393,6 +1397,7 @@
     func : UnchangedInferMeta
   kernel :
     func : lgamma
+  inplace: (x -> out)
   backward : lgamma_grad
 
 - op : linear_interp
@@ -1420,38 +1425,42 @@
 
 - op : log
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : log
+  inplace: (x -> out)
   backward: log_grad
 
 - op : log10
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : log10
+  inplace: (x -> out)
   backward: log10_grad
 
 - op : log1p
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : log1p
+  inplace: (x -> out)
   backward: log1p_grad
 
 - op : log2
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : log2
+  inplace: (x -> out)
   backward: log2_grad
 
 - op : log_loss
@@ -1524,12 +1533,13 @@
 
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : logit
+  inplace: (x -> out)
   backward : logit_grad
 
 - op : logsigmoid
@@ -1902,6 +1912,7 @@
     param: [x]
   kernel :
     func : polygamma
+  inplace: (x -> out)
   backward : polygamma_grad
 
 - op : pow
@@ -2501,12 +2512,13 @@
 
 - op : thresholded_relu
   args : (Tensor x, float threshold = 1.0)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : thresholded_relu
+  inplace: (x -> out)
   backward : thresholded_relu_grad
 
 - op : topk
@@ -2553,11 +2565,12 @@
 
 - op : trunc
   args : (Tensor input)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : trunc
+  inplace: (input -> out)
   backward : trunc_grad
 
 - op : unbind
