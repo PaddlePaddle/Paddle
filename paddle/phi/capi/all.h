@@ -17,10 +17,12 @@
 
 #include "paddle/phi/capi/include/c_data_type.h"
 #include "paddle/phi/capi/include/c_device_context.h"
+#include "paddle/phi/capi/include/c_infer_meta_context.h"
 #include "paddle/phi/capi/include/c_int_array.h"
 #include "paddle/phi/capi/include/c_kernel_context.h"
 #include "paddle/phi/capi/include/c_kernel_factory.h"
 #include "paddle/phi/capi/include/c_kernel_registry.h"
+#include "paddle/phi/capi/include/c_meta_tensor.h"
 #include "paddle/phi/capi/include/c_place.h"
 #include "paddle/phi/capi/include/c_scalar.h"
 #include "paddle/phi/capi/include/c_tensor.h"

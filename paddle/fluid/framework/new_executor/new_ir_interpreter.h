@@ -53,6 +53,17 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
+  void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  // op dependences
+  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
+
+  std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
+
+  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
+
+  bool IsSharedResultsBuild() const override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -72,6 +83,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     hookfuncs_ = hookfuncs;
   }
+
+  std::string GetNameById(int id) const;
 
  private:
   // build graph
@@ -186,17 +199,28 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   /// ======================== ///
   ///        For new ir        ///
   /// ======================== ///
+  std::string DebugValueInfo();
+
   void BuildInstruction();
+
+  void BuildInstructionDependences();
 
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
   std::unordered_map<::ir::Value, std::string> value_2_var_name_;
+
   std::unordered_map<const paddle::framework::Variable*, std::string>
       variable_2_var_name_;
+
   std::map<std::string, int> var_name_2_id_;
+
   std::vector<Variable*> variable_list_;
+
+  interpreter::NewIrDependencyBuilder ir_dependency_builder_;
+
+  interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
 };
 
 }  // namespace framework

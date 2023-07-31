@@ -38,6 +38,54 @@
   inplace: null
   backward: null
 
+- name: save_combine
+  inputs:
+  - typename: Tensor[]
+    name: X
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: str, name: file_path}
+  - {typename: bool, name: overwrite}
+  - {typename: bool, name: save_as_fp16}
+  - {typename: bool, name: save_to_memory}
+  outputs:
+    - {typename: Tensor, name: out, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  kernel:
+    func: [save_combine_tensor]
+    param: [X, file_path, overwrite, save_as_fp16, save_to_memory]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
+  backward: null
+
+- name: load_combine
+  inputs: []
+  attrs:
+  - {typename: str, name: file_path}
+  - {typename: bool, name: load_as_fp16}
+  - {typename: bool, name: model_from_memory}
+  outputs:
+    - {typename: 'Tensor[]', name: out, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  kernel:
+    func: [load_combine]
+    param: [file_path, load_as_fp16, model_from_memory]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
+  backward: null
+
 - name: share_buffer_
   inputs:
   - typename: Tensor[]
@@ -116,7 +164,42 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-  invoke: {func: add_n_impl, args: inputs}
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  backward: add_n_grad
+
+- name: add_n_with_kernel
+  inputs:
+  - typename: Tensor[]
+    name: inputs
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
   backward: add_n_grad
 
 - name: write_to_array
@@ -191,4 +274,31 @@
     force_backend: null
   inplace: null
   view: null
+  backward: null
+
+
+- name: shaddow_feed
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+    - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [shaddow_feed]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
   backward: null

@@ -16,10 +16,9 @@
 
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 
-DECLARE_bool(cinn_ir_schedule);
 DECLARE_bool(cinn_use_cuda_vectorize);
 
 namespace cinn {
@@ -52,32 +51,28 @@ std::vector<ir::LoweredFunc> OpLowerer::Lower(const GroupPtr& group,
           << " , Op Pattern : " << group->op_pattern_kind;
   group->input_names.clear();
   group->output_names.clear();
-  if (FLAGS_cinn_ir_schedule) {
-    switch (group->op_pattern_kind) {
-      case framework::kElementWise:
-      case framework::kBroadcast:
-      case framework::kInjective:
-        return LowerGroup(group,
-                          apply_op_schedule,
-                          apply_group_schedule,
-                          &OpLowerer::ElementwiseScheduleDetermineFunction);
-      case framework::kReduction:
-        return LowerGroup(group,
-                          apply_op_schedule,
-                          apply_group_schedule,
-                          &OpLowerer::ReduceScheduleDetermineFunction);
-      case framework::kOutFusible:
-        LOG(FATAL) << "Group Pattern Kind kOutFusible Is Not Implemented!";
-      case framework::kNonFusible:
-        return LowerGroup(group,
-                          apply_op_schedule,
-                          apply_group_schedule,
-                          &OpLowerer::NonFusibleScheduleDetermineFunction);
-      default:
-        LOG(FATAL) << "Group Pattern Kind Is Unknown!";
-    }
-  } else {
-    LOG(FATAL) << "Previous IR Schedule Is Not Implemented!";
+  switch (group->op_pattern_kind) {
+    case framework::kElementWise:
+    case framework::kBroadcast:
+    case framework::kInjective:
+      return LowerGroup(group,
+                        apply_op_schedule,
+                        apply_group_schedule,
+                        &OpLowerer::ElementwiseScheduleDetermineFunction);
+    case framework::kReduction:
+      return LowerGroup(group,
+                        apply_op_schedule,
+                        apply_group_schedule,
+                        &OpLowerer::ReduceScheduleDetermineFunction);
+    case framework::kOutFusible:
+      LOG(FATAL) << "Group Pattern Kind kOutFusible Is Not Implemented!";
+    case framework::kNonFusible:
+      return LowerGroup(group,
+                        apply_op_schedule,
+                        apply_group_schedule,
+                        &OpLowerer::NonFusibleScheduleDetermineFunction);
+    default:
+      LOG(FATAL) << "Group Pattern Kind Is Unknown!";
   }
 }
 

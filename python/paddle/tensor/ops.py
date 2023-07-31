@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_mode
@@ -47,6 +50,21 @@ __inplace_unary_func__ = [
     'round_',
     'reciprocal_',
     'sigmoid_',
+    'abs_',
+    'sin_',
+    'sinh_',
+    'asin_',
+    'asinh_',
+    'cos_',
+    'cosh_',
+    'acos_',
+    'acosh_',
+    'tan_',
+    'atan_',
+    'atanh_',
+    'expm1_',
+    'erf_',
+    'square_',
 ]
 
 __all__ = []
@@ -76,7 +94,9 @@ for _OP in set(__inplace_unary_func__):
     _new_OP = _OP
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
-    _func = generate_inplace_fn(_OP)
+    func = generate_inplace_fn(_OP)
+    func.__module__ = __name__
+    _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
 
 add_sample_code(
@@ -488,7 +508,10 @@ def cos(x, name=None):
         return _C_ops.cos(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'cos'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'cos',
         )
         helper = LayerHelper('cos', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -855,7 +878,17 @@ def sin(x, name=None):
         return _C_ops.sin(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sin'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'sin',
         )
         helper = LayerHelper('sin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1019,7 +1052,17 @@ def tan(x, name=None):
         return _C_ops.tan(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'tan'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'tan',
         )
         helper = LayerHelper('tan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

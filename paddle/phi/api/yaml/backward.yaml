@@ -991,7 +991,7 @@
     func : UnchangedInferMeta
     param : [out]
   kernel :
-    func : hard_sigmoid_grad
+    func : hardsigmoid_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hardtanh_grad
@@ -1092,8 +1092,7 @@
   args : (Tensor x, Tensor[] indices, Tensor value, Tensor out_grad, bool accumulate=false)
   output : Tensor(x_grad), Tensor(value_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, value]
+    func : IndexPutGradInferMeta
   kernel :
     func : index_put_grad
     data_type : out_grad
@@ -1700,9 +1699,9 @@
   optional : boxes_num
 
 - backward_op : put_along_axis_grad
-  forward : put_along_axis (Tensor arr, Tensor indices, Tensor value, int axis, str reduce = "assign") -> Tensor(out)
+  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign") -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
-  output : Tensor(arr_grad), Tensor(value_grad)
+  output : Tensor(arr_grad), Tensor(values_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [arr, indices]
@@ -1738,6 +1737,17 @@
     param : [out]
   kernel :
     func : reciprocal_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : relu6_grad
+  forward : relu6 (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : relu6_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : relu_double_grad

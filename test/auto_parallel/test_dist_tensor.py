@@ -17,37 +17,40 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 import paddle.nn.functional as F
 
-# class TestDistTensor(unittest.TestCase):
-#     def test_dist_tensor_creation(self):
-#         shape = [10, 5]
-#         dist_attr = paddle.fluid.core.TensorDistAttr()
 
-#         # create dist tensor using numpy
-#         dist_tensor_with_numpy = paddle.Tensor(
-#             np.ones(shape, dtype=np.float32), dist_attr=dist_attr
-#         )
+class TestDistTensor(unittest.TestCase):
+    def test_dist_tensor_creation(self):
+        shape = [10, 5]
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
-#         # create dist tensor using tensor
-#         dist_tensor_with_tensor = paddle.Tensor(
-#             paddle.ones(shape), dist_attr=dist_attr
-#         )
+        # create dist tensor using numpy
+        dist_tensor_with_numpy = dist.shard_tensor(
+            np.ones(shape, dtype=np.float32), dist_attr=dist_attr
+        )
 
-#         # create normal tensor
-#         tensor = paddle.ones(shape)
+        # create dist tensor using tensor
+        dist_tensor_with_tensor = dist.shard_tensor(
+            paddle.ones(shape), dist_attr=dist_attr
+        )
 
-#         # test dist tensor properties
-#         self.assertEqual(dist_tensor_with_numpy.shape, shape)
-#         self.assertEqual(dist_tensor_with_tensor.shape, shape)
-#         self.assertEqual(dist_tensor_with_numpy.is_dist(), True)
-#         self.assertEqual(dist_tensor_with_tensor.is_dist(), True)
-#         self.assertEqual(tensor.is_dist(), False)
-#         self.assertEqual(
-#             str(dist_tensor_with_numpy), str(dist_tensor_with_tensor)
-#         )
-#         self.assertEqual(dist_tensor_with_numpy.dist_attr, dist_attr)
-#         self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
+        # create normal tensor
+        tensor = paddle.ones(shape)
+
+        # test dist tensor properties
+        self.assertEqual(dist_tensor_with_numpy.shape, shape)
+        self.assertEqual(dist_tensor_with_tensor.shape, shape)
+        self.assertEqual(dist_tensor_with_numpy.is_dist(), True)
+        self.assertEqual(dist_tensor_with_tensor.is_dist(), True)
+        self.assertEqual(tensor.is_dist(), False)
+        self.assertEqual(
+            str(dist_tensor_with_numpy), str(dist_tensor_with_tensor)
+        )
+        self.assertEqual(dist_tensor_with_numpy.dist_attr, dist_attr)
+        self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
 
 
 class TestDistTensorForDygraphAPI(unittest.TestCase):
@@ -59,8 +62,9 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
     def create_local_and_dist_tensor_pair(self, np_array):
         local_t = paddle.to_tensor(np_array, dtype='float32')
 
-        dist_attr = paddle.fluid.core.TensorDistAttr()
-        dist_t = paddle.Tensor(local_t, dist_attr=dist_attr)
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=["x"])
+        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
 
         local_t.stop_gradient = False
         dist_t.stop_gradient = False

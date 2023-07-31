@@ -18,6 +18,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+PHI_DECLARE_bool(enable_new_ir_in_executor);
+
 namespace phi {
 class DenseTensor;
 }  // namespace phi
@@ -34,16 +36,30 @@ void SetFeedVariable(Scope* scope,
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
-  Variable* g_feed_value = scope->Var(var_name);
-  auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
-  if (index >= feed_inputs.size()) {
-    feed_inputs.resize(index + 1);
+  if (FLAGS_enable_new_ir_in_executor) {
+    // shared data with input tensor
+    auto inner_var_name = var_name + "_" + std::to_string(index);
+    auto feed_ele = scope->Var(inner_var_name);
+    if (!feed_ele->IsType<phi::DenseTensor>()) {
+      VLOG(3) << "Reset " << inner_var_name << " to phi::DenseTensor";
+      feed_ele->Clear();
+    }
+    auto val = feed_ele->GetMutable<phi::DenseTensor>();
+    val->ShareDataWith(input);
+    // set lod
+    val->set_lod(input.lod());
+  } else {
+    Variable* g_feed_value = scope->Var(var_name);
+    auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
+    if (index >= feed_inputs.size()) {
+      feed_inputs.resize(index + 1);
+    }
+    // shared data with input tensor
+    auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
+    val.ShareDataWith(input);
+    // set lod
+    val.set_lod(input.lod());
   }
-  // shared data with input tensor
-  auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
-  val.ShareDataWith(input);
-  // set lod
-  val.set_lod(input.lod());
 }
 
 void SetFeedVariable(Scope* scope,

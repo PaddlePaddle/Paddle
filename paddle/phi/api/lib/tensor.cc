@@ -133,7 +133,7 @@ bool Tensor::is_dense_tensor() const {
 }
 bool Tensor::is_dist_tensor() const {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  return phi::distributed::auto_parallel::DistTensor::classof(impl_.get());
+  return phi::distributed::DistTensor::classof(impl_.get());
 #else
   return false;
 #endif

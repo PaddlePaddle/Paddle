@@ -129,6 +129,7 @@ pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(delete_cast_op_pass inference)
 pass_library(delete_elementwise_mul_op_pass inference)
 pass_library(delete_repeated_ops_pass inference)
+pass_library(fused_continuous_same_ops_pass inference)
 pass_library(sigmoid_elementmul_fuse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
@@ -173,7 +174,6 @@ if(WITH_MKLDNN)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
   pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
-  pass_library(fc_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(scale_matmul_fuse_pass inference DIR mkldnn)
   pass_library(cpu_bfloat16_placement_pass inference DIR mkldnn)
   pass_library(cpu_bfloat16_pass inference DIR mkldnn)
@@ -235,6 +235,8 @@ if(WITH_XPU)
     SRCS xpu/pass_utils.cc
     DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(cast_mixed_precision_op_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_onnx_ops_elimination_pass inference DIR xpu DEPS
@@ -549,6 +551,10 @@ if(WITH_MKLDNN)
 endif()
 
 if(WITH_XPU)
+  cc_test(
+    test_cast_mixed_precision_op_fuse_pass
+    SRCS xpu/cast_mixed_precision_op_fuse_pass_test.cc
+    DEPS cast_mixed_precision_op_fuse_pass)
   cc_test(
     test_delete_isolated_node_pass
     SRCS xpu/delete_isolated_node_pass_test.cc

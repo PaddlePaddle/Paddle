@@ -1267,12 +1267,16 @@ set(STATIC_BUILD_TESTS
     test_adagrad_op
     test_adamw_op
     test_arg_min_max_op
+    test_assign_pos_op
     test_bincount_op
+    test_c_embedding_op
+    test_decayed_adagrad_op
     test_decoupled_py_reader
     test_eig_op
     test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
+    test_ftrl_op
     test_fused_attention_op
     test_fused_attention_op_api
     test_fuse_bn_act_pass
@@ -1281,6 +1285,7 @@ set(STATIC_BUILD_TESTS
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
+    test_limit_by_capacity_op
     test_lookup_table_bf16_op
     test_lookup_table_v2_op
     test_matmul_op
@@ -1288,7 +1293,10 @@ set(STATIC_BUILD_TESTS
     test_merged_adam_op
     test_momentum_op
     test_nce
+    test_number_count_op
     test_paddle_save_load_binary
+    test_prune_gate_by_capacity_op
+    test_random_routing_op
     test_reduce_op
     test_segment_ops
     test_sparse_momentum_op
@@ -1309,6 +1317,10 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
+endif()
+
+if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_c_embedding_op)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})

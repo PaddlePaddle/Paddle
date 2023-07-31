@@ -30,9 +30,7 @@ namespace phi {
 
 class DenseTensorUtils;
 namespace distributed {
-namespace auto_parallel {
 class DistTensor;
-}  // namespace auto_parallel
 }  // namespace distributed
 
 /// \brief The Dense tensor stores values in a contiguous sequential block
@@ -186,7 +184,7 @@ class DenseTensor : public TensorBase,
 
  private:
   friend class DenseTensorUtils;
-  friend class phi::distributed::auto_parallel::DistTensor;
+  friend class phi::distributed::DistTensor;
 
  protected:
   DenseTensorMeta meta_;
