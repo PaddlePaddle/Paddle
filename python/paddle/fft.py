@@ -466,11 +466,14 @@ def ihfft(x, n=None, axis=-1, norm="backward", name=None):
         >>> spectrum = paddle.to_tensor([10.0, -5.0, 0.0, -1.0, 0.0, -5.0])
         >>> print(paddle.fft.ifft(spectrum))
         Tensor(shape=[6], dtype=complex64, place=Place(cpu), stop_gradient=True,
-               [(-0.1666666716337204+0j),  (1-0j), (2.3333334922790527-0j),  (3.5+0j), (2.3333334922790527+0j),  (1+0j)])
+               [(-0.1666666716337204+0j),  (1-0j),
+               (2.3333334922790527-0j),  (3.5+0j),
+               (2.3333334922790527+0j),  (1+0j)])
 
         >>> print(paddle.fft.ihfft(spectrum))
         Tensor(shape = [4], dtype = complex64, place = Place(cpu), stop_gradient = True,
-                [(-0.1666666716337204+0j),  (1-0j), (2.3333334922790527-0j),  (3.5+0j)])
+                [(-0.1666666716337204+0j),  (1-0j),
+                (2.3333334922790527-0j),  (3.5+0j)])
 
     """
     return fft_r2c(x, n, axis, norm, forward=False, onesided=True, name=name)
@@ -680,13 +683,13 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
 
             >>> # use axes(2, 0)
             >>> print(paddle.fft.rfftn(x, axes=(2, 0)))
-            Tensor(shape=[2, 3, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-                    [[[(8+0j), 0j     , 0j     ],
-                    [(8+0j), 0j     , 0j     ],
-                    [(8+0j), 0j     , 0j     ]],
-                    [[0j     , 0j     , 0j     ],
-                    [0j     , 0j     , 0j     ],
-                    [0j     , 0j     , 0j     ]]])
+            Tensor(shape=[2, 3, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                    [[[(8+0j), 0j    , 0j    , 0j    ],
+                    [(8+0j), 0j    , 0j    , 0j    ],
+                    [(8+0j), 0j    , 0j    , 0j    ]],
+                    [[0j    , 0j    , 0j    , 0j    ],
+                    [0j    , 0j    , 0j    , 0j    ],
+                    [0j    , 0j    , 0j    , 0j    ]]])
 
     """
     return fftn_r2c(x, s, axes, norm, forward=True, onesided=True, name=name)
@@ -849,11 +852,14 @@ def ihfftn(x, s=None, axes=None, norm="backward", name=None):
         >>> spectrum = paddle.to_tensor([10.0, -5.0, 0.0, -1.0, 0.0, -5.0])
         >>> print(paddle.fft.ifft(spectrum))
         Tensor(shape=[6], dtype=complex64, place=Place(cpu), stop_gradient=True,
-                [(-0.1666666716337204+0j),  (1-0j), (2.3333334922790527-0j),  (3.5+0j), (2.3333334922790527+0j),  (1+0j)])
+                [(-0.1666666716337204+0j),  (1-0j),
+                (2.3333334922790527-0j),  (3.5+0j),
+                (2.3333334922790527+0j),  (1+0j)])
 
         >>> print(paddle.fft.ihfft(spectrum))
         Tensor(shape = [4], dtype = complex64, place = Place(cpu), stop_gradient = True,
-                [(-0.1666666716337204+0j),  (1-0j), (2.3333334922790527-0j),  (3.5+0j)])
+                [(-0.1666666716337204+0j),  (1-0j),
+                (2.3333334922790527-0j),  (3.5+0j)])
     """
     return fftn_r2c(x, s, axes, norm, forward=False, onesided=True, name=name)
 
@@ -1032,7 +1038,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         >>> result = paddle.fft.rfft2(x)
         >>> print(result.numpy())
-        [ 50.  +0.j           0.  +0.j           0.  +0.j        ]
+        [[ 50.  +0.j           0.  +0.j           0.  +0.j        ]
         [-12.5+17.20477401j   0.  +0.j           0.  +0.j        ]
         [-12.5 +4.0614962j    0.  +0.j           0.  +0.j        ]
         [-12.5 -4.0614962j    0.  +0.j           0.  +0.j        ]
@@ -1200,7 +1206,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
             >>> ihfft2_xp = paddle.fft.ihfft2(x)
             >>> print(ihfft2_xp.numpy())
-            [[ 2. +0.j          0. +0.j          0. +0.j        ]
+            [[ 2. +0.j          0. -0.j          0. -0.j        ]
             [-0.5-0.68819096j  0. +0.j          0. +0.j        ]
             [-0.5-0.16245985j  0. +0.j          0. +0.j        ]
             [-0.5+0.16245985j  0. +0.j          0. +0.j        ]

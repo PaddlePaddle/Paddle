@@ -62,6 +62,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
             ...     x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
             ...     paddle.onnx.export(model, 'linear_net', input_spec=[x_spec])
             ...
+            >>> # doctest: +SKIP('raise ImportError')
             >>> export_linear_net()
 
             >>> class Logic(paddle.nn.Layer):
