@@ -121,8 +121,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(minus,
                   ops::MinusOp,
                   ops::MinusOpMaker,
-                  ops::MinusGradDescMaker,
-                  ops::MinusGradMaker);
+                  ops::MinusGradDescMaker);
 PD_REGISTER_STRUCT_KERNEL(minus, CPU, ALL_LAYOUT, ops::MinusKernel, float) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -227,7 +227,6 @@ REGISTER_OPERATOR(sum,
                   ops::SumOp,
                   ops::SumOpMaker,
                   ops::SumGradDescMaker,
-                  ops::SumGradOpBaseMaker,
                   ops::SumOpVarTypeInference,
                   ops::SumInplaceInferer,
                   AddNInferShapeFunctor);
