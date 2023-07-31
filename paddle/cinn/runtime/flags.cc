@@ -84,10 +84,6 @@ DEFINE_bool(cinn_use_cuda_vectorize,
             BoolFromEnv("FLAGS_cinn_use_cuda_vectorize", false),
             "Whether use cuda vectroize on schedule config");
 
-DEFINE_bool(cinn_ir_schedule,
-            BoolFromEnv("FLAGS_cinn_ir_schedule", true),
-            "Whether use reconstructed schedule primitives.");
-
 DEFINE_bool(use_reduce_split_pass,
             BoolFromEnv("FLAGS_use_reduce_split_pass", false),
             "Whether use reduce split pass.");

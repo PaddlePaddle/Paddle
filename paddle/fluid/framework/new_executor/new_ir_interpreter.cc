@@ -51,7 +51,8 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
-      ir_program_(std::move(ir_prog)) {
+      ir_program_(std::move(ir_prog)),
+      ir_stream_analyzer_(place) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
@@ -97,7 +98,6 @@ NewIRInterpreter::~NewIRInterpreter() {
   gc_.reset(nullptr);
   async_work_queue_.reset();
   VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
-
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
@@ -197,9 +197,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << DebugValueInfo();
 
     // NOTE(zhangbo): Iterative version, gradually replacing BuildOpFuncList()
-    // and Convert()
-    // BuildInstruction();
-    // BuildInstructionDependences();
+    // and Convert() by:
+    // [1] BuildInstruction();
+    // [2] BuildInstructionDependences();
+    // [3] ir_stream_analyzer_.ConstructEvents(&vec_instruction_base_);
+    // [4] GC();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
@@ -260,8 +262,35 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                      &var_name_2_id_,
                      &variable_list_);
     VLOG(4) << DebugValueInfo();
+
     BuildInstruction();
+
     BuildInstructionDependences();
+
+    ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
+    // add event for the input var of jit program, since there are async copied
+    // from gpu_pinned place to gpu place on compute stream.
+    for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+      if (dependecy_count_[i] == 0) {
+        InstructionBase* inst = vec_instruction_base_[i].get();
+        if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
+          for (auto& item : inst->Inputs()) {
+            for (auto var_id : item.second) {
+              auto name = GetNameById(var_id);
+              if (JitInputVars().count(name)) {
+                auto device_event = std::make_shared<platform::DeviceEvent>(
+                    place_, platform::GenerateDeviceEventFlag());
+                VLOG(4) << "Add input event for input: " << name << " of "
+                        << inst->Name();
+                inst->AddEventToWait(
+                    i, device_event, ir_stream_analyzer_.GetWaiterType(inst));
+              }
+            }
+          }
+        }
+      }
+    }
+
     for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
          ++instr_id) {
       vec_instruction_base_[instr_id]->Run();
@@ -345,6 +374,21 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
 
 const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
 
+std::string NewIRInterpreter::GetNameById(int id) const {
+  // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
+  // vec_meta_info_[id] may be nullptr,
+  // typically when the target variable is not existed in the original program
+  // desc, but created by interpretercore.
+  // For example, created and used by d2h_copy or h2d_copy operator.
+  auto it = std::find_if(var_name_2_id_.begin(),
+                         var_name_2_id_.end(),
+                         [id](const auto& pair) { return pair.second == id; });
+  if (it != var_name_2_id_.end()) {
+    return it->first;
+  }
+  return "";
+}
+
 void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
   VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << src
@@ -367,6 +411,16 @@ std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
     const {
   PADDLE_THROW(platform::errors::Unimplemented(
       "GetDependencyCount is not implemented in NewIRInterpreter."));
+}
+
+const interpreter::StreamAnalyzer& NewIRInterpreter::GetStreamAnalyzer() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetStreamAnalyzer is not implemented in NewIRInterpreter."));
+}
+
+bool NewIRInterpreter::IsSharedResultsBuild() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "IsSharedResultsBuild is not implemented in NewIRInterpreter."));
 }
 
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
@@ -1033,7 +1087,18 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
             &(op_func_node->infer_meta_context_));
       }
       VLOG(5) << "after run infer meta";
-      (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+
+      if (op_func_node->fluid_op) {
+        // run fluid op
+        ExecutionContext exe_ctx(*(op_func_node->operator_base_.get()),
+                                 *scope_,
+                                 *(op_func_node->dev_ctx_),
+                                 *(op_func_node->runtime_ctx_.get()));
+        (*(op_func_node->phi_kernel_))(&exe_ctx);
+
+      } else {
+        (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+      }
       VLOG(5) << "after run kernel";
     } else if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
@@ -1560,13 +1625,13 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace() {
 /// ======================== ///
 
 void NewIRInterpreter::BuildInstruction() {
-  VLOG(0) << "Build Instructions for new ir ... ";
+  VLOG(6) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
   for (auto it = ir_program_->block()->begin();
        it != ir_program_->block()->end();
        ++it) {
-    VLOG(0) << "Build Instruction for op: " << op_idx;
+    VLOG(6) << "Build Instruction for op: " << op_idx;
     if ((*it)->dialect()->name() == "pd_kernel") {
       auto op_name = (*it)
                          ->attributes()
@@ -1614,7 +1679,12 @@ void NewIRInterpreter::BuildInstructionDependences() {
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
   dependecy_count_ = std::vector<size_t>(instr_num, 0);
-  auto downstream_map = ir_dependency_builder_.Build(vec_instruction_base_);
+
+  std::vector<paddle::framework::InstructionBase*> instructions_ptr;
+  for (auto& instr : vec_instruction_base_) {
+    instructions_ptr.push_back(instr.get());
+  }
+  auto downstream_map = ir_dependency_builder_.Build(instructions_ptr);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
     InstructionBase* cur_instr = vec_instruction_base_[instr_id].get();
