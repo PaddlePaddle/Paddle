@@ -457,7 +457,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       ir::Operation* shadow_op =
           ir::Operation::Create({op->result(0)}, attr_map, {out_type}, op_info);
 
-      map_op_pair[*it] = shadow_op;
+      map_op_pair[op_item] = shadow_op;
       program->block()->push_back(shadow_op);
       if (op_item->num_results() > 0) {
         for (size_t i = 0; i < shadow_op->num_results(); ++i) {
