@@ -499,6 +499,7 @@ void LarsMomentumKernel(
   // phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
   phi::DenseTensor tmp_buffer_t;
+  tmp_buffer_t.Resize({LARS_BLOCK_SIZE << 1});
   MT* p_buffer = dev_ctx.template Alloc<MT>(tmp_buffer_t);
   MT* g_buffer = p_buffer + LARS_BLOCK_SIZE;
 
