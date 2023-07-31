@@ -60,6 +60,10 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
+  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
+
+  bool IsSharedResultsBuild() const override;
+
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
@@ -79,6 +83,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     hookfuncs_ = hookfuncs;
   }
+
+  std::string GetNameById(int id) const;
 
  private:
   // build graph
@@ -212,7 +218,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<Variable*> variable_list_;
 
-  interpreter::IrDependencyBuilder ir_dependency_builder_;
+  interpreter::NewIrDependencyBuilder ir_dependency_builder_;
+
+  interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
 };
 
 }  // namespace framework

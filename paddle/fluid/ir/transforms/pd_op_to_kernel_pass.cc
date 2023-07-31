@@ -62,6 +62,20 @@ phi::KernelKey GetKernelKey(
             TransToPhiDataType(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
+
+  if (op->name() == "pd.feed_with_place") {
+    // NOTE, for now feed op don't need a kernel, so the data type from Op
+    // Result the next op use base program datatype
+    auto t =
+        op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
+
+    auto backend = paddle::experimental::ParseBackend(t);
+    return {backend,
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+  }
+
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
@@ -278,16 +292,33 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           std::vector<ir::Type> vec_inner_types;
           auto base_types = result_type.dyn_cast<ir::VectorType>().data();
           for (size_t j = 0; j < base_types.size(); ++j) {
-            if (base_types[j].isa<dialect::DenseTensorType>()) {
+            if (base_types[j]) {
+              if (base_types[j].isa<dialect::DenseTensorType>()) {
+                auto allocated_dense_tensor_dtype =
+                    paddle::dialect::AllocatedDenseTensorType::get(
+                        ctx,
+                        phi::TransToPhiPlace(kernel_key.backend()),
+                        base_types[j].dyn_cast<dialect::DenseTensorType>());
+                vec_inner_types.push_back(allocated_dense_tensor_dtype);
+              } else {
+                PADDLE_THROW(phi::errors::Unimplemented(
+                    "only support dense tensor in vector type for now"));
+              }
+            } else {
+              // NOTE(phlrain), kernel not support a nullptr in output
+              ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+              phi::DDim dims = {};
+              phi::DataLayout data_layout = phi::DataLayout::NCHW;
+              phi::LoD lod = {{}};
+              size_t offset = 0;
+              auto dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+                  ctx, fp32_dtype, dims, data_layout, lod, offset);
               auto allocated_dense_tensor_dtype =
                   paddle::dialect::AllocatedDenseTensorType::get(
                       ctx,
                       phi::TransToPhiPlace(kernel_key.backend()),
-                      base_types[j].dyn_cast<dialect::DenseTensorType>());
+                      dense_tensor_dtype);
               vec_inner_types.push_back(allocated_dense_tensor_dtype);
-            } else {
-              PADDLE_THROW(phi::errors::Unimplemented(
-                  "only support dense tensor in vector type for now"));
             }
           }
 

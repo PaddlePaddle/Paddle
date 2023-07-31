@@ -23,7 +23,7 @@
 
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
-#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/utils/data_util.h"
 
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 
@@ -33,17 +33,18 @@ TEST(GraphCompier, TestNewIR) {
   ::ir::Program program(ctx);
   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
+  const float value = 2.0;
   auto full_op_x =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 128},
-                                             1.0,
+                                             value,
                                              phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
+                                             phi::GPUPlace());
 
   auto full_op_y =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 64},
-                                             2.0,
+                                             value,
                                              phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
+                                             phi::GPUPlace());
   // TODO(Aurelius84): test more op
   // auto add_z = builder.Build<paddle::dialect::MatmulOp>(full_op_x->result(0),
   //                                                    full_op_y->result(0));
@@ -61,7 +62,15 @@ TEST(GraphCompier, TestNewIR) {
   cinn::hlir::framework::NewIRCompiler ir_compiler(program, target, scope);
   auto runtime_program = ir_compiler.Build();
 
-  // FIXME(Aurelius84): It raised illegal memory access while deconstructor
-  // after running all instruction, but it's ok under GLOG_v=10.
-  // ASSERT_NO_THROW(runtime_program->Execute());
+  ASSERT_NO_THROW(runtime_program->Execute());
+
+  for (auto& var_name : scope->var_names()) {
+    std::string name = {var_name.begin(), var_name.end()};
+    std::vector<float> data =
+        cinn::GetTensorData<float>(scope->GetTensor(name), target);
+    for (int i = 0; i < data.size(); ++i) {
+      LOG_FIRST_N(INFO, 3) << "data: " << data[i];
+      ASSERT_NEAR(data[i], value, 1e-5);
+    }
+  }
 }
