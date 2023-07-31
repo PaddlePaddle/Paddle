@@ -315,7 +315,7 @@ class PyLayer(with_mateclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
             >>> z = cus_tanh.apply(data)
             >>> z.mean().backward()
 
-            print(data.grad)
+            >>> print(data.grad)
     """
 
     @staticmethod
