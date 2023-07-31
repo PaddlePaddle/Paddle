@@ -1136,7 +1136,7 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
-struct ShaddowOutputOpTranscriber : public OpTranscriber {
+struct ShadowOutputOpTranscriber : public OpTranscriber {
   ir::Operation* operator()(ir::IrContext* ctx,
                             TranslationContext* param_map,
                             const OpDesc& op_desc,
@@ -1463,7 +1463,7 @@ OpTranslator::OpTranslator() {
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
-  special_handlers["shaddow_output"] = ShaddowOutputOpTranscriber();
+  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
 
