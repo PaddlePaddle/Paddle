@@ -24,7 +24,7 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
-#if 0
+
 using Tensor = DenseTensor;
 
 template <typename T, typename Index, int DimTileSize>
@@ -216,7 +216,8 @@ class MaxPool {
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
-    return phi::CudaAtomicMax(address, val);
+    //return phi::CudaAtomicMax(address, val);
+    return val;
   }
 };
 
@@ -226,7 +227,8 @@ class MinPool {
   DEVICE inline T initial() { return static_cast<T>(FLT_MAX); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y < x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
-    return phi::CudaAtomicMin(address, val);
+    //return phi::CudaAtomicMin(address, val);
+    return val;
   }
 };
 
@@ -467,6 +469,6 @@ template class SegmentPoolGradFunctor<GPU, float16, int>;
 template class SegmentPoolGradFunctor<GPU, float16, int64_t>;
 template class SegmentPoolGradFunctor<GPU, phi::dtype::bfloat16, int>;
 template class SegmentPoolGradFunctor<GPU, phi::dtype::bfloat16, int64_t>;
-#endif
+
 }  // namespace funcs
 }  // namespace phi

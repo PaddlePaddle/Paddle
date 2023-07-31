@@ -18,7 +18,13 @@ if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   file(
     GLOB func_cu_srcs
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "concat_and_split_functor.cu")
+    "concat_and_split_functor.cu"
+    "math_function.cu"
+    "segment_pooling.cu"
+    "sequence_pooling.cu"
+    "softmax.cu"
+    "matrix_inverse.cu"
+    "gather_scatter_functor.cu")
 endif()
 
 collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})

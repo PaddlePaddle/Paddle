@@ -26,6 +26,7 @@ else()
   list(APPEND MUSA_MCC_FLAGS -std=c++17)
 endif()
 
+list(APPEND MUSA_MCC_FLAGS --cuda-gpu-arch=mp_21)
 list(APPEND MUSA_MCC_FLAGS -U__CUDA__)
 #set(MUSA_VERBOSE_BUILD ON)
 if(CMAKE_BUILD_TYPE MATCHES Debug)

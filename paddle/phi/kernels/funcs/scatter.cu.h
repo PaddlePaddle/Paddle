@@ -76,7 +76,7 @@ __global__ void ScatterCUDAKernel(const T* params,
     if (overwrite) {
       *(output + out_i) = *(params + i);
     } else {
-      phi::CudaAtomicAdd(output + out_i, *(params + i));
+      //phi::CudaAtomicAdd(output + out_i, *(params + i));
     }
   }
 }
@@ -110,7 +110,7 @@ __global__ void ScatterNdCUDAKernel(const T* update,
       temp *= output_dims[j];
     }
     int64_t output_i = gather_i + slice_i;
-    phi::CudaAtomicAdd(output + output_i, *(update + i));
+    //phi::CudaAtomicAdd(output + output_i, *(update + i));
   }
 }
 
