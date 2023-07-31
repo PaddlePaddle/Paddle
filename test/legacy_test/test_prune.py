@@ -318,7 +318,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
-
                 self.assertFalse(
                     np.array_equal(weight_init, weight)
                 )  # weight changed
@@ -351,7 +350,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
-
                 self.assertFalse(
                     np.array_equal(weight_init, weight)
                 )  # weight changed
@@ -612,8 +610,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         np.testing.assert_array_equal(weight_with_prune, weight_expected)
-
-        assert not np.array_equal(weight_without_prune, weight_expected)
+        self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_program_with_tupe_in_fetch_list(self):
         '''
@@ -677,8 +674,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         np.testing.assert_array_equal(weight_with_prune, weight_expected)
-
-        assert not np.array_equal(weight_without_prune, weight_expected)
+        self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_program_partial_parameter_updated(self):
         """
@@ -734,9 +730,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 weight2 = np.array(
                     scope.find_var(w2_param_attrs.name).get_tensor()
                 )
-
-                assert not np.array_equal(
-                    weight1_init, weight1
+                self.assertFalse(
+                    np.array_equal(weight1_init, weight1)
                 )  # weight changed
                 np.testing.assert_array_equal(
                     weight2_init, weight2
@@ -800,8 +795,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         np.testing.assert_array_equal(weight_with_prune, weight_expected)
-
-        assert not np.array_equal(weight_without_prune, weight_expected)
+        self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_feed_var_in_fetchlist_1(self):
         # the variable to be fed is not leaf
