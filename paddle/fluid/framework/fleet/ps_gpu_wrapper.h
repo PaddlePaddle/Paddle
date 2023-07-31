@@ -209,6 +209,7 @@ class PSGPUWrapper {
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                     Dataset* dataset_for_pull);
   void BuildPull(std::shared_ptr<HeterContext> gpu_task);
+  void PartitionKey(std::shared_ptr<HeterContext> gpu_task);
   void PrepareGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
@@ -224,9 +225,13 @@ class PSGPUWrapper {
   void build_task();
   void DumpToMem();
   void MergePull(std::shared_ptr<HeterContext> gpu_task);
+  void MergeKeys(std::shared_ptr<HeterContext> gpu_task);
   void FilterPull(std::shared_ptr<HeterContext> gpu_task,
                   const int shard_id,
                   const int dim_id);
+  void FilterKey(std::shared_ptr<HeterContext> gpu_task,
+                 const int shard_id,
+                 const int dim_id);
   // set infer mode
   void SetMode(bool infer_mode) {
     infer_mode_ = infer_mode;
@@ -838,8 +843,10 @@ class PSGPUWrapper {
     slot_num_for_pull_feature_ = sparse_slot_num;
     float_slot_num_ = float_slot_num;
     auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-    gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_, float_slot_num_);
-    VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_ << ", float_slot_num is " << float_slot_num_;
+    gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
+                                    float_slot_num_);
+    VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_
+            << ", float_slot_num is " << float_slot_num_;
   }
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
@@ -948,7 +955,7 @@ class PSGPUWrapper {
   // rank size
   int GetRankNum(void) { return node_size_; }
   // rank id
-  int GetNCCLRankId(const int &device_id) {
+  int GetNCCLRankId(const int& device_id) {
     return (rank_id_ * device_num_ + device_id);
   }
 

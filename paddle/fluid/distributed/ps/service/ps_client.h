@@ -164,6 +164,20 @@ class PSClient {
     promise.set_value(-1);
     return fut;
   }
+  virtual ::std::future<int32_t> PullSparseKey(
+      int shard_id UNUSED,
+      size_t table_id UNUSED,
+      const uint64_t *keys UNUSED,
+      size_t num UNUSED,
+      uint16_t pass_id UNUSED,
+      const std::vector<std::unordered_map<uint64_t, uint32_t>> &keys2rank_vec UNUSED,
+      const uint16_t &dim_id UNUSED = 0) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
 
   virtual std::future<int32_t> PrintTableStat(uint32_t table_id) = 0;
   virtual std::future<int32_t> SaveCacheTable(uint32_t table_id UNUSED,

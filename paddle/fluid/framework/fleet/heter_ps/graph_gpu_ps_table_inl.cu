@@ -3378,7 +3378,7 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
 
   int all_fea_num = 0;
   if (multi_node_) {
-    if (infer_mode_) {
+    if (infer_mode_ && sage_mode == false) {
       all_fea_num = get_feature_info_of_nodes_normal(gpu_id,
                                                      d_nodes,
                                                      node_num,
