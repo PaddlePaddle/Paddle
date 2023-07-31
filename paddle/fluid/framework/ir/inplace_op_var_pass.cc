@@ -34,18 +34,8 @@ bool InplaceOpVarPass::IsValidInplaceOp(
   auto x_name = node->Op()->Input("X").front();
   for (auto* var_node : node->inputs) {
     if (var_node->Name() != x_name) continue;
-    if (var_node->Var()->Persistable()) {
+    if (var_node->Var()->Persistable() || var_node->outputs.size() != 1)
       return false;
-    }
-    int32_t output_count = var_node->outputs.size();
-    for (auto output_node : var_node->outputs) {
-      if (output_node->Op()->Type() == "shape") {
-        output_count--;
-      }
-    }
-    if (output_count != 1) {
-      return false;
-    }
     // The op type in front of in_var_node should not be feed.
     for (auto* pre_op : var_node->inputs) {
       if (pre_op->Op()->Type() == "feed") {
