@@ -100,7 +100,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
       matmul_input_name = "Y";
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unexpected input to " + matmul_type + " encountered."));
+          "Unexpected input to %s encountered.", matmul_type));
     }
 
     // Return if input of fused_matmul is already fused
