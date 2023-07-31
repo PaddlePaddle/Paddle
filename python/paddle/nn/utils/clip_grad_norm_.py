@@ -45,19 +45,19 @@ def clip_grad_norm_(
         Total norm of the parameter gradients (treated as a single vector).
     Example:
         .. code-block:: python
-            import paddle
+            >>> import paddle
 
-            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            max_norm = float(5.0)
-            linear = paddle.nn.Linear(in_features=10, out_features=10)
-            out = linear(x)
-            loss = paddle.mean(out)
-            loss.backward()
+            >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
+            >>> max_norm = float(5.0)
+            >>> linear = paddle.nn.Linear(in_features=10, out_features=10)
+            >>> out = linear(x)
+            >>> loss = paddle.mean(out)
+            >>> loss.backward()
 
-            paddle.nn.utils.clip_grad_norm_(linear.parameters(), max_norm)
+            >>> paddle.nn.utils.clip_grad_norm_(linear.parameters(), max_norm)
 
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
-            sdg.step()
+            >>> sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
+            >>> sdg.step()
     """
     if not paddle.in_dynamic_mode():
         raise RuntimeError('this API can only run in dynamic mode.')

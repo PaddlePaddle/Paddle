@@ -28,26 +28,35 @@ class Stub(Layer):
         It will use a global configuration to create the observers if the 'observer' is none.
     Examples:
         .. code-block:: python
-            import paddle
-            from paddle.nn.quant import Stub
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            from paddle.nn import Conv2D
-            from paddle.quantization import QAT, QuantConfig
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            class Model(paddle.nn.Layer):
-                def __init__(self, num_classes=10):
-                    super().__init__()
-                    self.conv = Conv2D(3, 6, 3, stride=1, padding=1)
-                    self.quant = Stub(quanter)
-                def forward(self, inputs):
-                    out = self.conv(inputs)
-                    out = self.quant(out)
-                    return paddle.nn.functional.relu(out)
-            model = Model()
-            q_config = QuantConfig(activation=quanter, weight=quanter)
-            qat = QAT(q_config)
-            quant_model = qat.quantize(model)
-            print(quant_model)
+            >>> import paddle
+            >>> from paddle.nn.quant import Stub
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> from paddle.nn import Conv2D
+            >>> from paddle.quantization import QAT, QuantConfig
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            >>> class Model(paddle.nn.Layer):
+            ...     def __init__(self, num_classes=10):
+            ...         super().__init__()
+            ...         self.conv = Conv2D(3, 6, 3, stride=1, padding=1)
+            ...         self.quant = Stub(quanter)
+            ...     def forward(self, inputs):
+            ...         out = self.conv(inputs)
+            ...         out = self.quant(out)
+            ...         return paddle.nn.functional.relu(out)
+            >>> model = Model()
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> qat = QAT(q_config)
+            >>> quant_model = qat.quantize(model)
+            >>> print(quant_model)
+            Model(
+                (conv): QuantedConv2D(
+                  (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                  (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                )
+                (quant): QuanterStub(
+                  (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                )
+            )
     """
 
     def __init__(self, observer=None):
