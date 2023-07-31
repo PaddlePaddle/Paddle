@@ -46,6 +46,48 @@
 
 namespace ir {
 
+void AddNewData(ir::Value value,
+                std::string name,
+                paddle::framework::Variable* var,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id,
+                std::vector<paddle::framework::Variable*>* variable_list) {
+  value_2_var_name->emplace(value, name);
+  variable_2_var_name->emplace(var, name);
+  auto id = var_name_2_id->size();
+  var_name_2_id->emplace(name, id);
+  variable_list->push_back(var);
+  PADDLE_ENFORCE_EQ(
+      variable_list->size(),
+      var_name_2_id->size(),
+      paddle::platform::errors::InvalidArgument(
+          "The size of variable_list and var_name_2_id map should be equal"));
+}
+
+void RenameData(ir::Value value,
+                std::string new_name,
+                std::string orig_name,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id) {
+  (*value_2_var_name)[value] = new_name;
+
+  for (auto kv : (*variable_2_var_name)) {
+    if (kv.second == orig_name) {
+      (*variable_2_var_name)[kv.first] = new_name;
+    }
+  }
+
+  for (auto kv : *(var_name_2_id)) {
+    if (kv.first == orig_name) {
+      var_name_2_id->emplace(new_name, kv.second);
+    }
+  }
+  var_name_2_id->erase(orig_name);
+}
 using VariableNameMap =
     std::unordered_map<const paddle::framework::Variable*, std::string>;
 
@@ -80,16 +122,13 @@ paddle::framework::Variable* CreateVar(
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope;
     var = inner_scope->Var(name);
   }
-  value_2_var_name->emplace(value, name);
-  variable_2_var_name->emplace(var, name);
-  auto id = var_name_2_id->size();
-  var_name_2_id->emplace(name, id);
-  variable_list->push_back(var);
-  PADDLE_ENFORCE_EQ(
-      variable_list->size(),
-      var_name_2_id->size(),
-      paddle::platform::errors::InvalidArgument(
-          "The size of variable_list and var_name_2_id map should be equal"));
+  AddNewData(value,
+             name,
+             var,
+             value_2_var_name,
+             variable_2_var_name,
+             var_name_2_id,
+             variable_list);
   return var;
 }
 
@@ -195,13 +234,13 @@ void HandleForSpecialOp(
                     ->Var(fetch_var_name);
     var->GetMutable<phi::DenseTensor>();
     auto value = op->result(0);
-
-    value_2_var_name->emplace(value, fetch_var_name);
-
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(fetch_var_name, id);
-    variable_list->push_back(var);
-    variable_2_var_name->emplace(var, fetch_var_name);
+    AddNewData(value,
+               fetch_var_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "pd.feed") {
@@ -215,16 +254,13 @@ void HandleForSpecialOp(
     paddle::framework::Variable* var = inner_scope->FindVar(name);
 
     auto feed_var_name = "feed_" + std::to_string(index);
-    value_2_var_name->emplace(value, feed_var_name);
-    variable_2_var_name->emplace(var, feed_var_name);
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(feed_var_name, id);
-    variable_list->push_back(var);
-    PADDLE_ENFORCE_EQ(
-        variable_list->size(),
-        var_name_2_id->size(),
-        paddle::platform::errors::InvalidArgument(
-            "The size of variable_list and var_name_2_id map should be equal"));
+    AddNewData(value,
+               feed_var_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "pd.feed_with_place") {
@@ -237,15 +273,13 @@ void HandleForSpecialOp(
     value_2_var_name->emplace(value, var_name);
 
     paddle::framework::Variable* var = inner_scope->FindVar(var_name);
-    variable_2_var_name->emplace(var, var_name);
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(var_name, id);
-    variable_list->push_back(var);
-    PADDLE_ENFORCE_EQ(
-        variable_list->size(),
-        var_name_2_id->size(),
-        paddle::platform::errors::InvalidArgument(
-            "The size of variable_list and var_name_2_id map should be equal"));
+    AddNewData(value,
+               var_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "builtin.combine") {
@@ -297,20 +331,12 @@ void HandleForSpecialOp(
       VLOG(6) << "set_parameter rename var: " << orig_name << " -> "
               << param_name;
     }
-    (*value_2_var_name)[value] = param_name;
-
-    for (auto kv : (*variable_2_var_name)) {
-      if (kv.second == orig_name) {
-        (*variable_2_var_name)[kv.first] = param_name;
-      }
-    }
-
-    for (auto kv : *(var_name_2_id)) {
-      if (kv.first == orig_name) {
-        var_name_2_id->emplace(param_name, kv.second);
-      }
-    }
-    var_name_2_id->erase(orig_name);
+    RenameData(value,
+               param_name,
+               orig_name,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id);
   }
 
   if (op_name == "pd.shaddow_output") {
@@ -326,20 +352,12 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, var_name);
     }
-    (*value_2_var_name)[value] = var_name;
-
-    for (auto kv : (*variable_2_var_name)) {
-      if (kv.second == orig_name) {
-        (*variable_2_var_name)[kv.first] = var_name;
-      }
-    }
-
-    for (auto kv : *(var_name_2_id)) {
-      if (kv.first == orig_name) {
-        var_name_2_id->emplace(var_name, kv.second);
-      }
-    }
-    var_name_2_id->erase(orig_name);
+    RenameData(value,
+               var_name,
+               orig_name,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id);
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -352,15 +370,13 @@ void HandleForSpecialOp(
     value_2_var_name->emplace(value, param_name);
 
     paddle::framework::Variable* var = inner_scope->FindVar(param_name);
-    variable_2_var_name->emplace(var, param_name);
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(param_name, id);
-    variable_list->push_back(var);
-    PADDLE_ENFORCE_EQ(
-        variable_list->size(),
-        var_name_2_id->size(),
-        paddle::platform::errors::InvalidArgument(
-            "The size of variable_list and var_name_2_id map should be equal"));
+    AddNewData(value,
+               param_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "builtin.slice") {

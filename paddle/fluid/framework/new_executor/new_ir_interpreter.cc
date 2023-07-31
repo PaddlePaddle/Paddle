@@ -249,6 +249,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
+
   if (FLAGS_enable_new_ir_in_executor) {
     framework::FetchList fetch_res;
 
@@ -1382,6 +1383,15 @@ void NewIRInterpreter::CheckGC(const Instruction& instr) {
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
+}
+
+::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
+  for (auto kv : value_2_var_name_) {
+    if (kv.second == var_name) {
+      return kv.first;
+    }
+  }
+  return nullptr;
 }
 
 void NewIRInterpreter::Prepare(
