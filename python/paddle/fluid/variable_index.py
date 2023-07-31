@@ -993,6 +993,11 @@ def _setitem_static(x, indices, values):
 def get_tensor_with_basic_indexing(
     x, axes, starts, ends, steps, decrease_axes, none_axes, use_strided_slice
 ):
+    from .dygraph.base import in_declarative_mode
+
+    if in_declarative_mode() and hasattr(x, "is_view_var"):
+        x.is_view_var = True
+
     if len(axes) == 0:
         out = x
     else:
@@ -1082,6 +1087,8 @@ def get_tensor_with_basic_indexing(
 
         out = paddle.unsqueeze(out, axis=none_axes)
 
+    if in_declarative_mode() and hasattr(out, "is_view_var"):
+        out.is_view_var = True
     return out
 
 

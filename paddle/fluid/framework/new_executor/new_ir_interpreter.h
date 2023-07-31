@@ -84,6 +84,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
+  std::string GetNameById(int id) const;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -216,7 +218,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<Variable*> variable_list_;
 
-  interpreter::IrDependencyBuilder ir_dependency_builder_;
+  interpreter::NewIrDependencyBuilder ir_dependency_builder_;
+
+  interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
 };
 
 }  // namespace framework

@@ -58,6 +58,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -67,6 +68,7 @@ typedef SSIZE_T ssize_t;
 #endif
 
 PHI_DECLARE_bool(set_to_1d);
+DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace pybind {
@@ -155,6 +157,14 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_dims[0] = 1;
       py_strides[0] = sizeof_dtype * numel;
     }
+  } else if (self->tensor.is_dense_tensor()) {
+    auto tensor_stride = self->tensor.strides();
+
+    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
+      py_strides[i] = sizeof_dtype * tensor_stride[i];
+      numel *= py_dims[i];
+    }
   } else {
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
@@ -163,18 +173,18 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     }
   }
 
-  PyObject* array = api.PyArray_NewFromDescr_(
-      api.PyArray_Type_,
-      api.PyArray_DescrFromType_(numpy_dtype),
-      py_rank,
-      py_dims,
-      py_strides,
-      nullptr,
-      pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
-          pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
-      nullptr);
-
   if (!self->tensor.impl()->initialized()) {
+    PyObject* array = api.PyArray_NewFromDescr_(
+        api.PyArray_Type_,
+        api.PyArray_DescrFromType_(numpy_dtype),
+        py_rank,
+        py_dims,
+        py_strides,
+        nullptr,
+        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+        nullptr);
+
     if (tensor_dims.empty()) {
       py_dims[0] = 0;
       py_strides[0] = 0;
@@ -193,6 +203,9 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     return array;
   }
 
+  phi::DenseTensor cpu_tensor;
+  platform::CPUPlace cpu_place;
+
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     eager_gil_scoped_release guard;
     platform::CPUPlace place;
@@ -202,25 +215,32 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       // deep copy
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          place,
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      paddle::memory::Copy(place,
+                           cpu_tensor.Holder()->ptr(),
+                           place,
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       // deep copy
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          place,
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      paddle::memory::Copy(place,
+                           cpu_tensor.Holder()->ptr(),
+                           place,
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -237,20 +257,28 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      paddle::platform::GpuMemcpySync(
-          pybind11::detail::array_proxy(array)->data,
-          dense_tensor->data(),
-          phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
-          kind);
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
+                                      dense_tensor->Holder()->ptr(),
+                                      dense_tensor->Holder()->size(),
+                                      kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      paddle::platform::GpuMemcpySync(
-          pybind11::detail::array_proxy(array)->data,
-          dense_tensor->data(),
-          phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
-          kind);
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
+                                      dense_tensor->Holder()->ptr(),
+                                      dense_tensor->Holder()->size(),
+                                      kind);
     }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -262,22 +290,30 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          dense_tensor->place(),
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::memory::Copy(place,
+                           cpu_tensor.Holder()->ptr(),
+                           dense_tensor->place(),
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          dense_tensor->place(),
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::memory::Copy(place,
+                           cpu_tensor.Holder()->ptr(),
+                           dense_tensor->place(),
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -289,11 +325,15 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
-          ->MemoryCopyD2H(
-              pybind11::detail::array_proxy(array)->data,
-              dense_tensor->data(),
-              phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+          ->MemoryCopyD2H(cpu_tensor.Holder()->ptr(),
+                          dense_tensor->Holder()->ptr(),
+                          dense_tensor->Holder()->size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -306,11 +346,15 @@ static PyObject* tensor_method_numpy(TensorObject* self,
         dense_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(temp_tensor.impl());
       }
+      cpu_tensor.set_meta(dense_tensor->meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor->Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
-          ->MemoryCopyD2H(
-              pybind11::detail::array_proxy(array)->data,
-              dense_tensor->data(),
-              phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+          ->MemoryCopyD2H(cpu_tensor.Holder()->ptr(),
+                          dense_tensor->Holder()->ptr(),
+                          dense_tensor->Holder()->size());
     }
 #endif
   } else {
@@ -318,6 +362,26 @@ static PyObject* tensor_method_numpy(TensorObject* self,
         "Tensor.numpy() only support cpu tensor."));
     RETURN_PY_NONE
   }
+
+  void* array_buffer = cpu_tensor.Holder()->ptr();
+  size_t array_offset = cpu_tensor.offset();
+
+  PyObject* base = ToPyObject(paddle::Tensor(
+      std::make_shared<phi::DenseTensor>(std::move(cpu_tensor))));
+
+  PyObject* array = api.PyArray_NewFromDescr_(
+      api.PyArray_Type_,
+      api.PyArray_DescrFromType_(numpy_dtype),
+      py_rank,
+      py_dims,
+      py_strides,
+      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
+                              array_offset),
+      pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+          pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+      nullptr);
+
+  api.PyArray_SetBaseObject_(array, base);
 
   return array;
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -786,6 +850,25 @@ static PyObject* tensor_method_detach(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_detach_(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      self->tensor.defined(),
+      true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->tensor.name()));
+
+  auto autograd_meta = std::make_shared<egr::AutogradMeta>();
+  autograd_meta->SetPersistable(
+      egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
+  self->tensor.set_autograd_meta(autograd_meta);
+
+  return reinterpret_cast<PyObject*>(self);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -864,7 +947,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   VLOG(4) << "Call _getitem_index_not_tensor";
   std::vector<int> slice_axes, slice_starts, slice_ends, slice_strides,
-      decrease_axis, none_axes, infer_flags, list_select_idxs;
+      decrease_axis, none_axes, infer_flags;
+  std::vector<int64_t> list_select_idxs;
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
   // Note(0x45f): Using defined() instead of initialized()
@@ -988,16 +1072,19 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // the index is a list
   if (list_select_flag) {
     eager_gil_scoped_release guard;
-    auto select_index =
-        paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
-    auto idx_tensor = std::make_shared<phi::DenseTensor>();
-    select_index.set_impl(idx_tensor);
-    auto* dev_ctx = platform::DeviceContextPool::Instance().Get(
-        egr::Controller::Instance().GetExpectedPlace());
-    paddle::framework::TensorFromVector(
-        list_select_idxs, *dev_ctx, idx_tensor.get());
-    framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_ad_func(self->tensor, select_index, 0);
+    if (FLAGS_use_stride_kernel && list_select_idxs.size() == 1) {
+      out = index_select_strided_ad_func(self->tensor, list_select_idxs[0], 0);
+    } else {
+      auto select_index =
+          paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
+      auto idx_tensor = std::make_shared<phi::DenseTensor>();
+      select_index.set_impl(idx_tensor);
+      auto* dev_ctx = platform::DeviceContextPool::Instance().Get(
+          egr::Controller::Instance().GetExpectedPlace());
+      paddle::framework::TensorFromVector(
+          list_select_idxs, *dev_ctx, idx_tensor.get());
+      out = index_select_ad_func(self->tensor, select_index, 0);
+    }
   }
 
   return ToPyObject(out);
@@ -1030,11 +1117,10 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   const auto& tensor_dims = tensor.dims();
 
   std::vector<size_t> dims(tensor_dims.size());
-  std::vector<size_t> strides(tensor_dims.size());
+  std::vector<size_t> stride = phi::vectorize<size_t>(tensor.strides());
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    strides[i] = numel;
     dims[i] = static_cast<size_t>(tensor_dims[i]);
     numel *= dims[i];
   }
@@ -1068,7 +1154,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
               index,
               i,
               dims[i]));
-      offset += index * strides[i];
+      offset += index * stride[i];
     }
   }
 #define PD_FOR_EACH_DENSE_TENSOR_DATA_TYPE(_) \
@@ -1160,7 +1246,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
   // copys data to cpu place, which reduces performance.
   if (parse_index) {
     std::vector<int> axes, starts, ends, steps, decrease_axes, none_axes,
-        infer_flags, list_select_idxs;
+        infer_flags;
+    std::vector<int64_t> list_select_idxs;
     // if index is a list, list_select_flag will be true
     bool list_select_flag = false;
     ParseIndexingSlice(self_tensor,
@@ -1997,6 +2084,62 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_strides(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  std::vector<int64_t> value;
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+    return ToPyObject(value);
+  }
+  auto stride = self->tensor.strides();
+  size_t rank = static_cast<size_t>(stride.size());
+  value.resize(rank);
+  for (size_t i = 0; i < rank; i++) {
+    value[i] = stride[i];
+  }
+  return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_contiguous(TensorObject* self,
+                                   PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    if (dense_tensor->meta().is_contiguous()) {
+      Py_INCREF(self);
+      return reinterpret_cast<PyObject*>(self);
+    } else {
+      eager_gil_scoped_release guard;
+      return ToPyObject(
+          paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(
+              paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
+    }
+
+  } else {
+    Py_INCREF(self);
+    return reinterpret_cast<PyObject*>(self);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_is_contiguous(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    return ToPyObject(dense_tensor->meta().is_contiguous());
+  } else {
+    return ToPyObject(true);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
@@ -2103,6 +2246,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"detach",
      (PyCFunction)(void (*)())tensor_method_detach,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"detach_",
+     (PyCFunction)(void (*)(void))tensor_method_detach_,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_tensor",
@@ -2266,6 +2413,18 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_grad_ivar",
      (PyCFunction)(void (*)())tensor__grad_ivar,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"contiguous",
+     (PyCFunction)(void (*)(void))tensor_contiguous,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_contiguous",
+     (PyCFunction)(void (*)(void))tensor_is_contiguous,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"get_strides",
+     (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #if defined(PADDLE_WITH_CUDA)
