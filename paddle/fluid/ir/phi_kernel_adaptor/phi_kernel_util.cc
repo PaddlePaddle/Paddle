@@ -187,17 +187,21 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
-    // auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
-    //                ->Var("fetch");
-    auto var = inner_scope->Var("fetch");
-    VLOG(6) << "Create var: fetch in scope " << inner_scope->root();
-    auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-    int index =
-        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    fetch_list->resize(index + 1);
+    auto fetch_src_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
-    var = inner_scope->Var("fetch_0");
+    auto fetch_var_name = fetch_src_name + "@fetch";
+    auto* var = const_cast<paddle::framework::Scope*>(inner_scope->root())
+                    ->Var(fetch_var_name);
     var->GetMutable<phi::DenseTensor>();
+    auto value = op->result(0);
+
+    value_2_var_name->emplace(value, fetch_var_name);
+
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(fetch_var_name, id);
+    variable_list->push_back(var);
+    variable_2_var_name->emplace(var, fetch_var_name);
   }
 
   if (op_name == "pd.feed") {
@@ -498,10 +502,7 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    std::cerr << "input name " << legacy_attr_name << std::endl;
-
     runtime_ctx->inputs[legacy_attr_name].push_back(var);
-    std::cerr << "fin ins" << std::endl;
   }
 
   auto& output_name_list = op_yaml_info.OutputNames();
@@ -518,7 +519,6 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    std::cerr << "output name " << legacy_attr_name << std::endl;
     runtime_ctx->outputs[legacy_attr_name] = vec_tmp;
   }
 }
@@ -537,6 +537,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
   auto pd_op_name =
       op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
   std::cerr << "pd op name  " << pd_op_name << std::endl;
+
   auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();

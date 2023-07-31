@@ -285,73 +285,51 @@ void BuildPhiContext(ir::Operation* op,
   }
 
   // TODO(phlrain): use var type instead of op name
-  if (op->attributes().count("op_name") &&
-      (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString() ==
-       "pd.fetch")) {
-    // process fetch op
-    // auto fetch_var = inner_scope->FindVar("fetch");
-    // auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    // int index =
-    //     op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    // std::cerr << "fetch index " << index << "\t" << fetch_list->size() <<
-    // std::endl; auto* out_tensor = &(PADDLE_GET(phi::DenseTensor,
-    // fetch_list->at(index)));
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    ir::Value out_ptr = op->result(i);
+    if (!out_ptr) {
+      phi::DenseTensor* ptr = nullptr;
+      OutType out_ptr(ptr);
+      std::cerr << "emplac nullptr" << std::endl;
+      ctx->EmplaceBackOutput(out_ptr);
+      continue;
+    }
 
-    auto fetch_var = inner_scope->FindVar("fetch_0");
-    auto* out_tensor = &(fetch_var->Get<phi::DenseTensor>());
-    std::cerr << "pointer" << out_tensor << std::endl;
-    std::cerr << "type " << out_tensor->type_info().name() << std::endl;
-    phi::MetaTensor t1(out_tensor);
-    t1.set_dtype(phi::DataType::FLOAT32);
-    std::cerr << t1.dtype() << std::endl;
-
-    ctx->EmplaceBackOutput(OutType(out_tensor));
-  } else {
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      ir::Value out_ptr = op->result(i);
-      if (!out_ptr) {
-        phi::DenseTensor* ptr = nullptr;
-        OutType out_ptr(ptr);
-        std::cerr << "emplac nullptr" << std::endl;
-        ctx->EmplaceBackOutput(out_ptr);
-        continue;
+    if (!name_map.count(out_ptr)) {
+      phi::DenseTensor* ptr = nullptr;
+      OutType out_ptr(ptr);
+      std::cerr << "emp place null ptr " << std::endl;
+      ctx->EmplaceBackOutput(out_ptr);
+      continue;
+    }
+    auto name = name_map.at(out_ptr);
+    VLOG(6) << "ctx->EmplaceBackOutput: " << name;
+    auto out_type = out_ptr.type();
+    if (!out_type) {
+      phi::DenseTensor* ptr = nullptr;
+      OutType out_ptr(ptr);
+      ctx->EmplaceBackOutput(out_ptr);
+    } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
+          &(inner_scope->FindVar(name)->Get<phi::DenseTensor>()))));
+    } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
+          &(inner_scope->FindVar(name)->Get<phi::SelectedRows>()))));
+    } else if (out_type.isa<ir::VectorType>()) {
+      OutListType outputs;
+      auto& variable_array =
+          scope->FindVar(name)->Get<paddle::framework::VariableRefArray>();
+      for (size_t i = 0; i < variable_array.size(); ++i) {
+        outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
+            &(variable_array[i]->Get<phi::DenseTensor>()))));
       }
-
-      if (!name_map.count(out_ptr)) {
-        phi::DenseTensor* ptr = nullptr;
-        OutType out_ptr(ptr);
-        std::cerr << "emp place null ptr " << std::endl;
-        ctx->EmplaceBackOutput(out_ptr);
-        continue;
-      }
-      auto name = name_map.at(out_ptr);
-      VLOG(6) << "ctx->EmplaceBackOutput: " << name;
-      auto out_type = out_ptr.type();
-      if (!out_type) {
-        phi::DenseTensor* ptr = nullptr;
-        OutType out_ptr(ptr);
-        ctx->EmplaceBackOutput(out_ptr);
-      } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
-        ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
-            &(inner_scope->FindVar(name)->Get<phi::DenseTensor>()))));
-      } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-        ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
-            &(inner_scope->FindVar(name)->Get<phi::SelectedRows>()))));
-      } else if (out_type.isa<ir::VectorType>()) {
-        OutListType outputs;
-        auto& variable_array =
-            scope->FindVar(name)->Get<paddle::framework::VariableRefArray>();
-        for (size_t i = 0; i < variable_array.size(); ++i) {
-          outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
-              &(variable_array[i]->Get<phi::DenseTensor>()))));
-        }
-        ctx->EmplaceBackOutputs(outputs);
-      } else {
-        PADDLE_THROW(
-            phi::errors::Unimplemented("only support DenseTensor and vector "));
-      }
+      ctx->EmplaceBackOutputs(outputs);
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("only support DenseTensor and vector "));
     }
   }
+
   VLOG(6) << "Done build phi context";
 }
 

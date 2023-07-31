@@ -71,15 +71,35 @@ class ConstantFoldingPattern : public ir::RewritePattern {
     ir::Program* program = op->GetParentProgram();
     auto temp_program = BuildProgramFromOperation(op);
 
+    std::vector<std::string> fetch_var_names;
+    auto block = temp_program->block();
+    for (auto it = block->begin(); it != block->end(); ++it) {
+      if ((*it)->name() == "pd.fetch") {
+        size_t index =
+            (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+
+        if (fetch_var_names.size() < index + 1) {
+          fetch_var_names.resize(index + 1);
+        }
+
+        fetch_var_names[index] = (*it)
+                                     ->attributes()
+                                     .at("name")
+                                     .dyn_cast<ir::StrAttribute>()
+                                     .AsString() +
+                                 "@fetch";
+      }
+    }
+
     // Execute program
     paddle::framework::interpreter::ExecutionConfig exe_config;
     exe_config.create_local_scope = false;
     paddle::framework::InterpreterCore core(
         phi::CPUPlace{},
+        fetch_var_names,
         paddle::dialect::PdOpLowerToKernelPass(temp_program.get()),
         &scope_,
         exe_config);
-
     paddle::framework::FetchList fetch_list = core.Run({});
 
     // TODO(liuyuanle): Support multiple output.

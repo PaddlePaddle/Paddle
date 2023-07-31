@@ -69,7 +69,7 @@ TEST(StandaloneExecutor, run) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
   VLOG(0) << "&test_core" << &test_core;
   VLOG(0) << "&test_core.impl" << test_core.Impl();
   VLOG(0) << "&test_core.impl.cast"
@@ -114,7 +114,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
 
   auto place = platform::CPUPlace();
   Scope scope;
-  InterpreterCore test_core(place, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
   test_core.BetaRun({});
 
   std::stringstream os;

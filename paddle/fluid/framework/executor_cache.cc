@@ -338,7 +338,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
   std::shared_ptr<InterpreterCore> core = nullptr;
 
   core.reset(new InterpreterCore(
-      place, std::move(ir_program), scope, execution_config));
+      place, {}, std::move(ir_program), scope, execution_config));
 
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, is_grad);
