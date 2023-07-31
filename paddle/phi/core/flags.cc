@@ -1270,7 +1270,7 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
                          "Enable new IR in executor");
 
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_beta_run,
-                         false,
+                         true,
                          "Enable new IR in executor");
 
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_loop_run,
