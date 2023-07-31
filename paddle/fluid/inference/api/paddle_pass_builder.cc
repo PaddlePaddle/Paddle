@@ -525,7 +525,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "one_beam_size_fuse_pass",
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
-      "redundant_onnx_ops_elimination_pass",
+      "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
       "delete_cast_op_pass",
       "xpu_delete_cast_op_pass",

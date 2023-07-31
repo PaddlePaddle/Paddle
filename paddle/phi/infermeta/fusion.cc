@@ -96,8 +96,7 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               const MetaTensor& scale,
                               const MetaTensor& bias,
-                              int64_t m,
-                              int64_t n,
+                              int begin_norm_axis,
                               float epsilon,
                               MetaTensor* out,
                               MetaTensor* mean,
@@ -106,12 +105,16 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   int axis = -1;
   auto x_dims = x.dims();
   auto y_dims = y.dims();
+  auto out_dims = x_dims;
   if (x_dims != y_dims) {
-    auto out_dims = BroadCastInferShape(x_dims, y_dims, axis);
+    out_dims = BroadCastInferShape(x_dims, y_dims, axis);
     out->set_dims(out_dims);
   } else {
-    out->set_dims(x_dims);
+    out->set_dims(out_dims);
   }
+  auto layer_norm_x_mat_dims = phi::flatten_to_2d(out_dims, begin_norm_axis);
+  int64_t m = layer_norm_x_mat_dims[0];
+  int64_t n = layer_norm_x_mat_dims[1];
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
