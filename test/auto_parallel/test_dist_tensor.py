@@ -73,9 +73,9 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
     def test_relu_api_for_dist_tensor(self):
         x = np.random.random(size=[4, 4]).astype("float32")
         local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
-        # local_out = F.relu(local_in)
+        local_out = F.relu(local_in)
         dist_out = F.relu(dist_in)
-        # self.check_tensor_eq(local_out, dist_out)
+        self.check_tensor_eq(local_out, dist_out)
 
         # # test backward
         # local_out.backward()

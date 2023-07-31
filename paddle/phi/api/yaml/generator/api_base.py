@@ -571,6 +571,82 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         return kernel_select_code
 
+    def gene_infer_spmd(self, kernel_output_names, code_indent) -> str:
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        infer_meta = self.infer_meta
+
+        infer_meta_params = (
+            infer_meta['param']
+            if infer_meta['param'] is not None
+            else input_names + attr_names
+        )
+        # generate meta tensors
+        meta_tensor_code = ""
+        param_code = ""
+        for param in infer_meta_params:
+            if param in input_names:
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    param_code = (
+                        param_code
+                        + "MakeMetaTensor(*"
+                        + PREFIX_TENSOR_NAME
+                        + param
+                        + "_dist), "
+                    )
+                else:
+                    # TODO(chenweihang): support other input type later
+                    raise ValueError(
+                        f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
+                    )
+            elif param in attr_names:
+                param_code = param_code + param + ", "
+            elif isinstance(param, str):
+                param_code = param_code + "\"" + param + "\", "
+            elif isinstance(param, bool):
+                param_code = param_code + str(param).lower() + ", "
+            else:
+                param_code = param_code + str(param) + ", "
+
+        for i, out_name in enumerate(kernel_output_names):
+            if self.outputs['types'][i] == 'std::vector<Tensor>':
+                meta_tensor_code = (
+                    meta_tensor_code
+                    + f"""
+{code_indent}  auto {out_name}_{PREFIX_META_TENSOR_NAME}vec_dist = MakeMetaTensor({out_name});
+{code_indent}  std::vector<phi::MetaTensor*> {out_name}_metas_dist({out_name}_{PREFIX_META_TENSOR_NAME}vec_dist.size());
+{code_indent}  for (size_t i = 0; i < {out_name}_{PREFIX_META_TENSOR_NAME}vec_dist.size(); ++i) {{
+{code_indent}    {out_name}_metas_dist[i] = {out_name}_dist[i] ? &{out_name}_{PREFIX_META_TENSOR_NAME}vec_dist[i] : nullptr;
+{code_indent}  }}"""
+                )
+
+                param_code = param_code + out_name + '_metas, '
+            else:
+                meta_tensor_code = (
+                    meta_tensor_code
+                    + code_indent
+                    + "phi::MetaTensor "
+                    + out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)
+                    + "_dist("
+                    + out_name
+                    + "_dist);"
+                )
+                if len(kernel_output_names) == 1:
+                    param_code = (
+                        param_code
+                        + f"&{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)}_dist, "
+                    )
+                else:
+                    param_code = (
+                        param_code
+                        + f"{out_name}_dist ? &{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)}_dist : nullptr, "
+                    )
+
+        param_code = param_code[:-2]
+        return f"""{meta_tensor_code}
+{code_indent}  phi::{infer_meta['func']}({param_code});
+"""
+
     def gene_infer_meta(self, kernel_output_names, code_indent) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
@@ -666,7 +742,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     + out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)
                     + "("
                     + out_name
-                    + ");\n"
+                    + ");"
                 )
                 if len(kernel_output_names) == 1:
                     param_code = (
@@ -1375,6 +1451,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             inplace_flag,
             for_auto_parallel=True,
         )
+
+        # global InferMeta
+        infer_spmd_code = self.gene_infer_spmd(kernel_output_names, code_indent)
 
         # 6. Local InferMeta
         local_infermeta_code = self.gene_infer_meta(

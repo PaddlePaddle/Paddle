@@ -200,25 +200,18 @@ class ForwardAPI(BaseAPI):
                 assert (
                     self.outputs['out_size_expr'][0] is not None
                 ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
-                if for_auto_parallel is True:
-                    output_create = (
-                        output_create
-                        + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output, true);"""
-                    )
-                else:
-                    output_create = (
-                        output_create
-                        + f"""
+                output_create = (
+                    output_create
+                    + f"""
 {code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
-                    )
-
+                )
             else:
                 if for_auto_parallel is True:
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out = {set_out_func}(&api_output, true);"""
+{code_indent}  auto kernel_out_dist = SetKernelDistOutput(&api_output);
+{code_indent}  auto kernel_out = kernel_out_dist->mutable_value();"""
                     )
                 else:
                     output_create = (

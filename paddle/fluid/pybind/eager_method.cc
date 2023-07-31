@@ -59,12 +59,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 PHI_DECLARE_bool(set_to_1d);
 
@@ -210,6 +208,20 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           place,
           dense_tensor->data(),
           sizeof_dtype * numel);
+    } else if (self->tensor.is_dist_tensor()) {
+      // TODO(chenweihang): deal with DistTensor as local DenseTensor now,
+      // if the local DenseTensor is shard or partial, do gather or reduce?
+      VLOG(6) << "Getting DistTensor's numpy value";
+      auto* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      auto& dense_tensor = dist_tensor->value();
+      // deep copy
+      paddle::memory::Copy(
+          place,
+          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
+          place,
+          dense_tensor.data(),
+          sizeof_dtype * numel);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -241,6 +253,16 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           pybind11::detail::array_proxy(array)->data,
           dense_tensor->data(),
           phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
+          kind);
+    } else if (self->tensor.is_dist_tensor()) {
+      VLOG(6) << "Getting DistTensor's numpy value";
+      auto* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      auto& dense_tensor = dist_tensor->value();
+      paddle::platform::GpuMemcpySync(
+          pybind11::detail::array_proxy(array)->data,
+          dense_tensor.data(),
+          phi::SizeOf(dense_tensor.dtype()) * dense_tensor.numel(),
           kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
