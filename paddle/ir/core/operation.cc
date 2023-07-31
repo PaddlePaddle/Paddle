@@ -218,7 +218,7 @@ Operation *Operation::GetParentOp() const {
   return parent_ ? parent_->GetParentOp() : nullptr;
 }
 
-const Program *Operation::const_GetParentProgram() const {
+const Program *Operation::GetParentProgram() const {
   Operation *op = const_cast<Operation *>(this);
   while (Operation *parent_op = op->GetParentOp()) {
     op = parent_op;
