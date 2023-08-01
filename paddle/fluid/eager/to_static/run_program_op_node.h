@@ -130,7 +130,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var") {
+    if (name == paddle::framework::kFakeVarName) {
       continue;
     }
     auto *var = scope->Var(name);
@@ -159,8 +159,8 @@ static void ShareTensorsFromScope(
     // because we can't find them in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     auto &name = tensors[i]->name();
-    if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
-        !global_block.HasVar(name)) {
+    if (name == paddle::framework::kEmptyVarName ||
+        name == paddle::framework::kFakeVarName || !global_block.HasVar(name)) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
@@ -197,7 +197,8 @@ static void ShareTensorsFromScopeWithPartialBlock(
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
-    if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
+    if (name == paddle::framework::kEmptyVarName ||
+        name == paddle::framework::kFakeVarName ||
         (!forward_global_block.HasVar(name) &&
          !backward_global_block.HasVar(name))) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
