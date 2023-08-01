@@ -23,7 +23,6 @@ import paddle
 from paddle.fluid.data_feeder import convert_dtype
 
 from ... import tensor
-from ...fluid import layers
 from ...framework import ParamAttr
 from .. import functional as F
 from .common import Dropout, Linear
@@ -342,18 +341,10 @@ class MultiHeadAttention(Layer):
             k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
-            k = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
-            v = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
+            fill_shape = [-1, self.num_heads, 0, self.head_dim]
+            fill_shape[0] = paddle.shape(key)[0].item()
+            k = paddle.full(fill_shape, 0, key.dtype)
+            v = paddle.full(fill_shape, 0, key.dtype)
             return self.Cache(k, v)
         else:
             # incremental_state with initial value, mainly for usage like UniLM

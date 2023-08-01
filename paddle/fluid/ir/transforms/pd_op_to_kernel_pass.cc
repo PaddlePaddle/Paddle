@@ -270,10 +270,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     auto kernel_key =
         GetKernelKey(*it, place, map_value_pair, std::move(op_info_parser));
-    VLOG(6) << "kernel type " << kernel_key;
 
-    // only for single output
-    // need update new kernel key layout and data tyep
+    VLOG(6) << "kernel type " << kernel_key;
 
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
@@ -437,30 +435,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     program->block()->push_back(op);
 
     if ((*it)->name() == "pd.feed" && platform::is_gpu_place(place)) {
-      // add shaddow feed op
-      phi::KernelKey shaddow_key{
+      // add shadow feed op
+      phi::KernelKey shadow_key{
           phi::Backend::GPU,
           phi::DataLayout::ANY,
           TransToPhiDataType(
               (*it)->result(0).type().dyn_cast<DenseTensorType>().dtype())};
       std::unordered_map<std::string, ir::Attribute> attr_map{
-          {"op_name", ir::StrAttribute::get(ctx, "pd.shaddow_feed")},
-          {"kernel_name", ir::StrAttribute::get(ctx, "shaddow_feed")},
-          {"kernel_key", dialect::KernelAttribute::get(ctx, shaddow_key)}};
+          {"op_name", ir::StrAttribute::get(ctx, "pd.shadow_feed")},
+          {"kernel_name", ir::StrAttribute::get(ctx, "shadow_feed")},
+          {"kernel_key", dialect::KernelAttribute::get(ctx, shadow_key)}};
 
       auto out_type = paddle::dialect::AllocatedDenseTensorType::get(
           ctx,
-          phi::TransToPhiPlace(shaddow_key.backend()),
+          phi::TransToPhiPlace(shadow_key.backend()),
           (*it)->result(0).type().dyn_cast<dialect::DenseTensorType>());
 
-      ir::Operation* shaddow_op =
+      ir::Operation* shadow_op =
           ir::Operation::Create({op->result(0)}, attr_map, {out_type}, op_info);
 
-      map_op_pair[*it] = shaddow_op;
-      program->block()->push_back(shaddow_op);
+      map_op_pair[*it] = shadow_op;
+      program->block()->push_back(shadow_op);
       if ((*it)->num_results() > 0) {
-        for (size_t i = 0; i < shaddow_op->num_results(); ++i) {
-          map_value_pair[(*it)->result(i)] = shaddow_op->result(i);
+        for (size_t i = 0; i < shadow_op->num_results(); ++i) {
+          map_value_pair[(*it)->result(i)] = shadow_op->result(i);
         }
       }
     }
