@@ -3956,6 +3956,8 @@ function main() {
         check_coverage
         ;;
       cpu_cicheck_coverage)
+        export FLAGS_NEW_IR_DY2ST_TEST=true
+        echo 'export FLAGS_NEW_IR_DY2ST_TEST=true'
         check_diff_file_for_coverage
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
