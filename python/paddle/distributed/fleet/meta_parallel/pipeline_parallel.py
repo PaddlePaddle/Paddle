@@ -777,9 +777,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         if self._comm_overlap:
             self._backward_step_count += 1
             sync_step = self._backward_step_count - self.stage_id
-            if sync_step > 0 and sync_step % self.accumulate_steps == 0:
+            if sync_step > 0 and sync_step % self.num_stages == 0:
                 chunk_idx = self._virtual_pp_world_size - (
-                    sync_step // self.accumulate_steps
+                    sync_step // self.num_stages
                 )
                 for buffer in self._chunk_2_comm_buffers[chunk_idx]:
                     buffer.comm_grads()
@@ -787,7 +787,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self.stage_id != 0:
                 if (
                     self._backward_step_count
-                    == self.accumulate_steps * self._virtual_pp_world_size
+                    == self.num_stages * self.num_model_chunks
                 ):
                     for buffer in self._chunk_2_comm_buffers[0]:
                         buffer.comm_grads()
