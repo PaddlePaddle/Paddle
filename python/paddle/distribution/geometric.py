@@ -227,7 +227,7 @@ class Geometric(distribution.Distribution):
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric
-                
+
                 >>> paddle.seed(2023)
                 >>> geom = Geometric(0.5)
                 >>> print(geom.rsample((2,2)))
