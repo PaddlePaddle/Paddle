@@ -430,6 +430,7 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
 
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));
+  // TODO(@caizhi): enable blas modules
   //phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
   //    true,
   //    static_cast<int>(in_dims[0]),
@@ -468,6 +469,7 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
 
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));
+  // TODO(@caizhi): enable blas modules
   //phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
   //    true,
   //    static_cast<int>(in_dims[1]),

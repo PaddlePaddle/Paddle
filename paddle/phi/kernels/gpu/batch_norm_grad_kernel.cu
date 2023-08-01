@@ -651,14 +651,6 @@ void BatchNormGradRawKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #elif defined(PADDLE_WITH_MUSA)
-    mudnnTensorDescriptor_t data_desc_;
-    mudnnTensorDescriptor_t bn_param_desc_;
-    mudnnBatchNormMode_t mode_;
-
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::mudnnCreateTensorDescriptor(&data_desc_));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::mudnnCreateTensorDescriptor(&bn_param_desc_));
 #else
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;

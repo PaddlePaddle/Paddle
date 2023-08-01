@@ -597,14 +597,6 @@ void BatchNormKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #elif defined(PADDLE_WITH_MUSA)
-  mudnnTensorDescriptor_t data_desc_;
-  mudnnTensorDescriptor_t bn_param_desc_;
-  mudnnBatchNormMode_t mode_;
-
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnCreateTensorDescriptor(&data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnCreateTensorDescriptor(&bn_param_desc_));
 #else
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t bn_param_desc_;
@@ -1105,102 +1097,102 @@ void BatchNormKernel(const Context &ctx,
                   compute_inv_var_tensor.data<BatchNormParamType<T>>());
         }
       } else {
-//#if CUDNN_VERSION_MIN(7, 4, 1)
-//        size_t workspace_size = 0;
-//        size_t reserve_space_size = 0;
-//        void *reserve_space_ptr = nullptr;
-//        void *workspace_ptr = nullptr;
-//        DenseTensor workspace_tensor;
-//        DenseTensor reserve_space_tensor;
-//        // Create reserve space and workspace for batch norm.
-//        // Create tensor for each batchnorm op, it will be used in the
-//        // backward. Thus this tensor shouldn't be temp.
-//        // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
-//        if (reserve_space == nullptr) {
-//          reserve_space = &reserve_space_tensor;
-//        }
-//        PADDLE_ENFORCE_NOT_NULL(
-//            reserve_space,
-//            phi::errors::NotFound(
-//                "The argument ReserveSpace of batch_norm op is not found."));
-//        // --------------- cudnn batchnorm workspace ---------------
-//        PADDLE_ENFORCE_GPU_SUCCESS(
-//            phi::dynload::
-//                cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
-//                    /*handle=*/handle,
-//                    /*mode=*/mode_,
-//                    /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
-//                    /*xDesc=*/data_desc_,
-//                    /*zDesc=*/nullptr,
-//                    /*yDesc=*/data_desc_,
-//                    /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
-//                    /*activationDesc=*/nullptr,
-//                    /*sizeInBytes=*/&workspace_size));
-//
-//        // -------------- cudnn batchnorm reserve space --------------
-//        PADDLE_ENFORCE_GPU_SUCCESS(
-//            phi::dynload::cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
-//                /*handle=*/handle,
-//                /*mode=*/mode_,
-//                /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
-//                /*activationDesc=*/nullptr,
-//                /*xDesc=*/data_desc_,
-//                /*sizeInBytes=*/&reserve_space_size));
-//
-//        reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
-//        reserve_space_ptr =
-//            static_cast<void *>(ctx.template Alloc<uint8_t>(reserve_space));
-//        workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
-//        workspace_ptr =
-//            static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
-//        PADDLE_ENFORCE_GPU_SUCCESS(
-//            phi::dynload::cudnnBatchNormalizationForwardTrainingEx(
-//                handle,
-//                mode_,
-//                CUDNN_BATCHNORM_OPS_BN,
-//                CudnnDataType<T>::kOne(),
-//                CudnnDataType<T>::kZero(),
-//                data_desc_,
-//                transformed_x.template data<T>(),
-//                nullptr,
-//                nullptr,
-//                data_desc_,
-//                transformed_y.template data<T>(),
-//                bn_param_desc_,
-//                scale.template data<BatchNormParamType<T>>(),
-//                bias.template data<BatchNormParamType<T>>(),
-//                this_factor,
-//                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
-//                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
-//                epsilon,
-//                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
-//                ctx.template Alloc<BatchNormParamType<T>>(saved_variance),
-//                nullptr,
-//                workspace_ptr,
-//                workspace_size,
-//                reserve_space_ptr,
-//                reserve_space_size));
-//#else
-//        PADDLE_ENFORCE_GPU_SUCCESS(
-//            phi::dynload::cudnnBatchNormalizationForwardTraining(
-//                handle,
-//                mode_,
-//                CudnnDataType<T>::kOne(),
-//                CudnnDataType<T>::kZero(),
-//                data_desc_,
-//                transformed_x.template data<T>(),
-//                data_desc_,
-//                ctx.template Alloc<T>(&transformed_y),
-//                bn_param_desc_,
-//                scale.template data<BatchNormParamType<T>>(),
-//                bias.template data<BatchNormParamType<T>>(),
-//                this_factor,
-//                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
-//                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
-//                epsilon,
-//                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
-//                ctx.template Alloc<BatchNormParamType<T>>(saved_variance)));
-//#endif  // CUDNN_VERSION_MIN(7, 4, 1)
+#if CUDNN_VERSION_MIN(7, 4, 1)
+        size_t workspace_size = 0;
+        size_t reserve_space_size = 0;
+        void *reserve_space_ptr = nullptr;
+        void *workspace_ptr = nullptr;
+        DenseTensor workspace_tensor;
+        DenseTensor reserve_space_tensor;
+        // Create reserve space and workspace for batch norm.
+        // Create tensor for each batchnorm op, it will be used in the
+        // backward. Thus this tensor shouldn't be temp.
+        // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
+        if (reserve_space == nullptr) {
+          reserve_space = &reserve_space_tensor;
+        }
+        PADDLE_ENFORCE_NOT_NULL(
+            reserve_space,
+            phi::errors::NotFound(
+                "The argument ReserveSpace of batch_norm op is not found."));
+        // --------------- cudnn batchnorm workspace ---------------
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::
+                cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+                    /*handle=*/handle,
+                    /*mode=*/mode_,
+                    /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
+                    /*xDesc=*/data_desc_,
+                    /*zDesc=*/nullptr,
+                    /*yDesc=*/data_desc_,
+                    /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
+                    /*activationDesc=*/nullptr,
+                    /*sizeInBytes=*/&workspace_size));
+
+        // -------------- cudnn batchnorm reserve space --------------
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+                /*handle=*/handle,
+                /*mode=*/mode_,
+                /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
+                /*activationDesc=*/nullptr,
+                /*xDesc=*/data_desc_,
+                /*sizeInBytes=*/&reserve_space_size));
+
+        reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
+        reserve_space_ptr =
+            static_cast<void *>(ctx.template Alloc<uint8_t>(reserve_space));
+        workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
+        workspace_ptr =
+            static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::cudnnBatchNormalizationForwardTrainingEx(
+                handle,
+                mode_,
+                CUDNN_BATCHNORM_OPS_BN,
+                CudnnDataType<T>::kOne(),
+                CudnnDataType<T>::kZero(),
+                data_desc_,
+                transformed_x.template data<T>(),
+                nullptr,
+                nullptr,
+                data_desc_,
+                transformed_y.template data<T>(),
+                bn_param_desc_,
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                this_factor,
+                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
+                epsilon,
+                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+                ctx.template Alloc<BatchNormParamType<T>>(saved_variance),
+                nullptr,
+                workspace_ptr,
+                workspace_size,
+                reserve_space_ptr,
+                reserve_space_size));
+#else
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::cudnnBatchNormalizationForwardTraining(
+                handle,
+                mode_,
+                CudnnDataType<T>::kOne(),
+                CudnnDataType<T>::kZero(),
+                data_desc_,
+                transformed_x.template data<T>(),
+                data_desc_,
+                ctx.template Alloc<T>(&transformed_y),
+                bn_param_desc_,
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                this_factor,
+                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
+                epsilon,
+                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+                ctx.template Alloc<BatchNormParamType<T>>(saved_variance)));
+#endif  // CUDNN_VERSION_MIN(7, 4, 1)
       }
 #endif
     }
@@ -1252,28 +1244,28 @@ PD_REGISTER_KERNEL(batch_norm,
   kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
 }
 #else
-//#if CUDNN_VERSION_MIN(8, 1, 0)
-//PD_REGISTER_KERNEL(batch_norm,
-//                   GPU,
-//                   ALL_LAYOUT,
-//                   phi::BatchNormKernel,
-//                   float,
-//                   double,
-//                   phi::dtype::bfloat16,
-//                   phi::dtype::float16) {
-//  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
-//      kernel_key.dtype() == phi::DataType::BFLOAT16) {
-//    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
-//    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
-//    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
-//    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
-//    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-//    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
-//    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
-//    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
-//  }
-//}
-//#else // CUDA & MUSA
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(batch_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}
+#else // CUDA & MUSA
 PD_REGISTER_KERNEL(batch_norm,
                    GPU,
                    ALL_LAYOUT,
@@ -1292,6 +1284,6 @@ PD_REGISTER_KERNEL(batch_norm,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
-//#endif
+#endif
 
 #endif

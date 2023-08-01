@@ -472,6 +472,7 @@ __global__ void col2imOCF(const T* col_data,
 
         if (height_offset >= 0 && height_offset < im_height &&
             width_offset >= 0 && width_offset < im_width) {
+	  // TODO(@caizhi): compile CudaAtomicAdd
           //phi::CudaAtomicAdd(im_data + im_offset, col_data[col_offset]);
         }
       }
@@ -576,9 +577,9 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::float16>;
-//template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-//                             phi::GPUContext,
-//                             phi::dtype::bfloat16>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::GPUContext,
+                             phi::dtype::bfloat16>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;
@@ -588,9 +589,9 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::float16>;
-//template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-//                             phi::GPUContext,
-//                             phi::dtype::bfloat16>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::GPUContext,
+                             phi::dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

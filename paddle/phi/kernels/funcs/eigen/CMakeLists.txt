@@ -2,6 +2,7 @@ file(
   GLOB EIGEN_CC_SOURCES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "*.cc")
+# TODO(@caizhi): compile all cu files
 file(
   GLOB EIGEN_CU_SOURCES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

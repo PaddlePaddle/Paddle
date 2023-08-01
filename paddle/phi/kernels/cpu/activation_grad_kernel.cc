@@ -257,7 +257,7 @@ PD_REGISTER_KERNEL(
 
 #define PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                                         \
-      name, CPU, ALL_LAYOUT, phi::func, float, double) {}
+      name, CPU, ALL_LAYOUT, phi::func, float, double, phi::dtype::float16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)

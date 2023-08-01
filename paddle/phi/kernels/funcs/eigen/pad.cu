@@ -39,7 +39,7 @@ struct EigenPad<Eigen::GpuDevice, T, Rank> {
                    const InType& in,
                    const Array& padding,
                    const T value) {
-    //out.device(dev) = in.pad(padding, value);
+    out.device(dev) = in.pad(padding, value);
   }
 
   static void Eval32(const Eigen::GpuDevice& dev,
@@ -47,7 +47,7 @@ struct EigenPad<Eigen::GpuDevice, T, Rank> {
                      const InType32BitIndex& in,
                      const Array32Bit& padding,
                      const T value) {
-    //out.device(dev) = in.pad(padding, value);
+    out.device(dev) = in.pad(padding, value);
   }
 };
 

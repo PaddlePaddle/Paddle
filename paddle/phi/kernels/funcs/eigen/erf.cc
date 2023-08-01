@@ -28,7 +28,7 @@ struct EigenErf<Eigen::DefaultDevice, T> {
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    const InType& in) {
-    //out.device(dev) = in.erf();
+    out.device(dev) = in.erf();
   }
 };
 
@@ -42,8 +42,8 @@ struct EigenErfGrad<Eigen::DefaultDevice, T> {
                    OutType din,
                    const InType& in,
                    const InType& dout) {
-    //din.device(dev) =
-    //    dout * static_cast<T>(M_2_SQRTPI) * (-(in.square())).exp();
+    din.device(dev) =
+        dout * static_cast<T>(M_2_SQRTPI) * (-(in.square())).exp();
   }
 };
 

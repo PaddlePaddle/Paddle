@@ -27,6 +27,8 @@ namespace funcs {
       Instantiate_Template_Function_index_t(                                 \
           func, double) Instantiate_Template_Function_index_t(func, int64_t) \
           Instantiate_Template_Function_index_t(func, phi::dtype::float16)   \
+	      Instantiate_Template_Function_index_t(func,                    \
+                                                    phi::dtype::bfloat16)    \
                   Instantiate_Template_Function_index_t(func, unsigned char)
 
 #define Instantiate_Template_Function_index_t(func, tensor_t)          \

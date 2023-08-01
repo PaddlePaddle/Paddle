@@ -191,8 +191,8 @@ PD_REGISTER_KERNEL(exp,
                    float,
                    double,
                    int,
-                   int64_t) {}
-                   //phi::dtype::float16) {}
+                   int64_t,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(expm1,
                    CPU,
@@ -201,8 +201,8 @@ PD_REGISTER_KERNEL(expm1,
                    float,
                    double,
                    int,
-                   int64_t) {}
-                   //phi::dtype::float16) {}
+                   int64_t,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
@@ -220,9 +220,9 @@ PD_REGISTER_KERNEL(log,
                    float,
                    double,
                    int,
-                   int64_t) {}
-                   //phi::dtype::float16,
-                   //phi::dtype::bfloat16) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(log2,
                    CPU,
                    ALL_LAYOUT,
@@ -230,9 +230,9 @@ PD_REGISTER_KERNEL(log2,
                    float,
                    double,
                    int,
-                   int64_t) {}
-                   //phi::dtype::float16,
-                   //phi::dtype::bfloat16) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(log10,
                    CPU,
                    ALL_LAYOUT,
@@ -240,9 +240,9 @@ PD_REGISTER_KERNEL(log10,
                    float,
                    double,
                    int,
-                   int64_t) {}
-                   //phi::dtype::float16,
-                   //phi::dtype::bfloat16) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(log1p,
                    CPU,
                    ALL_LAYOUT,
@@ -250,9 +250,9 @@ PD_REGISTER_KERNEL(log1p,
                    float,
                    double,
                    int,
-                   int64_t) {}
-                   //phi::dtype::float16,
-                   //phi::dtype::bfloat16) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)

@@ -25,9 +25,9 @@ void CastGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
                     DenseTensor* x_grad) {
-  //PD_VISIT_ALL_TYPES(x.dtype(), "CastKernelImpl", ([&] {
-  //                     CastKernelImpl<T, data_t>(dev_ctx, out_grad, x_grad);
-  //                   }));
+  PD_VISIT_ALL_TYPES(x.dtype(), "CastKernelImpl", ([&] {
+                       CastKernelImpl<T, data_t>(dev_ctx, out_grad, x_grad);
+                     }));
 }
 
 }  // namespace phi
