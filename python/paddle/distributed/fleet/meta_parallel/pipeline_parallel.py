@@ -797,7 +797,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
             assert (
                 self._backward_step_count
                 == self.num_stages * self.num_model_chunks
-            ), f"backward step count should be equal to accumulate steps * virtual pp world size, but get {self._backward_step_count}, excepted result is {self.num_stages * self.num_model_chunks}"
+            ), (
+                "backward step count should be equal to accumulate steps * virtual pp world size,"
+                f" but get {self._backward_step_count}, excepted result is {self.num_stages * self.num_model_chunks}"
+            )
 
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
