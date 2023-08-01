@@ -88,7 +88,7 @@ def sparse_attention(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('This API is only used in CUDA11.3 and above.')
             >>> import paddle
 
             >>> paddle.disable_static()

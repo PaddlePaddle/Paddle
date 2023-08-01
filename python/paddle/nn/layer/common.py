@@ -1594,6 +1594,7 @@ class Embedding(Layer):
             ...                     [3., 3., 3.]], dtype="float32")
             >>> embedding.weight.set_value(w0)
             >>> print(embedding.weight)
+            Parameter containing:
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[0., 0., 0.],
             [1., 1., 1.],

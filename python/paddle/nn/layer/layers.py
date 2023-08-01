@@ -2058,7 +2058,6 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
                 >>> import paddle
                 >>> paddle.seed(2023)
                 >>> linear=paddle.nn.Linear(2, 2)
@@ -2085,6 +2084,7 @@ class Layer:
                 [[ 0.76424706,  1.21572542],
                 [ 0.02650531, -0.16404852]])
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
                 >>> linear.weight
                 print(linear.weight)
@@ -2347,6 +2347,7 @@ class Layer:
                 ...
                 >>> model = Model()
                 >>> model.float16()
+                >>> #UserWarning: Paddle compiled by the user does not support float16, so keep original data type.
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
@@ -2412,6 +2413,7 @@ class Layer:
                 ...
                 >>> model = Model()
                 >>> model.bfloat16()
+                >>> #UserWarning: Paddle compiled by the user does not support bfloat16, so keep original data type.
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
