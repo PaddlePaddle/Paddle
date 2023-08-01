@@ -21,6 +21,10 @@ import paddle
 from paddle.static import amp
 
 
+@unittest.skipIf(
+    paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0."
+)
 class TestStaticAmpPromoteStats(AmpTestBase):
     def check_promote_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls, debug_info
@@ -103,6 +107,10 @@ class TestStaticAmpPromoteStats(AmpTestBase):
         )
 
 
+@unittest.skipIf(
+    paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0."
+)
 class TestEagerAmpPromoteStats(AmpTestBase):
     def check_promote_results(
         self, dtype, level, use_promote, expected_op_calls, debug_info
@@ -172,6 +180,10 @@ class TestEagerAmpPromoteStats(AmpTestBase):
         )
 
 
+@unittest.skipIf(
+    paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0."
+)
 class TestEagerAmpPromoteSimple(AmpTestBase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(

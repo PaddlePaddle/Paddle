@@ -77,6 +77,10 @@ class Model(paddle.nn.Layer):
         return x
 
 
+@unittest.skipIf(
+    paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0."
+)
 class TestAMPDecorate(unittest.TestCase):
     def check_results(self, fp32_layers=[], fp16_layers=[]):
         for idx in range(len(fp32_layers)):
