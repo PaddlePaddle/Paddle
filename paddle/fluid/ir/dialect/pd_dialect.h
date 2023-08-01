@@ -16,7 +16,9 @@
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/parameter.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
 namespace dialect {
@@ -44,6 +46,53 @@ class PaddleDialect : public ir::Dialect {
 
  private:
   void initialize();
+};
+
+///
+/// \brief APIBuilder is used in IR API for building op
+///
+class APIBuilder {
+ public:
+  static APIBuilder& Instance() {
+    static APIBuilder api_builder;
+    return api_builder;
+  }
+  void SetProgram(ir::Program* program) {
+    builder_ = std::make_shared<ir::Builder>(ctx_, program->block());
+  }
+
+  /// Set the insertion point to the specified operation, which will cause
+  /// subsequent insertions to go right before it.
+  void SetInsertionPoint(ir::Operation* op) {
+    IR_ENFORCE(builder_ != nullptr,
+               "builder doesn't hold program, please call SetProgram for "
+               "initialization.");
+    builder_->SetInsertionPoint(op);
+  }
+
+  void ResetInsertionPointToStart() {
+    IR_ENFORCE(builder_ != nullptr,
+               "builder doesn't hold program, please call SetProgram for "
+               "initialization.");
+    builder_->SetInsertionPointToStart(builder_->block());
+  }
+
+  void ResetInsertionPointToEnd() {
+    IR_ENFORCE(builder_ != nullptr,
+               "builder doesn't hold program, please call SetProgram for "
+               "initialization.");
+    builder_->SetInsertionPointToEnd(builder_->block());
+  }
+
+  std::shared_ptr<ir::Builder> GetBuilder() { return builder_; }
+
+ private:
+  APIBuilder() : builder_(nullptr) {
+    ctx_ = ir::IrContext::Instance();
+    ctx_->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  }
+  ir::IrContext* ctx_;
+  std::shared_ptr<ir::Builder> builder_;
 };
 
 }  // namespace dialect

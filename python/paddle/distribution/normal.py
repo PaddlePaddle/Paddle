@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
+from paddle.fluid.framework import Variable
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -91,13 +91,13 @@ class Normal(distribution.Distribution):
             check_type(
                 loc,
                 'loc',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
             check_type(
                 scale,
                 'scale',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
 
@@ -174,9 +174,9 @@ class Normal(distribution.Distribution):
         name = self.name + '_sample'
         if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
 
             zero_tmp_shape = paddle.shape(zero_tmp_reshape)
@@ -234,9 +234,10 @@ class Normal(distribution.Distribution):
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
         if -1 in batch_shape:
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape)
+            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+            fill_dtype = (self.loc + self.scale).dtype
+            zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
         else:
             zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
         return paddle.add(

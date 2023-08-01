@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
+from paddle.fluid.framework import Variable
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -64,6 +64,7 @@ class Uniform(distribution.Distribution):
 
             >>> import paddle
             >>> from paddle.distribution import Uniform
+            >>> paddle.seed(2023)
 
             >>> # Without broadcasting, a single uniform distribution [3, 4]:
             >>> u1 = Uniform(low=3.0, high=4.0)
@@ -84,11 +85,19 @@ class Uniform(distribution.Distribution):
             >>> sample = uniform.sample([2])
             >>> # a random tensor created by uniform distribution with shape: [2, 1]
             >>> entropy = uniform.entropy()
-            >>> # [0.6931472] with shape: [1]
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.69314718])
+
             >>> lp = uniform.log_prob(value_tensor)
-            >>> # [-0.6931472] with shape: [1]
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-0.69314718])
+
             >>> p = uniform.probs(value_tensor)
-            >>> # [0.5] with shape: [1]
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.50000000])
     """
 
     def __init__(self, low, high, name=None):
@@ -96,13 +105,13 @@ class Uniform(distribution.Distribution):
             check_type(
                 low,
                 'low',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
             check_type(
                 high,
                 'high',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
 
@@ -160,9 +169,9 @@ class Uniform(distribution.Distribution):
         batch_shape = list((self.low + self.high).shape)
         if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.low + self.high, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = paddle.shape(self.low + self.high)[0].item()
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
