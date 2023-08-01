@@ -64,7 +64,6 @@ NewIRInterpreter::NewIRInterpreter(
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
-  // ir_prog->Print(std::cout);
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
@@ -134,27 +133,8 @@ void NewIRInterpreter::RunImpl() {
   }
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
-
-  //   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn)
-  //   &&
-  //       (sync_op_num_ == 0)) {
   VLOG(4) << "Tracing Instruction List";
-
   TraceInstructionList(vec_instruction_);
-
-  //   } else {
-  //     VLOG(4) << "Non-tracing";
-  //     // For the program that only run once, it is no need to
-  //     // create work_queue, so the async_work_queue_ is created
-  //     // until the second step run.
-  //     async_work_queue_ = GetWorkQueue();
-  //     ExecuteInstructionList(vec_instruction_);
-  //   }
-  // #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  //   if (platform::is_custom_place(place_)) {
-  //     platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  //   }
-  // #endif
 }
 
 FetchList NewIRInterpreter::Run(
@@ -199,7 +179,7 @@ FetchList NewIRInterpreter::Run(
 FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                 bool need_fetch) {
   if (FLAGS_enable_new_ir_in_executor_beta_run) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun.";
+    LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode.";
     return BetaRun(feed_names, need_fetch);
   }
 
@@ -211,7 +191,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 #endif
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in OldRun mode.";
     std::stringstream ss;
     ss << this;
     ::ir::BuildScope(*ir_program_->block(),
@@ -743,69 +723,6 @@ void NewIRInterpreter::Convert(
     }
   }
 
-  // calculate last_live_ops_
-  //   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
-  //     Instruction& instr = vec_instruction_[op_idx];
-  //     OpInOutInfo info;
-  //     info.Build(instr.OpBase());
-
-  //     std::set<size_t> gc_check_vars;
-
-  //     const std::map<std::string, std::vector<int>>& ins = instr.Inputs();
-  //     const std::map<std::string, std::vector<int>>& outs = instr.Outputs();
-  //     std::multimap<std::string, std::vector<int>> ins_and_outs{ins.begin(),
-  //                                                               ins.end()};
-  //     ins_and_outs.insert(outs.begin(), outs.end());
-
-  //     for (auto& item : ins_and_outs) {
-  //       for (auto id : item.second) {
-  //         if (id == kEmptyVarIndex) {
-  //           continue;
-  //         }
-  //         auto* var_desc = var_scope_.VarDesc(id);
-  //         // skip no_need_buffer input vars
-  //         if (var_desc && ins.count(item.first) &&
-  //             !info.IsInArgBufferNeeded(var_desc->Name())) {
-  //           continue;
-  //         }
-  //         // skip when this var is not in block and not a data_transferred
-  //         var,
-  //         // which means this var is managed by other block
-  //         const auto& var_name = var_scope_.GetNameById(id);
-  //         bool not_owned = !block_.HasVar(var_name);
-  //         const auto& transferred_vars = var_scope_.DataTransferAddedVars();
-  //         bool not_transferred =
-  //             std::all_of(transferred_vars.begin(),
-  //                         transferred_vars.end(),
-  //                         [&](const std::pair<std::string, int>& elem) {
-  //                           return elem.first != var_name;
-  //                         });
-  //         if (not_owned && not_transferred) {
-  //           VLOG(10) << "[gc_check_inputs] skip gc: " << var_name;
-  //           continue;
-  //         }
-  //         gc_check_vars.insert(id);
-  //       }
-  //     }
-
-  //     for (auto var_id : gc_check_vars) {
-  //       Scope* inner_scope =
-  //           HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
-  //       paddle::framework::Variable* var =
-  //           inner_scope->FindVar(var_scope_.GetNameById(var_id));
-  //       if (var->IsType<phi::DenseTensor>() ||
-  //       var->IsType<phi::SelectedRows>() ||
-  //           var->IsType<LoDTensorArray>()) {
-  //         last_live_ops_[var_id].insert(op_idx);
-  //       } else {
-  //         VLOG(4) << "not clear " << var_scope_.GetNameById(var_id) << "
-  //         after "
-  //                 << instr.OpBase()->Type() << " because its type is "
-  //                 << framework::ToTypeName(var->Type());
-  //       }
-  //     }
-  //   }
-
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
     int var_id = var_scope_.GetIdByName(skip_gc_var);
@@ -846,23 +763,6 @@ void NewIRInterpreter::Convert(
     last_live_ops_[i] = minumum_last_live_ops;
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
-
-  //   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-  //     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
-  //   }
-
-  // bool inplaced = false;
-  // for (const Instruction& inst : vec_instruction_) {
-  //   if (inst.OpBase()->Type() == "share_buffer" ||
-  //       inst.OpBase()->Type() == "share_data") {
-  //     VLOG(4) << "Already inplaced, skip inplace now.";
-  //     inplaced = true;
-  //   }
-  // }
-
-  //   if (FLAGS_new_executor_use_inplace && !inplaced) {
-  //     BuildInplace();
-  //   }
 
   for (auto& dep : dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
@@ -1412,32 +1312,6 @@ void NewIRInterpreter::Prepare(
       feed_tensor->set_lod(feed_tensors[i].lod());
     }
   };
-  // TODO(dev): Support this
-  //   if (!is_build_) {
-  //     paddle::framework::interpreter::BuildVariableScope(
-  //         block_, execution_config_, &var_scope_);
-  //     FeedInput();
-  //     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-  //     paddle::framework::interpreter::BuildOpFuncList(
-  //         place_,
-  //         block_,
-  //         execution_config_.skip_gc_vars,
-  //         &op_func_nodes,
-  //         &var_scope_,
-  //         execution_config_,
-  //         HasLocalScope(),
-  //         static_build_);
-  //     SetFeedVarsInplaceSkip(feed_names);
-  //     // convert vec func_list to graph
-  //     Convert(&op_func_nodes);
-  //     UpdateSyncOpNum();
-  //     if (static_build_) {
-  //       VLOG(4) << "RUN impl";
-  //       RunImpl();
-  //     }
-  //     BuildSkipShareLoDInfo();
-  //     is_build_ = true;
-  //   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
   // call FeedInput again.
@@ -1557,7 +1431,6 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
     InstructionSchedulingPriorityLess compare) {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
-  VLOG(4) << "1";
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
             << ", remain deps: " << deps_[next_id]->DynamicDep();
@@ -1595,13 +1468,15 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
 
   trace_execute_order_ = trace_order;
 
-  std::stringstream ss;
-  ss << "trace order: ";
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    ss << trace_execute_order_[idx] << " -> ";
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ss << "trace order: ";
+    for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+      ss << trace_execute_order_[idx] << " -> ";
+    }
+    ss << "end\n";
+    VLOG(6) << ss.str();
   }
-  ss << "end\n";
-  VLOG(6) << ss.str();
 }
 
 /// ======================== ///
@@ -1928,7 +1803,6 @@ void NewIRInterpreter::CalculateLastLiveOps() {
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
     }
   }
-  VLOG(4) << "calculate last_live_ops_";
 
   // shrink, find the downstream op that has no other op in the
   // downstream list happens before it
@@ -1947,9 +1821,6 @@ void NewIRInterpreter::CalculateLastLiveOps() {
   VLOG(4) << "var_ref_count_.size() : " << var_ref_count_.size();
   for (size_t i = 0; i < last_live_ops_.size(); ++i) {
     std::set<size_t> minumum_last_live_ops;
-    for (auto val : last_live_ops_[i]) {
-      VLOG(4) << "last_live_ops_: " << val;
-    }
     for (size_t item : last_live_ops_[i]) {
       bool not_before_any = true;
       // find the op that is not executed before any
@@ -1971,7 +1842,6 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     last_live_ops_[i] = minumum_last_live_ops;
     var_ref_count_[i] = last_live_ops_[i].size();
   }
-  VLOG(4) << "calculate last_live_ops_ 2";
 
   for (auto& dep : dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
@@ -1980,7 +1850,6 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
         var_ref_count_[i], variable_list_[i]));
   }
-  VLOG(4) << "calculate last_live_ops_ 3";
 }
 
 void NewIRInterpreter::ConstructEventForJitInput() {
@@ -2039,10 +1908,12 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
 
     // Run
     if (FLAGS_enable_new_ir_in_executor_loop_run) {
-      LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun LoopRun.";
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with for_loop version.";
       LoopRunImpl();
     } else {
-      LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun TraceRun.";
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with trace version.";
       TraceRunImpl();
     }
     is_build_ = true;
