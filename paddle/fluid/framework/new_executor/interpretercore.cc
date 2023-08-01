@@ -27,6 +27,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_static_build,
     false,
     "Build the interpreterCore statically without running kernels.");
+PADDLE_DEFINE_EXPORTED_bool(new_executor_static_build_debug,
+                            true,
+                            "Build the interpreterCore statically debug.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");

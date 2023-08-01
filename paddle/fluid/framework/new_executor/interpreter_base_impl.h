@@ -40,6 +40,7 @@
 
 DECLARE_bool(new_executor_serial_run);
 DECLARE_bool(new_executor_static_build);
+DECLARE_bool(new_executor_static_build_debug);
 DECLARE_bool(new_executor_use_inplace);
 DECLARE_bool(new_executor_use_local_scope);
 

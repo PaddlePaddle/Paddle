@@ -45,10 +45,24 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
       var_scope_(scope) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op &&
-                  interpreter::BlockCanBeStaticBuilt(block);
+  std::string debug_str;
+  bool block_can_be_static_build =
+      interpreter::BlockCanBeStaticBuilt(block, debug_str);
+  static_build_ =
+      FLAGS_new_executor_static_build && !FLAGS_new_executor_use_cuda_graph &&
+      !execution_config.used_for_control_flow_op && block_can_be_static_build;
+  VLOG(1) << "BlockCanBeStaticBuilt log: " << debug_str;
+  if (FLAGS_new_executor_static_build_debug) {
+    if (!static_build_) {
+      VLOG(1) << "static_build_ is false, force set be true"
+              << ", FLAGS_new_executor_static_build "
+              << FLAGS_new_executor_static_build
+              << ", used_for_control_flow_op "
+              << execution_config.used_for_control_flow_op
+              << ", block_can_be_static_build " << block_can_be_static_build;
+    }
+    static_build_ = true;
+  }
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
