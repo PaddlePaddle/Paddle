@@ -377,15 +377,15 @@ class Layer:
             >>> print(out)
             Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[-3.44879317],
-            [ 0.        ],
-            [ 0.        ],
-            [-0.73825276],
-            [ 0.        ],
-            [ 0.        ],
-            [ 0.64444798],
-            [-3.22185946],
-            [ 0.        ],
-            [-0.68077987]])
+             [ 0.        ],
+             [ 0.        ],
+             [-0.73825276],
+             [ 0.        ],
+             [ 0.        ],
+             [ 0.64444798],
+             [-3.22185946],
+             [ 0.        ],
+             [-0.68077987]])
     """
 
     def __init__(self, name_scope=None, dtype="float32"):
@@ -454,15 +454,15 @@ class Layer:
                 >>> print(out)
                 Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[-3.44879317],
-                [ 0.        ],
-                [ 0.        ],
-                [-0.73825276],
-                [ 0.        ],
-                [ 0.        ],
-                [ 0.64444798],
-                [-3.22185946],
-                [ 0.        ],
-                [-0.68077987]])
+                 [ 0.        ],
+                 [ 0.        ],
+                 [-0.73825276],
+                 [ 0.        ],
+                 [ 0.        ],
+                 [ 0.64444798],
+                 [-3.22185946],
+                 [ 0.        ],
+                 [-0.68077987]])
 
         """
         # global setting in dygraph
@@ -506,15 +506,15 @@ class Layer:
                 >>> print(out)
                 Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[-1.72439659],
-                [ 0.31532824],
-                [ 0.01192369],
-                [-0.36912638],
-                [-1.63426113],
-                [-0.93169814],
-                [ 0.32222399],
-                [-1.61092973],
-                [ 0.77209264],
-                [-0.34038994]])
+                 [ 0.31532824],
+                 [ 0.01192369],
+                 [-0.36912638],
+                 [-1.63426113],
+                 [-0.93169814],
+                 [ 0.32222399],
+                 [-1.61092973],
+                 [ 0.77209264],
+                 [-0.34038994]])
 
         """
         # global setting in dygraph
@@ -559,22 +559,22 @@ class Layer:
 
                 >>> print(net.state_dict())
                 before init weight: [[ 0.89611185  0.04935038]
-                [-0.5888344   0.99266374]]
+                                     [-0.5888344   0.99266374]]
                 after init weight: [[0.9 0.9]
-                [0.9 0.9]]
+                                    [0.9 0.9]]
                 before init weight: [[-0.18615901 -0.22924072]
-                [ 1.1517721   0.59859073]]
+                                     [ 1.1517721   0.59859073]]
                 after init weight: [[0.9 0.9]
-                [0.9 0.9]]
+                                    [0.9 0.9]]
                 OrderedDict([('0.weight', Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[0.89999998, 0.89999998],
-                [0.89999998, 0.89999998]])), ('0.bias', Parameter containing:
+                 [0.89999998, 0.89999998]])), ('0.bias', Parameter containing:
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [0., 0.])), ('1.weight', Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[0.89999998, 0.89999998],
-                [0.89999998, 0.89999998]])), ('1.bias', Parameter containing:
+                 [0.89999998, 0.89999998]])), ('1.bias', Parameter containing:
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [0., 0.]))])
         """
@@ -1032,15 +1032,15 @@ class Layer:
                 0.weight Parameter containing:
                 Tensor(shape=[10, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[ 0.07276392, -0.39791510, -0.66356444],
-                [ 0.02143478, -0.18519843, -0.32485050],
-                [-0.42249614,  0.08450919, -0.66838276],
-                [ 0.38208580, -0.24303678,  0.55127048],
-                [ 0.47745085,  0.62117910, -0.08336520],
-                [-0.28653207,  0.47237599, -0.05868882],
-                [-0.14385653,  0.29945642,  0.12832761],
-                [-0.21237159,  0.38539791, -0.62760031],
-                [ 0.02637231,  0.20621127,  0.43255770],
-                [-0.19984481, -0.26259184, -0.29696006]])
+                 [ 0.02143478, -0.18519843, -0.32485050],
+                 [-0.42249614,  0.08450919, -0.66838276],
+                 [ 0.38208580, -0.24303678,  0.55127048],
+                 [ 0.47745085,  0.62117910, -0.08336520],
+                 [-0.28653207,  0.47237599, -0.05868882],
+                 [-0.14385653,  0.29945642,  0.12832761],
+                 [-0.21237159,  0.38539791, -0.62760031],
+                 [ 0.02637231,  0.20621127,  0.43255770],
+                 [-0.19984481, -0.26259184, -0.29696006]])
                 0.bias Parameter containing:
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [0., 0., 0.])
@@ -1048,9 +1048,9 @@ class Layer:
                 Tensor(shape=[3, 10], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[ 0.01985580, -0.40268910,  0.41172385, -0.47249708, -0.09002256,
                 -0.00533628, -0.52048630,  0.62360322,  0.20848787, -0.02033746],
-                [ 0.58281910,  0.12841827,  0.12907702,  0.02325618, -0.07746267,
+                 [ 0.58281910,  0.12841827,  0.12907702,  0.02325618, -0.07746267,
                 0.31950659, -0.37924835, -0.59209681, -0.11732036, -0.58378261],
-                [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
+                 [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
                 0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
         params_set = set()
@@ -2066,7 +2066,7 @@ class Layer:
                 Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
                 [[ 0.76424706,  1.21572542],
-                [ 0.02650531, -0.16404852]])
+                 [ 0.02650531, -0.16404852]])
 
                 >>> linear.to(dtype='float64')
                 >>> linear.weight
@@ -2074,7 +2074,7 @@ class Layer:
                 Parameter containing:
                 Tensor(shape=[2, 2], dtype=float64, place=Place(gpu:0), stop_gradient=False,
                 [[ 0.76424706,  1.21572542],
-                [ 0.02650531, -0.16404852]])
+                 [ 0.02650531, -0.16404852]])
 
                 >>> linear.to(device='cpu')
                 >>> linear.weight
@@ -2082,7 +2082,7 @@ class Layer:
                 Parameter containing:
                 Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=False,
                 [[ 0.76424706,  1.21572542],
-                [ 0.02650531, -0.16404852]])
+                 [ 0.02650531, -0.16404852]])
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
@@ -2090,7 +2090,7 @@ class Layer:
                 print(linear.weight)
                 Tensor(shape=[2, 2], dtype=float64, place=Place(gpu_pinned), stop_gradient=False,
                 [[ 0.76424706,  1.21572542],
-                [ 0.02650531, -0.16404852]])
+                 [ 0.02650531, -0.16404852]])
 
         '''
         return self._to_impl(
