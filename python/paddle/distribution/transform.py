@@ -845,7 +845,7 @@ class ReshapeTransform(Transform):
             >>> x = paddle.ones((1,2,3))
             >>> reshape_transform = paddle.distribution.ReshapeTransform((2, 3), (3, 2))
             >>> print(reshape_transform.forward_shape((1,2,3)))
-            (5, 2, 6)
+            (1, 3, 2)
             >>> print(reshape_transform.forward(x))
             Tensor(shape=[1, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[[1., 1.],

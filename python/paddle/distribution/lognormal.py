@@ -72,13 +72,21 @@ class LogNormal(TransformedDistribution):
             >>> sample = lognormal_a.sample((2, ))
             >>> # a random tensor created by lognormal distribution with shape: [2, 1]
             >>> entropy = lognormal_a.entropy()
-            >>> # [1.4189385] with shape: [1]
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1.41893852])
             >>> lp = lognormal_a.log_prob(value_tensor)
-            >>> # [-0.72069150] with shape: [1]
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-0.72069150])
             >>> p = lognormal_a.probs(value_tensor)
-            >>> # [0.48641577] with shape: [1]
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.48641577])
             >>> kl = lognormal_a.kl_divergence(lognormal_b)
-            >>> # [0.34939718] with shape: [1]
+            >>> print(kl)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.34939718])
     """
 
     def __init__(self, loc, scale):

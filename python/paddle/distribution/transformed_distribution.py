@@ -30,6 +30,7 @@ class TransformedDistribution(distribution.Distribution):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
             >>> from paddle.distribution import transformed_distribution
 
             >>> d = transformed_distribution.TransformedDistribution(

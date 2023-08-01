@@ -77,13 +77,21 @@ class Normal(distribution.Distribution):
             >>> sample = normal_a.sample([2])
             >>> # a random tensor created by normal distribution with shape: [2, 1]
             >>> entropy = normal_a.entropy()
-            >>> # [1.4189385] with shape: [1]
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1.41893852])
             >>> lp = normal_a.log_prob(value_tensor)
-            >>> # [-1.2389386] with shape: [1]
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-1.23893857])
             >>> p = normal_a.probs(value_tensor)
-            >>> # [0.28969154] with shape: [1]
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.28969154])
             >>> kl = normal_a.kl_divergence(normal_b)
-            >>> # [0.34939718] with shape: [1]
+            >>> print(kl)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.34939718])
     """
 
     def __init__(self, loc, scale, name=None):
