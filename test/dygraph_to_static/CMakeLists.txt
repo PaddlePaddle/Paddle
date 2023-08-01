@@ -54,11 +54,21 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   list(FIND TEST_EAGER_OPS ${TEST_OP} WAS_FOUND)
   if(NOT WAS_FOUND EQUAL -1)
-    py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${DY2ST_EAGER_TEST_ENVS}
-                    FLAGS_enable_new_ir_in_executor=true)
+    if(DEFINED ENV{FLAGS_NEW_IR_DY2ST_TEST})
+      py_test_modules(
+        ${TEST_OP} MODULES ${TEST_OP} ENVS ${DY2ST_EAGER_TEST_ENVS}
+        FLAGS_enable_new_ir_in_executor=true)
+    else()
+      py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS
+                      ${DY2ST_EAGER_TEST_ENVS})
+    endif()
   else()
-    py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS}
-                    FLAGS_enable_new_ir_in_executor=true)
+    if(DEFINED ENV{FLAGS_NEW_IR_DY2ST_TEST})
+      py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS}
+                      FLAGS_enable_new_ir_in_executor=true)
+    else()
+      py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
+    endif()
   endif()
 endforeach()
 
