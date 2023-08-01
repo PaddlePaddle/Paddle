@@ -225,17 +225,17 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                 feed={"x": self.x_1_np},
                 fetch_list=out_1,
                 use_prune=True,
-            )
+            )[0]
 
             res_2 = exe.run(
                 fluid.default_main_program(),
                 feed={"x2": self.x_2_np},
                 fetch_list=out_2,
                 use_prune=True,
-            )
+            )[0]
 
-            assert np.allclose(res_1, self.out_1_np)
-            assert np.allclose(res_2, self.out_2_np)
+            np.testing.assert_allclose(res_1, self.out_1_np)
+            np.testing.assert_allclose(res_2, self.out_2_np)
 
     # same test between layer and functional in this op.
     def test_static_graph_layer(self):
@@ -267,17 +267,17 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                 feed={"x": self.x_1_np},
                 fetch_list=out_1,
                 use_prune=True,
-            )
+            )[0]
 
             res_2 = exe.run(
                 fluid.default_main_program(),
                 feed={"x2": self.x_2_np},
                 fetch_list=out_2,
                 use_prune=True,
-            )
+            )[0]
 
-            assert np.allclose(res_1, out_1_np)
-            assert np.allclose(res_2, out_2_np)
+            np.testing.assert_allclose(res_1, out_1_np)
+            np.testing.assert_allclose(res_2, out_2_np)
 
     def run_dygraph(self, down_factor, data_format):
         '''run_dygraph'''
