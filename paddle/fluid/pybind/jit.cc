@@ -44,7 +44,71 @@ namespace paddle {
 namespace pybind {
 
 #if PY_VERSION_HEX >= 0x030b0000
+// To avoid the error: undefined symbol: _PyFrame_GetFrameObject, all we need is
+// to redefine this function based source code in python3.11. The advantage is
+// that we don't need any modification in eval_frame functions.
 typedef _PyInterpreterFrame FrameObject;
+#define CALL_STAT_INC(name) ((void)0)
+PyFrameObject *Paddle_PyFrame_New_NoTrack(PyCodeObject *code) {
+  CALL_STAT_INC(frame_objects_created);
+  int slots = code->co_nlocalsplus + code->co_stacksize;
+  PyFrameObject *f = PyObject_GC_NewVar(PyFrameObject, &PyFrame_Type, slots);
+  if (f == NULL) {
+    return NULL;
+  }
+  f->f_back = NULL;
+  f->f_trace = NULL;
+  f->f_trace_lines = 1;
+  f->f_trace_opcodes = 0;
+  f->f_fast_as_locals = 0;
+  f->f_lineno = 0;
+  return f;
+}
+
+static inline bool Paddle_PyFrame_IsIncomplete(_PyInterpreterFrame *frame) {
+  return frame->owner != FRAME_OWNED_BY_GENERATOR &&
+         frame->prev_instr <
+             _PyCode_CODE(frame->f_code) + frame->f_code->_co_firsttraceable;
+}
+
+PyFrameObject *Paddle_PyFrame_MakeAndSetFrameObject(
+    _PyInterpreterFrame *frame) {
+  assert(frame->frame_obj == NULL);
+  PyObject *error_type, *error_value, *error_traceback;
+  PyErr_Fetch(&error_type, &error_value, &error_traceback);
+
+  PyFrameObject *f = Paddle_PyFrame_New_NoTrack(frame->f_code);
+  if (f == NULL) {
+    Py_XDECREF(error_type);
+    Py_XDECREF(error_value);
+    Py_XDECREF(error_traceback);
+    return NULL;  // NOLINT
+  }
+  PyErr_Restore(error_type, error_value, error_traceback);
+  if (frame->frame_obj) {
+    f->f_frame = (_PyInterpreterFrame *)f->_f_frame_data;  // NOLINT
+    f->f_frame->owner = FRAME_CLEARED;
+    f->f_frame->frame_obj = f;
+    Py_DECREF(f);
+    return frame->frame_obj;
+  }
+  assert(frame->owner != FRAME_OWNED_BY_FRAME_OBJECT);
+  assert(frame->owner != FRAME_CLEARED);
+  f->f_frame = frame;
+  frame->frame_obj = f;
+  return f;
+}
+
+static inline PyFrameObject *Paddle_PyFrame_GetFrameObject(
+    _PyInterpreterFrame *frame) {
+  assert(!Paddle_PyFrame_IsIncomplete(frame));
+  PyFrameObject *res = frame->frame_obj;
+  if (res != NULL) {
+    return res;
+  }
+  return Paddle_PyFrame_MakeAndSetFrameObject(frame);
+}
+
 #else
 typedef PyFrameObject FrameObject;
 #endif
@@ -139,7 +203,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 // https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
 // https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
 #if PY_VERSION_HEX >= 0x030b0000
-  if (PyFrame_FastToLocalsWithError(frame->frame_obj) < 0) {
+  // _PyFrame_GetFrameObject(frame) # this function should be the right answer,
+  // but nm libpython.so | grep _PyFrame_MakeAndSetFrameObject is a `t' symbol,
+  // which means it's local to library. we will get a link error if we use it.
+  if (PyFrame_FastToLocalsWithError(Paddle_PyFrame_GetFrameObject(frame)) < 0) {
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
@@ -165,11 +232,18 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // in the shim.
   eval_frame_callback_set(Py_None);
 
+#if PY_VERSION_HEX >= 0x030b0000
+  PyObject *args = Py_BuildValue("(O)", Paddle_PyFrame_GetFrameObject(frame));
+#else
   PyObject *args = Py_BuildValue("(O)", frame);
+#endif
   PyObject *result = PyObject_CallObject(callback, args);
+  Py_DECREF(args);
+  VLOG(7) << "After call eval_frame_function and decrease frame.";
   // result: GuardedCode
   if (result == NULL) {
     // internal exception
+    VLOG(7) << "Error happened.";
     return NULL;
   } else if (result != Py_None) {
     //  NOTE: Cache is not supported now
@@ -186,6 +260,8 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
       auto out = eval_custom_code(tstate, frame, code, throw_flag);
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
+      Py_DECREF(result);
+      Py_DECREF(code);
       return out;
     }
   } else {
