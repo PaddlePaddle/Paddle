@@ -52,7 +52,8 @@
 	ignore = dirty
 [submodule "third_party/eigen3"]
 	path = third_party/eigen3
-	url = https://gitlab.com/libeigen/eigen.git
+	url = https://gitlab.com/paipinuo233/eigen.git
+	branch = support_musa
 	ignore = dirty
 [submodule "third_party/snappy"]
 	path = third_party/snappy

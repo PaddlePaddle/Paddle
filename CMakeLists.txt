@@ -91,7 +91,7 @@ if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
 if(WITH_GPU AND WITH_MUSA)
-	message(FATAL_ERROR "Error when compile CUDA and MUSA at the same time")
+  message(FATAL_ERROR "Error when compile CUDA and MUSA at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
