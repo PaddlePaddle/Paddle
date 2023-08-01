@@ -54,21 +54,10 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   list(FIND TEST_EAGER_OPS ${TEST_OP} WAS_FOUND)
   if(NOT WAS_FOUND EQUAL -1)
-    if(DEFINED ENV{FLAGS_NEW_IR_DY2ST_TEST})
-      py_test_modules(
-        ${TEST_OP} MODULES ${TEST_OP} ENVS ${DY2ST_EAGER_TEST_ENVS}
-        FLAGS_enable_new_ir_in_executor=true)
-    else()
-      py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS
-                      ${DY2ST_EAGER_TEST_ENVS})
-    endif()
+    py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS
+                    ${DY2ST_EAGER_TEST_ENVS})
   else()
-    if(DEFINED ENV{FLAGS_NEW_IR_DY2ST_TEST})
-      py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS}
-                      FLAGS_enable_new_ir_in_executor=true)
-    else()
-      py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
-    endif()
+    py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
   endif()
 endforeach()
 
@@ -112,3 +101,13 @@ if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
 endif()
+
+foreach(TEST_OP ${TEST_OPS})
+  if($ENV{FLAGS_NEW_IR_DY2ST_TEST})
+    set_tests_properties(
+      ${TEST_OP} PROPERTIES ENVIRONMENT
+                               "FLAGS_enable_new_ir_in_executor=True")
+  else()
+    message(STATUS "NewIR Test: not set FLAGS_enable_new_ir_in_executor for ${TEST_OP}")
+  endif()
+endforeach()

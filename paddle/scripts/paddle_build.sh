@@ -3962,7 +3962,8 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_DY2ST_TEST=True
+        export FLAGS_NEW_IR_DY2ST_TEST=true
+        echo 'export FLAGS_NEW_IR_DY2ST_TEST=true'
         parallel_test
         check_coverage
         ;;
