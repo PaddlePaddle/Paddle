@@ -77,7 +77,7 @@ class IR_API Pass {
 
   virtual ~Pass();
 
-  std::string name() const { return pass_info().name; }
+  const std::string& name() const { return pass_info().name; }
 
   const detail::PassInfo& pass_info() const { return pass_info_; }
 
