@@ -378,7 +378,6 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
             'groups': 2,
             'data_layout': self.data_format,
         }
-        self.init_test_case()
 
         input = np.random.random(self.shape).astype(np.float32)
         scale = np.random.random([self.shape[3]]).astype(np.float32)
@@ -403,13 +402,6 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         rtol = 1e-2
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, rtol=rtol)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
-
-    def init_test_case(self):
-        pass
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
