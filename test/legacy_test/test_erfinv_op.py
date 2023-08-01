@@ -155,8 +155,6 @@ class TestErfinvBF16Op(OpTest):
             place,
             ['X'],
             'Out',
-            user_defined_grads=[self.gradient],
-            user_defined_grad_outputs=self.grad_out,
         )
 
 
