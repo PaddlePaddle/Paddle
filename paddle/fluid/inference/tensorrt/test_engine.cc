@@ -48,7 +48,10 @@ class TensorRTEngineTest : public ::testing::Test {
             .get());
     ctx_->PartialInitWithAllocator();
 
-    engine_ = new TensorRTEngine(10, 1 << 10);
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = 10;
+    params.max_workspace_size = 1 << 10;
+    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
     engine_->InitNetwork();
   }
 

@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 #endif
@@ -65,21 +66,19 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
         {"shape", {18, 8, 4}}};
     std::map<std::string, std::vector<int>> optim_input_value = {
         {"shape", {18, 8, 4}}};
-    engine_ = new TensorRTEngine(16,
-                                 1 << 10,
-                                 phi::DataType::FLOAT32,
-                                 nullptr,
-                                 0,
-                                 true,
-                                 min_input_shape,
-                                 max_input_shape,
-                                 optim_input_shape,
-                                 min_input_value,
-                                 max_input_value,
-                                 optim_input_value,
-                                 false,
-                                 phi::DataType::FLOAT32,
-                                 NaiveLogger::Global());
+
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = 16;
+    params.max_workspace_size = 1 << 10;
+    params.min_input_shape = min_input_shape;
+    params.max_input_shape = max_input_shape;
+    params.optim_input_shape = optim_input_shape;
+    params.min_shape_tensor = min_input_value;
+    params.max_shape_tensor = max_input_value;
+    params.optim_shape_tensor = optim_input_value;
+
+    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
+
     engine_->InitNetwork();
   }
 
@@ -192,21 +191,17 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
     std::map<std::string, std::vector<int>> optim_input_shape = {
         {"input", {16, 32, 1, 1}}};
 
-    engine_ = new TensorRTEngine(16,
-                                 1 << 10,
-                                 phi::DataType::FLOAT16,
-                                 nullptr,
-                                 0,
-                                 true,
-                                 min_input_shape,
-                                 max_input_shape,
-                                 optim_input_shape,
-                                 std::map<std::string, std::vector<int>>(),
-                                 std::map<std::string, std::vector<int>>(),
-                                 std::map<std::string, std::vector<int>>(),
-                                 false,
-                                 phi::DataType::FLOAT32,
-                                 NaiveLogger::Global());
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = 16;
+    params.max_workspace_size = 1 << 10;
+    params.with_dynamic_shape = true;
+    params.precision = phi::Datatype::FLOAT16;
+    params.min_input_shape = min_input_shape;
+    params.max_input_shape = max_input_shape;
+    params.optim_input_shape = optim_input_shape;
+
+    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
+
     engine_->InitNetwork();
   }
 
@@ -370,21 +365,17 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
         {"mask", {4, 1, 4, 4}},
         {"new_mask", {4, 1, 2, 2}}};
 
-    engine_ = new TensorRTEngine(16,
-                                 1 << 10,
-                                 phi::DataType::FLOAT32,
-                                 nullptr,
-                                 0,
-                                 true,
-                                 min_input_shape,
-                                 max_input_shape,
-                                 optim_input_shape,
-                                 std::map<std::string, std::vector<int>>(),
-                                 std::map<std::string, std::vector<int>>(),
-                                 std::map<std::string, std::vector<int>>(),
-                                 false,
-                                 phi::DataType::FLOAT32,
-                                 NaiveLogger::Global());
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = 16;
+    params.max_workspace_size = 1 << 10;
+    params.precision = phi::Datatype::FLOAT32;
+    params.with_dynamic_shape = true;
+    params.min_input_shape = min_input_shape;
+    params.max_input_shape = max_input_shape;
+    params.optim_input_shape = optim_input_shape;
+
+    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
+
     engine_->InitNetwork();
   }
 
@@ -579,21 +570,16 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
         {"mask", {4, 1, 4, 4}},
         {"new_mask", {4, 1, 2, 2}}};
 
-    engine_ = new TensorRTEngine(16,
-                                 1 << 10,
-                                 phi::DataType::FLOAT16,
-                                 nullptr,
-                                 0,
-                                 true,
-                                 min_input_shape,
-                                 max_input_shape,
-                                 optim_input_shape,
-                                 std::map<std::string, std::vector<int>>(),
-                                 std::map<std::string, std::vector<int>>(),
-                                 std::map<std::string, std::vector<int>>(),
-                                 false,
-                                 phi::DataType::FLOAT32,
-                                 NaiveLogger::Global());
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = 16;
+    params.max_workspace_size = 1 << 10;
+    params.precision = phi::Datatype::FLOAT16;
+    params.with_dynamic_shape = true;
+    params.min_input_shape = min_input_shape;
+    params.max_input_shape = max_input_shape;
+    params.optim_input_shape = optim_input_shape;
+
+    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
     engine_->InitNetwork();
   }
 
@@ -782,21 +768,17 @@ class TensorRTDynamicShapeGNTest : public ::testing::Test {
     std::map<std::string, std::vector<int>> max_input_value = {};
     std::map<std::string, std::vector<int>> optim_input_value = {};
 
-    engine_ = new TensorRTEngine(16,
-                                 1 << 10,
-                                 phi::DataType::INT8,
-                                 nullptr,
-                                 0,
-                                 true,
-                                 min_input_shape,
-                                 max_input_shape,
-                                 optim_input_shape,
-                                 min_input_value,
-                                 max_input_value,
-                                 optim_input_value,
-                                 false,
-                                 phi::DataType::FLOAT32,
-                                 NaiveLogger::Global());
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = 16;
+    params.max_workspace_size = 1 << 10;
+    params.precision = phi::Datatype::INT8;
+    params.with_dynamic_shape = true;
+    params.min_input_shape = min_input_shape;
+    params.max_input_shape = max_input_shape;
+    params.optim_input_shape = optim_input_shape;
+
+    engine_ = new TensorRTEngine(params);
+
     engine_->InitNetwork();
   }
 
