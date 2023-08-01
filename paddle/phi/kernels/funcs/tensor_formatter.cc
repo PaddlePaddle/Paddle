@@ -21,7 +21,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
-namespace operators {
+namespace funcs {
 
 void TensorFormatter::SetPrintTensorType(bool print_tensor_type) {
   print_tensor_type_ = print_tensor_type;
@@ -92,8 +92,6 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
     log_stream << "  - layout: " << print_tensor.layout() << std::endl;
   }
 
-  // std::type_index dtype = framework::ToTypeIndex(
-  //     framework::TransToProtoVarType(print_tensor.dtype()));
   auto dtype = print_tensor.dtype();
   if (print_tensor_type_) {
     log_stream << "  - dtype: " << dtype << std::endl;
@@ -156,5 +154,5 @@ template void TensorFormatter::FormatData<int>(
 template void TensorFormatter::FormatData<int64_t>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 
-}  // namespace operators
+}  // namespace funcs
 }  // namespace paddle

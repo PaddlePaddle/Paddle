@@ -369,11 +369,15 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
   }
 
   // add fetch with place op to program
+  auto *block = local_program.MutableBlock(0);
   for (auto &in_t : x) {
     auto name = in_t.name();
+    if (block->FindVarRecursive(name) == nullptr) {
+      continue;
+    }
     auto place = in_t.place().GetType();
 
-    auto op_desc = local_program.MutableBlock(0)->PrependOp();
+    auto op_desc = block->PrependOp();
     op_desc->SetType("feed_with_place");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
@@ -417,7 +421,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     }
 
     auto op_desc = local_program.MutableBlock(0)->AppendOp();
-    op_desc->SetType("shaddow_output");
+    op_desc->SetType("shadow_output");
     op_desc->SetAttr("name", name);
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
@@ -446,13 +450,17 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
   auto local_program =
       paddle::framework::ProgramDesc(*(backward_global_block->Program()));
   // add feed kernel
+  auto *block = local_program.MutableBlock(0);
   for (auto &out_grad_t : out_grad) {
     auto name = out_grad_t.name();
+    if (block->FindVarRecursive(name) == nullptr) {
+      continue;
+    }
     auto place = out_grad_t.place().GetType();
     if (name == "@EMPTY@") {
       continue;
     }
-    auto op_desc = local_program.MutableBlock(0)->PrependOp();
+    auto op_desc = block->PrependOp();
     op_desc->SetType("feed_with_place");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
@@ -508,7 +516,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
       continue;
     }
     auto op_desc = local_program.MutableBlock(0)->AppendOp();
-    op_desc->SetType("shaddow_output");
+    op_desc->SetType("shadow_output");
     op_desc->SetAttr("name", name);
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});

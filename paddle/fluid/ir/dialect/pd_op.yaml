@@ -134,13 +134,13 @@
   - {typename: 'int', name: first_n}
   - {typename: 'str', name: message}
   - {typename: 'int', name: summarize}
-  - {typename: 'bool', name: print_tensor_name}
-  - {typename: 'bool', name: print_tensor_type}
-  - {typename: 'bool', name: print_tensor_shape}
-  - {typename: 'bool', name: print_tensor_layout}
-  - {typename: 'bool', name: print_tensor_lod}
-  - {typename: 'str', name: print_phase}
-  - {typename: 'bool', name: is_forward}
+  - {typename: 'bool', name: print_tensor_name, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_type, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_shape, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_layout, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_lod, default_value: 'true'}
+  - {typename: 'str', name: print_phase, default_value: '"BOTH"'}
+  - {typename: 'bool', name: is_forward, default_value: 'true'}
   outputs:
     - typename: Tensor
       name: out
@@ -288,7 +288,7 @@
   backward: null
 
 
-- name: shaddow_feed
+- name: shadow_feed
   inputs:
   - typename: Tensor
     name: x
@@ -304,7 +304,7 @@
     func: UnchangedInferMeta
     param: [x]
   kernel:
-    func: [shaddow_feed]
+    func: [shadow_feed]
     param: [x]
     backend: null
     layout: null

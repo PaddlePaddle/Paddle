@@ -2418,6 +2418,10 @@
   extra :
     attrs : [bool use_mkldnn=false]
 
+- op : shadow_output
+  inputs: {x: x}
+  outputs: {out: out}
+
 - op : shape
   inputs :
     input : Input

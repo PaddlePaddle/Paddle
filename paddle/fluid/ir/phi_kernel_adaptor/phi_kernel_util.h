@@ -164,10 +164,10 @@ void BuildPhiContext(ir::Operation* op,
               tensor_attr_type));
         }
       } else if (tensor_attr_type == "paddle::dialect::ScalarAttribute") {
-        phi::Attribute r1 = phi::TensorRef(
+        phi::Attribute attr = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
 
-        ctx->EmplaceBackAttr(r1);
+        ctx->EmplaceBackAttr(attr);
       } else {
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 tensor_attr_type));

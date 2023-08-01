@@ -20,10 +20,13 @@
 
 namespace phi {
 
+const char kForward[] = "FORWARD";
+const char kBackward[] = "BACKWARD";
+
 template <typename T, typename Context>
-void ShaddowFeedKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       DenseTensor* out) {
+void ShadowFeedKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out) {
   ctx.template Alloc<T>(out);
   if (x.place() == out->place()) {
     out->ShareDataWith(x);
@@ -50,16 +53,16 @@ void PrintKernel(const Context& ctx,
   phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
   out->set_lod(x.lod());
 
-  // if ((is_forward && print_phase == kBackward) ||
-  //     (!is_forward && print_phase == kForward)) {
-  //   return;
-  // }
+  if ((is_forward && print_phase == kBackward) ||
+      (!is_forward && print_phase == kForward)) {
+    return;
+  }
 
   // TODO(phlrain): support first_n using a input tensor
   // if (first_n > 0 && ++times_ > first_n) return;
 
   // TODO(phlrain): support printed_var_name
-  paddle::operators::TensorFormatter formatter;
+  paddle::funcs::TensorFormatter formatter;
   const std::string& name = print_tensor_name ? "var" : "";
   formatter.SetPrintTensorType(print_tensor_type);
   formatter.SetPrintTensorShape(print_tensor_shape);
