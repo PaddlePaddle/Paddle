@@ -31,7 +31,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class GatherAddTransposePass : public FusePassBase {
+class GatherSqueezePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -59,9 +59,9 @@ class GatherAddTransposePass : public FusePassBase {
                         |
                       output
   */
-  void GatherAddTranspose(ir::Graph* graph) const;
+  void AddTranspose(ir::Graph* graph) const;
 
-  const std::string name_scope_{"gather_add_transpose_pass"};
+  const std::string name_scope_{"gather_squeeze_pass"};
 };
 
 }  // namespace ir

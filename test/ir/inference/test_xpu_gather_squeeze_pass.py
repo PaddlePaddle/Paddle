@@ -98,7 +98,7 @@ class TestGatherAddTransposePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=25, passes=["gather_add_transpose_pass"]
+            quant=False, max_examples=25, passes=["gather_squeeze_pass"]
         )
 
 
