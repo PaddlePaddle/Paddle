@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core, optimizer
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
