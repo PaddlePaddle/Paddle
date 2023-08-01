@@ -451,10 +451,12 @@ def scaled_dot_product_attention(
     Examples:
         .. code-block:: python
             # required: skiptest
+            >>> # xdoctest: +SKIP()
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
+            >>> # xdoctest: -SKIP
     """
     assert attn_mask is None, "attn_mask is not supported yet"
     out, _ = flash_attention(query, key, value, dropout_p, is_causal)
