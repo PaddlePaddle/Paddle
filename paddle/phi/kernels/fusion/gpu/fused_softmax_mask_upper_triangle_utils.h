@@ -69,7 +69,7 @@ __device__ __inline__ void load_zero_vector_upper_tri(float* dst) {
   *(reinterpret_cast<float4*>(dst)) = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
-int get_pow2_index_value(int value) {
+__inline__ int get_pow2_index_value(int value) {
   int pow2_index = 0;
   while ((1 << pow2_index) < value) {
     ++pow2_index;
