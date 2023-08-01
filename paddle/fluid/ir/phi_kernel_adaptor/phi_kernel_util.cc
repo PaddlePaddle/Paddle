@@ -90,6 +90,7 @@ void RenameData(ir::Value value,
   }
   var_name_2_id->erase(orig_name);
 }
+
 using VariableNameMap =
     std::unordered_map<const paddle::framework::Variable*, std::string>;
 
@@ -269,8 +270,12 @@ void HandleForSpecialOp(
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto value = op->result(0);
-    VLOG(6) << "var_name is:" << var_name;
+
     paddle::framework::Variable* var = inner_scope->FindVar(var_name);
+    PADDLE_ENFORCE(var,
+                   paddle::platform::errors::InvalidArgument(
+                       "The variable %s shoud exist", var_name));
+
     AddNewData(value,
                var_name,
                var,
@@ -369,7 +374,6 @@ void HandleForSpecialOp(
                           .dyn_cast<ir::StrAttribute>()
                           .AsString();
     auto value = op->result(0);
-    value_2_var_name->emplace(value, param_name);
 
     paddle::framework::Variable* var = inner_scope->FindVar(param_name);
     AddNewData(value,
@@ -379,6 +383,7 @@ void HandleForSpecialOp(
                variable_2_var_name,
                var_name_2_id,
                variable_list);
+
     if (parameter_values) {
       parameter_values->push_back(value);
     }
