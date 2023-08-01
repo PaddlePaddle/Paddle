@@ -475,6 +475,7 @@ template <typename T, typename DeviceContext>
 class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    std::cerr << "comute grad " << std::endl;
     auto* grad_x =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* grad_y =

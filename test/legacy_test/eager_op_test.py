@@ -2682,6 +2682,7 @@ class OpTest(unittest.TestCase):
             max_relative_error = (
                 0.001 if max_relative_error < 0.001 else max_relative_error
             )
+        print("grad", analytic_grads)
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
@@ -3039,6 +3040,7 @@ class OpTest(unittest.TestCase):
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
+            print(prog)
             res = list(
                 map(
                     np.array,

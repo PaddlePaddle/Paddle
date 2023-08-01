@@ -25,9 +25,9 @@ namespace framework {
 class Scope;
 class Value;
 
-class PhiKernelInstruction : public InstructionBase {
+class LegacyKernelInstruction : public InstructionBase {
  public:
-  PhiKernelInstruction(
+  LegacyKernelInstruction(
       size_t id,
       const platform::Place& place,
       ::ir::Operation* op,
@@ -40,8 +40,6 @@ class PhiKernelInstruction : public InstructionBase {
 
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
-  const phi::KernelContext& KernelContext() const { return kernel_context_; }
-
   const phi::InferMetaContext& InferMetaContext() const {
     return infer_meta_context_;
   }
@@ -52,17 +50,19 @@ class PhiKernelInstruction : public InstructionBase {
 
   void Run() override;
 
-  const std::string& Name() const override { return phi_op_name_; }
+  const std::string& Name() const override { return legacy_op_name_; }
 
  private:
-  std::string phi_op_name_;
+  std::string legacy_op_name_;
 
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
       nullptr};  // not owned
 
   phi::InferMetaContext infer_meta_context_;
 
-  phi::KernelContext kernel_context_;
+  std::shared_ptr<framework::RuntimeContext> runtime_context_;
+  std::shared_ptr<paddle::framework::OperatorBase> operator_base_;
+  std::shared_ptr<paddle::framework::ExecutionContext> kernel_context_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
 };

@@ -36,6 +36,7 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
@@ -1645,15 +1646,30 @@ void NewIRInterpreter::BuildInstruction() {
         VLOG(6) << "skip process " << op_name;
         continue;
       }
-      vec_instruction_base_.emplace_back(
-          std::make_unique<PhiKernelInstruction>(op_idx++,
-                                                 place_,
-                                                 (*it),
-                                                 scope_,
-                                                 local_scope_,
-                                                 value_2_var_name_,
-                                                 var_name_2_id_,
-                                                 variable_2_var_name_));
+
+      if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
+          op_name == "pd.fused_softmax_mask_upper_triangle_grad") {
+        std::cerr << "emplace lagcy kernel " << op_name << std::endl;
+        vec_instruction_base_.emplace_back(
+            std::make_unique<LegacyKernelInstruction>(op_idx++,
+                                                      place_,
+                                                      (*it),
+                                                      scope_,
+                                                      local_scope_,
+                                                      value_2_var_name_,
+                                                      var_name_2_id_,
+                                                      variable_2_var_name_));
+      } else {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<PhiKernelInstruction>(op_idx++,
+                                                   place_,
+                                                   (*it),
+                                                   scope_,
+                                                   local_scope_,
+                                                   value_2_var_name_,
+                                                   var_name_2_id_,
+                                                   variable_2_var_name_));
+      }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel dialect."));

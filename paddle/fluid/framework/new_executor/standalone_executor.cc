@@ -65,8 +65,10 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
+      base_program->Print(std::cout);
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      kernel_program->Print(std::cout);
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
           place_, std::move(kernel_program), scope_, execution_config));
     } else {
@@ -126,7 +128,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       interpretercores_[job_idx]->ShareBuildResultsFrom(
           interpretercores_[type_to_first_id[job_type]]);
     }
-    interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+    interpretercores_[job_idx]->BetaRun(feed_names, /*need_fetch = */ false);
   }
 
   // return Fetch Tensors
