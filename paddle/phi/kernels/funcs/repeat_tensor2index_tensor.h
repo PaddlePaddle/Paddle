@@ -32,7 +32,7 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
 
   int64_t index_size = 0;
   for (int i = 0; i < repeats.dims()[0]; i++) {
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         repeats_data[i],
         0,
         phi::errors::InvalidArgument("repeats must grater than 0, but got %d",
