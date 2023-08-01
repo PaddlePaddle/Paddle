@@ -27,18 +27,19 @@ void FeedWithPlaceKernel(const Context& ctx,
                          DenseTensor* out) {}
 
 template <typename T, typename Context>
-void ShaddowOutputKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         DenseTensor* out) {}
+void ShadowOutputKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        DenseTensor* out) {}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     feed_with_place, CPU, ALL_LAYOUT, phi::FeedWithPlaceKernel, float) {}
 
-PD_REGISTER_KERNEL(shaddow_feed,
+PD_REGISTER_KERNEL(shadow_feed,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ShaddowFeedKernel,
+                   phi::ShadowFeedKernel,
                    bool,
                    float,
                    int32_t,
@@ -50,4 +51,4 @@ PD_REGISTER_KERNEL(shaddow_feed,
                    phi::complex128) {}
 
 PD_REGISTER_KERNEL(
-    shaddow_output, CPU, ALL_LAYOUT, phi::ShaddowOutputKernel, float) {}
+    shadow_output, CPU, ALL_LAYOUT, phi::ShadowOutputKernel, float) {}

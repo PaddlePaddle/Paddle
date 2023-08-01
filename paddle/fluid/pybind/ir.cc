@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pybind/ir.h"
 
+#include <Python.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -21,9 +22,11 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/vjp.h"
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/program.h"
@@ -40,26 +43,36 @@ using ir::OpResult;
 using ir::Program;
 using ir::Type;
 using ir::Value;
+using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
 using pybind11::return_value_policy;
 
 namespace paddle {
 namespace pybind {
 
+PyTypeObject *g_ir_opresult_pytype = nullptr;
+
+void BindOpsAPI(pybind11::module *module);
+
 void BindProgram(py::module *m) {
   py::class_<Program> program(*m, "Program");
-  program.def("parameters_num", &Program::parameters_num)
+  program
+      .def(
+          "__init__",
+          [](Program &self) { new (&self) Program(ir::IrContext::Instance()); })
+      .def("__str__",
+           [](Program &self) {
+             std::ostringstream print_stream;
+             self.Print(print_stream);
+             return print_stream.str();
+           })
+      .def("parameters_num", &Program::parameters_num)
       .def("block",
            py::overload_cast<>(&Program::block),
            return_value_policy::reference)
       .def("block",
            py::overload_cast<>(&Program::block, py::const_),
-           return_value_policy::reference)
-      .def("print", [](Program &self) {
-        std::ostringstream print_stream;
-        self.Print(print_stream);
-        LOG(INFO) << print_stream.str();
-      });
+           return_value_policy::reference);
 }
 
 void BindBlock(py::module *m) {
@@ -107,7 +120,7 @@ void BindOperation(py::module *m) {
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
              auto inputs_info = std::get<0>(yaml_interface.GetOpInfo());
-             for (auto input_info : inputs_info) {
+             for (auto &input_info : inputs_info) {
                op_list.append(input_info.name);
              }
              return op_list;
@@ -118,7 +131,7 @@ void BindOperation(py::module *m) {
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
              auto attrs_info = std::get<1>(yaml_interface.GetOpInfo());
-             for (auto attr_info : attrs_info) {
+             for (auto &attr_info : attrs_info) {
                op_list.append(attr_info.name);
              }
              return op_list;
@@ -129,7 +142,7 @@ void BindOperation(py::module *m) {
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
              auto outputs_info = std::get<2>(yaml_interface.GetOpInfo());
-             for (auto output_info : outputs_info) {
+             for (auto &output_info : outputs_info) {
                op_list.append(output_info.name);
              }
              return op_list;
@@ -148,12 +161,17 @@ void BindValue(py::module *m) {
 
 void BindOpOperand(py::module *m) {
   py::class_<OpOperand> op_operand(*m, "OpOperand");
-  op_operand.def("source", &OpOperand::source)
-      .def("set_source", &OpOperand::set_source);
+  op_operand
+      .def("source",
+           [](OpOperand &self) { return self.source().dyn_cast<OpResult>(); })
+      .def("set_source", [](OpOperand &self, const OpResult &result) {
+        self.set_source(result);
+      });
 }
 
 void BindOpResult(py::module *m) {
   py::class_<OpResult> op_result(*m, "OpResult");
+  g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
   op_result
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
@@ -198,7 +216,11 @@ void BindOpResult(py::module *m) {
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
   ir_type.def("__eq__", [](Type &self, Type &other) { return self == other; })
-      .def("print", [](Type &self) { LOG(INFO) << self; });
+      .def("__str__", [](Type &self) {
+        std::ostringstream print_stream;
+        print_stream << self;
+        return print_stream.str();
+      });
 }
 
 void BindUtils(pybind11::module *m) {
@@ -266,17 +288,29 @@ void BindUtils(pybind11::module *m) {
                               vjp_res.size()));
         return res;
       });
+  m->def("set_global_program",
+         [](Program *program) { APIBuilder::Instance().SetProgram(program); });
+  m->def("set_insertion_point",
+         [](Operation *op) { APIBuilder::Instance().SetInsertionPoint(op); });
+  m->def("reset_insertion_point_to_start",
+         []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
+  m->def("reset_insertion_point_to_end",
+         []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
+  m->def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram);
 }
 
-void BindNewIR(pybind11::module *m) {
-  BindProgram(m);
-  BindBlock(m);
-  BindOperation(m);
-  BindValue(m);
-  BindOpOperand(m);
-  BindOpResult(m);
-  BindType(m);
-  BindUtils(m);
+void BindNewIR(pybind11::module *module) {
+  auto ir_module = module->def_submodule("ir");
+  BindProgram(&ir_module);
+  BindBlock(&ir_module);
+  BindOperation(&ir_module);
+  BindValue(&ir_module);
+  BindOpOperand(&ir_module);
+  BindOpResult(&ir_module);
+  BindType(&ir_module);
+  BindUtils(&ir_module);
+  auto ops_modules = ir_module.def_submodule("ops");
+  BindOpsAPI(&ops_modules);
 }
 
 }  // namespace pybind
