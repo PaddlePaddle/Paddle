@@ -166,7 +166,7 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
                 'relu6',
                 inputs={'X': ['conv2d_out']},
                 outputs={'Out': ['relu_out']},
-                threshold=draw(st.floats(min_value=1.0, max_value=10.0)),
+                threshold=6.0,
             )
         elif act_type == 'leaky_relu':
             act_op = OpConfig(

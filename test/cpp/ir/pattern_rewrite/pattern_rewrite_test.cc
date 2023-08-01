@@ -232,7 +232,7 @@ class RedundantTransposeFusePattern
 
  private:
   std::vector<int> GetAxis(paddle::dialect::TransposeOp op) const {
-    auto array_attr = op.attribute<ir::ArrayAttribute>("perm").data();
+    auto array_attr = op.attribute<ir::ArrayAttribute>("perm").AsVector();
     std::vector<int> axis(array_attr.size());
     for (size_t i = 0; i < array_attr.size(); ++i) {
       axis[i] = array_attr[i].dyn_cast<ir::Int32Attribute>().data();
@@ -333,7 +333,7 @@ class Conv2dBnFusePattern
     phi::DDim new_conv2d_out_shape = ir::GetShapeFromValue(new_conv2d_op.out());
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
     std::string data_format =
-        new_conv2d_op.attribute<ir::StrAttribute>("data_format").data();
+        new_conv2d_op.attribute<ir::StrAttribute>("data_format").AsString();
     IR_ENFORCE(data_format == "NCHW", "Only support NCHW now.");
     new_bias_new_shape[1] = new_conv2d_out_shape[1];
     paddle::dialect::ReshapeOp reshape_bias_op =
@@ -503,7 +503,8 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
        i < attributes.at("strides").dyn_cast<ir::ArrayAttribute>().size();
        i++) {
     strides.push_back(attributes.at("strides")
-                          .dyn_cast<ir::ArrayAttribute>()[i]
+                          .dyn_cast<ir::ArrayAttribute>()
+                          .at(i)
                           .dyn_cast<ir::Int32Attribute>()
                           .data());
   }
@@ -513,27 +514,30 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
        i < attributes.at("paddings_t").dyn_cast<ir::ArrayAttribute>().size();
        i++) {
     paddings_t.push_back(attributes.at("paddings_t")
-                             .dyn_cast<ir::ArrayAttribute>()[i]
+                             .dyn_cast<ir::ArrayAttribute>()
+                             .at(i)
                              .dyn_cast<ir::Int32Attribute>()
                              .data());
   }
 
-  std::string padding_algorithm =
-      attributes.at("padding_algorithm").dyn_cast<ir::StrAttribute>().data();
+  std::string padding_algorithm = attributes.at("padding_algorithm")
+                                      .dyn_cast<ir::StrAttribute>()
+                                      .AsString();
   std::vector<int> dilations_t;
   for (size_t i = 0;
        i < attributes.at("dilations_t").dyn_cast<ir::ArrayAttribute>().size();
        i++) {
     dilations_t.push_back(attributes.at("dilations_t")
-                              .dyn_cast<ir::ArrayAttribute>()[i]
+                              .dyn_cast<ir::ArrayAttribute>()
+                              .at(i)
                               .dyn_cast<ir::Int32Attribute>()
                               .data());
   }
   int groups = attributes.at("groups").dyn_cast<ir::Int32Attribute>().data();
   std::string data_format =
-      attributes.at("data_format").dyn_cast<ir::StrAttribute>().data();
+      attributes.at("data_format").dyn_cast<ir::StrAttribute>().AsString();
   std::string activation =
-      attributes.at("activation").dyn_cast<ir::StrAttribute>().data();
+      attributes.at("activation").dyn_cast<ir::StrAttribute>().AsString();
   bool exhaustive_search =
       attributes.at("exhaustive_search").dyn_cast<ir::BoolAttribute>().data();
   std::vector<int> channels;
@@ -541,7 +545,8 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
        i < attributes.at("channels").dyn_cast<ir::ArrayAttribute>().size();
        i++) {
     channels.push_back(attributes.at("channels")
-                           .dyn_cast<ir::ArrayAttribute>()[i]
+                           .dyn_cast<ir::ArrayAttribute>()
+                           .at(i)
                            .dyn_cast<ir::Int32Attribute>()
                            .data());
   }
@@ -776,7 +781,8 @@ void Conv2dFusionOpTest::Verify() {
          i < attributes.at("strides").dyn_cast<ir::ArrayAttribute>().size();
          i++) {
       PADDLE_ENFORCE(attributes.at("strides")
-                         .dyn_cast<ir::ArrayAttribute>()[i]
+                         .dyn_cast<ir::ArrayAttribute>()
+                         .at(i)
                          .isa<ir::Int32Attribute>(),
                      phi::errors::PreconditionNotMet(
                          "Type of attribute: strides is not right."));
@@ -789,7 +795,8 @@ void Conv2dFusionOpTest::Verify() {
          i < attributes.at("paddings_t").dyn_cast<ir::ArrayAttribute>().size();
          i++) {
       PADDLE_ENFORCE(attributes.at("paddings_t")
-                         .dyn_cast<ir::ArrayAttribute>()[i]
+                         .dyn_cast<ir::ArrayAttribute>()
+                         .at(i)
                          .isa<ir::Int32Attribute>(),
                      phi::errors::PreconditionNotMet(
                          "Type of attribute: paddings_t is not right."));
@@ -807,7 +814,8 @@ void Conv2dFusionOpTest::Verify() {
          i < attributes.at("dilations_t").dyn_cast<ir::ArrayAttribute>().size();
          i++) {
       PADDLE_ENFORCE(attributes.at("dilations_t")
-                         .dyn_cast<ir::ArrayAttribute>()[i]
+                         .dyn_cast<ir::ArrayAttribute>()
+                         .at(i)
                          .isa<ir::Int32Attribute>(),
                      phi::errors::PreconditionNotMet(
                          "Type of attribute: dilations_t is not right."));
@@ -837,7 +845,8 @@ void Conv2dFusionOpTest::Verify() {
          i < attributes.at("channels").dyn_cast<ir::ArrayAttribute>().size();
          i++) {
       PADDLE_ENFORCE(attributes.at("channels")
-                         .dyn_cast<ir::ArrayAttribute>()[i]
+                         .dyn_cast<ir::ArrayAttribute>()
+                         .at(i)
                          .isa<ir::Int32Attribute>(),
                      phi::errors::PreconditionNotMet(
                          "Type of attribute: channels is not right."));

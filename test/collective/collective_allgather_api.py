@@ -14,7 +14,7 @@
 
 import os
 
-import test_collective_api_base as test_base
+import legacy_test.test_collective_api_base as test_base
 
 import paddle
 import paddle.distributed as dist

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -821,26 +822,28 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                forward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    forward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                backward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    backward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
 
     @LazyInitialized
     def _inout_var_names(self):

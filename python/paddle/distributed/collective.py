@@ -323,6 +323,11 @@ def is_available():
 
 def _init_parallel_env(backend):
     master_endpoint = os.getenv("PADDLE_MASTER", None)
+    if master_endpoint is None:
+        master_endpoint = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+        assert (
+            master_endpoint is not None
+        ), "Please set PADDLE_MASTER enviroment variable."
     if master_endpoint:
         master_addr = master_endpoint.split(":")[0]
         master_port = int(master_endpoint.split(":")[1])

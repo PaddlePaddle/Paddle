@@ -85,7 +85,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << s.data();
+    os << s.AsString();
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     os << b.data();
   } else if (auto f = attr.dyn_cast<FloatAttribute>()) {
@@ -99,7 +99,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
-    const auto& vec = arr.data();
+    const auto& vec = arr.AsVector();
     os << "array[";
     PrintInterleave(
         vec.begin(),
@@ -215,11 +215,14 @@ void IrPrinter::PrintOpResult(const Operation* op) {
 }
 
 void IrPrinter::PrintAttributeMap(const Operation* op) {
+  AttributeMap attributes = op->attributes();
+  std::map<std::string, Attribute, std::less<std::string>> order_attributes(
+      attributes.begin(), attributes.end());
   os << " {";
 
   PrintInterleave(
-      op->attributes().begin(),
-      op->attributes().end(),
+      order_attributes.begin(),
+      order_attributes.end(),
       [this](std::pair<std::string, Attribute> it) {
         this->os << it.first;
         this->os << ":";

@@ -114,21 +114,27 @@ def monkey_patch_math_tensor():
         ), "only one element variable can be converted to float."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return float(np.array(var).flatten()[0])
+        if var.dtype == core.VarDesc.VarType.BF16:
+            var = var.astype('float32')
+        return float(np.array(var))
 
     def _long_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to long."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(np.array(var).flatten()[0])
+        if var.dtype == core.VarDesc.VarType.BF16:
+            var = var.astype('float32')
+        return int(np.array(var))
 
     def _int_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to int."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(np.array(var).flatten()[0])
+        if var.dtype == core.VarDesc.VarType.BF16:
+            var = var.astype('float32')
+        return int(np.array(var))
 
     def _len_(var):
         assert var.ndim > 0, "len() of a 0-D tensor is wrong"
@@ -146,7 +152,9 @@ def monkey_patch_math_tensor():
         ), "only one element variable can be converted to python index."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        return int(np.array(var).flatten()[0])
+        if var.dtype == core.VarDesc.VarType.BF16:
+            var = var.astype('float32')
+        return int(np.array(var))
 
     @property
     def _ndim_(var):

@@ -215,7 +215,9 @@ class SliceInfo:
         out = paddle.scatter(t_reshape, index_1d, value_1d)
         if tensor_type is not None:
             out = out.astype(tensor_type)
-        tensor_origin[:] = out.reshape(tensor_origin.shape)
+        tensor_origin = _setitem_impl_(
+            tensor_origin, ..., out.reshape(tensor_origin.shape)
+        )
 
         return tensor_origin
 
@@ -370,6 +372,10 @@ def _getitem_impl_(var, item):
         Sliced variable
     """
     from .framework import default_main_program, Variable
+    from .dygraph.base import in_declarative_mode
+
+    if in_declarative_mode() and hasattr(var, "is_view_var"):
+        var.is_view_var = True
 
     if isinstance(item, list):
         if not is_one_dim_list(item, int):
@@ -493,7 +499,13 @@ def _getitem_impl_(var, item):
                 from ..tensor import index_select
 
                 if slice_item.dtype == paddle.bool:
-                    return get_value_for_bool_tensor(var, slice_item)
+                    if in_declarative_mode():
+                        tmp = get_value_for_bool_tensor(var, slice_item)
+                        if hasattr(tmp, "is_view_var"):
+                            tmp.is_view_var = True
+                        return tmp
+                    else:
+                        return get_value_for_bool_tensor(var, slice_item)
                 else:
                     if len(slice_item.shape) == 1:
                         return index_select(var, index=slice_item, axis=0)
@@ -524,7 +536,13 @@ def _getitem_impl_(var, item):
                     item
                 )
             )
-        return slice_info.get_item(var)
+        if in_declarative_mode():
+            tmp = slice_info.get_item(var)
+            if hasattr(tmp, "is_view_var"):
+                tmp.is_view_var = True
+            return tmp
+        else:
+            return slice_info.get_item(var)
 
     inputs = {'Input': [var]}
     attrs = {
@@ -605,6 +623,8 @@ def _getitem_impl_(var, item):
 
         out = unsqueeze(out, axis=none_axes)
 
+    if in_declarative_mode() and hasattr(out, "is_view_var"):
+        out.is_view_var = True
     return out
 
 
@@ -617,7 +637,7 @@ def _setitem_for_tensor_array(var, item, value):
     If item is case (1), we perform paddle.tensor.array_write,
     in other cases, we raise a NotImplementedError.
     """
-    from ..framework import LayerHelper, core
+
     from .framework import Variable
 
     assert (
@@ -632,7 +652,7 @@ def _setitem_for_tensor_array(var, item, value):
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
         value = to_static_variable(value)
-        array_write(x=value, i=item, array=var)
+        return array_write(x=value, i=item, array=var)
     else:
         raise NotImplementedError(
             "Only support __setitem__ by Int/Variable in tensor_array, but gets {}".format(
@@ -807,17 +827,31 @@ def _setitem_impl_(var, item, value):
 
     if paddle.in_dynamic_mode():
         var._bump_inplace_version()
+        output = var
+    else:
+        helper = paddle.fluid.layer_helper.LayerHelper('set_value', **locals())
+        output = helper.create_variable_for_type_inference(dtype=var.dtype)
 
     cur_block = default_main_program().current_block()
     cur_block.append_op(
         type="set_value",
         inputs=inputs,
-        outputs={'Out': var},
+        outputs={'Out': output},
         attrs=attrs,
         inplace_map={"Input": "Out"},
     )
 
-    return var
+    if not paddle.in_dynamic_mode():
+        # map var to the new output
+        from paddle.jit.dy2static.program_translator import (
+            ProgramTranslator,
+        )
+
+        ProgramTranslator.get_instance()._params_map.add(
+            cur_block.program, var.desc.id(), output
+        )
+
+    return output
 
 
 # the item is a tensor of bool
@@ -848,11 +882,19 @@ def set_value_for_bool_tensor(var, item, value):
         gather_val = gather_nd(var, idx)
         gather_val_new = value - gather_val
         out = scatter_nd_add(var, idx, gather_val_new)
-        var[:] = out
+        var = _setitem_impl_(var, ..., out)
+        return var
+
+    def idx_is_empty(var):
+        return var
 
     from paddle.static.nn import cond
 
     # If all the bool index is False, just do nothing
-    cond(item.any(), lambda: idx_not_empty(var, item, value))
+    var = cond(
+        item.any(),
+        lambda: idx_not_empty(var, item, value),
+        lambda: idx_is_empty(var),
+    )
 
     return var

@@ -18,7 +18,7 @@
 #include <string>
 
 #include "paddle/cinn/hlir/op/op_util.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/utils/functional.h"
 

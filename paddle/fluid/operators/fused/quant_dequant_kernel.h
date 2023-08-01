@@ -47,14 +47,14 @@ __forceinline__ __device__ int8_t quant_helper(const T input,
 }
 
 template <typename T>
-__global__ void quantize_kernel(const T* input,
-                                char4* output,
-                                const float scale,
-                                const int m,
-                                const int n,
-                                const int round_type,
-                                const float max_bound,
-                                const float min_bound) {
+__global__ void QuantKernel(const T* input,
+                            char4* output,
+                            const float scale,
+                            const int m,
+                            const int n,
+                            const int round_type,
+                            const float max_bound,
+                            const float min_bound) {
   int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
   int m_id = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -74,36 +74,36 @@ __global__ void quantize_kernel(const T* input,
 }
 
 template <typename T>
-void quantize_kernel_launcher(const T* input,
-                              int8_t* output,
-                              const float scale,
-                              const int m,
-                              const int n,
-                              const int round_type,
-                              const float max_bound,
-                              const float min_bound,
-                              gpuStream_t stream) {
+void LaunchQuantKernel(const T* input,
+                       int8_t* output,
+                       const float scale,
+                       const int m,
+                       const int n,
+                       const int round_type,
+                       const float max_bound,
+                       const float min_bound,
+                       gpuStream_t stream) {
   // TODO(minghaoBD): optimize the kennel launch times when m==1 or n==1
   dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
   dim3 block(32, 32);
 
-  quantize_kernel<<<grid, block, 0, stream>>>(input,
-                                              (char4*)output,  // NOLINT
-                                              scale,
-                                              m,
-                                              n,
-                                              round_type,
-                                              max_bound,
-                                              min_bound);
+  QuantKernel<<<grid, block, 0, stream>>>(input,
+                                          (char4*)output,  // NOLINT
+                                          scale,
+                                          m,
+                                          n,
+                                          round_type,
+                                          max_bound,
+                                          min_bound);
 }
 
 template <typename T, int VecSize>
-__global__ void dequantize_kernel(T* output,
-                                  const int32_t* input,
-                                  const int m,  // batch size
-                                  const int n,  // hidden
-                                  const float quant_in_scale,
-                                  const float* dequant_out_scale_data) {
+__global__ void DequantKernel(T* output,
+                              const int32_t* input,
+                              const int m,  // batch size
+                              const int n,  // hidden
+                              const float quant_in_scale,
+                              const float* dequant_out_scale_data) {
   int numel = m * n;
   int stride = blockDim.x * gridDim.x * VecSize;
   int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
@@ -128,15 +128,15 @@ __global__ void dequantize_kernel(T* output,
 }
 
 template <typename T>
-void dequantize_kernel_launcher(const int32_t* input,
-                                T* output,
-                                const int m,  // m
-                                const int n,  // n
-                                gpuStream_t stream,
-                                GpuLaunchConfig* gpu_config,
-                                const float quant_in_scale,
-                                const float* dequant_out_scale_data) {
-  dequantize_kernel<T, DequantKernelVecSize>
+void LaunchDequantKernel(const int32_t* input,
+                         T* output,
+                         const int m,  // m
+                         const int n,  // n
+                         gpuStream_t stream,
+                         GpuLaunchConfig* gpu_config,
+                         const float quant_in_scale,
+                         const float* dequant_out_scale_data) {
+  DequantKernel<T, DequantKernelVecSize>
       <<<gpu_config->block_per_grid, gpu_config->thread_per_block, 0, stream>>>(
           output, input, m, n, quant_in_scale, dequant_out_scale_data);
 }

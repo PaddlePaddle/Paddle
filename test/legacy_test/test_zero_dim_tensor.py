@@ -1916,6 +1916,36 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy()[1], [1.0, 2.0, 3.0])
         self.assertEqual(out.grad.shape, [2, 3])
 
+    def test_scatter_shape_check(self):
+        x = paddle.to_tensor([1.0, 2.0, 3.0])
+        index = paddle.to_tensor(1)
+        updates = paddle.to_tensor([3.0])
+        with self.assertRaises(ValueError):
+            out = paddle.scatter(x, index, updates)
+
+        x = paddle.to_tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
+        index = paddle.to_tensor(1)
+        updates = paddle.to_tensor([[5.0, 5.0]])
+        with self.assertRaises(ValueError):
+            out = paddle.scatter(x, index, updates)
+
+    def test_scatter_0D_index(self):
+        x = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=False)
+        index = paddle.to_tensor(1)
+        updates = paddle.to_tensor(3.0)
+        out = paddle.scatter(x, index, updates)
+        out.backward()
+        np.testing.assert_array_equal(x.grad.numpy()[1], 0.0)
+
+        x = paddle.to_tensor(
+            [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], stop_gradient=False
+        )
+        index = paddle.to_tensor(1)
+        updates = paddle.to_tensor([5.0, 5.0])
+        out = paddle.scatter(x, index, updates)
+        out.backward()
+        np.testing.assert_array_equal(x.grad.numpy()[1], [0.0, 0.0])
+
     def test_diagflat(self):
         x1 = paddle.rand([])
         x2 = paddle.rand([])
@@ -3141,7 +3171,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
         x.stop_gradient = False
         out = x * 2
-        out[1, 2, 3, 4] = 10
+        out = paddle.static.setitem(out, (1, 2, 3, 4), 10)
         paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x.grad_name])
@@ -3162,7 +3192,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         indice = paddle.full([], 1, dtype='int32')
         out = x * 1
-        out[indice, indice] = 0.5
+        out = paddle.static.setitem(out, (indice, indice), 0.5)
         paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x.grad_name])
@@ -3181,7 +3211,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         v.stop_gradient = False
         indice = paddle.full([], 1, dtype='int32')
         out = x * 1
-        out[indice] = v
+        out = paddle.static.setitem(out, indice, v)
         paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x.grad_name, v.grad_name])
