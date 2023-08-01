@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
+from dy2st_test_utils import test_and_compare_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -168,6 +169,7 @@ class TestBert(unittest.TestCase):
         paddle.jit.enable_to_static(False)
         return self.train(bert_config, data_reader, False)
 
+    @test_and_compare_with_new_ir
     def train_static(self, bert_config, data_reader):
         paddle.jit.enable_to_static(True)
         return self.train(bert_config, data_reader, True)

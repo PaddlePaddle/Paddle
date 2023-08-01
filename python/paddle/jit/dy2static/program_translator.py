@@ -14,6 +14,7 @@
 
 import collections
 import inspect
+import os
 import textwrap
 import threading
 import warnings
@@ -192,6 +193,7 @@ class CacheKey:
         'class_instance',
         'kwargs',
         '_spec_names_id',
+        '_new_ir_flags',
     ]
 
     def __init__(
@@ -220,6 +222,9 @@ class CacheKey:
         self.kwargs = kwargs
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
+        )
+        self._new_ir_flags = os.environ.get(
+            'FLAGS_enable_new_ir_in_executor', None
         )
 
     @classmethod
@@ -264,6 +269,7 @@ class CacheKey:
                 self.class_instance,
                 with_hook,
                 is_train,
+                self._new_ir_flags,
             )
         )
 
