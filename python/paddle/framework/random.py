@@ -76,6 +76,7 @@ def get_rng_state(device=None):
     Examples:
         .. code-block:: python
             >>> import paddle
+            >>> paddle.seed(2023)
             >>> sts = paddle.get_rng_state()
     """
     state_list = []
@@ -130,6 +131,7 @@ def get_cuda_rng_state():
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
             >>> sts = paddle.get_cuda_rng_state()
 
     """
@@ -159,6 +161,7 @@ def set_rng_state(state_list, device=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
             >>> sts = paddle.get_rng_state()
             >>> paddle.set_rng_state(sts)
 
@@ -224,6 +227,7 @@ def set_cuda_rng_state(state_list):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
             >>> sts = paddle.get_cuda_rng_state()
             >>> paddle.set_cuda_rng_state(sts)
 

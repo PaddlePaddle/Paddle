@@ -769,6 +769,7 @@ def save(obj, path, protocol=4, **configs):
             >>> state_dict = linear.state_dict()
             >>> byio = BytesIO()
             >>> paddle.save(state_dict, byio)
+            >>> paddle.seed(2023)
             >>> tensor = paddle.randn([2, 3], dtype='float32')
             >>> paddle.save(tensor, byio)
 
@@ -1042,6 +1043,7 @@ def load(path, **configs):
             >>> state_dict = linear.state_dict()
             >>> byio = BytesIO()
             >>> paddle.save(state_dict, byio)
+            >>> paddle.seed(2023)
             >>> tensor = paddle.randn([2, 3], dtype='float32')
             >>> paddle.save(tensor, byio)
             >>> byio.seek(0)
