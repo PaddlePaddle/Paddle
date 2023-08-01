@@ -259,6 +259,33 @@ class TestSplitOp(unittest.TestCase):
             np.testing.assert_array_equal(out[0], np_a[0:2])
 
 
+class TestNewIrPrint(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        exe = paddle.static.Executor(place)
+
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones([2, 2], dtype="float32")
+                y = paddle.ones([2, 2], dtype="float32")
+
+                z = x + y
+                z = paddle.static.Print(z)
+
+            out = exe.run(main_program, {}, fetch_list=[z.name])
+
+        gold_res = np.ones([2, 2], dtype="float32") * 2
+
+        np.testing.assert_array_equal(out[0], gold_res)
+
+
 class TestJitSaveOp(unittest.TestCase):
     def test_with_new_ir(self):
         paddle.disable_static()

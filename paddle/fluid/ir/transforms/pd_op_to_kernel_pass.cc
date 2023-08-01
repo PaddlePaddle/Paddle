@@ -49,19 +49,20 @@ std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
     {"DataType::BOOL", phi::DataType::BOOL},
 };
 
-std::unordered_set<std::string> unchange_output_list = {"pd.feed_with_place",
-                                                        "builtin.combine",
-                                                        "builtin.slice",
-                                                        "pd.feed",
-                                                        "pd.fetch",
-                                                        "builtin.set_parameter",
-                                                        "builtin.get_parameter",
-                                                        "pd.shadow_output"};
+const std::unordered_set<std::string> UnchangeOutputOps = {
+    "pd.feed_with_place",
+    "builtin.combine",
+    "builtin.slice",
+    "pd.feed",
+    "pd.fetch",
+    "builtin.set_parameter",
+    "builtin.get_parameter",
+    "pd.shadow_output"};
 
 bool NeedFallBackCpu(const ir::Operation* op,
                      const std::string& kernel_fn_name,
-                     phi::KernelKey kernel_key) {
-  if (unchange_output_list.count(op->name())) {
+                     const phi::KernelKey& kernel_key) {
+  if (UnchangeOutputOps.count(op->name())) {
     return false;
   }
   if (kernel_fn_name == "") {
@@ -71,16 +72,19 @@ bool NeedFallBackCpu(const ir::Operation* op,
     return false;
   }
 
-  if (kernel_key.backend() == phi::Backend::GPUDNN) {
-    kernel_key.set_backend(phi::Backend::GPU);
+  phi::KernelKey copy_kernel_key = kernel_key;
+  if (copy_kernel_key.backend() == phi::Backend::GPUDNN) {
+    copy_kernel_key.set_backend(phi::Backend::GPU);
 
-    if (phi::KernelFactory::Instance().HasKernel(kernel_fn_name, kernel_key)) {
+    if (phi::KernelFactory::Instance().HasKernel(kernel_fn_name,
+                                                 copy_kernel_key)) {
       return false;
     }
   }
 
-  kernel_key.set_backend(phi::Backend::CPU);
-  if (phi::KernelFactory::Instance().HasKernel(kernel_fn_name, kernel_key)) {
+  copy_kernel_key.set_backend(phi::Backend::CPU);
+  if (phi::KernelFactory::Instance().HasKernel(kernel_fn_name,
+                                               copy_kernel_key)) {
     return true;
   }
 
@@ -105,7 +109,7 @@ bool NeedFallBackFromGPUDNN2GPU(ir::Operation* op,
 ir::OpResult AddPlaceTransferOp(ir::OpResult in,
                                 ir::Type out_type,
                                 const phi::Place& src_place,
-                                const phi::Place& tar_place,
+                                const phi::Place& dst_place,
                                 const phi::KernelKey& kernel_key,
                                 ir::Program* program) {
   ir::IrContext* ctx = ir::IrContext::Instance();
@@ -114,7 +118,7 @@ ir::OpResult AddPlaceTransferOp(ir::OpResult in,
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
   if ((src_place.GetType() == phi::AllocationType::CPU) &&
-      (tar_place.GetType() == phi::AllocationType::GPU)) {
+      (dst_place.GetType() == phi::AllocationType::GPU)) {
     auto copy_kernel_key = kernel_key;
     copy_kernel_key.set_backend(phi::Backend::GPU);
     std::unordered_map<std::string, ir::Attribute> op_attribute{
@@ -132,7 +136,7 @@ ir::OpResult AddPlaceTransferOp(ir::OpResult in,
 
     return new_in;
   } else if ((src_place.GetType() == phi::AllocationType::GPU) &&
-             (tar_place.GetType() == phi::AllocationType::CPU)) {
+             (dst_place.GetType() == phi::AllocationType::CPU)) {
     auto copy_kernel_key = kernel_key;
     copy_kernel_key.set_backend(phi::Backend::GPU);
     std::unordered_map<std::string, ir::Attribute> op_attribute{
