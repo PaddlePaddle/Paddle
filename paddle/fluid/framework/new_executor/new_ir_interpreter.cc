@@ -64,6 +64,7 @@ NewIRInterpreter::NewIRInterpreter(
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+  // ir_prog->Print(std::cout);
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
@@ -2039,17 +2040,17 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     // Run
     if (FLAGS_enable_new_ir_in_executor_loop_run) {
       LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun LoopRun.";
-      NewIrLoopRunImpl();
+      LoopRunImpl();
     } else {
       LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun TraceRun.";
-      BetaRunImpl();
+      TraceRunImpl();
     }
     is_build_ = true;
   } else {
     if (FLAGS_enable_new_ir_in_executor_loop_run) {
-      NewIrLoopRunImpl();
+      LoopRunImpl();
     } else {
-      BetaRunImpl();
+      TraceRunImpl();
     }
   }
 
@@ -2091,14 +2092,20 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   }
 }
 
-void NewIRInterpreter::NewIrLoopRunImpl() {
-  for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
-       ++instr_id) {
-    vec_instruction_base_[instr_id]->Run();
+void NewIRInterpreter::LoopRunImpl() {
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
   }
+
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+  VLOG(4) << "Loop Instruction List";
+
+  LoopRunInstructionList(vec_instruction_base_);
+  VLOG(4) << "Done LoopRunImpl";
 }
 
-void NewIRInterpreter::BetaRunImpl() {
+void NewIRInterpreter::TraceRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
@@ -2107,11 +2114,53 @@ void NewIRInterpreter::BetaRunImpl() {
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   VLOG(4) << "Tracing Instruction List";
 
-  TraceInstructionList(vec_instruction_base_);
-  VLOG(4) << "Done BetaRunImpl";
+  TraceRunInstructionList(vec_instruction_base_);
+  VLOG(4) << "Done TraceRunImpl";
 }
 
-void NewIRInterpreter::TraceInstructionList(
+void NewIRInterpreter::LoopRunInstructionList(
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i).get());
+    }
+  }
+
+  for (size_t idx = 0; idx < vec_instr.size(); idx++) {
+    InstructionBase* instr_node = vec_instr[idx].get();
+
+    VLOG(6) << "Run InstructionBase " << idx;
+    RunInstructionBase(instr_node);
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      break;
+    }
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+  VLOG(4) << "Done LoopRunInstructionList";
+}
+
+void NewIRInterpreter::TraceRunInstructionList(
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
@@ -2151,7 +2200,7 @@ void NewIRInterpreter::TraceInstructionList(
     VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
   }
-  VLOG(4) << "Done TraceInstructionList";
+  VLOG(4) << "Done TraceRunInstructionList";
 }
 
 void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {

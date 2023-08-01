@@ -215,11 +215,14 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void BuildInstructionDependences();
 
-  void NewIrLoopRunImpl();
+  void LoopRunImpl();
 
-  void BetaRunImpl();
+  void TraceRunImpl();
 
-  void TraceInstructionList(
+  void TraceRunInstructionList(
+      const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
+
+  void LoopRunInstructionList(
       const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
 
   void RunInstructionBase(InstructionBase* instr_node);
