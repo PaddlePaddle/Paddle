@@ -863,7 +863,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._forward_only = forward_only
 
         # store the number of backward steps
-        self._backward_step_count = 0
+
+        assert (
+            self.accumulate_steps % self.num_stages == 0
+        ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
+        per_stage_accumulate_steps = self.accumulate_steps // self.num_stages
+        self._backward_step_count = (
+            -(per_stage_accumulate_steps - 1)
+            * self.num_stages
+            * self.num_model_chunks
+        )
 
         # init some data buffers for interleave scheduler
         self.input_tensors = [[] for _ in range(self.num_model_chunks)]
