@@ -44,8 +44,6 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
     "fetch",
 };
 
-constexpr char kAttrStopGradients[] = "stop_gradient";
-
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      ir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
@@ -165,6 +163,11 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
+    if (op->Type() == "shaddow_output") {
+      if (!param_map_.count(op->Input("x")[0])) {
+        continue;
+      }
+    }
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
@@ -179,8 +182,13 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         bool need_set_parameter_op = (parameter_name_mappings_.find(var_name) !=
                                       parameter_name_mappings_.end());
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
+        need_set_parameter_op &= (param_map_.count(var_name) != 0);
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
+          if (!defining_op_result) {
+            continue;
+          }
+
           ir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
@@ -216,7 +224,15 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
       continue;
     }
     ir::OpResult value = value_info.value;
+    if (!value) {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "Value of [%s] can not ber None", var_name));
+    }
     auto* defining_op = value.owner();
+    PADDLE_ENFORCE_NOT_NULL(
+        defining_op,
+        phi::errors::PreconditionNotMet(
+            "Defining operator of [%s] can not be nullptr", var_name));
     VLOG(8) << "[op translated][stop gradient]" << var_name
             << " from: " << defining_op->name();
     std::vector<ir::Attribute> stop_gradients;

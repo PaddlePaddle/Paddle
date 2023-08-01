@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
-
 #include <Python.h>
+#include "paddle/ir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -49,6 +49,7 @@ extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
+extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
@@ -858,8 +859,14 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const ir::OpResult& value) {
+  auto obj = ::pybind11::cast(value);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
 #ifdef PADDLE_WITH_DISTRIBUTE
-PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value) {
+PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
@@ -1006,10 +1013,9 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
   }
 }
 
-PyObject* ToPyObject(egr::GradNodeBase* grad_node) {
+PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node) {
   py::object py_obj = py::cast(grad_node, py::return_value_policy::reference);
-  py::handle py_handle = py::handle(py_obj);
-  PyObject* py_grad_node = py_handle.ptr();
+  PyObject* py_grad_node = py_obj.release().ptr();
   Py_INCREF(py_grad_node);
   return py_grad_node;
 }
@@ -1426,6 +1432,21 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
         op_type,
         arg_pos + 1,
         type_name));  // NOLINT
+  }
+}
+
+ir::OpResult CastPyArg2OpResult(const std::string& op_type,
+                                PyObject* obj,
+                                size_t arg_pos) {
+  if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return ::pybind11::handle(obj).cast<ir::OpResult>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "OpResult, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 }
 

@@ -294,7 +294,7 @@ bool OpCompat::Judge(const OpDesc& op_desc, const std::string& pass_name) {
 
 OpCompat& OpCompatSensiblePass::AddOpCompat(OpCompat&& op_compat) {
   std::string name = op_compat.Name();
-  op_compat_judgers_[name].reset(new OpCompat(std::move(op_compat)));
+  op_compat_judgers_[name] = std::make_unique<OpCompat>(std::move(op_compat));
   return *(op_compat_judgers_[name]);
 }
 

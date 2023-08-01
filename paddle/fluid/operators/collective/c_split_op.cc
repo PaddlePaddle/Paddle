@@ -89,7 +89,7 @@ class CSplitOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 class CSplitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be split.");
     AddOutput("Out", "(Tensor) the result of split.");
     AddAttr<int>("rank", "(int default 0) rank id.").SetDefault(0);
