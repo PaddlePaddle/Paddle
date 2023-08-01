@@ -156,8 +156,6 @@ def run(model, data_loader, optimizer, mode):
                 )
             )
             if batch_id >= end_step:
-                # avoid dataloader throw abort signaal
-                data_loader._reset()
                 break
     print(losses)
     return losses

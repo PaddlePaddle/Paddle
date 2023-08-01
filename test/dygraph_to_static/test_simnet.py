@@ -73,7 +73,7 @@ def fake_vocabulary():
 vocab = fake_vocabulary()
 
 
-class FakeReaderProcessor:
+class FakeReaderProcessor(paddle.io.Dataset):
     def __init__(self, args, vocab, length):
         self.vocab = vocab
         self.seq_len = args.seq_len
