@@ -54,5 +54,5 @@ loss = exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
-static.io.save_inference_model("./multi_fc_model", [a.name], [fc_out], exe)
+static.io.save_inference_model("./multi_fc_model", [a], [fc_out], exe)
 print('res', fc_out.name)
