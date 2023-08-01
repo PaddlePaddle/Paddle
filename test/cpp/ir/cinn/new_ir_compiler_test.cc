@@ -23,7 +23,6 @@
 
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
-#include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
 
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
@@ -39,13 +38,13 @@ TEST(GraphCompier, TestNewIR) {
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 128},
                                              value,
                                              phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
+                                             phi::GPUPlace());
 
   auto full_op_y =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 64},
                                              value,
                                              phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
+                                             phi::GPUPlace());
   // TODO(Aurelius84): test more op
   // auto add_z = builder.Build<paddle::dialect::MatmulOp>(full_op_x->result(0),
   //                                                    full_op_y->result(0));

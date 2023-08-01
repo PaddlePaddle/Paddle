@@ -664,12 +664,9 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
 }
 
 PyMethodDef pylayer_methods[] = {
-    {"name",
-     (PyCFunction)(void (*)(void))pylayer_method_name,
-     METH_NOARGS,
-     NULL},
+    {"name", (PyCFunction)(void (*)())pylayer_method_name, METH_NOARGS, NULL},
     {"apply",
-     (PyCFunction)(void (*)(void))pylayer_method_apply,
+     (PyCFunction)(void (*)())pylayer_method_apply,
      METH_CLASS | METH_VARARGS | METH_KEYWORDS,
      NULL},
     {NULL, NULL, 0, NULL}};

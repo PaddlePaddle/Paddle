@@ -117,6 +117,7 @@ namespace {  // NOLINT
 TRT_DT FluidDataType2TRT(FluidDT type) {
   switch (type) {
     case FluidDT::VarType_Type_FP32:
+    case FluidDT::VarType_Type_FP64:
       return TRT_DT::kFLOAT;
     case FluidDT::VarType_Type_INT32:
     case FluidDT::VarType_Type_INT64:
