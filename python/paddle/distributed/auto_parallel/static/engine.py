@@ -644,7 +644,6 @@ class Engine:
                 self._losses = auto_utils.to_list(self._loss)
 
         default_ctx = get_default_distributed_context()
-        print("default_ctx.has_annotation:", default_ctx.has_annotation)
         if not default_ctx.has_annotation:
             # We build the world process group because the data parallel
             # needs all ranks by default.
@@ -1256,6 +1255,7 @@ class Engine:
         steps_per_epoch=None,
         sample_split=1,
         mode=None,
+        places=None,
     ):
         if mode is not None:
             self.to_mode(mode)
@@ -1282,6 +1282,7 @@ class Engine:
             worker_init_fn=worker_init_fn,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
+            places=places,
         )
         return dataloader
 
