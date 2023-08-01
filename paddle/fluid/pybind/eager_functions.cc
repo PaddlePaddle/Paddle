@@ -521,87 +521,84 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   VLOG(7) << "Get things from python for Custom Op: " << op_type;
   paddle::CustomOpKernelContext ctx;
+  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
+                    meta_info_map.end(),
+                    paddle::platform::errors::NotFound(
+                        "Can't find %s in Eager OpMetaInfoMap which should be "
+                        "created by LoadOpMetaInfoAndRegisterOp, please make "
+                        "sure you registered your op first and try again. ",
+                        op_type));
+  const auto& vec_map = meta_info_map.at(op_type);
+  const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
+  const auto& attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
+  const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
+  const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    const auto& input = inputs.at(i);
+    // Parse op_type first, so that use i + 1
+    PyObject* obj = PyTuple_GET_ITEM(args, i + 1);
+    // Emplace Py_None from python, this means optional inputs passed to C++,
+    // use one un-initialized tensor to indicate both Tensor and
+    // vector<Tensor> inputs.
+    if (obj == Py_None) {
+      VLOG(7) << "Custom operator add input " << input
+              << " to CustomOpKernelContext. Add un-initialized tensor "
+                 "because the optional input is None";
+      ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+      continue;
+    }
+    if (paddle::framework::detail::IsDuplicableVar(input)) {
+      ctx.EmplaceBackInputs(std::move(CastPyArg2VectorOfTensor(obj, i + 1)));
+      VLOG(7) << "Custom operator add input " << input
+              << " to CustomOpKernelContext. Add vector<Tensor> size = "
+              << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
+    } else {
+      ctx.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, i + 1)));
+      VLOG(7) << "Custom operator add input " << input
+              << " to CustomOpKernelContext. Add Tensor for general case.";
+    }
+  }
+  // Parse op_type and inputs first, so that use 1 + inputs.size() + i
+  int attr_start_idx = 1 + inputs.size();
+  for (size_t i = 0; i < attrs.size(); ++i) {
+    const auto& attr = attrs.at(i);
+    std::vector<std::string> attr_name_and_type = paddle::ParseAttrStr(attr);
+    auto attr_type_str = attr_name_and_type[1];
+    VLOG(7) << "Custom operator add attrs " << attr_name_and_type[0]
+            << " to CustomOpKernelContext. Attribute type = " << attr_type_str;
+    PyObject* obj = PyTuple_GET_ITEM(args, attr_start_idx + i);
+    if (attr_type_str == "bool") {
+      ctx.EmplaceBackAttr(CastPyArg2AttrBoolean(obj, attr_start_idx + i));
+    } else if (attr_type_str == "int") {
+      ctx.EmplaceBackAttr(CastPyArg2AttrInt(obj, attr_start_idx + i));
+    } else if (attr_type_str == "float") {
+      ctx.EmplaceBackAttr(CastPyArg2AttrFloat(obj, attr_start_idx + i));
+    } else if (attr_type_str == "int64_t") {
+      ctx.EmplaceBackAttr(CastPyArg2Long(obj, op_type, attr_start_idx + i));
+    } else if (attr_type_str == "std::string") {
+      ctx.EmplaceBackAttr(CastPyArg2AttrString(obj, attr_start_idx + i));
+    } else if (attr_type_str == "std::vector<int>") {
+      ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
+    } else if (attr_type_str == "std::vector<float>") {
+      ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      ctx.EmplaceBackAttr(CastPyArg2Longs(obj, op_type, attr_start_idx + i));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      ctx.EmplaceBackAttr(CastPyArg2VectorOfString(obj, attr_start_idx + i));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether "
+          "the attribute data type and data type string are matched.",
+          attr_type_str));
+    }
+  }
   {
     eager_gil_scoped_release guard;
-    auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
-    PADDLE_ENFORCE_NE(
-        meta_info_map.find(op_type),
-        meta_info_map.end(),
-        paddle::platform::errors::NotFound(
-            "Can't find %s in Eager OpMetaInfoMap which should be "
-            "created by LoadOpMetaInfoAndRegisterOp, please make "
-            "sure you registered your op first and try again. ",
-            op_type));
-    const auto& vec_map = meta_info_map.at(op_type);
-    const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
-    const auto& attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
-    const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
-    const auto& inplace_map =
-        paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      const auto& input = inputs.at(i);
-      // Parse op_type first, so that use i + 1
-      PyObject* obj = PyTuple_GET_ITEM(args, i + 1);
-      // Emplace Py_None from python, this means optional inputs passed to C++,
-      // use one un-initialized tensor to indicate both Tensor and
-      // vector<Tensor> inputs.
-      if (obj == Py_None) {
-        VLOG(7) << "Custom operator add input " << input
-                << " to CustomOpKernelContext. Add un-initialized tensor "
-                   "because the optional input is None";
-        ctx.EmplaceBackInput(std::move(paddle::Tensor()));
-        continue;
-      }
-      if (paddle::framework::detail::IsDuplicableVar(input)) {
-        ctx.EmplaceBackInputs(std::move(CastPyArg2VectorOfTensor(obj, i + 1)));
-        VLOG(7) << "Custom operator add input " << input
-                << " to CustomOpKernelContext. Add vector<Tensor> size = "
-                << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
-      } else {
-        ctx.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, i + 1)));
-        VLOG(7) << "Custom operator add input " << input
-                << " to CustomOpKernelContext. Add Tensor for general case.";
-      }
-    }
-    // Parse op_type and inputs first, so that use 1 + inputs.size() + i
-    int attr_start_idx = 1 + inputs.size();
-    for (size_t i = 0; i < attrs.size(); ++i) {
-      const auto& attr = attrs.at(i);
-      std::vector<std::string> attr_name_and_type = paddle::ParseAttrStr(attr);
-      auto attr_type_str = attr_name_and_type[1];
-      VLOG(7) << "Custom operator add attrs " << attr_name_and_type[0]
-              << " to CustomOpKernelContext. Attribute type = "
-              << attr_type_str;
-      PyObject* obj = PyTuple_GET_ITEM(args, attr_start_idx + i);
-      if (attr_type_str == "bool") {
-        ctx.EmplaceBackAttr(CastPyArg2AttrBoolean(obj, attr_start_idx + i));
-      } else if (attr_type_str == "int") {
-        ctx.EmplaceBackAttr(CastPyArg2AttrInt(obj, attr_start_idx + i));
-      } else if (attr_type_str == "float") {
-        ctx.EmplaceBackAttr(CastPyArg2AttrFloat(obj, attr_start_idx + i));
-      } else if (attr_type_str == "int64_t") {
-        ctx.EmplaceBackAttr(CastPyArg2Long(obj, op_type, attr_start_idx + i));
-      } else if (attr_type_str == "std::string") {
-        ctx.EmplaceBackAttr(CastPyArg2AttrString(obj, attr_start_idx + i));
-      } else if (attr_type_str == "std::vector<int>") {
-        ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
-      } else if (attr_type_str == "std::vector<float>") {
-        ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
-      } else if (attr_type_str == "std::vector<int64_t>") {
-        ctx.EmplaceBackAttr(CastPyArg2Longs(obj, op_type, attr_start_idx + i));
-      } else if (attr_type_str == "std::vector<std::string>") {
-        ctx.EmplaceBackAttr(CastPyArg2VectorOfString(obj, attr_start_idx + i));
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported `%s` type value as custom attribute now. "
-            "Supported data types include `bool`, `int`, `float`, "
-            "`int64_t`, `std::string`, `std::vector<int>`, "
-            "`std::vector<float>`, `std::vector<int64_t>`, "
-            "`std::vector<std::string>`, Please check whether "
-            "the attribute data type and data type string are matched.",
-            attr_type_str));
-      }
-    }
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
     const auto& inplace_reverse_idx_map = ctx.GetInplaceReverseIndexMap();
     for (size_t out_idx = 0; out_idx < outputs.size(); ++out_idx) {

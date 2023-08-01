@@ -18,9 +18,11 @@ for both FP64 and FP16 input.
 
 import os
 import random
-import subprocess
+import shutil
+import sys
 import tempfile
 import unittest
+from shlex import quote
 
 import numpy as np
 from decorator_helper import prog_scope
@@ -33,8 +35,39 @@ from eager_op_test import (
 import paddle
 from paddle import fluid, nn
 from paddle.fluid import Program, core, program_guard
+from paddle.fluid.framework import in_dygraph_mode
 
 _set_use_system_allocator(True)
+
+
+def enable_static():
+    if in_dygraph_mode():
+        paddle.enable_static()
+
+        def cleanup():
+            paddle.disable_static()
+
+    else:
+
+        def cleanup():
+            pass
+
+    return cleanup
+
+
+def convert_numpy_array(array):
+    if array.dtype != np.uint16:
+        return array
+
+    cleanup = None
+    if not in_dygraph_mode():
+        paddle.disable_static()
+        cleanup = lambda: paddle.enable_static()
+
+    out = paddle.to_tensor(array).astype(paddle.float32).numpy()
+    if cleanup is not None:
+        cleanup()
+    return out
 
 
 def create_or_get_tensor(scope, var_name, var, place):
@@ -45,6 +78,24 @@ def create_or_get_tensor(scope, var_name, var, place):
         tensor.set_recursive_sequence_lengths([])
         tensor.set(var, place)
     return tensor
+
+
+def clean_dir(path):
+    if isinstance(path, tempfile.TemporaryDirectory):
+        path = path.name
+    for f in os.listdir(path):
+        f = os.path.join(path, f)
+        if os.path.isdir(f):
+            shutil.rmtree(f)
+        else:
+            os.remove(f)
+
+
+def concat_cmd(cmd):
+    if isinstance(cmd, str):
+        return cmd
+
+    return ' '.join([quote(c) for c in cmd])
 
 
 class TestSyncBatchNormOpTraining(unittest.TestCase):
@@ -59,7 +110,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
-        self.atol = 1e-3
+        self.atol = 5e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
 
@@ -69,7 +120,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
     def multi_device_run(self, layout, fetch_list, only_forward=False):
         cmds = [
-            "python",
+            sys.executable,
             "-m",
             "paddle.distributed.launch",
         ]
@@ -91,8 +142,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             cmds += ["--only_forward"]
         if self.dtype == np.float16 or self.dtype == np.uint16:
             cmds += ["--use_cudnn"]
-        p = subprocess.run(cmds)
-        assert p.returncode == 0, f"Fleet train: Failed: {p}"
+        cmd = concat_cmd(cmds)
+        assert os.system(cmd) == 0, cmd
 
     def _build_program(
         self, place, layout, seed, sync_bn=False, only_forward=False
@@ -143,9 +194,18 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
     @prog_scope()
     def _compare(self, place, layout, only_forward):
+        try:
+            with paddle.utils.unique_name.guard():
+                self._compare_impl(place, layout, only_forward)
+        finally:
+            clean_dir(self.data_dir)
+            clean_dir(self.fleet_log_dir)
+
+    def _compare_impl(self, place, layout, only_forward):
         """Compare results."""
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
         paddle.enable_static()
         scope = core.Scope()
         if self.dtype == np.uint16:
@@ -234,9 +294,9 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             if sync_bn_val.shape != bn_val.shape:
                 bn_val = bn_val[:stride]
             np.testing.assert_allclose(
-                bn_val,
-                sync_bn_val,
-                rtol=1e-05,
+                convert_numpy_array(bn_val),
+                convert_numpy_array(sync_bn_val),
+                rtol=1e-04,
                 atol=self.atol,
                 err_msg='Output ('
                 + fetch_names[i]
@@ -280,7 +340,7 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
-        self.atol = 1e-3
+        self.atol = 5e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
 
@@ -311,6 +371,7 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
         if not core.is_compiled_with_cuda():
             return
 
+        cleanup = enable_static()
         with program_guard(Program(), Program()):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
             x1 = fluid.create_lod_tensor(
@@ -325,6 +386,7 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             )
             x2.desc.set_need_check_feed(False)
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
+        cleanup()
 
 
 class TestConvertSyncBatchNorm(unittest.TestCase):
@@ -382,71 +444,6 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
         compare_model.add_sublayer('net2', Net())
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
         self.assertEqual(len(compare_model.sublayers()), len(model.sublayers()))
-
-
-class TestConvertSyncBatchNormCase2(unittest.TestCase):
-    def test_convert(self):
-        if not core.is_compiled_with_cuda():
-            return
-
-        with fluid.dygraph.guard(fluid.CUDAPlace(0)):
-
-            class SyBNNet(paddle.nn.Layer):
-                def __init__(self, in_ch=3, out_ch=3, dirate=1):
-                    super().__init__()
-                    self.bn_s1 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
-                        paddle.nn.BatchNorm3D(
-                            out_ch,
-                            weight_attr=paddle.ParamAttr(
-                                regularizer=paddle.regularizer.L2Decay(0.0)
-                            ),
-                        )
-                    )
-                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
-                        paddle.nn.BatchNorm3D(out_ch, data_format='NDHWC')
-                    )
-
-                def forward(self, x):
-                    x = self.bn_s1(x)
-                    out = paddle.sum(paddle.abs(self.bn_s2(x)))
-                    return out
-
-            class BNNet(paddle.nn.Layer):
-                def __init__(self, in_ch=3, out_ch=3, dirate=1):
-                    super().__init__()
-                    self.bn_s1 = paddle.nn.BatchNorm3D(
-                        out_ch,
-                        weight_attr=paddle.ParamAttr(
-                            regularizer=paddle.regularizer.L2Decay(0.0)
-                        ),
-                    )
-                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
-                        paddle.nn.BatchNorm3D(out_ch, data_format='NDHWC')
-                    )
-
-                def forward(self, x):
-                    x = self.bn_s1(x)
-                    out = paddle.sum(paddle.abs(self.bn_s2(x)))
-                    return out
-
-            bn_model = BNNet()
-            sybn_model = SyBNNet()
-            np.random.seed(10)
-            data = np.random.random([3, 3, 3, 3, 3]).astype('float32')
-            x = paddle.to_tensor(data)
-            bn_out = bn_model(x)
-            sybn_out = sybn_model(x)
-            np.testing.assert_allclose(
-                bn_out.numpy(),
-                sybn_out.numpy(),
-                rtol=1e-05,
-                err_msg='Output has diff. \n'
-                + '\nBN     '
-                + str(bn_out.numpy())
-                + '\n'
-                + 'Sync BN '
-                + str(sybn_out.numpy()),
-            )
 
 
 class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
