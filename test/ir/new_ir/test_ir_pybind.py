@@ -102,7 +102,7 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op(),
-            tanh_op.operands_source().get_defining_op()[0],
+            tanh_op.operands_source()[0].get_defining_op(),
         )
         self.assertEqual(add_op.result(0).use_empty(), True)
 
