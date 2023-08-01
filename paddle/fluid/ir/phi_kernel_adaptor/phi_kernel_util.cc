@@ -191,7 +191,6 @@ void HandleForSpecialOp(
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto fetch_var_name = var_name_prefix + "_" + fetch_src_name + "@fetch";
-    std::cerr << "fetch var name " << fetch_var_name << std::endl;
     auto* var = const_cast<paddle::framework::Scope*>(inner_scope->root())
                     ->Var(fetch_var_name);
     var->GetMutable<phi::DenseTensor>();
