@@ -1513,7 +1513,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
             >>> data = paddle.uniform([1, 3, 32])
             >>> pool_out = F.adaptive_avg_pool1d(data, output_size=16)
-            >>> print(pool_out shape)
+            >>> print(pool_out.shape)
             [1, 3, 16])
     """
     pool_type = 'avg'

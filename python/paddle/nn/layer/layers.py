@@ -2060,32 +2060,37 @@ class Layer:
 
                 >>> # doctest: +SKIP
                 >>> import paddle
-
+                >>> paddle.seed(2023)
                 >>> linear=paddle.nn.Linear(2, 2)
                 >>> linear.weight
+                >>> print(linear.weight)
                 Parameter containing:
-                Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
-                [[ 0.48597312, -1.00386739],
-                [ 0.75909793,  1.10716617]])
+                Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                [[ 0.76424706,  1.21572542],
+                [ 0.02650531, -0.16404852]])
 
                 >>> linear.to(dtype='float64')
                 >>> linear.weight
+                >>> print(linear.weight)
                 Parameter containing:
-                Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=False,
-                [[-0.70895147,  0.71871758],
-                [-0.34311563, -0.44779366]])
+                Tensor(shape=[2, 2], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [[ 0.76424706,  1.21572542],
+                [ 0.02650531, -0.16404852]])
 
                 >>> linear.to(device='cpu')
                 >>> linear.weight
+                print(linear.weight)
                 Parameter containing:
                 Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=False,
-                [[-0.02147138, -0.23177671],
-                [-0.99661791, -0.78913146]])
+                [[ 0.76424706,  1.21572542],
+                [ 0.02650531, -0.16404852]])
+
                 >>> linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
                 >>> linear.weight
-                Tensor(shape=[2, 2], dtype=float64, place=CUDAPinnedPlace, stop_gradient=False,
-                [[-0.04989364, -0.56889004],
-                [ 0.33960250,  0.96878713]])
+                print(linear.weight)
+                Tensor(shape=[2, 2], dtype=float64, place=Place(gpu_pinned), stop_gradient=False,
+                [[ 0.76424706,  1.21572542],
+                [ 0.02650531, -0.16404852]])
 
         '''
         return self._to_impl(
@@ -2343,7 +2348,7 @@ class Layer:
                 >>> model = Model()
                 >>> model.float16()
                 Model(
-                    (linear): Linear(in_features=1, out_features=1, dtype=paddle.float16)
+                    (linear): Linear(in_features=1, out_features=1, dtype=float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
                 )
         '''
@@ -2391,6 +2396,7 @@ class Layer:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP('bfloat need V100 compile')
                 >>> import paddle
 
                 >>> class Model(paddle.nn.Layer):
