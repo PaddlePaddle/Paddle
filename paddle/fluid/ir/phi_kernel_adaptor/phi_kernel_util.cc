@@ -56,9 +56,11 @@ void AddNewData(ir::Value value,
                 std::vector<paddle::framework::Variable*>* variable_list) {
   value_2_var_name->emplace(value, name);
   variable_2_var_name->emplace(var, name);
-  auto id = var_name_2_id->size();
-  var_name_2_id->emplace(name, id);
-  variable_list->push_back(var);
+  if (var_name_2_id->count(name) == 0) {
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(name, id);
+    variable_list->push_back(var);
+  }
   PADDLE_ENFORCE_EQ(
       variable_list->size(),
       var_name_2_id->size(),
