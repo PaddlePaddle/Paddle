@@ -94,7 +94,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('ValueError: var fc.b not in this block')            
+            >>> # doctest: +SKIP('ValueError: var fc.b not in this block')
             >>> import paddle
             >>> import paddle.fluid as fluid
 
