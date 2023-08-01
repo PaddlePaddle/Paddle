@@ -124,6 +124,16 @@ inline __device__ void UpdateSum(const T* srcX, float* sum, float* sumSq) {
 }
 
 template <>
+inline __device__ void UpdateSum<__half, 2>(const __half* srcX,
+                                            float* sum,
+                                            float* sumSq) {
+  __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
+  float2 f2 = __half22float2(h2);
+  *sum += f2.x + f2.y;
+  *sumSq += f2.x * f2.x + f2.y * f2.y;
+}
+
+template <>
 inline __device__ void UpdateSum<phi::dtype::float16, 2>(
     const phi::dtype::float16* srcX, float* sum, float* sumSq) {
   __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
@@ -363,6 +373,49 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
     int32_t hwEnd,
     int32_t ci,
     const GroupNormNHWCParams<phi::dtype::float16>& params,
+    float mean,
+    float invStdDev) {
+  float2 gammaF2, betaF2;
+  gammaF2 = __half22float2(*reinterpret_cast<__half2 const*>(
+      reinterpret_cast<half const*>(params.gamma) + ci));
+  betaF2 = __half22float2(*reinterpret_cast<__half2 const*>(
+      reinterpret_cast<half const*>(params.beta) + ci));
+
+  // Iterate over the activations to compute the sums.
+  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+    // The src/dst offset.
+    int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
+
+    // Fetch two channels per thread.
+    __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
+
+    // Extract the two half values.
+    float2 f2 = __half22float2(h2);
+
+    // Normalize the channels.
+    f2.x = (f2.x - mean) * invStdDev;
+    f2.y = (f2.y - mean) * invStdDev;
+
+    // Scale by gamma and add beta.
+    f2.x = gammaF2.x * f2.x + betaF2.x;
+    f2.y = gammaF2.y * f2.y + betaF2.y;
+
+    // Apply Silu if needed.
+    if (params.withSilu) {
+      f2.x = f2.x * sigmoid(f2.x);
+      f2.y = f2.y * sigmoid(f2.y);
+    }
+    // Store the scaled values.
+    *reinterpret_cast<__half2*>(&params.dst[offset]) = __float22half2_rn(f2);
+  }
+}
+
+template <>
+inline __device__ void GroupNormCompute<__half, 2>(
+    int32_t hwBegin,
+    int32_t hwEnd,
+    int32_t ci,
+    const GroupNormNHWCParams<__half>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
