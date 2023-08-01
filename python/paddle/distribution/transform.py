@@ -705,7 +705,7 @@ class IndependentTransform(Transform):
             >>> print(multi_exp.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[2.71828175  , 7.38905621  , 20.08553696 ],
-                    [54.59814835 , 148.41316223, 403.42880249]])
+                     [54.59814835 , 148.41316223, 403.42880249]])
             >>> print(multi_exp.forward_log_det_jacobian(x))
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [6. , 15.])
@@ -963,15 +963,15 @@ class SigmoidTransform(Transform):
             >>> print(t.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[0.73105860, 0.73105860, 0.73105860],
-                    [0.73105860, 0.73105860, 0.73105860]])
+                     [0.73105860, 0.73105860, 0.73105860]])
             >>> print(t.inverse(t.forward(x)))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[1.00000012, 1.00000012, 1.00000012],
-                    [1.00000012, 1.00000012, 1.00000012]])
+                     [1.00000012, 1.00000012, 1.00000012]])
             >>> print(t.forward_log_det_jacobian(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[-1.62652326, -1.62652326, -1.62652326],
-                    [-1.62652326, -1.62652326, -1.62652326]])
+                     [-1.62652326, -1.62652326, -1.62652326]])
     """
 
     @property
@@ -1010,11 +1010,11 @@ class SoftmaxTransform(Transform):
             >>> print(t.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[0.33333334, 0.33333334, 0.33333334],
-                    [0.33333334, 0.33333334, 0.33333334]])
+                     [0.33333334, 0.33333334, 0.33333334]])
             >>> print(t.inverse(t.forward(x)))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[-1.09861231, -1.09861231, -1.09861231],
-                    [-1.09861231, -1.09861231, -1.09861231]])
+                     [-1.09861231, -1.09861231, -1.09861231]])
     """
     _type = Type.OTHER
 
@@ -1073,20 +1073,20 @@ class StackTransform(Transform):
             >>> print(t.forward(x))
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[2.71828175 , 1.         ],
-                    [7.38905621 , 4.         ],
-                    [20.08553696, 9.         ]])
+                     [7.38905621 , 4.         ],
+                     [20.08553696, 9.         ]])
 
             >>> print(t.inverse(t.forward(x)))
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[1., 1.],
-                    [2., 2.],
-                    [3., 3.]])
+                     [2., 2.],
+                     [3., 3.]])
 
             >>> print(t.forward_log_det_jacobian(x))
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[1.        , 0.69314718],
-                    [2.        , 1.38629436],
-                    [3.        , 1.79175949]])
+                     [2.        , 1.38629436],
+                     [3.        , 1.79175949]])
     """
 
     def __init__(self, transforms, axis=0):
@@ -1258,11 +1258,11 @@ class TanhTransform(Transform):
             >>> print(tanh.forward_log_det_jacobian(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[-0.86756170 , -2.65000558 , -4.61865711 ],
-                    [-6.61437654 , -8.61379623 , -10.61371803]])
+                     [-6.61437654 , -8.61379623 , -10.61371803]])
             >>> print(tanh.inverse_log_det_jacobian(tanh.forward(x)))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[0.86756176 , 2.65000558 , 4.61866283 ],
-                    [6.61441946 , 8.61399269 , 10.61451530]])
+                     [6.61441946 , 8.61399269 , 10.61451530]])
     """
     _type = Type.BIJECTION
 
