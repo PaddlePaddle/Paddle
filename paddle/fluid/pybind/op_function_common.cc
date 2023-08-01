@@ -61,7 +61,6 @@ class OpAttrTypeMap {
       ops_attrtype_map_;
 };
 
-extern PyTypeObject* g_varbase_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_blockdesc_pytype;
 extern PyTypeObject* p_tensor_type;
@@ -71,7 +70,6 @@ bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
       PyObject_TypeCheck(*obj, g_vartype_pytype) ||        // NOLINT
-      PyObject_TypeCheck(*obj, g_varbase_pytype) ||        // NOLINT
       (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
@@ -92,7 +90,6 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
 bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
   if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
-      PyObject_TypeCheck(*obj, g_varbase_pytype) ||        // NOLINT
       (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
@@ -111,7 +108,6 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
 bool PyObject_CheckComplexOrToComplex(PyObject** obj) {
   if (PyComplex_Check(*obj) || PyLong_Check(*obj) || PyFloat_Check(*obj) ||
       PyObject_TypeCheck(*obj, g_vartype_pytype) ||  // NOLINT
-      PyObject_TypeCheck(*obj, g_varbase_pytype) ||  // NOLINT
       PyObject_TypeCheck(*obj, p_tensor_type)) {     // NOLINT
     return true;
   }
@@ -924,138 +920,6 @@ void ConstructAttrMapFromPyArgs(
         break;
     }
   }
-}
-
-std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
-    const std::string& op_type,
-    const std::string& arg_name,
-    PyObject* args,
-    ssize_t arg_idx,
-    bool dispensable) {
-  ::pybind11::detail::instance* inst =
-      (::pybind11::detail::instance*)PyTuple_GET_ITEM(args, arg_idx);
-
-  if (PyTuple_Check((PyObject*)inst)) {  // NOLINT
-    inst = (::pybind11::detail::instance*)PyTuple_GET_ITEM(inst, 0);
-  }
-
-  if (inst == nullptr || (PyObject*)inst == Py_None) {  // NOLINT
-    if (!dispensable) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be Tensor, but got None",
-          op_type,
-          arg_name,
-          arg_idx));
-    }
-    return nullptr;
-  }
-
-  if (!PyObject_TypeCheck((PyObject*)inst, g_varbase_pytype)) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got "
-        "%s",
-        op_type,
-        arg_name,
-        arg_idx,
-        ((PyTypeObject*)((PyObject*)inst)->ob_type)->tp_name));  // NOLINT
-  }
-
-  void** vh = inst->simple_layout ? inst->simple_value_holder
-                                  : &inst->nonsimple.values_and_holders[0];
-  return reinterpret_cast<std::shared_ptr<paddle::imperative::VarBase>&>(vh[1]);
-}
-
-std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseListFromArgs(
-    const std::string& op_type,
-    const std::string& arg_name,
-    PyObject* args,
-    ssize_t arg_idx,
-    bool dispensable) {
-  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
-
-  if (list == nullptr || list == Py_None) {
-    if (!dispensable) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
-          "None",
-          op_type,
-          arg_name,
-          arg_idx));  // NOLINT
-    }
-    return {};
-  }
-
-  std::vector<std::shared_ptr<imperative::VarBase>> result;
-
-  if (PyList_Check(list)) {
-    Py_ssize_t len = PyList_Size(list);
-    if (len == 0) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
-          "empty list",
-          op_type,
-          arg_name,
-          arg_idx));
-    }
-    ::pybind11::detail::instance* item = nullptr;
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = (::pybind11::detail::instance*)PyList_GetItem(list, i);
-      if (!PyObject_TypeCheck((PyObject*)item, g_varbase_pytype)) {  // NOLINT
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "%s(): argument '%s' (position %d) must be list of Tensors, but "
-            "got list of "
-            "%s",
-            op_type,
-            arg_name,
-            arg_idx,
-            ((PyTypeObject*)((PyObject*)item)->ob_type)->tp_name));  // NOLINT
-      }
-      void** vh = item->simple_layout ? item->simple_value_holder
-                                      : &item->nonsimple.values_and_holders[0];
-      result.emplace_back(
-          reinterpret_cast<std::shared_ptr<paddle::imperative::VarBase>&>(
-              vh[1]));
-    }
-  } else if (PyTuple_Check(list)) {
-    Py_ssize_t len = PyTuple_Size(list);
-    if (len == 0) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
-          "empty list",
-          op_type,
-          arg_name,
-          arg_idx));
-    }
-    ::pybind11::detail::instance* item = nullptr;
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = (::pybind11::detail::instance*)PyTuple_GetItem(list, i);  // NOLINT
-      if (!PyObject_TypeCheck((PyObject*)item, g_varbase_pytype)) {    // NOLINT
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "%s(): argument '%s' (position %d) must be list of Tensors, but "
-            "got list of "
-            "%s",
-            op_type,
-            arg_name,
-            arg_idx,
-            ((PyTypeObject*)((PyObject*)item)->ob_type)->tp_name));  // NOLINT
-      }
-      void** vh = item->simple_layout ? item->simple_value_holder
-                                      : &item->nonsimple.values_and_holders[0];
-      result.emplace_back(
-          reinterpret_cast<std::shared_ptr<paddle::imperative::VarBase>&>(
-              vh[1]));
-    }
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
-        "%s",
-        op_type,
-        arg_name,
-        arg_idx,
-        ((PyTypeObject*)list->ob_type)->tp_name));  // NOLINT
-  }
-
-  return result;
 }
 
 unsigned long GetUnsignedLongFromArgs(  // NOLINT

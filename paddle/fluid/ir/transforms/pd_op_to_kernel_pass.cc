@@ -270,10 +270,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, std::move(op_info_parser));
-    VLOG(6) << "kernel type " << kernel_key;
 
-    // only for single output
-    // need update new kernel key layout and data tyep
+    VLOG(6) << "kernel type " << kernel_key;
 
     std::vector<ir::Type> op_output_types;
     if (op_item->num_results() > 0) {

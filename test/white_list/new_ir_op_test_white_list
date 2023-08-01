@@ -94,6 +94,7 @@ test_i0_op
 test_i1e_op
 test_i1_op
 test_index_add_op
+test_isclose_op
 test_index_sample_op
 test_instance_norm_op_v2
 test_instance_norm_op_v2_new_ir

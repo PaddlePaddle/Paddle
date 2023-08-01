@@ -147,7 +147,7 @@ class TestExpandAsV2API(unittest.TestCase):
             feed={"x": x_np, "target_tensor": y_np},
             fetch_list=[out_1],
         )
-        assert np.array_equal(res_1[0], np.tile(x_np, (2, 1, 1)))
+        np.testing.assert_array_equal(res_1[0], np.tile(x_np, (2, 1, 1)))
 
 
 support_types = get_xpu_op_support_types('expand_as_v2')

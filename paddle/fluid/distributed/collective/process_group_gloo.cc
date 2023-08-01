@@ -694,7 +694,7 @@ std::shared_ptr<ProcessGroupGloo> ProcessGroupGloo::CreateProcessGroupGloo(
     opts->device = ProcessGroupGloo::createDefaultDevice();
   }
   phi::distributed::CommContextManager::CreateGlooCommContext(
-      store, gid, rank, size);
+      store, std::to_string(gid), rank, size);
   auto process_group =
       std::make_shared<ProcessGroupGloo>(store, rank, size, gid, opts);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
@@ -705,7 +705,7 @@ phi::distributed::GlooCommContext* ProcessGroupGloo::GetCommContext() {
   const auto& comm_context_manager =
       phi::distributed::CommContextManager::GetInstance();
   auto comm_context = static_cast<phi::distributed::GlooCommContext*>(
-      comm_context_manager.Get(this->gid_));
+      comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
                     phi::errors::Unavailable("GlooCommContext is nullptr"));

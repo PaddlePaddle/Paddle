@@ -190,6 +190,11 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
   } else if (attr.isa<ir::BoolAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::BoolAttribute>().data());
     dtype = phi::DataType::BOOL;
+  } else if (attr.isa<dialect::ScalarAttribute>()) {
+    // TODO(phlrain) : need update here, downcast from double to float
+    data = static_cast<float>(
+        attr.dyn_cast<dialect::ScalarAttribute>().data().to<double>());
+    dtype = phi::DataType::FLOAT64;
   }
   ir::Builder builder(ctx, program->block());
   dialect::FullOp full_op = builder.Build<dialect::FullOp>(
