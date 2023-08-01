@@ -741,8 +741,8 @@ std::unique_ptr<Program> PaddleModelToProgram::operator()(
     const std::string& model_dir, bool is_combined) {
   paddle::cpp::ProgramDesc program_desc;
   paddle::LoadModelPb(model_dir,
-                      "__model__",
-                      "",
+                      ".pdmodel",
+                      ".pdiparams",
                       scope_,
                       &program_desc,
                       is_combined,

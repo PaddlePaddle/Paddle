@@ -248,8 +248,12 @@ void LoadModelPb(const std::string &model_dir,
   std::string prog_path = model_dir + "/__model__";
   std::string param_file_temp = param_file;
   if (combined) {
-    // prog_path = model_file;
-    param_file_temp = model_dir + "/params";
+    // In combined case, prog path is saved as [model_dir].pdmodel
+    // Param file is saved as [model_dir].pdiparams
+    // For example, /path/model.pdmodel , /path/model.pdiparams
+    // In this case, model_file = ".pdmodel", param_file = ".pdiparams"
+    prog_path = model_dir + model_file;
+    param_file_temp = model_dir + param_file;
   }
   framework_proto::ProgramDesc pb_proto_prog =
       *LoadProgram(prog_path, model_from_memory);
