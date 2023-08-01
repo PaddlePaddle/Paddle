@@ -97,7 +97,10 @@ void BindOperation(py::module *m) {
   py::class_<Operation> op(*m, "Operation");
   op.def("name", &Operation::name)
       .def("get_parent_block",
-           &Operation::GetParent,
+           py::overload_cast<>(&Operation::GetParent),
+           return_value_policy::reference)
+      .def("get_parent_block",
+           py::overload_cast<>(&Operation::GetParent, py::const_),
            return_value_policy::reference)
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
