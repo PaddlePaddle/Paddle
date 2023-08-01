@@ -123,7 +123,7 @@ inline void run_program_ad_func(
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
-    // Set TensorWrappers
+
     auto* forward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
     auto* backward_global_block = PADDLE_GET_CONST(
@@ -131,6 +131,7 @@ inline void run_program_ad_func(
     // Clear unused x vars
     auto filter_x =
         filter_unused_input_var_in_backward(x, backward_global_block);
+    // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
     // Clear unused out vars
     clear_unused_out_var_in_backward(out, backward_global_block, step_scope[0]);
