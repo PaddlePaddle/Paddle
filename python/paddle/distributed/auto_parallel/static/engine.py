@@ -644,6 +644,7 @@ class Engine:
                 self._losses = auto_utils.to_list(self._loss)
 
         default_ctx = get_default_distributed_context()
+        print("default_ctx.has_annotation:", default_ctx.has_annotation)
         if not default_ctx.has_annotation:
             # We build the world process group because the data parallel
             # needs all ranks by default.
@@ -1418,6 +1419,7 @@ class Engine:
         worker_init_fn=None,
         epochs=1,
         steps_per_epoch=None,
+        places=None,
     ):
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
@@ -1440,7 +1442,6 @@ class Engine:
                 feed_list.append(copy_var)
 
         # insert read op at the end of program
-        places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = DistributedDataLoader(
                 dataset,
