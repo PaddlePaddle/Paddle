@@ -866,7 +866,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         assert (
             self.accumulate_steps % self.num_stages == 0
-        ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
+        ), "accumulate_steps({}) should be evenly divisible by num_stages({}) for pipeline with interleave".format(
+            self.accumulate_steps, self.num_stages
+        )
         per_stage_accumulate_steps = self.accumulate_steps // self.num_stages
         self._backward_step_count = (
             -(per_stage_accumulate_steps - 1)
