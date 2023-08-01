@@ -105,7 +105,7 @@ phi::KernelKey GetKernelKey(
                   .dtype());
         } else if (type.isa<ir::VectorType>()) {
           auto vec_data = type.dyn_cast<ir::VectorType>().data();
-          if (vec_data.size() == 0) {
+          if (vec_data.empty() == 0) {
             kernel_data_type = phi::DataType::UNDEFINED;
           } else {
             if (vec_data[0].isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -260,7 +260,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
     std::unique_ptr<OpYamlInfoParser> op_info_parser;
     if (op_info_interface) {
-      op_info_parser.reset(new OpYamlInfoParser(op_info_interface.GetOpInfo()));
+      op_info_parser =
+          std::make_unique<OpYamlInfoParser>(op_info_interface.GetOpInfo());
     }
 
     std::string kernel_fn_str;
@@ -313,7 +314,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                   ctx,
                   phi::TransToPhiPlace(kernel_key.backend()),
                   result_type.dyn_cast<dialect::SelectedRowsType>());
-          op_output_types.push_back(allocated_selected_rows_dtype);
+          op_output_types.emplace_back(allocated_selected_rows_dtype);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
               "Result type only support DenseTensorType and VectorType"));
@@ -328,7 +329,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         auto cur_in = (*it)->operand(i);
         if (!cur_in) {
-          vec_inputs.push_back(ir::OpResult());
+          vec_inputs.emplace_back();
           continue;
         }
         PADDLE_ENFORCE_EQ(

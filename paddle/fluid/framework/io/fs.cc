@@ -179,7 +179,7 @@ std::vector<std::string> localfs_list(const std::string& path) {
   std::vector<std::string> list;
 
   while (reader.getline(&*pipe)) {
-    list.push_back(reader.get());
+    list.emplace_back(reader.get());
   }
 
   return list;

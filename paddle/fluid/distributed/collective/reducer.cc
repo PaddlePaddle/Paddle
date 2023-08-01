@@ -492,9 +492,7 @@ EagerReducer::EagerReducer(
   for (size_t global_var_index = 0; global_var_index < tensors_.size();
        ++global_var_index) {
     auto tensor = tensors_[global_var_index];
-    auto reduce_hook = [=](void) -> void {
-      this->AddDistHook(global_var_index);
-    };
+    auto reduce_hook = [=]() -> void { this->AddDistHook(global_var_index); };
 
     const auto &grad_node = GetGradNodeFromTensor(&tensor);
 
@@ -610,8 +608,8 @@ void EagerReducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->origin_shapes_.push_back(IntArray(tensor.shape()));
-    p_group->dense_tensors_.push_back(phi::DenseTensor());
+    p_group->origin_shapes_.emplace_back(tensor.shape());
+    p_group->dense_tensors_.emplace_back();
 
     const auto &dtype = tensor.dtype();
     const auto &inner_place = tensor.impl()->place();
