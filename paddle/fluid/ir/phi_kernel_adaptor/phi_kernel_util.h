@@ -49,7 +49,8 @@ void BuildScope(const ir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list);
+                std::vector<paddle::framework::Variable*>* variable_list,
+                std::vector<::ir::Value>* parameter_values);
 
 void BuildRuntimeContext(
     ir::Operation* op,

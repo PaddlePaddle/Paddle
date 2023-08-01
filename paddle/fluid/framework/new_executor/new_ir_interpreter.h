@@ -257,6 +257,10 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
 
   std::vector<std::string> fetch_var_names_;
+
+  // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
+  // belongs to a parameter and cannot GC.
+  std::vector<::ir::Value> parameter_values_;
 };
 
 }  // namespace framework

@@ -220,7 +220,8 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
-                     &variable_list_);
+                     &variable_list_,
+                     &parameter_values_);
     VLOG(4) << DebugValueInfo();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
@@ -1645,19 +1646,6 @@ void NewIRInterpreter::BuildInstruction() {
 }
 
 std::string NewIRInterpreter::DebugValueInfo() {
-  VLOG(0) << "value -> var_name";
-  for (auto kv : value_2_var_name_) {
-    VLOG(0) << kv.first.impl() << " -> " << kv.second;
-  }
-  VLOG(0) << "var_name -> id";
-  for (auto kv : var_name_2_id_) {
-    VLOG(0) << kv.first << " -> " << kv.second;
-  }
-  VLOG(0) << "var* ";
-  for (Variable* var : variable_list_) {
-    VLOG(0) << var;
-  }
-
   std::stringstream os;
   os << "value info of interpretercore " << this << "\n"
      << "value -> var_name -> id -> variable*"
@@ -1812,12 +1800,17 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
 
     // persistable var will be ignore while GC
     ::ir::Value value = GetValueByName(GetNameById(var_id));
-    if (value && value.GetDefiningOp()->attributes().count("is_persisable") &&
-        value.GetDefiningOp()
-            ->attributes()
-            .at("is_persisable")
-            .dyn_cast<::ir::BoolAttribute>()
-            .data()) {
+    bool is_parameter = false;
+    if (value) {
+      for (auto item : parameter_values_) {
+        if (item == value) {
+          is_parameter = true;
+          break;
+        }
+      }
+    }
+    if (is_parameter) {
+      VLOG(4) << "value " << value.impl() << " is a parameter, skip gc";
       continue;
     }
 
@@ -1865,14 +1858,20 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
     ::ir::Value value = GetValueByName(GetNameById(var_id));
-    if (value && value.GetDefiningOp()->attributes().count("is_persisable") &&
-        value.GetDefiningOp()
-            ->attributes()
-            .at("is_persisable")
-            .dyn_cast<::ir::BoolAttribute>()
-            .data()) {
+    bool is_parameter = false;
+    if (value) {
+      for (auto item : parameter_values_) {
+        if (item == value) {
+          is_parameter = true;
+          break;
+        }
+      }
+    }
+    if (is_parameter) {
+      VLOG(4) << "value " << value.impl() << " is a parameter, skip gc";
       continue;
     }
+
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : " << GetNameById(var_id);
       gc_->Add(refs_[var_id]->Var(), instr);
@@ -2027,8 +2026,9 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
-                     &variable_list_);
-    VLOG(0) << "Done BuildScope";
+                     &variable_list_,
+                     &parameter_values_);
+    VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
     BuildInstruction();

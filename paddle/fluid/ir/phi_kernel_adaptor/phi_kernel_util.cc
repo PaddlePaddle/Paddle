@@ -105,11 +105,8 @@ paddle::framework::Variable* CreateVar(
     std::vector<paddle::framework::Variable*>* variable_list) {
   Operation* def_op = value.GetDefiningOp();
   bool is_persisable = false;
-  if (def_op->attributes().count("is_persisable")) {
-    is_persisable = def_op->attributes()
-                        .at("is_persisable")
-                        .dyn_cast<ir::BoolAttribute>()
-                        .data();
+  if (def_op->name() == "builtin.set_parameter") {
+    is_persisable = true;
   }
 
   paddle::framework::Variable* var = nullptr;
@@ -219,7 +216,8 @@ void HandleForSpecialOp(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list) {
+    std::vector<paddle::framework::Variable*>* variable_list,
+    std::vector<::ir::Value>* parameter_values) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -337,6 +335,10 @@ void HandleForSpecialOp(
                value_2_var_name,
                variable_2_var_name,
                var_name_2_id);
+
+    if (parameter_values) {
+      parameter_values->push_back(value);
+    }
   }
 
   if (op_name == "pd.shadow_output") {
@@ -377,6 +379,9 @@ void HandleForSpecialOp(
                variable_2_var_name,
                var_name_2_id,
                variable_list);
+    if (parameter_values) {
+      parameter_values->push_back(value);
+    }
   }
 
   if (op_name == "builtin.slice") {
@@ -462,7 +467,8 @@ void BuildScope(const ir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
+                std::vector<paddle::framework::Variable*>* variable_list,
+                std::vector<::ir::Value>* parameter_values) {
   VLOG(4) << "***** [before build] scope"
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
@@ -490,7 +496,8 @@ void BuildScope(const ir::Block& block,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
-                         variable_list);
+                         variable_list,
+                         parameter_values);
       continue;
     }
 
