@@ -60,12 +60,14 @@ using OpAttributeInfo = dialect::OpAttributeInfo;
 using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
 using OpOutputInfo = dialect::OpOutputInfo;
 using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-using InputHandleFn = std::function<ir::OpResult(ir::IrContext*,
-                                                 TranslationContext*,
-                                                 const OpDesc&,
-                                                 const std::string&,
-                                                 const OpInputInfo&,
-                                                 ir::Program*)>;
+using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
+                                                  TranslationContext*,
+                                                  const OpDesc&,
+                                                  const std::string&,
+                                                  const OpInputInfo&,
+                                                  ir::Program*)>;
+using AttributeHandlerFn = std::function<ir::Attribute(
+    ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 constexpr char kTargetDialectPrefix[] = "pd.";
 constexpr char kEmptyVarName[] = "@EMPTY@";
 
@@ -285,13 +287,19 @@ struct OpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc);
 
-  virtual void RecordOpResultMapping(TranslationContext* param_map,
+  virtual void RecordOpResultMapping(ir::IrContext* ctx,
+                                     TranslationContext* param_map,
                                      const OpDesc& op_desc,
                                      ir::Operation* operation,
                                      const OpOutputMapping& arg_to_idx);
 
  public:
-  virtual InputHandleFn GetSpecialInputHandlers(std::string input_name) {
+  virtual InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) {
+    return nullptr;
+  }
+  virtual AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& input_name) {
     return nullptr;
   }
 };
@@ -300,7 +308,7 @@ ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
                                         const OpDesc& op_desc) {
   std::string target_op_name =
       kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
-  if (IsInplace(op_desc)) {
+  if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
     target_op_name += "_";
   }
   VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
@@ -467,6 +475,9 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
     std::string legacy_output_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
+    VLOG(10) << "[op:" << op_desc.Type() << "][output]" << info.name << " "
+             << legacy_output_name;
+
     // return empty type if this arg is optional and not shown in OpDesc
     if (!op_desc.HasOutput(legacy_output_name)) {
       VLOG(10) << "[output translating]"
@@ -483,11 +494,19 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
     const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
+    VLOG(10) << "[op:" << op_desc.Type() << "][output]" << info.name << " "
+             << legacy_output_name << " " << legacy_output_vars.size() << " "
+             << is_vector;
+
     // Specially process TensorArray, this because we cannot distinguish it with
     // Vector<DenseTensor> by other conditions but we cannot support it like
     // Vector<DenseTensor>
     if (legacy_output_vars.size() == 1) {
       VarDesc* var = block->FindVarRecursive(legacy_output_vars[0]);
+      IR_ENFORCE(var != nullptr,
+                 "[op:%s] Output %s should not be null",
+                 op_desc.Type(),
+                 legacy_output_vars[0]);
       if (var->GetType() ==
           paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
         ir::Type translated_var_type =
@@ -511,6 +530,10 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
 
       auto& var_name = legacy_output_vars[0];
       VarDesc* var = block->FindVarRecursive(var_name);
+      IR_ENFORCE(var != nullptr,
+                 "[op:%s] Output %s should not be null",
+                 op_desc.Type(),
+                 var_name);
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name << " " << var_name
                << " " << var->GetType();
@@ -558,6 +581,12 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   ir::AttributeMap attribute_map = {};
 
   for (const auto& info : op_attr_infos) {
+    if (auto handler = this->GetSpecialAttributeHandlers(info.name)) {
+      auto new_attr = handler(ctx, op_desc, info);
+      attribute_map[info.name] = new_attr;
+      continue;
+    }
+
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
     VLOG(10) << "[op: " << op_desc.Type()
@@ -584,7 +613,8 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   return attribute_map;
 }
 
-void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
+void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
+                                          TranslationContext* param_map,
                                           const OpDesc& op_desc,
                                           ir::Operation* operation,
                                           const OpOutputMapping& arg_to_idx) {
@@ -592,7 +622,7 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
     auto& name = n.first;
     VLOG(10) << "[output recording]"
              << "[" << op_desc.Type() << "]" << name;
-    auto& args = n.second;
+    const auto& args = n.second;
     size_t idx_in_vector = 0;
     for (const auto& arg_name : args) {
       if (arg_name == kEmptyVarName) {
@@ -661,7 +691,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
   program->block()->push_back(operation);
 
   VLOG(4) << "[general op][" << op_desc.Type() << "] opearation insertion end.";
-  this->RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
+  this->RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
 
   return operation;
 }
@@ -830,7 +860,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     ir::Operation* operation = ir::Operation::Create(
         op_inputs, attribute_map, op_output_types, op_info);
     program->block()->push_back(operation);
-    RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
+    RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
 
     VLOG(10) << "[op assign_value] translation finished";
 
@@ -885,7 +915,8 @@ ir::OpResult TranslateDropOutStateIn(ir::IrContext* ctx,
 
 // `rnn` has an aditional input in dynamic graph
 struct RnnOpTranscriber : public OpTranscriber {
-  InputHandleFn GetSpecialInputHandlers(std::string input_name) override {
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
     if (input_name != "dropout_state_in") {
       return nullptr;
     }
@@ -938,6 +969,39 @@ struct FeedOpTranscriber : public OpTranscriber {
         {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
         {"col",
          ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
+    };
+
+    return attribute_map;
+  }
+
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    return {};
+  }
+};
+
+struct FeedWithPlaceOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    ir::AttributeMap attribute_map = {
+        {"name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"dtype",
+         paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
+        {"place",
+         paddle::dialect::PlaceAttribute::get(
+             ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
     };
 
     return attribute_map;
@@ -1087,6 +1151,32 @@ struct FetchOpTranscriber : public OpTranscriber {
   }
 };
 
+struct ShadowOutputOpTranscriber : public OpTranscriber {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
+    std::vector<ir::OpResult> op_inputs;
+    auto legacy_input_vars = op_desc.Input("x", true);
+
+    auto defining_info = (*param_map)[legacy_input_vars[0]];
+    op_inputs.push_back(defining_info.value);
+
+    ir::AttributeMap attribute_map = {
+        {"parameter_name",
+         ir::StrAttribute::get(ctx,
+                               op_desc.GetAttrIfExists<std::string>("name"))},
+    };
+
+    auto create_op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
+    ir::Operation* operation =
+        ir::Operation::Create(op_inputs, attribute_map, {}, create_op_info);
+    program->block()->push_back(operation);
+
+    return operation;
+  }
+};
+
 // NOTE, add_n op in legacy ops don't have a kernel, so we use a new op for now
 struct AddNOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
@@ -1148,7 +1238,8 @@ ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
 }
 
 struct OneHotTranscriber : public OpTranscriber {
-  InputHandleFn GetSpecialInputHandlers(std::string input_name) override {
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
     if (input_name != "num_classes") {
       return nullptr;
     }
@@ -1156,19 +1247,259 @@ struct OneHotTranscriber : public OpTranscriber {
   };
 };
 
+ir::Attribute TranslateReduceAll(ir::IrContext* ctx,
+                                 const OpDesc& op_desc,
+                                 const OpAttributeInfo& attr_info) {
+  bool reduce_all = false;
+  if (op_desc.HasAttr("reduce_all")) {
+    reduce_all = paddle::get<bool>(op_desc.GetAttr("reduce_all"));
+  }
+
+  if (reduce_all) {
+    return ir::ArrayAttribute::get(ctx, std::vector<ir::Attribute>{});
+  }
+
+  auto& attribute_translator = AttributeTranslator::instance();
+  auto& op_normalizer = OpNameNormalizer::instance();
+  auto legacy_attr_name =
+      op_normalizer.GetLegacyAttrName(op_desc.Type(), attr_info.name);
+  paddle::framework::Attribute dims = op_desc.GetAttr(legacy_attr_name);
+  return attribute_translator(attr_info.type_name, dims);
+}
+
+struct ReduceOpTranscriber : public OpTranscriber {
+  AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& input_name) override {
+    if (input_name != "axis") {
+      return nullptr;
+    }
+    return TranslateReduceAll;
+  }
+};
+
+struct ElementwiseTranscriber : public OpTranscriber {
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    int axis = paddle::get<int>(op_desc.GetAttr("axis"));
+
+    if (axis == -1) {
+      return OpTranscriber::GenerateOperationInput(
+          ctx, param_map, op_desc, normalized_op_name, input_infos, program);
+    }
+
+    auto x_names = op_desc.Input("X", true);
+    IR_ENFORCE(x_names.size() == 1,
+               "Expected op[%s]'s input X has only 1 variable, but got %d",
+               op_desc.Type(),
+               x_names.size());
+    auto x_name = x_names[0];
+    IR_ENFORCE(param_map->count(x_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               x_name);
+    auto x_defining_info = param_map->at(x_name);
+    if (x_defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, program, x_defining_info, x_name);
+      x_defining_info = param_map->at(x_name);
+    }
+    ir::OpResult x_value = x_defining_info.value;
+    IR_ENFORCE(x_value,
+               "Expected op[%s]'s input %s is not null",
+               op_desc.Type(),
+               x_name);
+    ir::Type x_type = x_value.type();
+    IR_ENFORCE(x_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               x_name,
+               x_type);
+    dialect::DenseTensorType x_tensor_type =
+        x_type.dyn_cast<dialect::DenseTensorType>();
+    std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
+
+    auto y_names = op_desc.Input("Y", true);
+    IR_ENFORCE(y_names.size() == 1,
+               "Expected op[%s]'s input Y has only 1 variable, but got %d",
+               op_desc.Type(),
+               y_names.size());
+    auto y_name = y_names[0];
+    IR_ENFORCE(param_map->count(y_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               y_name);
+    auto y_defining_info = param_map->at(y_name);
+    if (y_defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, program, y_defining_info, y_name);
+      y_defining_info = param_map->at(y_name);
+    }
+    ir::OpResult y_value = y_defining_info.value;
+    IR_ENFORCE(y_value,
+               "Expected op[%s]'s input %s is not null",
+               op_desc.Type(),
+               y_name);
+    ir::Type y_type = y_value.type();
+    IR_ENFORCE(y_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               y_name,
+               y_type);
+    dialect::DenseTensorType y_tensor_type =
+        y_type.dyn_cast<dialect::DenseTensorType>();
+    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+
+    if (axis < 0) {
+      axis += x_shape.size();
+    }
+
+    int append_size = x_shape.size() - axis - 1 - y_shape.size();
+    if (append_size < 0) {  // which means x.rank <= y.rank, mostly
+                            // x.rank=y.rank
+      return {x_value, y_value};
+    }
+    IR_ENFORCE(append_size >= 0,
+               "Expected op[%s] have append size >= 0 with axis=%d but got %d",
+               op_desc.Type(),
+               axis,
+               append_size);
+
+    ir::Builder builder(ctx, program->block());
+    ir::OpResult y_new;
+    if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end()) {
+      std::vector<int64_t> y_new_shape(y_shape);
+      for (int i = 0; i <= append_size; i++) {
+        y_new_shape.push_back(1);
+      }
+      dialect::Reshape_Op reshape_op =
+          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      y_new = reshape_op.out();
+      VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
+              << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+    } else {
+      auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
+      auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
+          std::vector<int64_t>(append_size, 1),
+          phi::DataType::INT64,
+          phi::CPUPlace());
+      auto y_true_shape_op = builder.Build<ir::CombineOp>(
+          std::vector<ir::OpResult>{shape_op.out(), append_shape_op.out()});
+      auto concat_op =
+          builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
+      auto y_new_shape = concat_op.out();
+      auto reshape_op =
+          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      y_new = reshape_op.out();
+    }
+    return {x_value, y_new};
+  }
+};
+
+struct ElementwiseGradTranscriber : public OpTranscriber {
+  void RecordOpResultMapping(ir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             ir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+
+    int axis = paddle::get<int>(op_desc.GetAttr("axis"));
+    if (axis == -1) {
+      return;
+    }
+
+    const auto& y_grad_output = op_desc.Output("Y@GRAD");
+    if (y_grad_output.size() < 1) {
+      return;
+    }
+    IR_ENFORCE(
+        y_grad_output.size() == 1,
+        "Expected op[%s]'s output Y@GRAD has only 1 variable, but got %d",
+        op_desc.Type(),
+        y_grad_output.size());
+    const auto& y_grad_var_name = y_grad_output[0];
+
+    auto idx_iter = arg_to_idx.find(y_grad_var_name);
+    if (idx_iter == arg_to_idx.end()) {
+      IR_THROW("op[%s] should have got its y_grad", op_desc.Type());
+    }
+    auto idx = idx_iter->second;
+    VLOG(10) << "[output recording]"
+             << "[" << op_desc.Type() << "]" << y_grad_var_name << " " << idx;
+
+    auto y_names = op_desc.Input("Y", true);
+    auto y_name = y_names[0];
+    IR_ENFORCE(param_map->count(y_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               y_name);
+    auto y_defining_info = param_map->at(y_name);
+    ir::OpResult y_value = y_defining_info.value;
+    IR_ENFORCE(y_value,
+               "Expected op[%s]'s input %s is not null",
+               op_desc.Type(),
+               y_name);
+    ir::Type y_type = y_value.type();
+    IR_ENFORCE(y_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               y_name,
+               y_type);
+    dialect::DenseTensorType y_tensor_type =
+        y_type.dyn_cast<dialect::DenseTensorType>();
+    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+
+    ir::OpResult value = operation->result(idx);
+    ir::Builder builder(ctx, operation->GetParent());
+    auto reshape_op = builder.Build<dialect::Reshape_Op>(value, y_shape);
+    (*param_map)[y_grad_var_name] =
+        VariableDefiningInfo(reshape_op.out(), false, -1);
+  }
+};
+
 OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
-  special_handlers["feed"] = FeedOpTranscriber();
-  special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
-  special_handlers["split"] = SplitOpTranscriber();
+  special_handlers["feed"] = FeedOpTranscriber();
+  special_handlers["feed_with_place"] = FeedWithPlaceOpTranscriber();
+  special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
-  special_handlers["assign_value"] = AssignValueOpTranscriber();
-  special_handlers["increment"] = IncrementOpTranscriber();
-  special_handlers["rnn"] = RnnOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
-  special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["reduce_all"] = ReduceOpTranscriber();
+  special_handlers["reduce_any"] = ReduceOpTranscriber();
+  special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
+  special_handlers["split"] = SplitOpTranscriber();
+  special_handlers["sum"] = AddNOpTranscriber();
+
+  // special handler for elementwise ops with axis != -1
+  // note(lyk): maybe we should do this by a pass, which seems more reasonable
+  special_handlers["elementwise_add"] = ElementwiseTranscriber();
+  special_handlers["elementwise_sub"] = ElementwiseTranscriber();
+  special_handlers["elementwise_mul"] = ElementwiseTranscriber();
+  special_handlers["elementwise_div"] = ElementwiseTranscriber();
+  special_handlers["elementwise_max"] = ElementwiseTranscriber();
+  special_handlers["elementwise_min"] = ElementwiseTranscriber();
+  special_handlers["elementwise_mod"] = ElementwiseTranscriber();
+  special_handlers["elementwise_floordiv"] = ElementwiseTranscriber();
+  special_handlers["elementwise_add_grad"] = ElementwiseGradTranscriber();
+  special_handlers["elementwise_sub_grad"] = ElementwiseGradTranscriber();
+  special_handlers["elementwise_mul_grad"] = ElementwiseGradTranscriber();
+  special_handlers["elementwise_div_grad"] = ElementwiseGradTranscriber();
+  special_handlers["elementwise_max_grad"] = ElementwiseGradTranscriber();
+  special_handlers["elementwise_min_grad"] = ElementwiseGradTranscriber();
+  special_handlers["elementwise_mod_grad"] = ElementwiseGradTranscriber();
+  special_handlers["elementwise_floordiv_grad"] = ElementwiseGradTranscriber();
 }
 
 }  // namespace translator

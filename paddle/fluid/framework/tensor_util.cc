@@ -287,12 +287,14 @@ void TensorCopy(const phi::DenseTensor& src,
                 const platform::Place& dst_place,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, dst);
+  dst->set_strides(src.strides());
 }
 void TensorCopy(const phi::DenseTensor& src,
                 const platform::Place& dst_place,
                 const platform::DeviceContext& ctx,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, ctx, dst);
+  dst->set_strides(src.strides());
 }
 
 void TensorCopySync(const phi::DenseTensor& src,
@@ -447,6 +449,7 @@ void TensorCopySync(const phi::DenseTensor& src,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+  dst->set_strides(src.strides());
 }
 
 void TensorToStream(std::ostream& os,
@@ -984,7 +987,7 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   do {                                                            \
     if (paddle::framework::TransToProtoVarType(tensor.dtype()) == \
         proto_type) {                                             \
-      os << "  - dtype: " << proto_type << "\n";                  \
+      os << "  - dtype: " << tensor.dtype() << "\n";              \
       paddle::framework::print_tensor<cpp_type>(os, tensor);      \
       return os;                                                  \
     }                                                             \

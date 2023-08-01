@@ -398,12 +398,6 @@ void PaddleModelToProgram::AddOpMapper_relu6() {
     CHECK_EQ(op_desc.Output("Out").size(), 1UL);
     auto out_name = op_desc.Output("Out").front();
 
-    absl::flat_hash_map<std::string, hlir::framework::NodeAttr::attr_t> attrs;
-    CHECK(op_desc.HasAttr("threshold"));
-    CHECK_EQ(op_desc.GetAttr<float>("threshold"), 6.0f)
-        << "Threshold of Relu6 is not 6! To be implemented.";
-    attrs["threshold"] = op_desc.GetAttr<float>("threshold");
-
     auto x = GetVar(TransValidVarName(x_name));
     auto out = net_builder_->Relu6(x);
     AddVar(TransValidVarName(out_name), out);
