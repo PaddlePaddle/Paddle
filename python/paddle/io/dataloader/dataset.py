@@ -55,7 +55,8 @@ class Dataset:
             ...
             >>> dataset = RandomDataset(10)
             >>> for i in range(len(dataset)):
-            ...     print(dataset[i])
+            ...     image, label = dataset[i]
+            ...     # do something
     """
 
     def __init__(self):
@@ -109,8 +110,9 @@ class IterableDataset(Dataset):
             ...             yield image, label
             ...
             >>> dataset = RandomDataset(10)
-            >>> for img, lbl in dataset:
-            ...     print(img, lbl)
+            >>> for img, label in dataset:
+            ...     # do something
+            ...     ...
 
     When :attr:`num_workers > 0`, each worker has a different copy of the dataset object and
     will yield whole dataset samples, which means samples in dataset will be repeated in
@@ -158,7 +160,7 @@ class IterableDataset(Dataset):
             ...     drop_last=True)
             ...
             >>> for data in dataloader:
-            ...     print(data)
+            ...     print(data) # doctest: +SKIP
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[2]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -216,7 +218,7 @@ class IterableDataset(Dataset):
             ...     worker_init_fn=worker_init_fn)
             ...
             >>> for data in dataloader:
-            ...     print(data)
+            ...     print(data) # doctest: +SKIP
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[2]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -288,7 +290,7 @@ class TensorDataset(Dataset):
 
             >>> for i in range(len(dataset)):
             ...     input, label = dataset[i]
-            ...     print(input, label)
+            ...     # do something
     """
 
     def __init__(self, tensors):
@@ -354,10 +356,7 @@ class ComposeDataset(Dataset):
             >>> dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])
             >>> for i in range(len(dataset)):
             ...     image1, label1, image2, label2 = dataset[i]
-            ...     print(image1)
-            ...     print(label1)
-            ...     print(image2)
-            ...     print(label2)
+            ...     # do something
     """
 
     def __init__(self, datasets):
@@ -420,7 +419,9 @@ class ChainDataset(IterableDataset):
             ...
             >>> dataset = ChainDataset([RandomDataset(10), RandomDataset(10)])
             >>> for image, label in iter(dataset):
-            ...     print(image, label)
+            ...     # do something
+            ...     ...
+
     """
 
     def __init__(self, datasets):
@@ -497,6 +498,7 @@ def random_split(dataset, lengths, generator=None):
             >>> import paddle
             >>> from paddle.io import random_split
 
+            >>> paddle.seed(2023)
             >>> a_list = paddle.io.random_split(range(10), [3, 7])
             >>> print(len(a_list))
             2
@@ -504,24 +506,20 @@ def random_split(dataset, lengths, generator=None):
             >>> # output of the first subset
             >>> for idx, v in enumerate(a_list[0]):
             ...     print(idx, v)
-            >>> # doctest: +SKIP
-            0 1
-            1 3
-            2 9
-            >>> # doctest: -SKIP
+            0 8
+            1 2
+            2 5
 
             >>> # output of the second subset
             >>> for idx, v in enumerate(a_list[1]):
             ...     print(idx, v)
-            >>> # doctest: +SKIP
-            0 5
-            1 7
-            2 8
-            3 6
-            4 0
-            5 2
-            6 4
-            >>> # doctest: -SKIP
+            0 9
+            1 6
+            2 3
+            3 4
+            4 1
+            5 0
+            6 7
     """
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore

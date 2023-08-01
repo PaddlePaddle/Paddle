@@ -58,8 +58,10 @@ class BatchSampler(Sampler):
 
         .. code-block:: python
 
+            >>> import numpy as np
             >>> from paddle.io import RandomSampler, BatchSampler, Dataset
 
+            >>> np.random.seed(2023)
             >>> # init with dataset
             >>> class RandomDataset(Dataset):
             ...     def __init__(self, num_samples):
@@ -80,7 +82,9 @@ class BatchSampler(Sampler):
             ...
             >>> for batch_indices in bs:
             ...     print(batch_indices)
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
             ...
+            [96, 97, 98, 99]
             >>> # init with sampler
             >>> sampler = RandomSampler(RandomDataset(100))
             >>> bs = BatchSampler(sampler=sampler,
@@ -89,6 +93,9 @@ class BatchSampler(Sampler):
             ...
             >>> for batch_indices in bs:
             ...     print(batch_indices)
+            [56, 12, 68, 0, 82, 66, 91, 44]
+            ...
+            [53, 17, 22, 86, 52, 3, 92, 33]
     """
 
     def __init__(

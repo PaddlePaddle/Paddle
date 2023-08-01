@@ -170,8 +170,10 @@ class RandomSampler(Sampler):
 
         .. code-block:: python
 
+            >>> import numpy as np
             >>> from paddle.io import Dataset, RandomSampler
 
+            >>> np.random.seed(2023)
             >>> class RandomDataset(Dataset):
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
@@ -188,6 +190,11 @@ class RandomSampler(Sampler):
 
             >>> for index in sampler:
             ...     print(index)
+            56
+            12
+            68
+            ...
+            87
     """
 
     def __init__(
@@ -297,14 +304,22 @@ class WeightedRandomSampler(Sampler):
 
         .. code-block:: python
 
+            >>> import numpy as np
             >>> from paddle.io import WeightedRandomSampler
 
-            >>> sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
-            ...                                 num_samples=5,
-            ...                                 replacement=True)
-            ...
+            >>> np.random.seed(2023)
+            >>> sampler = WeightedRandomSampler(
+            ...     weights=[0.1, 0.3, 0.5, 0.7, 0.2],
+            ...     num_samples=5,
+            ...     replacement=True
+            ... )
             >>> for index in sampler:
             ...     print(index)
+            2
+            4
+            3
+            1
+            1
     """
 
     def __init__(self, weights, num_samples, replacement=True):
