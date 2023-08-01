@@ -30,8 +30,8 @@ def get_ir_program():
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         y_s = paddle.matmul(x_s, x_s)
-        y_s = paddle.add(x_s, y_s)
-        y_s = paddle.tanh(y_s)
+        z_s = paddle.add(y_s, y_s)
+        k_s = paddle.tanh(z_s)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
 
@@ -84,6 +84,12 @@ class TestPybind(unittest.TestCase):
         matmul_op.result(0).set_stop_gradient(True)
         self.assertEqual(matmul_op.result(0).get_stop_gradient(), True)
 
+        result_set = set()
+        for opresult in matmul_op.results():
+            result_set.add(opresult)
+
+        # self.assertEqual(add_op.operands_source()[0] , matmul_op.results()[0],)
+
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(), "pd.add"
         )
@@ -94,8 +100,7 @@ class TestPybind(unittest.TestCase):
         )
 
         self.assertEqual(
-            tanh_op.operands()[0].source().get_defining_op(),
-            tanh_op.operands_source()[0].get_defining_op(),
+            tanh_op.operands()[0].source(), tanh_op.operands_source()[0]
         )
         self.assertEqual(add_op.result(0).use_empty(), True)
 

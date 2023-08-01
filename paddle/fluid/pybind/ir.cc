@@ -169,8 +169,11 @@ void BindOperation(py::module *m) {
 
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value");
-  value.def(
-      "get_defining_op", &Value::GetDefiningOp, return_value_policy::reference);
+  value
+      .def("get_defining_op",
+           &Value::GetDefiningOp,
+           return_value_policy::reference)
+      .def("__eq__", &Value::operator==);
 }
 
 void BindOpOperand(py::module *m) {
