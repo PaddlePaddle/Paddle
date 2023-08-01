@@ -75,7 +75,7 @@ static void clear_unused_out_var_in_backward(
   delete garbages;
 }
 
-static std::vector<paddle::Tensor> filte_unused_input_var_in_backward(
+static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
     const std::vector<paddle::Tensor>& x,
     const paddle::framework::BlockDesc* backward_block) {
   auto filter_x = std::vector<paddle::Tensor>(x);
@@ -130,7 +130,7 @@ inline void run_program_ad_func(
         paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     // Clear unused x vars
     auto filter_x =
-        filte_unused_input_var_in_backward(x, backward_global_block);
+        filter_unused_input_var_in_backward(x, backward_global_block);
     grad_node->SetFwdX(filter_x);
     // Clear unused out vars
     clear_unused_out_var_in_backward(out, backward_global_block, step_scope[0]);
