@@ -58,13 +58,13 @@ class Identity(Layer):
             >>> print(input_tensor)
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.41661501,  0.25904641],
-            [ 0.00979547, -0.30324230],
-            [-1.34256756, -0.76540256]])
+             [ 0.00979547, -0.30324230],
+             [-1.34256756, -0.76540256]])
             >>> print(out)
             Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.41661501,  0.25904641],
-            [ 0.00979547, -0.30324230],
-            [-1.34256756, -0.76540256]])
+             [ 0.00979547, -0.30324230],
+             [-1.34256756, -0.76540256]])
 
     """
 
@@ -137,7 +137,7 @@ class Linear(Layer):
             Parameter containing:
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[0.50000000, 0.50000000, 0.50000000, 0.50000000],
-            [0.50000000, 0.50000000, 0.50000000, 0.50000000]])
+             [0.50000000, 0.50000000, 0.50000000, 0.50000000]])
             >>> print(linear.bias)
             Parameter containing:
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -148,8 +148,8 @@ class Linear(Layer):
             >>> print(y)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[ 0.42121571,  0.42121571,  0.42121571,  0.42121571],
-            [ 0.85327661,  0.85327661,  0.85327661,  0.85327661],
-            [-0.05398512, -0.05398512, -0.05398512, -0.05398512]])
+             [ 0.85327661,  0.85327661,  0.85327661,  0.85327661],
+             [-0.05398512, -0.05398512, -0.05398512, -0.05398512]])
     """
 
     def __init__(
@@ -537,8 +537,8 @@ class Upsample(Layer):
 
             >>> import paddle
 
-            >>> input = paddle.rand([2,3,6,10], dtype="float32")
-            >>> upsample_out = paddle.nn.Upsample(size=[12,12])
+            >>> input = paddle.rand([2, 3, 6, 10], dtype="float32")
+            >>> upsample_out = paddle.nn.Upsample(size=[12, 12])
 
             >>> output = upsample_out(x=input)
             >>> print(output.shape)
@@ -638,8 +638,8 @@ class UpsamplingNearest2D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
-            >>> upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
+            >>> input_data = paddle.rand(shape=(2, 3, 6, 10)).astype("float32")
+            >>> upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12, 12])
             >>> input = paddle.to_tensor(input_data)
             >>> output = upsample_out(x=input)
             >>> print(output.shape)
@@ -724,8 +724,8 @@ class UpsamplingBilinear2D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
-            >>> upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
+            >>> input_data = paddle.rand(shape=(2, 3, 6, 10)).astype("float32")
+            >>> upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12, 12])
             >>> input = paddle.to_tensor(input_data)
             >>> output = upsample_out(x=input)
             >>> print(output.shape)
@@ -909,21 +909,21 @@ class Dropout(Layer):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype="float32")
             >>> m = paddle.nn.Dropout(p=0.5)
 
             >>> y_train = m(x)
             >>> print(y_train)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 4., 0.],
-            [8., 0., 0.]])
+             [8., 0., 0.]])
 
             >>> m.eval()  # switch the model to test phase
             >>> y_test = m(x)
             >>> print(y_test)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 3.],
-            [4., 5., 6.]])
+             [4., 5., 6.]])
     """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
@@ -1141,14 +1141,14 @@ class AlphaDropout(Layer):
             >>> print(y_train)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.10721093,  1.66559887],
-            [-0.77919382,  1.66559887]])
+             [-0.77919382,  1.66559887]])
 
             >>> m.eval()  # switch the model to test phase
             >>> y_test = m(x)
             >>> print(y_test)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.,  1.],
-            [-1.,  1.]])
+             [-1.,  1.]])
     """
 
     def __init__(self, p=0.5, name=None):
@@ -1207,7 +1207,7 @@ class Pad1D(Layer):
             >>> print(result)
             Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[0., 1., 2., 3., 0., 0.],
-            [0., 4., 5., 6., 0., 0.]]])
+              [0., 4., 5., 6., 0., 0.]]])
     """
 
     def __init__(
@@ -1589,17 +1589,17 @@ class Embedding(Layer):
             >>> embedding = paddle.nn.Embedding(4, 3, sparse=True)
 
             >>> w0 = paddle.to_tensor([[0., 0., 0.],
-            ...                     [1., 1., 1.],
-            ...                     [2., 2., 2.],
-            ...                     [3., 3., 3.]], dtype="float32")
+            ...                        [1., 1., 1.],
+            ...                        [2., 2., 2.],
+            ...                        [3., 3., 3.]], dtype="float32")
             >>> embedding.weight.set_value(w0)
             >>> print(embedding.weight)
             Parameter containing:
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[0., 0., 0.],
-            [1., 1., 1.],
-            [2., 2., 2.],
-            [3., 3., 3.]])
+             [1., 1., 1.],
+             [2., 2., 2.],
+             [3., 3., 3.]])
 
             >>> adam = paddle.optimizer.Adam(parameters=[embedding.weight], learning_rate=0.01)
             >>> adam.clear_grad()
@@ -1609,8 +1609,8 @@ class Embedding(Layer):
             >>> print(out)
             Tensor(shape=[3, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[[0., 0., 0.]],
-            [[1., 1., 1.]],
-            [[3., 3., 3.]]])
+             [[1., 1., 1.]],
+             [[3., 3., 3.]]])
 
             >>> out.backward()
             >>> adam.step()
