@@ -77,7 +77,7 @@ PHI_DEFINE_EXPORTED_int32(low_precision_op_list,
  * Example:
  * Note: Used to debug. Checking whether operator produce NAN/INF or not.
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     check_nan_inf,
     false,
     "Checking whether operator produce NAN/INF or not. It will be "
@@ -112,7 +112,7 @@ PHI_DEFINE_EXPORTED_int32(
  * Example:
  * Note: Used to debug. Checking whether operator produce NAN/INF or not.
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     enable_opt_get_features,
     false,
     "Checking whether operator produce NAN/INF or not. It will be "
@@ -210,7 +210,7 @@ PHI_DEFINE_EXPORTED_int64(
  * Example: FLAGS_enable_api_kernel_fallback=true would allow kernel of current
  * backend fallback to CPU one when not found
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     enable_api_kernel_fallback,
     true,
     "Whether enable api kernel fallback to CPU one when not found");
@@ -429,7 +429,7 @@ PHI_DEFINE_EXPORTED_double(
  *       has finished, which will make the garbage collection strategy faster.
  *       Only works when garbage collection strategy is enabled.
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     fast_eager_deletion_mode,
     true,
     "Fast eager deletion mode. If enabled, memory would release "
@@ -471,7 +471,7 @@ PHI_DEFINE_EXPORTED_double(
  * Note: For selecting allocator policy of PaddlePaddle.
  */
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";  // NOLINT
-PHI_DEFINE_EXPORTED_string(                                         // NOLINT
+PHI_DEFINE_EXPORTED_string(
     allocator_strategy,
     kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
@@ -665,7 +665,7 @@ PHI_DEFINE_EXPORTED_double(
     "you should set FLAGS_local_exe_sub_scope_limit=-1. "
     "The default value is 256 MBytes.");
 
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     reader_queue_speed_test_mode,
     false,
     "If set true, the queue.pop will only get data from queue but not "
@@ -679,7 +679,7 @@ PHI_DEFINE_EXPORTED_bool(  // NOLINT
  * Example:
  * Note:
  */
-PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");  // NOLINT
+PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 /**
  * Debug related FLAG
@@ -722,7 +722,7 @@ PHI_DEFINE_EXPORTED_int32(
  * Note: If True, gradients are summed by the reverse order of
  * the forward execution sequence.
  */
-PHI_DEFINE_EXPORTED_bool(sort_sum_gradient,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(sort_sum_gradient,
                          false,
                          "Sum gradients by the reverse order of "
                          "the forward execution sequence.");
@@ -751,9 +751,7 @@ PHI_DEFINE_EXPORTED_int32(
  * Now, just set true by default in 2.5 transition time
  * which will be removed in future (2.6 or 2.7) .
  */
-PHI_DEFINE_EXPORTED_bool(set_to_1d,
-                         true,
-                         "set 0D Tensor to 1D numpy");  // NOLINT
+PHI_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
@@ -763,7 +761,7 @@ PHI_DEFINE_EXPORTED_bool(set_to_1d,
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be enabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,  // NOLINT
+PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
                            "",
                            "List of OneDNN operation types to be turned on");
 
@@ -775,7 +773,7 @@ PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,  // NOLINT
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be disabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,  // NOLINT
+PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,
                            "",
                            "List of OneDNN operation types to be turned off");
 
@@ -836,7 +834,7 @@ PHI_DEFINE_EXPORTED_int32(get_host_by_name_time,
  *          program when using Fleet APIs.
  * Note: Apply IR pass to program. Be only useful when using Fleet APIs.
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     apply_pass_to_program,
     false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
@@ -850,7 +848,7 @@ PHI_DEFINE_EXPORTED_bool(  // NOLINT
  * Note: Control whether load graph node and edge with multi threads parallely
  *       If it is not set, load graph data with one thread
  */
-PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
                          false,
                          "It controls whether load graph node and edge with "
                          "mutli threads parallely.");
@@ -864,7 +862,7 @@ PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,  // NOLINT
  * Note: Control whether load graph node and edge with multi threads parallely
  *       If it is not set, load graph data with one thread
  */
-PHI_DEFINE_EXPORTED_bool(graph_metapath_split_opt,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
                          false,
                          "It controls whether load graph node and edge with "
                          "mutli threads parallely.");
@@ -878,7 +876,7 @@ PHI_DEFINE_EXPORTED_bool(graph_metapath_split_opt,  // NOLINT
  * Note: Control get all neighbor id when running sub part graph
  *       If it is not set, do not need get neighbor id when run all part graph
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     graph_get_neighbor_id,
     false,
     "It controls get all neighbor id when running sub part graph.");
@@ -892,7 +890,7 @@ PHI_DEFINE_EXPORTED_bool(  // NOLINT
  * Note: Control  whether exit trainer when an worker has no ins.
  *       If it is not set, trainer will exit until all worker finish train.
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     enable_exit_when_partial_worker,
     false,
     "It controls whether exit trainer when an worker has no ins.");
@@ -918,7 +916,7 @@ PHI_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
  * Op.
  * Note:
  */
-PHI_DEFINE_EXPORTED_bool(run_kp_kernel,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(run_kp_kernel,
                          false,
                          "It controls whether to run PaddlePaddle using KP");
 
@@ -933,7 +931,7 @@ PHI_DEFINE_EXPORTED_bool(run_kp_kernel,  // NOLINT
  *       multiple events. Currently, only fuse allreduce supports this.
  *       Otherwise, the precision may be wrong.
  */
-PHI_DEFINE_EXPORTED_bool(allreduce_record_one_event,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(allreduce_record_one_event,
                          false,
                          "It controls whether the allreduce operations "
                          "would only wait one event instead of multiple "
@@ -1042,7 +1040,7 @@ PHI_DEFINE_EXPORTED_string(cinn_subgraph_graphviz_dir,
  * Example: FLAGS_new_executor_use_cuda_graph=true would allow
  * new executor to use CUDA Graph.
  */
-PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
                          false,
                          "Use CUDA Graph in new executor");
 
@@ -1071,18 +1069,18 @@ DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
 DEFINE_bool(enable_ins_parser_file,  // NOLINT
             false,
             "enable parser ins file, default false");
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,
     "enable hash collisions stat for hbm table, default false");
 PHI_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
                            0.75,
                            "the load factor of hbm table, default 0.75");
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_gpu_direct_access,
     false,
     "enable direct access between multi gpu cards, default false");
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_segment_merge_grads,
     false,
     "enable segment merge gradients while push sparse, default false");
@@ -1097,28 +1095,28 @@ PHI_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode,
     0,
     "enable dedup keys while pull push sparse, default 0");
-PHI_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
                          true,
                          "enable load_node_list_into_hbm, default true");
 PHI_DEFINE_EXPORTED_int32(gpugraph_sparse_table_storage_mode,
                           0,
                           "parse_table_storage_mode, default 0");
-PHI_DEFINE_EXPORTED_bool(enable_auto_detect_gpu_topo,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(enable_auto_detect_gpu_topo,
                          true,
                          "enable auto detect gpu topo, default true");
-PHI_DEFINE_EXPORTED_bool(enable_auto_rdma_trans,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(enable_auto_rdma_trans,
                          true,
                          "enable auto gpu rdma trans, default true");
-PHI_DEFINE_EXPORTED_bool(enable_tracker_all2all,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(enable_tracker_all2all,
                          false,
                          "enable tracker all2all log, default false");
-PHI_DEFINE_EXPORTED_bool(enable_all2all_use_fp16,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(enable_all2all_use_fp16,
                          false,
                          "enable all2all use fp16, default false");
-PHI_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
                          false,
                          "enable sparse inner gather, default false");
-PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                          false,
                          "enable debug gpu memory, default false");
 /**
@@ -1140,9 +1138,7 @@ PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
  * Value Range: bool, default=false
  * Example:
  */
-PHI_DEFINE_EXPORTED_bool(use_autotune,
-                         false,
-                         "Whether enable autotune.");  // NOLINT
+PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
  * Conv Search cache max number related FLAG
@@ -1164,7 +1160,7 @@ PHI_DEFINE_EXPORTED_int32(search_cache_max_number,
  * Note: If True, EinsumOp will be optimized by innercache reuse, which
  * uses more gpu memory.
  */
-PHI_DEFINE_EXPORTED_bool(  // NOLINT
+PHI_DEFINE_EXPORTED_bool(
     einsum_opt,
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
@@ -1180,7 +1176,7 @@ PHI_DEFINE_EXPORTED_bool(  // NOLINT
  * FLAGS_jit_engine_type == New, using InterpreterEngine by default
  * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
  */
-PHI_DEFINE_EXPORTED_string(jit_engine_type,  // NOLINT
+PHI_DEFINE_EXPORTED_string(jit_engine_type,
                            "Predictor",
                            "Choose default function type in JitLayer.");
 
@@ -1192,7 +1188,7 @@ PHI_DEFINE_EXPORTED_string(jit_engine_type,  // NOLINT
  * Example:
  * Note: Enable NPU Storage Format for Ascend910 performance improvement.
  */
-PHI_DEFINE_EXPORTED_bool(npu_storage_format, false, "");  // NOLINT
+PHI_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 /**
@@ -1228,7 +1224,7 @@ PHI_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
  * Note: This FLAG is only enabled when CI is running. If True, a persistent
  * IBuilder is added to avoid TensorRT unload/reload kernels.
  */
-PHI_DEFINE_EXPORTED_bool(trt_ibuilder_cache,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
                          false,
                          "Add a persistent ibuilder.");
 
@@ -1241,7 +1237,7 @@ PHI_DEFINE_EXPORTED_bool(trt_ibuilder_cache,  // NOLINT
  * Note: . If True, mmap_allocator will cache shm file to decrease munmap
  * operation.
  */
-PHI_DEFINE_EXPORTED_bool(use_shm_cache,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(use_shm_cache,
                          false,
                          "Use shm cache in mmap_allocator.");
 
@@ -1257,7 +1253,7 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,  // NOLINT
  *       - phi mode: tensor operants with only phi forward API;
  *       - static mode: tensor operants within static graph.
  */
-PHI_DEFINE_EXPORTED_string(tensor_operants_mode,  // NOLINT
+PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
 
@@ -1269,6 +1265,6 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,  // NOLINT
  * Example:
  * Note: If Ture, executor will use new IR
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,  // NOLINT
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
                          false,
                          "Enable new IR in executor");

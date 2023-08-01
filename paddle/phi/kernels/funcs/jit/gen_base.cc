@@ -25,9 +25,7 @@
 #define posix_memalign_free free
 #endif
 
-PHI_DEFINE_bool(dump_jitcode,
-                false,
-                "Whether to dump the jitcode to file");  // NOLINT
+PHI_DEFINE_bool(dump_jitcode, false, "Whether to dump the jitcode to file");
 
 namespace phi {
 namespace jit {

@@ -108,7 +108,7 @@
   namespace fLS {                                                  \
   using ::fLS::clstring;                                           \
   using ::fLS::StringFlagDestructor;                               \
-  static union {                                                   \
+  static union { /* NOLINT */                                      \
     void* align;                                                   \
     std::array<char, sizeof(clstring)> s;                          \
   } s_##name[2]; /* NOLINT */                                      \
