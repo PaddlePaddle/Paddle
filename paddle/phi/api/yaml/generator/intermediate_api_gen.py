@@ -117,7 +117,9 @@ def generate_intermediate_api(
         foward_api = ForwardAPI(api)
         if foward_api.is_dygraph_api:
             dygraph_header_file.write(foward_api.gene_api_declaration())
-            dygraph_source_file.write(foward_api.gene_api_code())
+            dygraph_source_file.write(
+                foward_api.gene_api_code(for_auto_parallel=False)
+            )
 
     dygraph_header_file.write(sparse_namespace_pair[0])
     dygraph_source_file.write(sparse_namespace_pair[0])
@@ -129,7 +131,9 @@ def generate_intermediate_api(
         sparse_api = SparseAPI(api)
         if sparse_api.is_dygraph_api:
             dygraph_header_file.write(sparse_api.gene_api_declaration())
-            dygraph_source_file.write(sparse_api.gene_api_code())
+            dygraph_source_file.write(
+                sparse_api.gene_api_code(for_auto_parallel=False)
+            )
 
     dygraph_header_file.write(sparse_namespace_pair[1])
     dygraph_header_file.write(namespace[1])

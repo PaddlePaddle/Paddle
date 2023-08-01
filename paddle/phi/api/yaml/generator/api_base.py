@@ -594,8 +594,45 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                         + param
                         + "_dist), "
                     )
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                ):
+                    meta_tensor_code = (
+                        meta_tensor_code
+                        + f"""
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
+{code_indent}  std::vector<const phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
+{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
+{code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
+{code_indent}  }}
+"""
+                    )
+                    param_code = param_code + param + "_metas, "
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<std::vector<Tensor>>&"
+                ):
+                    meta_tensor_code = (
+                        meta_tensor_code
+                        + f"""
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
+{code_indent}  paddle::optional<std::vector<const phi::MetaTensor*>> {param}_metas({param}_meta_vec.size());
+{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
+{code_indent}    {param}_metas->at(i) = &{param}_meta_vec[i];
+{code_indent}  }}
+"""
+                    )
+                    param_code = param_code + param + "_metas, "
+                elif param in self.optional_vars:
+                    param_code = (
+                        param_code
+                        + "MakeMetaTensor("
+                        + PREFIX_TENSOR_NAME
+                        + param
+                        + "), "
+                    )
                 else:
-                    # TODO(chenweihang): support other input type later
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
                     )
@@ -613,10 +650,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 meta_tensor_code = (
                     meta_tensor_code
                     + f"""
-{code_indent}  auto {out_name}_{PREFIX_META_TENSOR_NAME}vec_dist = MakeMetaTensor({out_name});
-{code_indent}  std::vector<phi::MetaTensor*> {out_name}_metas_dist({out_name}_{PREFIX_META_TENSOR_NAME}vec_dist.size());
-{code_indent}  for (size_t i = 0; i < {out_name}_{PREFIX_META_TENSOR_NAME}vec_dist.size(); ++i) {{
-{code_indent}    {out_name}_metas_dist[i] = {out_name}_dist[i] ? &{out_name}_{PREFIX_META_TENSOR_NAME}vec_dist[i] : nullptr;
+{code_indent}  auto {out_name}_{PREFIX_META_TENSOR_NAME}vec = MakeMetaTensor({out_name});
+{code_indent}  std::vector<phi::MetaTensor*> {out_name}_metas({out_name}_{PREFIX_META_TENSOR_NAME}vec.size());
+{code_indent}  for (size_t i = 0; i < {out_name}_{PREFIX_META_TENSOR_NAME}vec.size(); ++i) {{
+{code_indent}    {out_name}_metas[i] = {out_name}[i] ? &{out_name}_{PREFIX_META_TENSOR_NAME}vec[i] : nullptr;
 {code_indent}  }}"""
                 )
 
@@ -625,7 +662,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 meta_tensor_code = (
                     meta_tensor_code
                     + code_indent
-                    + "phi::MetaTensor "
+                    + "  phi::MetaTensor "
                     + out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)
                     + "_dist("
                     + out_name
@@ -1482,13 +1519,15 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     {kernel_selection_code}
     {prepare_input_tensors_code}
     {output_creation_code}
-    {local_infermeta_code}
+
+{infer_spmd_code}
+{local_infermeta_code}
     {kernel_call_code}
     {return_code}
   }}
 """
 
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(self, inplace_flag=False, for_auto_parallel=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
@@ -1517,7 +1556,12 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
             # 1. only works for the ops contains single kernel
             # 2. doesn't support initialize ops now
             # 3. doesn't support view api
-            if len(self.inputs['names']) > 0 and len(self.view_map) == 0:
+            # 3. only for general forward and backward
+            if (
+                for_auto_parallel is True
+                and len(self.inputs['names']) > 0
+                and len(self.view_map) == 0
+            ):
                 api_code += self.gene_auto_parallel_branch(
                     self.kernel['func'][0], '  ', inplace_flag
                 )
@@ -1536,9 +1580,11 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   return {invoke_code};
 }}"""
 
-    def gene_api_code(self):
+    def gene_api_code(self, for_auto_parallel=False):
         if self.is_base_api:
-            api_code = self.gene_base_api_code()
+            api_code = self.gene_base_api_code(
+                for_auto_parallel=for_auto_parallel
+            )
             if len(self.inplace_map) > 0:
                 if self.api[-1] == '_':
                     api_code = ""

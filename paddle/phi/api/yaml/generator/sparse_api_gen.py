@@ -372,7 +372,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
         if sparse_api.is_dygraph_api:
             sparse_api.is_dygraph_api = False
         header_file.write(sparse_api.gene_api_declaration())
-        source_file.write(sparse_api.gene_api_code())
+        source_file.write(sparse_api.gene_api_code(for_auto_parallel=False))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

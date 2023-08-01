@@ -180,11 +180,19 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                 )
 
             else:
-                output_create = (
-                    output_create
-                    + f"""
+                if for_auto_parallel is True:
+                    output_create = (
+                        output_create
+                        + f"""
+{code_indent}  auto kernel_out_dist = SetKernelDistOutput({self.outputs['names'][0]});
+{code_indent}  auto kernel_out = kernel_out_dist->mutable_value();"""
+                    )
+                else:
+                    output_create = (
+                        output_create
+                        + f"""
 {code_indent}  auto kernel_out = {set_out_func}({self.outputs['names'][0]});"""
-                )
+                    )
 
         elif len(out_dtype_list) > 1:
             output_create = ""
@@ -360,7 +368,10 @@ def generate_backward_api(
     for bw_api in bw_apis:
         bw_api = BackwardAPI(bw_api)
         header_file.write(bw_api.gene_api_declaration())
-        source_file.write(bw_api.gene_api_code())
+        if is_fused_backward_yaml is True:
+            source_file.write(bw_api.gene_api_code(for_auto_parallel=False))
+        else:
+            source_file.write(bw_api.gene_api_code(for_auto_parallel=True))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

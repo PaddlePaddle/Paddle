@@ -461,7 +461,10 @@ def generate_api(
             foward_api.is_dygraph_api = False
 
         header_file.write(foward_api.gene_api_declaration())
-        source_file.write(foward_api.gene_api_code())
+        if is_fused_ops_yaml is True:
+            source_file.write(foward_api.gene_api_code(for_auto_parallel=False))
+        else:
+            source_file.write(foward_api.gene_api_code(for_auto_parallel=True))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

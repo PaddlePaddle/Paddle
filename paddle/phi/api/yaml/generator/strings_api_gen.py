@@ -381,7 +381,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     for api in apis:
         strings_api = StringsAPI(api)
         header_file.write(strings_api.gene_api_declaration())
-        source_file.write(strings_api.gene_api_code())
+        source_file.write(strings_api.gene_api_code(for_auto_parallel=False))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
