@@ -485,26 +485,26 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 }
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context &ctx,
-                            const DenseTensor &x,
-                            const DenseTensor &scale,
-                            const DenseTensor &bias,
-                            const paddle::optional<DenseTensor> &mean,
-                            const paddle::optional<DenseTensor> &variance,
-                            const DenseTensor &saved_mean,
-                            const DenseTensor &saved_variance,
-                            const paddle::optional<DenseTensor> &reserve_space,
-                            const DenseTensor &y_grad,
-                            float momentum,
-                            float epsilon_f,
-                            const std::string &data_layout_str,
-                            bool is_test,
-                            bool use_global_stats,
-                            bool trainable_statistics,
-                            bool is_inplace,
-                            DenseTensor *x_grad,
-                            DenseTensor *scale_grad,
-                            DenseTensor *bias_grad) {
+void BatchNormGradFunctor(const Context &ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &scale,
+                          const DenseTensor &bias,
+                          const paddle::optional<DenseTensor> &mean,
+                          const paddle::optional<DenseTensor> &variance,
+                          const DenseTensor &saved_mean,
+                          const DenseTensor &saved_variance,
+                          const paddle::optional<DenseTensor> &reserve_space,
+                          const DenseTensor &y_grad,
+                          float momentum,
+                          float epsilon_f,
+                          const std::string &data_layout_str,
+                          bool is_test,
+                          bool use_global_stats,
+                          bool trainable_statistics,
+                          bool is_inplace,
+                          DenseTensor *x_grad,
+                          DenseTensor *scale_grad,
+                          DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
@@ -1279,26 +1279,26 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  BatchNormGradRawKernel<T, Context>(dev_ctx,
-                                     x,
-                                     scale,
-                                     bias,
-                                     mean,
-                                     variance,
-                                     saved_mean,
-                                     saved_variance,
-                                     reserve_space,
-                                     y_grad,
-                                     momentum,
-                                     epsilon,
-                                     data_layout,
-                                     is_test,
-                                     use_global_stats,
-                                     trainable_statistics,
-                                     false,
-                                     x_grad,
-                                     scale_grad,
-                                     bias_grad);
+  BatchNormGradFunctor<T, Context>(dev_ctx,
+                                   x,
+                                   scale,
+                                   bias,
+                                   mean,
+                                   variance,
+                                   saved_mean,
+                                   saved_variance,
+                                   reserve_space,
+                                   y_grad,
+                                   momentum,
+                                   epsilon,
+                                   data_layout,
+                                   is_test,
+                                   use_global_stats,
+                                   trainable_statistics,
+                                   false,
+                                   x_grad,
+                                   scale_grad,
+                                   bias_grad);
 }
 
 template <typename T, typename Context>
@@ -1360,42 +1360,27 @@ void BatchNormDoubleGradKernel(
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
                    float,
                    phi::dtype::float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::bfloat16, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
-      kernel_key.dtype() == phi::DataType::BFLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
-  }
-}
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,
@@ -1408,24 +1393,14 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
   }
 }
 #else
+PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
-  }
-}
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
                    float,
                    double,
                    phi::dtype::float16) {

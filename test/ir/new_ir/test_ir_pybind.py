@@ -39,7 +39,7 @@ def get_ir_program():
 class TestPybind(unittest.TestCase):
     def test_program(self):
         newir_program = get_ir_program()
-        newir_program.print()
+        print(newir_program)
 
         block = newir_program.block()
         program = block.get_parent_program()
@@ -50,11 +50,11 @@ class TestPybind(unittest.TestCase):
         newir_program = get_ir_program()
         block = newir_program.block()
         ops = block.get_ops()
-        self.assertTrue(
+        self.assertEqual(
             len(ops), 4
         )  # ir program add "builtin.get_parameter" by default, so size is 4
         block.remove_op(ops[3])
-        self.assertTrue(len(block.get_ops()), 3)
+        self.assertEqual(len(block.get_ops()), 3)
 
     def test_operation(self):
         newir_program = get_ir_program()
@@ -64,53 +64,54 @@ class TestPybind(unittest.TestCase):
         tanh_op = newir_program.block().get_ops()[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.get_ops())
-        self.assertTrue(parent_ops_num, 4)
-        self.assertTrue(tanh_op.num_results(), 1)
-        self.assertTrue(len(matmul_op.get_input_names()), 2)
-        self.assertTrue(len(matmul_op.get_attr_names()), 2)
-        self.assertTrue(len(matmul_op.get_output_names()), 1)
+        self.assertEqual(parent_ops_num, 4)
+        self.assertEqual(tanh_op.num_results(), 1)
+        self.assertEqual(len(matmul_op.get_input_names()), 2)
+        self.assertEqual(len(matmul_op.get_attr_names()), 2)
+        self.assertEqual(len(matmul_op.get_output_names()), 1)
 
     def test_value(self):
         newir_program = get_ir_program()
         matmul_op = newir_program.block().get_ops()[1]
         add_op = newir_program.block().get_ops()[2]
         tanh_op = newir_program.block().get_ops()[3]
-        self.assertTrue(
+        self.assertEqual(
             matmul_op.results()[0].get_defining_op().name(), "pd.matmul"
         )
-        self.assertTrue(
+        self.assertEqual(
             matmul_op.result(0).get_defining_op().name(), "pd.matmul"
         )
         matmul_op.result(0).set_stop_gradient(True)
-        self.assertTrue(matmul_op.result(0).get_stop_gradient, True)
+        self.assertEqual(matmul_op.result(0).get_stop_gradient(), True)
 
-        self.assertTrue(
-            tanh_op.operands()[0].source().get_defining_op(), "pd.add"
+        self.assertEqual(
+            tanh_op.operands()[0].source().get_defining_op().name(), "pd.add"
         )
 
         add_op.replace_all_uses_with(matmul_op.results())
-        self.assertTrue(
-            tanh_op.operands()[0].source().get_defining_op(), "pd.matmul"
+        self.assertEqual(
+            tanh_op.operands()[0].source().get_defining_op().name(), "pd.matmul"
         )
+
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op(),
             tanh_op.operands_source()[0].get_defining_op(),
         )
-        self.assertTrue(add_op.result(0).use_empty(), False)
+        self.assertEqual(add_op.result(0).use_empty(), True)
 
     def test_type(self):
         newir_program = get_ir_program()
         matmul_op = newir_program.block().get_ops()[1]
         add_op = newir_program.block().get_ops()[2]
-        matmul_op.result(0).type().print()
-        self.assertTrue(
+        print(matmul_op.result(0).type())
+        self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
         )
 
     def test_utils(self):
         newir_program = get_ir_program()
         matmul_op = newir_program.block().get_ops()[1]
-        print(ir.get_op_result_dtype(matmul_op.result(0)).print())
+        print(ir.get_op_result_dtype(matmul_op.result(0)))
         self.assertEqual(ir.get_op_result_shape(matmul_op.result(0)), [4, 4])
 
 
