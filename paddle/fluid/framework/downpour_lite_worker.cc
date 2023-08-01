@@ -137,7 +137,7 @@ void DownpourLiteWorker::CopySparseTable() {
     } else if (!copy_table_config_.sparse_copy_by_feasign()) {
       if (feasign_set_.find(src_table) == feasign_set_.end()) {
         continue;
-      } else if (feasign_set_[src_table].size() == 0) {
+      } else if (feasign_set_[src_table].empty()) {
         continue;
       }
       feanum = fleet_ptr_->CopyTable(src_table, dest_table);
@@ -474,7 +474,7 @@ void DownpourLiteWorker::TrainFiles() {
           size_t batch_size = device_reader_->GetCurBatchSize();
           std::string s = "";
           for (auto& ins_id : ins_id_vec) {
-            if (s != "") s += ",";
+            if (!s.empty()) s += ",";
             s += ins_id;
           }
           fprintf(stderr,

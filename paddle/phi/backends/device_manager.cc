@@ -343,8 +343,9 @@ std::vector<std::string> DeviceManager::GetAllCustomDeviceList() {
 }
 
 bool DeviceManager::HasDeviceType(const std::string& device_type) {
-  auto dev_impl = GetDeviceInterfaceWithType(device_type);
-  return dev_impl != nullptr;
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
+  auto& dev_impl_map = Instance().device_impl_map_;
+  return dev_impl_map.find(device_type) != dev_impl_map.end();
 }
 
 bool DeviceManager::IsCustom(const std::string& device_type) {
@@ -670,7 +671,9 @@ DeviceManager& DeviceManager::Instance() {
   return platform_manager;
 }
 
-void DeviceManager::Clear() {
+void DeviceManager::Release() {
+  stream::Stream::ReleaseAll();
+  event::Event::ReleaseAll();
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }

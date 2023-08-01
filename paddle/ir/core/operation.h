@@ -17,6 +17,8 @@
 #include <ostream>
 #include <vector>
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/macros.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
@@ -59,13 +61,27 @@ class IR_API alignas(8) Operation final {
 
   /// Returns the region held by this operation at position 'index'.
   Region &region(unsigned index);
+  const Region &region(unsigned index) const;
 
-  void Print(std::ostream &os);
+  void Print(std::ostream &os) const;
 
   const AttributeMap &attributes() const { return attributes_; }
 
-  void SetAttribute(const std::string &key, Attribute value) {
+  template <typename T>
+  T attribute(const std::string &name) {
+    Attribute attr = attribute(name);
+    IR_ENFORCE(attr.isa<T>(), "Attribute (%s) type is not right.", name);
+    return attr.dyn_cast<T>();
+  }
+
+  void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
+  }
+
+  Attribute attribute(const std::string &key) const;
+
+  bool HasAttribute(const std::string &key) const {
+    return attributes_.find(key) != attributes_.end();
   }
 
   ir::OpInfo info() const { return info_; }
@@ -93,13 +109,23 @@ class IR_API alignas(8) Operation final {
     return info_.HasInterface<Interface>();
   }
 
-  Block *GetParent() const { return parent_; }
+  const Block *GetParent() const { return parent_; }
 
-  Region *GetParentRegion() const;
+  Block *GetParent() {
+    return const_cast<Block *>(
+        const_cast<const Operation *>(this)->GetParent());
+  }
+
+  Region *GetParentRegion();
 
   Operation *GetParentOp() const;
 
-  Program *GetParentProgram();
+  const Program *GetParentProgram() const;
+
+  Program *GetParentProgram() {
+    return const_cast<Program *>(
+        const_cast<const Operation *>(this)->GetParentProgram());
+  }
 
   operator Block::iterator() { return position_; }
 
@@ -108,6 +134,8 @@ class IR_API alignas(8) Operation final {
   /// Replace all uses of results of this operation with the provided 'values'.
   void ReplaceAllUsesWith(const std::vector<Value> &values);
 
+  void ReplaceAllUsesWith(const std::vector<OpResult> &op_results);
+
   inline void ReplaceAllUsesWith(Value value) {
     ReplaceAllUsesWith(std::vector<Value>{value});
   }
@@ -115,6 +143,7 @@ class IR_API alignas(8) Operation final {
   void Verify();
 
  private:
+  DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,
             ir::OpInfo op_info,
             uint32_t num_results,

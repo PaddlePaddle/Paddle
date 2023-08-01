@@ -111,7 +111,7 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
-
+_stride_in_no_check_dy2st_diff_mode = False
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
@@ -1398,6 +1398,7 @@ class Variable(metaclass=VariableMetaClass):
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
+        self.is_view_var = False
 
     def detach(self):
         """
@@ -2295,7 +2296,14 @@ class Variable(metaclass=VariableMetaClass):
         return _getitem_impl_(self, item)
 
     def __setitem__(self, item, value):
-        return _setitem_impl_(self, item, value)
+        from .dygraph.base import in_declarative_mode
+
+        if in_declarative_mode():
+            return _setitem_impl_(self, item, value)
+        else:
+            raise RuntimeError(
+                "In static mode, the __setitem__ (looks like: x[indices] = values) should not be used. Please use x = paddle.static.setitem(x, indices, values)"
+            )
 
     def get_value(self, scope=None):
         """
@@ -2456,6 +2464,12 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_custom_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.CustomPlace(
+                p.custom_device_type(), p.custom_device_id()
+            )
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -3537,6 +3551,224 @@ class Operator:
         self.desc.dist_attr = dist_attr
 
 
+@signature_safe_contextmanager
+def _stride_in_no_check_dy2st_diff():
+    global _stride_in_no_check_dy2st_diff_mode
+    _stride_in_no_check_dy2st_diff_mode = True
+    try:
+        yield
+    finally:
+        _stride_in_no_check_dy2st_diff_mode = False
+
+
+def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
+    if outputs is not None:
+        for k, v in outputs.items():
+            if isinstance(v, Variable):
+                if v.is_view_var and not (
+                    op_type == "set_value"
+                    and inplace_map.get("Input", None) == "Out"
+                ):
+                    raise ValueError(
+                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                        % (op_type, k)
+                    )
+            elif isinstance(v, list):
+                for var in v:
+                    if isinstance(var, Variable):
+                        if var.is_view_var and not (
+                            op_type == "set_value"
+                            and inplace_map.get("Input", None) == "Out"
+                        ):
+                            raise ValueError(
+                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                                % (op_type, k)
+                            )
+
+
+def record_is_view_var(op_type, inputs, outputs):
+    if op_type == "slice":
+        if inputs is not None and isinstance(inputs["Input"], list):
+            if hasattr(inputs["Input"][0], "is_view_var"):
+                inputs["Input"][0].is_view_var = True
+        else:
+            if hasattr(inputs["Input"], "is_view_var"):
+                inputs["Input"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "strided_slice":
+        if inputs is not None and isinstance(inputs["Input"], list):
+            if hasattr(inputs["Input"][0], "is_view_var"):
+                inputs["Input"][0].is_view_var = True
+        else:
+            if hasattr(inputs["Input"], "is_view_var"):
+                inputs["Input"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "index_select":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "split":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None:
+            for out in outputs["Out"]:
+                if hasattr(out, "is_view_var"):
+                    out.is_view_var = True
+    elif op_type == "unsqueeze" or op_type == "unsqueeze2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "squeeze" or op_type == "squeeze2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "transpose" or op_type == "transpose2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "unbind":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "diagonal":
+        if inputs is not None and isinstance(inputs["Input"], list):
+            if hasattr(inputs["Input"][0], "is_view_var"):
+                inputs["Input"][0].is_view_var = True
+        else:
+            if hasattr(inputs["Input"], "is_view_var"):
+                inputs["Input"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "flatten":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "imag":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "real":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "reshape" or op_type == "reshape2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "as_real":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+
+
 class Block:
     """
     In Fluid, a Program is consistence of multi-Block, and Block stores
@@ -3944,10 +4176,10 @@ class Block:
         Returns:
             Operator: the append Operator.
         """
+        inplace_map = kwargs.get("inplace_map", None)
         op_type = kwargs.get("type", None)
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
-            inplace_map = kwargs.get("inplace_map", None)
             warnings.warn(
                 "Op `%s` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
@@ -4008,6 +4240,15 @@ class Block:
                 'while',
                 'while_grad',
             }
+            from .dygraph.base import in_declarative_mode
+
+            if (
+                in_declarative_mode()
+                and not _stride_in_no_check_dy2st_diff_mode
+            ):
+                check_if_to_static_diff_with_dygraph(
+                    op_type, inplace_map, outputs
+                )
             if op_type not in ignore_ops:
                 pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
@@ -4021,6 +4262,8 @@ class Block:
                 )
 
             self.ops.append(op)
+            if in_declarative_mode():
+                record_is_view_var(op_type, inputs, outputs)
 
         return op
 
@@ -7623,8 +7866,15 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.IPUPlace(device_id)
 
+    place_info_list = place.split(':', 1)
+    device_type = place_info_list[0]
+    if device_type in core.get_all_custom_device_type():
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.CustomPlace(device_type, device_id)
+
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace and IPUPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 

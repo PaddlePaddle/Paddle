@@ -32,8 +32,10 @@ __device__ inline float rsqrt(const float& x) {
   return rsqrtf(x);
 }
 
-__device__ inline kv_float operator+(const kv_float& a, const kv_float& b) {
+namespace cub {
+__host__ __device__ inline kv_float operator+(const kv_float& a, const kv_float& b) {
   return kv_float(a.key + b.key, a.value + b.value);
+}
 }
 
 // Half Operations

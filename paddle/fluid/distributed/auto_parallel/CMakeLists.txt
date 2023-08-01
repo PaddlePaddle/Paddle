@@ -6,5 +6,3 @@ cc_library(
   DEPS phi auto_parallel_proto proto_desc)
 
 cc_library(auto_parallel DEPS op_dist_attr spmd_rules)
-
-add_subdirectory(test)

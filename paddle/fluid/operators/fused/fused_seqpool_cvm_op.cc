@@ -78,7 +78,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
             PADDLE_GET(framework::Variable*, inputs_tensor[i]);
         const auto& x_tensor = x_var->Get<phi::DenseTensor>();
         const auto& x_lod = x_tensor.lod();
-        if (x_lod.size() > 0) {
+        if (!x_lod.empty()) {
           cur_batch_size = x_lod[0].size() - 1;
         } else {
           cur_batch_size = x_tensor.dims()[0];

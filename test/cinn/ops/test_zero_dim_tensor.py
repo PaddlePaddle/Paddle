@@ -17,8 +17,8 @@
 import unittest
 
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import Bool, Float, Int, is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 
 import paddle
@@ -230,7 +230,7 @@ create_unit_test(
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d, "div", paddle.divide, "builder.divide"
 )
-# # Paddle'atan2 only supports 0D + 0D -> 0D
+# Paddle'atan2 only supports 0D + 0D -> 0D
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D, "atan2", paddle.atan2, "builder.atan2"
 )
@@ -465,6 +465,12 @@ create_unit_test(
     "builder.less_equal",
     dtype="int64",
 )
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D,
+    "is_close",
+    paddle.isclose,
+    "builder.isclose",
+)
 
 
 ######################
@@ -519,6 +525,9 @@ class TestUnaryOp(OpTest):
 
 create_unit_test(TestUnaryOp, "tanh", paddle.tanh, "builder.tanh")
 create_unit_test(TestUnaryOp, "relu", paddle.nn.functional.relu, "builder.relu")
+create_unit_test(
+    TestUnaryOp, "relu6", paddle.nn.functional.relu6, "builder.relu6"
+)
 create_unit_test(TestUnaryOp, "gelu", paddle.nn.functional.gelu, "builder.gelu")
 create_unit_test(
     TestUnaryOp, "sigmoid", paddle.nn.functional.sigmoid, "builder.sigmoid"
@@ -566,6 +575,9 @@ create_unit_test(TestUnaryOp, "abs", paddle.abs, "builder.abs")
 create_unit_test(
     TestUnaryOp, "reciprocal", paddle.reciprocal, "builder.reciprocal"
 )
+create_unit_test(
+    TestUnaryOp, "softmax", paddle.nn.functional.softmax, "builder.softmax"
+)
 
 
 # acosh requires input value > 1.0, specific init_input instead of using create_unit_test
@@ -608,11 +620,532 @@ class TestScaleOp(OpTest):
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
-        builder = NetBuilder("reduce_op")
+        builder = NetBuilder("scale_op")
         x = builder.create_input(
             cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
         )
         out = builder.scale(x, 2.0, 1.0)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestCastOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.cast(x, 'int32')
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("cast_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.cast(x, "int32")
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestArgmaxOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.argmax(x, *self.param)
+        out = paddle.cast(out, 'int32')
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("argmax_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.argmax(x, *self.param)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestArgmaxOp2(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.param = (-1,)
+        self.target_shape = ()
+
+
+class TestArgmaxOp1D(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = ()
+
+
+class TestArgmaxOp2D(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = (5,)
+
+
+class TestArgmaxOp2DKeepDim(TestArgmaxOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0, True)
+        self.target_shape = (1, 5)
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestArgminOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.argmin(x, *self.param)
+        out = paddle.cast(out, 'int32')
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("argmin_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.argmin(x, *self.param)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestArgminOp2(TestArgminOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.param = (-1,)
+        self.target_shape = ()
+
+
+class TestArgminOp1D(TestArgminOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = ()
+
+
+class TestArgminOp2D(TestArgminOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0,)
+        self.target_shape = (5,)
+
+
+class TestArgminOp2DKeepDim(TestArgminOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [3, 5]).astype(self.dtype),
+        }
+        self.param = (0, True)
+        self.target_shape = (1, 5)
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestTransposeOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.transpose(x, [])
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("transpose_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.transpose(x, [])
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestArgsortOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.axis = -1
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.argsort(x, axis=self.axis)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("argsort_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.argsort(x, self.axis, True)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], out)
+
+        self.cinn_outputs = np.array([res[0]]).astype("int64")
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestArgsortOp2(TestArgsortOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.axis = 0
+        self.target_shape = ()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestSortOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.axis = -1
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.sort(x, axis=self.axis)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("sort_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.sort(x, self.axis, True)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestSortOp2(TestSortOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.axis = 0
+        self.target_shape = ()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestTopkOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.axis = -1
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out, indices = paddle.topk(x, k=1, axis=self.axis)
+
+        self.paddle_outputs = [out, indices]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("topk_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.top_k(x, 1, self.axis, True)
+
+        prog = builder.build()
+        res = self.get_cinn_output(
+            prog, target, [x], [self.inputs["x"]], [out[0], out[1]]
+        )
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+        self.assertEqual(res[1].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestTopkOp2(TestTopkOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.axis = 0
+        self.target_shape = ()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestExpandDimsOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.unsqueeze_dim = [0]
+        self.target_shape = (1,)
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.unsqueeze(x, self.unsqueeze_dim)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("unsqueeze_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.expand_dims(x, self.unsqueeze_dim)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestExpandDimsOp2D(TestExpandDimsOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.unsqueeze_dim = [0, 1]
+        self.target_shape = (
+            1,
+            1,
+        )
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestBroadcastToOp1D(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.broadcast_shape = [1]
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.broadcast_to(x, shape=self.broadcast_shape)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("broadcast_to_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.broadcast_to(x, self.broadcast_shape)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(list(res[0].shape), list(self.broadcast_shape))
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestBroadcastToOp2D(TestBroadcastToOp1D):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.broadcast_shape = [1, 1]
+
+
+class TestBroadcastToOp3D(TestBroadcastToOp1D):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.broadcast_shape = [3, 3, 3]
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestReverseOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.reverse(x, axis=[])
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("reverse_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.reverse(x, [])
 
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
@@ -648,7 +1181,7 @@ class TestSumOp(OpTest):
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
-        builder = NetBuilder("reduce_op")
+        builder = NetBuilder("sum_op")
         x = builder.create_input(
             cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
         )
@@ -691,11 +1224,295 @@ class TestDropoutOp(OpTest):
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
-        builder = NetBuilder("reduce_op")
+        builder = NetBuilder("dropout_op")
         x = builder.create_input(
             cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
         )
         out = builder.dropout_infer(x, 1.0)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestReshapeOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = [1]
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.reshape(x, self.target_shape)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("reshape_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.reshape(x, self.target_shape)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(list(res[0].shape), [1] * len(self.target_shape))
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestReshapeOp0DTo2D(TestReshapeOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = [1, 1]
+
+
+class TestReshapeOp0DTo1D_DS(TestReshapeOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = [-1]
+
+
+class TestReshapeOp0DTo2D_DS(TestReshapeOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = [-1, 1]
+
+
+class TestReshapeOp0DTo0D(TestReshapeOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = []
+
+
+class TestReshapeOp1DTo0D(TestReshapeOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [1]).astype(self.dtype),
+        }
+        self.target_shape = []
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestFillConstantOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        out = paddle.full([], 123.456, "float32")
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("fill_constant_op")
+        out = builder.fill_constant([], 123.456, "out", "float32")
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [], [], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestSqueezeOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.squeeze_axex = [0]
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.squeeze(x, axis=self.squeeze_axex)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("squeeze_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.squeeze(x, self.squeeze_axex)
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+class TestSqueezeOp1D(TestSqueezeOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [1]).astype(self.dtype),
+        }
+        self.squeeze_axex = []
+        self.target_shape = ()
+
+
+class TestSqueezeOp2D(TestSqueezeOp):
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [1, 1]).astype(self.dtype),
+        }
+        self.squeeze_axex = [0, 1]
+        self.target_shape = ()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestGaussianRandomOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        out = paddle.tensor.random.gaussian(
+            shape=[],
+            mean=0.0,
+            std=0.0,
+            dtype=self.dtype,
+        )
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("gaussian_random_op")
+
+        out = builder.gaussian_random(
+            [],
+            0.0,
+            0.0,
+            1234,
+            self.dtype,
+        )
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [], [], [out])
+        self.cinn_outputs = res
+
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestMatmulOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, [10]).astype(self.dtype),
+            "y": np.random.randint(-10, 10, [10]).astype(self.dtype),
+        }
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        y = paddle.to_tensor(self.inputs["y"], stop_gradient=False)
+        out = paddle.matmul(x, y)
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("matmul_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        y = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["y"].shape, "y"
+        )
+        out = builder.matmul(x, y)
+
+        prog = builder.build()
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
+class TestFlipOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.init_input()
+
+    def init_input(self):
+        self.inputs = {
+            "x": np.random.randint(-10, 10, []).astype(self.dtype),
+        }
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        out = paddle.flip(x, axis=[])
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("flip_op")
+        x = builder.create_input(
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
+        out = builder.flip(x, [])
 
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])

@@ -57,7 +57,7 @@ void OpHandleBase::InitCUDA() {
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
 #endif
   }
-  if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
+  if (IsMultiDeviceTransfer() && !dev_ctxes_.empty()) {
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
@@ -137,7 +137,7 @@ void OpHandleBase::InitXPU() {
 
 void OpHandleBase::Run(DeviceType use_device) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (events_.empty() && use_device == p::kCUDA && dev_ctxes_.size() > 0) {
+  if (events_.empty() && use_device == p::kCUDA && !dev_ctxes_.empty()) {
     InitCUDA();
   }
 #else
@@ -149,7 +149,7 @@ void OpHandleBase::Run(DeviceType use_device) {
           "compiled with CUDA."));
 #endif
 
-  if (use_device == p::kXPU && dev_ctxes_.size() > 0) {
+  if (use_device == p::kXPU && !dev_ctxes_.empty()) {
 #ifdef PADDLE_WITH_XPU
     InitXPU();
 #else

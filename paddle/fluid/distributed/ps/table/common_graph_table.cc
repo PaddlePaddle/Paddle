@@ -1105,7 +1105,7 @@ int32_t GraphTable::add_graph_node(int idx,
   }
   std::vector<std::future<int>> tasks;
   for (size_t i = 0; i < batch.size(); ++i) {
-    if (!batch[i].size()) continue;
+    if (batch[i].empty()) continue;
     tasks.push_back(
         _shards_task_pool[i]->enqueue([&shards, &batch, i, this]() -> int {
           for (auto &p : batch[i]) {
@@ -1130,7 +1130,7 @@ int32_t GraphTable::remove_graph_node(int idx, std::vector<uint64_t> &id_list) {
   auto &shards = edge_shards[idx];
   std::vector<std::future<int>> tasks;
   for (size_t i = 0; i < batch.size(); ++i) {
-    if (!batch[i].size()) continue;
+    if (batch[i].empty()) continue;
     tasks.push_back(
         _shards_task_pool[i]->enqueue([&shards, &batch, i, this]() -> int {
           for (auto &p : batch[i]) {
@@ -1254,7 +1254,7 @@ int32_t GraphTable::parse_type_to_typepath(
     std::unordered_map<std::string, std::string> &res_type2path) {
   auto type2files_split =
       paddle::string::split_string<std::string>(type2files, ",");
-  if (type2files_split.size() == 0) {
+  if (type2files_split.empty()) {
     return -1;
   }
   for (auto one_type2file : type2files_split) {
@@ -1355,7 +1355,7 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
     npath_str = paddle::string::join_strings(npath_list, delim);
   }
 
-  if (ntypes.size() == 0) {
+  if (ntypes.empty()) {
     VLOG(0) << "node_type not specified, nothing will be loaded ";
     return 0;
   }
@@ -1459,7 +1459,7 @@ int32_t GraphTable::load_node_and_edge_file(
               npath_str = paddle::string::join_strings(npath_list, delim);
             }
 
-            if (ntypes.size() == 0) {
+            if (ntypes.empty()) {
               VLOG(0) << "node_type not specified, nothing will be loaded ";
               return 0;
             }
@@ -1659,7 +1659,7 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   uint64_t valid_count = 0;
   int idx = 0;
   if (FLAGS_graph_load_in_parallel) {
-    if (node_type == "") {
+    if (node_type.empty()) {
       VLOG(0) << "Begin GraphTable::load_nodes(), will load all node_type once";
     }
     std::vector<std::future<std::pair<uint64_t, uint64_t>>> tasks;
@@ -1676,7 +1676,7 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
     }
   } else {
     VLOG(0) << "Begin GraphTable::load_nodes() node_type[" << node_type << "]";
-    if (node_type == "") {
+    if (node_type.empty()) {
       VLOG(0) << "node_type not specified, loading edges to "
               << id_to_feature[0] << " part";
     } else {
@@ -1781,7 +1781,7 @@ int32_t GraphTable::load_edges(const std::string &path,
   if (search_level == 2) total_memory_cost = 0;
 #endif
   int idx = 0;
-  if (edge_type == "") {
+  if (edge_type.empty()) {
     VLOG(0) << "edge_type not specified, loading edges to " << id_to_edge[0]
             << " part";
   } else {
@@ -1999,7 +1999,7 @@ int32_t GraphTable::random_sample_neighbors(
   }
 
   for (size_t i = 0; i < seq_id.size(); i++) {
-    if (seq_id[i].size() == 0) continue;
+    if (seq_id[i].empty()) continue;
     tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {
       uint64_t node_id;
       std::vector<std::pair<SampleKey, SampleResult>> r;
@@ -2069,7 +2069,7 @@ int32_t GraphTable::random_sample_neighbors(
           }
         }
       }
-      if (sample_res.size()) {
+      if (!sample_res.empty()) {
         scaled_lru->insert(
             i, sample_keys.data(), sample_res.data(), sample_keys.size());
       }

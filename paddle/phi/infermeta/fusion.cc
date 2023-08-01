@@ -151,10 +151,9 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const std::vector<int>& strides,
                         const std::string& padding_algorithm,
                         int groups,
-                        bool has_bias,
-                        bool has_branch,
                         int act_type,
                         float act_param,
+                        DataType out_dtype,
                         MetaTensor* out,
                         MetaTensor* out_max) {
   auto in_dims = x.dims();
@@ -264,6 +263,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out_max->set_dims(phi::make_ddim({6}));
+  out->set_dtype(out_dtype);
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
@@ -302,6 +302,7 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
+                    DataType out_dtype,
                     MetaTensor* out,
                     MetaTensor* out_max) {
   std::vector<int> out_shape(in_num_col_dims + 1);
@@ -310,7 +311,7 @@ void FcXPUInferMeta(const MetaTensor& x,
   }
   out_shape[in_num_col_dims] = w.dims()[0];
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
-  out->set_dtype(x.dtype());
+  out->set_dtype(out_dtype);
   out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
   out_max->set_dtype(x.dtype());
@@ -425,7 +426,7 @@ void FusedMultiTransformerXpuInferMeta(
           "shape of input x = [%s], and the shape of input qkv_weight = [%s]",
           x_dim,
           y_dim));
-  if (cache_kv.size() > 0) {
+  if (!cache_kv.empty()) {
     const auto& c_dim = cache_kv[0]->dims();
     PADDLE_ENFORCE_EQ(
         c_dim.size(),
@@ -614,14 +615,14 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims,
           strides.size()));
-  if (output_size.size())
+  if (!output_size.empty())
     PADDLE_ENFORCE_EQ(
         output_size.size(),
         strides.size(),
         errors::InvalidArgument(
             "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-  if (output_padding.size())
+  if (!output_padding.empty())
     PADDLE_ENFORCE_EQ(
         output_padding.size(),
         strides.size(),
@@ -669,9 +670,9 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
                                  paddings_[2 * i] - paddings_[2 * i + 1] +
                                  filter_extent
                            : -1;
-    if (output_size.size()) {
+    if (!output_size.empty()) {
       output_shape.push_back(output_size[i]);
-    } else if (output_padding.size()) {
+    } else if (!output_padding.empty()) {
       output_shape.push_back((infer_shape + output_padding[i]));
     } else {
       output_shape.push_back(infer_shape);
@@ -718,6 +719,14 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                             data_format,
                             out,
                             out_max);
+}
+
+void FastWhereXPUInferMeta(const MetaTensor& condition,
+                           const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi

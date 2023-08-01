@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <limits>
 #include <sstream>
@@ -21,10 +22,10 @@
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace phi {
-class TensorBase;
+
+class DenseTensor;
 
 // In static model pre analysis, we can't get the data from tensor
 class TensorRef {
@@ -34,8 +35,7 @@ class TensorRef {
   explicit TensorRef(const DenseTensor* base) : tensor_base_(base) {}
 
   const DenseTensor* Get() const {
-    PADDLE_ENFORCE_NOT_NULL(tensor_base_,
-                            "Can not get null ptr from Tensor ref scalar");
+    assert(tensor_base_ != nullptr);
     return tensor_base_;
   }
 

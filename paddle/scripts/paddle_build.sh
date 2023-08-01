@@ -2193,30 +2193,10 @@ function parallel_test_base_gpups() {
     ========================================
 EOF
         ut_startTime_s=`date +%s`
-
-        protobuf_version=`pip list | grep "protobuf" | awk '{print $2}'`
-        if [[ "$protobuf_version" == 3.* ]]; then
-            echo "Your current protobuf version is $protobuf_version"
-            ctest -L "RUN_TYPE=GPUPS" --timeout 120
-        else
-            echo "Your current protobuf version is $protobuf_version"
-            #get all unittests need to be run by protobuf 3
-            python ${PADDLE_ROOT}/tools/test_run_by_protobuf_3.py > all_ut_run_by_protobuf3
-            # get all unittets need to be run in gpups ci
-            ctest -N -V -L "RUN_TYPE=GPUPS"| grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > ut_gpups
-            #get the intersection of ut_run_by_protobuf3 and ut_gpups
-            grep -F  -f all_ut_run_by_protobuf3 ut_gpups > ut_run_by_protobuf3_in_gpups
-            #get the difference set of ut_gpups and ut_run_by_protobuf3_in_gpups
-            grep -F -x -v -f ut_run_by_protobuf3_in_gpups ut_gpups > ut_run_in_gpups
-
-            ctest -R ${ut_run_in_gpups} --timeout 120
-            pip install protobuf==3.20.2
-            ctest -R ${ut_run_by_protobuf3_in_gpups} --timeout 120
-            ut_endTime_s=`date +%s`
-            echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-            pip install protobuf==$protobuf_version
-        fi
-
+        set +e
+        bash ${PADDLE_ROOT}/tools/gpups_test.sh
+        EXIT_CODE=$?
+        set -e
         ut_endTime_s=`date +%s`
         echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
 

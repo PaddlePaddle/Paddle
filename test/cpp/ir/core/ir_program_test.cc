@@ -203,7 +203,7 @@ TEST(program_test, slice_combine_test) {
   // (2) Create an empty program object
   ir::Program program(ctx);
   //   ir::Program *program = new ir::Program();
-  EXPECT_EQ(program.block()->size() == 0, true);
+  EXPECT_EQ(program.block()->empty(), true);
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
@@ -234,6 +234,8 @@ TEST(program_test, slice_combine_test) {
       ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
   ir::Operation *combine_op = ir::Operation::Create(
       {op1->result(0), op2->result(0)}, {}, {output_type}, combine_op_info);
+  ir::CombineOp combine_op_type = combine_op->dyn_cast<ir::CombineOp>();
+  EXPECT_TRUE(combine_op_type.out());
   program.block()->push_back(combine_op);
 
   // (7) Def slice_op = SliceOp(combine_op, 0)

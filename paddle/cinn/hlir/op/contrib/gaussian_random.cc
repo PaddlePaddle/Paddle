@@ -38,7 +38,7 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
@@ -81,7 +81,6 @@ std::vector<framework::shape_t> InferShapeForGaussianRandom(
     const framework::AttrMapType &attrs) {
   CHECK(attrs.count("shape"));
   auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  CHECK(!shape.empty()) << "shape attr is empty!";
   return {shape};
 }
 

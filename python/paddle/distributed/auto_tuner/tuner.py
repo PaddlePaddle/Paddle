@@ -47,6 +47,9 @@ class AutoTuner:
             return None
         new_cfg = self.algo.search_once(self.history_cfgs)
         self.cur_task_id += 1
-        self.history_cfgs.append(new_cfg)
 
         return new_cfg
+
+    def add_cfg(self, cfg):
+        """Add cfg into history cfgs"""
+        self.history_cfgs.append(cfg)

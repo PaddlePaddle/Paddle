@@ -115,17 +115,17 @@ class BufferedLineFileReader {
     FILEReader reader(fp);
     return read_lines<FILEReader>(&reader, func, skip_lines);
   }
-  uint64_t file_size(void) { return total_len_; }
+  uint64_t file_size() { return total_len_; }
   void set_sample_rate(float r) { sample_rate_ = r; }
   size_t get_sample_line() { return sample_line_; }
-  bool is_error(void) { return (error_line_ > 10); }
+  bool is_error() { return (error_line_ > 10); }
 
  private:
   SampleFunc get_sample_func() {
     if (std::abs(sample_rate_ - 1.0f) < 1e-5f) {
-      return [this](void) { return true; };
+      return []() { return true; };
     }
-    return [this](void) {
+    return [this]() {
       return (uniform_distribution_(random_engine_) < sample_rate_);
     };
   }
@@ -375,7 +375,7 @@ bool InMemoryDataFeed<T>::Start() {
     output_channel_->Write(std::move(data));
   }
 #endif
-  if (batch_offsets_.size() > 0) {
+  if (!batch_offsets_.empty()) {
     VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
     enable_heterps_ = true;
     this->offset_index_ = 0;
@@ -1536,13 +1536,13 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
 
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec_[i].GetFloatData();
-      float* tensor_ptr =
-          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      float* tensor_ptr = feed_vec_[i]->template mutable_data<float>(
+          {total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, &feasign[0], total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec_[i].GetUint64Data();
-      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+      int64_t* tensor_ptr = feed_vec_[i]->template mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
       CopyToFeedTensor(
           tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
@@ -2155,7 +2155,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
     LoadIntoMemoryByCommand();
   }
 }
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib() {
   if (true) {
     // user defined file format analysis
     LoadIntoMemoryByFile();
@@ -2164,7 +2164,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
   }
 }
 
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
 #if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
     (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
@@ -2237,7 +2237,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 #endif
 }
 
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine() {
 #ifdef _LINUX
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
@@ -2333,7 +2333,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
 #endif
 }
 
-void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
+void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand() {
 #ifdef _LINUX
   std::string filename;
   BufferedLineFileReader line_reader;
@@ -2690,7 +2690,7 @@ bool SlotRecordInMemoryDataFeed::Start() {
     input_channel_->Read(data);
   }
 #endif
-  if (batch_offsets_.size() > 0) {
+  if (!batch_offsets_.empty()) {
     VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
     enable_heterps_ = true;
     this->offset_index_ = 0;
@@ -3222,7 +3222,7 @@ void MiniBatchGpuPack::pack_instance(const SlotRecord* ins_vec, int num) {
   transfer_to_gpu();
 }
 
-void MiniBatchGpuPack::transfer_to_gpu(void) {
+void MiniBatchGpuPack::transfer_to_gpu() {
   copy_host2device(&value_.d_uint64_lens, buf_.h_uint64_lens);
   copy_host2device(&value_.d_uint64_keys, buf_.h_uint64_keys);
   copy_host2device(&value_.d_uint64_offset, buf_.h_uint64_offset);

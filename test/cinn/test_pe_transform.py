@@ -19,7 +19,6 @@ import unittest
 import cinn
 import numpy as np
 from cinn import Target, ir, lang, pe, runtime
-from cinn.common import *
 from cinn.poly import create_stages
 
 

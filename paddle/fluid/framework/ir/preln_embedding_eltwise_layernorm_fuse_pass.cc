@@ -439,8 +439,8 @@ void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
-  if (!(enable_int8 && use_varseqlen && with_interleaved && pos_id != "" &&
-        mask_id != "" && with_dynamic_shape)) {
+  if (!(enable_int8 && use_varseqlen && with_interleaved && !pos_id.empty() &&
+        !mask_id.empty() && with_dynamic_shape)) {
     VLOG(3) << "preln_embedding_eltwise_layernorm_fuse_pass need: use_trt, "
                "enable_int8, set pos_id, set mask_id, "
                "use_varseqlen, with_interleaved, with_dynamic_shape. Stop this "

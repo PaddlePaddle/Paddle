@@ -61,7 +61,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
       } else {
         satisfied_all =
             satisfied_all && is_nth_input_var_of_concat(x->outputs[1], idx) &&
-            x->outputs[0]->IsVar() && x->outputs[0]->outputs.size() == 0;
+            x->outputs[0]->IsVar() && x->outputs[0]->outputs.empty();
       }
     }
     return satisfied_all;
@@ -99,7 +99,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
     seqpool_ops_output_unused_var[i] = pattern->NewNode(
         [=](Node* x) {
           return x && x->IsVar() && x->inputs.size() == 1 &&
-                 x->outputs.size() == 0 &&
+                 x->outputs.empty() &&
                  is_seqpool_op_with_pootype_of_nth_input_of_concat(
                      x->inputs[0], "SUM", i);
         },
@@ -114,7 +114,7 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
 
     seqpool_ops_input_var[i] = pattern->NewNode(
         [=](Node* x) {
-          bool basic = x && x->IsVar() && x->outputs.size() >= 1;
+          bool basic = x && x->IsVar() && !x->outputs.empty();
           bool next_is_fine = false;
           for (auto* o : x->outputs) {
             if (is_seqpool_op_with_pootype_of_nth_input_of_concat(

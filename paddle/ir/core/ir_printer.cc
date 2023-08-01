@@ -85,7 +85,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << s.data();
+    os << s.AsString();
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     os << b.data();
   } else if (auto f = attr.dyn_cast<FloatAttribute>()) {
@@ -99,7 +99,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
-    const auto& vec = arr.data();
+    const auto& vec = arr.AsVector();
     os << "array[";
     PrintInterleave(
         vec.begin(),
@@ -115,7 +115,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 }
 
-void IrPrinter::PrintProgram(Program* program) {
+void IrPrinter::PrintProgram(const Program* program) {
   auto top_level_op = program->module_op();
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
     auto& region = top_level_op->region(i);
@@ -123,7 +123,7 @@ void IrPrinter::PrintProgram(Program* program) {
   }
 }
 
-void IrPrinter::PrintOperation(Operation* op) {
+void IrPrinter::PrintOperation(const Operation* op) {
   if (auto* dialect = op->dialect()) {
     dialect->PrintOperation(op, *this);
     return;
@@ -132,7 +132,7 @@ void IrPrinter::PrintOperation(Operation* op) {
   PrintGeneralOperation(op);
 }
 
-void IrPrinter::PrintGeneralOperation(Operation* op) {
+void IrPrinter::PrintGeneralOperation(const Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -153,7 +153,7 @@ void IrPrinter::PrintGeneralOperation(Operation* op) {
   PrintOpReturnType(op);
 }
 
-void IrPrinter::PrintFullOperation(Operation* op) {
+void IrPrinter::PrintFullOperation(const Operation* op) {
   PrintOperation(op);
   if (op->num_regions() > 0) {
     os << newline;
@@ -171,7 +171,7 @@ void IrPrinter::PrintRegion(const Region& region) {
   }
 }
 
-void IrPrinter::PrintBlock(Block* block) {
+void IrPrinter::PrintBlock(const Block* block) {
   os << "{\n";
   for (auto it = block->begin(); it != block->end(); ++it) {
     PrintOperation(*it);
@@ -180,7 +180,7 @@ void IrPrinter::PrintBlock(Block* block) {
   os << "}\n";
 }
 
-void IrPrinter::PrintValue(Value v) {
+void IrPrinter::PrintValue(const Value& v) {
   if (!v) {
     os << "<<NULL VALUE>>";
     return;
@@ -198,7 +198,7 @@ void IrPrinter::PrintValue(Value v) {
   os << new_name;
 }
 
-void IrPrinter::PrintOpResult(Operation* op) {
+void IrPrinter::PrintOpResult(const Operation* op) {
   os << " (";
   auto num_op_result = op->num_results();
   std::vector<OpResult> op_results;
@@ -214,12 +214,15 @@ void IrPrinter::PrintOpResult(Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintAttributeMap(Operation* op) {
+void IrPrinter::PrintAttributeMap(const Operation* op) {
+  AttributeMap attributes = op->attributes();
+  std::map<std::string, Attribute, std::less<std::string>> order_attributes(
+      attributes.begin(), attributes.end());
   os << " {";
 
   PrintInterleave(
-      op->attributes().begin(),
-      op->attributes().end(),
+      order_attributes.begin(),
+      order_attributes.end(),
       [this](std::pair<std::string, Attribute> it) {
         this->os << it.first;
         this->os << ":";
@@ -230,7 +233,7 @@ void IrPrinter::PrintAttributeMap(Operation* op) {
   os << "}";
 }
 
-void IrPrinter::PrintOpOperands(Operation* op) {
+void IrPrinter::PrintOpOperands(const Operation* op) {
   os << " (";
   auto num_op_operands = op->num_operands();
   std::vector<Value> op_operands;
@@ -246,7 +249,7 @@ void IrPrinter::PrintOpOperands(Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintOperandsType(Operation* op) {
+void IrPrinter::PrintOperandsType(const Operation* op) {
   auto num_op_operands = op->num_operands();
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
@@ -267,7 +270,7 @@ void IrPrinter::PrintOperandsType(Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintOpReturnType(Operation* op) {
+void IrPrinter::PrintOpReturnType(const Operation* op) {
   auto num_op_result = op->num_results();
   std::vector<Type> op_result_types;
   op_result_types.reserve(num_op_result);
@@ -286,16 +289,16 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
       [this]() { this->os << ", "; });
 }
 
-void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
+void Dialect::PrintOperation(const Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
 
-void Program::Print(std::ostream& os) {
+void Program::Print(std::ostream& os) const {
   IrPrinter printer(os);
   printer.PrintProgram(this);
 }
 
-void Operation::Print(std::ostream& os) {
+void Operation::Print(std::ostream& os) const {
   IrPrinter printer(os);
   printer.PrintFullOperation(this);
 }

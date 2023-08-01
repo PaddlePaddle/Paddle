@@ -55,8 +55,21 @@ class PhiKernelAdaptor {
 
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
-    std::unordered_map<ir::Value, std::string> name_map;
-    BuildScope(*block, scope_, nullptr, &name_map);
+    std::unordered_map<ir::Value, std::string> value_2_var_name;
+    std::unordered_map<const paddle::framework::Variable*, std::string>
+        variable_2_var_name;
+    std::map<std::string, int> var_name_2_id;
+    std::vector<paddle::framework::Variable*> variable_list;
+    std::stringstream ss;
+    ss << this;
+
+    BuildScope(*block,
+               scope_,
+               ss.str(),
+               &value_2_var_name,
+               &variable_2_var_name,
+               &var_name_2_id,
+               &variable_list);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -66,7 +79,8 @@ class PhiKernelAdaptor {
     for (auto it = block->begin(); it != block->end(); ++it) {
       auto attr_map = (*it)->attributes();
 
-      auto op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+      auto op_name =
+          attr_map.at("op_name").dyn_cast<ir::StrAttribute>().AsString();
 
       ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op_name);
 
@@ -87,12 +101,14 @@ class PhiKernelAdaptor {
           phi::MetaTensor,
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>((*it), name_map, scope_, nullptr, op_yaml_info_parser, &ctx);
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+          false>(
+          (*it), value_2_var_name, scope_, nullptr, op_yaml_info_parser, &ctx);
 
       infer_meta_impl->infer_meta_(&ctx);
 
       auto kernel_name =
-          attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+          attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
       auto kernel_key = attr_map.at("kernel_key")
                             .dyn_cast<paddle::dialect::KernelAttribute>()
                             .data();
@@ -106,12 +122,17 @@ class PhiKernelAdaptor {
                           const phi::TensorBase*,
                           phi::TensorBase*,
                           paddle::small_vector<const phi::TensorBase*>,
-                          true>(
-          (*it), name_map, scope_, nullptr, op_yaml_info_parser, &kernel_ctx);
+                          paddle::small_vector<phi::TensorBase*>,
+                          true>((*it),
+                                value_2_var_name,
+                                scope_,
+                                nullptr,
+                                op_yaml_info_parser,
+                                &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);
-      out_name = name_map[out_value];
+      out_name = value_2_var_name[out_value];
     }
   }
 

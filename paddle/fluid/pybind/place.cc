@@ -640,6 +640,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("ipu_device_id", [](platform::Place &self) { return self.device; })
       .def("custom_device_id",
            [](platform::Place &self) { return self.device; })
+      .def("custom_device_type",
+           [](platform::Place &self) { return self.GetDeviceType(); })
       .def("set_place",
            [](platform::Place &self, const platform::Place &other) {
              self = other;

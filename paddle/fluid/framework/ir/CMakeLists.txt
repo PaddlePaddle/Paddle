@@ -129,6 +129,7 @@ pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(delete_cast_op_pass inference)
 pass_library(delete_elementwise_mul_op_pass inference)
 pass_library(delete_repeated_ops_pass inference)
+pass_library(fused_continuous_same_ops_pass inference)
 pass_library(sigmoid_elementmul_fuse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
@@ -173,7 +174,6 @@ if(WITH_MKLDNN)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
   pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
-  pass_library(fc_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(scale_matmul_fuse_pass inference DIR mkldnn)
   pass_library(cpu_bfloat16_placement_pass inference DIR mkldnn)
   pass_library(cpu_bfloat16_pass inference DIR mkldnn)
@@ -185,7 +185,6 @@ if(WITH_MKLDNN)
   pass_library(elementwise_act_onednn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
   pass_library(quant_transpose2_dequant_onednn_fuse_pass inference DIR mkldnn)
   pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
@@ -236,6 +235,8 @@ if(WITH_XPU)
     SRCS xpu/pass_utils.cc
     DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(cast_mixed_precision_op_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_onnx_ops_elimination_pass inference DIR xpu DEPS
@@ -279,6 +280,7 @@ if(WITH_XPU)
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -436,6 +438,10 @@ cc_test(
   SRCS delete_assign_op_pass_test.cc
   DEPS delete_assign_op_pass)
 cc_test(
+  test_identity_op_clean_pass_cc
+  SRCS identity_op_clean_pass_test.cc
+  DEPS identity_op_clean_pass)
+cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
   DEPS delete_dropout_op_pass)
@@ -547,6 +553,10 @@ endif()
 
 if(WITH_XPU)
   cc_test(
+    test_cast_mixed_precision_op_fuse_pass
+    SRCS xpu/cast_mixed_precision_op_fuse_pass_test.cc
+    DEPS cast_mixed_precision_op_fuse_pass)
+  cc_test(
     test_delete_isolated_node_pass
     SRCS xpu/delete_isolated_node_pass_test.cc
     DEPS delete_isolated_node_pass)
@@ -590,4 +600,8 @@ if(WITH_XPU)
     test_reshape2_matmul_xpu_fuse_pass
     SRCS xpu/reshape2_matmul_xpu_fuse_pass_test.cc
     DEPS reshape2_matmul_xpu_fuse_pass)
+  cc_test(
+    test_fast_where_xpu_fuse_pass
+    SRCS xpu/fast_where_xpu_fuse_pass_test.cc
+    DEPS fast_where_xpu_fuse_pass)
 endif()

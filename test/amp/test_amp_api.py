@@ -70,7 +70,7 @@ class TestStaticDecorate(AmpTestBase):
                 )
                 out = model(x)
                 loss = paddle.mean(out)
-                optimizer = paddle.fluid.optimizer.Adadelta(learning_rate=0.001)
+                optimizer = paddle.optimizer.Adadelta(learning_rate=0.001)
                 optimizer = paddle.static.amp.decorate(
                     optimizer,
                     init_loss_scaling=128.0,

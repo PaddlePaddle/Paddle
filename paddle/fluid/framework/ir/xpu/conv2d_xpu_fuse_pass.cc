@@ -429,10 +429,13 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
     // conv_filter fp16 --> fp32
-    auto tensor_type = filter_t->dtype();
-    if (tensor_type == phi::DataType::FLOAT16) {
+    auto filter_dtype = filter_t->dtype();
+    int out_dtype = proto::VarType::Type::VarType_Type_FP32;
+    if (filter_dtype == phi::DataType::FLOAT16) {
+      out_dtype = proto::VarType::Type::VarType_Type_FP16;
       CastToFp32(filter_t, nullptr);
     }
+
     auto filter_dims = filter_t->dims();
     bool has_bias = with_bn || with_conv_bias;
     // Create conv_fusion_bias (conv bias) variable
@@ -515,7 +518,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     Node* filter_max = nullptr;
     PrepareWeight<int16_t>(
         graph, scope, block, conv_filter, &filter_int16, &filter_max, false);
-    bool has_branch = with_branch_x || with_branch_y;
     // output && output max
     std::string conv2d_xpu_out_name;
     if (!act_type.empty()) {
@@ -590,15 +592,8 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv2d_xpu_op_desc.SetAttr(
         "strides",
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("strides")));
-    conv2d_xpu_op_desc.SetAttr("conv_bias", conv_bias);
-    conv2d_xpu_op_desc.SetAttr("op_type", std::vector<int>{0});
-    conv2d_xpu_op_desc.SetAttr("place_x", std::vector<int>{0});
-    conv2d_xpu_op_desc.SetAttr("place_y", std::vector<int>{9});
-    conv2d_xpu_op_desc.SetAttr("place_z", std::vector<int>{10});
     conv2d_xpu_op_desc.SetAttr("paddings", conv_paddings);
-    conv2d_xpu_op_desc.SetAttr("block_lod", std::vector<int>{1});
-    conv2d_xpu_op_desc.SetAttr("has_branch", has_branch);
-    conv2d_xpu_op_desc.SetAttr("has_bias", has_bias);
+    conv2d_xpu_op_desc.SetAttr("out_dtype", out_dtype);
 
     auto* conv2d_xpu = graph->CreateOpNode(&conv2d_xpu_op_desc);
     IR_NODE_LINK_TO(input, conv2d_xpu);

@@ -19,11 +19,15 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
+
+PHI_DECLARE_bool(enable_new_ir_in_executor);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -296,7 +300,7 @@ inline void RunProgramAPI(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
-  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -311,6 +315,8 @@ inline void RunProgramAPI(
   VLOG(2) << "RunProgramOp use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+  int64_t scope_i = reinterpret_cast<std::uintptr_t>(global_inner_scope);
+  program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
@@ -367,16 +373,32 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(x, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
-    interpreter_core =
-        paddle::framework::CreateInterpreterCoreInfoToCache(*forward_program,
-                                                            place,
-                                                            /*is_grad=*/false,
-                                                            program_id,
-                                                            global_inner_scope);
+
+    if (FLAGS_enable_new_ir_in_executor) {
+      // build new ir program
+      auto ir_program = paddle::framework::ConstructFowardIrProgram(
+          forward_global_block, backward_global_block, output_names, x);
+      interpreter_core =
+          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+              std::move(ir_program),
+              place,
+              /*is_grad=*/false,
+              program_id,
+              global_inner_scope);
+    } else {
+      interpreter_core =
+          paddle::framework::CreateProgramInterpreterCoreInfoToCache(
+              *forward_program,
+              place,
+              /*is_grad=*/false,
+              program_id,
+              global_inner_scope);
+    }
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars =
         paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
             *backward_program);
+
     // all out_vars are skip_eager_var
     skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
     skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
@@ -470,20 +492,21 @@ inline void RunProgramGradAPI(
 ) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
-
-  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
-
   auto *out_scope_vec = &step_scope;
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
       1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
+  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+
+  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  int64_t scope_i = reinterpret_cast<std::uintptr_t>(global_inner_scope);
+  program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
 
   auto place = egr::Controller::Instance().GetExpectedPlace();
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
-  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto *forward_global_block = PADDLE_GET_CONST(
@@ -504,12 +527,27 @@ inline void RunProgramGradAPI(
         1);
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
-    interpreter_core =
-        paddle::framework::CreateInterpreterCoreInfoToCache(*backward_program,
-                                                            place,
-                                                            /*is_grad=*/true,
-                                                            program_id,
-                                                            global_inner_scope);
+
+    if (FLAGS_enable_new_ir_in_executor) {
+      auto res = paddle::framework::ConstructBackwardIrProgram(
+          backward_global_block, out_grad, x_grad, params_grad);
+
+      interpreter_core =
+          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+              std::move(res),
+              place,
+              /*is_grad=*/true,
+              program_id,
+              global_inner_scope);
+    } else {
+      interpreter_core =
+          paddle::framework::CreateProgramInterpreterCoreInfoToCache(
+              *backward_program,
+              place,
+              /*is_grad=*/true,
+              program_id,
+              global_inner_scope);
+    }
 
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly

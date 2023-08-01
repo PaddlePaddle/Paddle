@@ -15,9 +15,6 @@
 # limitations under the License.
 
 
-from cinn.common import *
-from cinn.frontend import *
-
 # paddle resize is based on cv2 module
 # This test requires cv2 module (pip3.6 install opencv_python==3.2.0.7)
 # @OpTestTool.skip_if(not is_compiled_with_cuda(),

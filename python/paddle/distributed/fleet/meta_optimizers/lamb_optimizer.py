@@ -110,7 +110,7 @@ class LambOptimizer(MetaOptimizerBase):
         return self.lamb_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.lamb_opt.apply_optimize(
+        return self.lamb_opt._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
 

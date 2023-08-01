@@ -1088,13 +1088,7 @@ def get_package_data_and_package_dir():
                 )
         shutil.copy(env_dict.get("MKLDNN_SHARED_LIB"), libs_path)
         if os.name != 'nt':
-            shutil.copy(env_dict.get("MKLDNN_SHARED_LIB_1"), libs_path)
-            shutil.copy(env_dict.get("MKLDNN_SHARED_LIB_2"), libs_path)
-            package_data['paddle.libs'] += [
-                'libmkldnn.so.0',
-                'libdnnl.so.1',
-                'libdnnl.so.2',
-            ]
+            package_data['paddle.libs'] += ['libdnnl.so.3']
         else:
             package_data['paddle.libs'] += ['mkldnn.dll']
 
@@ -1430,7 +1424,6 @@ def get_setup_parameters():
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
         'paddle.fluid.layers',
-        'paddle.fluid.contrib',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
@@ -1503,6 +1496,7 @@ def get_setup_parameters():
         'paddle.geometric',
         'paddle.geometric.message_passing',
         'paddle.geometric.sampling',
+        'paddle.ir',
     ]
 
     paddle_bins = ''

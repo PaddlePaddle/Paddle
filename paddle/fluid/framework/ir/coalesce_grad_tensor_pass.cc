@@ -69,7 +69,7 @@ double GetFuseParameterMemorySize() { return FLAGS_fuse_parameter_memory_size; }
 
 class CoalesceGradTensorPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const {
+  void ApplyImpl(ir::Graph *graph) const override {
     if (Get<size_t>(details::kNRanks) <= 1) {
       VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
               << ", there doesn't need apply FuseAllReduceOpPass.";
@@ -87,7 +87,7 @@ class CoalesceGradTensorPass : public ir::Pass {
         details::kGroupParamsAndDenseGrads, &result);
 
     VLOG(10) << "The number of params and grads is:" << params_grads.size();
-    if (params_grads.size() == 0) {
+    if (params_grads.empty()) {
       return;
     }
 
@@ -107,7 +107,7 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     VLOG(10) << "Dense grads: " << p_g_dense_grad.size()
              << ", Sparse grads: " << p_g_sparse_grad.size();
-    if (p_g_dense_grad.size() == 0) {
+    if (p_g_dense_grad.empty()) {
       return;
     }
 

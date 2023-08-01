@@ -27,7 +27,7 @@ namespace framework {
 static void fs_add_read_converter_internal(std::string& path,  // NOLINT
                                            bool& is_pipe,      // NOLINT
                                            const std::string& converter) {
-  if (converter == "") {
+  if (converter.empty()) {
     return;
   }
 
@@ -43,7 +43,7 @@ static void fs_add_read_converter_internal(std::string& path,  // NOLINT
 static void fs_add_write_converter_internal(std::string& path,  // NOLINT
                                             bool& is_pipe,      // NOLINT
                                             const std::string& converter) {
-  if (converter == "") {
+  if (converter.empty()) {
     return;
   }
 
@@ -157,7 +157,7 @@ int64_t localfs_file_size(const std::string& path) {
 }
 
 void localfs_remove(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return;
   }
 
@@ -165,7 +165,7 @@ void localfs_remove(const std::string& path) {
 }
 
 std::vector<std::string> localfs_list(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return {};
   }
 
@@ -186,7 +186,7 @@ std::vector<std::string> localfs_list(const std::string& path) {
 }
 
 std::string localfs_tail(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return "";
   }
 
@@ -213,7 +213,7 @@ bool localfs_exists(const std::string& path) {
 }
 
 void localfs_mkdir(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return;
   }
 
@@ -221,7 +221,7 @@ void localfs_mkdir(const std::string& path) {
 }
 
 void localfs_mv(const std::string& src, const std::string& dest) {
-  if (src == "" || dest == "") {
+  if (src.empty() || dest.empty()) {
     return;
   }
   shell_execute(string::format_string("mv %s %s", src.c_str(), dest.c_str()));
@@ -274,7 +274,7 @@ std::shared_ptr<FILE> hdfs_open_read(std::string path,
                                      int* err_no,
                                      const std::string& converter,
                                      bool read_data) {
-  if (download_cmd() != "") {  // use customized download command
+  if (!download_cmd().empty()) {  // use customized download command
     path = string::format_string(
         "%s \"%s\"", download_cmd().c_str(), path.c_str());
   } else {
@@ -318,7 +318,7 @@ std::shared_ptr<FILE> hdfs_open_write(std::string path,
 }
 
 void hdfs_remove(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return;
   }
 
@@ -327,7 +327,7 @@ void hdfs_remove(const std::string& path) {
 }
 
 std::vector<std::string> hdfs_list(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return {};
   }
 
@@ -362,7 +362,7 @@ std::vector<std::string> hdfs_list(const std::string& path) {
 }
 
 std::string hdfs_tail(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return "";
   }
 
@@ -382,7 +382,7 @@ bool hdfs_exists(const std::string& path) {
 }
 
 void hdfs_mkdir(const std::string& path) {
-  if (path == "") {
+  if (path.empty()) {
     return;
   }
 
@@ -391,7 +391,7 @@ void hdfs_mkdir(const std::string& path) {
 }
 
 void hdfs_mv(const std::string& src, const std::string& dest) {
-  if (src == "" || dest == "") {
+  if (src.empty() || dest.empty()) {
     return;
   }
   shell_execute(string::format_string(
