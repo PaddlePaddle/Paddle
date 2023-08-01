@@ -7,6 +7,8 @@ collect_srcs(
   c_kernel_context.cc
   c_kernel_factory.cc
   c_kernel_registry.cc
+  c_infer_meta_context.cc
+  c_meta_tensor.cc
   c_place.cc
   c_scalar.cc
   c_tensor.cc)

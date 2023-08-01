@@ -55,6 +55,9 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   auto* graph = argument->main_graph_ptr();
 
   framework::ProgramDesc optimized_program_desc;
+  // NOTE(liuyuanle): If the following line of code is not added, an error
+  // [SegmentFault] may occur!
+  optimized_program_desc.CopyFrom(*argument->main_program().Proto());
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
 
   auto IsPersistable = [](const framework::VarDesc* var) {
@@ -130,7 +133,9 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
 }
 
 void SaveOptimizedModelPass::RunImpl(Argument* argument) {
-  if (argument->use_xpu_valid()) {
+  // TODO(inference): Support trt.
+  if (argument->use_xpu() ||
+      (argument->use_gpu() && !argument->use_tensorrt())) {
     SaveOptimizedModel(argument);
   }
 }

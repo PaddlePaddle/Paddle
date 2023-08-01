@@ -53,18 +53,18 @@ PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
-      pass_builder_.reset(new GpuPassStrategy);
+      pass_builder_ = std::make_unique<GpuPassStrategy>();
     } else if (use_xpu_) {
-      pass_builder_.reset(new XpuPassStrategy);
+      pass_builder_ = std::make_unique<XpuPassStrategy>();
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
-      pass_builder_.reset(new IpuPassStrategy);
+      pass_builder_ = std::make_unique<IpuPassStrategy>();
     } else if (use_custom_device_) {
       LOG(INFO) << "Create CUSTOM DEVICE IR passes";
-      pass_builder_.reset(new CustomDevicePassStrategy);
+      pass_builder_ = std::make_unique<CustomDevicePassStrategy>();
     } else {
       LOG(INFO) << "Create CPU IR passes";
-      pass_builder_.reset(new CpuPassStrategy);
+      pass_builder_ = std::make_unique<CpuPassStrategy>();
     }
   } else if (pass_builder_->use_gpu() ^ use_gpu()) {
     LOG(WARNING) << "The use_gpu flag is not compatible between Config and "
@@ -577,20 +577,20 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                       false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-    pass_builder_.reset(new GpuPassStrategy(
-        *static_cast<GpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<GpuPassStrategy>(
+        *static_cast<GpuPassStrategy *>(other.pass_builder()));
   } else if (use_ipu_) {
-    pass_builder_.reset(new IpuPassStrategy(
-        *static_cast<IpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<IpuPassStrategy>(
+        *static_cast<IpuPassStrategy *>(other.pass_builder()));
   } else if (use_xpu_) {
-    pass_builder_.reset(new XpuPassStrategy(
-        *static_cast<XpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<XpuPassStrategy>(
+        *static_cast<XpuPassStrategy *>(other.pass_builder()));
   } else if (use_custom_device_) {
-    pass_builder_.reset(new CustomDevicePassStrategy(
-        *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<CustomDevicePassStrategy>(
+        *static_cast<CustomDevicePassStrategy *>(other.pass_builder()));
   } else {
-    pass_builder_.reset(new CpuPassStrategy(
-        *static_cast<CpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<CpuPassStrategy>(
+        *static_cast<CpuPassStrategy *>(other.pass_builder()));
   }
 
 #undef CP_MEMBER
@@ -663,7 +663,7 @@ void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 void AnalysisConfig::EnableMkldnnQuantizer() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!mkldnn_quantizer_config_)
-    mkldnn_quantizer_config_.reset(new MkldnnQuantizerConfig());
+    mkldnn_quantizer_config_ = std::make_unique<MkldnnQuantizerConfig>();
   use_mkldnn_quantizer_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
@@ -850,54 +850,54 @@ void AnalysisConfig::Update() {
       ((use_ipu() ^ pass_builder_->use_ipu())) ||
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
-      pass_builder_.reset(new GpuPassStrategy);
+      pass_builder_ = std::make_unique<GpuPassStrategy>();
     } else if (use_ipu()) {
-      pass_builder_.reset(new IpuPassStrategy);
+      pass_builder_ = std::make_unique<IpuPassStrategy>();
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
-      pass_builder_.reset(new XpuPassStrategy);
+      pass_builder_ = std::make_unique<XpuPassStrategy>();
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and CustomDevice."));
-      pass_builder_.reset(new CustomDevicePassStrategy);
+      pass_builder_ = std::make_unique<CustomDevicePassStrategy>();
     } else {
-      pass_builder_.reset(new CpuPassStrategy);
+      pass_builder_ = std::make_unique<CpuPassStrategy>();
     }
 
   } else {
     if (use_gpu()) {
-      pass_builder_.reset(new GpuPassStrategy(
-          *static_cast<GpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<GpuPassStrategy>(
+          *static_cast<GpuPassStrategy *>(pass_builder_.get()));
     } else if (use_ipu()) {
       VLOG(1) << "IpuPassStrategy has been used.";
-      pass_builder_.reset(new IpuPassStrategy(
-          *static_cast<IpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<IpuPassStrategy>(
+          *static_cast<IpuPassStrategy *>(pass_builder_.get()));
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
-      pass_builder_.reset(new XpuPassStrategy(
-          *static_cast<XpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<XpuPassStrategy>(
+          *static_cast<XpuPassStrategy *>(pass_builder_.get()));
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and CustomDevice."));
-      pass_builder_.reset(new CustomDevicePassStrategy(
-          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<CustomDevicePassStrategy>(
+          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get()));
     } else {
-      pass_builder_.reset(new CpuPassStrategy(
-          *static_cast<CpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<CpuPassStrategy>(
+          *static_cast<CpuPassStrategy *>(pass_builder_.get()));
     }
   }
 

@@ -54,7 +54,7 @@ typedef PyFrameObject FrameObject;
 // Use static variable to save customed eval hook.
 static Py_tss_t eval_frame_callback_key = {0, 0};
 
-inline static PyObject *eval_frame_callback_get(void) {
+inline static PyObject *eval_frame_callback_get() {
   void *result = PyThread_tss_get(&eval_frame_callback_key);
   if (unlikely(result == NULL)) {
     Py_RETURN_NONE;
@@ -271,7 +271,7 @@ static PyObject *set_eval_frame_py(PyObject *callback) {
   return set_eval_frame(callback, PyThreadState_GET());
 }
 
-PyMODINIT_FUNC PyInit__eval_frame(void) {
+PyMODINIT_FUNC PyInit__eval_frame() {
   int result = PyThread_tss_create(&eval_frame_callback_key);
   VLOG(7) << "Set PyThread_tss_create return: " << result;
 

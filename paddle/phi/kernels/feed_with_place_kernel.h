@@ -22,11 +22,17 @@ template <typename T, typename Context>
 void FeedWithPlaceKernel(const Context& ctx,
                          int64_t index,
                          phi::DataType data_type,
+                         // std::string name,
                          DenseTensor* out);
 
 template <typename T, typename Context>
-void ShaddowFeedKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       DenseTensor* out);
+void ShadowOutputKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        DenseTensor* out);
+
+template <typename T, typename Context>
+void ShadowFeedKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out);
 
 }  // namespace phi

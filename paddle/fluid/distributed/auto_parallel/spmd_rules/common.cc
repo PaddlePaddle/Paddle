@@ -182,8 +182,8 @@ TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr) {
 void VerifySpecs(const std::vector<DistTensorSpec>& specs,
                  const std::string& op_name) {
   for (size_t i = 0, n = specs.size(); i < n; ++i) {
-    std::vector<int64_t> shape = specs[i].shape();
-    std::vector<int64_t> dims_mapping = specs[i].dims_mapping();
+    const std::vector<int64_t>& shape = specs[i].shape();
+    const std::vector<int64_t>& dims_mapping = specs[i].dims_mapping();
     PADDLE_ENFORCE_EQ(shape.size(),
                       dims_mapping.size(),
                       phi::errors::InvalidArgument(
