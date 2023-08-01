@@ -176,11 +176,11 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate=Exponential_scheduler_test,
                 parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.last_epoch,
                 adam1._learning_rate.last_epoch,
-                "last_epoch is different before and after set_dict",
+                "last_epoch is different before and after set_state_dict",
             )
 
             paddle.save(adam2.state_dict(), "save_path.pdopt")
@@ -189,16 +189,16 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate=Step_scheduler_test,
                 parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.last_epoch,
                 adam2._learning_rate.last_epoch,
-                "epoch_num is different before and after set_dict",
+                "epoch_num is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate(),
                 adam2._learning_rate(),
-                "current learning rate is different before and after set_dict",
+                "current learning rate is different before and after set_state_dict",
             )
 
             paddle.save(adam3.state_dict(), "save_path.pdopt")
@@ -207,31 +207,31 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate=Reducelr_scheduler_test,
                 parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.best,
                 adam3._learning_rate.best,
-                "best_loss is different before and after set_dict",
+                "best_loss is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.cooldown_counter,
                 adam3._learning_rate.cooldown_counter,
-                "cooldown_counter is different before and after set_dict",
+                "cooldown_counter is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.num_bad_epochs,
                 adam3._learning_rate.num_bad_epochs,
-                "num_bad_epochs is different before and after set_dict",
+                "num_bad_epochs is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.last_epoch,
                 adam3._learning_rate.last_epoch,
-                "epoch is different before and after set_dict",
+                "epoch is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate(),
                 adam3._learning_rate(),
-                "current learning rate is different before and after set_dict",
+                "current learning rate is different before and after set_state_dict",
             )
 
     def test_NoamDecay(self):
