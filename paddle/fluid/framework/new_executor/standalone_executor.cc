@@ -90,12 +90,24 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,
                                             std::move(kernel_program),
                                             scope_,
                                             execution_config));
+
+      // NOTE(phlrain): why we add prefix here. In earger op test,
+      // different test case use same scope (not same standalone executor),
+      // we must add prefix to prevent fetch same variable in different case
+      std::stringstream pre_ss;
+      pre_ss << interpretercores_.back()->Impl();
+
+      for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
+        fetch_var_names_[i] = pre_ss.str() + "_" + fetch_var_names_[i];
+      }
+
     } else {
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
