@@ -1361,8 +1361,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
       for (int i = 0; i <= append_size; i++) {
         y_new_shape.push_back(1);
       }
-      dialect::Reshape_Op reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      dialect::ReshapeOp reshape_op =
+          builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
       VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
               << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
@@ -1377,8 +1377,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       auto concat_op =
           builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
       auto y_new_shape = concat_op.out();
-      auto reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
     }
     return {x_value, y_new};
