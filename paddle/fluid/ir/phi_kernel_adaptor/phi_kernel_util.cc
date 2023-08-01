@@ -37,11 +37,57 @@
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
 #include "paddle/phi/core/enforce.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace ir {
+
+void AddNewData(ir::Value value,
+                std::string name,
+                paddle::framework::Variable* var,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id,
+                std::vector<paddle::framework::Variable*>* variable_list) {
+  value_2_var_name->emplace(value, name);
+  variable_2_var_name->emplace(var, name);
+  auto id = var_name_2_id->size();
+  var_name_2_id->emplace(name, id);
+  variable_list->push_back(var);
+  PADDLE_ENFORCE_EQ(
+      variable_list->size(),
+      var_name_2_id->size(),
+      paddle::platform::errors::InvalidArgument(
+          "The size of variable_list and var_name_2_id map should be equal"));
+}
+
+void RenameData(ir::Value value,
+                std::string new_name,
+                std::string orig_name,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id) {
+  (*value_2_var_name)[value] = new_name;
+
+  for (auto kv : (*variable_2_var_name)) {
+    if (kv.second == orig_name) {
+      (*variable_2_var_name)[kv.first] = new_name;
+    }
+  }
+
+  for (auto kv : *(var_name_2_id)) {
+    if (kv.first == orig_name) {
+      var_name_2_id->emplace(new_name, kv.second);
+    }
+  }
+  var_name_2_id->erase(orig_name);
+}
 
 using VariableNameMap =
     std::unordered_map<const paddle::framework::Variable*, std::string>;
@@ -77,16 +123,13 @@ paddle::framework::Variable* CreateVar(
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope;
     var = inner_scope->Var(name);
   }
-  value_2_var_name->emplace(value, name);
-  variable_2_var_name->emplace(var, name);
-  auto id = var_name_2_id->size();
-  var_name_2_id->emplace(name, id);
-  variable_list->push_back(var);
-  PADDLE_ENFORCE_EQ(
-      variable_list->size(),
-      var_name_2_id->size(),
-      paddle::platform::errors::InvalidArgument(
-          "The size of variable_list and var_name_2_id map should be equal"));
+  AddNewData(value,
+             name,
+             var,
+             value_2_var_name,
+             variable_2_var_name,
+             var_name_2_id,
+             variable_list);
   return var;
 }
 
@@ -197,23 +240,20 @@ void HandleForSpecialOp(
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable" << inner_scope;
 
-    int index =
-        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
     std::string name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
     paddle::framework::Variable* var = inner_scope->FindVar(name);
+    PADDLE_ENFORCE(var,
+                   paddle::platform::errors::InvalidArgument(
+                       "The variable %s shoud exist", name));
 
-    auto feed_var_name = "feed_" + std::to_string(index);
-    value_2_var_name->emplace(value, feed_var_name);
-    variable_2_var_name->emplace(var, feed_var_name);
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(feed_var_name, id);
-    variable_list->push_back(var);
-    PADDLE_ENFORCE_EQ(
-        variable_list->size(),
-        var_name_2_id->size(),
-        paddle::platform::errors::InvalidArgument(
-            "The size of variable_list and var_name_2_id map should be equal"));
+    AddNewData(value,
+               name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "pd.feed_with_place") {
@@ -222,7 +262,18 @@ void HandleForSpecialOp(
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto value = op->result(0);
-    value_2_var_name->emplace(value, var_name);
+    paddle::framework::Variable* var = inner_scope->FindVar(var_name);
+    PADDLE_ENFORCE(var,
+                   paddle::platform::errors::InvalidArgument(
+                       "The variable %s shoud exist", var_name));
+
+    AddNewData(value,
+               var_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "builtin.combine") {
@@ -272,11 +323,16 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
     }
-    (*value_2_var_name)[value] = param_name;
+    RenameData(value,
+               param_name,
+               orig_name,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id);
   }
 
-  if (op_name == "pd.shaddow_output") {
-    VLOG(6) << "Handle for pd.shaddow_ouptut";
+  if (op_name == "pd.shadow_output") {
+    VLOG(6) << "Handle for pd.shadow_ouptut";
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
@@ -288,7 +344,12 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, var_name);
     }
-    (*value_2_var_name)[value] = var_name;
+    RenameData(value,
+               var_name,
+               orig_name,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id);
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -298,7 +359,14 @@ void HandleForSpecialOp(
                           .dyn_cast<ir::StrAttribute>()
                           .AsString();
     auto value = op->result(0);
-    value_2_var_name->emplace(value, param_name);
+    paddle::framework::Variable* var = inner_scope->FindVar(param_name);
+    AddNewData(value,
+               param_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "builtin.slice") {
@@ -405,7 +473,7 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
+        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,
@@ -449,6 +517,118 @@ void BuildScope(const ir::Block& block,
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
+}
+
+void BuildRuntimeContext(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    paddle::framework::Scope* scope,
+    paddle::framework::Scope* local_scope,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    paddle::framework::RuntimeContext* runtime_ctx) {
+  paddle::framework::Scope* inner_scope =
+      local_scope != nullptr ? local_scope : scope;
+  VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
+          << inner_scope << "]";
+
+  auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(true);
+
+  auto& name2id = op_yaml_info.InputName2Id();
+
+  auto pd_op_name =
+      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
+
+  auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+
+  for (auto& name : vec_kernel_fn_tensor_params) {
+    PADDLE_ENFORCE_EQ(
+        name2id.count(name),
+        true,
+        phi::errors::NotFound("param [%s] MUST in name2id map", name));
+    auto index = op_yaml_info.InputName2Id().at(name);
+    ir::Value ptr = op->operand(index);
+
+    auto in_var_name = name_map.at(ptr);
+    VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
+
+    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
+                            phi::errors::PreconditionNotMet(
+                                "can not find var[%s] in scope", in_var_name));
+    auto var = inner_scope->FindVar(in_var_name);
+    std::vector<paddle::framework::Variable*> vec_tmp = {var};
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+
+    runtime_ctx->inputs[legacy_attr_name].push_back(var);
+  }
+
+  auto& output_name_list = op_yaml_info.OutputNames();
+  for (size_t i = 0; i < output_name_list.size(); ++i) {
+    auto name = output_name_list[i];
+    ir::Value ptr = op->result(i);
+
+    auto in_var_name = name_map.at(ptr);
+    VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
+
+    PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
+                            phi::errors::PreconditionNotMet(
+                                "can not find var[%s] in scope", in_var_name));
+    auto var = inner_scope->FindVar(in_var_name);
+    std::vector<paddle::framework::Variable*> vec_tmp = {var};
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    runtime_ctx->outputs[legacy_attr_name] = vec_tmp;
+  }
+}
+
+std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
+  paddle::framework::VariableNameMap in_name_map;
+  paddle::framework::VariableNameMap out_name_map;
+  paddle::framework::AttributeMap attr_map;
+  auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(true);
+
+  auto& name2id = op_yaml_info.InputName2Id();
+
+  auto pd_op_name =
+      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
+
+  auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+
+  for (auto& name : vec_kernel_fn_tensor_params) {
+    PADDLE_ENFORCE_EQ(
+        name2id.count(name),
+        true,
+        phi::errors::NotFound("param [%s] MUST in name2id map", name));
+    auto index = op_yaml_info.InputName2Id().at(name);
+    ir::Value ptr = op->operand(index);
+
+    auto in_var_name = name_map.at(ptr);
+
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    in_name_map[legacy_attr_name].push_back(in_var_name);
+  }
+
+  // build attribute
+
+  auto& output_name_list = op_yaml_info.OutputNames();
+  for (size_t i = 0; i < output_name_list.size(); ++i) {
+    auto name = output_name_list[i];
+    ir::Value ptr = op->result(i);
+
+    auto out_var_name = name_map.at(ptr);
+    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    out_name_map[legacy_attr_name].push_back(out_var_name);
+  }
+
+  auto& op_info = paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
+  auto ptr =
+      op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
+
+  std::shared_ptr<paddle::framework::OperatorBase> res(ptr);
+  return res;
 }
 
 }  // namespace ir
