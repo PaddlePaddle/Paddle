@@ -56,7 +56,7 @@ using phi::funcs::ToVector;
 template <typename T>
 static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {
   static_assert(!std::is_same<T, void>::value, "T cannot be void.");
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(x, 0, n * sizeof(T), stream));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_ENFORCE_GPU_SUCCESS(musaMemsetAsync(x, 0, n * sizeof(T), stream));
@@ -257,7 +257,7 @@ static void LogParamAndTrustRatioDivSquareNorm(
 static bool IsFinite(const phi::GPUContext &dev_ctx, const float *ptr) {
   auto stream = dev_ctx.stream();
   float cpu_value;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
       &cpu_value, ptr, sizeof(float), hipMemcpyDeviceToHost, stream));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
@@ -1140,7 +1140,7 @@ static std::string GetMinMaxStr(const T *x, size_t n, const phi::Place &place) {
                     stream,
                     &cub_buffer);
     T ret_cpu[2];
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
         &ret_cpu[0], ret, 2 * sizeof(T), hipMemcpyDeviceToHost, stream));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
@@ -1198,7 +1198,7 @@ static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
                   dev_ctx.stream(),
                   &buffer);
   bool flag;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&flag,
                                             out.Get<bool>(),
                                             sizeof(flag),

@@ -64,7 +64,7 @@ FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
 #elif defined(PADDLE_WITH_MUSA)
     PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(event));
@@ -102,7 +102,7 @@ void FusedAllReduceOpHandle::RunImpl() {
                           "when using GPU device."));
     auto create_event = [](gpuEvent_t *event) {
       if (*event) return;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(event, hipEventDisableTiming));
 #elif defined(PADDLE_WITH_MUSA)
@@ -127,7 +127,7 @@ void FusedAllReduceOpHandle::RunImpl() {
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     auto &nccl_ctx = flat_nccl_ctxs->at(gpu_place.device);
     nccl_stream = nccl_ctx.stream();
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(start_event_, compute_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(nccl_stream, start_event_, 0));
@@ -196,7 +196,7 @@ void FusedAllReduceOpHandle::RunImpl() {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (FLAGS_allreduce_record_one_event) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(end_event_, nccl_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(compute_stream, end_event_, 0));

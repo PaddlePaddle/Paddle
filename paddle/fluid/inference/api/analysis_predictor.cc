@@ -2160,7 +2160,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
   }
 
   if (stream != predictor_stream_) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
 #elif defined(PADDLE_WITH_MUSA)
     musaStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));

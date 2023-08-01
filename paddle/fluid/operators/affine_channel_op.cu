@@ -17,7 +17,7 @@ limitations under the License. */
 #endif
 
 #ifdef __MUSACC__
-#include "cub/cub.cuh"
+#include <cub/cub.cuh>
 #endif
 
 #ifdef __HIPCC__

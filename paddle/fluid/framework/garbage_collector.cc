@@ -91,7 +91,7 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
                                                size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
   platform::CUDADeviceGuard guard(place.device);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream_));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&stream_));

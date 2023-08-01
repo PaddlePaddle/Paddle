@@ -42,7 +42,7 @@ static void ForEachDevice(std::function<void(int)> func) {
 }
 
 void DummyKernelAndEvent() {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   for (int i = 0; i < 5; i++) {
     ForEachDevice([](int d) {
       platform::SetDeviceId(d);

@@ -190,7 +190,7 @@ struct FindChannelAbsMaxFunctor<phi::GPUContext, T> {
       int grid = cout;
       int max_threads = 1024;
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       hipMemset(out_abs_max, 0, sizeof(T) * cout);
 #elif defined(PADDLE_WITH_MUSA)
       musaMemset(out_abs_max, 0, sizeof(T) * cout);

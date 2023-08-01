@@ -85,7 +85,7 @@ limitations under the License. */
 #include "paddle/phi/backends/stream.h"
 
 #if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
-//#include "unsupported/Eigen/CXX11/Tensor"
+#include "unsupported/Eigen/CXX11/Tensor"
 #endif
 
 namespace Eigen {

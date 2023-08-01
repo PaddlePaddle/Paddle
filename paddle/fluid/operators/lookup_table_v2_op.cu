@@ -218,7 +218,7 @@ struct LookupTableV2GradCUDAFunctor {
       const auto *ids = ids_t_->template data<IdT>();
       T *d_table = d_table_t->mutable_data<T>(context_.GetPlace());
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx.stream()));
 #elif defined(PADDLE_WITH_MUSA)

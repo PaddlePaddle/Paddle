@@ -192,6 +192,7 @@ if(WITH_MKLDNN)
   pass_library(operator_unsqueeze2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(operator_reshape2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
+  # TODO(@caizhi): enable it
   #pass_library(cpu_quantize_pass inference DIR mkldnn)
   pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
   pass_library(reshape_transpose_matmul_mkldnn_fuse_pass inference DIR mkldnn)

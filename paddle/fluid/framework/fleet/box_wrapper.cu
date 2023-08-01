@@ -156,7 +156,7 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   hipMemcpy(gpu_values,
             values.data(),
             values.size() * sizeof(float*),

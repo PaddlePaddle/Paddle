@@ -61,7 +61,7 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
         memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
     uint64_t** gpu_keys = reinterpret_cast<uint64_t**>(buf_key->ptr());
     int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     hipMemcpy(gpu_keys,
               keys.data(),
               keys.size() * sizeof(uint64_t*),

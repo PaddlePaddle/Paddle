@@ -15,7 +15,7 @@
 #pragma once
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/rocm/rocm_helper.h"
 #elif defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/musa/musa_helper.h"

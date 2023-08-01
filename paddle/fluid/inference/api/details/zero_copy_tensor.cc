@@ -420,7 +420,7 @@ void Tensor::CopyToCpuImpl(T *data,
                          t_data,
                          ele_num * sizeof(T),
                          dev_ctx->stream());
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(dev_ctx->stream());
 #elif defined(PADDLE_WITH_MUSA)
     musaStreamSynchronize(dev_ctx->stream());

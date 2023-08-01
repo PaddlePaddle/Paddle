@@ -273,6 +273,7 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   }
 #else
   err = cudaFreeHost(p);
+
   // Purposefully allow cudaErrorCudartUnloading, because
   // that is returned if you ever call cudaFreeHost after the
   // driver has already shutdown. This happens only if the

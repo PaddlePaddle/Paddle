@@ -99,7 +99,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
     if (semaphore_ == NULL) {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
 #elif defined(PADDLE_WITH_MUSA)
@@ -159,7 +159,7 @@ void GPUContextResource::InitGPUResource(void* stream) {
 
 void GPUContextResource::DestroyGPUResource() {
   if (owned_stream_) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
 #elif defined(PADDLE_WITH_MUSA)
     PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(stream_));

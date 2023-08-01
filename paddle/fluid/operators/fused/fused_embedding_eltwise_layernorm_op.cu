@@ -44,7 +44,7 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
             framework::TransToPhiDataType(framework::proto::VarType::INT64));
     framework::DDim in_dim{input_num};
     int device_id;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     hipGetDevice(&device_id);
 #elif defined(PADDLE_WITH_MUSA)
     musaGetDevice(&device_id);
@@ -67,7 +67,7 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
       in1s.push_back(reinterpret_cast<uintptr_t>(ids[i]->data<int64_t>()));
       in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
     }
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     hipMemcpyAsync(in_ids_d,
                    in1s.data(),
                    sizeof(int64_t) * input_num,

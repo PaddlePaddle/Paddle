@@ -107,7 +107,7 @@ using CUDAGraphID = unsigned long long;  // NOLINT
 
 #undef DECLARE_TYPE_FOR_GPU
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
   constexpr auto GPU_CV = ROCM_CV;
 #elif defined(PADDLE_WITH_MUSA)

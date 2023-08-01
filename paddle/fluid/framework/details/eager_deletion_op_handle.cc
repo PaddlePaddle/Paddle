@@ -44,13 +44,13 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       place_(place),
       var_infos_(vars.begin(), vars.end()),
       gc_(gc) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (platform::is_gpu_place(place)) {
     dev_ctx_ = reinterpret_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(place.device);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(&event_, hipEventDisableTiming));
 #elif defined(PADDLE_WITH_MUSA)
@@ -78,11 +78,11 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 }
 
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (event_) {
     auto gpu_place = dev_ctx_->GetPlace();
     platform::CUDADeviceGuard guard(gpu_place.device);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
 #elif defined(PADDLE_WITH_MUSA)
     PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(event_));
@@ -94,7 +94,7 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 }
 
 void EagerDeletionOpHandle::InitCUDA() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   int dev_id = dev_ctxes_.begin()->first.device;
   events_[dev_id] = nullptr;
 #endif
@@ -182,13 +182,13 @@ void EagerDeletionOpHandle::RunImpl() {
 
 void EagerDeletionOpHandle::ClearGarbages(
     std::deque<std::shared_ptr<memory::Allocation>> *garbages) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (event_) {
     auto compute_stream = dev_ctx_->stream();
     auto callback_stream =
         reinterpret_cast<StreamGarbageCollector *>(gc_)->stream();
     auto callback_func = [=]() {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, compute_stream));
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipStreamWaitEvent(callback_stream, event_, 0));
@@ -206,7 +206,7 @@ void EagerDeletionOpHandle::ClearGarbages(
   } else {
 #endif
     gc_->Add(std::move(*garbages));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   }
 #endif
 }

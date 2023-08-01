@@ -813,7 +813,7 @@ void FleetWrapper::PushDenseVarsAsync(
                  g_data,
                  sizeof(float) * count,
                  stream);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, stream));
     hipEventSynchronize(event);
 #elif defined(PADDLE_WITH_MUSA)

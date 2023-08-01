@@ -638,7 +638,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
         int can_acess = -1;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
         hipError_t ret =
             hipDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
         if (ret != hipSuccess || can_acess != 1) {
@@ -655,7 +655,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
                        << " to " << devices[j];
         } else {
           platform::CUDADeviceGuard guard(devices[i]);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
           hipDeviceEnablePeerAccess(devices[j], 0);
 #elif defined(PADDLE_WITH_MUSA)
           musaDeviceEnablePeerAccess(devices[j], 0);

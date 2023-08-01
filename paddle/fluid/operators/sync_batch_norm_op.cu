@@ -302,7 +302,7 @@ void SyncBatchNormCooGradKernel(
 }  // namespace sparse
 }  // namespace phi
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(sync_batch_norm,
                    GPU,
                    ALL_LAYOUT,
@@ -382,7 +382,7 @@ PD_REGISTER_KERNEL(sync_batch_norm,
 #endif
 #endif
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -427,7 +427,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
 #endif
 #endif
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(sync_batch_norm_coo,
                    GPU,
                    ALL_LAYOUT,
@@ -450,7 +450,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo,
                    phi::dtype::float16) {}
 #endif
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    GPU,
                    ALL_LAYOUT,

@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #elif defined(PADDLE_WITH_MUSA)
 //TODO(Xiaokang Shang)
@@ -212,7 +212,7 @@ class RecordedGpuMallocHelper {
 
     CUDADeviceGuard guard(dev_id_);
     gpuError_t result;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     if (UNLIKELY(malloc_managed_memory)) {
       result = hipMallocManaged(ptr, size);
     } else {
@@ -267,7 +267,7 @@ class RecordedGpuMallocHelper {
     // process is terminating, in which case we don't care if
     // cudaFree succeeds.
     CUDADeviceGuard guard(dev_id_);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     auto err = hipFree(ptr);
     if (err != hipErrorDeinitialized) {
 #elif defined(PADDLE_WITH_MUSA)
@@ -318,7 +318,7 @@ class RecordedGpuMallocHelper {
                   size_t *actual_total) {
     {
       CUDADeviceGuard guard(dev_id_);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       auto result = hipMemGetInfo(actual_avail, actual_total);
 #elif defined(PADDLE_WITH_MUSA)
       auto result = musaMemGetInfo(actual_avail, actual_total);

@@ -327,7 +327,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
       temp_bias_tensor.Resize({size});
       auto *temp_qk_bias = device_ctx.template Alloc<T>(
           &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       hipMemset(temp_qk_bias, 0, sizeof(float) * size);
 #elif defined(PADDLE_WITH_MUSA)
       musaMemset(temp_qk_bias, 0, sizeof(float) * size);

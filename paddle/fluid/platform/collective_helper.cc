@@ -172,7 +172,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
     for (int i = 0; i < kDevices; i++) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipSetDevice(i));
 #elif defined(PADDLE_WITH_MUSA)
       PADDLE_ENFORCE_GPU_SUCCESS(musaSetDevice(i));

@@ -29,7 +29,7 @@ limitations under the License. */
 
 #include <ostream>
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
 #elif defined(PADDLE_WITH_MUSA)
@@ -135,7 +135,7 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
 #endif
 
       for (int idx = k + threadIdx.x; idx < deg; idx += WARP_SIZE) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
         const int num = hiprand(&rng) % (idx + 1);
 #elif defined(PADDLE_WITH_MUSA)
         const int num = murand(&rng) % (idx + 1);

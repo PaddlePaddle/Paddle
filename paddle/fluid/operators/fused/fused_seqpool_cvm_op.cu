@@ -122,7 +122,7 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
       memory::AllocShared(ctx.GetPlace(), total_ptr_len * sizeof(void *));
   void *ptr = temp_ptr->ptr();
 
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
   platform::GpuMemcpyAsync(gpu_input_values,
                            input_data.data(),
@@ -353,7 +353,7 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
                          cvm_data.size() + lods.size();
   auto temp_ptr =
       memory::AllocShared(ctx.GetPlace(), total_ptr_len * sizeof(void *));
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());
   platform::GpuMemcpyAsync(gpu_out_grads_values,
                            out_grads_data.data(),
