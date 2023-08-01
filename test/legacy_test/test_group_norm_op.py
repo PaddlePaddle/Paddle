@@ -365,11 +365,6 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         self.check_output_with_place(place, atol=atol, rtol=rtol)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
 class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def setUp(self):
         self.op_type = "group_norm"
