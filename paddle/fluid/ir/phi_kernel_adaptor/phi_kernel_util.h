@@ -32,6 +32,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/phi/core/kernel_context.h"
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
@@ -50,6 +51,19 @@ void BuildScope(const ir::Block& block,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list);
 
+void BuildRuntimeContext(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    paddle::framework::Scope* scope,
+    paddle::framework::Scope* local_scope,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    paddle::framework::RuntimeContext* runtime_ctx);
+
+std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
+    ir::Operation* op,
+    const std::unordered_map<ir::Value, std::string>& name_map,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
+
 template <typename Context,
           typename InType,
           typename OutType,
@@ -66,7 +80,6 @@ void BuildPhiContext(ir::Operation* op,
       local_scope != nullptr ? local_scope : scope;
   VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
           << inner_scope << "]";
-  // inputs include input and mutable attributes
 
   auto attr_map = op->attributes();
 
@@ -147,10 +160,10 @@ void BuildPhiContext(ir::Operation* op,
               tensor_attr_type));
         }
       } else if (tensor_attr_type == "paddle::dialect::ScalarAttribute") {
-        phi::Attribute r1 = phi::TensorRef(
+        phi::Attribute attr = phi::TensorRef(
             &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
 
-        ctx->EmplaceBackAttr(r1);
+        ctx->EmplaceBackAttr(attr);
       } else {
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 tensor_attr_type));
