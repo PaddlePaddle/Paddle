@@ -73,7 +73,6 @@ __all__ = [
     'DecayedAdagradOptimizer',
     'FtrlOptimizer',
     'ModelAverage',
-    'LarsMomentum',
     'ExponentialMovingAverage',
     'PipelineOptimizer',
     'LookaheadOptimizer',
