@@ -233,9 +233,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   eval_frame_callback_set(Py_None);
 
 #if PY_VERSION_HEX >= 0x030b0000
-  PyObject *args = Py_BuildValue("(O)", frame);
-#else
   PyObject *args = Py_BuildValue("(O)", Paddle_PyFrame_GetFrameObject(frame));
+#else
+  PyObject *args = Py_BuildValue("(O)", frame);
 #endif
   PyObject *result = PyObject_CallObject(callback, args);
   Py_DECREF(args);
