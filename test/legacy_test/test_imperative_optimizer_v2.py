@@ -27,7 +27,6 @@ from paddle.fluid.optimizer import (
     DpsgdOptimizer,
     ExponentialMovingAverage,
     FtrlOptimizer,
-    LarsMomentumOptimizer,
     LookaheadOptimizer,
     ModelAverage,
     MomentumOptimizer,
@@ -702,13 +701,15 @@ class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = LarsMomentumOptimizer(
+        optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
             learning_rate=0.001, momentum=0.9, parameter_list=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9
+        )
         return optimizer
 
     def test_larsmomentum(self):
