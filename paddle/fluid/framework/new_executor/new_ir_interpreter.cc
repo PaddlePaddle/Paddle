@@ -106,6 +106,10 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
+
+  std::stringstream ss;
+  ss << this;
+  scope_prefix_ = ss.str();
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -200,11 +204,10 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    std::stringstream ss;
-    ss << this;
+    std::cerr << "scope prefix " << scope_prefix_ << std::endl;
     ::ir::BuildScope(*ir_program_->block(),
                      InnerScope(),
-                     ss.str(),
+                     scope_prefix_,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
@@ -2159,6 +2162,13 @@ void NewIRInterpreter::PreAnalysis() {
   AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
                               ir_instruction_scheduling_priority_less);
   VLOG(4) << "Done AnalyseExecuteOrderForTrace";
+}
+
+void NewIRInterpreter::SetScopePrefix(const std::string& prefix) {
+  scope_prefix_ = prefix;
+}
+const std::string& NewIRInterpreter::GetScopePrefix() const {
+  return scope_prefix_;
 }
 
 }  // namespace framework

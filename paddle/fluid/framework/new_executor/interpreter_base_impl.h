@@ -108,6 +108,9 @@ class InterpreterBaseImpl {
   virtual const interpreter::StreamAnalyzer& GetStreamAnalyzer() const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
+
+  virtual void SetScopePrefix(const std::string& prefix) = 0;
+  virtual const std::string& GetScopePrefix() const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

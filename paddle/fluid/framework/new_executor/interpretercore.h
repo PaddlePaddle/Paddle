@@ -77,6 +77,9 @@ class InterpreterCore {
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
+  void SetScopePrefix(const std::string& prefix);
+  const std::string& GetScopePrefix() const;
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 

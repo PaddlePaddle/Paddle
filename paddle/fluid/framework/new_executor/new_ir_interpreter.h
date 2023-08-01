@@ -90,6 +90,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   int GetIdByName(const std::string& name) const;
 
+  void SetScopePrefix(const std::string& prefix) override;
+  const std::string& GetScopePrefix() const override;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -254,6 +257,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
 
   std::vector<std::string> fetch_var_names_;
+  std::string scope_prefix_;
 };
 
 }  // namespace framework

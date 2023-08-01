@@ -82,7 +82,8 @@ class ConstantFoldingPattern : public ir::RewritePattern {
           fetch_var_names.resize(index + 1);
         }
 
-        fetch_var_names[index] = (*it)
+        fetch_var_names[index] = "ConstantFoldPrefix_" +
+                                 (*it)
                                      ->attributes()
                                      .at("name")
                                      .dyn_cast<ir::StrAttribute>()
@@ -100,6 +101,7 @@ class ConstantFoldingPattern : public ir::RewritePattern {
         paddle::dialect::PdOpLowerToKernelPass(temp_program.get()),
         &scope_,
         exe_config);
+    core.SetScopePrefix("ConstantFoldPrefix");
     paddle::framework::FetchList fetch_list = core.Run({});
 
     // TODO(liuyuanle): Support multiple output.
