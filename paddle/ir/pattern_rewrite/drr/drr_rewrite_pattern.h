@@ -19,6 +19,7 @@
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
+namespace drr {
 
 template <typename SourceOp, typename DrrFunctor>
 struct DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
@@ -48,4 +49,5 @@ struct DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
   const ResultPatternGraph* result_pattern_graph_;
 };
 
+}  // namespace drr
 }  // namespace ir
