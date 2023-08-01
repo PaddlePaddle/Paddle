@@ -122,18 +122,18 @@ def sparse_attention(
             >>> print(output_mask)
             Tensor(shape=[1, 1, 4, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[[[0.        , 1.        ],
-              [1.99830270, 2.99830270],
-              [0.        , 1.        ],
-              [0.        , 1.        ]]]])
+               [1.99830270, 2.99830270],
+               [0.        , 1.        ],
+               [0.        , 1.        ]]]])
 
             >>> output = paddle.nn.functional.sparse_attention(query, key,
             ...                                             value, offset, columns)
             >>> print(output)
             Tensor(shape=[1, 1, 4, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[[[1.60885942, 2.60885954],
-              [1.99830270, 2.99830270],
-              [1.60885942, 2.60885954],
-              [1.99830270, 2.99830270]]]])
+               [1.99830270, 2.99830270],
+               [1.60885942, 2.60885954],
+               [1.99830270, 2.99830270]]]])
     """
     if in_dynamic_mode():
         (

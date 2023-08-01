@@ -51,7 +51,7 @@ class CELU(Layer):
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],
-            [ 1.        , 15.60000038]])
+             [ 1.        , 15.60000038]])
     """
 
     def __init__(self, alpha=1.0, name=None):
@@ -101,7 +101,7 @@ class ELU(Layer):
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.12642412,  6.        ],
-            [ 1.        , 15.60000038]])
+             [ 1.        , 15.60000038]])
     """
 
     def __init__(self, alpha=1.0, name=None):
@@ -152,13 +152,13 @@ class GELU(Layer):
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15865529,  0.34573123],
-            [ 0.84134471,  1.39978933]])
+             [ 0.84134471,  1.39978933]])
             >>> m = paddle.nn.GELU(True)
             >>> out = m(x)
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15880796,  0.34571400],
-            [ 0.84119201,  1.39957154]])
+             [ 0.84119201,  1.39957154]])
     """
 
     def __init__(self, approximate=False, name=None):
@@ -674,7 +674,7 @@ class SELU(Layer):
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 1.05070102],
-            [2.10140204, 3.15210295]])
+             [2.10140204, 3.15210295]])
     """
 
     def __init__(
@@ -1407,12 +1407,12 @@ class LogSoftmax(Layer):
 
             >>> import paddle
 
-            >>> x = [[[-2.0, 3.0, -4.0, 5.0],
-            ...         [3.0, -4.0, 5.0, -6.0],
-            ...         [-7.0, -8.0, 8.0, 9.0]],
-            ...         [[1.0, -2.0, -3.0, 4.0],
-            ...         [-5.0, 6.0, 7.0, -8.0],
-            ...         [6.0, 7.0, 8.0, 9.0]]]
+            >>> x = [[[-2.0,  3.0, -4.0,  5.0],
+            ...       [ 3.0, -4.0,  5.0, -6.0],
+            ...       [-7.0, -8.0,  8.0,  9.0]],
+            ...      [[ 1.0, -2.0, -3.0,  4.0],
+            ...       [-5.0,  6.0,  7.0, -8.0],
+            ...       [ 6.0,  7.0,  8.0,  9.0]]]
             >>> m = paddle.nn.LogSoftmax()
             >>> x = paddle.to_tensor(x)
             >>> out = m(x)
