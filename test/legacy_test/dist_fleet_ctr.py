@@ -101,17 +101,19 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
-        dnn_embedding = paddle.static.nn.sparse_embedding(
+        dnn_embedding = paddle.static.nn.embedding(
+            is_distributed=False,
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
+            is_sparse=True,
             padding_idx=0,
         )
         dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=dnn_embedding, pool_type="sum"
+            input=dnn_embedding.squeeze(-2), pool_type="sum"
         )
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -127,17 +129,19 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embedding = paddle.static.nn.sparse_embedding(
+        lr_embbding = paddle.static.nn.embedding(
+            is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
+            is_sparse=True,
             padding_idx=0,
         )
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embedding, pool_type="sum"
+            input=lr_embbding.squeeze(-2), pool_type="sum"
         )
 
         merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)

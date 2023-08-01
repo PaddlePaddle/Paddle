@@ -27,17 +27,17 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             word_id = paddle.static.data(
                 name="word_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             pos_id = paddle.static.data(
                 name="pos_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             sent_id = paddle.static.data(
                 name="sent_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             word_emb = paddle.static.nn.embedding(
@@ -55,22 +55,22 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
 
             id1 = paddle.static.data(
                 name="id1",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             id2 = paddle.static.data(
                 name="id2",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             id3 = paddle.static.data(
                 name="id3",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             id4 = paddle.static.data(
                 name="id4",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             emb1 = paddle.static.nn.embedding(
@@ -93,25 +93,25 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
             )
 
         self.feeds = {
-            "word_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "pos_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "sent_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "id1": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "word_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id2": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "pos_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id3": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "sent_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id4": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "id1": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id2": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id3": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id4": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
         }
