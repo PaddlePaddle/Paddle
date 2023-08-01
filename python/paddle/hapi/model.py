@@ -866,7 +866,6 @@ class DynamicGraphAdapter:
             if len(metrics) > 0
             else [to_numpy(l) for l in losses]
         )
-
     def eval_batch(self, inputs, labels=None):
         self.model.network.eval()
         self.mode = 'eval'
@@ -892,17 +891,15 @@ class DynamicGraphAdapter:
         if self._nranks > 1:
             outputs = [_all_gather(o) for o in to_list(outputs)]
             labels = [_all_gather(l) for l in labels]
-        metrics = []
-        for metric in self.model._metrics:
-            # cut off padding value.
+
             if (
                 self.model._test_dataloader is not None
-                and self._nranks > 1
                 and isinstance(self.model._test_dataloader, DataLoader)
             ):
                 total_size = len(self.model._test_dataloader.dataset)
                 samples = outputs[0].shape[0]
                 current_count = self._merge_count.get(self.mode + '_total', 0)
+
                 if current_count + samples >= total_size:
                     outputs = [
                         o[: int(total_size - current_count)] for o in outputs
@@ -918,6 +915,9 @@ class DynamicGraphAdapter:
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
+        metrics = []
+        for metric in self.model._metrics:
+            # cut off padding value.
             metric_outs = metric.compute(*(to_list(outputs) + labels))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
