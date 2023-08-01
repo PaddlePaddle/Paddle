@@ -98,6 +98,7 @@ class Constant(ConstantInitializer):
             ...                     weight_attr=nn.initializer.Constant(value=2.0))
             >>> res = linear(data)
             >>> print(linear.weight)
+            Parameter containing:
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[2., 2., 2., 2.],
              [2., 2., 2., 2.]])

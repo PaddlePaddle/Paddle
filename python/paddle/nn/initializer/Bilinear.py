@@ -47,8 +47,8 @@ class Bilinear(Initializer):
             >>> B = 8
             >>> H = W = 32
             >>> w_attr = paddle.ParamAttr(learning_rate=0.,
-                                      regularizer=L2Decay(0.),
-                                      initializer=nn.initializer.Bilinear())
+            ...                           regularizer=L2Decay(0.),
+            ...                           initializer=nn.initializer.Bilinear())
             >>> paddle.seed(2023)
             >>> data = paddle.rand([B, 3, H, W], dtype='float32')
             >>> conv_up = nn.Conv2DTranspose(3,

@@ -1028,7 +1028,6 @@ def load(path, **configs):
             >>> path = "example/main_program.pdmodel"
             >>> paddle.save(main_program, path)
             >>> load_main = paddle.load(path)
-            >>> print(load_main)
 
         .. code-block:: python
             :name: code-example-5

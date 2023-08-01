@@ -316,6 +316,9 @@ class PyLayer(with_mateclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
             >>> z.mean().backward()
 
             >>> print(data.grad)
+            Tensor(shape=[2, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[0.05858341, 0.16604150, 0.15677770],
+             [0.14051214, 0.02991660, 0.01564609]])
     """
 
     @staticmethod
