@@ -88,6 +88,7 @@ class TestPybind(unittest.TestCase):
         for opresult in matmul_op.results():
             result_set.add(opresult)
 
+        # self.assertTrue(add_op.operands()[0].source() in result_set)
         # self.assertEqual(add_op.operands_source()[0] , matmul_op.results()[0],)
 
         self.assertEqual(
@@ -100,7 +101,8 @@ class TestPybind(unittest.TestCase):
         )
 
         self.assertEqual(
-            tanh_op.operands()[0].source(), tanh_op.operands_source()[0]
+            tanh_op.operands()[0].source().get_defining_op(),
+            tanh_op.operands_source().get_defining_op()[0],
         )
         self.assertEqual(add_op.result(0).use_empty(), True)
 
