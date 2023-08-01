@@ -74,6 +74,38 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_leaf__doc__,
+             R"DOC(is_leaf
+--
+
+Whether a Tensor is leaf Tensor.
+
+For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor.
+
+For the Tensor whose stop_gradient is ``False`` , it will be leaf Tensor too if it is created by user.
+
+Returns:
+    bool: Whether a Tensor is leaf Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.)
+        print(x.is_leaf) # True
+
+        x = paddle.to_tensor(1., stop_gradient=True)
+        y = x + 1
+        print(x.is_leaf) # True
+        print(y.is_leaf) # True
+
+        x = paddle.to_tensor(1., stop_gradient=False)
+        y = x + 1
+        print(x.is_leaf) # True
+        print(y.is_leaf) # False
+)DOC");
+
 PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
   EAGER_TRY
   return ToPyObject(egr::EagerUtils::IsLeafTensor(self->tensor));
