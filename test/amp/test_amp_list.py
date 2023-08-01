@@ -19,6 +19,10 @@ from paddle.fluid import core
 from paddle.static.amp import AutoMixedPrecisionLists, fp16_lists
 
 
+@unittest.skipIf(
+    paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestAMPList(unittest.TestCase):
     def setUp(self):
         self.default_black_list = [
