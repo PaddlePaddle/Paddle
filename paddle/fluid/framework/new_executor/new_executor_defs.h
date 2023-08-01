@@ -178,6 +178,9 @@ struct OpFuncNode {
   phi::InferMetaContext infer_meta_context_;
   std::string phi_op_name_;
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{nullptr};
+
+  bool fluid_op{false};
+  std::shared_ptr<RuntimeContext> runtime_ctx_{nullptr};
 };
 
 class Instruction {

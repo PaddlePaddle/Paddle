@@ -15,7 +15,7 @@
 # TODO: define statistical functions of a tensor
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _ir_ops, ir
 from paddle.framework import in_dynamic_mode
 
 from ..common_ops_import import Variable
@@ -82,6 +82,8 @@ def mean(x, axis=None, keepdim=False, name=None):
     if in_dynamic_mode():
         return _C_ops.mean(x, axis, keepdim)
     else:
+        if ir.core._use_new_ir_api():
+            return _ir_ops.mean(x, axis, keepdim)
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         check_variable_and_dtype(
             x,

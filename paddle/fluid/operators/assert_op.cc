@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/tensor_formatter.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 class DenseTensor;
@@ -70,7 +70,7 @@ class AssertOp : public framework::OperatorBase {
       return;
     }
 
-    TensorFormatter formatter;
+    funcs::TensorFormatter formatter;
     formatter.SetSummarize(Attr<int64_t>(kSummarize));
 
     const std::vector<std::string> &x_names = Inputs(kData);

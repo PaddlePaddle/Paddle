@@ -818,7 +818,8 @@ def _run_paddle_pop(array, *args):
 
     pop_item = paddle.tensor.array_read(array, idx)
 
-    new_array = _slice_tensor_array(array, 0, idx)
+    tmp = paddle.assign(array)
+    new_array = _slice_tensor_array(tmp, 0, idx)
     i = idx + 1
     from paddle.static.nn import while_loop
 
