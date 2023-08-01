@@ -64,7 +64,6 @@ NewIRInterpreter::NewIRInterpreter(
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
-  // ir_prog->Print(std::cout);
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
                   !execution_config.used_for_control_flow_op;
@@ -199,7 +198,7 @@ FetchList NewIRInterpreter::Run(
 FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                 bool need_fetch) {
   if (FLAGS_enable_new_ir_in_executor_beta_run) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun.";
+    LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode.";
     return BetaRun(feed_names, need_fetch);
   }
 
@@ -211,7 +210,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 #endif
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in OldRun mode.";
     std::stringstream ss;
     ss << this;
     ::ir::BuildScope(*ir_program_->block(),
@@ -2039,10 +2038,12 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
 
     // Run
     if (FLAGS_enable_new_ir_in_executor_loop_run) {
-      LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun LoopRun.";
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with for_loop version.";
       LoopRunImpl();
     } else {
-      LOG_FIRST_N(INFO, 1) << "New Executor is BetaRun TraceRun.";
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with trace version.";
       TraceRunImpl();
     }
     is_build_ = true;
