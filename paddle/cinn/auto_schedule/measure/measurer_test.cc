@@ -27,8 +27,6 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace auto_schedule {
 
@@ -55,7 +53,6 @@ class TestMeasurer : public ::testing::Test {
   std::vector<MeasureInput> inputs;
 
   void SetUp() override {
-    FLAGS_cinn_ir_schedule = true;
 #ifdef CINN_WITH_CUDA
     Target target = common::DefaultNVGPUTarget();
 #else

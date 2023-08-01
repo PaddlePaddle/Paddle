@@ -77,7 +77,7 @@ class SPMDRuleBase {
     PADDLE_ENFORCE_NE(iter,
                       attrs.end(),
                       paddle::platform::errors::NotFound(
-                          "(%s) is not found in AttributeMap."));
+                          "(%s) is not found in AttributeMap.", name));
     return iter->second;
   }
 };

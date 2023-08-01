@@ -25,6 +25,11 @@ class CallNotExist(paddle.nn.Layer):
         return paddle.nn.not_exist_api
 
 
+class CallableList(list):
+    def __call__(self, x):
+        return x
+
+
 class ForwardNotExist(paddle.nn.Layer):
     def forward(self):
         return 0
@@ -50,6 +55,14 @@ class TestConvertCall(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             forward_not_exist()
+
+    def test_callable_list(self):
+        @paddle.jit.to_static
+        def callable_list(x, y):
+            callable_list = CallableList()
+            return callable_list(x) + y
+
+        self.assertEqual(callable_list(1, 2), 3)
 
 
 class TestConvertShapeCompare(unittest.TestCase):

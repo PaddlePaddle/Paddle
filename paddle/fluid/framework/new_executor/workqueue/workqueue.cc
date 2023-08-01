@@ -53,7 +53,7 @@ class WorkQueueImpl : public WorkQueue {
                                        options_.always_spinning);
   }
 
-  virtual ~WorkQueueImpl() {
+  ~WorkQueueImpl() override {
     delete queue_;
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
@@ -94,7 +94,7 @@ class WorkQueueGroupImpl : public WorkQueueGroup {
   explicit WorkQueueGroupImpl(
       const std::vector<WorkQueueOptions>& queue_options);
 
-  ~WorkQueueGroupImpl();
+  ~WorkQueueGroupImpl() override;
 
   void AddTask(size_t queue_idx, std::function<void()> fn) override;
 

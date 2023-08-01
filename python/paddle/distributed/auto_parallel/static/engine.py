@@ -757,7 +757,7 @@ class Engine:
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
-        # For now, the completer has to be passed to the planner,
+        # For now, the completer has to be passed to the Parallelizer,
         # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
@@ -970,7 +970,9 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=self._acc_steps,
+            acc_step=1
+            if self._strategy.pipeline.enable
+            else self._acc_steps,  # lr update once every local batch
         )
 
         cbks.on_begin('train')

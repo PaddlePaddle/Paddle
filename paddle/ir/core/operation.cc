@@ -210,7 +210,7 @@ Attribute Operation::attribute(const std::string &key) const {
   return attributes_.at(key);
 }
 
-Region *Operation::GetParentRegion() const {
+Region *Operation::GetParentRegion() {
   return parent_ ? parent_->GetParent() : nullptr;
 }
 
@@ -218,8 +218,8 @@ Operation *Operation::GetParentOp() const {
   return parent_ ? parent_->GetParentOp() : nullptr;
 }
 
-Program *Operation::GetParentProgram() {
-  Operation *op = this;
+const Program *Operation::GetParentProgram() const {
+  Operation *op = const_cast<Operation *>(this);
   while (Operation *parent_op = op->GetParentOp()) {
     op = parent_op;
   }
@@ -247,6 +247,14 @@ void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
              "the num of result should be the same.");
   for (uint32_t i = 0; i < num_results_; ++i) {
     result(i).ReplaceAllUsesWith(values[i]);
+  }
+}
+
+void Operation::ReplaceAllUsesWith(const std::vector<OpResult> &op_results) {
+  IR_ENFORCE(num_results_ == op_results.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(op_results[i]);
   }
 }
 

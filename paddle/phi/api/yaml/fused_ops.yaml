@@ -34,7 +34,7 @@
   optional : bias, x_max
 
 - op : conv2d_xpu
-  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, bool has_bias, bool has_branch, int act_type, float act_param)
+  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, int act_type, float act_param, DataType out_dtype)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : Conv2dXPUInferMeta
@@ -53,8 +53,17 @@
     data_type: tables
   optional : mask, seq_lod, max_seq_len
 
+- op : fast_where_xpu
+  args : (Tensor condition, Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : FastWhereXPUInferMeta
+  kernel :
+    func : fast_where_xpu
+    data_type : x
+
 - op : fc_xpu
-  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
+  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha, DataType out_dtype)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : FcXPUInferMeta
@@ -109,11 +118,11 @@
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
 - op : fused_rotary_position_embedding
-  args : (Tensor q, Tensor k, Tensor v)
+  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta
-  optional : k,v, out_k, out_v
+  optional : k,v,sin,cos, out_k, out_v
   kernel :
     func : fused_rotary_position_embedding
     data_type : q
