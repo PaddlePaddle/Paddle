@@ -19,7 +19,6 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
