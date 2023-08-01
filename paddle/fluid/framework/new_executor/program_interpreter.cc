@@ -51,10 +51,10 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   static_build_ =
       FLAGS_new_executor_static_build && !FLAGS_new_executor_use_cuda_graph &&
       !execution_config.used_for_control_flow_op && block_can_be_static_build;
-  VLOG(1) << "BlockCanBeStaticBuilt log: " << debug_str;
+  VLOG(1) << "executor_debug:: BlockCanBeStaticBuilt log " << debug_str;
   if (FLAGS_new_executor_static_build_debug) {
     if (!static_build_) {
-      VLOG(1) << "static_build_ is false, force set be true"
+      VLOG(1) << "executor_debug:: static_build_ is false, force set be true"
               << ", FLAGS_new_executor_static_build "
               << FLAGS_new_executor_static_build
               << ", used_for_control_flow_op "
