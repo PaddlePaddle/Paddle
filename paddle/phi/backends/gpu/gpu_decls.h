@@ -24,11 +24,6 @@ namespace phi {
   using GPU_TYPE = ROCM_TYPE;
 
 #elif defined(PADDLE_WITH_MUSA)
-  //using mudnnHandle_t = ::musa::dnn::Handle;
-  //using mudnnHandle_t = bool**;
-  //using mublasLtHandle_t = bool**;
-  //using musparseHandle_t = bool**;
-  //using musolverDnHandle_t = bool**;
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
   using GPU_TYPE = MUSA_TYPE;
 
@@ -39,39 +34,38 @@ namespace phi {
 
 DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t, musaStream_t);
 DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t, musaEvent_t);
-#if 0
-DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
-                     cudnnActivationStruct,
-                     miopenActivationDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnTensorDescriptor,
-                     cudnnTensorStruct,
-                     miopenTensorDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor,
-                     cudnnFilterStruct,
-                     miopenTensorDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor_t,
-                     cudnnFilterDescriptor_t,
-                     miopenTensorDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor,
-                     cudnnConvolutionStruct,
-                     miopenConvolutionDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor_t,
-                     cudnnConvolutionDescriptor_t,
-                     miopenConvolutionDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnPoolingDescriptor_t,
-                     cudnnPoolingDescriptor_t,
-                     miopenPoolingDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
-                     cudnnDropoutDescriptor_t,
-                     miopenDropoutDescriptor_t);
-#endif
+
+// DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
+//                      cudnnActivationStruct,
+//                      miopenActivationDescriptor);
+// DECLARE_TYPE_FOR_GPU(dnnTensorDescriptor,
+//                      cudnnTensorStruct,
+//                      miopenTensorDescriptor);
+// DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor,
+//                      cudnnFilterStruct,
+//                      miopenTensorDescriptor);
+// DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor_t,
+//                      cudnnFilterDescriptor_t,
+//                      miopenTensorDescriptor_t);
+// DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor,
+//                      cudnnConvolutionStruct,
+//                      miopenConvolutionDescriptor);
+// DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor_t,
+//                      cudnnConvolutionDescriptor_t,
+//                      miopenConvolutionDescriptor_t);
+// DECLARE_TYPE_FOR_GPU(dnnPoolingDescriptor_t,
+//                      cudnnPoolingDescriptor_t,
+//                      miopenPoolingDescriptor_t);
+// DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
+//                      cudnnDropoutDescriptor_t,
+//                      miopenDropoutDescriptor_t);
+
 
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
+// TODO(@caizhi): using correct type: musolverDnHandle_t, musparseHandle_t
 DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle, mublasLtHandle_t);
-
 DECLARE_TYPE_FOR_GPU(solverHandle_t, cusolverDnHandle_t, rocsolver_handle, musolverDnHandle_t);
-
 DECLARE_TYPE_FOR_GPU(sparseHandle_t, cusparseHandle_t, rocsparse_handle, musparseHandle_t);
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle, mublasHandle_t);

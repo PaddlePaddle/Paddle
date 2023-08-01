@@ -137,15 +137,19 @@ endif()
 # Do not care if this flag is support for gcc.
 
 # https://github.com/PaddlePaddle/Paddle/issues/12773
+# TODO(@caizhi): enable -Werror 
 if(NOT WIN32)
   set(COMMON_FLAGS
       -fPIC
       -fno-omit-frame-pointer
+      -Wall
+      -Wextra
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=array-bounds #Warning in Eigen, gcc 12.2
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
+      -Wimplicit-fallthrough=0 # Warning in tinyformat.h
       ${fsanitize})
 
   if(WITH_IPU)

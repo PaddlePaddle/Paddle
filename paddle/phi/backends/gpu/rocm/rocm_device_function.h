@@ -132,8 +132,6 @@ __device__ T reduceSum(T val, int tid, int len) {
   // but most card's warp size is 32.
 #ifdef PADDLE_WITH_HIP
   const int warpSize = 64;
-#elif defined(PADDLE_WITH_MUSA)
-  const int warpSize = 32;
 #else
   const int warpSize = 32;
 #endif

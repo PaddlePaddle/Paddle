@@ -54,7 +54,7 @@ if(NOT APPLE)
     endif()
   endif()
   if(WITH_MUSA)
-	  list(APPEND MUSA_SRCS musartc.cc musa_driver.cc)
+    list(APPEND MUSA_SRCS musartc.cc musa_driver.cc)
   endif()
 endif()
 

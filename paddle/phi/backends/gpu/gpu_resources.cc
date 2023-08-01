@@ -156,7 +156,8 @@ void InitGpuProperties(Place place,
            "version.";
   }
 #elif defined(PADDLE_WITH_MUSA)
-  //size_t mudnn_dso_ver = dynload::mudnnGetVersion();
+  // TODO(@caizhi): enable dynload module
+  // size_t mudnn_dso_ver = dynload::mudnnGetVersion();
   size_t mudnn_dso_ver = 0;
   LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place.device)
                           << ", muDNN Version: " << mudnn_dso_ver / 1000 << "."
@@ -168,6 +169,7 @@ void InitGpuProperties(Place place,
   auto compile_musa_version =
       (MUSA_VERSION / 1000) * 10 + (MUSA_VERSION % 100) / 10;
 #if defined(__linux__)
+  // TODO(@caizhi): enable dynload module
   //PADDLE_ENFORCE_EQ(
   //    (local_musa_version / 10 < compile_musa_version / 10) &&
   //        (mudnn_dso_ver / 1000 < MUDNN_VERSION / 1000),
@@ -363,7 +365,11 @@ void DestroyDnnHandle(dnnHandle_t handle) {
     handle = nullptr;
   }
 #elif defined(PADDLE_WITH_MUSA)
-
+  if (handle != nullptr) {
+    // TODO(@caizhi): enable dynload module
+    // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDestroy(handle));
+    handle = nullptr;
+  }
 #else
   if (handle != nullptr) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroy(handle));

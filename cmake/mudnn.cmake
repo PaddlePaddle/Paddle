@@ -54,6 +54,7 @@ else()
   set(MUDNN_FOUND OFF)
 endif()
 
+# TODO(@caizhi): enable mudnn finding
 #macro(find_cudnn_version cudnn_header_file)
 #endmacro()
 

@@ -508,9 +508,8 @@ void* GetNCCLDsoHandle() {
       "Installation-Guide.html before install PaddlePaddle.");
 #elif defined(PADDLE_WITH_MUSA)
   std::string warning_msg(
-      "You may need to install 'mccl' from MUSA official website: "
-      "https://rocmdocs.amd.com/en/latest/Installation_Guide/"
-      "Installation-Guide.html before install PaddlePaddle.");
+      "You may need to install 'mccl' from MUSA official website"
+      " before install PaddlePaddle.");
 #else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "

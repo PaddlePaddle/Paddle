@@ -25,8 +25,8 @@ using gpuStream_t = cudaStream_t;
 #endif
 
 #ifdef PADDLE_WITH_HIP
-//#include <hip/hip_runtime.h>
-//using gpuStream_t = hipStream_t;
+#include <hip/hip_runtime.h>
+using gpuStream_t = hipStream_t;
 #endif
 
 #ifdef PADDLE_WITH_MUSA

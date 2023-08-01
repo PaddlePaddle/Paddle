@@ -52,27 +52,25 @@ file(
   "kps/*.cu"
   "legacy/kps/*.cu"
   )
-list(REMOVE_ITEM kernel_cu "gpu/check_numerics_kernel.cu" "gpu/cross_entropy_grad_kernel.cu" 
-	"gpu/instance_norm_grad_kernel.cu"
-	"gpu/cross_entropy_kernel.cu"
-	"gpu/cholesky_grad_kernel.cu"
-	"gpu/cholesky_solve_grad_kernel.cu"
-	"gpu/conv_transpose_kernel.cu"
-	"gpu/conv_grad_kernel.cu"
-	"gpu/solve_kernel.cu"
-	"gpu/solve_grad_kernel.cu"
-	"gpu/stft_kernel.cu"
-	"gpu/conv_kernel.cu"
-	"gpu/softmax_kernel.cu"
-	"gpu/slogdeterminant_grad_kernel.cu"
-	"gpu/spectral_norm_grad_kernel.cu"
-	"gpu/spectral_norm_kernel.cu"
-	"gpu/svd_grad_kernel.cu"
-        "gpu/conv_transpose_grad_kernel.cu")
-#file(
-#  GLOB kernel_cu
-#  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-#  "gpu/scale_kernel.cu")
+list(REMOVE_ITEM kernel_cu
+     "gpu/check_numerics_kernel.cu"
+     "gpu/cross_entropy_grad_kernel.cu" 
+     "gpu/instance_norm_grad_kernel.cu"
+     "gpu/cross_entropy_kernel.cu"
+     "gpu/cholesky_grad_kernel.cu"
+     "gpu/cholesky_solve_grad_kernel.cu"
+     "gpu/conv_transpose_kernel.cu"
+     "gpu/conv_grad_kernel.cu"
+     "gpu/solve_kernel.cu"
+     "gpu/solve_grad_kernel.cu"
+     "gpu/stft_kernel.cu"
+     "gpu/conv_kernel.cu"
+     "gpu/softmax_kernel.cu"
+     "gpu/slogdeterminant_grad_kernel.cu"
+     "gpu/spectral_norm_grad_kernel.cu"
+     "gpu/spectral_norm_kernel.cu"
+     "gpu/svd_grad_kernel.cu"
+     "gpu/conv_transpose_grad_kernel.cu")
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")

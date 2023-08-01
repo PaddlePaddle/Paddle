@@ -77,6 +77,7 @@ using musaStream_t = struct MUstream_st *;
 using musaEvent_t = struct MUevent_st *;
 using mublasHandle_t = struct _mublasHandle_t*;
 using mudnnHandle_t = class Handle*;
+// TODO(@caizhi): using correct type
 using musolverDnHandle_t = bool**;
 using mublasLtHandle_t = struct _mublasHandle_t*;
 using musparseHandle_t = bool**;

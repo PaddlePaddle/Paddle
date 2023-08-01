@@ -36,26 +36,28 @@ namespace phi {
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
+
 #elif defined(PADDLE_WITH_MUSA)
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
   using GPU_TYPE = MUSA_TYPE;
-#else  // PADDLE_WITH_CDUA
 
+#else  // PADDLE_WITH_MUSA
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
   using GPU_TYPE = CUDA_TYPE;
-#endif
+#endif  // PADDLE_WITH_CUDA
 
 DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t, musaError_t);
 DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind, musaMemcpyKind);
 DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t, musaDeviceProp);
-//DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
-//DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
-//DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
-//                     cudnnTensorFormat_t,
-//                     miopenTensorFormat_t);
-//DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
-//                     cudnnActivationMode_t,
-//                     miopenActivationMode_t);
+// TODO(@caizhi): 
+// DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
+// DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
+// DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
+//                      cudnnTensorFormat_t,
+//                      miopenTensorFormat_t);
+// DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
+//                      cudnnActivationMode_t,
+//                      miopenActivationMode_t);
 
 #undef DECLARE_TYPE_FOR_GPU
 
@@ -74,7 +76,10 @@ DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
                          cudaErrorMemoryAllocation,
                          hipErrorOutOfMemory,
                          musaErrorMemoryAllocation);
-DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady, musaErrorNotReady);
+DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady,
+                         cudaErrorNotReady,
+                         hipErrorNotReady,
+                         musaErrorNotReady);
 DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess, musaSuccess);
 
 DECLARE_CONSTANT_FOR_GPU(gpuMemcpyHostToDevice,

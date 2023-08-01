@@ -51,6 +51,7 @@ if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
 endif()
 
+# TODO(@caizhi): optimize me instead of hard code
 if(WITH_MUSA)
   set(DEPENDENT_LIBRARIES "")
   list(APPEND DEPENDENT_LIBRARIES "/usr/local/musa/lib/libmudnn.so")

@@ -425,6 +425,7 @@ function(cc_binary TARGET_NAME)
   if(WITH_ROCM)
     target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
   endif()
+  # TODO(@caizhi): enable target_link_libraries for MUSA
   #if(WITH_MUSA)
   #  target_link_libraries(${TARGET_NAME} ${MUSA_LIB})
   #endif()
@@ -838,7 +839,7 @@ function(musa_binary TARGET_NAME)
   endif()
 endfunction()
 
-# TODO(MTAI): enable musa_test
+# TODO(@caizhi): enable musa_test
 #function(musa_test TARGET_NAME)
 #endfunction()
 

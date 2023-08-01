@@ -763,7 +763,6 @@ if(WITH_CPP_DIST)
   endif()
 endif()
 
-include_directories(/usr/lib/llvm-11/include/openmp/)
 add_subdirectory(paddle)
 if(WITH_PYTHON)
   add_subdirectory(python)

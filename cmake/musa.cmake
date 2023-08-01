@@ -15,7 +15,9 @@ set(CMAKE_MODULE_PATH "${MUSA_PATH}/cmake" ${CMAKE_MODULE_PATH})
 
 find_package(MUSA REQUIRED)
 include_directories(${MUSA_PATH}/include)
+include_directories(/usr/lib/llvm-11/include/openmp/)
 
+# TODO(@caizhi): enable finding musa version
 #macro(find_musa_version version_file)
 #endmacro()
 #find_musa_version(${MUSA_PATH}/version.h)
