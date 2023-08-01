@@ -21,7 +21,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  std::cerr << "fetch out " << out->dims() << std::endl;
   phi::Copy(ctx, x, phi::CPUPlace(), true, out);
+  std::cerr << "fetch out " << out->data<T>()[0] << std::endl;
 }
 
 }  // namespace phi

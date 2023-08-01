@@ -1875,6 +1875,10 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         ins.begin(), ins.end()};
     ins_and_outs.insert(outs.begin(), outs.end());
 
+    if (instr->Name() != "pd.fetch") {
+      ins_and_outs.insert(outs.begin(), outs.end());
+    }
+
     for (auto& item : ins_and_outs) {
       for (auto var_id : item.second) {
         // skip no_need_buffer input vars
@@ -2117,6 +2121,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
     VLOG(5) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
+      std::cerr << "op name " << instr_node->Name() << std::endl;
       instr_node->Run();
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);

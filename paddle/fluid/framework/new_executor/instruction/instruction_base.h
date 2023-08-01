@@ -21,6 +21,8 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/value.h"
 
 namespace ir {
 class Value;
@@ -138,10 +140,11 @@ class InstructionBase {
   virtual const std::string& Name() const = 0;
 
  protected:
-  OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place);
+  OpFuncType AnalyseOpFuncType(::ir::Operation* op,
+                               const platform::Place& place);
 
   platform::DeviceContext* ParseDeviceContext(
-      ir::Operation* op,
+      ::ir::Operation* op,
       platform::DeviceContext* origin_dev_ctx,
       const platform::Place& place,
       const std::string& execution_stream,
@@ -158,7 +161,7 @@ class InstructionBase {
 
  private:
   std::vector<int> GetValueIds(
-      ir::Value value,
+      ::ir::Value value,
       Scope* inner_scope,
       const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
       const std::map<std::string, int>& var_name_2_id,
