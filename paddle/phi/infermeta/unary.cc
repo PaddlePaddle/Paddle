@@ -2273,13 +2273,15 @@ void ModeInferMeta(const MetaTensor& x,
       errors::InvalidArgument("input of ModeOp must have >= 0d shape"));
   if (axis < 0) {
     axis += dim_size;
-    PADDLE_ENFORCE_GE(axis,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "the axis must be [-%d, %d), but received %d .",
-                          dim_size,
-                          dim_size,
-                          axis - dim_size));
+    if (dim_size != 0) {
+      PADDLE_ENFORCE_GE(axis,
+                        0,
+                        phi::errors::InvalidArgument(
+                            "the axis must be [-%d, %d), but received %d .",
+                            dim_size,
+                            dim_size,
+                            axis - dim_size));
+    }
   }
 
   std::vector<int64_t> dimvec;
