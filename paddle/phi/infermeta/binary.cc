@@ -2636,13 +2636,6 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            MetaTensor* out) {
   auto sequences_dims = sorted_sequence.dims();
   auto values_dims = value.dims();
-  PADDLE_ENFORCE_GE(
-      sequences_dims.size(),
-      1,
-      phi::errors::InvalidArgument(
-          "Input sequences's dimension(%d) must be greater or equal than 1",
-          sequences_dims.size()));
-
   PADDLE_ENFORCE_GE(values_dims.size(),
                     sequences_dims.size(),
                     phi::errors::InvalidArgument(
