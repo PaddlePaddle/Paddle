@@ -1254,6 +1254,11 @@ class TestOptimizerDtype(unittest.TestCase):
         self.check_with_dtype('float32')
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestMasterWeightSaveForFP16(unittest.TestCase):
     '''
     For Amp-O2, some optimizer(Momentum, Adam ...) will create master weights for parameters to improve the accuracy.
