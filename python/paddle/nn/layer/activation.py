@@ -516,6 +516,8 @@ class RReLU(Layer):
 
             >>> import paddle
             >>> paddle.seed(2023)
+            >>> paddle.set_default_dtype("float32")
+
             >>> input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
             ...                                    [ 3.0, -4.0,  5.0, -6.0],
             ...                                    [-7.0, -8.0,  8.0,  9.0]],
