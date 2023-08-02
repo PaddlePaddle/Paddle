@@ -405,7 +405,6 @@ class PReLU(Layer):
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.set_default_dtype("float64")
 
             >>> data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
             ...                            [ 3.0, -4.0,  5.0, -6.0],
@@ -516,7 +515,6 @@ class RReLU(Layer):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> paddle.set_default_dtype("float32")
 
             >>> input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
             ...                                    [ 3.0, -4.0,  5.0, -6.0],

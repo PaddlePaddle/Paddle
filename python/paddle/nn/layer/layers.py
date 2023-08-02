@@ -2073,32 +2073,32 @@ class Layer:
                 >>> print(linear.weight)
                 Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                [[ 0.76424706,  1.21572542],
-                 [ 0.02650531, -0.16404852]])
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
 
                 >>> linear.to(dtype='float64')
                 >>> linear.weight
                 >>> print(linear.weight)
                 Parameter containing:
                 Tensor(shape=[2, 2], dtype=float64, place=Place(gpu:0), stop_gradient=False,
-                [[ 0.76424706,  1.21572542],
-                 [ 0.02650531, -0.16404852]])
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
 
                 >>> linear.to(device='cpu')
                 >>> linear.weight
-                print(linear.weight)
+                >>> print(linear.weight)
                 Parameter containing:
                 Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=False,
-                [[ 0.76424706,  1.21572542],
-                 [ 0.02650531, -0.16404852]])
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
                 >>> linear.weight
-                print(linear.weight)
+                >>> print(linear.weight)
                 Tensor(shape=[2, 2], dtype=float64, place=Place(gpu_pinned), stop_gradient=False,
-                [[ 0.76424706,  1.21572542],
-                 [ 0.02650531, -0.16404852]])
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
 
         '''
         return self._to_impl(
@@ -2340,6 +2340,7 @@ class Layer:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP('Paddle compiled by the user does not support float16, so keep original data type.')
                 >>> import paddle
 
                 >>> class Model(paddle.nn.Layer):
@@ -2355,7 +2356,6 @@ class Layer:
                 ...
                 >>> model = Model()
                 >>> model.float16()
-                >>> #UserWarning: Paddle compiled by the user does not support float16, so keep original data type.
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
