@@ -22,7 +22,19 @@ KernelSignature FusedSoftmaxMaskUpperTriangleOpArgumentMapping(
       "fused_softmax_mask_upper_triangle", {"X"}, {}, {"Out"});
 }
 
+KernelSignature FusedSoftmaxMaskUpperTriangleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("fused_softmax_mask_upper_triangle_grad",
+                         {"Out", "Out@GRAD"},
+                         {},
+                         {"X@GRAD"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(fused_softmax_mask_upper_triangle,
                            phi::FusedSoftmaxMaskUpperTriangleOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(
+    fused_softmax_mask_upper_triangle_grad,
+    phi::FusedSoftmaxMaskUpperTriangleGradOpArgumentMapping);

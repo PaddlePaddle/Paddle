@@ -135,7 +135,7 @@ void FusedSoftmaxMaskFuseUpperTriangleGradKernel(const Context& dev_ctx,
                                                  const DenseTensor& out,
                                                  const DenseTensor& out_grad,
                                                  DenseTensor* x_grad) {
-  auto* grad_y = &out;
+  auto* grad_y = &out_grad;
   auto* softmax_rst = &out;
 
   auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
