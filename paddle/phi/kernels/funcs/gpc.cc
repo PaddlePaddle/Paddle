@@ -24,6 +24,7 @@
  **/
 
 #include "paddle/phi/kernels/funcs/gpc.h"
+#include <array>
 
 #include "paddle/phi/core/enforce.h"
 
@@ -42,10 +43,10 @@ typedef struct sbt_t_shape { /* Scanbeam tree                     */
   struct sbt_t_shape *more;  /* Pointer to nodes with higher y    */
 } sb_tree;
 
-typedef struct it_shape { /* Intersection table                */
-  edge_node *ie[2];       /* Intersecting edge (bundle) pair   */
-  gpc_vertex point;       /* Point of intersection             */
-  struct it_shape *next;  /* The next intersection table node  */
+typedef struct it_shape {        /* Intersection table                */
+  std::array<edge_node *, 2> ie; /* Intersecting edge (bundle) pair   */
+  gpc_vertex point;              /* Point of intersection             */
+  struct it_shape *next;         /* The next intersection table node  */
 } it_node;
 
 typedef struct st_shape { /* Sorted edge table                 */
@@ -70,16 +71,15 @@ typedef struct bbox_shape { /* Contour axis-aligned bounding box */
 */
 
 /* Horizontal edge state transitions within scanbeam boundary */
-const h_state next_h_state[3][6] = {
-    /*        ABOVE     BELOW     CROSS */
-    /*        L   R     L   R     L   R */
-    /* NH */
-    {BH, TH, TH, BH, NH, NH},
-    /* BH */
-    {NH, NH, NH, NH, TH, TH},
-    /* TH */
-    {NH, NH, NH, NH, BH, BH}};
-
+const std::array<std::array<h_state, 6>, 3> next_h_state = {
+    {/*        ABOVE     BELOW     CROSS */
+     /*        L   R     L   R     L   R */
+     /* NH */
+     {{BH, TH, TH, BH, NH, NH}},
+     /* BH */
+     {{NH, NH, NH, NH, TH, TH}},
+     /* TH */
+     {NH, NH, NH, NH, BH, BH}}};
 /*
 ===========================================================================
                              Private Functions
@@ -942,10 +942,10 @@ void gpc_polygon_clip(gpc_op op,
   polygon_node *cf = NULL;
   vertex_node *vtx = NULL;
   vertex_node *nv = NULL;
-  h_state horiz[2];
-  int in[2];
-  int exists[2];
-  int parity[2] = {LEFT, LEFT};
+  std::array<h_state, 2> horiz;
+  std::array<int, 2> in;
+  std::array<int, 2> exists;
+  std::array<int, 2> parity = {LEFT, LEFT};
   int c = 0;
   int v = 0;
   int contributing = 0;
@@ -1586,11 +1586,11 @@ void gpc_tristrip_clip(gpc_op op,
   vertex_node *ltn = NULL;
   vertex_node *rt = NULL;
   vertex_node *rtn = NULL;
-  h_state horiz[2];
+  std::array<h_state, 2> horiz;
   vertex_type cft = NUL;
-  int in[2];
-  int exists[2];
-  int parity[2] = {LEFT, LEFT};
+  std::array<int, 2> in;
+  std::array<int, 2> exists;
+  std::array<int, 2> parity = {LEFT, LEFT};
   int s = 0;
   int v = 0;
   int contributing = 0;
