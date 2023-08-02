@@ -557,6 +557,28 @@ static PyObject* tensor_method_cpu(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_reconstruct_from___doc__,
+             R"DOC(reconstruct_from_($self, other/)
+--
+
+Reconstruct the self with other Tensor. It is a deep copy of 'self = other'.
+
+Returns:
+    None.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      t1 = paddle.to_tensor([1.0], stop_gradient=False)
+      t2 = paddle.to_tensor([2.0], stop_gradient=True)
+
+      t1.reconstruct_from_(t2)
+
+      print(t1)
+)DOC");
+
 static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
@@ -665,6 +687,38 @@ static PyObject* tensor_method_clone(TensorObject* self,
   return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_retain_grads__doc__, R"DOC(retain_grads($self, /)
+--
+
+Enables this Tensor to have their grad populated during backward(). It is a no-op for leaf tensors.
+
+Returns:
+    None.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1.0, 2.0, 3.0])
+      x.stop_gradient = False
+      y = x + x
+      y.retain_grads()
+      loss = y.sum()
+      loss.backward()
+
+      print(y.grad) # [1., 1., 1.]
+
+      x = paddle.to_tensor([1.0, 2.0, 3.0])
+      x.stop_gradient = False
+      y = x + x
+      # y.retain_grads()
+      loss = y.sum()
+      loss.backward()
+
+      print(y.grad) # None
+)DOC");
 
 static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* args,
@@ -976,6 +1030,15 @@ static PyObject* tensor_method_detach(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_detach___doc__, R"DOC(detach_($self, /)
+--
+Detach self from the current graph, and returns self Tensor.
+In addition, the detached Tensor doesn't provide gradient propagation.
+
+Returns:
+    Tensor, The detached Tensor.
+)DOC");
+
 static PyObject* tensor_method_detach_(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
@@ -994,6 +1057,24 @@ static PyObject* tensor_method_detach_(TensorObject* self,
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_get_tensor__doc__, R"DOC(get_tensor($self, /)
+--
+
+Returns the underline tensor in the origin Tensor.
+
+Returns:
+    Underline tensor.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1.0], stop_gradient=False)
+      underline_x = x.get_tensor()
+      print(underline_x) # a Dense Tensor info
+)DOC");
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
@@ -1911,6 +1992,23 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_is_dense__doc__, R"DOC(is_dense($self, /)
+--
+
+Whether the Tensor is a Dense Tensor.
+
+Returns:
+    Whether the Tensor is a Dense Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        print(x.is_dense())
+)DOC");
+
 static PyObject* tensor_method_is_dense(TensorObject* self,
                                         PyObject* args,
                                         PyObject* kwargs) {
@@ -1921,6 +2019,23 @@ static PyObject* tensor_method_is_dense(TensorObject* self,
   return ToPyObject(self->tensor.is_dense_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_is_dist__doc__, R"DOC(is_dist($self, /)
+--
+
+Whether the Tensor is a Distributed Tensor.
+
+Returns:
+    Whether the Tensor is a Distributed Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        print(x.is_dist()) # False
+)DOC");
 
 static PyObject* tensor_method_is_dist(TensorObject* self,
                                        PyObject* args,
@@ -2359,11 +2474,11 @@ PyMethodDef variable_methods[] = {
     {"reconstruct_from_",
      (PyCFunction)(void (*)())tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_reconstruct_from___doc__},
     {"retain_grads",
      (PyCFunction)(void (*)())tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_retain_grads__doc__},
     {"clear_gradient",
      (PyCFunction)(void (*)())tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,
@@ -2371,11 +2486,11 @@ PyMethodDef variable_methods[] = {
     {"is_dense",
      (PyCFunction)(void (*)())tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_is_dense__doc__},
     {"is_dist",
      (PyCFunction)(void (*)())tensor_method_is_dist,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_is_dist__doc__},
     {"_zero_grads",
      (PyCFunction)(void (*)())tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS,
@@ -2403,11 +2518,11 @@ PyMethodDef variable_methods[] = {
     {"detach_",
      (PyCFunction)(void (*)(void))tensor_method_detach_,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_detach___doc__},
     {"get_tensor",
      (PyCFunction)(void (*)())tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_get_tensor__doc__},
     {"get_selected_rows",
      (PyCFunction)(void (*)())tensor_method_get_underline_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
