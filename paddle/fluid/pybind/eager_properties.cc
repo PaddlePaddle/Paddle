@@ -76,7 +76,6 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
 
 PyDoc_STRVAR(tensor_is_leaf__doc__,
              R"DOC(is_leaf
---
 
 Whether a Tensor is leaf Tensor.
 
