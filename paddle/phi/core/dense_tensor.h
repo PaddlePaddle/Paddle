@@ -190,6 +190,11 @@ class DenseTensor : public TensorBase,
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
 
+  void clear() {
+    holder_.reset();
+    meta_.offset = 0;
+  }
+
  private:
   friend class DenseTensorUtils;
   friend class phi::distributed::DistTensor;
