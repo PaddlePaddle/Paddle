@@ -46,11 +46,6 @@ namespace framework {
  */
 class GraphCompiler final {
  public:
-  GraphCompiler(Target target,
-                const std::shared_ptr<Scope>& scope,
-                const std::shared_ptr<Graph>& graph)
-      : target_(std::move(target)), scope_(scope), graph_(graph) {}
-
   struct CompilationResult {
     std::unique_ptr<Program> runtime_program;
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
@@ -59,13 +54,31 @@ class GraphCompiler final {
     std::vector<std::unique_ptr<Instruction>> instructions;
   };
 
-  struct CompileOptions {
+  struct CompilationContext {
+    CompilationContext() {}
+    CompilationContext(const std::shared_ptr<Graph>& graph,
+                       const std::shared_ptr<Scope>& scope,
+                       Target target)
+        : graph(graph), scope(scope), target(std::move(target)) {}
+    // Code to be compiled
     std::string attached_code = "";
+    // Compile options
     bool with_instantiate_variables = false;
     bool with_buffer_handle_instruction_inserted = false;
     bool remove_unused_variables = true;
     // Compile stage
     ParallelCompiler::Stage stage = ParallelCompiler::Stage::DEFAULT;
+    // Compile target
+    Target target;
+    // Computation graph
+    std::shared_ptr<Graph> graph;
+    // Variable scope
+    std::shared_ptr<Scope> scope;
+    // fetch var ids in cinn and the corresponding var nodes will not be fused
+    // so as to get the result
+    std::unordered_set<std::string> fetch_var_ids;
+    // map dst reuse var to the src var sharing buffer
+    absl::flat_hash_map<std::string, std::string> reuse_vars_map;
     // nodes group, it may come from the result of op fusion or graph tuning.
     // nodes in a group will be built into an Instruction
     std::vector<std::shared_ptr<Graph::Group>> groups;
@@ -77,38 +90,38 @@ class GraphCompiler final {
     void Apply(const auto_schedule::TuningResult& tuning_result);
   };
 
+  GraphCompiler(CompilationContext context) : compilation_context_(context) {}
+
   // Compile with a packing option and result, to be extended easily.
-  CompilationResult Build(const CompileOptions& options,
-                          std::unordered_set<std::string>&& fetch_var_ids = {},
-                          void* stream = nullptr);
+  CompilationResult Build(CompilationContext* context);
 
   std::unique_ptr<Program> Build(const std::string& code = "");
 
-  CompilationResult Lowering(
-      const CompileOptions& options,
-      std::unordered_set<std::string>&& fetch_var_ids = {},
-      void* stream = nullptr);
+  CompilationResult Lowering();
 
-  CompilationResult CodegenAndJit(
-      const CompileOptions& options,
-      std::unordered_set<std::string>&& fetch_var_ids = {},
-      void* stream = nullptr);
+  CompilationResult CodegenAndJit();
 
-  CompilationResult BuildInstruction(
-      const CompileOptions& options,
-      std::unordered_set<std::string>&& fetch_var_ids = {},
-      void* stream = nullptr);
+  CompilationResult BuildInstruction();
 
-  const std::shared_ptr<Scope>& GetScope() const { return scope_; }
+  const std::shared_ptr<Scope>& GetScope() const {
+    return compilation_context_.scope;
+  }
+
+  CompilationContext& GetCompilationContext() { return compilation_context_; }
+
+  void SetCompilationContext(const CompilationContext& context) {
+    compilation_context_ = context;
+  }
 
  private:
   // instantiate all variables on compile time
-  void InstantiateVariables();
+  void InstantiateVariables(CompilationContext* context);
 
   // some variables are eliminated by optimized passes(such as OpFusion),
   // we can filter out them according to arguments of the built instructions,
   // and erase them from the scope to avoid unnecessary buffer allocation
   void RemoveInvalidVariables(
+      CompilationContext* context,
       const std::vector<std::unique_ptr<Instruction>>& instructions);
 
   // find the first and last instruction where a variable used, and mark the
@@ -123,21 +136,14 @@ class GraphCompiler final {
   // firstly used in the next instruction, and insert a buffer free instruction
   // applying on variables after no instruction will use them anymore
   void InsertBufferHandlers(
+      CompilationContext* context,
       std::vector<std::unique_ptr<Instruction>>* instructions);
 
  private:
   // parallel compiler
   std::shared_ptr<ParallelCompiler> parallel_compiler_;
 
-  Target target_;
-  std::shared_ptr<Graph> graph_;
-  std::shared_ptr<Scope> scope_;
-  // fetch var ids in cinn and the corresponding var nodes will not be fused so
-  // as to get the result
-  std::unordered_set<std::string> fetch_var_ids_;
-
-  // map dst reuse var to the src var sharing buffer
-  absl::flat_hash_map<std::string, std::string> reuse_vars_map_;
+  CompilationContext compilation_context_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(GraphCompiler);
 };
