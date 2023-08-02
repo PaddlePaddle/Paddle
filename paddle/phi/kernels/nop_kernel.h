@@ -14,29 +14,11 @@
 
 #pragma once
 
-#include <string>
-#include <string_view>
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace translator {
+namespace phi {
 
-static std::string UnderscoreToCamelCase(std::string str) {
-  std::string camel_case;
-  bool next_upper = true;
-  for (char c : str) {
-    if (c == '_') {
-      next_upper = true;
-    } else {
-      if (next_upper) {
-        camel_case += toupper(c);
-        next_upper = false;
-      } else {
-        camel_case += c;
-      }
-    }
-  }
-  return camel_case;
-}
+template <typename T, typename Context>
+void NopKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {}
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace phi

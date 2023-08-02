@@ -88,7 +88,9 @@ class IR_API OpBase {
 
   const AttributeMap &attributes() const { return operation()->attributes(); }
 
-  Value operand(uint32_t index) const { return operation()->operand(index); }
+  Value operand_source(uint32_t index) const {
+    return operation()->operand_source(index);
+  }
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
 
