@@ -51,7 +51,7 @@ void OpHandleBase::InitCUDA() {
   for (auto &p : dev_ctxes_) {
     int dev_id = p.first.device;
     platform::SetDeviceId(dev_id);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&events_[dev_id], hipEventDisableTiming));
 #elif defined(PADDLE_WITH_MUSA)
@@ -191,7 +191,7 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   } else {
     auto stream = static_cast<phi::GPUContext *>(waited_ctx)->stream();
     for (auto &ev : events_) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream, ev.second, 0));
 #elif defined(PADDLE_WITH_MUSA)
       PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(stream, ev.second, 0));
@@ -231,7 +231,7 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
           auto stream =
               static_cast<phi::GPUContext *>(dev_ctxes_.at(place))->stream();
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
           PADDLE_ENFORCE_GPU_SUCCESS(
               hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #elif defined(PADDLE_WITH_MUSA)
@@ -287,7 +287,7 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
           auto stream = static_cast<phi::GPUContext *>(
                             dev_ctxes_.at(in_var_handle->place()))
                             ->stream();
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
           PADDLE_ENFORCE_GPU_SUCCESS(
               hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #elif defined(PADDLE_WITH_MUSA)
@@ -330,7 +330,7 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
       auto dev_id = p.first.device;
       auto *cuda_dev_ctx = static_cast<phi::GPUContext *>(p.second);
       VLOG(10) << "phi::GPUContext:" << cuda_dev_ctx << ", dev_id:" << dev_id;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
 #elif defined(PADDLE_WITH_MUSA)
