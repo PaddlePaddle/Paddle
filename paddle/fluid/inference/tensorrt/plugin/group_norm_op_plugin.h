@@ -21,13 +21,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/inference/tensorrt/plugin/common/groupNormPluginCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/phi/kernels/group_norm_kernel.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+using phi::GroupNormNHWCParams;
 class GroupNormPlugin : public PluginTensorRT {
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override {

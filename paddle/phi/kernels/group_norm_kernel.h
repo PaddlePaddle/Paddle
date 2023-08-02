@@ -16,9 +16,13 @@
 
 #include <string>
 
-#include "paddle/fluid/inference/tensorrt/plugin/common/groupNormPluginCommon.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/dense_tensor.h"
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#include <cuda_fp16.h>
+#endif
+#include <stdint.h>
 
 namespace phi {
 
@@ -53,7 +57,58 @@ class GroupNormDirectCUDAFunctor {
 };
 #endif
 
-using paddle::inference::tensorrt::plugin::GroupNormNHWCParams;
+template <typename T>
+struct GroupNormNHWCParams {
+  // The output buffer. Layout NHWC.
+  T* dst;
+  // The output buffer. Layout NHWC.
+  T* eleOut;
+  // The input buffer. Layout NHWC.
+  T const* srcX;
+  // The input buffer. Layout NHWC.
+  T const* srcY;
+  // The gamma scaling factor.
+  void const* gamma;
+  // The beta term to add in GN.
+  void const* beta;
+  // The temporary buffer to do the global parallel reduction. Size:
+  // BLOCKS_PER_BATCH x C x 2.
+  float* redBuffer;
+
+  float* var_data;
+
+  // The number of instances in the batch.
+  int32_t n;
+  // The height and width of each activation map.
+  int32_t h, w;
+  // The number of channels.
+  int32_t c;
+  // The number of groups.
+  int32_t groups;
+  // Do we apply the Silu activation function?
+  bool withSilu;
+
+  // Precomputed values and parameters to control the execution of the kernels.
+
+  // The number of activations per instance (h * w) and the number of
+  // activations per block.
+  int32_t hw, hwPerBlock;
+  // The number of channels per group and blocks per activation in the C
+  // dimension.
+  int32_t cPerBlock, cPerGroup;
+
+  // The precomputed stride between instances.
+  int32_t hwc;
+  // The inverse of hwc in floats (to compute mean/var).
+  float invHWC;
+  // The precomputed number of groups per block.
+  int32_t groupsPerBlock;
+  // epsilon, Constant for numerical stability
+  float eps;
+  // for NCHW32 int8 use
+  float dqScaleIn;
+  float inv_qScale;
+};
 
 template <typename T>
 class groupNormNHWCSum {
