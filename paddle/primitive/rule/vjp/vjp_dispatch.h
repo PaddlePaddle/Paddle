@@ -14,12 +14,7 @@
 
 #pragma once
 
-#include <math.h>
 #include <vector>
-
-#include "paddle/ir/core/builder.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/optional.h"

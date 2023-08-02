@@ -16,10 +16,7 @@
 #include <vector>
 
 #include "paddle/fluid/ir/dialect/pd_api.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/primitive/backend/backend.h"
 #include "paddle/primitive/rule/vjp/vjp_dispatch.h"
 #include "paddle/primitive/type/desc_tensor.h"

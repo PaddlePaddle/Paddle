@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace primitive {
@@ -43,24 +41,15 @@ class DescTensor : public phi::ExtendedTensor,
     return paddle::dialect::TransToPhiDataType(value_.type());
   }
 
-  // framework::VarDesc* get_ptr() { return desc_ptr_; }
   ir::Value getValue() const { return value_; }
 
   const phi::Place& place() const override { return place_; }
 
   bool initialized() const override { return value_.impl() != nullptr; }
 
-  // TODO(jiabin): override more operators here.
-
  private:
-  // VarDesc's lifetime is holded by block and it's program, so we just conceal
-  // its funcs instead of its life.
   ir::Value value_;
-  // TODO(jiabin): This is really ugly, but we have to hold a dims here so that
-  // we can inherient from ExtendedTensor Rmove this when we make VarDesc's as
-  // same as Tensor, or make Tensor's dims more lightly.
   mutable phi::DDim dims_;
-  phi::Place place_;
 };
 
 }  // namespace experimental
