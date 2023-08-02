@@ -97,10 +97,9 @@ def sparse_attention(
             >>> query = paddle.to_tensor([[[[0, 1, ], [2, 3],
             ...                             [0, 1], [2, 3]]]], dtype="float32")
             >>> key = paddle.to_tensor([[[[0, 1], [2, 3],
-            ...                         [0, 1], [2, 3]]]], dtype="float32")
+            ...                           [0, 1], [2, 3]]]], dtype="float32")
             >>> value = paddle.to_tensor([[[[0, 1], [2, 3],
             ...                             [0, 1], [2, 3]]]], dtype="float32")
-            ...
             ...
             >>> offset = paddle.to_tensor([[[0, 2, 4, 6, 8]]], dtype="int32")
             >>> columns = paddle.to_tensor([[[0, 1, 0, 1, 2, 3, 2, 3]]], dtype="int32")
@@ -112,9 +111,9 @@ def sparse_attention(
             ...
             >>> key_padding_mask = paddle.to_tensor([[1, 1, 1, 0]], dtype="float32")
             >>> attention_mask = paddle.to_tensor([[1, 0, 1, 1],
-            ...                                 [1, 1, 1, 1],
-            ...                                 [1, 1, 1, 1],
-            ...                                 [1, 1, 1, 1]], dtype="float32")
+            ...                                    [1, 1, 1, 1],
+            ...                                    [1, 1, 1, 1],
+            ...                                    [1, 1, 1, 1]], dtype="float32")
             >>> output_mask = paddle.nn.functional.sparse_attention(query, key,
             ...                                                     value, offset, columns,
             ...                                                     key_padding_mask=key_padding_mask,

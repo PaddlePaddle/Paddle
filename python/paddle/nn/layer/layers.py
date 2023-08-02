@@ -359,15 +359,18 @@ class Layer:
 
             >>> import paddle
             >>> paddle.seed(100)
+
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
             ...         self._linear = paddle.nn.Linear(1, 1)
             ...         self._dropout = paddle.nn.Dropout(p=0.5)
+            ...
             ...     def forward(self, input):
             ...         temp = self._linear(input)
             ...         temp = self._dropout(temp)
             ...         return temp
+            ...
             >>> x = paddle.randn([10, 1], 'float32')
             >>> mylayer = MyLayer()
             >>> mylayer.eval()  # set mylayer._dropout to eval mode
@@ -434,6 +437,7 @@ class Layer:
 
                 >>> import paddle
                 >>> paddle.seed(100)
+
                 >>> class MyLayer(paddle.nn.Layer):
                 ...     def __init__(self):
                 ...         super().__init__()
@@ -859,16 +863,16 @@ class Layer:
 
                 >>> class MyLinear(paddle.nn.Layer):
                 ...     def __init__(self,
-                ...                 in_features,
-                ...                 out_features):
+                ...                  in_features,
+                ...                  out_features):
                 ...         super().__init__()
-                ...         self.linear = paddle.nn.Linear( 10, 10)
+                ...         self.linear = paddle.nn.Linear(10, 10)
                 ...
                 ...         self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
                 ...
                 ...     def forward(self, input):
                 ...         out = self.linear(input)
-                ...         paddle.assign( out, self.back_var)
+                ...         paddle.assign(out, self.back_var)
                 ...
                 ...         return out
 
@@ -900,7 +904,8 @@ class Layer:
 
                 >>> import paddle
                 >>> paddle.seed(100)
-                >>> linear = paddle.nn.Linear(1,1)
+
+                >>> linear = paddle.nn.Linear(1, 1)
                 >>> print(linear.parameters())
                 [Parameter containing:
                 Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -1024,6 +1029,7 @@ class Layer:
 
                 >>> import paddle
                 >>> paddle.seed(100)
+
                 >>> fc1 = paddle.nn.Linear(10, 3)
                 >>> fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
                 >>> model = paddle.nn.Sequential(fc1, fc2)
@@ -1047,11 +1053,11 @@ class Layer:
                 1.weight Parameter containing:
                 Tensor(shape=[3, 10], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[ 0.01985580, -0.40268910,  0.41172385, -0.47249708, -0.09002256,
-                -0.00533628, -0.52048630,  0.62360322,  0.20848787, -0.02033746],
+                 -0.00533628, -0.52048630,  0.62360322,  0.20848787, -0.02033746],
                  [ 0.58281910,  0.12841827,  0.12907702,  0.02325618, -0.07746267,
-                0.31950659, -0.37924835, -0.59209681, -0.11732036, -0.58378261],
+                 0.31950659, -0.37924835, -0.59209681, -0.11732036, -0.58378261],
                  [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
-                0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
+                 0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
         params_set = set()
         named_sublayers = (
@@ -1285,7 +1291,7 @@ class Layer:
                 >>> a = paddle.to_tensor(value)
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> adam = paddle.optimizer.Adam(learning_rate=0.01,
-                ...                             parameters=linear.parameters())
+                ...                              parameters=linear.parameters())
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
@@ -1417,6 +1423,7 @@ class Layer:
 
                 >>> import paddle
                 >>> paddle.seed(100)
+
                 >>> class MyLayer(paddle.nn.Layer):
                 ...     def __init__(self):
                 ...         super().__init__()
@@ -2060,6 +2067,7 @@ class Layer:
 
                 >>> import paddle
                 >>> paddle.seed(2023)
+
                 >>> linear=paddle.nn.Linear(2, 2)
                 >>> linear.weight
                 >>> print(linear.weight)

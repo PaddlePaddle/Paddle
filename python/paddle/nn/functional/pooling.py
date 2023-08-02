@@ -357,8 +357,8 @@ def avg_pool2d(
             >>> # avg pool2d
             >>> x = paddle.uniform([1, 3, 32, 32], paddle.float32)
             >>> out = F.avg_pool2d(x,
-            ...                 kernel_size=2,
-            ...                 stride=2, padding=0)
+            ...                    kernel_size=2,
+            ...                    stride=2, padding=0)
             >>> print(out.shape)
             [1, 3, 16, 16]
     """
@@ -486,11 +486,10 @@ def avg_pool3d(
 
             >>> x = paddle.uniform([1, 3, 32, 32, 32], paddle.float32)
             >>> # avg pool3d
-            >>> out = paddle.nn.functional.avg_pool3d(
-            ...                                 x,
-            ...                                 kernel_size = 2,
-            ...                                 stride = 2,
-            ...                                 padding=0)
+            >>> out = paddle.nn.functional.avg_pool3d(x,
+            ...                                       kernel_size = 2,
+            ...                                       stride = 2,
+            ...                                       padding=0)
             >>> print(out.shape)
             [1, 3, 16, 16, 16]
     """
@@ -940,7 +939,7 @@ def max_unpool2d(
                 >>> import paddle
                 >>> import paddle.nn.functional as F
 
-                >>> data = paddle.rand(shape=[1,1,6,6])
+                >>> data = paddle.rand(shape=[1, 1, 6, 6])
                 >>> pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
                 >>> print(pool_out.shape)
                 [1, 1, 3, 3]
@@ -951,7 +950,7 @@ def max_unpool2d(
                 [1, 1, 6, 6]
 
                 >>> # specify a different output size than input size
-                >>> unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0, output_size=[7,7])
+                >>> unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0, output_size=[7, 7])
                 >>> print(unpool_out.shape)
                 [1, 1, 7, 7]
 
@@ -1389,17 +1388,19 @@ def max_pool3d(
             >>> # max pool3d
             >>> x = paddle.uniform([1, 3, 32, 32, 32])
             >>> output = F.max_pool3d(x,
-            ...                     kernel_size=2,
-            ...                     stride=2, padding=0)
+            ...                       kernel_size=2,
+            ...                       stride=2,
+            ...                       padding=0)
             >>> print(output.shape)
             [1, 3, 16, 16, 16]
+
             >>> # for return_mask=True
             >>> x = paddle.uniform([1, 3, 32, 32, 32])
             >>> output, max_indices = paddle.nn.functional.max_pool3d(x,
-            ...                                                     kernel_size=2,
-            ...                                                     stride=2,
-            ...                                                     padding=0,
-            ...                                                     return_mask=True)
+            ...                                                       kernel_size=2,
+            ...                                                       stride=2,
+            ...                                                       padding=0,
+            ...                                                       return_mask=True)
             ...
             >>> print(output.shape)
             [1, 3, 16, 16, 16]
@@ -1615,9 +1616,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
             >>> x = paddle.rand([2, 3, 32, 32])
             >>> # x.shape is [2, 3, 32, 32]
-            >>> out = paddle.nn.functional.adaptive_avg_pool2d(
-            ...                 x = x,
-            ...                 output_size=[3, 3])
+            >>> out = paddle.nn.functional.adaptive_avg_pool2d(x = x,
+            ...                                                output_size=[3, 3])
             >>> print(out.shape)
             [2, 3, 3, 3]
 
@@ -1751,9 +1751,8 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             >>> import paddle
 
             >>> input_data = paddle.randn(shape=(2, 3, 8, 32, 32))
-            >>> out = paddle.nn.functional.adaptive_avg_pool3d(
-            ...                 x = input_data,
-            ...                 output_size=[3, 3, 3])
+            >>> out = paddle.nn.functional.adaptive_avg_pool3d(x = input_data,
+            ...                                                output_size=[3, 3, 3])
             >>> print(out.shape)
             [2, 3, 3, 3, 3]
 
@@ -1954,9 +1953,8 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             >>> import paddle
 
             >>> input_data = paddle.randn(shape=(2, 3, 32, 32))
-            >>> out = paddle.nn.functional.adaptive_max_pool2d(
-            ...             x = input_data,
-            ...             output_size=[3, 3])
+            >>> out = paddle.nn.functional.adaptive_max_pool2d(x = input_data,
+            ...                                                output_size=[3, 3])
             >>> print(out.shape)
             [2, 3, 3, 3]
     """
@@ -2044,9 +2042,8 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
             >>> import paddle
 
             >>> input_data = paddle.randn(shape=(2, 3, 8, 32, 32))
-            >>> out = paddle.nn.functional.adaptive_max_pool3d(
-            ...             x = input_data,
-            ...             output_size=[3, 3, 3])
+            >>> out = paddle.nn.functional.adaptive_max_pool3d(x = input_data,
+            ...                                                output_size=[3, 3, 3])
             >>> print(out.shape)
             [2, 3, 3, 3, 3]
     """

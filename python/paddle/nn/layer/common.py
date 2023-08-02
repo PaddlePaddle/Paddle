@@ -52,6 +52,7 @@ class Identity(Layer):
 
             >>> import paddle
             >>> paddle.seed(100)
+
             >>> input_tensor = paddle.randn(shape=[3, 2])
             >>> layer = paddle.nn.Identity()
             >>> out = layer(input_tensor)
@@ -125,6 +126,7 @@ class Linear(Layer):
 
             >>> import paddle
             >>> paddle.seed(100)
+
             >>> # Define the linear layer.
             >>> weight_attr = paddle.ParamAttr(
             ...     name="weight",
@@ -138,6 +140,7 @@ class Linear(Layer):
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[0.50000000, 0.50000000, 0.50000000, 0.50000000],
              [0.50000000, 0.50000000, 0.50000000, 0.50000000]])
+
             >>> print(linear.bias)
             Parameter containing:
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -247,14 +250,17 @@ class LinearCompress(Layer):
 
             >>> import paddle
             >>> paddle.seed(100)
+
             >>> # Define the linear layer.
             >>> paddle.set_default_dtype('float16')
             >>> weight_attr = paddle.ParamAttr(
-            ...   name="weight",
-            ...   initializer=paddle.nn.initializer.Constant(value=0.5))
+            ...     name="weight",
+            ...     initializer=paddle.nn.initializer.Constant(value=0.5))
+
             >>> bias_attr = paddle.ParamAttr(
-            ...   name="bias",
-            ...   initializer=paddle.nn.initializer.Constant(value=1.0))
+            ...     name="bias",
+            ...     initializer=paddle.nn.initializer.Constant(value=1.0))
+
             >>> linear = paddle.nn.LinearCompress(128, 64, weight_attr=weight_attr, bias_attr=bias_attr, bits=8, algo='weight_only')
             >>> x = paddle.randn((3, 128), dtype="float16")
             >>> y = linear(x)
@@ -812,8 +818,10 @@ class Bilinear(Layer):
 
             >>> layer1 = paddle.rand((5, 5)).astype('float32')
             >>> layer2 = paddle.rand((5, 4)).astype('float32')
-            >>> bilinear = paddle.nn.Bilinear(
-            ...     in1_features=5, in2_features=4, out_features=1000)
+            >>> bilinear = paddle.nn.Bilinear(in1_features=5,
+            ...                               in2_features=4,
+            ...                               out_features=1000)
+
             >>> result = bilinear(layer1,layer2)
             >>> print(result.shape)
             [5, 1000]
@@ -909,6 +917,7 @@ class Dropout(Layer):
 
             >>> import paddle
             >>> paddle.seed(2023)
+
             >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype="float32")
             >>> m = paddle.nn.Dropout(p=0.5)
 
@@ -983,27 +992,27 @@ class Dropout2D(Layer):
             >>> print(x)
             Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[0.55355281, 0.20714243, 0.01162981]],
-               [[0.51577556, 0.36369765, 0.26091650]]],
-              [[[0.18905126, 0.56219709, 0.00808361]],
-               [[0.78120756, 0.32112977, 0.90572405]]]])
+              [[0.51577556, 0.36369765, 0.26091650]]],
+             [[[0.18905126, 0.56219709, 0.00808361]],
+              [[0.78120756, 0.32112977, 0.90572405]]]])
 
             >>> m = paddle.nn.Dropout2D(p=0.5)
             >>> y_train = m(x)
             >>> print(y_train)
             Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[1.10710561, 0.41428486, 0.02325963]],
-               [[1.03155112, 0.72739530, 0.52183300]]],
-              [[[0.        , 0.        , 0.        ]],
-               [[0.        , 0.        , 0.        ]]]])
+              [[1.03155112, 0.72739530, 0.52183300]]],
+             [[[0.        , 0.        , 0.        ]],
+              [[0.        , 0.        , 0.        ]]]])
 
             >>> m.eval()  # switch the model to test phase
             >>> y_test = m(x)
             >>> print(y_test)
             Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[0.55355281, 0.20714243, 0.01162981]],
-               [[0.51577556, 0.36369765, 0.26091650]]],
-              [[[0.18905126, 0.56219709, 0.00808361]],
-               [[0.78120756, 0.32112977, 0.90572405]]]])
+              [[0.51577556, 0.36369765, 0.26091650]]],
+             [[[0.18905126, 0.56219709, 0.00808361]],
+              [[0.78120756, 0.32112977, 0.90572405]]]])
     """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
@@ -1135,6 +1144,7 @@ class AlphaDropout(Layer):
 
             >>> import paddle
             >>> paddle.seed(2023)
+
             >>> x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
             >>> m = paddle.nn.AlphaDropout(p=0.5)
             >>> y_train = m(x)
@@ -1471,13 +1481,13 @@ class CosineSimilarity(Layer):
 
             Case 0:
                 x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
-                     [0.48949873 0.5797396  0.65444374 0.66510963]
-                     [0.1031398  0.9614342  0.08365563 0.6796464 ]
-                     [0.10760343 0.7461209  0.7726148  0.5801006 ]]
+                      [0.48949873 0.5797396  0.65444374 0.66510963]
+                      [0.1031398  0.9614342  0.08365563 0.6796464 ]
+                      [0.10760343 0.7461209  0.7726148  0.5801006 ]]
                 x2 = [[0.62913156 0.1536727  0.9847992  0.04591406]
-                     [0.9098952  0.15715368 0.8671125  0.3156102 ]
-                     [0.4427798  0.54136837 0.5276275  0.32394758]
-                     [0.3769419  0.8535014  0.48041078 0.9256797 ]]
+                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
+                      [0.4427798  0.54136837 0.5276275  0.32394758]
+                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
                 axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
@@ -1489,10 +1499,10 @@ class CosineSimilarity(Layer):
             >>> import paddle.nn as nn
 
             >>> x1 = paddle.to_tensor([[1., 2., 3.],
-            ...                     [2., 3., 4.]], dtype="float32")
+            ...                        [2., 3., 4.]], dtype="float32")
             >>> x2 = paddle.to_tensor([[8., 3., 3.],
-            ...                     [2., 3., 4.]], dtype="float32")
-            ...
+            ...                        [2., 3., 4.]], dtype="float32")
+
             >>> cos_sim_func = nn.CosineSimilarity(axis=0)
             >>> result = cos_sim_func(x1, x2)
             >>> print(result)
@@ -1539,19 +1549,16 @@ class Embedding(Layer):
         output is a Tensor:
             out.shape = [3, 2, 16]
             out.data = [[[0.129435295, 0.244512452, ..., 0.436322452],
-                        [0.345421456, 0.524563927, ..., 0.144534654]],
-
+                         [0.345421456, 0.524563927, ..., 0.144534654]],
                         [[0.345249859, 0.124939536, ..., 0.194353745],
-                        [0.945345345, 0.435394634, ..., 0.435345365]],
-
+                         [0.945345345, 0.435394634, ..., 0.435345365]],
                         [[0.945345345, 0.435394634, ..., 0.435345365],
-                        [0.0,         0.0,         ..., 0.0        ]]]  # padding data
+                         [0.0,         0.0,         ..., 0.0        ]]]  # padding data
         The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
         It will pad all-zero data when ids is 127.
 
     Parameters:
-        num_embeddings (int): Just one element which indicate the size
-            of the dictionary of embeddings.
+        num_embeddings (int): Just one element which indicate the size of the dictionary of embeddings.
         embedding_dim (int):  Just one element which indicate the size of each embedding vector respectively.
         padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
@@ -1569,9 +1576,8 @@ class Embedding(Layer):
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example for details.
-        name(str|None, optional): For detailed information, please refer
-               to :ref:`api_guide_Name`. Usually name is no need to set and
-               None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.
@@ -1603,7 +1609,6 @@ class Embedding(Layer):
 
             >>> adam = paddle.optimizer.Adam(parameters=[embedding.weight], learning_rate=0.01)
             >>> adam.clear_grad()
-
 
             >>> out = embedding(x)
             >>> print(out)
@@ -1704,24 +1709,21 @@ class Unfold(Layer):
 
 
     Parameters:
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
-                                  or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
-                                  For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
-                                  [padding_top, padding_left, padding_bottom, padding_right]
-                                  or [padding_h, padding_w] or an integer padding.
-                                  If [padding_h, padding_w] was given, it will expanded to
-                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
-                                  padding was given, [padding, padding, padding, padding] will
-                                  be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
-                                  [dilation_h, dilation_w], or an integer dilation treated as
-                                  [dilation, dilation]. For default, it will be [1, 1].
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
+        kernel_sizes(int|list): The size of convolution kernel, should be [k_h, k_w]
+            or an integer k treated as [k, k].
+        strides(int|list, optional): The strides, should be [stride_h, stride_w]
+            or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
+        paddings(int|list, optional): The paddings of each dimension, should be
+            [padding_top, padding_left, padding_bottom, padding_right] or [padding_h, padding_w]
+            or an integer padding. If [padding_h, padding_w] was given, it will expanded to
+            [padding_h, padding_w, padding_h, padding_w]. If an integer padding was given,
+            [padding, padding, padding, padding] will be used. For default,
+            paddings will be [0, 0, 0, 0].
+        dilations(int|list, optional): The dilations of convolution kernel, should be
+            [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
+            For default, it will be [1, 1].
+        name(str, optional): The default value is None. Normally there is no need for user to
+            set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
     Examples:
@@ -1730,7 +1732,7 @@ class Unfold(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> x = paddle.randn((100,3,224,224))
+            >>> x = paddle.randn((100, 3, 224, 224))
             >>> unfold = nn.Unfold(kernel_sizes=[3, 3])
             >>> result = unfold(x)
             >>> print(result.shape)
@@ -1788,21 +1790,21 @@ class Fold(Layer):
         C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\
 
     Parameters:
-        output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
+        output_sizes(list):  The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional):  The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list|tuple, optional):       The paddings of each dimension, should be
+        paddings(int|list|tuple, optional):  The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional): The dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -1821,7 +1823,7 @@ class Fold(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> x = paddle.randn([2,3*2*2,12])
+            >>> x = paddle.randn([2, 3*2*2, 12])
             >>> fold = nn.Fold(output_sizes=[4, 5], kernel_sizes=2)
             >>> y = fold(x)
             >>> print(y.shape)
