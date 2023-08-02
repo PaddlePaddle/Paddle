@@ -50,6 +50,7 @@ class DescTensor : public phi::ExtendedTensor,
  private:
   ir::Value value_;
   mutable phi::DDim dims_;
+  phi::Place place_;
 };
 
 }  // namespace experimental

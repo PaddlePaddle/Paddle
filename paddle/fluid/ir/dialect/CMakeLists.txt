@@ -46,14 +46,12 @@ add_custom_command(
           ${op_compat_yaml_file}
   VERBATIM)
 
-add_custom_target(ir_code_gen DEPENDS ${op_header_file} ${op_source_file})
-
 # All source files of pd_dialect, except for the source file of op, which is generated in the compilation directory.
 file(GLOB PD_DIALECT_SRCS "*.cc")
 
 cc_library(
   pd_dialect
-  SRCS ${PD_DIALECT_SRCS} ${op_source_file} ${VJP_SRCS}
+  SRCS ${PD_DIALECT_SRCS} ${op_source_file}
   DEPS framework_proto
        phi
        phi_utils
