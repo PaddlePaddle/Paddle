@@ -46,6 +46,9 @@ void BindCommContextManager(py::module *m) {
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
               py::call_guard<py::gil_scoped_release>())
+          .def_static("set_cuda_device_id",
+                      &phi::distributed::CommContextManager::SetCUDADeviceId,
+                      py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_GLOO)
           .def_static(
