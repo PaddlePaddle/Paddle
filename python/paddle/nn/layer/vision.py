@@ -49,7 +49,7 @@ class PixelShuffle(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> x = paddle.randn(shape=[2,9,4,4])
+            >>> x = paddle.randn(shape=[2, 9, 4, 4])
             >>> pixel_shuffle = nn.PixelShuffle(3)
             >>> out = pixel_shuffle(x)
             >>> print(out.shape)
@@ -182,21 +182,21 @@ class ChannelShuffle(Layer):
             >>> print(x)
             Tensor(shape=[1, 6, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[0.        ]],
-            [[0.10000000]],
-            [[0.20000000]],
-            [[0.30000001]],
-            [[0.40000001]],
-            [[0.50000000]]]]
+              [[0.10000000]],
+              [[0.20000000]],
+              [[0.30000001]],
+              [[0.40000001]],
+              [[0.50000000]]]]
             >>> channel_shuffle = nn.ChannelShuffle(3)
             >>> y = channel_shuffle(x)
             >>> print(y)
             Tensor(shape=[1, 6, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[0.        ]],
-            [[0.20000000]],
-            [[0.40000001]],
-            [[0.10000000]],
-            [[0.30000001]],
-            [[0.50000000]]]]
+              [[0.20000000]],
+              [[0.40000001]],
+              [[0.10000000]],
+              [[0.30000001]],
+              [[0.50000000]]]]
     """
 
     def __init__(self, groups, data_format="NCHW", name=None):

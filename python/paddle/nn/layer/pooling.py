@@ -175,8 +175,7 @@ class AvgPool2D(Layer):
 
             >>> # max pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool2D = nn.AvgPool2D(kernel_size=2,
-            ...                     stride=2, padding=0)
+            >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool2D(input)
             >>> print(output.shape)
             [1, 3, 16, 16]
@@ -275,8 +274,7 @@ class AvgPool3D(Layer):
 
             >>> # avg pool3d
             >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool3D = nn.AvgPool3D(kernel_size=2,
-            ...                         stride=2, padding=0)
+            >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool3D(input)
             >>> print(output.shape)
             [1, 2, 3, 16, 16]
@@ -483,8 +481,7 @@ class MaxPool2D(Layer):
 
             >>> # max pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2,
-            ...                         stride=2, padding=0)
+            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
             >>> output = MaxPool2D(input)
             >>> print(output.shape)
             [1, 3, 16, 16]
@@ -584,8 +581,7 @@ class MaxPool3D(Layer):
 
             >>> # max pool3d
             >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2,
-            ...                         stride=2, padding=0)
+            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = MaxPool3D(input)
             >>> print(output.shape)
             [1, 2, 3, 16, 16]
@@ -1281,7 +1277,7 @@ class MaxUnPool2D(Layer):
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> data = paddle.rand(shape=[1,1,6,6])
+            >>> data = paddle.rand(shape=[1, 1, 6, 6])
             >>> pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
             [1, 1, 3, 3]

@@ -837,9 +837,9 @@ class TransformerDecoderLayer(Layer):
             >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
             >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
             >>> output = decoder_layer(dec_input,
-            ...                         enc_output,
-            ...                         self_attn_mask,
-            ...                         cross_attn_mask)
+            ...                        enc_output,
+            ...                        self_attn_mask,
+            ...                        cross_attn_mask)
             >>> print(output.shape)
             [2, 4, 128]
     """
@@ -1062,9 +1062,9 @@ class TransformerDecoder(Layer):
             >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
             >>> decoder = TransformerDecoder(decoder_layer, 2)
             >>> output = decoder(dec_input,
-            ...                     enc_output,
-            ...                     self_attn_mask,
-            ...                     cross_attn_mask)
+            ...                  enc_output,
+            ...                  self_attn_mask,
+            ...                  cross_attn_mask)
             >>> print(output.shape)
             [2, 4, 128]
     """
@@ -1276,10 +1276,10 @@ class Transformer(Layer):
             >>> cross_attn_mask = paddle.rand((2, 2, 6, 4))
             >>> transformer = Transformer(128, 2, 4, 4, 512)
             >>> output = transformer(enc_input,
-            ...                         dec_input,
-            ...                         enc_self_attn_mask,
-            ...                         dec_self_attn_mask,
-            ...                         cross_attn_mask)
+            ...                      dec_input,
+            ...                      enc_self_attn_mask,
+            ...                      dec_self_attn_mask,
+            ...                      cross_attn_mask)
             >>> print(output.shape)
             [2, 6, 128]
     """
@@ -1485,10 +1485,10 @@ class Transformer(Layer):
                 >>> print(mask)
                 Tensor(shape=[5, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[ 0.  , -inf., -inf., -inf., -inf.],
-                [ 0.  ,  0.  , -inf., -inf., -inf.],
-                [ 0.  ,  0.  ,  0.  , -inf., -inf.],
-                [ 0.  ,  0.  ,  0.  ,  0.  , -inf.],
-                [ 0.  ,  0.  ,  0.  ,  0.  ,  0.  ]])
+                 [ 0.  ,  0.  , -inf., -inf., -inf.],
+                 [ 0.  ,  0.  ,  0.  , -inf., -inf.],
+                 [ 0.  ,  0.  ,  0.  ,  0.  , -inf.],
+                 [ 0.  ,  0.  ,  0.  ,  0.  ,  0.  ]])
 
         """
         return paddle.tensor.triu(
