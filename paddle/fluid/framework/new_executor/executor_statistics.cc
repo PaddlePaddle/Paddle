@@ -430,7 +430,7 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
         }
       }
     }
-    if (thr_evts.size() == 0) {
+    if (thr_evts.empty()) {
       continue;
     }
     std::sort(thr_evts.begin(),
@@ -440,7 +440,7 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
               });
     all_evts.push_back(std::move(thr_evts));
   }
-  if (all_evts.size() == 0) {
+  if (all_evts.empty()) {
     LOG(WARNING) << "No profiler events";
     return -1;
   }
@@ -621,7 +621,7 @@ void StatisticsEngine::Log(const std::string& filepath) {
 
 void StaticGraphExecutorPerfStatistics(
     std::shared_ptr<const platform::NodeTrees> profiling_data) {
-  if (FLAGS_static_executor_perfstat_filepath.size() == 0) {
+  if (FLAGS_static_executor_perfstat_filepath.empty()) {
     VLOG(5) << "StaticGraphExecutorPerfStatistics is disabled";
     return;
   }

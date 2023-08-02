@@ -88,6 +88,11 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
       nonzero_indices.Resize(phi::make_ddim({-1, rank}));
       NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
+      if (nonzero_indices.numel() == 0) {
+        std::vector<const phi::DenseTensor*> empty_indices;
+        return empty_indices;
+      }
+
       std::vector<phi::DenseTensor*> integer_indices(rank, nullptr);
       const int tmp_ix = tmp_indices_v->size();
       for (int i = 0; i < rank; ++i) {

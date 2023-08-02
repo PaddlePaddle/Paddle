@@ -641,24 +641,25 @@ class StaticFunction:
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.jit import to_static
-                from paddle.static import InputSpec
+                >>> # doctest: +SKIP
+                >>> import paddle
+                >>> from paddle.jit import to_static
+                >>> from paddle.static import InputSpec
 
-                paddle.disable_static()
+                >>> paddle.disable_static()
 
-                def foo(x, y):
-                    z = x + y
-                    return z
+                >>> def foo(x, y):
+                ...     z = x + y
+                ...     return z
+                ...
+                >>> # usage 1:
+                >>> decorated_foo = to_static(foo, input_spec=[InputSpec([10], name='x'), InputSpec([10], name='y')])
+                >>> print(decorated_foo.concrete_program)
 
-                # usage 1:
-                decorated_foo = to_static(foo, input_spec=[InputSpec([10], name='x'), InputSpec([10], name='y')])
-                print(decorated_foo.concrete_program)
-
-                # usage 2:
-                decorated_foo = to_static(foo)
-                out_foo = decorated_foo(paddle.rand([10]), paddle.rand([10]))
-                print(decorated_foo.concrete_program)
+                >>> # usage 2:
+                >>> decorated_foo = to_static(foo)
+                >>> out_foo = decorated_foo(paddle.rand([10]), paddle.rand([10]))
+                >>> print(decorated_foo.concrete_program)
         """
         return self.concrete_program_specify_input_spec(input_spec=None)
 
@@ -760,25 +761,26 @@ class StaticFunction:
         Example::
             .. code-block:: python
 
-                import paddle
+                >>> # doctest: +SKIP
+                >>> import paddle
 
-                class Net(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
+                >>> class Net(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...
+                ...     def forward(self, x, flag=True):
+                ...         if flag:
+                ...             out = x + 1
+                ...         else:
+                ...             out = x - 1
+                ...         return out
+                ...
+                >>> x = paddle.randn([10, 1], 'float32')
+                >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
+                >>> out = net(x)
 
-                    def forward(self, x, flag=True):
-                        if flag:
-                            out = x + 1
-                        else:
-                            out = x - 1
-                        return out
-
-                x = paddle.randn([10, 1], 'float32')
-                net = paddle.jit.to_static(Net())  # convert into static graph mode
-                out = net(x)
-
-                net.forward.rollback()  # rollback into dygraph mode
-                out = net(x)
+                >>> net.forward.rollback()  # rollback into dygraph mode
+                >>> out = net(x)
         """
 
         def rollback_impl(class_instance):
@@ -819,24 +821,24 @@ class StaticFunction:
         Example::
             .. code-block:: python
 
-                import copy
-                import paddle
+                >>> import copy
+                >>> import paddle
 
-                class Net(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
+                >>> class Net(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...
+                ...     def forward(self, x, flag=True):
+                ...         if flag:
+                ...             out = x + 1
+                ...         else:
+                ...             out = x - 1
+                ...         return out
+                ...
+                >>> x = paddle.randn([10, 1], 'float32')
+                >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
 
-                    def forward(self, x, flag=True):
-                        if flag:
-                            out = x + 1
-                        else:
-                            out = x - 1
-                        return out
-
-                x = paddle.randn([10, 1], 'float32')
-                net = paddle.jit.to_static(Net())  # convert into static graph mode
-
-                copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
+                >>> copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
 
         Please attention that original 'net' will unwrap @to_static and rollback into simple Layer.
         """
@@ -1125,6 +1127,36 @@ class ParametersRecorder:
         return id(program)
 
 
+class ParametersMap:
+    def __init__(self):
+        self.params_dict = {}
+
+    @synchronized
+    def add(self, program, id, param):
+        """use the default_program as key, append param the parameter list."""
+        key = self._program_hash(program)
+        if key not in self.params_dict:
+            self.params_dict[key] = {}
+
+        params = self.params_dict[key]
+        params[id] = param
+
+    def get(self, program, id):
+        params = self.params_dict.get(self._program_hash(program))
+        if params is None:
+            return None
+        if id in params.keys():
+            return params[id]
+        return None
+
+    def _program_hash(self, program):
+        """
+        because program is not deleted while calling from_func_spec.
+        so it's ok to use id(program)
+        """
+        return id(program)
+
+
 class FallbackProgramLayer:
     __slots__ = [
         '_instance',
@@ -1348,11 +1380,11 @@ class ProgramTranslator:
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # Two methods get same object because ProgramTranslator is a singleton
-            paddle.jit.ProgramTranslator()
-            paddle.jit.ProgramTranslator.get_instance()
+            >>> # Two methods get same object because ProgramTranslator is a singleton
+            >>> paddle.jit.dy2static.program_translator.ProgramTranslator()
+            >>> paddle.jit.dy2static.program_translator.ProgramTranslator.get_instance()
 
     """
 
@@ -1386,6 +1418,7 @@ class ProgramTranslator:
         self._initialized = True
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
+        self._params_map = ParametersMap()
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
@@ -1402,24 +1435,23 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> # doctest: +SKIP
+                >>> import paddle
+                >>> def func(x):
+                ...     if paddle.mean(x) > 0:
+                ...         x_v = x - 1
+                ...     else:
+                ...         x_v = x + 1
+                ...     return x_v
+                ...
+                ...
+                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
 
-
-                @paddle.jit.to_static
-                def func(x):
-                    if paddle.mean(x) > 0:
-                        x_v = x - 1
-                    else:
-                        x_v = x + 1
-                    return x_v
-
-
-                paddle.jit.enable_to_static(False)
-
-                x = paddle.ones([1, 2])
-                # ProgramTranslator is disabled so the func is run in dygraph
-                print(func(x))  # [[0. 0.]]
-
+                >>> x = paddle.ones([1, 2])
+                >>> x_v = prog_trans.get_output(func, x)
+                >>> print(x_v)
+                Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[0., 0.]])
         """
         check_type(
             enable_to_static,
@@ -1446,23 +1478,23 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> # doctest: +SKIP
+                >>> import paddle
+                >>> def func(x):
+                ...     if paddle.mean(x) > 0:
+                ...         x_v = x - 1
+                ...     else:
+                ...         x_v = x + 1
+                ...     return x_v
+                ...
+                ...
+                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
 
-
-                def func(x):
-                    if paddle.mean(x) > 0:
-                        x_v = x - 1
-                    else:
-                        x_v = x + 1
-                    return x_v
-
-
-                prog_trans = paddle.jit.ProgramTranslator()
-
-                x = paddle.ones([1, 2])
-                x_v = prog_trans.get_output(func, x)
-                print(x_v)  # [[0. 0.]]
-
+                >>> x = paddle.ones([1, 2])
+                >>> x_v = prog_trans.get_output(func, x)
+                >>> print(x_v)
+                Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[0., 0.]])
         """
         assert callable(
             dygraph_func
@@ -1529,21 +1561,19 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                import paddle
-
-
-                def func(x):
-                    if paddle.mean(x) > 0:
-                        x_v = x - 1
-                    else:
-                        x_v = x + 1
-                    return x_v
-
-
-                prog_trans = paddle.jit.ProgramTranslator()
-                static_func = prog_trans.get_func(func)
-                print(callable(static_func)) # True
-
+                >>> # doctest: +SKIP
+                >>> import paddle
+                >>> def func(x):
+                ...     if paddle.mean(x) > 0:
+                ...         x_v = x - 1
+                ...     else:
+                ...         x_v = x + 1
+                ...     return x_v
+                ...
+                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
+                >>> static_func = prog_trans.get_func(func)
+                >>> print(callable(static_func))
+                True
         """
         assert callable(
             dygraph_func
@@ -1580,25 +1610,22 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                import paddle
-
-
-                def func(x):
-                    if paddle.mean(x) > 0:
-                        x_v = x - 1
-                    else:
-                        x_v = x + 1
-                    return x_v
-
-
-                prog_trans = paddle.jit.ProgramTranslator()
-                x = paddle.ones([1, 2])
-                main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
-                print([i.name for i in inputs])
-                # [u'generated_tensor_0'] the feed input Tensor name representing x
-                print([o.name for o in outputs])
-                # [u'_generated_var_4'] the fetch output Tensor name representing x_v
-
+                >>> # doctest: +SKIP
+                >>> import paddle
+                >>> def func(x):
+                ...     if paddle.mean(x) > 0:
+                ...         x_v = x - 1
+                ...     else:
+                ...         x_v = x + 1
+                ...     return x_v
+                ...
+                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
+                >>> x = paddle.ones([1, 2])
+                >>> main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
+                >>> print([i.name for i in inputs])
+                >>> # [u'generated_tensor_0'] the feed input Tensor name representing x
+                >>> print([o.name for o in outputs])
+                >>> # [u'_generated_var_4'] the fetch output Tensor name representing x_v
         """
         assert callable(
             dygraph_func
@@ -1650,22 +1677,20 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> # doctest: +SKIP
+                >>> import paddle
+                >>> def func(x):
+                ...     if paddle.mean(x) > 0:
+                ...         x_v = x - 1
+                ...     else:
+                ...         x_v = x + 1
+                ...     return x_v
+                ...
+                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
 
-
-                def func(x):
-                    if paddle.mean(x) > 0:
-                        x_v = x - 1
-                    else:
-                        x_v = x + 1
-                    return x_v
-
-
-                prog_trans = paddle.jit.ProgramTranslator()
-
-                code = prog_trans.get_code(func)
-                print(type(code)) # <class 'str'>
-
+                >>> code = prog_trans.get_code(func)
+                >>> print(type(code))
+                <class 'str'>
         """
         assert callable(
             dygraph_func
@@ -1697,11 +1722,10 @@ class ProgramTranslator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                prog_trans = paddle.jit.ProgramTranslator()
-                prog_cache = prog_trans.get_program_cache()
-
+                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
+                >>> prog_cache = prog_trans.get_program_cache()
         """
         return self._program_cache
 
@@ -1720,23 +1744,22 @@ def enable_to_static(enable_to_static_bool):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> @paddle.jit.to_static
+            >>> def func(x):
+            ...     if paddle.mean(x) > 0:
+            ...         x_v = x - 1
+            ...     else:
+            ...         x_v = x + 1
+            ...     return x_v
+            ...
+            >>> paddle.jit.enable_to_static(False)
 
-
-            @paddle.jit.to_static
-            def func(x):
-                if paddle.mean(x) > 0:
-                    x_v = x - 1
-                else:
-                    x_v = x + 1
-                return x_v
-
-
-            paddle.jit.enable_to_static(False)
-
-            x = paddle.ones([1, 2])
-            # ProgramTranslator is disabled so the func is run in dygraph
-            print(func(x))  # [[0. 0.]]
+            >>> x = paddle.ones([1, 2])
+            >>> # ProgramTranslator is disabled so the func is run in dygraph
+            >>> print(func(x))
+            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0.]])
 
     """
     check_type(

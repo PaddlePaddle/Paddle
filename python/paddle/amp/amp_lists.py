@@ -23,6 +23,9 @@ FP16_WHITE_LIST = {
     'mul',
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
+    'fused_gemm_epilogue',
+    'fused_attention',
+    'fused_feedforward',
 }
 
 # The set of ops that support fp16 calculation and are considered numerically-

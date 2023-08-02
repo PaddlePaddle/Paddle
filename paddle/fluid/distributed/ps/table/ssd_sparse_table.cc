@@ -263,7 +263,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
         pull_values[i] = reinterpret_cast<char*>(ret);
       }
     }
-    if (cur_ctx->batch_keys.size() != 0) {
+    if (!cur_ctx->batch_keys.empty()) {
       cur_ctx->batch_values.resize(cur_ctx->batch_keys.size());
       cur_ctx->status.resize(cur_ctx->batch_keys.size());
       auto fut =
@@ -1541,7 +1541,7 @@ int32_t SSDSparseTable::Load(const std::string& path,
                  << " not equal to expect_shard_num:" << expect_shard_num;
     return -1;
   }
-  if (file_list.size() == 0) {
+  if (file_list.empty()) {
     LOG(WARNING) << "SSDSparseTable load file is empty, path:" << path;
     return -1;
   }
@@ -1692,7 +1692,7 @@ int32_t SSDSparseTable::LoadWithString(
       }
     }
     // last batch
-    if (ssd_keys.size() > 0) {
+    if (!ssd_keys.empty()) {
       _db->put_batch(local_shard_id, ssd_keys, ssd_values, ssd_keys.size());
     }
 
@@ -1928,7 +1928,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
   for (int shard_idx = 0; shard_idx < _real_local_shard_num; shard_idx++) {
     auto sst_filelist = _afs_client.list(paddle::string::format_string(
         "%s_%d/part-*", FLAGS_rocksdb_path.c_str(), shard_idx));
-    if (sst_filelist.size() > 0) {
+    if (!sst_filelist.empty()) {
       int ret = _db->ingest_externel_file(shard_idx, sst_filelist);
       if (ret) {
         VLOG(0) << "ingest file failed";
@@ -2032,7 +2032,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
             }
 
             // 必须做空判断，否则sst_writer.Finish会core掉
-            if (datas.size() != 0) {
+            if (!datas.empty()) {
               rocksdb::SstFileWriter sst_writer(rocksdb::EnvOptions(), options);
               std::string filename =
                   paddle::string::format_string("%s_%d/cache-%05d.sst",

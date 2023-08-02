@@ -187,6 +187,12 @@ class HybridCommunicateGroup:
             "data"
         )
 
+        if self._sharding_degree > 1:
+            (
+                self.sharding_check_group,
+                self.sharding_check_comm_group,
+            ) = self._set_check_group("sharding")
+
         # create p2p group
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = self.stage_id == (self._pp_degree - 1)
@@ -428,8 +434,11 @@ class HybridCommunicateGroup:
         return self._sharding_comm_group.ranks[0]
 
     # check parallel group
-    def get_check_parallel_group(self):
-        return self._check_comm_group
+    def get_check_parallel_group(self, sharding=False):
+        if sharding:
+            return self.sharding_check_comm_group
+        else:
+            return self._check_comm_group
 
     def get_rank_from_stage(self, stage_id, **kwargs):
         return self._topo.get_rank_from_stage(

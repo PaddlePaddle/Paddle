@@ -1335,6 +1335,136 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void FusedBiasActInferMeta(const MetaTensor& x,
+                           const MetaTensor& bias,
+                           const MetaTensor& dequant_scales,
+                           const MetaTensor& shift,
+                           const MetaTensor& smooth,
+                           const std::string& act_method,
+                           const std::string& compute_dtype,
+                           int rows,
+                           int cols,
+                           float quant_scale,
+                           int quant_round_type,
+                           float quant_max_bound,
+                           float quant_min_bound,
+                           MetaTensor* out) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The size of Input(x) must be 2: %s", x_dims));
+  auto token_num = x_dims[0];
+  auto dim = x_dims[1];
+
+  PADDLE_ENFORCE_GT(
+      rows, 0, phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
+
+  PADDLE_ENFORCE_GT(
+      cols, 0, phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+
+  if (act_method == "geglu" || act_method == "swiglu") {
+    PADDLE_ENFORCE_EQ(
+        dim % 2,
+        0,
+        phi::errors::InvalidArgument(
+            "The seconde dimension of x must be even, but receive %d", dim));
+    dim /= 2;
+    out->set_dims(phi::make_ddim({token_num, dim}));
+  } else if (act_method == "gelu") {
+    out->set_dims(phi::make_ddim({token_num, dim}));
+  } else {
+    PADDLE_THROW(
+        errors::InvalidArgument("act_method must be geglu, swiglu or gelu, "
+                                "but get act_method (%s)",
+                                act_method));
+  }
+
+  auto FBADtypeCheck = [](const MetaTensor& check_tensor,
+                          const std::string& tensor_name,
+                          const std::string& compute_dtype) {
+    if (compute_dtype == "bf16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::BFLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp32") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT32,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    }
+  };
+
+  // In the case of quantization enabled, the dtype for computation is
+  // determined based on compute_dtype.
+  if (x.dtype() == phi::DataType::INT32) {
+    PADDLE_ENFORCE_NE(
+        compute_dtype,
+        "default",
+        phi::errors::InvalidArgument(
+            "If Input(x) dtype is INT32, Attr(compute_dtype) must be set."));
+
+    if (bias) {
+      FBADtypeCheck(bias, "bias", compute_dtype);
+    }
+
+    if (quant_scale > 0) {
+      out->set_dtype(phi::DataType::INT8);
+    } else {
+      if (compute_dtype == "bf16") {
+        out->set_dtype(phi::DataType::BFLOAT16);
+      } else if (compute_dtype == "fp16") {
+        out->set_dtype(phi::DataType::FLOAT16);
+      } else if (compute_dtype == "fp32") {
+        out->set_dtype(phi::DataType::FLOAT32);
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "In the case of quantization enabled with Input(x) INT32, "
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+            "but get compute_dtype (%s)",
+            compute_dtype));
+      }
+    }
+  } else {
+    // x.dtype() != phi::DataType::INT32
+    if (bias) {
+      if (compute_dtype != "default") {
+        FBADtypeCheck(bias, "bias", compute_dtype);
+        FBADtypeCheck(x, "x", compute_dtype);
+      } else {
+        PADDLE_ENFORCE_EQ(
+            x.dtype(),
+            bias.dtype(),
+            phi::errors::InvalidArgument("Input(x) and Input(bias) must be the "
+                                         "same dtype in this situation"));
+      }
+    } else {
+      // bias not exist
+      if (compute_dtype != "default") {
+        FBADtypeCheck(x, "x", compute_dtype);
+      }
+    }
+    if (quant_scale > 0) {
+      out->set_dtype(phi::DataType::INT8);
+    } else {
+      out->set_dtype(x.dtype());
+    }
+  }
+  out->set_layout(x.layout());
+}
+
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
                                       const MetaTensor& dweight,
@@ -1636,7 +1766,7 @@ static void Interpolate1DInferShapeCheck(
                                      i,
                                      dim_x[i]));
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // top prority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
@@ -1677,7 +1807,7 @@ static void Interpolate1DInferShapeCheck(
     }
     out_w_tmp = -1;
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       float scale_w = -1;
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(
@@ -1768,7 +1898,7 @@ static void Interpolate2DInferShapeCheck(
                                      dim_x[i]));
   }
 
-  if (size_tensor && size_tensor->size()) {
+  if (size_tensor && !size_tensor->empty()) {
     // top prority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
@@ -1814,7 +1944,7 @@ static void Interpolate2DInferShapeCheck(
     out_h_tmp = -1;
     out_w_tmp = -1;
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       float scale_h = -1;
       float scale_w = -1;
       scale_h = scale[0];
@@ -1919,7 +2049,7 @@ static void Interpolate3DInferShapeCheck(
                                      dim_x[i]));
   }
 
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // top prority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
@@ -1959,7 +2089,7 @@ static void Interpolate3DInferShapeCheck(
     out_h_tmp = -1;
     out_w_tmp = -1;
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       float scale_d = -1;
       float scale_h = -1;
       float scale_w = -1;
@@ -3096,7 +3226,7 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
           rank,
           axis));
   if (axis < 0) axis += (rank + 1);
-  auto vec = phi::vectorize<int>(out_dim);
+  auto vec = phi::vectorize<int64_t>(out_dim);
   vec.insert(vec.begin() + axis, input_dims.size());
   out->set_dims(phi::make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());
@@ -3487,6 +3617,8 @@ void FusedConvInferMeta(const MetaTensor& input,
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
+                        const MetaTensor& sin,
+                        const MetaTensor& cos,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
@@ -3572,7 +3704,7 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dtype(DataType::INT32);
 }
 
-void LLMInt8MatMulInferMeta(const MetaTensor& x,
+void LLMInt8MatmulInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             MetaTensor* out) {
   auto x_dims = x.dims();
@@ -3595,25 +3727,31 @@ void LLMInt8MatMulInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void WeightOnlyMatMulInferMeta(const MetaTensor& x,
+void WeightOnlyMatmulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
+                               const MetaTensor& weight_scale,
                                MetaTensor* out) {
   auto x_dims = x.dims();
   auto w_dims = weight.dims();
+  auto n = weight_scale.dims()[0];
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2UL,
       errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
   PADDLE_ENFORCE_EQ(
+      weight_scale.dims().size(),
+      1UL,
+      errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
+  PADDLE_ENFORCE_EQ(
       x_dims[x_dims.size() - 1],
-      w_dims[0],
+      w_dims[1],
       errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[0] should be euqal."
-          "But received Input(X) dim[-1](%s) != Input(Weight) dim[0](%s)",
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
-          w_dims[0]));
+          w_dims[1]));
   auto out_dims = x_dims;
-  out_dims[out_dims.size() - 1] = w_dims[1];
+  out_dims[out_dims.size() - 1] = n;
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
 }

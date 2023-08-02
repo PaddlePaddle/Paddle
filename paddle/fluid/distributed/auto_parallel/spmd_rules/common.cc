@@ -17,10 +17,13 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
+
+using phi::distributed::auto_parallel::str_join;
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 SPMDRuleBase::InferForward(const std::vector<DistTensorSpec>& input_specs,
@@ -40,7 +43,8 @@ SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& output_specs,
 
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        tensor_axes_to_dim_pairs) {
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts) {
   std::unordered_map<std::string, int64_t> axis_to_dim_map;
   std::unordered_map<int64_t, std::string> dim_to_axis_map;
   int64_t merge_dim;
@@ -74,11 +78,18 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   // memory or communication or computation).
   for (auto& it : dim_to_axis_map) {
     if (it.second.size() > 1) {
-      VLOG(4) << "Sharding Conflict: Mesh_Dim [" << it.first
-              << "] are Sharding Multiple Tensor Axis: [" << it.second
-              << "]. The Axis: [" << it.second[0] << "] is Picked.";
-      for (size_t i = 1; i < it.second.size(); ++i) {
-        axis_to_dim_map[it.second.substr(i, 1)] = -1;
+      if (merge_conflicts) {
+        VLOG(4) << "Sharding Conflict: Mesh_Dim [" << it.first
+                << "] are Sharding Multiple Tensor Axis: [" << it.second
+                << "]. The Axis: [" << it.second[0] << "] is Picked.";
+        for (size_t i = 1; i < it.second.size(); ++i) {
+          axis_to_dim_map[it.second.substr(i, 1)] = -1;
+        }
+      } else {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "Multiple Tensor Axes [%s] is sharded by same mesh dimension [%d].",
+            str_join(it.second),
+            it.first));
       }
     }
   }
@@ -171,8 +182,8 @@ TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr) {
 void VerifySpecs(const std::vector<DistTensorSpec>& specs,
                  const std::string& op_name) {
   for (size_t i = 0, n = specs.size(); i < n; ++i) {
-    std::vector<int64_t> shape = specs[i].shape();
-    std::vector<int64_t> dims_mapping = specs[i].dims_mapping();
+    const std::vector<int64_t>& shape = specs[i].shape();
+    const std::vector<int64_t>& dims_mapping = specs[i].dims_mapping();
     PADDLE_ENFORCE_EQ(shape.size(),
                       dims_mapping.size(),
                       phi::errors::InvalidArgument(

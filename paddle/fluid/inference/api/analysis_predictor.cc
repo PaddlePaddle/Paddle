@@ -1379,6 +1379,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetOptimInputShape(config_.optim_input_shape_);
   argument_->SetTensorRtTunedDynamicShape(
       config_.tuned_tensorrt_dynamic_shape());
+  argument_->SetUseTensorRT(false);
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_->SetUseTensorRT(true);
@@ -2220,7 +2221,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
-    if (shape.size() >= 1) {
+    if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
     } else if (tensor.numel() > 0) {
       // This must be a zero dimension tensor.
@@ -2235,10 +2236,10 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 
     // We need collect value range for shape tensor for Paddle-TRT's use.
     // To be noticed, this method to identify all shape tensors is based on
-    // assumption that all shape tensors in the model have numbers <= 7.
+    // assumption that all shape tensors in the model have numbers <= 8.
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
-    auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
+    auto is_shape_tensor = tensor.numel() <= 8 && tensor.numel() >= 1;
     if ((tensor.dtype() == phi::DataType::INT32 ||
          tensor.dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
@@ -2915,6 +2916,9 @@ USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(cumsum)
+USE_TRT_CONVERTER(assign)
+USE_TRT_CONVERTER(unbind)
+USE_TRT_CONVERTER(flip)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)

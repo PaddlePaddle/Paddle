@@ -26,7 +26,7 @@ void AnyRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  auto out_dtype = x.dtype();
+  auto out_dtype = phi::DataType::BOOL;
   phi::Reduce<T, kps::LogicalOrFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -36,5 +36,15 @@ void AnyRawKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(any_raw, KPS, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
 #else
-PD_REGISTER_KERNEL(any_raw, KPS, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+PD_REGISTER_KERNEL(any_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AnyRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 #endif

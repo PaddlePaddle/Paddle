@@ -19,8 +19,6 @@
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/ir_adaptor/translator/utils.h"
-
 #pragma once
 
 namespace paddle {
@@ -81,6 +79,7 @@ class OpNameNormalizer {
                                const std::string& arg_name) {
     bool is_grad_op = (op_type.find(kPhiGradSuffix) != std::string::npos);
     bool is_grad_arg = (arg_name.find(kPhiGradSuffix) != std::string::npos);
+
     if (is_grad_op && is_grad_arg) {
       std::string target = kPhiGradSuffix;
       std::string data = kFluidVarGradSuffix;
@@ -105,11 +104,11 @@ class OpNameNormalizer {
       return legacy_name;
     }
     if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
-      return UnderscoreToCamelCase(arg_name);
+      return arg_name;
     }
     auto& arg_mappings = op_arg_name_mappings[op_type];
     if (arg_mappings.find(arg_name) == arg_mappings.end()) {
-      return UnderscoreToCamelCase(arg_name);
+      return arg_name;
     }
     return arg_mappings.at(arg_name);
   }

@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import Float, Int, is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper, run_test
 

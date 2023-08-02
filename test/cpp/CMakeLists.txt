@@ -1,3 +1,4 @@
+add_subdirectory(auto_parallel)
 add_subdirectory(phi)
 add_subdirectory(jit)
 add_subdirectory(new_executor)

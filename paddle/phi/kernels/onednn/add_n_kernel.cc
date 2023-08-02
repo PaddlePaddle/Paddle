@@ -49,16 +49,6 @@ class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
     this->AcquireForwardPrimitiveDescriptor(dst_md, scales, srcs_md);
   }
 
-  // (jczaja) sum oneDNN prim is not having .desc attribute so
-  // we cannot use base AcquireForwardPrimitiveDescriptor
-  void AcquireForwardPrimitiveDescriptor(
-      const dnnl::memory::desc& dst_md,
-      const std::vector<float>& scales,
-      const std::vector<dnnl::memory::desc>& srcs_md) {
-    this->fwd_pd_.reset(
-        new dnnl::sum::primitive_desc(dst_md, scales, srcs_md, this->engine_));
-  }
-
   std::shared_ptr<dnnl::memory> AcquireSrcMemory(const DenseTensor* input,
                                                  int i) {
     const T* input_data = input->data<T>();
@@ -68,11 +58,11 @@ class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
 
   using OneDNNHandlerNoCachingT<T, dnnl::sum>::AcquireDstMemory;
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(void) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory() {
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc());
   }
 
-  inline int GetNumInputs(void) { return num_inputs_; }
+  inline int GetNumInputs() { return num_inputs_; }
 
  private:
   int num_inputs_;

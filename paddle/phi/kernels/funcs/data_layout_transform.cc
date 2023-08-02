@@ -65,7 +65,7 @@ dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
                         "Ref tensor type (%s) is not supported by oneDNN.",
                         ref_tensor.dtype()));
 
-  auto md_dims = ref_dims.size() != 0 ? ref_dims : std::vector<int64_t>{1};
+  auto md_dims = !ref_dims.empty() ? ref_dims : std::vector<int64_t>{1};
   auto md_format =
       OneDNNFormatForSize(md_dims.size(), ToOneDNNFormat(target_layout));
   dnnl::memory::desc md(md_dims, ref_type, md_format);

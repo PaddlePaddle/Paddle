@@ -27,7 +27,7 @@ VarDesc::VarDesc(const VarDesc &other)
       attrs_(other.attrs_),
       original_id_(other.original_id_) {
   if (other.dist_attr_) {
-    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+    dist_attr_ = std::make_unique<TensorDistAttr>(*other.dist_attr_);
   }
   need_updated_ = true;
 }
@@ -351,7 +351,7 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).empty()) {
     // Find current attr via attr name and set the correct attribute value
     this->attrs_[name] = std::vector<int>();
     return;
@@ -442,7 +442,7 @@ TensorDistAttr *VarDesc::MutableDistAttr() {
     return dist_attr_.get();
   } else {
     auto shape = paddle::distributed::auto_parallel::get_tensor_shape(this);
-    dist_attr_.reset(new TensorDistAttr(shape));
+    dist_attr_ = std::make_unique<TensorDistAttr>(shape);
     return dist_attr_.get();
   }
   need_updated_ = true;

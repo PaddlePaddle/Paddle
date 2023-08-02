@@ -1412,7 +1412,9 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
             )
 
 
-class TestFusedMultiAttentionAPIError(unittest.TestCase):
+# Starts the name of this test with 'Z' to make this test
+# run after others. If not, it will make other tests fail.
+class ZTestFusedMultiAttentionAPIError(unittest.TestCase):
     def test_errors(self):
         def test_invalid_input_dim():
             array = np.array([1.9], dtype=np.float32)
@@ -1425,7 +1427,7 @@ class TestFusedMultiAttentionAPIError(unittest.TestCase):
         self.assertRaises(ValueError, test_invalid_input_dim)
 
 
-class TestFusedMultiTransformerAPIError(unittest.TestCase):
+class ZTestFusedMultiTransformerAPIError(unittest.TestCase):
     def test_errors(self):
         def test_invalid_input_dim():
             array = np.array([], dtype=np.float32)

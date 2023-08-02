@@ -159,7 +159,7 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
       }
     }
 
-    if (has_bias && conv_op->Op()->Input("Bias").size() > 0) {
+    if (has_bias && !conv_op->Op()->Input("Bias").empty()) {
       auto bias_scales = std::vector<float>(count);
       for (int i = 0; i < count; i++) {
         bias_scales[i] = scale_in_data * scale_weights_data[i];

@@ -45,7 +45,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-using phi::distributed::auto_parallel::DistTensor;
+using phi::distributed::DistTensor;
 using phi::distributed::auto_parallel::TensorDistAttr;
 #endif
 
@@ -298,13 +298,13 @@ void InitDistTensorWithTensor(
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
-    VLOG(4) << "Same place, do ShareDataWith";
+    VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
-    VLOG(4) << "Different place, do TensorCopy";
+    VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
     egr::EagerUtils::autograd_meta(&(self->tensor))
@@ -701,6 +701,20 @@ void AutoInitStringTensorByStringTensor(
   InitStringTensorWithStringTensor(py_tensor_ptr, src_tensor, place, act_name);
 }
 
+PyDoc_STRVAR(
+    TensorDoc,
+    R"DOC(Tensor($self, /, value, place, persistable, zero_copy, name, stop_gradient, dims, dtype, type)
+--
+
+Tensor is the basic data structure in PaddlePaddle. There are some ways to create a Tensor:
+
+- Use the exsiting ``data`` to create a Tensor, please refer to :ref:`api_paddle_to_tensor`.
+- Create a Tensor with a specified ``shape``, please refer to :ref:`api_paddle_ones`,
+  :ref:`api_paddle_zeros`, :ref:`api_paddle_full`.
+- Create a Tensor with the same ``shape`` and ``dtype`` as other Tensor, please refer to
+  :ref:`api_paddle_ones_like`, :ref:`api_paddle_zeros_like`, :ref:`api_paddle_full_like`.
+)DOC");
+
 /** We should have init function with signature:
  * 1.
  * def __init__ ()
@@ -721,7 +735,7 @@ void AutoInitStringTensorByStringTensor(
  * ** zero_copy: bool,
  * ** name: std::string,
  * ** stop_gradient: bool,
- * ** dist_attr: phi::distributed::TensorDistAttr)
+ * ** dist_attr: phi::distributed::auto_parallel::TensorDistAttr)
  * 4.
  * def __init__ (
  * ** value: ndarray)
@@ -735,7 +749,7 @@ void AutoInitStringTensorByStringTensor(
  * ** tensor: Tensor,
  * ** place: paddle::platform::Place,
  * ** name: std::string,
- * ** dist_attr: phi::distributed::TensorDistAttr)
+ * ** dist_attr: phi::distributed::auto_parallel::TensorDistAttr)
  * 7. (multi-place) (should have at least one parameter, one parameter similar
  * to case 5, zero parameter equals to case 1.)
  * def __init__ (
@@ -1336,6 +1350,7 @@ void BindEager(pybind11::module* module) {
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;
+  type->tp_doc = TensorDoc;
   type->tp_weaklistoffset = offsetof(TensorObject, weakrefs);
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);

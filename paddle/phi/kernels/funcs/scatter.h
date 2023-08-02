@@ -244,7 +244,7 @@ template <typename T, typename IndexT = int>
 void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
                         const DenseTensor& index,
                         DenseTensor* output) {
-  int64_t index_size = index.dims()[0];
+  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();

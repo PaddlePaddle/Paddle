@@ -116,7 +116,7 @@ void DistributeFpnProposalsKernel(
     restore_index_data[restore_index_inter[i]] = i;
   }
 
-  if (multi_level_rois_num.size() > 0) {
+  if (!multi_level_rois_num.empty()) {
     int batch_size = fpn_rois_lod.size() - 1;
     for (int i = 0; i < num_level; ++i) {
       multi_level_rois_num[i]->Resize({batch_size});

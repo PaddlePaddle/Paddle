@@ -110,7 +110,9 @@ from .tensor.creation import arange  # noqa: F401
 from .tensor.creation import full  # noqa: F401
 from .tensor.creation import full_like  # noqa: F401
 from .tensor.creation import triu  # noqa: F401
+from .tensor.creation import triu_  # noqa: F401
 from .tensor.creation import tril  # noqa: F401
+from .tensor.creation import tril_  # noqa: F401
 from .tensor.creation import meshgrid  # noqa: F401
 from .tensor.creation import empty  # noqa: F401
 from .tensor.creation import empty_like  # noqa: F401
@@ -202,28 +204,44 @@ from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.manipulation import index_put  # noqa: F401
 from .tensor.manipulation import index_put_  # noqa: F401
 from .tensor.manipulation import unflatten  # noqa: F401
+from .tensor.manipulation import as_strided  # noqa: F401
+from .tensor.manipulation import view  # noqa: F401
+from .tensor.manipulation import view_as  # noqa: F401
+from .tensor.manipulation import unfold  # noqa: F401
 from .tensor.math import abs  # noqa: F401
+from .tensor.math import abs_  # noqa: F401
 from .tensor.math import acos  # noqa: F401
+from .tensor.math import acos_  # noqa: F401
 from .tensor.math import asin  # noqa: F401
+from .tensor.math import asin_  # noqa: F401
 from .tensor.math import atan  # noqa: F401
+from .tensor.math import atan_  # noqa: F401
 from .tensor.math import atan2  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
+from .tensor.math import cos_  # noqa: F401
 from .tensor.math import tan  # noqa: F401
+from .tensor.math import tan_  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
+from .tensor.math import cosh_  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import cummax  # noqa: F401
 from .tensor.math import cummin  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
 from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
+from .tensor.math import logit_  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
+from .tensor.math import expm1_  # noqa: F401
 from .tensor.math import floor  # noqa: F401
 from .tensor.math import increment  # noqa: F401
 from .tensor.math import log  # noqa: F401
+from .tensor.math import log_  # noqa: F401
+from .tensor.math import log2_  # noqa: F401
 from .tensor.math import log2  # noqa: F401
 from .tensor.math import log10  # noqa: F401
+from .tensor.math import log10_  # noqa: F401
 from .tensor.math import multiplex  # noqa: F401
 from .tensor.math import pow  # noqa: F401
 from .tensor.math import pow_  # noqa: F401
@@ -235,9 +253,12 @@ from .tensor.math import rsqrt  # noqa: F401
 from .tensor.math import scale  # noqa: F401
 from .tensor.math import sign  # noqa: F401
 from .tensor.math import sin  # noqa: F401
+from .tensor.math import sin_  # noqa: F401
 from .tensor.math import sinh  # noqa: F401
+from .tensor.math import sinh_  # noqa: F401
 from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
+from .tensor.math import square_  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nan_to_num  # noqa: F401
@@ -268,8 +289,11 @@ from .tensor.math import logsumexp  # noqa: F401
 from .tensor.math import logaddexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
+from .tensor.math import log1p_  # noqa: F401
 from .tensor.math import erf  # noqa: F401
+from .tensor.math import erf_  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
+from .tensor.math import addmm_  # noqa: F401
 from .tensor.math import clip  # noqa: F401
 from .tensor.math import trace  # noqa: F401
 from .tensor.math import diagonal  # noqa: F401
@@ -281,12 +305,19 @@ from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
 from .tensor.math import trunc  # noqa: F401
+from .tensor.math import trunc_  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
+from .tensor.math import digamma_  # noqa: F401
 from .tensor.math import neg  # noqa: F401
+from .tensor.math import neg_  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
+from .tensor.math import lgamma_  # noqa: F401
 from .tensor.math import acosh  # noqa: F401
+from .tensor.math import acosh_  # noqa: F401
 from .tensor.math import asinh  # noqa: F401
+from .tensor.math import asinh_  # noqa: F401
 from .tensor.math import atanh  # noqa: F401
+from .tensor.math import atanh_  # noqa: F401
 from .tensor.math import lerp  # noqa: F401
 from .tensor.math import erfinv  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
@@ -301,6 +332,7 @@ from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
 from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
+from .tensor.math import frac_  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
@@ -310,10 +342,12 @@ from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
 from .tensor.math import nextafter  # noqa: F401
 from .tensor.math import i0  # noqa: F401
+from .tensor.math import i0_  # noqa: F401
 from .tensor.math import i0e  # noqa: F401
 from .tensor.math import i1  # noqa: F401
 from .tensor.math import i1e  # noqa: F401
 from .tensor.math import polygamma  # noqa: F401
+from .tensor.math import polygamma_  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -431,6 +465,7 @@ __all__ = [  # noqa
     'complex64',
     'complex128',
     'addmm',
+    'addmm_',
     'allclose',
     'isclose',
     't',
@@ -456,6 +491,7 @@ __all__ = [  # noqa
     'logaddexp',
     'logcumsumexp',
     'logit',
+    'logit_',
     'LazyGuard',
     'sign',
     'is_empty',
@@ -468,7 +504,9 @@ __all__ = [  # noqa
     'where',
     'log1p',
     'cos',
+    'cos_',
     'tan',
+    'tan_',
     'mean',
     'mode',
     'mv',
@@ -542,7 +580,9 @@ __all__ = [  # noqa
     'rand',
     'less_equal',
     'triu',
+    'triu_',
     'sin',
+    'sin_',
     'dist',
     'cdist',
     'unbind',
@@ -560,7 +600,9 @@ __all__ = [  # noqa
     'is_grad_enabled',
     'mod',
     'abs',
+    'abs_',
     'tril',
+    'tril_',
     'pow',
     'pow_',
     'zeros_like',
@@ -571,12 +613,15 @@ __all__ = [  # noqa
     'matmul',
     'seed',
     'acos',
+    'acos_',
     'logical_xor',
     'exp',
     'expm1',
+    'expm1_',
     'bernoulli',
     'poisson',
     'sinh',
+    'sinh_',
     'round',
     'DataParallel',
     'argmin',
@@ -584,15 +629,19 @@ __all__ = [  # noqa
     'broadcast_shape',
     'conj',
     'neg',
+    'neg_',
     'lgamma',
+    'lgamma_',
     'lerp',
     'erfinv',
     'inner',
     'outer',
     'square',
+    'square_',
     'divide',
     'ceil',
     'atan',
+    'atan_',
     'atan2',
     'rad2deg',
     'deg2rad',
@@ -618,6 +667,7 @@ __all__ = [  # noqa
     'dot',
     'increment',
     'erf',
+    'erf_',
     'bmm',
     'chunk',
     'tolist',
@@ -666,13 +716,19 @@ __all__ = [  # noqa
     'floor',
     'cosh',
     'log',
+    'log_',
     'log2',
+    'log2_',
     'log10',
+    'log10_',
     'concat',
     'check_shape',
     'trunc',
+    'trunc_',
     'frac',
+    'frac_',
     'digamma',
+    'digamma_',
     'standard_normal',
     'diagonal',
     'broadcast_tensors',
@@ -712,10 +768,16 @@ __all__ = [  # noqa
     'polar',
     'vander',
     'unflatten',
+    'as_strided',
+    'view',
+    'view_as',
+    'unfold',
     'nextafter',
     'i0',
+    'i0_',
     'i0e',
     'i1',
     'i1e',
     'polygamma',
+    'polygamma_',
 ]

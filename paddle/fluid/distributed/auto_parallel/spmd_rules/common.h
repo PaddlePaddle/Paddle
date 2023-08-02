@@ -77,7 +77,7 @@ class SPMDRuleBase {
     PADDLE_ENFORCE_NE(iter,
                       attrs.end(),
                       paddle::platform::errors::NotFound(
-                          "(%s) is not found in AttributeMap."));
+                          "(%s) is not found in AttributeMap.", name));
     return iter->second;
   }
 };
@@ -86,7 +86,8 @@ class SPMDRuleBase {
 // The same axes of different tensors will be merged.
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        tensor_axes_to_dim_pairs);
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts = true);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A repicated dimension could be merged by any sharded dimension.

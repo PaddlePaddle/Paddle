@@ -75,7 +75,7 @@ def embedding(
     r"""
     :api_attr: Static Graph
 
-    **WARING:** This OP will be deprecated in a future release. This OP requires the
+    **WARNING:** This OP will be deprecated in a future release. This OP requires the
     last dimension of Tensor shape must be equal to 1. It is recommended to use
     fluid. :ref:`api_fluid_embedding` .
 

@@ -308,7 +308,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
         const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
         auto *outside_tensors =
             outside_var->GetMutable<framework::LoDTensorArray>();
-        if (outside_tensors->size() == 0U) {
+        if (outside_tensors->empty()) {
           outside_tensors->resize(input_tensors.size());
         }
         PADDLE_ENFORCE_EQ(input_tensors.size(),

@@ -155,7 +155,7 @@ class TestDialect : public ir::Dialect {
   }
   static const char *name() { return "test"; }
 
-  void PrintOperation(ir::Operation *op,
+  void PrintOperation(const ir::Operation *op,
                       ir::IrPrinter &printer) const override {
     printer.PrintOpResult(op);
     printer.os << " =";
@@ -274,6 +274,6 @@ TEST(op_test, module_op_death) {
   EXPECT_EQ(program.module_op().program(), &program);
   EXPECT_EQ(program.module_op().ir_context(), ctx);
 
-  program.module_op()->SetAttribute("program",
-                                    ir::PointerAttribute::get(ctx, &program));
+  program.module_op()->set_attribute("program",
+                                     ir::PointerAttribute::get(ctx, &program));
 }

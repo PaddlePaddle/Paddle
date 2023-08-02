@@ -308,9 +308,15 @@ class OpConverter {
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        auto min_input_shape = engine->min_input_shape()[input];
-        auto max_input_shape = engine->max_input_shape()[input];
-        auto optim_input_shape = engine->optim_input_shape()[input];
+        if (!(engine->min_input_shape().count(input) &&
+              engine->max_input_shape().count(input) &&
+              engine->optim_input_shape().count(input))) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Cannot get %s min/max/opt shape", input));
+        }
+        auto min_input_shape = engine->min_input_shape().at(input);
+        auto max_input_shape = engine->max_input_shape().at(input);
+        auto optim_input_shape = engine->optim_input_shape().at(input);
         size_t ranks = min_input_shape.size();
 
         std::vector<int64_t> input_shape;
@@ -731,6 +737,23 @@ class OpConverter {
       }
       layer_name += output_tensor_names[i];
       if (i != num_out - 1) layer_name += ", ";
+    }
+    for (size_t i = 0; i < num_out; i++) {
+      nvinfer1::Dims tmp_dims = layer->getOutput(i)->getDimensions();
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+
+      VLOG(3) << output_tensor_names[i] << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]";
+      // The following check may cause errors in CI, but is necessary in the
+      // latest version.
+      // PADDLE_ENFORCE_GE(
+      //     layer->getOutput(i)->getDimensions().nbDims,
+      //     0,
+      //     platform::errors::InvalidArgument(
+      //         "Error occures in Paddle-TRT layer with output name: %s",
+      //         output_tensor_names[i].c_str()));
     }
     layer->setName((layer_name + ")").c_str());
   }

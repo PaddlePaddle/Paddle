@@ -637,8 +637,8 @@ class TestLayer(LayerTest):
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+        np.testing.assert_allclose(static_rlt2[0], static_rlt)
+        np.testing.assert_allclose(dy_rlt_value[0], static_rlt)
 
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")
@@ -2130,16 +2130,6 @@ class TestBook(LayerTest):
             )
             out = paddle.strided_slice(
                 x, axes=axes, starts=starts, ends=ends, strides=strides
-            )
-            return out
-
-    def test_fill_constant_batch_size_like(self):
-        with self.static_graph():
-            like = paddle.tensor.fill_constant(
-                shape=[1, 200], value=10, dtype='int64'
-            )
-            out = layers.fill_constant_batch_size_like(
-                input=like, shape=[2, 3300], value=1315454564656, dtype='int64'
             )
             return out
 

@@ -44,15 +44,15 @@ void SetOp(ProgramDesc* prog,
   if (type == "pool2d") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
   } else if (type == "relu") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
   } else if (type == "conv2d") {
-    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Filter", {inputs[1]});
@@ -91,7 +91,7 @@ void SetOp(ProgramDesc* prog,
                           inputs.size()));
     op->SetInput("W", {inputs[1]});
     op->SetOutput("Out", outputs);
-    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetAttr("force_fp32_output", false);
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
@@ -105,7 +105,7 @@ void SetOp(ProgramDesc* prog,
     op->SetInput("X", {inputs[0]});
     op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
-    if (scale.size() > 0) op->SetAttr("Scale_x", scale[0]);
+    if (!scale.empty()) op->SetAttr("Scale_x", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetAttr("force_fp32_output", false);
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);

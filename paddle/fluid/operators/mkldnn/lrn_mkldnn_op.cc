@@ -50,6 +50,7 @@ class LRNOneDNNHandler
                 : dnnl::prop_kind::forward_training,
         dnnl::algorithm::lrn_across_channels,
         input->mem_desc(),
+        input->mem_desc(),
         n,
         alpha,
         beta,
@@ -80,6 +81,7 @@ class LRNOneDNNHandler
         dnnl::prop_kind::forward_training,
         dnnl::algorithm::lrn_across_channels,
         in_x->mem_desc(),
+        in_x->mem_desc(),
         n,
         alpha,
         beta,
@@ -87,8 +89,9 @@ class LRNOneDNNHandler
 
     this->AcquireBackwardPrimitiveDescriptor(
         dnnl::algorithm::lrn_across_channels,
-        in_x->mem_desc(),
         out_grad->mem_desc(),
+        out_grad->mem_desc(),
+        in_x->mem_desc(),
         n,
         alpha,
         beta,

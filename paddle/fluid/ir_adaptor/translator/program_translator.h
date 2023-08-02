@@ -72,12 +72,13 @@ class ProgramTranslator {
   /// 2. "fetch", the output variable of fetch op
   /// However, new feed has no input and new fetch has no output
   /// So we don't handle these two vairables when
-  /// `ExtractParameterFromSingleBlock`
+  /// `Get/SetParameterFromSingleBlock`
   static const std::unordered_set<std::string> no_cast_var_names;
 
   void GetParameterForSingleBlock(const BlockDesc& block);
   void InsertOperationToSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
+  void SetStopGradientAttributeForAllValue(const BlockDesc& block);
 };
 
 }  // namespace translator

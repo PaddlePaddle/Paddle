@@ -164,7 +164,7 @@ class SliceOp : public framework::OperatorWithKernel {
         // created, so in that scenario a fallback is needed
         if (ctx.Input<phi::DenseTensor>("Input")
                 ->mem_desc()
-                .data.format_desc.blocking.inner_nblks == 0) {
+                .get_inner_nblks() == 0) {
           return phi::KernelKey(phi::Backend::ONEDNN,
                                 phi::DataLayout::ONEDNN,
                                 phi::TransToPhiDataType(input_data_type));
@@ -341,7 +341,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // created, so in that scenario a fallback is needed
       if (ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))
               ->mem_desc()
-              .data.format_desc.blocking.inner_nblks == 0) {
+              .get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,
                               phi::TransToPhiDataType(input_data_type));

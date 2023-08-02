@@ -367,7 +367,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                         input_names.end() &&
-                    conv->Op()->Input("Bias").size() > 0;
+                    !conv->Op()->Input("Bias").empty();
     bool mkldnn_with_bias = is_mkldnn && has_bias;
 
     // Create eltwise_y (conv bias) variable

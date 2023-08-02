@@ -124,7 +124,7 @@ class SplitOp : public framework::OperatorWithKernel {
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
-      if (x_md.data.format_desc.blocking.inner_nblks == 0) {
+      if (x_md.get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,
                               phi::TransToPhiDataType(input_data_type));
