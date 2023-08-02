@@ -470,7 +470,7 @@ PHI_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";  // NOLINT
 PHI_DEFINE_EXPORTED_string(
     allocator_strategy,
     kDefaultAllocatorStrategy,
@@ -1060,13 +1060,13 @@ DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
-DEFINE_bool(enable_slotpool_wait_release,
+DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
             false,
             "enable slotrecord object wait release, default false");
-DEFINE_bool(enable_slotrecord_reset_shrink,
+DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
             false,
             "enable slotrecord object reset shrink memory, default false");
-DEFINE_bool(enable_ins_parser_file,
+DEFINE_bool(enable_ins_parser_file,  // NOLINT
             false,
             "enable parser ins file, default false");
 PHI_DEFINE_EXPORTED_bool(

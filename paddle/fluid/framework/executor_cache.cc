@@ -448,25 +448,38 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
 
   auto local_program =
       paddle::framework::ProgramDesc(*(backward_global_block->Program()));
-  // add feed kernel
-  auto *block = local_program.MutableBlock(0);
-  for (auto &out_grad_t : out_grad) {
-    auto name = out_grad_t.name();
-    if (block->FindVarRecursive(name) == nullptr) {
-      continue;
+
+  // get feed with data
+  std::set<std::string> set_parameter_names;
+  for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
+    for (const auto &n : op_desc->Inputs()) {
+      const auto &input_var_names = n.second;
+      for (const auto &var_name : input_var_names) {
+        set_parameter_names.insert(var_name);
+      }
     }
-    auto place = out_grad_t.place().GetType();
-    if (name == "@EMPTY@") {
-      continue;
+  }
+
+  for (auto &var_name : set_parameter_names) {
+    if (scope->FindVar(var_name)) {
+      auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
+      phi::AllocationType place(phi::AllocationType::UNDEFINED);
+      if (tensor.initialized()) {
+        place = tensor.place().GetType();
+      }
+
+      if (var_name == "@EMPTY@") {
+        continue;
+      }
+      auto op_desc = local_program.MutableBlock(0)->PrependOp();
+      op_desc->SetType("feed_with_place");
+      op_desc->SetAttr("index", 0);
+      // TODO(phlrain) : using tensor dtype
+      op_desc->SetAttr("dtype", 0);
+      op_desc->SetAttr("place", static_cast<int>(place));
+      op_desc->SetAttr("name", var_name);
+      op_desc->SetOutput("out", {var_name});
     }
-    auto op_desc = block->PrependOp();
-    op_desc->SetType("feed_with_place");
-    op_desc->SetAttr("index", 0);
-    // TODO(phlrain) : using tensor dtype
-    op_desc->SetAttr("dtype", 0);
-    op_desc->SetAttr("place", static_cast<int>(place));
-    op_desc->SetAttr("name", name);
-    op_desc->SetOutput("out", {name});
   }
 
   // get feed with data

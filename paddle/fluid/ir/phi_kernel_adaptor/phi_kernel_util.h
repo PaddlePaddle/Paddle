@@ -93,7 +93,7 @@ void BuildPhiContext(ir::Operation* op,
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
     auto index = op_yaml_info.InputName2Id().at(t);
-    ir::Value ptr = op->operand(index);
+    ir::Value ptr = op->operand_source(index);
     if (!ptr) {
       phi::DenseTensor* ptr = nullptr;
       OutType in_ptr(ptr);
@@ -129,7 +129,7 @@ void BuildPhiContext(ir::Operation* op,
   for (auto& t : vec_kernel_fn_attr_params) {
     if (name2id.count(t)) {
       // tensor attribute, get information from input
-      ir::Value ptr = op->operand(name2id.at(t));
+      ir::Value ptr = op->operand_source(name2id.at(t));
 
       auto in_var_name = name_map.at(ptr);
 
