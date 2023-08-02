@@ -97,7 +97,7 @@ phi::KernelKey GetKernelKey(
       } else if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
-        auto type = map_value_pair.at(op->operand(in_index)).type();
+        auto type = map_value_pair.at(op->operand_source(in_index)).type();
 
         if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
           kernel_data_type = TransToPhiDataType(
@@ -151,7 +151,7 @@ phi::KernelKey GetKernelKey(
       if (op->name() == "pd.uniform") {
         // try to process uniform, use shape to determin backend
         // TODO(phlrain): shuold support other initilize op
-        auto define_op = op->operand(0).GetDefiningOp();
+        auto define_op = op->operand_source(0).GetDefiningOp();
         if (define_op->name() == "pd.full_int_array") {
           auto shape = define_op->attributes()
                            .at("value")
@@ -183,7 +183,7 @@ phi::KernelKey GetKernelKey(
       if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
         continue;
       }
-      auto input_tmp = op->operand(i);
+      auto input_tmp = op->operand_source(i);
       // NOTE: if not input_tmp, it's an optional input
       if (!input_tmp) {
         continue;
@@ -341,7 +341,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand(i);
+        auto cur_in = op_item->operand_source(i);
         if (!cur_in) {
           vec_inputs.push_back(ir::OpResult());
           continue;

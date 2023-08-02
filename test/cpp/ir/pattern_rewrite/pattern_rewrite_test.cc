@@ -386,10 +386,10 @@ class Conv2dFusionOpTest : public ir::Op<Conv2dFusionOpTest,
                     ir::OpResult residual_,
                     ir::AttributeMap attributes);
   void Verify();
-  ir::Value input() { return operand(0); }
-  ir::Value filter() { return operand(1); }
-  ir::Value bias() { return operand(2); }
-  ir::Value residual() { return operand(3); }
+  ir::Value input() { return operand_source(0); }
+  ir::Value filter() { return operand_source(1); }
+  ir::Value bias() { return operand_source(2); }
+  ir::Value residual() { return operand_source(3); }
   ir::OpResult output() { return result(0); }
   ir::OpResult outputs() { return result(1); }
   ir::Attribute attribute(const std::string &name) {
@@ -752,19 +752,25 @@ void Conv2dFusionOpTest::Verify() {
         4u,
         phi::errors::PreconditionNotMet(
             "The size %d of inputs must be equal to 4.", input_size));
-    PADDLE_ENFORCE(
-        (*this)->operand(0).type().isa<paddle::dialect::DenseTensorType>(),
-        phi::errors::PreconditionNotMet(
-            "Type validation failed for the 0th input."));
-    PADDLE_ENFORCE(
-        (*this)->operand(1).type().isa<paddle::dialect::DenseTensorType>(),
-        phi::errors::PreconditionNotMet(
-            "Type validation failed for the 1th input."));
-    PADDLE_ENFORCE(
-        (*this)->operand(2).type().isa<paddle::dialect::DenseTensorType>(),
-        phi::errors::PreconditionNotMet(
-            "Type validation failed for the 2th input."));
-    if (auto val = (*this)->op_operand(3)) {
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 1th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(2)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 2th input."));
+    if (auto val = (*this)->operand(3)) {
       PADDLE_ENFORCE(val.type().isa<paddle::dialect::DenseTensorType>(),
                      phi::errors::PreconditionNotMet(
                          "Type validation failed for the 3th input."));

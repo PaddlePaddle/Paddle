@@ -266,7 +266,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
   std::unordered_set<::ir::Value> no_need_buffer_values;
   for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-    no_need_buffer_values.insert(op->operand(no_need_buffer_ids[id]));
+    no_need_buffer_values.insert(op->operand_source(no_need_buffer_ids[id]));
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
@@ -302,7 +302,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
         variable_2_var_name) {
   std::unordered_map<ir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
-    ir::Value value = op->operand(i);
+    ir::Value value = op->operand_source(i);
     if (value) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
