@@ -19,14 +19,14 @@
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 #include "paddle/ir/pattern_rewrite/drr/drr_rewrite_pattern.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/fluid/ir/dialect/pd_op.h"
 
 struct RemoveRedundentReshapeFunctor {
-  void operator()(ir::drr::DrrPassContext *ctx) {
+  void operator()(ir::drr::DrrPatternContext *ctx) {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
     VLOG(1) << "###### reshape";
@@ -71,16 +71,9 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op.out(), "out", 0);
 }
 
-template <typename SourceOp, typename DrrFunctorT>
-std::unique_ptr<ir::drr::DrrRewritePattern<SourceOp, DrrFunctorT>>
-CreateDrrPatternRewritePass(ir::IrContext *ir_ctx) {
-  ir::drr::DrrPassContext drr_ctx;
-  DrrFunctorT functor;
-  VLOG(1) << "##### Start Build Ctx";
-  functor(&drr_ctx);
-  VLOG(1) << "##### Finish Build Ctx";
-  return std::make_unique<ir::drr::DrrRewritePattern<SourceOp, DrrFunctorT>>(
-      ir_ctx, 1);
+std::unique_ptr<RemoveRedundentReshapePattern> CreateDrrPatternRewritePass(
+    ir::IrContext *ir_ctx) {
+  return std::make_unique<RemoveRedundentReshapePattern>(ir_ctx, 1);
 }
 
 class TestPass : public ir::Pass {
@@ -89,9 +82,7 @@ class TestPass : public ir::Pass {
 
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
-    ps.Add(std::move(
-        CreateDrrPatternRewritePass<paddle::dialect::ReshapeOp,
-                                    RemoveRedundentReshapeFunctor>(context)));
+    ps.Add(std::move(CreateDrrPatternRewritePass(context)));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;

@@ -15,7 +15,9 @@
 #include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 
 #include <glog/logging.h>
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
+#include <iostream>
+
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
 namespace ir {
 namespace drr {
@@ -62,20 +64,58 @@ drr::Tensor& PatternGraph::AddTmpTensor(
 
 void PatternGraph::UpdateTmpTensor(const id_type& tmp_tensor_id,
                                    const id_type& new_tensor_id) {
-  auto tmp_tensor = id2owned_tensor_[tmp_tensor_id];
-  tmp_tensor->set_id(new_tensor_id);
-  id2owned_tensor_[new_tensor_id] = tmp_tensor;
-  id2owned_tensor_.erase(tmp_tensor_id);
-
-  if (input_tensors_.find(tmp_tensor_id) != input_tensors_.end()) {
+  if (input_tensors_.count(tmp_tensor_id)) {
     input_tensors_.erase(tmp_tensor_id);
     input_tensors_.insert(new_tensor_id);
   }
+
   output_tensors_.erase(new_tensor_id);
-  if (output_tensors_.find(tmp_tensor_id) != output_tensors_.end()) {
+  if (output_tensors_.count(tmp_tensor_id)) {
     output_tensors_.erase(tmp_tensor_id);
     output_tensors_.insert(new_tensor_id);
   }
+
+  auto tmp_tensor = id2owned_tensor_[tmp_tensor_id];
+  id2owned_tensor_.erase(tmp_tensor_id);
+  tmp_tensor->set_id(new_tensor_id);
+  id2owned_tensor_[new_tensor_id] = tmp_tensor;
+}
+
+void PatternGraph::Print() const {
+  std::cout << "All Tensors:" << std::endl;
+  for (const auto& kv : id2owned_tensor_) {
+    std::cout << "  " << kv.first;
+  }
+  std::cout << "\n" << std::endl;
+
+  std::cout << "Input Tensors:" << std::endl;
+  for (const auto& tensor_id : input_tensors_) {
+    std::cout << "  " << tensor_id;
+  }
+  std::cout << "\n" << std::endl;
+
+  std::cout << "Output Tensors:" << std::endl;
+  for (const auto& tensor_id : output_tensors_) {
+    std::cout << "  " << tensor_id;
+  }
+  std::cout << "\n" << std::endl;
+
+  std::cout << "OpCalls:" << std::endl;
+  for (const auto& op_call : owned_op_call_) {
+    std::cout << "  " << op_call->name() << " : ";
+    std::cout << "inputs[ ";
+    for (const auto& input : op_call->inputs()) {
+      std::cout << input.lock()->id() << " ";
+    }
+    std::cout << "], ";
+
+    std::cout << "outputs[ ";
+    for (const auto& output : op_call->outputs()) {
+      std::cout << output.lock()->id() << " ";
+    }
+    std::cout << "]" << std::endl;
+  }
+  std::cout << std::endl;
 }
 
 std::weak_ptr<OpCall> SourcePatternGraph::AnchorNode() const {

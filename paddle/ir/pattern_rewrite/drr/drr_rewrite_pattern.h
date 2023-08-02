@@ -16,7 +16,8 @@
 
 #include <vector>
 
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
+#include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
@@ -26,13 +27,16 @@ template <typename SourceOp, typename DrrFunctor>
 struct DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
   DrrRewritePattern(ir::IrContext* context, ir::PatternBenefit benefit)
       : ir::OpRewritePattern<SourceOp>(context, benefit) {
-    DrrPassContext drr_context;
+    DrrPatternContext drr_context;
     DrrFunctor functor;
     functor(&drr_context);
 
     source_pattern_graph_ = drr_context.source_pattern_graph();
     constraints_ = drr_context.constraints();
     result_pattern_graph_ = drr_context.result_pattern_graph();
+
+    source_pattern_graph_->Print();
+    result_pattern_graph_->Print();
   }
 
   bool Match(SourceOp op) const override {
@@ -47,7 +51,7 @@ struct DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
   }
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
-  std::vector<Constrain> constraints_;
+  std::vector<Constraint> constraints_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 };
 

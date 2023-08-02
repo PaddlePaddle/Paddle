@@ -23,7 +23,7 @@
 namespace ir {
 namespace drr {
 
-class Constrain;
+class Constraint;
 class MatchContext;
 class OpCall;
 class Tensor;
@@ -41,6 +41,8 @@ class PatternGraph {
   void UpdateTmpTensor(const id_type& tmp_tensor_id,
                        const id_type& new_tensor_id);
 
+  void Print() const;
+
  protected:
   std::unordered_map<id_type, std::shared_ptr<Tensor>> id2owned_tensor_;
   std::vector<std::shared_ptr<OpCall>> owned_op_call_;
@@ -53,7 +55,7 @@ class SourcePatternGraph : public PatternGraph {
   std::weak_ptr<OpCall> AnchorNode() const;
 
  private:
-  friend class DrrPassContext;
+  friend class DrrPatternContext;
 };
 
 class ResultPatternGraph : public PatternGraph {};

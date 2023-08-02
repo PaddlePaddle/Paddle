@@ -55,22 +55,22 @@ class TensorShape : public Attribute {
   std::string tensor_id_;
 };
 
-class Constrain {
+class Constraint {
  public:
-  Constrain() = default;
+  Constraint() = default;
   // bool operator()(const MatchContext& match_context) const {
-  //   return IsContextMatchConstrain_(match_context);
+  //   return IsContextMatchConstraint_(match_context);
   // }
 
  private:
   // std::function<bool(const MatchContext& match_context)>
-  //     IsContextMatchConstrain_;
+  //     IsContextMatchConstraint_;
 };
 
-class DrrPassContext {
+class DrrPatternContext {
  public:
-  DrrPassContext();
-  ~DrrPassContext() = default;
+  DrrPatternContext();
+  ~DrrPatternContext() = default;
 
   drr::SourcePattern SourcePattern();
 
@@ -78,7 +78,7 @@ class DrrPassContext {
     return source_pattern_graph_;
   }
 
-  std::vector<Constrain> constraints() const;
+  std::vector<Constraint> constraints() const;
 
   std::shared_ptr<ResultPatternGraph> result_pattern_graph() const {
     return result_pattern_graph_;
@@ -99,7 +99,7 @@ class DrrPassContext {
   const drr::Tensor& ResultTensorPattern(const std::string& tensor_id);
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
-  std::vector<Constrain> constraints_;
+  std::vector<Constraint> constraints_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
   std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
@@ -107,7 +107,7 @@ class DrrPassContext {
 
 class DrrPass {
  public:
-  virtual void operator()(DrrPassContext* ctx) const;
+  virtual void operator()(DrrPatternContext* ctx) const;
 };
 
 class Op : public std::enable_shared_from_this<Op> {
@@ -129,7 +129,7 @@ class Op : public std::enable_shared_from_this<Op> {
   // std::vector<Tensor*>& outputs) const;
 
  private:
-  friend class DrrPassContext;
+  friend class DrrPatternContext;
 
   Op(const std::string& op_type_name,
      const std::unordered_map<std::string, Attribute>& attributes,
@@ -177,10 +177,8 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
   }
 
  private:
-  friend class DrrPassContext;
+  friend class DrrPatternContext;
   friend class Op;
-
-  // explicit Tensor(const id_type& tensor_id) : tensor_id_(tensor_id) {}
 
   Tensor(const id_type& tensor_id, PatternGraph* pattern_graph)
       : tensor_id_(tensor_id), pattern_graph_(pattern_graph) {}
@@ -197,6 +195,8 @@ class OpCall : public std::enable_shared_from_this<OpCall> {
          const std::vector<std::weak_ptr<const Tensor>>& inputs,
          const std::vector<std::weak_ptr<const Tensor>>& outputs)
       : op_(op), inputs_(inputs), outputs_(outputs) {}
+
+  const std::string& name() const { return op_.lock()->name(); }
 
   const std::vector<std::weak_ptr<const Tensor>>& inputs() const {
     return inputs_;
@@ -230,9 +230,9 @@ class ResultPattern {
  private:
   friend class SourcePattern;
 
-  explicit ResultPattern(DrrPassContext* ctx) : ctx_(ctx) {}
+  explicit ResultPattern(DrrPatternContext* ctx) : ctx_(ctx) {}
 
-  DrrPassContext* ctx_;
+  DrrPatternContext* ctx_;
 };
 
 class SourcePattern {
@@ -252,9 +252,9 @@ class SourcePattern {
   Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
 
  private:
-  friend class DrrPassContext;
-  explicit SourcePattern(DrrPassContext* ctx) : ctx_(ctx) {}
-  DrrPassContext* ctx_;
+  friend class DrrPatternContext;
+  explicit SourcePattern(DrrPatternContext* ctx) : ctx_(ctx) {}
+  DrrPatternContext* ctx_;
 };
 
 }  // namespace drr

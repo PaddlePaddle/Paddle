@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
 #include <glog/logging.h>
 #include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
@@ -20,15 +20,15 @@
 namespace ir {
 namespace drr {
 
-DrrPassContext::DrrPassContext() {
+DrrPatternContext::DrrPatternContext() {
   source_pattern_graph_ = std::make_shared<SourcePatternGraph>();
   result_pattern_graph_ = std::make_shared<ResultPatternGraph>();
 }
 
-drr::SourcePattern DrrPassContext::SourcePattern() {
+drr::SourcePattern DrrPatternContext::SourcePattern() {
   return drr::SourcePattern(this);
 }
-const Op& DrrPassContext::SourceOpPattern(
+const Op& DrrPatternContext::SourceOpPattern(
     const std::string& op_type,
     const std::unordered_map<std::string, Attribute>& attributes) {
   owned_ops_.push_back(std::shared_ptr<drr::Op>(
@@ -36,13 +36,13 @@ const Op& DrrPassContext::SourceOpPattern(
   return *owned_ops_.back();
 }
 
-const drr::Tensor& DrrPassContext::SourceTensorPattern(
+const drr::Tensor& DrrPatternContext::SourceTensorPattern(
     const std::string& tensor_id) {
   return source_pattern_graph_->AddTensor(std::shared_ptr<drr::Tensor>(
       new drr::Tensor(tensor_id, source_pattern_graph_.get())));
 }
 
-const Op& DrrPassContext::ResultOpPattern(
+const Op& DrrPatternContext::ResultOpPattern(
     const std::string& op_type,
     const std::unordered_map<std::string, Attribute>& attributes) {
   owned_ops_.push_back(std::shared_ptr<drr::Op>(
@@ -50,13 +50,13 @@ const Op& DrrPassContext::ResultOpPattern(
   return *owned_ops_.back();
 }
 
-const drr::Tensor& DrrPassContext::ResultTensorPattern(
+const drr::Tensor& DrrPatternContext::ResultTensorPattern(
     const std::string& tensor_id) {
   return result_pattern_graph_->AddTensor(std::shared_ptr<drr::Tensor>(
       new drr::Tensor(tensor_id, result_pattern_graph_.get())));
 }
 
-std::vector<Constrain> DrrPassContext::constraints() const {
+std::vector<Constraint> DrrPatternContext::constraints() const {
   return constraints_;
 }
 
@@ -70,7 +70,7 @@ void Op::operator()(const Tensor& arg, const Tensor* out) const {
 Tensor& Op::operator()(const Tensor& arg) const {
   std::vector<std::weak_ptr<const Tensor>> inputs{arg.shared_from_this()};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
-      "tmp_" + op_type_name_ + std::to_string(count++), pattern_graph_)));
+      "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
   std::vector<std::weak_ptr<const Tensor>> outputs{out.shared_from_this()};
   pattern_graph_->AddOpCall(
       std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
@@ -80,7 +80,7 @@ Tensor& Op::operator()(const Tensor& arg) const {
 Tensor& Op::operator()() const {
   std::vector<std::weak_ptr<const Tensor>> inputs{};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
-      "tmp_" + op_type_name_ + std::to_string(count++), pattern_graph_)));
+      "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
   std::vector<std::weak_ptr<const Tensor>> outputs{out.shared_from_this()};
   pattern_graph_->AddOpCall(
       std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
@@ -92,8 +92,9 @@ int64_t Op::count = 0;
 void Tensor::operator=(Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
   CHECK(this->pattern_graph_ == other.pattern_graph_);
-  if (other.tensor_id_.substr(0, 4) == "tmp_") {
-    this->pattern_graph_->UpdateTmpTensor(other.tensor_id_, this->tensor_id_);
+  if (other.tensor_id_.substr(0, 4) == "tmp_" &&
+      tensor_id_.substr(0, 4) != "tmp_") {
+    other.pattern_graph_->UpdateTmpTensor(other.tensor_id_, this->tensor_id_);
   }
 }
 
