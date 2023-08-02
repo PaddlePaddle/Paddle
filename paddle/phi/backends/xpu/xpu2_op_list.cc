@@ -368,6 +368,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT8,
                      phi::DataType::FLOAT32})},
+      {"flip", XPUKernelSet({phi::DataType::FLOAT32})},
       {"full_batch_size_like",
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
