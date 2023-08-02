@@ -31,6 +31,7 @@ def clip_grad_value_(
         clip_value (float or int): maximum allowed value of the gradients.
             The gradients are clipped in the range
             :math:`\left[\text{-clip\_value}, \text{clip\_value}\right]`
+
     Example:
         .. code-block:: python
 

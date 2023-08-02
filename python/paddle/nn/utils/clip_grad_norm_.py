@@ -43,8 +43,10 @@ def clip_grad_norm_(
 
     Returns:
         Total norm of the parameter gradients (treated as a single vector).
+
     Example:
         .. code-block:: python
+
             >>> import paddle
 
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
