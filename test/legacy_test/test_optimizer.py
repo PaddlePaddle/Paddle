@@ -1437,8 +1437,8 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                 self.num_samples = num_samples
 
             def __getitem__(self, idx):
-                data = numpy.random.random([input_size]).astype('float16')
-                label = numpy.random.random([output_size]).astype('float16')
+                data = numpy.random.random([input_size]).astype('float32')
+                label = numpy.random.random([output_size]).astype('float32')
                 return data, label
 
             def __len__(self):
