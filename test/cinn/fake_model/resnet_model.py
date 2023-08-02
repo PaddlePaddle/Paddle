@@ -14,7 +14,7 @@
 
 
 import paddle
-from paddle import static
+from paddle import fluid, static
 
 paddle.enable_static()
 
@@ -47,5 +47,8 @@ exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
+fluid.io.save_inference_model(
+    "./resnet_model_1", [resnet_input.name], [temp7], exe
+)
 static.io.save_inference_model("./resnet_model", [resnet_input], [temp7], exe)
 print('res', temp7.name)
