@@ -124,11 +124,10 @@ void InstructionBase::InitInputsOutputsIds(
     const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
     const std::map<std::string, int>& var_name_2_id,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
-    const std::string& op_name) {
+        variable_2_var_name) {
   std::unordered_map<ir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
-    ir::Value value = op->operand(i);
+    ir::Value value = op->operand_source(i);
     if (value) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
@@ -136,7 +135,7 @@ void InstructionBase::InitInputsOutputsIds(
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
-              op_name));
+              phi_op_name_));
       std::vector<int> inputs_id = GetValueIds(value,
                                                inner_scope,
                                                value_2_var_name,
@@ -151,14 +150,13 @@ void InstructionBase::InitInputsOutputsIds(
   for (size_t i = 0; i < op->num_results(); i++) {
     ir::Value value = op->result(i);
     if (value) {
-      std::cerr << "value  " << value.impl() << std::endl;
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
           value_2_var_name.end(),
           phi::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
-              op_name));
+              phi_op_name_));
       std::vector<int> outputs_id = GetValueIds(value,
                                                 inner_scope,
                                                 value_2_var_name,
