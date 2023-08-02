@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
@@ -187,6 +188,12 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
           if (!defining_op_result) {
             continue;
+          }
+
+          if (param_map_[var_name].generated_by_vector) {
+            InsertSliceOperationForTarget(
+                ctx_, &param_map_, program_, param_map_[var_name], var_name);
+            defining_op_result = param_map_.at(var_name).value;
           }
 
           ir::Operation* op = InsertSetParamaterOp(

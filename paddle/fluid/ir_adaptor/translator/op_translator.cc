@@ -31,6 +31,7 @@
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
@@ -122,30 +123,6 @@ inline bool IsInplace(const OpDesc& op_desc) {
 inline std::string OpNameCompatibleMapping(std::string op_name) {
   auto& op_normalizer = OpNameNormalizer::instance();
   return op_normalizer[op_name];
-}
-
-inline ir::Operation* InsertSliceOperationForTarget(
-    ir::IrContext* ctx,
-    TranslationContext* param_map,
-    ir::Program* program,
-    const VariableDefiningInfo& defining_info,
-    const std::string& arg_name) {
-  std::string slice_op_name(ir::SliceOp::name());
-  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(slice_op_name);
-  std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-      {"index", ir::Int32Attribute::get(ctx, defining_info.idx_in_vector)},
-  };
-  ir::VectorType src_vec_type =
-      defining_info.value.type().dyn_cast<ir::VectorType>();
-  ir::Operation* operation =
-      ir::Operation::Create({defining_info.value},
-                            op_attribute_map,
-                            {src_vec_type[defining_info.idx_in_vector]},
-                            op_info);
-  program->block()->push_back(operation);
-  ir::OpResult target_op_result = operation->result(0);
-  (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
-  return operation;
 }
 
 inline ir::Operation* InsertCombineOperationForTarget(
