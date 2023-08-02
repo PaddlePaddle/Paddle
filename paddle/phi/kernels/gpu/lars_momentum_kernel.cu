@@ -542,7 +542,7 @@ void LarsMomentumKernel(
       lars_warpper.g_arr[i] = grad[i]->data<T>();
       lars_warpper.lr_arr[i] = learning_rate[i]->data<MT>();
       lars_warpper.p_out_arr[i] = dev_ctx.template Alloc<T>(param_out[i]);
-      lars_warpper.v_out_arr[i] = dev_ctx.template Alloc<T>(velocity_out[i]);
+      lars_warpper.v_out_arr[i] = dev_ctx.template Alloc<MT>(velocity_out[i]);
       lars_warpper.weight_decay_arr[i] = static_cast<MT>(weight_decay_arr[i]);
       PADDLE_ENFORCE_EQ(
           param[i]->data<T>(),
@@ -565,7 +565,7 @@ void LarsMomentumKernel(
     if (multi_precision) {
       for (int i = 0; i < op_num; ++i) {
         lars_warpper.master_p_out_arr[i] =
-            dev_ctx.template Alloc<T>(master_param_out[i]);
+            dev_ctx.template Alloc<MT>(master_param_out[i]);
         PADDLE_ENFORCE_EQ(master_param.get()[i]->data<MT>(),
                           lars_warpper.master_p_out_arr[i],
                           errors::InvalidArgument(
@@ -600,7 +600,7 @@ void LarsMomentumKernel(
     const MT* master_param_data =
         multi_precision ? master_param.get()[0]->data<MT>() : nullptr;
     MT* master_param_out_data =
-        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[0])
+        multi_precision ? dev_ctx.template Alloc<MT>(master_param_out[0])
                         : nullptr;
     int64_t numel = param[0]->numel();
     MT lars_weight_decay = weight_decay_arr[0];
