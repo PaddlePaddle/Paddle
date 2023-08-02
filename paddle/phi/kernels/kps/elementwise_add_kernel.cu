@@ -75,6 +75,7 @@ using muTensor = ::musa::dnn::Tensor;
 using BINARY_MODE = ::musa::dnn::Binary::Mode;
 muTensor CreateMUTensor(const DenseTensor& tensor) {
   muTensor mu_tensor;
+  mu_tensor.SetNdInfo(tensor.dims().size(), tensor.dims().Get());
   switch (tensor.dtype()) {
     case DataType::FLOAT32:
       mu_tensor.SetType(muTensor::Type::FLOAT);

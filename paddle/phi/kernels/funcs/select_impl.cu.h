@@ -26,7 +26,7 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#ifdef __MCC__
+#ifdef __MUSACC__
 //TODO
 #endif
 
