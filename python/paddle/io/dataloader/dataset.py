@@ -496,7 +496,6 @@ def random_split(dataset, lengths, generator=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.io import random_split
 
             >>> paddle.seed(2023)
             >>> a_list = paddle.io.random_split(range(10), [3, 7])
