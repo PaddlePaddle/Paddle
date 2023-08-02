@@ -66,19 +66,5 @@ PD_REGISTER_KERNEL(print_kernel,
                    phi::complex64,
                    phi::complex128) {}
 
-PD_REGISTER_KERNEL(print_kernel,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::PrintKernel,
-                   bool,
-                   float,
-                   int32_t,
-                   int64_t,
-                   double,
-                   phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
-
 PD_REGISTER_KERNEL(
     shadow_output, CPU, ALL_LAYOUT, phi::ShadowOutputKernel, float) {}

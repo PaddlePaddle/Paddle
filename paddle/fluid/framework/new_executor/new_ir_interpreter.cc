@@ -1739,12 +1739,15 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
+  std::cerr << instr->Name() << "\t" << static_cast<int>(instr->KernelType())
+            << std::endl;
   if (!IsInterpretercoreFastGCEnabled() ||
       instr->KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
   if (instr->DeviceContext().GetPlace().GetType() ==
-      phi::AllocationType::CUSTOM) {
+          phi::AllocationType::CUSTOM ||
+      instr->DeviceContext().GetPlace().GetType() == phi::AllocationType::CPU) {
     return;
   }
   platform::RecordEvent record(
@@ -1850,6 +1853,7 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
   RecordStreamForGC(instr);
 #endif
 
