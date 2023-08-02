@@ -160,7 +160,7 @@ class IterableDataset(Dataset):
             ...     drop_last=True)
             ...
             >>> for data in dataloader:
-            ...     print(data) # doctest: +SKIP
+            ...     print(data) # doctest: +SKIP("The output depends on the environment.")
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[2]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -218,7 +218,7 @@ class IterableDataset(Dataset):
             ...     worker_init_fn=worker_init_fn)
             ...
             >>> for data in dataloader:
-            ...     print(data) # doctest: +SKIP
+            ...     print(data) # doctest: +SKIP("The output depends on the environment.")
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[2]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -504,14 +504,14 @@ def random_split(dataset, lengths, generator=None):
 
             >>> # output of the first subset
             >>> for idx, v in enumerate(a_list[0]):
-            ...     print(idx, v) # doctest: +skip
+            ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 7
             1 6
             2 5
 
             >>> # output of the second subset
             >>> for idx, v in enumerate(a_list[1]):
-            ...     print(idx, v) # doctest: +skip
+            ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 1
             1 9
             2 4

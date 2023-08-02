@@ -135,7 +135,7 @@ def get_worker_info():
             ...     drop_last=True)
             ...
             >>> for data in dataloader:
-            ...     print(data) # doctest: +SKIP
+            ...     print(data) # doctest: +SKIP("The output depends on the environment.")
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
