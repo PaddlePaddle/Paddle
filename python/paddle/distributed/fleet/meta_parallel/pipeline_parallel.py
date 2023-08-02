@@ -39,6 +39,7 @@ else:
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
+    FusedCommScheduler,
     assign_group_by_size,
 )
 
@@ -258,6 +259,7 @@ class PipelineParallel(MetaParallelBase):
             broadcast_dp_parameters(self._layers, self._hcg)
 
         if self._dp_comm_overlap:
+            self._comm_scheduler = FusedCommScheduler()
             self.register_allreduce_overlap_hook(
                 self._layers, self.dp_group, self.accumulate_steps, True
             )
@@ -307,7 +309,12 @@ class PipelineParallel(MetaParallelBase):
             if (dp or not g_shard_use_reduce)
             else HOOK_ACTION.REDUCE
         )
-
+        # first virtual stage of first stage will not delay schedule
+        scheduler = (
+            None
+            if self.is_pipeline_first_stage(ignore_virtual=True)
+            else self._comm_scheduler
+        )
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
@@ -341,13 +348,27 @@ class PipelineParallel(MetaParallelBase):
                 var_groups = assign_group_by_size(parameter_list)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
-                        group_idx, parameters, comm_group, acc_steps, act, dst
+                        group_idx,
+                        parameters,
+                        comm_group,
+                        acc_steps,
+                        act,
+                        dst,
+                        comm_scheduler=scheduler,
                     )
                     self._comm_buffers.append(buffer)
                     for param in parameters:
                         param._register_backward_hook(
                             self.bw_hook_func(buffer, param)
                         )
+            scheduler = self._comm_scheduler
+
+    def _sync_comm_overlap(self):
+        assert len(self._comm_buffers) > 0
+        assert self._comm_scheduler
+        self._comm_scheduler.schedule()
+        for buffer in self._comm_buffers:
+            buffer.scale_grads()
 
     def timer_printer(self):
         if not self._enable_timer:
@@ -514,9 +535,7 @@ class PipelineParallel(MetaParallelBase):
         self._flush_records()
 
         if self._comm_overlap:
-            assert len(self._comm_buffers) > 0
-            for buffer in self._comm_buffers:
-                buffer.scale_grads()
+            self._sync_comm_overlap()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -932,6 +951,32 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return output_tensor
 
+    def _schedule_comm_overlap(self, micro_step):
+        assert self._comm_scheduler
+        # first step that need schedule comm_overlap
+        schedule_step = (
+            self.accumulate_steps * self.num_model_chunks
+            - 1
+            - (self.num_model_chunks - 1) * self.num_stages
+        )
+        if micro_step < schedule_step:
+            return
+        # forward schedule_step to last finished virtual rank
+        finished_virtual_pp_rank = (
+            self._get_virtual_pp_rank(micro_step + 1, forward=False) + 1
+        )
+        reverse_virtual_pp_rank = (
+            self.num_model_chunks - 1 - finished_virtual_pp_rank
+        )
+        schedule_step += reverse_virtual_pp_rank * self.num_stages
+        # delay pp rank step to sync comm_overlap among all pp ranks
+        schedule_step += self._real_pp_rank
+        if micro_step == schedule_step:
+            logger.debug(
+                f"trigger grad sync for virtual pp {finished_virtual_pp_rank} in backward micro step {micro_step}"
+            )
+            self._comm_scheduler.schedule()
+
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
         self.set_virtual_pipeline_rank(virtual_pp_rank)
@@ -954,7 +999,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         input_tensor_grad = self._backward_step(
             input_tensor, output_tensor, output_tensor_grad
         )
-
+        # schedule comm overlap
+        if self._comm_overlap:
+            self._schedule_comm_overlap(virtual_pp_rank, micro_step)
         return input_tensor_grad
 
     def forward_backward_pipeline(
@@ -1255,9 +1302,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 )
 
             if self._comm_overlap:
-                assert len(self._comm_buffers) > 0
-                for buffer in self._comm_buffers:
-                    buffer.scale_grads()
+                self._sync_comm_overlap()
 
             if static_scheduler:
                 self._reset_counter()

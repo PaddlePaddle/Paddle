@@ -38,6 +38,20 @@ align = {
 }
 
 
+class FusedCommScheduler:
+    def __init__(self):
+        self._comm_buffers = []
+
+    def register_comm_buffer(self, buffer):
+        self._comm_buffers.append(buffer)
+
+    def schedule(self):
+        comm_buffers = self._comm_buffers
+        self._comm_buffers = []
+        for buffer in comm_buffers:
+            buffer._comm_grads()
+
+
 def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
     is_sparse_gradient = [False] * len(parameters)
 
@@ -129,6 +143,7 @@ class FusedCommBuffer:
         use_main_grad=None,
         fuse_param=False,
         scale_after_comm=True,
+        comm_scheduler=None,
     ):
         self._id = id
         self._params = params
@@ -136,6 +151,11 @@ class FusedCommBuffer:
         self._comm_group = comm_group
         self._scale_after_comm = scale_after_comm
         self._fuse_param = fuse_param
+        if comm_scheduler is not None:
+            assert isinstance(
+                comm_scheduler, FusedCommScheduler
+            ), "comm_scheduler must be an instance of FusedCommScheduler"
+        self._comm_scheduler = comm_scheduler
 
         self.use_main_grad = (
             use_main_grad
@@ -228,7 +248,10 @@ class FusedCommBuffer:
             self._params_step_dict.pop(param.name)
 
         if self._all_params_checked_in:
-            self._comm_grads()
+            if self._scheduler:
+                self._comm_scheduler.register_comm_buffer(self)
+            else:
+                self._comm_grads()
 
     @imperative_base.no_grad
     def _comm_grads(self):
