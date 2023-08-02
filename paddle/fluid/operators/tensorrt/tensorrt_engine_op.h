@@ -702,6 +702,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       if (t.dtype() == phi::DataType::FLOAT32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
+      } else if (t.dtype() == phi::DataType::FLOAT64) {
+        auto fp32_tensor =
+            scope.FindVar(x + "_cast_to_FP32")->GetMutable<phi::DenseTensor>();
+        *fp32_tensor = phi::Cast<double>(
+            reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+            t,
+            phi::DataType::FLOAT32);
+        buffers[bind_index] = static_cast<void *>(fp32_tensor->data<float>());
       } else if (t.dtype() == phi::DataType::INT64) {
         auto int32_tensor =
             scope.FindVar(x + "_cast_to_INT32")->GetMutable<phi::DenseTensor>();
@@ -722,7 +730,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
         PADDLE_THROW(platform::errors::Fatal(
             "The TRT Engine OP only support "
-            "float/int32_t/int64_t/float16/bool input."));
+            "float/double/int32_t/int64_t/float16/bool input."));
       }
     }
 
@@ -828,6 +836,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             *int32_tensor,
             phi::DataType::INT64);
+      } else if (type == framework::proto::VarType::FP64) {
+        auto y = Outputs("Ys")[i];
+        auto *fluid_v = scope.FindVar(y);
+        auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+        auto fp32_tensor =
+            scope.FindVar(y + "_cast_to_FP64")->GetMutable<phi::DenseTensor>();
+        fp32_tensor->Resize(fluid_t->dims());
+        dev_ctx.Alloc<float>(fp32_tensor);
+        framework::TensorCopy(*fluid_t, dev_place, dev_ctx, fp32_tensor);
+        *fluid_t =
+            phi::Cast<float>(reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                             *fp32_tensor,
+                             phi::DataType::FLOAT64);
       }
     }
   }

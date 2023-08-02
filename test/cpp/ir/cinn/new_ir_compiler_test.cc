@@ -23,7 +23,6 @@
 
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
-#include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
 
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"

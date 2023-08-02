@@ -338,8 +338,10 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
 
 
 @unittest.skipIf(
-    paddle.is_compiled_with_rocm(),
-    "ROCm doesn't support bf16 LayerNormOpByOp currently",
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLayerNormBF16OpByOpTest_case2(TestLayerNormBF16OpByOpTest):
     def initConfig(self):
@@ -383,8 +385,10 @@ class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
 
 
 @unittest.skipIf(
-    paddle.is_compiled_with_rocm(),
-    "ROCm doesn't support bf16 LayerNormOpByOp currently",
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLayerNormBF16OpByOpTest_case3(TestLayerNormBF16OpByOpTest):
     def initConfig(self):
@@ -427,6 +431,12 @@ class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
         self.has_bias = True
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestLayerNormBF16OpByOpTest_case4(TestLayerNormBF16OpByOpTest):
     def initConfig(self):
         self.ori_atol = 1e-2
@@ -759,8 +769,8 @@ class TestLayerNormAPI(unittest.TestCase):
         )
         x = paddle.static.nn.layer_norm(
             x,
-            scale=False,
-            shift=False,
+            scale=True,
+            shift=True,
             begin_norm_axis=1,
             epsilon=1e-05,
             param_attr="scale",
@@ -786,6 +796,10 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
             self.assertRaises(TypeError, layer_norm, x2)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA or not support the float16",
+)
 class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
     def check_main(self, x_np, weight_np, bias_np, dtype):
         paddle.disable_static()
@@ -810,8 +824,6 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
         return y_np, x_g_np, w_g_np, b_g_np
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
-            return
         x_np = np.random.random([10, 20]).astype('float16')
         weight_np = np.random.random([20]).astype('float16')
         bias_np = np.random.random([20]).astype('float16')
@@ -833,8 +845,10 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
-    "BF16 is only supported on CUDA.",
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
     def check_main(self, x_np, weight_np, bias_np, dtype):
@@ -863,12 +877,6 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
         return y_np, x_g_np, w_g_np, b_g_np
 
     def test_main(self):
-        if (
-            (not core.is_compiled_with_cuda())
-            or (core.cudnn_version() < 8100)
-            or (paddle.device.cuda.get_device_capability()[0] < 8)
-        ):
-            return
         x_np = np.random.random([10, 20]).astype('float32')
         weight_np = np.random.random([20]).astype('float32')
         bias_np = np.random.random([20]).astype('float32')
@@ -898,6 +906,10 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
         self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or not support the FastMath",
+)
 class TestFastMathLayerNormOp(unittest.TestCase):
     def check_layer_norm(
         self, dtype, x_np, scale_np, bias_np, norm_axis, has_scale, has_bias
@@ -968,11 +980,23 @@ class TestFastMathLayerNormOp(unittest.TestCase):
             has_bias=False,
         )
 
+    def init_dtype(self):
+        self.dtype = 'float32'
+
     def test_main(self):
-        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
-            return
-        self.check_with_dtype(dtype="float32")
-        self.check_with_dtype(dtype="bfloat16")
+        self.init_dtype()
+        self.check_with_dtype(dtype=self.dtype)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestFastMathLayerNormBF16Op(TestFastMathLayerNormOp):
+    def init_dtype(self):
+        self.dtype = 'bfloat16'
 
 
 if __name__ == '__main__':

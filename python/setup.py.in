@@ -498,6 +498,7 @@ packages=['paddle',
           'paddle.geometric',
           'paddle.geometric.message_passing',
           'paddle.geometric.sampling',
+          'paddle.ir',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
