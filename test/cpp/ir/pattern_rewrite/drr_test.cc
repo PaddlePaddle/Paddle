@@ -14,24 +14,29 @@
 
 #include <gtest/gtest.h>
 
+#include <glog/logging.h>
+
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pass_context.h"
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 #include "paddle/ir/pattern_rewrite/drr/drr_rewrite_pattern.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/fluid/ir/dialect/pd_op.h"
 
 struct RemoveRedundentReshapeFunctor {
-  void operator()(ir::drr::DrrPassContext *ctx) {
+  void operator()(ir::drr::DrrPatternContext *ctx) {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
+    VLOG(1) << "###### reshape";
     const auto &reshape = pat.Op("reshape");
+    VLOG(1) << "###### reshape reshape";
     pat.Tensor("ret") = reshape(reshape(pat.Tensor("arg0")));
 
     // Result patterns：要替换为的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
+    VLOG(1) << "###### RES";
     res.Tensor("ret") = res.Op("reshape")(res.Tensor("arg0"));
   }
 };
@@ -54,11 +59,11 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 
   paddle::dialect::ReshapeOp reshape_op_first =
       builder.Build<paddle::dialect::ReshapeOp>(
-          full_input_op.out(), std::vector<int64_t>{16, 3, 4, 3});
+          full_input_op.out(), std::vector<int64_t>{16, 3, 4, 16});
 
   paddle::dialect::ReshapeOp reshape_op_second =
       builder.Build<paddle::dialect::ReshapeOp>(
-          reshape_op_first.out(), std::vector<int64_t>{16, 3, 4, 3});
+          reshape_op_first.out(), std::vector<int64_t>{16, 3, 4, 16});
 
   paddle::dialect::ReluOp relu_op =
       builder.Build<paddle::dialect::ReluOp>(reshape_op_second.out());
@@ -66,17 +71,9 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op.out(), "out", 0);
 }
 
-template <typename SourceOp, typename DrrFunctorT>
-std::unique_ptr<ir::drr::DrrRewritePattern<SourceOp, DrrFunctorT>>
-CreateDrrPatternRewritePass(ir::IrContext *ir_ctx) {
-  ir::drr::DrrPassContext drr_ctx;
-  DrrFunctorT functor;
-  functor(&drr_ctx);
-  return std::make_unique<ir::drr::DrrRewritePattern<SourceOp, DrrFunctorT>>(
-      ir_ctx,
-      drr_ctx->SourcePatternGraph,
-      drr_ctx->Constraints,
-      drr_ctx->ResultPatternGraph);
+std::unique_ptr<RemoveRedundentReshapePattern> CreateDrrPatternRewritePass(
+    ir::IrContext *ir_ctx) {
+  return std::make_unique<RemoveRedundentReshapePattern>(ir_ctx, 1);
 }
 
 class TestPass : public ir::Pass {
@@ -85,9 +82,7 @@ class TestPass : public ir::Pass {
 
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
-    ps.Add(std::move(
-        CreateDrrPatternRewritePass<paddle::dialect::ReshapeOp,
-                                    RemoveRedundentReshapeFunctor>(context)));
+    ps.Add(std::move(CreateDrrPatternRewritePass(context)));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -115,7 +110,7 @@ TEST(DrrTest, drr) {
   ir::Builder builder = ir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 5u);
+  EXPECT_EQ(program.block()->size(), 7u);
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());

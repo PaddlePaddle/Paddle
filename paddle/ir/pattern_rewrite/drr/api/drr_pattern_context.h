@@ -26,19 +26,63 @@ namespace drr {
 class Op;
 class Tensor;
 class OpCall;
-class Constrain;
 class SourcePattern;
 class ResultPattern;
 class PatternGraph;
+class SourcePatternGraph;
+class ResultPatternGraph;
 
 using id_type = std::string;
 
-class DrrPassContext : public std::enable_shared_from_this<DrrPassContext> {
+class Attribute {
  public:
-  DrrPassContext() = default;
-  ~DrrPassContext() = default;
+  explicit Attribute(const std::string& id) : attr_id_(id) {}
 
-  drr::SourcePattern SourcePattern() { return drr::SourcePattern(this); }
+  enum class Type { OP_ATTR, TENSOR_SHAPE, TENSOR_DTYPE };
+
+  // Type type() const { return type_; }
+
+ private:
+  std::string attr_id_;
+};
+
+class TensorShape : public Attribute {
+ public:
+  explicit TensorShape(const std::string& tensor_id)
+      : Attribute(tensor_id + "_shape_"), tensor_id_(tensor_id) {}
+
+ private:
+  std::string tensor_id_;
+};
+
+class Constraint {
+ public:
+  Constraint() = default;
+  // bool operator()(const MatchContext& match_context) const {
+  //   return IsContextMatchConstraint_(match_context);
+  // }
+
+ private:
+  // std::function<bool(const MatchContext& match_context)>
+  //     IsContextMatchConstraint_;
+};
+
+class DrrPatternContext {
+ public:
+  DrrPatternContext();
+  ~DrrPatternContext() = default;
+
+  drr::SourcePattern SourcePattern();
+
+  std::shared_ptr<SourcePatternGraph> source_pattern_graph() const {
+    return source_pattern_graph_;
+  }
+
+  std::vector<Constraint> constraints() const;
+
+  std::shared_ptr<ResultPatternGraph> result_pattern_graph() const {
+    return result_pattern_graph_;
+  }
 
  private:
   friend class drr::SourcePattern;
@@ -55,7 +99,7 @@ class DrrPassContext : public std::enable_shared_from_this<DrrPassContext> {
   const drr::Tensor& ResultTensorPattern(const std::string& tensor_id);
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
-  std::vector<std::unique_ptr<const Constrain>> constraints_;
+  std::vector<Constraint> constraints_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
   std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
@@ -63,32 +107,13 @@ class DrrPassContext : public std::enable_shared_from_this<DrrPassContext> {
 
 class DrrPass {
  public:
-  virtual void operator()(DrrPassContext* ctx) const;
-};
-
-class Attribute {
- public:
-  explicit Attribute(const std::string& id) : attr_id_(id) {}
-
-  enum class Type { OP_ATTR, TENSOR_SHAPE, TENSOR_DTYPE };
-
-  Type type() const { return type_; }
-
- private:
-  std::string attr_id_;
-};
-
-class TensorShape : public Attribute {
- public:
-  explicit TensorShape(const std::string& tensor_id)
-      : Attribute(tensor_id + "_shape_"), tensor_id_(tensor_id) {}
-
- private:
-  std::string tensor_id_;
+  virtual void operator()(DrrPatternContext* ctx) const;
 };
 
 class Op : public std::enable_shared_from_this<Op> {
  public:
+  const std::string& name() const { return op_type_name_; }
+
   void operator()(const Tensor& arg, const Tensor* out) const;
 
   Tensor& operator()() const;
@@ -104,7 +129,7 @@ class Op : public std::enable_shared_from_this<Op> {
   // std::vector<Tensor*>& outputs) const;
 
  private:
-  friend class SourcePattern;
+  friend class DrrPatternContext;
 
   Op(const std::string& op_type_name,
      const std::unordered_map<std::string, Attribute>& attributes,
@@ -114,6 +139,7 @@ class Op : public std::enable_shared_from_this<Op> {
         pattern_graph_(pattern_graph) {}
 
   static int64_t count;
+
   std::string op_type_name_;
   std::unordered_map<std::string, Attribute> attributes_;
   PatternGraph* pattern_graph_;
@@ -137,31 +163,29 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
 
   void set_producer(std::weak_ptr<OpCall> producer) { producer_ = producer; }
 
-  const std::unordered_set<std::weak_ptr<const OpCall>>& consumers() const {
+  const std::vector<std::weak_ptr<const OpCall>>& consumers() const {
     return consumers_;
   }
 
   void set_consumables(
-      const std::unordered_set<std::weak_ptr<const OpCall>>& consumers) {
+      const std::vector<std::weak_ptr<const OpCall>>& consumers) {
     consumers_ = consumers;
   }
 
   void AddConsumer(std::weak_ptr<const OpCall> consumer) {
-    consumers_.insert(consumer);
+    consumers_.push_back(consumer);
   }
 
  private:
-  friend class DrrPassContext;
+  friend class DrrPatternContext;
   friend class Op;
-
-  // explicit Tensor(const id_type& tensor_id) : tensor_id_(tensor_id) {}
 
   Tensor(const id_type& tensor_id, PatternGraph* pattern_graph)
       : tensor_id_(tensor_id), pattern_graph_(pattern_graph) {}
 
   id_type tensor_id_;
   std::weak_ptr<OpCall> producer_;
-  std::unordered_set<std::weak_ptr<const OpCall>> consumers_;
+  std::vector<std::weak_ptr<const OpCall>> consumers_;
   PatternGraph* pattern_graph_;
 };
 
@@ -171,6 +195,8 @@ class OpCall : public std::enable_shared_from_this<OpCall> {
          const std::vector<std::weak_ptr<const Tensor>>& inputs,
          const std::vector<std::weak_ptr<const Tensor>>& outputs)
       : op_(op), inputs_(inputs), outputs_(outputs) {}
+
+  const std::string& name() const { return op_.lock()->name(); }
 
   const std::vector<std::weak_ptr<const Tensor>>& inputs() const {
     return inputs_;
@@ -204,14 +230,14 @@ class ResultPattern {
  private:
   friend class SourcePattern;
 
-  explicit ResultPattern(DrrPassContext* ctx) : ctx_(ctx) {}
+  explicit ResultPattern(DrrPatternContext* ctx) : ctx_(ctx) {}
 
-  DrrPassContext* ctx_;
+  DrrPatternContext* ctx_;
 };
 
 class SourcePattern {
  public:
-  ResultPattern ResultPattern() const { return ResultPattern(ctx_); }
+  drr::ResultPattern ResultPattern() const { return drr::ResultPattern(ctx_); }
 
   const drr::Op& Op(
       const std::string& op_type,
@@ -226,9 +252,9 @@ class SourcePattern {
   Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
 
  private:
-  friend class DrrPassContext;
-  explicit SourcePattern(DrrPassContext* ctx) : ctx_(ctx) {}
-  DrrPassContext* ctx_;
+  friend class DrrPatternContext;
+  explicit SourcePattern(DrrPatternContext* ctx) : ctx_(ctx) {}
+  DrrPatternContext* ctx_;
 };
 
 }  // namespace drr
