@@ -71,11 +71,32 @@ class ConstantFoldingPattern : public ir::RewritePattern {
     ir::Program* program = op->GetParentProgram();
     auto temp_program = BuildProgramFromOperation(op);
 
+    std::vector<std::string> fetch_var_names;
+    auto block = temp_program->block();
+    for (auto it = block->begin(); it != block->end(); ++it) {
+      if ((*it)->name() == "pd.fetch") {
+        size_t index =
+            (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+
+        if (fetch_var_names.size() < index + 1) {
+          fetch_var_names.resize(index + 1);
+        }
+
+        fetch_var_names[index] = (*it)
+                                     ->attributes()
+                                     .at("name")
+                                     .dyn_cast<ir::StrAttribute>()
+                                     .AsString() +
+                                 "@fetch";
+      }
+    }
+
     // Execute program
     paddle::framework::interpreter::ExecutionConfig exe_config;
     exe_config.create_local_scope = false;
     paddle::framework::InterpreterCore core(
         phi::CPUPlace{},
+        fetch_var_names,
         paddle::dialect::PdOpLowerToKernelPass(temp_program.get()),
         &scope_,
         exe_config);
@@ -114,12 +135,13 @@ class ConstantFoldingPattern : public ir::RewritePattern {
     std::vector<ir::OpResult> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
       PADDLE_ENFORCE_EQ(
-          op->operand(i).type().isa<paddle::dialect::DenseTensorType>(),
+          op->operand_source(i).type().isa<paddle::dialect::DenseTensorType>(),
           true,
           phi::errors::InvalidArgument(
               "Op's input must be a dense tensor type."));
 
-      auto [param_name, param] = ir::GetParameterFromValue(op->operand(i));
+      auto [param_name, param] =
+          ir::GetParameterFromValue(op->operand_source(i));
       program->SetParameter(param_name,
                             std::make_unique<ir::Parameter>(*param));
 
@@ -128,8 +150,8 @@ class ConstantFoldingPattern : public ir::RewritePattern {
           param_var,
           phi::errors::InvalidArgument("Parameter var not in scope."));
 
-      auto get_parameter_op =
-          builder.Build<ir::GetParameterOp>(param_name, op->operand(i).type());
+      auto get_parameter_op = builder.Build<ir::GetParameterOp>(
+          param_name, op->operand_source(i).type());
       op_inputs.push_back(get_parameter_op->result(0));
     }
 
