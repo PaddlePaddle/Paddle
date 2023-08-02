@@ -206,18 +206,20 @@ PhiKernelInstruction::PhiKernelInstruction(
       yaml_interface->get_op_info_());
   VLOG(6) << "finish process yaml_info_parser";
 
-  ::ir::BuildPhiContext<
-      phi::InferMetaContext,
-      phi::MetaTensor,
-      phi::MetaTensor,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      false>(op,
-             value_2_var_name,
-             scope,
-             local_scope,
-             yaml_info_parser,
-             &infer_meta_context_);
+  if (infer_meta_interface_) {
+    ::ir::BuildPhiContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>(op,
+               value_2_var_name,
+               scope,
+               local_scope,
+               yaml_info_parser,
+               &infer_meta_context_);
+  }
   VLOG(6) << "finish process infer meta context";
 
   auto kernel_name =
@@ -264,7 +266,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
   std::unordered_set<::ir::Value> no_need_buffer_values;
   for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-    no_need_buffer_values.insert(op->operand(no_need_buffer_ids[id]));
+    no_need_buffer_values.insert(op->operand_source(no_need_buffer_ids[id]));
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
@@ -300,7 +302,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
         variable_2_var_name) {
   std::unordered_map<ir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
-    ir::Value value = op->operand(i);
+    ir::Value value = op->operand_source(i);
     if (value) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
@@ -343,7 +345,9 @@ void PhiKernelInstruction::InitInputsOutputsIds(
 }
 
 void PhiKernelInstruction::Run() {
-  infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  if (infer_meta_interface_) {
+    infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  }
   VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
