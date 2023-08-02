@@ -416,7 +416,7 @@ class PReLU(Layer):
             >>> m = paddle.nn.PReLU(1, 0.25)
             >>> out = m(data)
             >>> print(out)
-            Tensor(shape=[1, 2, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=False,
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[[[-0.50000000,  3.        , -1.        ,  5.        ],
                [ 3.        , -1.        ,  5.        , -1.50000000],
                [-1.75000000, -2.        ,  8.        ,  9.        ]],
