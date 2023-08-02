@@ -214,24 +214,24 @@ class XavierNormal(XavierInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
-            weight_attr = paddle.framework.ParamAttr(
-                name="linear_weight",
-                initializer=paddle.nn.initializer.XavierNormal())
-            bias_attr = paddle.framework.ParamAttr(
-                name="linear_bias",
-                initializer=paddle.nn.initializer.XavierNormal())
-            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            # inear.weight:  [[ 0.06910077 -0.18103665]
-            #                 [-0.02546741 -1.0402188 ]]
-            # linear.bias:  [-0.5012929   0.12418364]
+            >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            >>> weight_attr = paddle.framework.ParamAttr(
+            >>>     name="linear_weight",
+            >>>     initializer=paddle.nn.initializer.XavierNormal())
+            >>> bias_attr = paddle.framework.ParamAttr(
+            >>>     name="linear_bias",
+            >>>     initializer=paddle.nn.initializer.XavierNormal())
+            >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            >>> # inear.weight:  [[ 0.06910077 -0.18103665]
+            >>> #                 [-0.02546741 -1.0402188 ]]
+            >>> # linear.bias:  [-0.5012929   0.12418364]
 
-            res = linear(data)
-            # res:  [[[-0.4576595 -1.0970719]]
-            #        [[-0.4576595 -1.0970719]]
-            #        [[-0.4576595 -1.0970719]]]
+            >>> res = linear(data)
+            >>> # res:  [[[-0.4576595 -1.0970719]]
+            >>> #        [[-0.4576595 -1.0970719]]
+            >>> #        [[-0.4576595 -1.0970719]]]
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):
@@ -266,24 +266,24 @@ class XavierUniform(XavierInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
-            weight_attr = paddle.framework.ParamAttr(
-                name="linear_weight",
-                initializer=paddle.nn.initializer.XavierUniform())
-            bias_attr = paddle.framework.ParamAttr(
-                name="linear_bias",
-                initializer=paddle.nn.initializer.XavierUniform())
-            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            # linear.weight:  [[-0.04229349 -1.1248565 ]
-            #                  [-0.10789523 -0.5938053 ]]
-            # linear.bias:  [ 1.1983747  -0.40201235]
+            >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            >>> weight_attr = paddle.framework.ParamAttr(
+            >>>     name="linear_weight",
+            >>>     initializer=paddle.nn.initializer.XavierUniform())
+            >>> bias_attr = paddle.framework.ParamAttr(
+            >>>     name="linear_bias",
+            >>>     initializer=paddle.nn.initializer.XavierUniform())
+            >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            >>> # linear.weight:  [[-0.04229349 -1.1248565 ]
+            >>> #                  [-0.10789523 -0.5938053 ]]
+            >>> # linear.bias:  [ 1.1983747  -0.40201235]
 
-            res = linear(data)
-            # res:  [[[ 1.0481861 -2.1206741]]
-            #        [[ 1.0481861 -2.1206741]]
-            #        [[ 1.0481861 -2.1206741]]]
+            >>> res = linear(data)
+            >>> # res:  [[[ 1.0481861 -2.1206741]]
+            >>> #        [[ 1.0481861 -2.1206741]]
+            >>> #        [[ 1.0481861 -2.1206741]]]
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):

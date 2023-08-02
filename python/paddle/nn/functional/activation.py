@@ -49,12 +49,13 @@ def celu(x, alpha=1.0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
-            x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
-            out = F.celu(x, alpha=0.2)
-            # [[-0.19865242,  6.        ],
-            #  [ 1.        , 15.60000038]]
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
+            >>> out = F.celu(x, alpha=0.2)
+[[-0.19865242,  6.        ],
+ [ 1.        , 15.60000038]]
     """
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
@@ -100,13 +101,13 @@ def elu(x, alpha=1.0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
-            out = F.elu(x, alpha=0.2)
-            # [[-0.12642411  6.        ]
-            #  [ 1.          15.6      ]]
+            >>> x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
+            >>> out = F.elu(x, alpha=0.2)
+[[-0.12642411  6.        ]
+ [ 1.          15.6      ]]
     """
 
     if in_dynamic_mode():
@@ -168,16 +169,16 @@ def gelu(x, approximate=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
-            out1 = F.gelu(x)
-            # [[-0.15865529,  0.34573123],
-            #  [ 0.84134471,  1.39978933]]
-            out2 = F.gelu(x, True)
-            # [[-0.15880799,  0.34571400],
-            #  [ 0.84119201,  1.39957154]]
+            >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
+            >>> out1 = F.gelu(x)
+[[-0.15865529,  0.34573123],
+ [ 0.84134471,  1.39978933]]
+            >>> out2 = F.gelu(x, True)
+[[-0.15880799,  0.34571400],
+ [ 0.84119201,  1.39957154]]
     """
 
     if in_dynamic_mode():
@@ -223,11 +224,12 @@ def hardshrink(x, threshold=0.5, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-1, 0.3, 2.5])
-            out = F.hardshrink(x) # [-1., 0., 2.5]
+            >>> x = paddle.to_tensor([-1, 0.3, 2.5])
+            >>> out = F.hardshrink(x)
+[-1., 0., 2.5]
 
     """
     if in_dynamic_mode():
@@ -274,11 +276,12 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-1.5, 0.3, 2.5])
-            out = F.hardtanh(x) # [-1., 0.3, 1.]
+            >>> x = paddle.to_tensor([-1.5, 0.3, 2.5])
+            >>> out = F.hardtanh(x)
+[-1., 0.3, 1.]
     """
 
     if in_dynamic_mode():
@@ -338,11 +341,12 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-4., 5., 1.])
-            out = F.hardsigmoid(x) # [0., 1., 0.666667]
+            >>> x = paddle.to_tensor([-4., 5., 1.])
+            >>> out = F.hardsigmoid(x)
+[0., 1., 0.666667]
     """
 
     if in_dynamic_mode():
@@ -390,11 +394,12 @@ def hardswish(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-4., 5., 1.])
-            out = F.hardswish(x) # [0., 5., 0.666667]
+            >>> x = paddle.to_tensor([-4., 5., 1.])
+            >>> out = F.hardswish(x)
+[0., 5., 0.666667]
     """
     if in_dynamic_mode():
         return _C_ops.hardswish(x)
@@ -442,13 +447,13 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-2., 0., 1.])
-            out = F.leaky_relu(x)
-            print(out)
-            # [-0.02, 0., 1.]
+            >>> x = paddle.to_tensor([-2., 0., 1.])
+            >>> out = F.leaky_relu(x)
+            >>> print(out)
+[-0.02, 0., 1.]
 
     """
     if in_dynamic_mode():
@@ -502,25 +507,25 @@ def prelu(x, weight, data_format="NCHW", name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-                               [ 3.0, -4.0,  5.0, -6.0],
-                               [-7.0, -8.0,  8.0,  9.0]],
-                              [[ 1.0, -2.0, -3.0,  4.0],
-                               [-5.0,  6.0,  7.0, -8.0],
-                               [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+            >>> data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+            >>>                    [ 3.0, -4.0,  5.0, -6.0],
+            >>>                    [-7.0, -8.0,  8.0,  9.0]],
+            >>>                   [[ 1.0, -2.0, -3.0,  4.0],
+            >>>                    [-5.0,  6.0,  7.0, -8.0],
+            >>>                    [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
 
-            w = paddle.to_tensor([0.25], dtype='float32')
-            out = F.prelu(data, w)
-            print(out)
-            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
-            #    [ 3.  , -1.  ,  5.  , -1.5 ],
-            #    [-1.75, -2.  ,  8.  ,  9.  ]],
-            #   [[ 1.  , -0.5 , -0.75,  4.  ],
-            #    [-1.25,  6.  ,  7.  , -2.  ],
-            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+            >>> w = paddle.to_tensor([0.25], dtype='float32')
+            >>> out = F.prelu(data, w)
+            >>> print(out)
+[[[[-0.5 ,  3.  , -1.  ,  5.  ],
+   [ 3.  , -1.  ,  5.  , -1.5 ],
+   [-1.75, -2.  ,  8.  ,  9.  ]],
+  [[ 1.  , -0.5 , -0.75,  4.  ],
+   [-1.25,  6.  ,  7.  , -2.  ],
+   [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
     assert (
         len(weight.shape) == 0 or len(weight.shape) == 1
@@ -634,24 +639,23 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-                                            [ 3.0, -4.0,  5.0, -6.0],
-                                            [-7.0, -8.0,  8.0,  9.0]],
-                                            [[ 1.0, -2.0, -3.0,  4.0],
-                                            [-5.0,  6.0,  7.0, -8.0],
-                                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
-
-            out = F.rrelu(input_tensor, 0.1, 0.3)
-            print(out)
-            #[[[[-0.20000899  3.         -0.8810822   5.        ]
-            #   [ 3.         -0.55175185  5.         -1.0776101 ]
-            #   [-1.0680687  -1.9896201   8.          9.        ]]
-            #  [[ 1.         -0.5238267  -0.65515125  4.        ]
-            #   [-1.3766339   6.          7.         -2.3465784 ]
-            #   [ 6.          7.          8.          9.        ]]]]
+            >>> input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+            >>>                                 [ 3.0, -4.0,  5.0, -6.0],
+            >>>                                 [-7.0, -8.0,  8.0,  9.0]],
+            >>>                                 [[ 1.0, -2.0, -3.0,  4.0],
+            >>>                                 [-5.0,  6.0,  7.0, -8.0],
+            >>>                                 [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+            >>> out = F.rrelu(input_tensor, 0.1, 0.3)
+            >>> print(out)
+[[[[-0.20000899  3.         -0.8810822   5.        ]
+   [ 3.         -0.55175185  5.         -1.0776101 ]
+   [-1.0680687  -1.9896201   8.          9.        ]]
+  [[ 1.         -0.5238267  -0.65515125  4.        ]
+   [-1.3766339   6.          7.         -2.3465784 ]
+   [ 6.          7.          8.          9.        ]]]]
     """
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
@@ -722,13 +726,13 @@ def relu(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-2, 0, 1], dtype='float32')
-            out = F.relu(x)
-            print(out)
-            # [0., 0., 1.]
+            >>> x = paddle.to_tensor([-2, 0, 1], dtype='float32')
+            >>> out = F.relu(x)
+            >>> print(out)
+[0., 0., 1.]
     """
 
     if in_dynamic_mode():
@@ -770,11 +774,12 @@ def log_sigmoid(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            out = F.log_sigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> out = F.log_sigmoid(x)
+[-0.313262 -0.126928 -0.0485874 -0.0181499]
     """
 
     if in_dynamic_mode():
@@ -830,20 +835,20 @@ def maxout(x, groups, axis=1, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.rand([1, 2, 3, 4])
-            # [[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
-            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
-            #    [0.02879342 0.88725346 0.61093384 0.38833922]]
-            #   [[0.5231306  0.03807496 0.91661984 0.15602879]
-            #    [0.666127   0.616567   0.30741522 0.24044901]
-            #    [0.7142536  0.7351477  0.31588817 0.23782359]]]]
-            out = F.maxout(x, groups=2)
-            # [[[[0.5231306  0.22272532 0.91661984 0.2874594 ]
-            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
-            #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
+            >>> x = paddle.rand([1, 2, 3, 4])
+[[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
+   [0.95313174 0.6228939  0.7129065  0.7087491 ]
+   [0.02879342 0.88725346 0.61093384 0.38833922]]
+  [[0.5231306  0.03807496 0.91661984 0.15602879]
+   [0.666127   0.616567   0.30741522 0.24044901]
+   [0.7142536  0.7351477  0.31588817 0.23782359]]]]
+            >>> out = F.maxout(x, groups=2)
+[[[[0.5231306  0.22272532 0.91661984 0.2874594 ]
+   [0.95313174 0.6228939  0.7129065  0.7087491 ]
+   [0.7142536  0.88725346 0.61093384 0.38833922]]]]
     """
     if in_dynamic_mode():
         return _C_ops.maxout(x, groups, axis)
@@ -888,13 +893,13 @@ def relu6(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-1, 0.3, 6.5])
-            out = F.relu6(x)
-            print(out)
-            # [0, 0.3, 6]
+            >>> x = paddle.to_tensor([-1, 0.3, 6.5])
+            >>> out = F.relu6(x)
+            >>> print(out)
+[0, 0.3, 6]
     """
     threshold = 6.0
     if in_dynamic_mode():
@@ -945,13 +950,13 @@ def selu(
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
-            out = F.selu(x)
-            print(out)
-            # [[0, 1.050701],[2.101402, 3.152103]]
+            >>> x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
+            >>> out = F.selu(x)
+            >>> print(out)
+[[0, 1.050701],[2.101402, 3.152103]]
     """
     if scale <= 1.0:
         raise ValueError(
@@ -1000,11 +1005,12 @@ def silu(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> out = F.silu(x)
+[ 0.731059, 1.761594, 2.857722, 3.928055 ]
     """
 
     if in_dynamic_mode():
@@ -1111,25 +1117,25 @@ def softmax(x, axis=-1, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-                        [3.0, 4.0, 5.0, 6.0],
-                        [7.0, 8.0, 8.0, 9.0]],
-                        [[1.0, 2.0, 3.0, 4.0],
-                        [5.0, 6.0, 7.0, 8.0],
-                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
-            out1 = F.softmax(x)
-            out2 = F.softmax(x, dtype='float64')
-            # out1's data type is float32; out2's data type is float64
-            # out1 and out2's value is as follows:
-            # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-            # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
+            >>>             [3.0, 4.0, 5.0, 6.0],
+            >>>             [7.0, 8.0, 8.0, 9.0]],
+            >>>             [[1.0, 2.0, 3.0, 4.0],
+            >>>             [5.0, 6.0, 7.0, 8.0],
+            >>>             [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            >>> out1 = F.softmax(x)
+            >>> out2 = F.softmax(x, dtype='float64')
+out1's data type is float32; out2's data type is float64
+out1 and out2's value is as follows:
+[[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+  [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+  [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+ [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+  [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+  [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
@@ -1214,11 +1220,12 @@ def softplus(x, beta=1, threshold=20, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
-            out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
+            >>> out = F.softplus(x)
+[0.513015, 0.598139, 0.744397, 0.854355]
     """
 
     if in_dynamic_mode():
@@ -1264,14 +1271,14 @@ def softshrink(x, threshold=0.5, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
-            out = F.softshrink(x)
-            print(out)
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.39999998,  0.        ,  0.        ,  0.30000001])
+            >>> x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
+            >>> out = F.softshrink(x)
+            >>> print(out)
+Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[-0.39999998,  0.        ,  0.        ,  0.30000001])
     """
     if threshold < 0:
         raise ValueError(
@@ -1315,14 +1322,14 @@ def softsign(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = F.softsign(x)
-            print(out)
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.softsign(x)
+            >>> print(out)
+Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
     if in_dynamic_mode():
         return _C_ops.softsign(x)
@@ -1354,14 +1361,14 @@ def swish(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-2., 0., 1.])
-            out = F.swish(x)
-            print(out)
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.23840584,  0.        ,  0.73105854])
+            >>> x = paddle.to_tensor([-2., 0., 1.])
+            >>> out = F.swish(x)
+            >>> print(out)
+Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[-0.23840584,  0.        ,  0.73105854])
     """
     if in_dynamic_mode():
         return _C_ops.swish(x)
@@ -1403,11 +1410,12 @@ def mish(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-5., 0., 5.])
-            out = F.mish(x) # [-0.03357624, 0., 4.99955208]
+            >>> x = paddle.to_tensor([-5., 0., 5.])
+            >>> out = F.mish(x)
+[-0.03357624, 0., 4.99955208]
     """
     if in_dynamic_mode():
         return _C_ops.mish(x, 20)
@@ -1439,14 +1447,14 @@ def tanhshrink(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = F.tanhshrink(x)
-            print(out)
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.02005106, -0.00262468,  0.00033200,  0.00868741])
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.tanhshrink(x)
+            >>> print(out)
+Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[-0.02005106, -0.00262468,  0.00033200,  0.00868741])
     """
     if in_dynamic_mode():
         return _C_ops.tanh_shrink(x)
@@ -1488,14 +1496,14 @@ def thresholded_relu(x, threshold=1.0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([2., 0., 1.])
-            out = F.thresholded_relu(x)
-            print(out)
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2., 0., 0.])
+            >>> x = paddle.to_tensor([2., 0., 1.])
+            >>> out = F.thresholded_relu(x)
+            >>> print(out)
+Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[2., 0., 0.])
     """
 
     if in_dynamic_mode():
@@ -1561,26 +1569,25 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
-
-            x = [[[-2.0, 3.0, -4.0, 5.0],
-                  [3.0, -4.0, 5.0, -6.0],
-                  [-7.0, -8.0, 8.0, 9.0]],
-                 [[1.0, -2.0, -3.0, 4.0],
-                  [-5.0, 6.0, 7.0, -8.0],
-                  [6.0, 7.0, 8.0, 9.0]]]
-            x = paddle.to_tensor(x)
-            out1 = F.log_softmax(x)
-            out2 = F.log_softmax(x, dtype='float64')
-            # out1's data type is float32; out2's data type is float64
-            # out1 and out2's value is as follows:
-            # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
-            #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
-            #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
-            #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
-            #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
-            #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+            >>> x = [[[-2.0, 3.0, -4.0, 5.0],
+            >>>       [3.0, -4.0, 5.0, -6.0],
+            >>>       [-7.0, -8.0, 8.0, 9.0]],
+            >>>      [[1.0, -2.0, -3.0, 4.0],
+            >>>       [-5.0, 6.0, 7.0, -8.0],
+            >>>       [6.0, 7.0, 8.0, 9.0]]]
+            >>> x = paddle.to_tensor(x)
+            >>> out1 = F.log_softmax(x)
+            >>> out2 = F.log_softmax(x, dtype='float64')
+out1's data type is float32; out2's data type is float64
+out1 and out2's value is as follows:
+[[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
+  [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
+  [-16.313261   -17.313261    -1.3132617   -0.31326184]]
+ [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
+  [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
+  [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
@@ -1655,17 +1662,16 @@ def glu(x, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import functional as F
-
-            x = paddle.to_tensor(
-                [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-                    [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
-            )
-            print(F.glu(x))
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[-0.15216254, -0.90048921],
-            #         [-1.05778778, -0.46985325]])
+            >>> import paddle
+            >>> from paddle.nn import functional as F
+            >>> x = paddle.to_tensor(
+            >>>     [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
+            >>>         [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+            >>> )
+            >>> print(F.glu(x))
+Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[[-0.15216254, -0.90048921],
+[-1.05778778, -0.46985325]])
 
     """
     check_variable_and_dtype(
@@ -1727,18 +1733,18 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            logits = paddle.randn([4, 6])
-            temperature = 0.01
-            gumbel_softmax = F.gumbel_softmax(logits, temperature)
-            print(gumbel_softmax)
-            # out's value is as follows:
-            # [[0.00000001, 1.        , 0.00000000, 0.00000000, 0.00000006, 0.00000000],
-            # [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
-            # [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],
-            # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
+            >>> logits = paddle.randn([4, 6])
+            >>> temperature = 0.01
+            >>> gumbel_softmax = F.gumbel_softmax(logits, temperature)
+            >>> print(gumbel_softmax)
+out's value is as follows:
+[[0.00000001, 1.        , 0.00000000, 0.00000000, 0.00000006, 0.00000000],
+ [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
+ [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],
+ [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
 
     """
     if in_dynamic_mode():

@@ -181,13 +181,13 @@ def flash_attention(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> # required: skiptest
+            >>> import paddle
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
 
-            output = paddle.nn.functional.flash_attention(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attention(q, q, q, 0.9, False, False)
+            >>> print(output)
     """
     head_dim = query.shape[3]
     sdp_func_name = _select_sdp(head_dim)
@@ -339,13 +339,13 @@ def flash_attn_unpadded(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> # required: skiptest
+            >>> import paddle
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
 
-            output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
+            >>> print(output)
     """
     if in_dynamic_mode():
         (
