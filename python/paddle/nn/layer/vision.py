@@ -186,7 +186,7 @@ class ChannelShuffle(Layer):
               [[0.20000000]],
               [[0.30000001]],
               [[0.40000001]],
-              [[0.50000000]]]]
+              [[0.50000000]]]])
             >>> channel_shuffle = nn.ChannelShuffle(3)
             >>> y = channel_shuffle(x)
             >>> print(y)
@@ -196,7 +196,7 @@ class ChannelShuffle(Layer):
               [[0.40000001]],
               [[0.10000000]],
               [[0.30000001]],
-              [[0.50000000]]]]
+              [[0.50000000]]]])
     """
 
     def __init__(self, groups, data_format="NCHW", name=None):

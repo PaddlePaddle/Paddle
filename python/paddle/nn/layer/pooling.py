@@ -277,7 +277,7 @@ class AvgPool3D(Layer):
             >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = AvgPool3D(input)
             >>> print(output.shape)
-            [1, 2, 3, 16, 16]
+            [1, 2, 1, 16, 16]
 
     """
 
@@ -584,15 +584,15 @@ class MaxPool3D(Layer):
             >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
             >>> output = MaxPool3D(input)
             >>> print(output.shape)
-            [1, 2, 3, 16, 16]
+            [1, 2, 1, 16, 16]
 
             >>> # for return_mask=True
             >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> output, max_indices = MaxPool3D(input)
             >>> print(output.shape)
-            [1, 2, 3, 16, 16]
+            [1, 2, 1, 16, 16]
             >>> print(max_indices.shape)
-            [1, 2, 3, 16, 16]
+            [1, 2, 1, 16, 16]
     """
 
     def __init__(
@@ -1117,9 +1117,9 @@ class AdaptiveMaxPool3D(Layer):
             >>> pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
             >>> out, indices = pool(x)
             >>> print(out.shape)
-            [2, 3, 4, 4, 4]
+            [2, 3, 3, 3, 3]
             >>> print(indices.shape)
-            [2, 3, 4, 4, 4]
+            [2, 3, 3, 3, 3]
 
     """
 
