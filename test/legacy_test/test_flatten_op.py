@@ -90,7 +90,7 @@ class TestFlattenOpFP16(unittest.TestCase):
                         fetch_list=[y],
                     )
 
-                    assert np.array_equal(res[0].shape, [12 * 14])
+                    np.testing.assert_array_equal(res[0].shape, [12 * 14])
 
 
 if __name__ == "__main__":

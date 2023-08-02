@@ -64,10 +64,10 @@ class TestProcessGroupFp32(unittest.TestCase):
         sum_result = tensor_x + tensor_y
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x)
-            assert np.array_equal(tensor_x, sum_result)
+            np.testing.assert_array_equal(tensor_x, sum_result)
         else:
             task = dist.all_reduce(tensor_y)
-            assert np.array_equal(tensor_y, sum_result)
+            np.testing.assert_array_equal(tensor_y, sum_result)
 
         print("test allreduce sum api ok")
 
@@ -82,10 +82,10 @@ class TestProcessGroupFp32(unittest.TestCase):
         sum_result = tensor_x + tensor_y
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x)
-            assert np.array_equal(tensor_x, sum_result)
+            np.testing.assert_array_equal(tensor_x, sum_result)
         else:
             task = dist.all_reduce(tensor_y)
-            assert np.array_equal(tensor_y, sum_result)
+            np.testing.assert_array_equal(tensor_y, sum_result)
 
         print("test allreduce sum api with = [] ok")
 
@@ -102,11 +102,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x, dist.ReduceOp.MAX, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, max_result)
+            np.testing.assert_array_equal(tensor_x, max_result)
         else:
             task = dist.all_reduce(tensor_y, dist.ReduceOp.MAX, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, max_result)
+            np.testing.assert_array_equal(tensor_y, max_result)
 
         print("test allreduce max api ok")
 
@@ -123,11 +123,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x, dist.ReduceOp.MAX, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, max_result)
+            np.testing.assert_array_equal(tensor_x, max_result)
         else:
             task = dist.all_reduce(tensor_y, dist.ReduceOp.MAX, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, max_result)
+            np.testing.assert_array_equal(tensor_y, max_result)
 
         print("test allreduce max api with shape = [] ok")
 
@@ -144,11 +144,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x, dist.ReduceOp.MIN, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, min_result)
+            np.testing.assert_array_equal(tensor_x, min_result)
         else:
             task = dist.all_reduce(tensor_y, dist.ReduceOp.MIN, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, min_result)
+            np.testing.assert_array_equal(tensor_y, min_result)
 
         print("test allreduce min api ok")
 
@@ -165,11 +165,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x, dist.ReduceOp.MIN, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, min_result)
+            np.testing.assert_array_equal(tensor_x, min_result)
         else:
             task = dist.all_reduce(tensor_y, dist.ReduceOp.MIN, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, min_result)
+            np.testing.assert_array_equal(tensor_y, min_result)
 
         print("test allreduce min api with shape [] ok")
 
@@ -186,11 +186,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x, dist.ReduceOp.PROD, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, prod_result)
+            np.testing.assert_array_equal(tensor_x, prod_result)
         else:
             task = dist.all_reduce(tensor_y, dist.ReduceOp.PROD, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, prod_result)
+            np.testing.assert_array_equal(tensor_y, prod_result)
 
         print("test allreduce prod api ok")
 
@@ -207,11 +207,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.all_reduce(tensor_x, dist.ReduceOp.PROD, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, prod_result)
+            np.testing.assert_array_equal(tensor_x, prod_result)
         else:
             task = dist.all_reduce(tensor_y, dist.ReduceOp.PROD, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, prod_result)
+            np.testing.assert_array_equal(tensor_y, prod_result)
 
         print("test allreduce prod api with shape = [] ok")
 
@@ -229,11 +229,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             task.synchronize()
             paddle.device.cuda.synchronize()
             assert task.is_completed()
-            assert np.array_equal(broadcast_result, tensor_x)
+            np.testing.assert_array_equal(broadcast_result, tensor_x)
         else:
             task = dist.broadcast(tensor_y, 0)
             paddle.device.cuda.synchronize()
-            assert np.array_equal(broadcast_result, tensor_y)
+            np.testing.assert_array_equal(broadcast_result, tensor_y)
 
         print("test broadcast api ok")
 
@@ -251,11 +251,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             task.synchronize()
             paddle.device.cuda.synchronize()
             assert task.is_completed()
-            assert np.array_equal(broadcast_result, tensor_x)
+            np.testing.assert_array_equal(broadcast_result, tensor_x)
         else:
             task = dist.broadcast(tensor_y, 0)
             paddle.device.cuda.synchronize()
-            assert np.array_equal(broadcast_result, tensor_y)
+            np.testing.assert_array_equal(broadcast_result, tensor_y)
         assert tensor_y.shape == []
 
         print("test broadcast api with shape=[] ok")
@@ -298,8 +298,8 @@ class TestProcessGroupFp32(unittest.TestCase):
         out_2 = paddle.slice(
             tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
         )
-        assert np.array_equal(tensor_x, out_1)
-        assert np.array_equal(tensor_y, out_2)
+        np.testing.assert_array_equal(tensor_x, out_1)
+        np.testing.assert_array_equal(tensor_y, out_2)
         print("test allgather api ok\n")
 
         if pg.rank() == 0:
@@ -316,8 +316,8 @@ class TestProcessGroupFp32(unittest.TestCase):
         out_2 = paddle.slice(
             tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
         )
-        assert np.array_equal(tensor_x, out_1)
-        assert np.array_equal(tensor_y, out_2)
+        np.testing.assert_array_equal(tensor_x, out_1)
+        np.testing.assert_array_equal(tensor_y, out_2)
         print("test allgather api2 ok\n")
 
         # test allgather with shape = []
@@ -337,8 +337,8 @@ class TestProcessGroupFp32(unittest.TestCase):
             paddle.device.cuda.synchronize()
         out_1 = tensor_out_list[0]
         out_2 = tensor_out_list[1]
-        assert np.array_equal(tensor_x, out_1)
-        assert np.array_equal(tensor_y, out_2)
+        np.testing.assert_array_equal(tensor_x, out_1)
+        np.testing.assert_array_equal(tensor_y, out_2)
         print("test allgather api with shape [] ok\n")
 
         # test alltoall
@@ -371,9 +371,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         )
         out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
         if pg.rank() == 0:
-            assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+            np.testing.assert_array_equal(
+                out1_2.numpy(), raw_tensor_y_1.numpy()
+            )
         else:
-            assert np.array_equal(out2_1, raw_tensor_x_2)
+            np.testing.assert_array_equal(out2_1, raw_tensor_x_2)
         print("test alltoall api ok\n")
 
         x = np.random.random(self.shape).astype(self.dtype)
@@ -404,9 +406,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         )
         out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
         if pg.rank() == 0:
-            assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+            np.testing.assert_array_equal(
+                out1_2.numpy(), raw_tensor_y_1.numpy()
+            )
         else:
-            assert np.array_equal(out2_1, raw_tensor_x_2)
+            np.testing.assert_array_equal(out2_1, raw_tensor_x_2)
         print("test alltoall api2 ok\n")
 
         # test Reduce
@@ -425,7 +429,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             task.wait()
             paddle.device.cuda.synchronize()
         if pg.rank() == 0:
-            assert np.array_equal(tensor_x, sum_result)
+            np.testing.assert_array_equal(tensor_x, sum_result)
         print("test reduce sum api ok\n")
 
         # test reduce max
@@ -441,7 +445,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.reduce(tensor_x, 0, dist.ReduceOp.MAX, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, max_result)
+            np.testing.assert_array_equal(tensor_x, max_result)
         else:
             task = dist.reduce(tensor_y, 0, dist.ReduceOp.MAX, sync_op=False)
             task.wait()
@@ -461,7 +465,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.reduce(tensor_x, 0, dist.ReduceOp.MIN, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, min_result)
+            np.testing.assert_array_equal(tensor_x, min_result)
         else:
             task = dist.reduce(tensor_y, 0, dist.ReduceOp.MIN, sync_op=False)
             task.wait()
@@ -481,7 +485,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         if pg.rank() == 0:
             task = dist.reduce(tensor_x, 0, dist.ReduceOp.PROD, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_x, prod_result)
+            np.testing.assert_array_equal(tensor_x, prod_result)
         else:
             task = dist.reduce(tensor_y, 0, dist.ReduceOp.PROD, sync_op=False)
             task.wait()
@@ -511,9 +515,9 @@ class TestProcessGroupFp32(unittest.TestCase):
         out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
         out2 = paddle.slice(tensor_x, [0], [self.shape[0]], [self.shape[0] * 2])
         if pg.rank() == 0:
-            assert np.array_equal(tensor_y, out1)
+            np.testing.assert_array_equal(tensor_y, out1)
         else:
-            assert np.array_equal(tensor_y, out2)
+            np.testing.assert_array_equal(tensor_y, out2)
         print("test scatter api ok\n")
 
         # test Scatter with shape=[]
@@ -534,9 +538,9 @@ class TestProcessGroupFp32(unittest.TestCase):
         out1 = paddle.assign(tensor_x)
         out2 = paddle.assign(tensor_x + 1)
         if pg.rank() == 0:
-            assert np.array_equal(tensor_y, out1)
+            np.testing.assert_array_equal(tensor_y, out1)
         else:
-            assert np.array_equal(tensor_y, out2), f"{tensor_y}, {out2}"
+            np.testing.assert_array_equal(tensor_y, out2)
         assert tensor_y.shape == []
         print("test scatter api with shape=[] ok\n")
 
@@ -554,7 +558,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         else:
             task = dist.recv(tensor_y, 0, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, tensor_x)
+            np.testing.assert_array_equal(tensor_y, tensor_x)
 
         print("test send api ok")
 
@@ -570,7 +574,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = dist.send(tensor_x, 1, sync_op=True)
         else:
             task = dist.recv(tensor_y, 0, sync_op=True)
-            assert np.array_equal(tensor_y, tensor_x)
+            np.testing.assert_array_equal(tensor_y, tensor_x)
 
         print("test send api ok")
 

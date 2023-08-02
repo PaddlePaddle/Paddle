@@ -114,12 +114,13 @@ class ConstantFoldingPattern : public ir::RewritePattern {
     std::vector<ir::OpResult> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
       PADDLE_ENFORCE_EQ(
-          op->operand(i).type().isa<paddle::dialect::DenseTensorType>(),
+          op->operand_source(i).type().isa<paddle::dialect::DenseTensorType>(),
           true,
           phi::errors::InvalidArgument(
               "Op's input must be a dense tensor type."));
 
-      auto [param_name, param] = ir::GetParameterFromValue(op->operand(i));
+      auto [param_name, param] =
+          ir::GetParameterFromValue(op->operand_source(i));
       program->SetParameter(param_name,
                             std::make_unique<ir::Parameter>(*param));
 
@@ -128,8 +129,8 @@ class ConstantFoldingPattern : public ir::RewritePattern {
           param_var,
           phi::errors::InvalidArgument("Parameter var not in scope."));
 
-      auto get_parameter_op =
-          builder.Build<ir::GetParameterOp>(param_name, op->operand(i).type());
+      auto get_parameter_op = builder.Build<ir::GetParameterOp>(
+          param_name, op->operand_source(i).type());
       op_inputs.push_back(get_parameter_op->result(0));
     }
 

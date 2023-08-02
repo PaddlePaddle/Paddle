@@ -174,4 +174,10 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                                  const std::string& act_type,
                                  MetaTensor* out,
                                  MetaTensor* out_max);
+
+void FastWhereXPUInferMeta(const MetaTensor& condition,
+                           const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out);
+
 }  // namespace phi

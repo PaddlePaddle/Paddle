@@ -124,6 +124,7 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
+    static_op_function.cc
     ir.cc
     graph.cc
     bind_fleet_executor.cc
