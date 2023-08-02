@@ -497,7 +497,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
             kernel_fn_str, kernel_key);
 
-        if (kernel.IsValid() && (!unchange_output_list.count((*it)->name()))) {
+        if (kernel.IsValid() && (!UnchangeOutputOps.count((*it)->name()))) {
           if (new_in_type.isa<dialect::AllocatedDenseTensorType>()) {
             // allocated type
             auto place =
