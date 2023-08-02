@@ -35,4 +35,19 @@ void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out);
 
+template <typename T, typename Context>
+void PrintKernel(const Context& ctx,
+                 const DenseTensor& x,
+                 int first_n,
+                 const std::string& message,
+                 int summarize,
+                 bool print_tensor_name,
+                 bool print_tensor_type,
+                 bool print_tensor_shape,
+                 bool print_tensor_layout,
+                 bool print_tensor_lod,
+                 const std::string& print_phase,
+                 bool is_forward,
+                 DenseTensor* out);
+
 }  // namespace phi

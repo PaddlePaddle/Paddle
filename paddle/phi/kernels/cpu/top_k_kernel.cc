@@ -153,6 +153,12 @@ void TopkKernel(const Context& dev_ctx,
   }
 
   int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
+
   if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
