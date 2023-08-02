@@ -168,9 +168,9 @@ RUN pip3.7 --no-cache-dir install pytest astroid isort && \
 RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
-    pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
+    pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 && \
+    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1 && \
+    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 clang-tidy==15.0.2.1
 
 RUN pip3.7 --no-cache-dir install coverage && \
     pip3.8 --no-cache-dir install coverage && \
