@@ -36,7 +36,7 @@ namespace tensorrt {
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -70,6 +70,7 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
     TensorRTEngine::ConstructionParams params;
     params.max_batch_size = 16;
     params.max_workspace_size = 1 << 10;
+    params.with_dynamic_shape = true;
     params.min_input_shape = min_input_shape;
     params.max_input_shape = max_input_shape;
     params.optim_input_shape = optim_input_shape;
@@ -77,16 +78,9 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
     params.max_shape_tensor = max_input_value;
     params.optim_shape_tensor = optim_input_value;
 
-    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
+    engine_ = std::make_unique<TensorRTEngine>(params, NaiveLogger::Global());
 
     engine_->InitNetwork();
-  }
-
-  void TearDown() override {
-    if (engine_) {
-      delete engine_;
-      engine_ = nullptr;
-    }
   }
 
   void PrepareInputOutput(const std::vector<float> &input,
@@ -105,8 +99,8 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
   phi::DenseTensor input_;
   phi::DenseTensor shape_;
   phi::DenseTensor output_;
-  TensorRTEngine *engine_;
-  phi::GPUContext *ctx_;
+  std::unique_ptr<TensorRTEngine> engine_;
+  std::unique_ptr<phi::GPUContext> ctx_;
 };
 
 TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
@@ -166,7 +160,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
 class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -195,21 +189,14 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
     params.max_batch_size = 16;
     params.max_workspace_size = 1 << 10;
     params.with_dynamic_shape = true;
-    params.precision = phi::Datatype::FLOAT16;
+    params.precision = phi::DataType::FLOAT16;
     params.min_input_shape = min_input_shape;
     params.max_input_shape = max_input_shape;
     params.optim_input_shape = optim_input_shape;
 
-    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
+    engine_ = std::make_unique<TensorRTEngine>(params, NaiveLogger::Global());
 
     engine_->InitNetwork();
-  }
-
-  void TearDown() override {
-    if (engine_) {
-      delete engine_;
-      engine_ = nullptr;
-    }
   }
 
   void PrepareInputOutput(const std::vector<float16> &input,
@@ -225,8 +212,8 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   phi::DenseTensor input_;
   phi::DenseTensor output_;
-  TensorRTEngine *engine_;
-  phi::GPUContext *ctx_;
+  std::unique_ptr<TensorRTEngine> engine_;
+  std::unique_ptr<phi::GPUContext> ctx_;
 };
 
 TEST_F(TensorRTDynamicEngineTest, test_spmm) {
@@ -331,7 +318,7 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
 class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -368,22 +355,15 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
     TensorRTEngine::ConstructionParams params;
     params.max_batch_size = 16;
     params.max_workspace_size = 1 << 10;
-    params.precision = phi::Datatype::FLOAT32;
+    params.precision = phi::DataType::FLOAT32;
     params.with_dynamic_shape = true;
     params.min_input_shape = min_input_shape;
     params.max_input_shape = max_input_shape;
     params.optim_input_shape = optim_input_shape;
 
-    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
+    engine_ = std::make_unique<TensorRTEngine>(params, NaiveLogger::Global());
 
     engine_->InitNetwork();
-  }
-
-  void TearDown() override {
-    if (engine_) {
-      delete engine_;
-      engine_ = nullptr;
-    }
   }
 
   void PrepareInputOutput(const std::vector<std::vector<float>> inputs,
@@ -410,13 +390,12 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
  protected:
   std::vector<phi::DenseTensor> inputs_;
   std::vector<phi::DenseTensor> outputs_;
-  TensorRTEngine *engine_;
-  phi::GPUContext *ctx_;
+  std::unique_ptr<TensorRTEngine> engine_;
+  std::unique_ptr<phi::GPUContext> ctx_;
 };
 
 TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 #if IS_TRT_VERSION_GE(8000)
-  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kFLOAT, nvinfer1::Dims2{-1, 4});
   auto *x = engine_->DeclareInput(
@@ -536,7 +515,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -573,21 +552,14 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
     TensorRTEngine::ConstructionParams params;
     params.max_batch_size = 16;
     params.max_workspace_size = 1 << 10;
-    params.precision = phi::Datatype::FLOAT16;
+    params.precision = phi::DataType::FLOAT16;
     params.with_dynamic_shape = true;
     params.min_input_shape = min_input_shape;
     params.max_input_shape = max_input_shape;
     params.optim_input_shape = optim_input_shape;
 
-    engine_ = new TensorRTEngine(params, NaiveLogger::Global());
+    engine_ = std::make_unique<TensorRTEngine>(params, NaiveLogger::Global());
     engine_->InitNetwork();
-  }
-
-  void TearDown() override {
-    if (engine_) {
-      delete engine_;
-      engine_ = nullptr;
-    }
   }
 
   void PrepareInputOutput(const std::vector<std::vector<float16>> inputs,
@@ -614,13 +586,12 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
  protected:
   std::vector<phi::DenseTensor> inputs_;
   std::vector<phi::DenseTensor> outputs_;
-  TensorRTEngine *engine_;
-  phi::GPUContext *ctx_;
+  std::unique_ptr<TensorRTEngine> engine_;
+  std::unique_ptr<phi::GPUContext> ctx_;
 };
 
 TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 #if IS_TRT_VERSION_GE(8000)
-  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kHALF, nvinfer1::Dims2{-1, 4});
   auto *x = engine_->DeclareInput(
@@ -740,7 +711,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -771,22 +742,15 @@ class TensorRTDynamicShapeGNTest : public ::testing::Test {
     TensorRTEngine::ConstructionParams params;
     params.max_batch_size = 16;
     params.max_workspace_size = 1 << 10;
-    params.precision = phi::Datatype::INT8;
+    params.precision = phi::DataType::INT8;
     params.with_dynamic_shape = true;
     params.min_input_shape = min_input_shape;
     params.max_input_shape = max_input_shape;
     params.optim_input_shape = optim_input_shape;
 
-    engine_ = new TensorRTEngine(params);
+    engine_ = std::make_unique<TensorRTEngine>(params, NaiveLogger::Global());
 
     engine_->InitNetwork();
-  }
-
-  void TearDown() override {
-    if (engine_) {
-      delete engine_;
-      engine_ = nullptr;
-    }
   }
 
   void PrepareInputOutput(const std::vector<float> &input,
@@ -905,8 +869,8 @@ class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   phi::DenseTensor x_;
   phi::DenseTensor y_;
-  TensorRTEngine *engine_;
-  phi::GPUContext *ctx_;
+  std::unique_ptr<TensorRTEngine> engine_;
+  std::unique_ptr<phi::GPUContext> ctx_;
   // case from SD
   int n_ = 2;
   int c_ = 320;
@@ -924,8 +888,6 @@ class TensorRTDynamicShapeGNTest : public ::testing::Test {
 
 /*
 TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
-  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
-
   float *bias = new float[c_];
   float *scale = new float[c_];
   for (int i = 0; i < c_; i++) {

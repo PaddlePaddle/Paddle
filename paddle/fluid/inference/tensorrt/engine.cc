@@ -125,7 +125,7 @@ void TensorRTEngine::Execute(int batch_size,
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
             .getContextMemory(
                 predictor_id_per_thread,
-                phi::GPUPlace(params_.device_id),
+                phi::GPUPlace(device_id()),
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     infer_context->setDeviceMemory(context_memory);
   }
@@ -202,7 +202,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, params_.max_workspace_size);
 #else
-  infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
+  infer_builder_config_->setMaxWorkspaceSize(params_.max_workspace_size);
 #endif
 
   bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
@@ -290,11 +290,11 @@ void TensorRTEngine::FreezeNetwork() {
         if (!(std::all_of(input.second.begin(),
                           input.second.end(),
                           [](int x) { return x > 0; }) &&
-              std::all_of(max_input_shape_[input.first].begin(),
-                          max_input_shape_[input.first].end(),
+              std::all_of(max_input_shape()[input.first].begin(),
+                          max_input_shape()[input.first].end(),
                           [](int x) { return x > 0; }) &&
-              std::all_of(optim_input_shape_[input.first].begin(),
-                          optim_input_shape_[input.first].end(),
+              std::all_of(optim_input_shape()[input.first].begin(),
+                          optim_input_shape()[input.first].end(),
                           [](int x) { return x > 0; }))) {
           continue;
         }
@@ -322,9 +322,9 @@ void TensorRTEngine::FreezeNetwork() {
         auto input_name = network()->getInput(input_id)->getName();
         if (!itensor_map_.count(input_name)) continue;
         if (!GetITensor(input_name)->isShapeTensor()) continue;
-        PADDLE_ENFORCE_EQ(min_shape_tensor().count(input_name) &&
-                              max_shape_tensor().count(input_name) &&
-                              optim_shape_tensor().count(input_name),
+        PADDLE_ENFORCE_EQ(min_shape_tensor().count(input_name) > 0 &&
+                              max_shape_tensor().count(input_name) > 0 &&
+                              optim_shape_tensor().count(input_name) > 0,
                           true,
                           platform::errors::InvalidArgument(
                               "Fail to find min/max/optim shape value for TRT "
@@ -854,13 +854,13 @@ nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
 void TensorRTEngine::FreshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
-  PADDLE_ENFORCE_LT(params_.device_id,
+  PADDLE_ENFORCE_LT(device_id(),
                     count,
                     platform::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
-                        params_.device_id,
+                        device_id(),
                         count));
-  platform::SetDeviceId(params_.device_id);
+  platform::SetDeviceId(device_id());
 }
 
 void TensorRTEngine::GetEngineInfo() {

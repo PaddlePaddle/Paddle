@@ -418,7 +418,7 @@ class TensorRTEngine {
     return enable_int8 && support_int8;
   }
 
-  int GetDeviceId() { return params_.device_id; }
+  int device_id() { return params_.device_id; }
 
   nvinfer1::IPluginV2Layer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                       int num_inputs,

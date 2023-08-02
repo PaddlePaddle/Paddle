@@ -36,6 +36,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
@@ -268,10 +269,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       return;
     }
     auto *trt_engine = GetEngine(scope, dev_place);
-    PADDLE_ENFORCE_NOT_NULL(
-        trt_engine,
-        platform::errors::Fatal(
-            "The pointer of tensorrt engine should not be null."));
     if (trt_engine->with_dynamic_shape()) {
       // get runtime input shapes and shape tensors.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
@@ -847,14 +844,23 @@ class TensorRTEngineOp : public framework::OperatorBase {
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Create(engine_key_ + std::to_string(predictor_id_), params);
 
-      std::string trt_engine_serialized_data =
-          inference::analysis::GetTrtEngineSerializedData(model_opt_cache_dir_,
-                                                          engine_key_);
-      trt_engine_->Deserialize(trt_engine_serialized_data);
-      LOG(INFO) << "Load TRT Optimized Info from "
-                << inference::analysis::GetTrtEngineSerializedPath(
-                       model_opt_cache_dir_, engine_key_);
+      if (use_static_engine_) {
+        LOG(INFO) << "Load TRT Optimized Info from "
+                  << inference::analysis::GetTrtEngineSerializedPath(
+                         model_opt_cache_dir_, engine_key_);
+        std::string trt_engine_serialized_data =
+            inference::analysis::GetTrtEngineSerializedData(
+                model_opt_cache_dir_, engine_key_);
+        trt_engine_->Deserialize(trt_engine_serialized_data);
+      } else {
+        // This brach mainly used to ut.
+        PrepareTRTEngine(scope, trt_engine_);
+      }
     }
+    PADDLE_ENFORCE_NOT_NULL(
+        trt_engine_,
+        platform::errors::Fatal(
+            "The pointer to tensorrt engine should not be null."));
     return trt_engine_;
   }
 };

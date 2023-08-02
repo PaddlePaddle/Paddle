@@ -578,7 +578,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", use_inspector);
-  op_desc->SetAttr("model_precision", Get<int>("model_precision"));
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
   op_desc->SetAttr("enable_low_precision_io", enable_low_precision_io);
 
