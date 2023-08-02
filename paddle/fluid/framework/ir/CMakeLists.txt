@@ -280,6 +280,8 @@ if(WITH_XPU)
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(gather_squeeze_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -599,4 +601,8 @@ if(WITH_XPU)
     test_reshape2_matmul_xpu_fuse_pass
     SRCS xpu/reshape2_matmul_xpu_fuse_pass_test.cc
     DEPS reshape2_matmul_xpu_fuse_pass)
+  cc_test(
+    test_fast_where_xpu_fuse_pass
+    SRCS xpu/fast_where_xpu_fuse_pass_test.cc
+    DEPS fast_where_xpu_fuse_pass)
 endif()
