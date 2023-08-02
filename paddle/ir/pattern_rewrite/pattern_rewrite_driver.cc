@@ -131,7 +131,7 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
 
   void NotifyOperationRemoved(ir::Operation* op) override {
     for (uint32_t i = 0; i < op->num_operands(); ++i) {
-      AddOperandToWorklist(op->operand(i));
+      AddOperandToWorklist(op->operand_source(i));
     }
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);

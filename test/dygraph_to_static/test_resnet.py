@@ -221,6 +221,27 @@ def reader_decorator(reader):
     return __reader__
 
 
+class TransedFlowerDataSet(paddle.io.Dataset):
+    def __init__(self, flower_data, length):
+        self.img = []
+        self.label = []
+        self.flower_data = flower_data()
+        self._generate(length)
+
+    def _generate(self, length):
+        for i, data in enumerate(self.flower_data):
+            if i >= length:
+                break
+            self.img.append(data[0])
+            self.label.append(data[1])
+
+    def __getitem__(self, idx):
+        return self.img[idx], self.label[idx]
+
+    def __len__(self):
+        return len(self.img)
+
+
 class ResNetHelper:
     def __init__(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -244,15 +265,13 @@ class ResNetHelper:
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
 
-            train_reader = paddle.batch(
+            dataset = TransedFlowerDataSet(
                 reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
-                batch_size=batch_size,
-                drop_last=True,
+                batch_size * (10 + 1),
             )
-            data_loader = fluid.io.DataLoader.from_generator(
-                capacity=5, iterable=True
+            data_loader = paddle.io.DataLoader(
+                dataset, batch_size=batch_size, drop_last=True
             )
-            data_loader.set_sample_list_generator(train_reader)
 
             resnet = ResNet()
             if to_static:
