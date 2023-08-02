@@ -89,6 +89,26 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool with_dynamic_shape = false) override {
     const std::string op_type = desc.Type();
 
+
+    // {
+    //   std::cout << "we are telling " << op_type << " if can enter into trt." << std::endl;
+
+    //   auto inputs = desc.Inputs();
+    //   for (auto iter : inputs) {
+    //     for (auto var_name : iter.second) {
+    //       std::cout << var_name << std::endl;
+    //     }
+    //   }
+
+    //   auto outputs = desc.Outputs();
+    //   for (auto iter : outputs) {
+    //     for (auto var_name : iter.second) {
+    //       std::cout << var_name << std::endl;
+    //     }
+    //   }
+    // }
+
+
     std::unordered_set<std::string> control_set = {"conditional_block",
                                                    "while"};
     std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
@@ -2438,12 +2458,11 @@ if (dtype ==  framework::proto::VarType::BOOL)
       const auto input_shape = input_desc->GetShape();
       if (desc.Input("ValueTensor").size() > 0)
       {
-        auto update_name = desc.Input("ValueTensor")[0];
-        auto* update_desc = block->FindVar(update_name);
-        const auto update_shape = update_desc->GetShape();
-        if (update_shape.size() != input_shape.size()) return false;
+        // auto update_name = desc.Input("ValueTensor")[0];
+        // auto* update_desc = block->FindVar(update_name);
+        // const auto update_shape = update_desc->GetShape();
       } else {
-        return false;
+        //return false;
       }
     }
 

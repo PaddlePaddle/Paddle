@@ -104,7 +104,7 @@ for (auto ele:result) {
     nvtx = true;
   }
 }
-
+nvtx = true;
 #ifdef PADDLE_WITH_NVTX
 if(nvtx)
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
