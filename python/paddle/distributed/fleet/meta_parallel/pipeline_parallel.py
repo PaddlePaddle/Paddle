@@ -1001,7 +1001,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         )
         # schedule comm overlap
         if self._comm_overlap:
-            self._schedule_comm_overlap(virtual_pp_rank, micro_step)
+            self._schedule_comm_overlap(micro_step)
         return input_tensor_grad
 
     def forward_backward_pipeline(
