@@ -125,8 +125,7 @@ Program PaddleModelConvertor::LoadModel(
     bool is_combined,
     const std::unordered_map<std::string, std::vector<int64_t>>& feed) {
   paddle::cpp::ProgramDesc program_desc;
-  if (false) {
-    // if (FLAGS_cinn_infer_model_version < 2.0) {
+  if (FLAGS_cinn_infer_model_version < 2.0) {
     is_combined = false;
     paddle::LoadModelPb(model_dir,
                         "__model__",
