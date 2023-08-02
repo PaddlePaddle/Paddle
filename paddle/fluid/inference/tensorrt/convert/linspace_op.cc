@@ -23,7 +23,7 @@ class LinspaceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    // #if IS_TRT_VERSION_GE(7000)
+#if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a linspace op to tensorrt linspace layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -32,7 +32,6 @@ class LinspaceOpConverter : public OpConverter {
     auto* input_stop = engine_->GetITensor(op_desc.Input("Stop")[0]);
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     auto output_name = op_desc.Output("Out")[0];
-    nvinfer1::ITensor* beta_tensor;
 
     auto* input_start_tensor =
         TRT_ENGINE_ADD_LAYER(
@@ -50,8 +49,7 @@ class LinspaceOpConverter : public OpConverter {
     auto* new_num_tensor = Sub(input_num_tensor, Add1DConstantLayer(1.0f));
     auto* dis_tensor = Sub(input_stop_tensor, input_start_tensor);
 
-    beta_tensor = Div(dis_tensor, new_num_tensor);
-
+    nvinfer1::ITensor* beta_tensor = Div(dis_tensor, new_num_tensor);
     nvinfer1::Dims alpha_shape;
     alpha_shape.nbDims = 0;
     alpha_shape.d[0] = 1;
@@ -76,7 +74,7 @@ class LinspaceOpConverter : public OpConverter {
       RreplenishLayerAndOutput(layer, "linspace", {output_name}, test_mode);
     }
 
-    // #endif
+#endif
   }
 };
 

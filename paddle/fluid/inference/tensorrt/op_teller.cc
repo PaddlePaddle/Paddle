@@ -1306,6 +1306,20 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
+#if !IS_TRT_VERSION_GE(7000)
+      VLOG(3) << "linspace converter does not support trt versions below 7.0";
+      return false;
+#endif
+    }
+
+    if (op_type == "share_data") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
     }
 
     if (op_type == "fill_any_like") {
@@ -2924,6 +2938,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "cumsum",
       "unbind",
       "linspace",
+      "share_data",
       "assign",
       "flip"};
 
@@ -3090,6 +3105,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "cumsum",
       "unbind",
       "linspace",
+      "share_data",
       "assign",
       "flip"};
 };

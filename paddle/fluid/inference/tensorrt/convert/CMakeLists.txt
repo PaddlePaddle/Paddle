@@ -109,6 +109,7 @@ list(
   einsum_op.cc
   unbind_op.cc
   linspace_op.cc
+  share_data_op.cc
   assign_op.cc
   flip_op.cc)
 
