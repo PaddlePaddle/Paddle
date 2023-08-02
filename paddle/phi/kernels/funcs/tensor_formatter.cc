@@ -12,14 +12,16 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/tensor_formatter.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include <string>
 
-#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
-namespace operators {
+namespace funcs {
 
 void TensorFormatter::SetPrintTensorType(bool print_tensor_type) {
   print_tensor_type_ = print_tensor_type;
@@ -63,7 +65,7 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
 
   if (print_tensor_lod_) {
     log_stream << "  - lod: {";
-    const framework::LoD& lod = print_tensor.lod();
+    const phi::LoD& lod = print_tensor.lod();
     for (auto level : lod) {
       log_stream << "{";
       bool is_first = true;
@@ -87,29 +89,26 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
   }
 
   if (print_tensor_layout_) {
-    log_stream << "  - layout: "
-               << phi::DataLayoutToString(print_tensor.layout()) << std::endl;
+    log_stream << "  - layout: " << print_tensor.layout() << std::endl;
   }
 
-  std::type_index dtype = framework::ToTypeIndex(
-      framework::TransToProtoVarType(print_tensor.dtype()));
+  auto dtype = print_tensor.dtype();
   if (print_tensor_type_) {
-    log_stream << "  - dtype: " << platform::demangle(dtype.name())
-               << std::endl;
+    log_stream << "  - dtype: " << dtype << std::endl;
   }
 
-  if (framework::IsType<const float>(dtype)) {
+  if (dtype == phi::DataType::FLOAT32) {
     FormatData<float>(print_tensor, log_stream);
-  } else if (framework::IsType<const double>(dtype)) {
+  } else if (dtype == phi::DataType::FLOAT64) {
     FormatData<double>(print_tensor, log_stream);
-  } else if (framework::IsType<const int>(dtype)) {
+  } else if (dtype == phi::DataType::INT32) {
     FormatData<int>(print_tensor, log_stream);
-  } else if (framework::IsType<const int64_t>(dtype)) {
+  } else if (dtype == phi::DataType::INT64) {
     FormatData<int64_t>(print_tensor, log_stream);
-  } else if (framework::IsType<const bool>(dtype)) {
+  } else if (dtype == phi::DataType::BOOL) {
     FormatData<bool>(print_tensor, log_stream);
   } else {
-    log_stream << "  - data: unprintable type: " << dtype.name() << std::endl;
+    log_stream << "  - data: unprintable type: " << dtype << std::endl;
   }
   return log_stream.str();
 }
@@ -122,11 +121,15 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
                            : std::min(summarize_, print_tensor.numel());
   const T* data = nullptr;
   phi::DenseTensor cpu_tensor;
-  if (paddle::platform::is_cpu_place(print_tensor.place())) {
+  if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
     data = print_tensor.data<T>();
   } else {
-    platform::CPUPlace cpu_place;
-    paddle::framework::TensorCopy(print_tensor, cpu_place, &cpu_tensor);
+    phi::CPUPlace cpu_place;
+
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(print_tensor.place());
+
+    phi::Copy(*dev_ctx, print_tensor, cpu_place, true, &cpu_tensor);
     data = cpu_tensor.data<T>();
   }
 
@@ -151,5 +154,5 @@ template void TensorFormatter::FormatData<int>(
 template void TensorFormatter::FormatData<int64_t>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 
-}  // namespace operators
+}  // namespace funcs
 }  // namespace paddle
