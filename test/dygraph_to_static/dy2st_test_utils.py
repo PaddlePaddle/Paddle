@@ -27,12 +27,14 @@ def test_with_new_ir(func):
         ir_outs = None
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
-                new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
-                os.environ[new_ir_flag] = 'True'
-                set_flags({new_ir_flag: True})
-                ir_outs = func(*args, **kwargs)
-                del os.environ[new_ir_flag]
-                set_flags({new_ir_flag: False})
+                try:
+                    new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
+                    os.environ[new_ir_flag] = 'True'
+                    set_flags({new_ir_flag: True})
+                    ir_outs = func(*args, **kwargs)
+                finally:
+                    del os.environ[new_ir_flag]
+                    set_flags({new_ir_flag: False})
         return ir_outs
 
     return impl
