@@ -350,6 +350,51 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 1
+        self.data_format = "NHWC"
+        self.attrs['epsilon'] = 0.5
+        self.shape = (1, 100, 4, 4)
+        self.dtype = np.float16
+
+
+class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
+    def setUp(self):
+        self.op_type = "group_norm"
+        self.python_api = group_norm_wrapper
+        self.python_out_sig = ["Y"]
+        self.data_format = "NHWC"
+        self.dtype = np.uint16
+        self.shape = (1, 3, 5, 100)
+        self.attrs = {
+            'epsilon': 5e-2,
+            'groups': 2,
+            'data_layout': self.data_format,
+        }
+        self.compare_between_place = False
+        self.init_test_case()
+
+        input = np.random.random(self.shape).astype(np.float32)
+        scale = np.random.random([self.shape[3]]).astype(np.float32)
+        bias = np.random.random([self.shape[3]]).astype(np.float32)
+        output, mean, var = group_norm_naive(
+            input,
+            scale,
+            bias,
+            self.attrs['epsilon'],
+            self.attrs['groups'],
+            self.data_format,
+        )
+
+        self.inputs = {
+            'X': convert_float_to_uint16(input),
+            'Scale': convert_float_to_uint16(scale),
+            'Bias': convert_float_to_uint16(bias),
+        }
+        self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+
+
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1

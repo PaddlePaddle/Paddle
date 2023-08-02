@@ -295,7 +295,7 @@ void ReduceOpsFusePass::FuseReduceMean(ir::Graph* graph) const {
     framework::OpDesc reduce_op_desc(block);
     reduce_op_desc.SetType("reduce_mean");
     reduce_op_desc.SetInput("X", {x->Name()});
-    reduce_op_desc.SetAttr("dim", std::vector<int>{-2});
+    reduce_op_desc.SetAttr("dim", std::vector<int>{-1});
     reduce_op_desc.SetAttr("reduce_all", false);
     reduce_op_desc.SetAttr("keep_dim", true);
     reduce_op_desc.SetOutput("Out", {squeeze2_out->Name()});
