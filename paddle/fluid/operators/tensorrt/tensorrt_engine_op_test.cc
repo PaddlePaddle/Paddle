@@ -145,7 +145,11 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("use_static_engine", false);
   engine_op_desc.SetAttr("with_dynamic_shape", false);
   engine_op_desc.SetAttr("context_memory_sharing", true);
+  engine_op_desc.SetAttr("disable_trt_plugin_fp16", false);
+  engine_op_desc.SetAttr("enable_low_precision_io", false);
+  engine_op_desc.SetAttr("use_inspector", false);
   engine_op_desc.SetAttr("use_dla", false);
+  engine_op_desc.SetAttr("dla_core", 0);
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
@@ -288,8 +292,13 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op_desc.SetAttr("model_opt_cache_dir", std::string(""));
   engine_op_desc.SetAttr("allow_build_at_runtime", false);
   engine_op_desc.SetAttr("use_static_engine", false);
+  engine_op_desc.SetAttr("with_dynamic_shape", false);
   engine_op_desc.SetAttr("context_memory_sharing", true);
+  engine_op_desc.SetAttr("disable_trt_plugin_fp16", false);
+  engine_op_desc.SetAttr("enable_low_precision_io", false);
+  engine_op_desc.SetAttr("use_inspector", false);
   engine_op_desc.SetAttr("use_dla", false);
+  engine_op_desc.SetAttr("dla_core", 0);
 
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
 

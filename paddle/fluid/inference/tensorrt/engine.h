@@ -139,11 +139,12 @@ class TensorRTEngine {
     // Use for engine context memory sharing.
     bool context_memory_sharing{false};
 
-    bool enable_low_precision_io{false};
-
     int device_id{0};
 
     bool with_dynamic_shape{false};
+
+    bool use_dla{false};
+    int dla_core{0};
 
     ShapeMapType min_input_shape;
     ShapeMapType max_input_shape;
@@ -152,21 +153,20 @@ class TensorRTEngine {
     ShapeMapType max_shape_tensor;
     ShapeMapType optim_shape_tensor;
 
-    // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
-    // not run fp16. When running fp16, the output accuracy of the model will be
-    // affected, closing the plugin fp16 may bring some improvement on accuracy.
-    bool disable_trt_plugin_fp16{false};
+    bool use_inspector{false};
 
-    bool use_dla{false};
-    int dla_core{0};
-
+    //
     // From tensorrt_subgraph_pass, only used for OpConverter.
+    //
     bool use_varseqlen{false};
     bool with_interleaved{false};
     std::string tensorrt_transformer_posid;
     std::string tensorrt_transformer_maskid;
-
-    bool use_inspector{false};
+    bool enable_low_precision_io{false};
+    // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
+    // not run fp16. When running fp16, the output accuracy of the model will be
+    // affected, closing the plugin fp16 may bring some improvement on accuracy.
+    bool disable_trt_plugin_fp16{false};
   };
 
   // Weight is model parameter.
