@@ -121,6 +121,18 @@ class TestPybind(unittest.TestCase):
         print(ir.get_op_result_dtype(matmul_op.result(0)))
         self.assertEqual(ir.get_op_result_shape(matmul_op.result(0)), [4, 4])
 
+    def test_operands(self):
+        newir_program = get_ir_program()
+        matmul_op = newir_program.block().get_ops()[1]
+        operands = matmul_op.operands()
+        self.assertEqual(len(operands), 0)
+
+    def test_results(self):
+        newir_program = get_ir_program()
+        matmul_op = newir_program.block().get_ops()[1]
+        results = matmul_op.results()
+        self.assertEqual(len(results), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
