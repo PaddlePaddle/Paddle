@@ -200,7 +200,7 @@ class Optimizer:
                 with fluid.dygraph.guard():
                     emb = paddle.nn.Embedding(10, 10)
 
-                    adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
+                    adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
                     state_dict = adam.state_dict()
 
         '''
@@ -464,13 +464,13 @@ class Optimizer:
                 with fluid.dygraph.guard():
                     linear = paddle.nn.Linear(10, 10)
 
-                    adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
+                    adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
                     # set learning rate manually by python float value
                     lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
                     for i in range(5):
                         adam.set_lr(lr_list[i])
-                        lr = adam.current_step_lr()
+                        lr = adam.get_lr()
                         print("current lr is {}".format(lr))
                     # Print:
                     #    current lr is 0.2
@@ -480,14 +480,6 @@ class Optimizer:
                     #    current lr is 0.6
 
 
-                    # set learning rate manually by framework Variable
-                    lr_var = paddle.static.create_global_var(
-                        shape=[1], value=0.7, dtype='float32')
-                    adam.set_lr(lr_var)
-                    lr = adam.current_step_lr()
-                    print("current lr is {}".format(lr))
-                    # Print:
-                    #    current lr is 0.7
 
 
 
@@ -555,8 +547,8 @@ class Optimizer:
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
                     emb = paddle.nn.Embedding(10, 10)
-                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
-                    lr = adam.current_step_lr()
+                    adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
+                    lr = adam.get_lr()
                     print(lr) # 0.001
 
                 # example2: PiecewiseDecay is used, return the step learning rate
@@ -1413,8 +1405,8 @@ class Optimizer:
                     a = fluid.dygraph.to_variable(value)
                     linear = paddle.nn.Linear(13, 5)
                     # This can be any optimizer supported by dygraph.
-                    adam = fluid.optimizer.Adam(learning_rate = 0.01,
-                                                parameter_list = linear.parameters())
+                    adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                                                parameters = linear.parameters())
                     out = linear(a)
                     out.backward()
                     adam.minimize(out)
@@ -5008,7 +5000,7 @@ class RecomputeOptimizer(Optimizer):
             input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
             cost, fc_1, pred = mlp(input_x, input_y)
 
-            sgd = fluid.optimizer.Adam(learning_rate=0.01)
+            sgd = paddle.optimizer.Adam(learning_rate=0.01)
             sgd = fluid.optimizer.RecomputeOptimizer(sgd)
             sgd._set_checkpoints([fc_1, pred])
             sgd.minimize(cost)
@@ -5087,7 +5079,7 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 try:
@@ -5135,7 +5127,7 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
@@ -5626,7 +5618,7 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
@@ -5707,7 +5699,7 @@ class RecomputeOptimizer(Optimizer):
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
@@ -5985,7 +5977,7 @@ class GradientMergeOptimizer:
         input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
         cost, fc_1, pred = mlp(input_x, input_y)
-        sgd = fluid.optimizer.Adam(learning_rate=0.01)
+        sgd = paddle.optimizer.Adam(learning_rate=0.01)
         sgd = fluid.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
         sgd.minimize(cost)
 
