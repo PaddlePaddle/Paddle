@@ -56,9 +56,11 @@ void AddNewData(ir::Value value,
                 std::vector<paddle::framework::Variable*>* variable_list) {
   value_2_var_name->emplace(value, name);
   variable_2_var_name->emplace(var, name);
-  auto id = var_name_2_id->size();
-  var_name_2_id->emplace(name, id);
-  variable_list->push_back(var);
+  if (var_name_2_id->count(name) == 0) {
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(name, id);
+    variable_list->push_back(var);
+  }
   PADDLE_ENFORCE_EQ(
       variable_list->size(),
       var_name_2_id->size(),
@@ -104,11 +106,8 @@ paddle::framework::Variable* CreateVar(
     std::vector<paddle::framework::Variable*>* variable_list) {
   Operation* def_op = value.GetDefiningOp();
   bool is_persisable = false;
-  if (def_op->attributes().count("is_persisable")) {
-    is_persisable = def_op->attributes()
-                        .at("is_persisable")
-                        .dyn_cast<ir::BoolAttribute>()
-                        .data();
+  if (def_op->name() == "builtin.set_parameter") {
+    is_persisable = true;
   }
 
   paddle::framework::Variable* var = nullptr;
@@ -218,7 +217,8 @@ void HandleForSpecialOp(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list) {
+    std::vector<paddle::framework::Variable*>* variable_list,
+    std::vector<::ir::Value>* parameter_values) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -227,13 +227,21 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
-    auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
-                   ->Var("fetch");
-    VLOG(6) << "Create var: fetch in scope " << inner_scope->root();
-    auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-    int index =
-        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    fetch_list->resize(index + 1);
+    auto fetch_src_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto fetch_var_name = fetch_src_name + "@fetch";
+    auto* var = const_cast<paddle::framework::Scope*>(inner_scope->root())
+                    ->Var(fetch_var_name);
+    var->GetMutable<phi::DenseTensor>();
+    auto value = op->result(0);
+    AddNewData(value,
+               fetch_var_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "pd.feed") {
@@ -262,6 +270,7 @@ void HandleForSpecialOp(
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto value = op->result(0);
+
     paddle::framework::Variable* var = inner_scope->FindVar(var_name);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
@@ -322,6 +331,8 @@ void HandleForSpecialOp(
     if (inner_scope->root()->FindVar(param_name) == nullptr) {
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
+      VLOG(6) << "set_parameter rename var: " << orig_name << " -> "
+              << param_name;
     }
     RenameData(value,
                param_name,
@@ -329,6 +340,10 @@ void HandleForSpecialOp(
                value_2_var_name,
                variable_2_var_name,
                var_name_2_id);
+
+    if (parameter_values) {
+      parameter_values->push_back(value);
+    }
   }
 
   if (op_name == "pd.shadow_output") {
@@ -359,6 +374,7 @@ void HandleForSpecialOp(
                           .dyn_cast<ir::StrAttribute>()
                           .AsString();
     auto value = op->result(0);
+
     paddle::framework::Variable* var = inner_scope->FindVar(param_name);
     AddNewData(value,
                param_name,
@@ -367,6 +383,10 @@ void HandleForSpecialOp(
                variable_2_var_name,
                var_name_2_id,
                variable_list);
+
+    if (parameter_values) {
+      parameter_values->push_back(value);
+    }
   }
 
   if (op_name == "builtin.slice") {
@@ -452,7 +472,8 @@ void BuildScope(const ir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
+                std::vector<paddle::framework::Variable*>* variable_list,
+                std::vector<::ir::Value>* parameter_values) {
   VLOG(4) << "***** [before build] scope"
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
@@ -480,7 +501,8 @@ void BuildScope(const ir::Block& block,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
-                         variable_list);
+                         variable_list,
+                         parameter_values);
       continue;
     }
 

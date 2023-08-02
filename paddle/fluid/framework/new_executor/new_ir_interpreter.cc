@@ -40,20 +40,29 @@
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
+PHI_DECLARE_bool(enable_new_ir_in_executor);
+
+PHI_DECLARE_bool(enable_new_ir_in_executor_beta_run);
+
+PHI_DECLARE_bool(enable_new_ir_in_executor_loop_run);
+
 namespace paddle {
 namespace framework {
 
-NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
-                                   std::unique_ptr<::ir::Program> ir_prog,
-                                   framework::Scope* scope,
-                                   const ExecutionConfig& execution_config)
+NewIRInterpreter::NewIRInterpreter(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    std::unique_ptr<::ir::Program> ir_prog,
+    framework::Scope* scope,
+    const ExecutionConfig& execution_config)
     : place_(place),
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
       ir_program_(std::move(ir_prog)),
-      ir_stream_analyzer_(place) {
+      ir_stream_analyzer_(place),
+      fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
@@ -188,6 +197,11 @@ FetchList NewIRInterpreter::Run(
 
 FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                 bool need_fetch) {
+  if (FLAGS_enable_new_ir_in_executor_beta_run) {
+    LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode.";
+    return BetaRun(feed_names, need_fetch);
+  }
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -196,7 +210,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 #endif
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in OldRun mode.";
     std::stringstream ss;
     ss << this;
     ::ir::BuildScope(*ir_program_->block(),
@@ -205,7 +219,8 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
-                     &variable_list_);
+                     &variable_list_,
+                     &parameter_values_);
     VLOG(4) << DebugValueInfo();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
@@ -235,20 +250,36 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
 
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
-  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var && need_fetch) {
-    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-    if (platform::IsCUDAGraphCapturing()) {
-      PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Cannot fetch data when using CUDA Graph."));
+
+  if (FLAGS_enable_new_ir_in_executor) {
+    framework::FetchList fetch_res;
+
+    if (need_fetch) {
+      for (auto& var_name : fetch_var_names_) {
+        auto* var = inner_scope->FindVar(var_name);
+        VLOG(0) << "fetch " << var_name << "[" << var << "]";
+        fetch_res.push_back(var->Get<phi::DenseTensor>());
+      }
     }
-#endif
-    return fetch_list;
+    VLOG(4) << "get fetch list size: " << fetch_res.size();
+    return fetch_res;
   } else {
-    return {};
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var && need_fetch) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
+#endif
+      return fetch_list;
+    } else {
+      return {};
+    }
   }
 }
 
@@ -1357,15 +1388,6 @@ void NewIRInterpreter::CheckGC(const Instruction& instr) {
   }
 }
 
-::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
-  for (auto kv : value_2_var_name_) {
-    if (kv.second == var_name) {
-      return kv.first;
-    }
-  }
-  return nullptr;
-}
-
 void NewIRInterpreter::Prepare(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
@@ -1601,10 +1623,10 @@ void NewIRInterpreter::BuildInstruction() {
                          .at("op_name")
                          .dyn_cast<::ir::StrAttribute>()
                          .AsString();
-      if (op_name == "builtin.combine" || op_name == "builtin.slice" ||
-          op_name == "pd.feed" || op_name == "pd.fetch" ||
+      if (op_name == "builtin.combine" || op_name == "pd.feed" ||
           op_name == "builtin.set_parameter" ||
-          op_name == "builtin.get_parameter") {
+          op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
+          op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
         VLOG(6) << "skip process " << op_name;
         continue;
       }
@@ -1779,12 +1801,17 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
 
     // persistable var will be ignore while GC
     ::ir::Value value = GetValueByName(GetNameById(var_id));
-    if (value && value.GetDefiningOp()->attributes().count("is_persisable") &&
-        value.GetDefiningOp()
-            ->attributes()
-            .at("is_persisable")
-            .dyn_cast<::ir::BoolAttribute>()
-            .data()) {
+    bool is_parameter = false;
+    if (value) {
+      for (auto item : parameter_values_) {
+        if (item == value) {
+          is_parameter = true;
+          break;
+        }
+      }
+    }
+    if (is_parameter) {
+      VLOG(4) << "value " << value.impl() << " is a parameter, skip gc";
       continue;
     }
 
@@ -1832,14 +1859,20 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
     ::ir::Value value = GetValueByName(GetNameById(var_id));
-    if (value && value.GetDefiningOp()->attributes().count("is_persisable") &&
-        value.GetDefiningOp()
-            ->attributes()
-            .at("is_persisable")
-            .dyn_cast<::ir::BoolAttribute>()
-            .data()) {
+    bool is_parameter = false;
+    if (value) {
+      for (auto item : parameter_values_) {
+        if (item == value) {
+          is_parameter = true;
+          break;
+        }
+      }
+    }
+    if (is_parameter) {
+      VLOG(4) << "value " << value.impl() << " is a parameter, skip gc";
       continue;
     }
+
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : " << GetNameById(var_id);
       gc_->Add(refs_[var_id]->Var(), instr);
@@ -1859,7 +1892,10 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         instr->Outputs();
     std::unordered_multimap<::ir::Value, std::vector<int>> ins_and_outs{
         ins.begin(), ins.end()};
-    ins_and_outs.insert(outs.begin(), outs.end());
+
+    if (instr->Name() != "pd.fetch") {
+      ins_and_outs.insert(outs.begin(), outs.end());
+    }
 
     for (auto& item : ins_and_outs) {
       for (auto var_id : item.second) {
@@ -1991,7 +2027,9 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
-                     &variable_list_);
+                     &variable_list_,
+                     &parameter_values_);
+    VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
     BuildInstruction();
@@ -2001,9 +2039,22 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    BetaRunImpl();
+    if (FLAGS_enable_new_ir_in_executor_loop_run) {
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with for_loop version.";
+      LoopRunImpl();
+    } else {
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with trace version.";
+      TraceRunImpl();
+    }
+    is_build_ = true;
   } else {
-    BetaRunImpl();
+    if (FLAGS_enable_new_ir_in_executor_loop_run) {
+      LoopRunImpl();
+    } else {
+      TraceRunImpl();
+    }
   }
 
   if (HasLocalScope()) {
@@ -2012,31 +2063,52 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
 
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
-  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var && need_fetch) {
-    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-    if (platform::IsCUDAGraphCapturing()) {
-      PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Cannot fetch data when using CUDA Graph."));
+  if (FLAGS_enable_new_ir_in_executor) {
+    framework::FetchList fetch_res;
+
+    if (need_fetch) {
+      for (auto& var_name : fetch_var_names_) {
+        auto* var = inner_scope->FindVar(var_name);
+        VLOG(0) << "fetch " << var_name << "[" << var << "]";
+        fetch_res.push_back(var->Get<phi::DenseTensor>());
+      }
     }
-#endif
-    return fetch_list;
+    VLOG(4) << "get fetch list size: " << fetch_res.size();
+    return fetch_res;
   } else {
-    return {};
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var && need_fetch) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
+#endif
+      return fetch_list;
+    } else {
+      return {};
+    }
   }
 }
 
-void NewIRInterpreter::NewIrLoopRunImpl() {
-  for (size_t instr_id = 0; instr_id < vec_instruction_base_.size();
-       ++instr_id) {
-    vec_instruction_base_[instr_id]->Run();
+void NewIRInterpreter::LoopRunImpl() {
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
   }
+
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+  VLOG(4) << "Loop Instruction List";
+
+  LoopRunInstructionList(vec_instruction_base_);
+  VLOG(4) << "Done LoopRunImpl";
 }
 
-void NewIRInterpreter::BetaRunImpl() {
+void NewIRInterpreter::TraceRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
@@ -2045,11 +2117,53 @@ void NewIRInterpreter::BetaRunImpl() {
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   VLOG(4) << "Tracing Instruction List";
 
-  TraceInstructionList(vec_instruction_base_);
-  VLOG(4) << "Done BetaRunImpl";
+  TraceRunInstructionList(vec_instruction_base_);
+  VLOG(4) << "Done TraceRunImpl";
 }
 
-void NewIRInterpreter::TraceInstructionList(
+void NewIRInterpreter::LoopRunInstructionList(
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i).get());
+    }
+  }
+
+  for (size_t idx = 0; idx < vec_instr.size(); idx++) {
+    InstructionBase* instr_node = vec_instr[idx].get();
+
+    VLOG(6) << "Run InstructionBase " << idx;
+    RunInstructionBase(instr_node);
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      break;
+    }
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+  VLOG(4) << "Done LoopRunInstructionList";
+}
+
+void NewIRInterpreter::TraceRunInstructionList(
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
@@ -2089,7 +2203,7 @@ void NewIRInterpreter::TraceInstructionList(
     VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
   }
-  VLOG(4) << "Done TraceInstructionList";
+  VLOG(4) << "Done TraceRunInstructionList";
 }
 
 void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
@@ -2145,6 +2259,15 @@ void NewIRInterpreter::PreAnalysis() {
   AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
                               ir_instruction_scheduling_priority_less);
   VLOG(4) << "Done AnalyseExecuteOrderForTrace";
+}
+
+::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
+  for (auto kv : value_2_var_name_) {
+    if (kv.second == var_name) {
+      return kv.first;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace framework
