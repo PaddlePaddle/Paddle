@@ -34,6 +34,7 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -553,8 +554,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto use_dla = Get<bool>("trt_use_dla");
   auto dla_core = Get<int>("trt_dla_core");
   auto use_inspector = Get<bool>("use_inspector");
-  auto with_ernie = graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
-                    graph->Has(framework::ir::kMultiheadMatmulPass);
+  auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
   auto workspace_size = Get<int64_t>("workspace_size");
@@ -638,7 +638,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("with_interleaved", with_interleaved);
   op_desc->SetAttr("use_dla", use_dla);
   op_desc->SetAttr("dla_core", dla_core);
-  op_desc->SetAttr("with_ernie", with_ernie);
+  op_desc->SetAttr("disable_trt_plugin_fp16", disable_trt_plugin_fp16);
   op_desc->SetAttr("context_memory_sharing", context_memory_sharing);
   std::string trt_engine_serialized_data;
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
@@ -705,10 +705,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   params.min_shape_tensor = min_shape_tensor;
   params.max_shape_tensor = max_shape_tensor;
   params.optim_shape_tensor = optim_shape_tensor;
-  params.disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
+  params.disable_trt_plugin_fp16 = disable_trt_plugin_fp16;
   params.precision = precision_mode;
   params.use_varseqlen = use_varseqlen;
-  params.with_ernie = with_ernie;
   params.use_dla = use_dla;
   params.dla_core = dla_core;
   params.with_interleaved = with_interleaved;

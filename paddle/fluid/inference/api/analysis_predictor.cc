@@ -2610,7 +2610,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.trt_engine_memory_sharing()) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .releaseContextMemory(predictor_id_);
+        .ReleaseContextMemory(predictor_id_);
   }
 #endif
 }

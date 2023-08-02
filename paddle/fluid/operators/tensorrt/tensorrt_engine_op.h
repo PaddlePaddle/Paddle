@@ -31,6 +31,7 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/place.h"
@@ -447,24 +448,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto t_shape = phi::vectorize(t.dims());
         runtime_batch = t_shape[0];
       }
-      calib_res->calib_.reset(new TRTInt8Calibrator(
-          calib_buffers, runtime_batch, calibration_engine_key_, dev_place));
+      calib_res->calib_ = std::make_unique<TRTInt8Calibrator>(
+          calib_buffers, runtime_batch, calibration_engine_key_, dev_place);
       calib_res->thr_.reset(new std::thread([&]() {
-        std::map<std::string, std::vector<int>> min_input_shape;
-        std::map<std::string, std::vector<int>> max_input_shape;
-        std::map<std::string, std::vector<int>> opt_input_shape;
-        std::map<std::string, std::vector<int>> min_shape_tensor;
-        std::map<std::string, std::vector<int>> max_shape_tensor;
-        std::map<std::string, std::vector<int>> opt_shape_tensor;
-        if (!shape_range_info_path_.empty())
-          inference::DeserializeShapeRangeInfo(shape_range_info_path_,
-                                               &min_input_shape,
-                                               &max_input_shape,
-                                               &opt_input_shape,
-                                               &min_shape_tensor,
-                                               &max_shape_tensor,
-                                               &opt_shape_tensor);
-
         TensorRTEngine::ConstructionParams params;
         params.max_batch_size = max_batch_size_;
         params.max_workspace_size = workspace_size_;
@@ -472,13 +458,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         params.calibrator = calib_res->calib_.get();
         params.device_id = dev_place.device;
         params.with_dynamic_shape = with_dynamic_shape_;
-        params.min_input_shape = min_input_shape;
-        params.max_input_shape = max_input_shape;
-        params.optim_input_shape = opt_input_shape;
-        params.min_shape_tensor = min_shape_tensor;
-        params.max_shape_tensor = max_shape_tensor;
-        params.optim_shape_tensor = opt_shape_tensor;
-        calib_res->engine_.reset(new TensorRTEngine(params));
+        if (!shape_range_info_path_.empty()) {
+          inference::DeserializeShapeRangeInfo(shape_range_info_path_,
+                                               &params.min_input_shape,
+                                               &params.max_input_shape,
+                                               &params.optim_input_shape,
+                                               &params.min_shape_tensor,
+                                               &params.max_shape_tensor,
+                                               &params.optim_shape_tensor);
+        }
+        params.context_memory_sharing = Attr<bool>("context_memory_sharing");
+        params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
+        calib_res->engine_ = std::make_unique<TensorRTEngine>(params);
 
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
@@ -829,6 +820,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
       params.with_dynamic_shape = with_dynamic_shape_;
       params.context_memory_sharing = Attr<bool>("context_memory_sharing");
       params.use_dla = Attr<bool>("use_dla");
+      params.dla_core = Attr<int>("dla_core");
+      params.disable_trt_plugin_fp16 = Attr<bool>("disable_trt_plugin_fp16");
+      params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
+      params.use_inspector = Attr<bool>("use_inspector");
 
       if (!shape_range_info_path_.empty()) {
         inference::DeserializeShapeRangeInfo(shape_range_info_path_,

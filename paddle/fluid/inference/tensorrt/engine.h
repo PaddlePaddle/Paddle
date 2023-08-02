@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <NvInfer.h>
-
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -25,27 +23,33 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+#include <NvInfer.h>
 #include "NvInferRuntimeCommon.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/stream.h"
-#include "paddle/utils/any.h"
 
 PHI_DECLARE_bool(trt_ibuilder_cache);
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+namespace plugin {
+class PluginTensorRT;
+}  // namespace plugin
+
+class TRTInt8Calibrator;
 
 // The code is mainly from TensorRT, thanks to the project.
 class TrtCudaGraph {
@@ -105,140 +109,6 @@ class TrtCudaGraph {
   cudaGraphExec_t cuda_graph_exec_{};
 };
 
-namespace plugin {
-class PluginTensorRT;
-}  // namespace plugin
-
-using FluidDT = framework::proto::VarType_Type;
-using TRT_DT = nvinfer1::DataType;
-
-namespace {  // NOLINT
-
-TRT_DT FluidDataType2TRT(FluidDT type) {
-  switch (type) {
-    case FluidDT::VarType_Type_FP32:
-    case FluidDT::VarType_Type_FP64:
-      return TRT_DT::kFLOAT;
-    case FluidDT::VarType_Type_INT32:
-    case FluidDT::VarType_Type_INT64:
-      return TRT_DT::kINT32;
-    case FluidDT::VarType_Type_FP16:
-      return TRT_DT::kHALF;
-#if IS_TRT_VERSION_GE(8400)
-    case FluidDT::VarType_Type_BOOL:
-      return TRT_DT::kBOOL;
-
-#endif
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "unsupported datatype in TRT op converter, type: %s. "
-          "Boolean type is supported as TRT input/output "
-          "using TensorRT v8.4+.",
-          VarType_Type_Name(type)));
-  }
-  return TRT_DT::kINT32;
-}
-
-// The T can be int32 or int64 type.
-template <typename T>
-nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
-                            std::string input,
-                            bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GE(shape.size(),
-                    0UL,
-                    platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 0 "
-                        "dimensions, but input %s has %d dims.",
-                        input,
-                        shape.size()));
-
-  auto ShapeStr = [](const std::vector<T>& shape) {
-    std::ostringstream os;
-    os << "[";
-    for (size_t i = 0; i < shape.size(); ++i) {
-      if (i == shape.size() - 1) {
-        os << shape[i];
-      } else {
-        os << shape[i] << ",";
-      }
-    }
-    os << "]";
-    return os.str();
-  };
-  if (!with_dynamic_shape) {
-    if (shape.size() == 4UL) {
-      if (shape[2] == -1 || shape[3] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
-    } else if (shape.size() == 5UL) {
-      if (shape[2] == -1 || shape[3] == -1 || shape[4] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
-    } else if (shape.size() == 3UL) {
-      if (shape[1] == -1 || shape[2] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims2(shape[1], shape[2]);
-    } else if (shape.size() == 2UL) {
-      if (shape[1] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      nvinfer1::Dims dims;
-      dims.nbDims = 1;
-      dims.d[0] = shape[1];
-      return dims;
-    }
-    // static shape doesn't support 1D op so far.
-    PADDLE_ENFORCE_NE(shape.size(),
-                      1UL,
-                      platform::errors::InvalidArgument(
-                          "The input [%s] shape of trt subgraph is %s."
-                          "it's not supported by trt so far",
-                          input,
-                          ShapeStr(shape)));
-
-    nvinfer1::Dims dims;
-    dims.nbDims = shape.size() - 1;
-    for (size_t i = 1; i < shape.size(); i++) {
-      dims.d[i - 1] = shape[i];
-    }
-    return dims;
-  } else {
-    if (shape.size() == 4UL) {
-      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
-    } else if (shape.size() == 3UL) {
-      return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
-    }
-    nvinfer1::Dims dims;
-    dims.nbDims = shape.size();
-    for (size_t i = 0; i < shape.size(); i++) {
-      dims.d[i] = shape[i];
-    }
-    return dims;
-  }
-}
-}  // namespace
-
-class TRTInt8Calibrator;
-
 /*
  * TensorRT Engine.
  *
@@ -287,10 +157,11 @@ class TensorRTEngine {
     // affected, closing the plugin fp16 may bring some improvement on accuracy.
     bool disable_trt_plugin_fp16{false};
 
-    bool use_varseqlen{false};
     bool use_dla{false};
     int dla_core{0};
-    bool with_ernie{false};
+
+    // From tensorrt_subgraph_pass, only used for OpConverter.
+    bool use_varseqlen{false};
     bool with_interleaved{false};
     std::string tensorrt_transformer_posid;
     std::string tensorrt_transformer_maskid;
@@ -323,7 +194,7 @@ class TensorRTEngine {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(ConstructionParams params,
+  TensorRTEngine(const ConstructionParams& params,
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
@@ -359,15 +230,6 @@ class TensorRTEngine {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context();
-
-  int GetProfileIndex() {
-    if (max_profile_num_ > 1) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      return profile_index_[predictor_id_per_thread];
-    } else {
-      return 0;
-    }
-  }
 
   int GetBindingsOffset() {
     return (binding_num_ / max_profile_num_) * GetProfileIndex();
@@ -417,8 +279,6 @@ class TensorRTEngine {
     bool support_int8 = infer_builder_->platformHasFastInt8();
     return enable_int8 && support_int8;
   }
-
-  int device_id() { return params_.device_id; }
 
   nvinfer1::IPluginV2Layer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                       int num_inputs,
@@ -633,7 +493,6 @@ class TensorRTEngine {
 
   bool use_varseqlen() { return params_.use_varseqlen; }
   bool use_dla() { return params_.use_dla; }
-  bool with_ernie() { return params_.with_ernie; }
   bool with_interleaved() { return params_.with_interleaved; }
   const std::string& tensorrt_transformer_posid() {
     return params_.tensorrt_transformer_posid;
@@ -664,8 +523,6 @@ class TensorRTEngine {
     startup_with_cudagraph_ = all_nodes_offload_to_trt;
   }
 
-  void GetEngineInfo();
-
   bool LowPrecisionIOEnabled() const { return params_.enable_low_precision_io; }
 
  private:
@@ -673,6 +530,19 @@ class TensorRTEngine {
   // ensure that the thread is associated with the correct device by calling
   // FreshDeviceId().
   void FreshDeviceId();
+
+  void GetEngineInfo();
+
+  int device_id() { return params_.device_id; }
+
+  int GetProfileIndex() {
+    if (max_profile_num_ > 1) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      return profile_index_[predictor_id_per_thread];
+    } else {
+      return 0;
+    }
+  }
 
  private:
   //
@@ -797,7 +667,7 @@ class TRTEngineManager {
     }
   }
 
-  void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+  void UpdateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
     VLOG(3) << "TensorRT engine context memory size is "
             << mem_size / 1024.0 / 1024.0 << "MiB in predictor id "
             << predictor_id;
@@ -812,24 +682,24 @@ class TRTEngineManager {
     }
 
     if (size_updated) {
-      releaseContextMemory(predictor_id);
+      ReleaseContextMemory(predictor_id);
     }
   }
 
-  void* getContextMemory(PredictorID predictor_id,
+  void* GetContextMemory(PredictorID predictor_id,
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::lock_guard<std::mutex> lock(mutex_);
-    static auto alignment = getAlignmentSize(place);
+    static auto alignment = GetAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
       context_memorys_[predictor_id] = std::move(context_memory);
     }
-    return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+    return GetAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
   }
 
-  void releaseContextMemory(PredictorID predictor_id) {
+  void ReleaseContextMemory(PredictorID predictor_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (context_memorys_.count(predictor_id)) {
       context_memorys_[predictor_id].reset(nullptr);
@@ -838,12 +708,12 @@ class TRTEngineManager {
   }
 
  private:
-  size_t getAlignmentSize(const phi::GPUPlace& place) {
+  size_t GetAlignmentSize(const phi::GPUPlace& place) {
     const auto& prop = platform::GetDeviceProperties(place.GetDeviceId());
     return prop.textureAlignment;
   }
 
-  void* getAlignedMemory(void* addr, size_t alignment) {
+  void* GetAlignedMemory(void* addr, size_t alignment) {
     return reinterpret_cast<void*>(uintptr_t(addr) & (~(alignment - 1)));
   }
 

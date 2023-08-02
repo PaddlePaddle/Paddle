@@ -21,11 +21,10 @@ limitations under the License. */
 
 #include "NvInferRuntimeCommon.h"
 #include "cuda_runtime_api.h"  // NOLINT
+
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace inference {
@@ -123,7 +122,7 @@ void TensorRTEngine::Execute(int batch_size,
     void *context_memory{nullptr};
     context_memory =
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-            .getContextMemory(
+            .GetContextMemory(
                 predictor_id_per_thread,
                 phi::GPUPlace(device_id()),
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
@@ -390,7 +389,7 @@ void TensorRTEngine::FreezeNetwork() {
   // for engine context memory sharing
   if (params_.context_memory_sharing) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+        .UpdateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
   if (params_.use_inspector) {
@@ -605,7 +604,7 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
   // for engine context memory sharing
   if (params_.context_memory_sharing) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+        .UpdateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
   if (params_.use_inspector) {
