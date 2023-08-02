@@ -58,12 +58,13 @@ class Multinomial(distribution.Distribution):
         >>> multinomial = paddle.distribution.Multinomial(10, paddle.to_tensor([0.2, 0.3, 0.5]))
         >>> print(multinomial.sample((2, 3)))
         Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[[1., 4., 5.],
-                [0., 2., 8.],
-                [2., 4., 4.]],
-                [[1., 6., 3.],
-                [3., 3., 4.],
-                [3., 4., 3.]]])
+            [[[1., 5., 4.],
+              [0., 4., 6.],
+              [1., 3., 6.]],
+
+            [[2., 2., 6.],
+              [0., 6., 4.],
+              [3., 3., 4.]]])
     """
 
     def __init__(self, total_count, probs):

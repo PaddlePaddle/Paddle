@@ -49,7 +49,7 @@ class Laplace(distribution.Distribution):
             >>> m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
             >>> m.sample()  # Laplace distributed with loc=0, scale=1
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    3.68546247)
+                1.31554604)
 
     """
 
@@ -300,10 +300,11 @@ class Laplace(distribution.Distribution):
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.seed(2023)
                 >>> m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
                 >>> m.sample()  # Laplace distributed with loc=0, scale=1
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                        3.68546247)
+                    1.31554604)
         """
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         with paddle.no_grad():
@@ -326,7 +327,7 @@ class Laplace(distribution.Distribution):
                 >>> m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                 >>> m.rsample((1,))  # Laplace distributed with loc=0, scale=1
                 Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                        [[0.04337667]])
+                    [[1.31554604]])
         """
 
         eps = self._get_eps()

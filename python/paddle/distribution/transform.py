@@ -856,8 +856,8 @@ class ReshapeTransform(Transform):
                     [[[1., 1., 1.],
                         [1., 1., 1.]]])
             >>> print(reshape_transform.forward_log_det_jacobian(x))
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    0.)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.])
     """
     _type = Type.BIJECTION
 
@@ -1249,12 +1249,12 @@ class TanhTransform(Transform):
 
             >>> print(tanh.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[0.76159418, 0.96402758, 0.99505478],
-                    [0.99932933, 0.99990922, 0.99998772]])
+                [[0.76159418, 0.96402758, 0.99505472],
+                    [0.99932921, 0.99990916, 0.99998784]])
             >>> print(tanh.inverse(tanh.forward(x)))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[1.00000012, 2.        , 3.00000286],
-                    [4.00002146, 5.00009823, 6.00039864]])
+                [[1.        , 2.        , 2.99999666],
+                    [3.99993253, 4.99977016, 6.00527668]])
             >>> print(tanh.forward_log_det_jacobian(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[-0.86756170 , -2.65000558 , -4.61865711 ],
