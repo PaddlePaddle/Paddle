@@ -29,10 +29,10 @@ const drr::OpCall& PatternGraph::AddOpCall(
     id2owned_tensor_.at(tensor_id)->AddConsumer(op_call);
 
     if (input.lock()->producer().use_count() == 0) {
-      input_tensors.insert(tensor_id);
+      input_tensors_.insert(tensor_id);
     }
-    if (output_tensors.find(tensor_id) != output_tensors.end()) {
-      output_tensors.erase(tensor_id);
+    if (output_tensors_.find(tensor_id) != output_tensors_.end()) {
+      output_tensors_.erase(tensor_id);
     }
   }
   for (auto& output : op_call->outputs()) {
@@ -47,7 +47,7 @@ const drr::Tensor& PatternGraph::AddTensor(
     const std::shared_ptr<drr::Tensor>& tensor) {
   if (id2owned_tensor_.find(tensor->id()) == id2owned_tensor_.end()) {
     id2owned_tensor_[tensor->id()] = tensor;
-    output_tensors.insert(tensor->id());
+    output_tensors_.insert(tensor->id());
   }
   return *id2owned_tensor_[tensor->id()];
 }
@@ -56,7 +56,7 @@ drr::Tensor& PatternGraph::AddTmpTensor(
     const std::shared_ptr<drr::Tensor>& tensor) {
   CHECK(id2owned_tensor_.find(tensor->id()) == id2owned_tensor_.end());
   id2owned_tensor_[tensor->id()] = tensor;
-  output_tensors.insert(tensor->id());
+  output_tensors_.insert(tensor->id());
   return *id2owned_tensor_[tensor->id()];
 }
 
@@ -67,15 +67,19 @@ void PatternGraph::UpdateTmpTensor(const id_type& tmp_tensor_id,
   id2owned_tensor_[new_tensor_id] = tmp_tensor;
   id2owned_tensor_.erase(tmp_tensor_id);
 
-  if (input_tensors.find(tmp_tensor_id) != input_tensors.end()) {
-    input_tensors.erase(tmp_tensor_id);
-    input_tensors.insert(new_tensor_id);
+  if (input_tensors_.find(tmp_tensor_id) != input_tensors_.end()) {
+    input_tensors_.erase(tmp_tensor_id);
+    input_tensors_.insert(new_tensor_id);
   }
-  output_tensors.erase(new_tensor_id);
-  if (output_tensors.find(tmp_tensor_id) != output_tensors.end()) {
-    output_tensors.erase(tmp_tensor_id);
-    output_tensors.insert(new_tensor_id);
+  output_tensors_.erase(new_tensor_id);
+  if (output_tensors_.find(tmp_tensor_id) != output_tensors_.end()) {
+    output_tensors_.erase(tmp_tensor_id);
+    output_tensors_.insert(new_tensor_id);
   }
+}
+
+std::weak_ptr<OpCall> SourcePatternGraph::AnchorNode() const {
+  return id2owned_tensor_.at(*output_tensors_.begin())->producer();
 }
 
 }  // namespace drr

@@ -14,6 +14,12 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
 namespace ir {
 namespace drr {
 
@@ -38,32 +44,19 @@ class PatternGraph {
  protected:
   std::unordered_map<id_type, std::shared_ptr<Tensor>> id2owned_tensor_;
   std::vector<std::shared_ptr<OpCall>> owned_op_call_;
-  std::unordered_set<id_type> input_tensors;
-  std::unordered_set<id_type> output_tensors;
+  std::unordered_set<id_type> input_tensors_;
+  std::unordered_set<id_type> output_tensors_;
 };
 
 class SourcePatternGraph : public PatternGraph {
  public:
-  std::weak_ptr<OpCall> AnchorNode() const {
-    return id2owned_tensor_.at(*output_tensors.begin())->producer();
-  }
+  std::weak_ptr<OpCall> AnchorNode() const;
 
  private:
   friend class DrrPassContext;
 };
 
 class ResultPatternGraph : public PatternGraph {};
-
-class Constrain {
- public:
-  bool operator()(const MatchContext& match_context) const {
-    return IsContextMatchConstrain_(match_context);
-  }
-
- private:
-  std::function<bool(const MatchContext& match_context)>
-      IsContextMatchConstrain_;
-};
 
 }  // namespace drr
 }  // namespace ir
