@@ -61,7 +61,6 @@ class Multinomial(distribution.Distribution):
             [[[1., 5., 4.],
               [0., 4., 6.],
               [1., 3., 6.]],
-
             [[2., 2., 6.],
               [0., 6., 4.],
               [3., 3., 4.]]])
