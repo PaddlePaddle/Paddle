@@ -333,13 +333,15 @@ def read_metric_log(
         re_metric_pattern = (
             target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
         )
-        re_out_of_memory_pattern = r"out of memory"
+        re_out_of_memory_pattern = r"Out of memory"
         out_of_memory_flag = False
         metric_list = []
         lines = f.readlines()
         for line in lines:
             metric = re.findall(re_metric_pattern, line)
-            out_of_memory = re.findall(re_out_of_memory_pattern, line)
+            out_of_memory = re.findall(
+                re_out_of_memory_pattern, line, re.IGNORECASE
+            )
             if metric:
                 metric_list.append(float(metric[0][0]))
             if out_of_memory:
@@ -389,6 +391,34 @@ def read_memory_log(path, file) -> Tuple[float, bool]:
                 memory_used.append(int(mem_used))
                 utilization_gpu.append(int(util_gpu))
     return max(memory_used), False
+
+
+def read_log(
+    path,
+    metric_file="workerlog.0",
+    target_metric='step/s',
+    memory_file="0.gpu.log",
+) -> Tuple[float, float, int]:
+    """extract metric and out of memory from log file
+    return:
+        metric: average metric of last 10 steps
+        memory: max memory used
+        err_code: 00: no error, 01: no metric, 10: out of memory
+    """
+    err_code = 0
+    # check all workerlog files in target path
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            metric, metric_flag = read_metric_log(path, file, target_metric)
+            if metric_flag:
+                err_code = metric_flag | err_code
+            if file == metric_file:
+                res_metric = metric
+
+    res_memory, memory_flag = read_memory_log(path, memory_file)
+    if memory_flag:
+        err_code = (memory_flag << 1) | err_code
+    return res_metric, res_memory, err_code
 
 
 def three_mul_combinations(target):

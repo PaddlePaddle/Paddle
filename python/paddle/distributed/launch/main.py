@@ -300,11 +300,7 @@ def launch():
 
         from ..auto_tuner.recorder import HistoryRecorder
         from ..auto_tuner.tuner import AutoTuner
-        from ..auto_tuner.utils import (
-            gen_new_args,
-            read_memory_log,
-            read_metric_log,
-        )
+        from ..auto_tuner.utils import gen_new_args, read_log
         from . import controllers
 
         start_time = time.time()
@@ -413,10 +409,17 @@ def launch():
                 # process generated result
                 # TODO diffentiate out of memory and no loss(maybe over time)
                 # TODO integragte memory and metric read
-                mem, err = read_memory_log(
-                    path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
+                metric, mem, err = read_log(
+                    path=ctx.args.log_dir,
+                    metric_file="workerlog.0",
+                    target_metric=tuner_cfg["metric_cfg"]["name"],
+                    memory_file=f"{ctx.args.job_id}.gpu.log",
                 )
-                if err:
+
+                # mem, err = read_memory_log(
+                #     path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
+                # )
+                if err & (1 << 0):
                     ctx.logger.warning(
                         f"Read memory log failed for parameters: {log_dir}"
                     )
@@ -424,12 +427,12 @@ def launch():
                 else:
                     gbs_cur_cfg["max_mem_usage"] = mem
 
-                metric, err = read_metric_log(
-                    path=ctx.args.log_dir,
-                    file="workerlog.0",
-                    target_metric=gbs_tuner_cfg["metric_cfg"]["name"],
-                )
-                if err:
+                # metric, err = read_metric_log(
+                #     path=ctx.args.log_dir,
+                #     file="workerlog.0",
+                #     target_metric=gbs_tuner_cfg["metric_cfg"]["name"],
+                # )
+                if err & (1 << 1):
                     ctx.logger.warning(
                         f"Read metric log failed for parameters: {log_dir}, it may be over time or out of memory."
                     )
@@ -518,12 +521,20 @@ def launch():
             c.run()
 
             # process generated result
-            metric, err = read_metric_log(
+
+            metric, mem, err = read_log(
                 path=ctx.args.log_dir,
-                file="workerlog.0",
+                metric_file="workerlog.0",
                 target_metric=tuner_cfg["metric_cfg"]["name"],
+                memory_file=f"{ctx.args.job_id}.gpu.log",
             )
-            if err:
+
+            # metric, err = read_metric_log(
+            #     path=ctx.args.log_dir,
+            #     file="workerlog.0",
+            #     target_metric=tuner_cfg["metric_cfg"]["name"],
+            # )
+            if err & (1 << 0):
                 ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
                 # for pruner use
                 cur_cfg['time'] = -1
@@ -533,10 +544,10 @@ def launch():
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
 
-            mem, err = read_memory_log(
-                path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
-            )
-            if err:
+            # mem, err = read_memory_log(
+            #     path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
+            # )
+            if err & (1 << 1):
                 ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
                 break
             else:
