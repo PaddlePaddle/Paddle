@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature AssignPosOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
-      "fused_attention", {"X", "cum_count", "eff_num_len"}, {}, {"Out"});
+      "assign_pos", {"X", "cum_count", "eff_num_len"}, {}, {"Out"});
 }
 
 }  // namespace phi
