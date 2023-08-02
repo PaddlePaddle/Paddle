@@ -248,7 +248,7 @@ class FusedCommBuffer:
             self._params_step_dict.pop(param.name)
 
         if self._all_params_checked_in:
-            if self._scheduler:
+            if self._comm_scheduler:
                 self._comm_scheduler.register_comm_buffer(self)
             else:
                 self._comm_grads()
