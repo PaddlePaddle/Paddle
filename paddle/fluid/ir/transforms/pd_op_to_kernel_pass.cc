@@ -400,7 +400,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           kernel_fn_str, kernel_key);
       auto args_def = phi_kernel.args_def();
       auto output_defs = args_def.output_defs();
-      if (!unchange_output_list.count((*it)->name())) {
+      if (!UnchangeOutputOps.count((*it)->name())) {
         PADDLE_ENFORCE_EQ(
             (*it)->num_results(),
             output_defs.size(),
@@ -411,8 +411,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
         phi::Place out_place;
-        if ((!unchange_output_list.count((*it)->name())) &&
-            phi_kernel.IsValid()) {
+        if ((!UnchangeOutputOps.count((*it)->name())) && phi_kernel.IsValid()) {
           out_place = phi::TransToPhiPlace(output_defs[i].backend);
         } else {
           out_place = phi::TransToPhiPlace(kernel_key.backend());
