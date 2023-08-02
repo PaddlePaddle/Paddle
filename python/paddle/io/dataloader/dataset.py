@@ -506,20 +506,20 @@ def random_split(dataset, lengths, generator=None):
             >>> # output of the first subset
             >>> for idx, v in enumerate(a_list[0]):
             ...     print(idx, v)
-            0 8
-            1 2
+            0 7
+            1 6
             2 5
 
             >>> # output of the second subset
             >>> for idx, v in enumerate(a_list[1]):
             ...     print(idx, v)
-            0 9
-            1 6
-            2 3
-            3 4
-            4 1
-            5 0
-            6 7
+            0 1
+            1 9
+            2 4
+            3 2
+            4 0
+            5 3
+            6 8
     """
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore

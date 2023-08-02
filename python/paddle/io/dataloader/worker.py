@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-
-# NOTE: queue has a different name in python2 and python3
 import queue
 import sys
 import traceback
@@ -141,17 +139,17 @@ def get_worker_info():
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[3]])
-            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[4]])
-            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[5]])
-            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[6]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[7]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[4]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[8]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5]])
 
     """
     return _worker_info
