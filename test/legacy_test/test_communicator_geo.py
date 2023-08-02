@@ -38,7 +38,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
         emb = paddle.static.nn.embedding(
             input=x1,
-            size=[10000, 13],
+            size=[10000, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
