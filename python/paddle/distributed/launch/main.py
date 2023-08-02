@@ -416,36 +416,40 @@ def launch():
                     memory_file=f"{ctx.args.job_id}.gpu.log",
                 )
 
-                # mem, err = read_memory_log(
-                #     path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
-                # )
                 if err & (1 << 0):
                     ctx.logger.warning(
-                        f"Read memory log failed for parameters: {log_dir}"
-                    )
-                    gbs_cur_cfg["max_mem_usage"] = None
-                else:
-                    gbs_cur_cfg["max_mem_usage"] = mem
-
-                # metric, err = read_metric_log(
-                #     path=ctx.args.log_dir,
-                #     file="workerlog.0",
-                #     target_metric=gbs_tuner_cfg["metric_cfg"]["name"],
-                # )
-                if err & (1 << 1):
-                    ctx.logger.warning(
-                        f"Read metric log failed for parameters: {log_dir}, it may be over time or out of memory."
+                        f"Read metric failed for parameters: {log_dir}"
                     )
                     # for pruner use
                     gbs_cur_cfg['time'] = -1
-                    gbs_cur_cfg[gbs_tuner_cfg['metric_cfg']['name']] = None
-                    gbs_cur_cfg["max_mem_usage"] = "out of memory or over time"
-                    # end gbs search
-                    break
-                else:
+                    gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                    gbs_cur_cfg["max_mem_usage"] = mem
+
+                if err & (1 << 1):
+                    ctx.logger.warning(
+                        f"Out of memory for parameters: {log_dir}"
+                    )
+                    # for pruner use
+                    gbs_cur_cfg['time'] = -1
+                    gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                    gbs_cur_cfg["max_mem_usage"] = "OOM"
+
+                # not err & (1 << 1): do not record memory usage when out of memory
+                if err & (1 << 2) and not err & (1 << 1):
+                    ctx.logger.warning(
+                        f"Read memory usage failed for parameters: {log_dir}"
+                    )
+                    gbs_cur_cfg["max_mem_usage"] = None
+
+                if not err:
                     # for pruner use
                     gbs_cur_cfg['time'] = metric
-                    gbs_cur_cfg[gbs_tuner_cfg['metric_cfg']['name']] = metric
+                    gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
+                    gbs_cur_cfg["max_mem_usage"] = mem
+
+                if err & (1 << 0) or err & (1 << 1):
+                    # no metric or out of memory, end gbs search
+                    break
 
                 # store and update args for next round
                 gbs_cur_cfg["job_id"] = job_id
@@ -529,29 +533,35 @@ def launch():
                 memory_file=f"{ctx.args.job_id}.gpu.log",
             )
 
-            # metric, err = read_metric_log(
-            #     path=ctx.args.log_dir,
-            #     file="workerlog.0",
-            #     target_metric=tuner_cfg["metric_cfg"]["name"],
-            # )
             if err & (1 << 0):
-                ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
+                ctx.logger.warning(
+                    f"Read metric failed for parameters: {log_dir}"
+                )
                 # for pruner use
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
-            else:
+                cur_cfg["max_mem_usage"] = mem
+
+            if err & (1 << 1):
+                ctx.logger.warning(f"Out of memory for parameters: {log_dir}")
+                # for pruner use
+                cur_cfg['time'] = -1
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                cur_cfg["max_mem_usage"] = "OOM"
+
+            # not err & (1 << 1): do not record memory usage when out of memory
+            if err & (1 << 2) and not err & (1 << 1):
+                ctx.logger.warning(
+                    f"Read memory usage failed for parameters: {log_dir}"
+                )
+                cur_cfg["max_mem_usage"] = None
+
+            if not err:
                 # for pruner use
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
-
-            # mem, err = read_memory_log(
-            #     path=ctx.args.log_dir, file=f"{ctx.args.job_id}.gpu.log"
-            # )
-            if err & (1 << 1):
-                ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
-                break
-            else:
                 cur_cfg["max_mem_usage"] = mem
+
             # record history
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)

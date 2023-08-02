@@ -269,6 +269,8 @@ class ETCDMaster(Master):
                     lease_success = True
                 except:
                     time.sleep(1)
+        else:
+            lease = self.client.lease(ttl)
 
         # self.client.delete_prefix(self.job_prefix)
 

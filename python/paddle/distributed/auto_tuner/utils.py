@@ -323,8 +323,16 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
 
 def read_metric_log(
     path, file="workerlog.0", target_metric='step/s'
-) -> Tuple[float, bool]:
+) -> Tuple[float, int]:
     """For extracting metric from log file."""
+    """
+    return:
+        metric: average metric of last 10 steps
+        err_code:
+            00: no error
+            01: no metric
+            10: out of memory
+    """
     target_file = path + "/" + file
     if not os.path.exists(target_file):
         return (0.0, True)
@@ -334,7 +342,8 @@ def read_metric_log(
             target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
         )
         re_out_of_memory_pattern = r"Out of memory"
-        out_of_memory_flag = False
+        out_of_memory_flag = 0
+        err_code = 0
         metric_list = []
         lines = f.readlines()
         for line in lines:
@@ -345,23 +354,23 @@ def read_metric_log(
             if metric:
                 metric_list.append(float(metric[0][0]))
             if out_of_memory:
-                out_of_memory_flag = True
+                out_of_memory_flag = 1
 
-        if not metric_list or out_of_memory_flag:
+        if out_of_memory_flag:
             metric_ave = 0.0
-            flag = True
+            err_code = err_code | (out_of_memory_flag << 1)
+        if not metric_list:
+            metric_ave = 0.0
+            err_code = err_code | 1
         elif len(metric_list) < 10:
             metric_ave = metric_list[-1]
-            flag = False
         elif len(metric_list) < 20:
             metric_ave = sum(metric_list[9:]) / (len(metric_list[9:]))
-            flag = False
         else:
             metric_ave = sum(metric_list[-10:]) / 10
-            flag = False
         # round to 5 decimal places
         metric_ave = round(metric_ave, 5)
-    res = metric_ave, flag
+    res = metric_ave, err_code
     return res
 
 
@@ -399,25 +408,30 @@ def read_log(
     target_metric='step/s',
     memory_file="0.gpu.log",
 ) -> Tuple[float, float, int]:
-    """extract metric and out of memory from log file
+    """
+    extract metric and max memory usage from log file
     return:
         metric: average metric of last 10 steps
         memory: max memory used
-        err_code: 00: no error, 01: no metric, 10: out of memory
+        err_code: 00: no error, 01: no metric, 10: out of memory, 100: no memory log
     """
     err_code = 0
-    # check all workerlog files in target path
+    # check out of memory
     for root, dirs, files in os.walk(path):
         for file in files:
+            if not file.startswith("workerlog"):
+                continue
             metric, metric_flag = read_metric_log(path, file, target_metric)
             if metric_flag:
-                err_code = metric_flag | err_code
-            if file == metric_file:
-                res_metric = metric
+                err_code = (metric_flag & 2) | err_code
 
+    # read metric
+    res_metric, metric_flag = read_metric_log(path, metric_file, target_metric)
+    err_code = metric_flag | err_code
+    # check max memory usage
     res_memory, memory_flag = read_memory_log(path, memory_file)
     if memory_flag:
-        err_code = (memory_flag << 1) | err_code
+        err_code = (memory_flag << 2) | err_code
     return res_metric, res_memory, err_code
 
 
