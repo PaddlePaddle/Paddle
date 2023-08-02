@@ -218,11 +218,14 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void BuildInstructionDependences();
 
-  void NewIrLoopRunImpl();
+  void LoopRunImpl();
 
-  void BetaRunImpl();
+  void TraceRunImpl();
 
-  void TraceInstructionList(
+  void TraceRunInstructionList(
+      const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
+
+  void LoopRunInstructionList(
       const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
 
   void RunInstructionBase(InstructionBase* instr_node);
@@ -257,7 +260,12 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
 
   std::vector<std::string> fetch_var_names_;
+
   std::string scope_prefix_;
+
+  // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
+  // belongs to a parameter and cannot GC.
+  std::vector<::ir::Value> parameter_values_;
 };
 
 }  // namespace framework
