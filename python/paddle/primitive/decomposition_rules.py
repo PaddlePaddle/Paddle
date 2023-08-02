@@ -16,6 +16,20 @@ from .primitive_op import *  # noqa: F403
 from .utils import register_decomp
 
 
-@register_decomp('pd.sin')
-def temp_case_decomp(x):
-    return mean(x)
+@register_decomp('pd.mean')
+def mean_decomp(x, axis, keepdim):
+    """define composite rule of op mean"""
+    x_shape = x.shape
+    axes = axis or list(range(0, len(x_shape)))
+    axes = [axes] if isinstance(axes, int) else axes
+    sum_x = sum(x, axis=axes, keepdim=keepdim)
+    value_to_fill = 1
+    for axis in axes:
+        value_to_fill *= x_shape[axis]
+    norm = fill_constant(
+        shape=[],
+        value=value_to_fill,
+        dtype=sum_x.dtype,
+    )
+    res = divide(sum_x, norm)
+    return res

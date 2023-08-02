@@ -16,34 +16,33 @@ import logging
 import typing
 
 from paddle import ir
-from paddle.fluid import core
 from paddle.fluid.libpaddle.ir import Block, Program
+from paddle.framework import core
 
 from .utils import get_decomp_rule
 
 
 def _as_tensors(xs):
+    """To format a tuple."""
     if isinstance(xs, ir.OpResult):
         return (xs,)
     elif isinstance(xs, typing.Sequence):
         return tuple(xs)
-    else:
-        return xs
+    return TypeError(f"Type {type(xs)} is not supported")
 
 
 def _prepare_python_api_arguments(op):
     """For standard api of operator, its inputs should keep consistent with organization of its inputs and attrs."""
     op_inputs = [x.source() for x in op.operands()]
-    # Todo: api to get all attr values
-    # op_attrs_dict = op.attrs()
-
-    # op_attrs_name = op.get_attr_names()
-    # op_attrs = [op_attrs_dict[x] for x in op_attrs_name]
-    api_arguments = op_inputs
+    op_attrs_dict = op.attrs()
+    op_attrs_name = op.get_attr_names()
+    op_attrs = [op_attrs_dict[x] for x in op_attrs_name]
+    api_arguments = op_inputs + op_attrs
     return api_arguments
 
 
 def _check_op_results(op_name, orig_outs, new_outs):
+    """Check whether the replaced outputs are consistent with origin outputs."""
     assert len(orig_outs) == len(new_outs), (
         f'when replace origin op {op_name} with composite rule, num of origin outs should be equal to new outs, '
         f'but len(orig_outs) = {len(orig_outs)} and len(new_outs) = {len(new_outs)}'
@@ -63,10 +62,10 @@ def _check_op_results(op_name, orig_outs, new_outs):
             # to keep same as phi op definition, orig_out may receive None
             continue
         elif new_out is not None:
-            orig_dtype = ir.get_op_result_dtype(orig_out)
-            new_dtype = ir.get_op_result_dtype(new_out)
-            orig_shape = ir.get_op_result_shape(orig_out)
-            new_shape = ir.get_op_result_shape(new_out)
+            orig_dtype = orig_out.dtype
+            new_dtype = new_out.dtype
+            orig_shape = orig_out.shape
+            new_shape = new_out.shape
             assert orig_dtype == new_dtype, (
                 f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
                 f'but orig_out dtype={orig_dtype} and new_out dtype={new_dtype}'
@@ -74,11 +73,10 @@ def _check_op_results(op_name, orig_outs, new_outs):
             assert (
                 -1 not in new_shape
             ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
-            # Todo: to be released when all need prim op apis are ready.
-            # assert orig_shape == new_shape, (
-            #     f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
-            #     f'but orig_out shape={orig_shape} and new_out shape={new_shape}'
-            # )
+            assert orig_shape == new_shape, (
+                f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
+                f'but orig_out shape={orig_shape} and new_out shape={new_shape}'
+            )
             assert not (orig_out is None) ^ (
                 new_out is None
             ), "orig_out and new_out should match."
@@ -145,7 +143,6 @@ def _decompose_subgraph(block, op_filter):
     if isinstance(block, Block):
         change = None
         ops_list = block.get_ops()
-        lower = False  # Flag of routing to lower
         for op in ops_list:
             op_name = op.name()
             decom_rule = get_decomp_rule(op_name)
@@ -159,7 +156,6 @@ def _decompose_subgraph(block, op_filter):
                 orig_outs = op.results()
                 new_outs = _as_tensors(decom_rule(*input_args))
 
-                # check dtype and shape
                 # Todo: To cover such case: some outputs are no longer needed after decomposition.
                 _check_op_results(op_name, orig_outs, new_outs)
 
@@ -167,7 +163,7 @@ def _decompose_subgraph(block, op_filter):
                 block.remove_op(op)
 
         # composite ops may contain other composite ops, thus, call _lower_composite again.
-        # Todo: recursive call may be done inside composite rule.
+        # Todo: recursive call can be done inside composite rule.
         if change:
             _decompose_subgraph(block, op_filter)
         return
@@ -176,5 +172,4 @@ def _decompose_subgraph(block, op_filter):
         for item in block:
             _decompose_subgraph(item, op_filter)
         return
-    else:
-        raise TypeError
+    raise TypeError

@@ -32,7 +32,7 @@ def get_ir_program():
         x_s.stop_gradient = False
         y_s = paddle.matmul(x_s, x_s)
         y_s = paddle.add(x_s, y_s)
-        y_s = paddle.sin(y_s)
+        y_s = paddle.mean(y_s)
         y_s = paddle.tanh(y_s)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
@@ -43,7 +43,20 @@ class TestBuildOp(unittest.TestCase):
         newir_program = get_ir_program()
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         decompose(newir_program)
-        self.assertEqual(newir_program.block().get_ops()[3].name(), "pd.mean")
+        op_name_list = [op.name() for op in newir_program.block().get_ops()]
+        self.assertEqual(
+            op_name_list,
+            [
+                'builtin.get_parameter',
+                'pd.matmul',
+                'pd.add',
+                'pd.full_int_array',
+                'pd.sum',
+                'pd.full',
+                'pd.divide',
+                'pd.tanh',
+            ],
+        )
 
 
 if __name__ == "__main__":
