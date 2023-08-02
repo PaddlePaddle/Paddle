@@ -156,8 +156,7 @@ class InstructionBase {
       const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
       const std::map<std::string, int>& var_name_2_id,
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
-          variable_2_var_name,
-      const std::string& op_name);
+          variable_2_var_name);
 
  private:
   std::vector<int> GetValueIds(
@@ -203,6 +202,8 @@ class InstructionBase {
   std::unordered_map<::ir::Value, std::vector<int>> output_index_;
 
   std::unordered_set<::ir::Value> no_need_buffer_values_;
+
+  std::string phi_op_name_;
 };
 
 }  // namespace framework

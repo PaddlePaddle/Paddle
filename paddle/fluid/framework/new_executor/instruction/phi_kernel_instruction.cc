@@ -153,12 +153,8 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process device context";
 
   Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-  InitInputsOutputsIds(op,
-                       inner_scope,
-                       value_2_var_name,
-                       var_name_2_id,
-                       variable_2_var_name,
-                       phi_op_name_);
+  InitInputsOutputsIds(
+      op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";
 
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();

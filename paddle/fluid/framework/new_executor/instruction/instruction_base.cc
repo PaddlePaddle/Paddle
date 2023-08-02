@@ -150,6 +150,7 @@ void InstructionBase::InitInputsOutputsIds(
   for (size_t i = 0; i < op->num_results(); i++) {
     ir::Value value = op->result(i);
     if (value) {
+      std::cerr << "check value " << value.impl() << std::endl;
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
           value_2_var_name.end(),

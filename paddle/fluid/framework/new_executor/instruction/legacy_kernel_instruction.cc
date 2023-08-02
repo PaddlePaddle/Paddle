@@ -156,18 +156,14 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   VLOG(6) << "finish process device context";
 
   Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-  InitInputsOutputsIds(op,
-                       inner_scope,
-                       value_2_var_name,
-                       var_name_2_id,
-                       variable_2_var_name,
-                       legacy_op_name_);
+  InitInputsOutputsIds(
+      op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";
 
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
   std::unordered_set<::ir::Value> no_need_buffer_values;
   for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-    no_need_buffer_values.insert(op->operand(no_need_buffer_ids[id]));
+    no_need_buffer_values.insert(op->operand_source(no_need_buffer_ids[id]));
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";

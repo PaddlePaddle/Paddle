@@ -47,13 +47,15 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       place, block, scope, execution_config);
 }
 
-InterpreterCore::InterpreterCore(const platform::Place& place,
-                                 std::unique_ptr<::ir::Program> ir_prog,
-                                 framework::Scope* scope,
-                                 const ExecutionConfig& execution_config) {
+InterpreterCore::InterpreterCore(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    std::unique_ptr<::ir::Program> ir_prog,
+    framework::Scope* scope,
+    const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
   impl_ = std::make_unique<NewIRInterpreter>(
-      place, std::move(ir_prog), scope, execution_config);
+      place, fetch_var_names, std::move(ir_prog), scope, execution_config);
 }
 
 InterpreterCore::~InterpreterCore() {
@@ -123,5 +125,14 @@ const platform::Place& InterpreterCore::GetPlace() const {
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
+
+void InterpreterCore::SetScopePrefix(const std::string& prefix) {
+  impl_->SetScopePrefix(prefix);
+}
+
+const std::string& InterpreterCore::GetScopePrefix() const {
+  return impl_->GetScopePrefix();
+}
+
 }  // namespace framework
 }  // namespace paddle

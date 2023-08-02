@@ -55,8 +55,6 @@ class PhiKernelInstruction : public InstructionBase {
   const std::string& Name() const override { return phi_op_name_; }
 
  private:
-  std::string phi_op_name_;
-
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
       nullptr};  // not owned
 
