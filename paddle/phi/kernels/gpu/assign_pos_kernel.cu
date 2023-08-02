@@ -67,7 +67,7 @@ void AssignPosKernel(const Context& dev_ctx,
     cpu_eff_num_len_data = eff_num_len_ptr->data<T>()[0];
   } else {
     phi::Copy(dev_ctx, eff_num_len, phi::CPUPlace(), false, &cpu_eff_num_len);
-    cpu_eff_num_len_data = eff_num_len_ptr->data<T>()[0];
+    cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
   }
 
   phi::DDim out_dims = phi::make_ddim({cpu_eff_num_len_data});
