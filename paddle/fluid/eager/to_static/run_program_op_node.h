@@ -701,7 +701,11 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     return {x_grad, params_grad};
   }
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  void ClearTensorWrappers() override {
+    x_.clear();
+    params_.clear();
+    SetIsTensorWrappersCleared(true);
+  }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
