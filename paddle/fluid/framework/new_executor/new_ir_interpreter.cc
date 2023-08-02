@@ -1891,7 +1891,6 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         instr->Outputs();
     std::unordered_multimap<::ir::Value, std::vector<int>> ins_and_outs{
         ins.begin(), ins.end()};
-    ins_and_outs.insert(outs.begin(), outs.end());
 
     if (instr->Name() != "pd.fetch") {
       ins_and_outs.insert(outs.begin(), outs.end());
@@ -2104,7 +2103,6 @@ void NewIRInterpreter::TraceInstructionList(
 
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
     auto instr_id = trace_execute_order_[idx];
-    std::cerr << "instr id  " << instr_id << std::endl;
     InstructionBase* instr_node = vec_instruction_base_.at(instr_id).get();
 
     VLOG(6) << "Run InstructionBase " << instr_id;
@@ -2140,7 +2138,6 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
     VLOG(5) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
-      std::cerr << "op name " << instr_node->Name() << std::endl;
       instr_node->Run();
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);

@@ -18,6 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
+from paddle import fluid, incubate
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -47,38 +48,37 @@ class TestSoftmaxMaskFuseOp(OpTest):
         rst = _get_softmax_upper(x)
         self.outputs = {'Out': rst}
 
-    # def test_check_output(self):
-    #     self.check_output_with_place(core.CUDAPlace(0))
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad(self):
         self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-# )
-# class TestSoftmaxMaskFuseOp1(OpTest):
-#     def setUp(self):
-#         self.op_type = "fused_softmax_mask_upper_triangle"
-#         x = np.random.random((1, 4, 32, 32))
-#         self.inputs = {'X': x}
-#         rst = _get_softmax_upper(x)
-#         self.outputs = {'Out': rst}
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestSoftmaxMaskFuseOp1(OpTest):
+    def setUp(self):
+        self.op_type = "fused_softmax_mask_upper_triangle"
+        x = np.random.random((1, 4, 32, 32))
+        self.inputs = {'X': x}
+        rst = _get_softmax_upper(x)
+        self.outputs = {'Out': rst}
 
-#     def test_check_output(self):
-#         try:
-#             self.check_output_with_place(core.CPUPlace())
-#         except (NotImplementedError, RuntimeError):
-#             pass
+    def test_check_output(self):
+        try:
+            self.check_output_with_place(core.CPUPlace())
+        except (NotImplementedError, RuntimeError):
+            pass
 
-#     def test_check_grad(self):
-#         try:
-#             self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
-#         except (NotImplementedError, RuntimeError):
-#             pass
+    def test_check_grad(self):
+        try:
+            self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
+        except (NotImplementedError, RuntimeError):
+            pass
 
 
-'''
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -117,7 +117,6 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)
                 np.testing.assert_allclose(rst, rst_np, rtol=1e-05)
 
-'''
 
 if __name__ == '__main__':
     unittest.main()

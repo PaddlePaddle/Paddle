@@ -2681,7 +2681,6 @@ class OpTest(unittest.TestCase):
             max_relative_error = (
                 0.001 if max_relative_error < 0.001 else max_relative_error
             )
-        print("grad", analytic_grads)
         self._assert_is_close(
             numeric_grads,
             analytic_grads,

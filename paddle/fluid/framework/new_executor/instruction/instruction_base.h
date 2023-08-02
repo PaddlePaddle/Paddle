@@ -203,6 +203,7 @@ class InstructionBase {
 
   std::unordered_set<::ir::Value> no_need_buffer_values_;
 
+ protected:
   std::string phi_op_name_;
 };
 
