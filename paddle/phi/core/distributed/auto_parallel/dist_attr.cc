@@ -80,11 +80,10 @@ void TensorDistAttr::set_annotated(
   annotated_ = annotated;
 }
 
-const std::vector<int64_t> TensorDistAttr::partial_dims() const {
-  std::vector<int64_t> keys;
-  keys.reserve(partial_status_.size());
+const std::set<int64_t> TensorDistAttr::partial_dims() const {
+  std::set<int64_t> keys;
   for (auto& kv : partial_status_) {
-    keys.push_back(kv.first);
+    keys.emplace(kv.first);
   }
   return keys;
 }

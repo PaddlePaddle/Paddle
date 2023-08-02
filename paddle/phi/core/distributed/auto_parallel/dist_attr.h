@@ -69,7 +69,7 @@ class TensorDistAttr {
   bool is_partial() const { return !partial_status_.empty(); }
 
   // return vector of mesh dims on which the this tensor is partial on
-  const std::vector<int64_t> partial_dims() const;
+  const std::set<int64_t> partial_dims() const;
 
   const paddle::flat_hash_map<int64_t, ReduceType>& partial_status() const {
     return partial_status_;

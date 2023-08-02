@@ -100,7 +100,7 @@ TEST(MatmulSPMDRule, Ctor) {
             std::vector<int64_t>({1, -1}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), true);
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
-            std::vector<int64_t>({0}));
+            std::set<int64_t>({0}));
   VLOG(4) << "test3 done." << std::endl << std::endl << std::endl;
 
   // mk[-1,-1],kn[1,0] --> mk[-1, 1],kn[1, 0] = nm[-1, 0] partial[1]: done
@@ -116,7 +116,7 @@ TEST(MatmulSPMDRule, Ctor) {
             std::vector<int64_t>({-1, 0}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), true);
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
-            std::vector<int64_t>({1}));
+            std::set<int64_t>({1}));
   VLOG(4) << "test4 done." << std::endl << std::endl << std::endl;
 
   // abcmk[1, 0, -1, -1],kn[-1, -1] --> abcmk[1, 0, -1, -1],kn[-1, -1] =
@@ -149,7 +149,7 @@ TEST(MatmulSPMDRule, Ctor) {
             std::vector<int64_t>({1, -1, -1, -1}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), true);
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
-            std::vector<int64_t>({0}));
+            std::set<int64_t>({0}));
   VLOG(4) << "test6 done." << std::endl << std::endl << std::endl;
 
   // abcmk[1, -1, -1, 0], kn[-1, -1] --> abcmk[1, -1, -1, 0],kn[-1, -1] =
@@ -184,7 +184,7 @@ TEST(MatmulSPMDRule, Ctor) {
             std::vector<int64_t>({-1, -1, -1, 1}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), true);
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
-            std::vector<int64_t>({0}));
+            std::set<int64_t>({0}));
   infered_dist_attrs.second[0].clean_partial_dims(std::vector<int64_t>({0}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), false);
   VLOG(4) << "test8 done." << std::endl << std::endl << std::endl;
@@ -204,7 +204,7 @@ TEST(MatmulSPMDRule, Ctor) {
   EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 1, -1}));
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
-            std::vector<int64_t>({0}));
+            std::set<int64_t>({0}));
   VLOG(4) << infered_dist_attrs.second[0].to_string();
   infered_dist_attrs.second[0].clean_partial_status();
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), false);
@@ -236,10 +236,10 @@ TEST(MatmulSPMDRule, Ctor) {
   infered_dist_attrs.second[0].set_partial_status(std::vector<int64_t>({1}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), true);
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
-            std::vector<int64_t>({0, 1}));
+            std::set<int64_t>({0, 1}));
   infered_dist_attrs.second[0].clean_partial_dims(std::vector<int64_t>({1}));
   EXPECT_EQ(infered_dist_attrs.second[0].partial_dims(),
-            std::vector<int64_t>({0}));
+            std::set<int64_t>({0}));
   infered_dist_attrs.second[0].clean_partial_dims(std::vector<int64_t>({0}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), false);
 
