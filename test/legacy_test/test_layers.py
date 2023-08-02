@@ -637,8 +637,8 @@ class TestLayer(LayerTest):
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+        np.testing.assert_allclose(static_rlt2[0], static_rlt)
+        np.testing.assert_allclose(dy_rlt_value[0], static_rlt)
 
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")

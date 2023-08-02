@@ -71,7 +71,7 @@ class TestNumberCountAPI(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         out = utils._number_count(x, self.upper_num)
-        assert np.allclose(out.numpy(), self.out)
+        np.testing.assert_allclose(out.numpy(), self.out)
 
 
 if __name__ == '__main__':

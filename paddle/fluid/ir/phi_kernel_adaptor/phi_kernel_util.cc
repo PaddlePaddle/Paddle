@@ -46,6 +46,49 @@
 
 namespace ir {
 
+void AddNewData(ir::Value value,
+                std::string name,
+                paddle::framework::Variable* var,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id,
+                std::vector<paddle::framework::Variable*>* variable_list) {
+  value_2_var_name->emplace(value, name);
+  variable_2_var_name->emplace(var, name);
+  auto id = var_name_2_id->size();
+  var_name_2_id->emplace(name, id);
+  variable_list->push_back(var);
+  PADDLE_ENFORCE_EQ(
+      variable_list->size(),
+      var_name_2_id->size(),
+      paddle::platform::errors::InvalidArgument(
+          "The size of variable_list and var_name_2_id map should be equal"));
+}
+
+void RenameData(ir::Value value,
+                std::string new_name,
+                std::string orig_name,
+                std::unordered_map<ir::Value, std::string>* value_2_var_name,
+                std::unordered_map<const paddle::framework::Variable*,
+                                   std::string>* variable_2_var_name,
+                std::map<std::string, int>* var_name_2_id) {
+  (*value_2_var_name)[value] = new_name;
+
+  for (auto kv : (*variable_2_var_name)) {
+    if (kv.second == orig_name) {
+      (*variable_2_var_name)[kv.first] = new_name;
+    }
+  }
+
+  for (auto kv : *(var_name_2_id)) {
+    if (kv.first == orig_name) {
+      var_name_2_id->emplace(new_name, kv.second);
+    }
+  }
+  var_name_2_id->erase(orig_name);
+}
+
 using VariableNameMap =
     std::unordered_map<const paddle::framework::Variable*, std::string>;
 
@@ -80,16 +123,13 @@ paddle::framework::Variable* CreateVar(
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope;
     var = inner_scope->Var(name);
   }
-  value_2_var_name->emplace(value, name);
-  variable_2_var_name->emplace(var, name);
-  auto id = var_name_2_id->size();
-  var_name_2_id->emplace(name, id);
-  variable_list->push_back(var);
-  PADDLE_ENFORCE_EQ(
-      variable_list->size(),
-      var_name_2_id->size(),
-      paddle::platform::errors::InvalidArgument(
-          "The size of variable_list and var_name_2_id map should be equal"));
+  AddNewData(value,
+             name,
+             var,
+             value_2_var_name,
+             variable_2_var_name,
+             var_name_2_id,
+             variable_list);
   return var;
 }
 
@@ -100,7 +140,7 @@ void CheckInputVars(
   size_t input_num = op->num_operands();
   if (input_num > 0) {
     for (size_t i = 0; i < input_num; ++i) {
-      auto value = op->operand(i);
+      auto value = op->operand_source(i);
       if (value) {
         PADDLE_ENFORCE_NE(
             value_2_var_name.find(value),
@@ -207,16 +247,13 @@ void HandleForSpecialOp(
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));
 
-    value_2_var_name->emplace(value, name);
-    variable_2_var_name->emplace(var, name);
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(name, id);
-    variable_list->push_back(var);
-    PADDLE_ENFORCE_EQ(
-        variable_list->size(),
-        var_name_2_id->size(),
-        paddle::platform::errors::InvalidArgument(
-            "The size of variable_list and var_name_2_id map should be equal"));
+    AddNewData(value,
+               name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "pd.placeholder") {
@@ -225,22 +262,18 @@ void HandleForSpecialOp(
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto value = op->result(0);
-    value_2_var_name->emplace(value, var_name);
-
     paddle::framework::Variable* var = inner_scope->FindVar(var_name);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", var_name));
 
-    variable_2_var_name->emplace(var, var_name);
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(var_name, id);
-    variable_list->push_back(var);
-    PADDLE_ENFORCE_EQ(
-        variable_list->size(),
-        var_name_2_id->size(),
-        paddle::platform::errors::InvalidArgument(
-            "The size of variable_list and var_name_2_id map should be equal"));
+    AddNewData(value,
+               var_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "builtin.combine") {
@@ -265,7 +298,7 @@ void HandleForSpecialOp(
     tensor_array->clear();
     size_t input_num = op->num_operands();
     for (size_t i = 0; i < input_num; ++i) {
-      auto value = op->operand(i);
+      auto value = op->operand_source(i);
       PADDLE_ENFORCE_EQ(
           value_2_var_name->count(value),
           true,
@@ -282,7 +315,7 @@ void HandleForSpecialOp(
                           .dyn_cast<ir::StrAttribute>()
                           .AsString();
 
-    auto value = op->operand(0);
+    auto value = op->operand_source(0);
     // change opreand name to param_name
     auto orig_name = value_2_var_name->at(value);
 
@@ -290,7 +323,12 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
     }
-    (*value_2_var_name)[value] = param_name;
+    RenameData(value,
+               param_name,
+               orig_name,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id);
   }
 
   if (op_name == "pd.shadow_output") {
@@ -298,7 +336,7 @@ void HandleForSpecialOp(
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
-    auto value = op->operand(0);
+    auto value = op->operand_source(0);
     // change opreand name to param_name
     auto orig_name = value_2_var_name->at(value);
 
@@ -306,7 +344,12 @@ void HandleForSpecialOp(
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, var_name);
     }
-    (*value_2_var_name)[value] = var_name;
+    RenameData(value,
+               var_name,
+               orig_name,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id);
   }
 
   if (op_name == "builtin.get_parameter") {
@@ -316,13 +359,20 @@ void HandleForSpecialOp(
                           .dyn_cast<ir::StrAttribute>()
                           .AsString();
     auto value = op->result(0);
-    value_2_var_name->emplace(value, param_name);
+    paddle::framework::Variable* var = inner_scope->FindVar(param_name);
+    AddNewData(value,
+               param_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "builtin.slice") {
     VLOG(6) << "Handle for builtin.slice";
     auto out_value = op->result(0);
-    auto in_value = op->operand(0);
+    auto in_value = op->operand_source(0);
     PADDLE_ENFORCE_EQ(value_2_var_name->count(in_value),
                       true,
                       phi::errors::PreconditionNotMet(
@@ -376,7 +426,7 @@ void HandleForInplaceOp(
     if (yaml_parser.HasInplace(value_name)) {
       std::string inplace_name = yaml_parser.InplaceName(value_name);
       ir::Value inplace_value =
-          op->operand(yaml_parser.InputName2Id().at(inplace_name));
+          op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
       std::string var_name = value_2_var_name->at(inplace_value);
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << var_name << ")";
@@ -497,7 +547,7 @@ void BuildRuntimeContext(
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
-    ir::Value ptr = op->operand(index);
+    ir::Value ptr = op->operand_source(index);
 
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
@@ -553,7 +603,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = op_yaml_info.InputName2Id().at(name);
-    ir::Value ptr = op->operand(index);
+    ir::Value ptr = op->operand_source(index);
 
     auto in_var_name = name_map.at(ptr);
 

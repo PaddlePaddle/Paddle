@@ -139,7 +139,7 @@
   - {typename: 'bool', name: print_tensor_shape, default_value: 'true'}
   - {typename: 'bool', name: print_tensor_layout, default_value: 'true'}
   - {typename: 'bool', name: print_tensor_lod, default_value: 'true'}
-  - {typename: 'str', name: print_phase, default_value: 'BOTH'}
+  - {typename: 'str', name: print_phase, default_value: '"BOTH"'}
   - {typename: 'bool', name: is_forward, default_value: 'true'}
   outputs:
     - typename: Tensor
@@ -147,6 +147,17 @@
       optional: false
       no_need_buffer: false
       data_transform: {}
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [in]
+  kernel:
+    func: [print_kernel]
+    param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward ]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {print: null}
+    force_backend: null
   no_need_buffer: null
   data_transform: null
   inplace: null
