@@ -601,6 +601,11 @@ class Fleet:
             context = {comm_type: [size, time_threshold]}
             self._collective_perf_impl(round=round, context=context)
 
+    def monitor_perf(self, comm_type, round=50, size_and_time={}, hcg=None):
+        for size, time_thres in size_and_time.items():
+            context = {comm_type: [size, time_thres]}
+            self.perf_test(round=round, context=context, hcg=hcg)
+
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
