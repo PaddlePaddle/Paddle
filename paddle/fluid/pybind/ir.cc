@@ -176,7 +176,13 @@ void BindValue(py::module *m) {
       .def("get_defining_op",
            &Value::GetDefiningOp,
            return_value_policy::reference)
-      .def("__eq__", &Value::operator==);
+      .def("__eq__", &Value::operator==)
+      .def("__eq__",
+           [](Value &self, OpResult &other) {
+             return self.impl() == other.value_impl();
+           })
+      .def("__hash__",
+           [](const Value &self) { return std::hash<ir::Value>{}(self); });
 }
 
 void BindOpOperand(py::module *m) {
@@ -218,18 +224,27 @@ void BindOpResult(py::module *m) {
                  ir::ArrayAttribute::get(ir::IrContext::Instance(),
                                          stop_gradients));
            })
-      .def("get_stop_gradient", [](OpResult &self) {
-        auto *defining_op = self.owner();
-        if (defining_op->HasAttribute(kAttrStopGradients)) {
-          auto stop_gradients = defining_op->attribute(kAttrStopGradients)
-                                    .dyn_cast<ir::ArrayAttribute>()
-                                    .AsVector();
-          return stop_gradients[self.GetResultIndex()]
-              .dyn_cast<ir::BoolAttribute>()
-              .data();
-        } else {
-          return false;
-        }
+      .def("get_stop_gradient",
+           [](OpResult &self) {
+             auto *defining_op = self.owner();
+             if (defining_op->HasAttribute(kAttrStopGradients)) {
+               auto stop_gradients = defining_op->attribute(kAttrStopGradients)
+                                         .dyn_cast<ir::ArrayAttribute>()
+                                         .AsVector();
+               return stop_gradients[self.GetResultIndex()]
+                   .dyn_cast<ir::BoolAttribute>()
+                   .data();
+             } else {
+               return false;
+             }
+           })
+      .def("__eq__", &OpResult::operator==)
+      .def("__eq__",
+           [](OpResult &self, Value &other) {
+             return self.value_impl() == other.impl();
+           })
+      .def("__hash__", [](OpResult &self) {
+        return std::hash<ir::Value>{}(self.dyn_cast<ir::Value>());
       });
 }
 
