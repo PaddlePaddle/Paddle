@@ -161,14 +161,17 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
             ...         self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
             ...         self.quanter_for_weight_a = None
             ...         self.activation_weight = None
+            ...
             ...     def forward(self, input):
             ...         qweight_a = self.quanter_for_weight_a(self.weight_a)
             ...         weight_b = self.weight_b
             ...         qinput = self.activation_weight(input)
             ...         # compute with qweight_a, weight_b and qinput.
             ...         return qweight * qinput + weight_b
-            ...      def weights_to_quanters(self):
+            ...
+            ...     def weights_to_quanters(self):
             ...         return [('weight_a', 'quanter_for_weight_a')]
+            ...
             ...     def activation_quanters(self):
             ...         return ['activation_weight']
     """

@@ -1068,8 +1068,8 @@ def dynamic_decode(
             ...                             output_fn=output_layer)
             >>> encoder_output = paddle.ones((4, 8, 32), dtype=paddle.get_default_dtype())
             >>> outputs = dynamic_decode(decoder=decoder,
-            ...                         inits=decoder_cell.get_initial_states(encoder_output),
-            ...                         max_step_num=10)
+            ...                          inits=decoder_cell.get_initial_states(encoder_output),
+            ...                          max_step_num=10)
             >>> print(outputs[0].shape)
             [4, 11, 4]
     """

@@ -315,9 +315,7 @@ class CrossEntropyLoss(Layer):
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
             ...     weight=weight, reduction=reduction)
-            >>> dy_ret = cross_entropy_loss(
-            ...                             input,
-            ...                             label)
+            >>> dy_ret = cross_entropy_loss(input, label)
             >>> print(dy_ret)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             5.33697682)
@@ -337,13 +335,12 @@ class CrossEntropyLoss(Layer):
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
-            >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(
-            ...                                                         logits,
-            ...                                                         labels,
-            ...                                                         soft_label=True,
-            ...                                                         axis=axis,
-            ...                                                         weight=weight,
-            ...                                                         reduction=reduction)
+            >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(logits,
+            ...                                                       labels,
+            ...                                                       soft_label=True,
+            ...                                                       axis=axis,
+            ...                                                       weight=weight,
+            ...                                                       reduction=reduction)
             >>> print(paddle_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             1.14554912)
@@ -446,18 +443,18 @@ class HSigmoidLoss(Layer):
             >>> print(input)
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[ 0.73167229,  0.04029441, -0.48078126],
-            [ 0.81050646, -0.15199822, -0.18717426],
-            [ 0.94041789,  0.48874724,  0.03570259],
-            [ 0.46585739,  0.95573163, -0.91368192]])
+             [ 0.81050646, -0.15199822, -0.18717426],
+             [ 0.94041789,  0.48874724,  0.03570259],
+             [ 0.46585739,  0.95573163, -0.91368192]])
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> m = paddle.nn.HSigmoidLoss(3, 5)
             >>> out = m(input, label)
             >>> print(out)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[2.22472525],
-            [1.97849643],
-            [1.69004655],
-            [2.50623918]])
+             [1.97849643],
+             [1.69004655],
+             [2.50623918]])
     """
 
     def __init__(
@@ -669,7 +666,7 @@ class L1Loss(Layer):
             >>> print(output)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.20000005, 0.19999999],
-            [0.20000000, 0.79999995]])
+             [0.20000000, 0.79999995]])
 
     """
 
@@ -851,10 +848,10 @@ class NLLLoss(Layer):
             >>>  log_softmax = paddle.nn.LogSoftmax(axis=1)
 
             >>>  input = paddle.to_tensor([[0.88103855, 0.9908683 , 0.6226845 ],
-            ...                           [0.53331435, 0.07999352, 0.8549948 ],
-            ...                           [0.25879037, 0.39530203, 0.698465  ],
-            ...                           [0.73427284, 0.63575995, 0.18827209],
-            ...                           [0.05689114, 0.0862954 , 0.6325046 ]], "float32")
+            ...                            [0.53331435, 0.07999352, 0.8549948 ],
+            ...                            [0.25879037, 0.39530203, 0.698465  ],
+            ...                            [0.73427284, 0.63575995, 0.18827209],
+            ...                            [0.05689114, 0.0862954 , 0.6325046 ]], "float32")
             >>>  log_out = log_softmax(input)
             >>>  label = paddle.to_tensor([0, 2, 1, 1, 0], "int64")
             >>>  result = nll_loss(log_out, label)
@@ -1120,7 +1117,6 @@ class MarginRankingLoss(Layer):
             >>> label = paddle.to_tensor([[1, -1], [-1, -1]], dtype="float32")
             >>> margin_rank_loss = paddle.nn.MarginRankingLoss()
             >>> loss = margin_rank_loss(input, other, label)
-
             >>> print(loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.75000000)
@@ -1183,34 +1179,25 @@ class CTCLoss(Layer):
             >>> class_num = 3
 
             >>> log_probs = paddle.to_tensor([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
-            ...                         [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
-            ...
-            ...                         [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
-            ...                         [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
-            ...
-            ...                         [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
-            ...                         [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
-            ...
-            ...                         [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
-            ...                         [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
-            ...
-            ...                         [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
-            ...                         [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]], dtype="float32")
-            >>> labels = paddle.to_tensor([[1, 2, 2],
-            ...                 [1, 2, 2]], dtype="int32")
+            ...                                [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+            ...                               [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+            ...                                [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+            ...                               [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+            ...                                [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+            ...                               [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+            ...                                [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
+            ...                               [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+            ...                                [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]], dtype="float32")
+            >>> labels = paddle.to_tensor([[1, 2, 2], [1, 2, 2]], dtype="int32")
             >>> input_lengths = paddle.to_tensor([5, 5], dtype="int64")
             >>> label_lengths = paddle.to_tensor([3, 3], dtype="int64")
 
-            >>> loss = paddle.nn.CTCLoss(blank=0, reduction='none')(log_probs, labels,
-            ...     input_lengths,
-            ...     label_lengths)
+            >>> loss = paddle.nn.CTCLoss(blank=0, reduction='none')(log_probs, labels, input_lengths, label_lengths)
             >>> print(loss)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [3.91798496, 2.90765214])
 
-            >>> loss = paddle.nn.CTCLoss(blank=0, reduction='mean')(log_probs, labels,
-            ...     input_lengths,
-            ...     label_lengths)
+            >>> loss = paddle.nn.CTCLoss(blank=0, reduction='mean')(log_probs, labels, input_lengths, label_lengths)
             >>> print(loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.13760614)
@@ -1270,11 +1257,11 @@ class RNNTLoss(Layer):
             >>> fn = RNNTLoss(reduction='sum', fastemit_lambda=0.0)
 
             >>> acts = np.array([[[[0.1, 0.6, 0.1, 0.1, 0.1],
-            ...                 [0.1, 0.1, 0.6, 0.1, 0.1],
-            ...                 [0.1, 0.1, 0.2, 0.8, 0.1]],
-            ...                 [[0.1, 0.6, 0.1, 0.1, 0.1],
-            ...                 [0.1, 0.1, 0.2, 0.1, 0.1],
-            ...                 [0.7, 0.1, 0.2, 0.1, 0.1]]]])
+            ...                    [0.1, 0.1, 0.6, 0.1, 0.1],
+            ...                    [0.1, 0.1, 0.2, 0.8, 0.1]],
+            ...                   [[0.1, 0.6, 0.1, 0.1, 0.1],
+            ...                    [0.1, 0.1, 0.2, 0.1, 0.1],
+            ...                    [0.7, 0.1, 0.2, 0.1, 0.1]]]])
             >>> labels = [[1, 2]]
 
             >>> acts = paddle.to_tensor(acts, stop_gradient=False)
@@ -1543,8 +1530,8 @@ class HingeEmbeddingLoss(Layer):
             >>> print(loss)
             Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[ 0., -2.,  0.],
-            [ 0., -1.,  2.],
-            [ 1.,  1.,  1.]])
+             [ 0., -1.,  2.],
+             [ 1.,  1.,  1.]])
 
             >>> hinge_embedding_loss = nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
             >>> loss = hinge_embedding_loss(input, label)
@@ -1841,20 +1828,20 @@ class TripletMarginLoss(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
-            positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
-            negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
-            triplet_margin_loss = paddle.nn.TripletMarginLoss(reduction='none')
-            loss = triplet_margin_loss(input, positive, negative)
-            print(loss)
+            >>> input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
+            >>> positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
+            >>> negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
+            >>> triplet_margin_loss = paddle.nn.TripletMarginLoss(reduction='none')
+            >>> loss = triplet_margin_loss(input, positive, negative)
+            >>> print(loss)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.57496595, 0.        ])
 
-            triplet_margin_loss = paddle.nn.TripletMarginLoss(margin=1.0, swap=True, reduction='mean', )
-            loss = triplet_margin_loss(input, positive, negative,)
-            print(loss)
+            >>> triplet_margin_loss = paddle.nn.TripletMarginLoss(margin=1.0, swap=True, reduction='mean')
+            >>> loss = triplet_margin_loss(input, positive, negative)
+            >>> print(loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             2.40039468)
 
@@ -2056,10 +2043,10 @@ class SoftMarginLoss(Layer):
             >>> print(output)
             Tensor(shape=[5, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[1.10725628, 0.48778139, 0.56217249, 1.12581404, 0.51430043],
-            [0.90375795, 0.37761249, 0.43007557, 0.95089798, 0.43288319],
-            [1.16043599, 0.63015939, 0.51362715, 0.43617541, 0.57783301],
-            [0.81927846, 0.52558369, 0.59713908, 0.83100696, 0.50811616],
-            [0.82684205, 1.02064907, 0.50296995, 1.13461733, 0.93222519]])
+             [0.90375795, 0.37761249, 0.43007557, 0.95089798, 0.43288319],
+             [1.16043599, 0.63015939, 0.51362715, 0.43617541, 0.57783301],
+             [0.81927846, 0.52558369, 0.59713908, 0.83100696, 0.50811616],
+             [0.82684205, 1.02064907, 0.50296995, 1.13461733, 0.93222519]])
     """
 
     def __init__(self, reduction='mean', name=None):
@@ -2145,10 +2132,10 @@ class GaussianNLLLoss(Layer):
             >>> print(loss)
             Tensor(shape=[5, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.21808575, 1.43013096],
-            [1.05245590, 0.00394560],
-            [1.20861185, 0.00000062],
-            [0.56946373, 0.73300570],
-            [0.37142906, 0.12038800]])
+             [1.05245590, 0.00394560],
+             [1.20861185, 0.00000062],
+             [0.56946373, 0.73300570],
+             [0.37142906, 0.12038800]])
 
     Note:
         The clamping of ``variance`` is ignored with respect to autograd, and so the
