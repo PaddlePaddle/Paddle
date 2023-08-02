@@ -15,41 +15,40 @@
 #include <math.h>
 #include <vector>
 
-#include "paddle/fluid/ir/dialect/ir_api.h"
+#include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
+#include "paddle/primitive/backend/backend.h"
 #include "paddle/primitive/rule/vjp/vjp_dispatch.h"
 #include "paddle/primitive/type/desc_tensor.h"
 
 namespace paddle {
 namespace primitive {
 namespace experimental {
-std::vector<std::vector<Tensor>> tanh_vjp(
+paddle::optional<paddle::Tensor> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
-    const std::vector<int>& stop_gradients) {
-  // 1.constuct out and grad_out OpResult
-  std::vector<std::vector<Tensor>> res;
-  ir::OpResult out_opres = std::static_pointer_cast<DescTensor>(out.impl())
-                               ->getValue()
-                               .dyn_cast<ir::OpResult>();
-  ir::OpResult grad_out_opres =
-      std::static_pointer_cast<DescTensor>(grad_out.impl())
+    const std::vector<std::vector<int>>& stop_gradients) {
+  // get tanh_grad res.
+  Tensor op_res =
+      backend::experimental::tanh_grad<primitive::experimental::DescTensor>(
+          out, grad_out);
+
+  // set op stop_gradient info
+  // TODO(wanghao107): Replace with more generic code.
+  // Support set stop_gradients for all ops.
+  ir::Operation* grad_op =
+      std::static_pointer_cast<primitive::experimental::DescTensor>(
+          op_res.impl())
           ->getValue()
-          .dyn_cast<ir::OpResult>();
-
-  // 2.call tanh_grad api
-  std::vector<ir::OpResult> op_res =
-      ir::api::tanh_grad(out_opres, grad_out_opres);
-
-  // 3.set op stop_gradient info
-  ir::Operation* grad_op_ptr = op_res[0].owner();
-  uint32_t num_res = grad_op_ptr->num_results();
+          .dyn_cast<ir::OpResult>()
+          .owner();
+  uint32_t num_res = grad_op->num_results();
   std::vector<ir::Attribute> ir_stop_gradients(num_res);
   for (size_t i = 0; i < num_res; i++) {
-    if (stop_gradients[i]) {
+    if (stop_gradients[0][i]) {
       ir_stop_gradients[i] =
           ir::BoolAttribute::get(ir::IrContext::Instance(), true);
     } else {
@@ -57,18 +56,16 @@ std::vector<std::vector<Tensor>> tanh_vjp(
           ir::BoolAttribute::get(ir::IrContext::Instance(), false);
     }
   }
-  grad_op_ptr->set_attribute(
+  grad_op->set_attribute(
       "stop_gradient",
       ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
 
-  // 4.construct result by stop_gradients
-  res.reserve(num_res);
-  for (size_t i = 0; i < stop_gradients.size(); i++) {
-    // TODO(wanghao107): maybe slice here
-    res.emplace_back(std::vector<Tensor>{Tensor(
-        std::make_shared<primitive::experimental::DescTensor>(op_res[i]))});
+  // construct vjp result by op result and stop_gradients info
+  paddle::optional<paddle::Tensor> vjp_res;
+  if (!stop_gradients[0][0]) {
+    vjp_res = paddle::make_optional<paddle::Tensor>(op_res);
   }
-  return res;
+  return vjp_res;
 }
 }  // namespace experimental
 }  // namespace primitive

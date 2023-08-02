@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/primitive/backend/backend.h"
 #include "paddle/primitive/primitive/primitive.h"
 
 namespace paddle {
@@ -23,40 +25,10 @@ namespace backend {
 namespace experimental {
 
 template <>
-Tensor empty<Tensor>(const paddle::experimental::IntArray& shape,
-                     phi::DataType dtype,
-                     const paddle::Place& place) {
-  if (dtype == phi::DataType::UNDEFINED) {
-    dtype = phi::DataType::FLOAT32;
-  }
-  return empty_ad_func(shape, dtype, place);
-}
-
-template <>
-Tensor empty_like<Tensor>(const paddle::Tensor& x,
-                          phi::DataType dtype,
-                          const paddle::Place& place) {
-  if (dtype == phi::DataType::UNDEFINED) {
-    dtype = phi::DataType::FLOAT32;
-  }
-  return empty_like_ad_func(x, dtype, place);
-}
-
-template <>
-void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
-  x->set_impl(x_tmp.impl());
-  x->set_autograd_meta(x_tmp.mutable_autograd_meta());
-}
-
-template <>
-void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
-  set_output<Tensor>(x, out);
-}
-
-template <>
-Tensor tanh<Tensor>(const Tensor& x) {
-  VLOG(4) << "Eager Prim API tanh_ad_func call";
-  return ::tanh_ad_func(x);
+Tensor tanh_grad<Tensor>(const Tensor& out, const Tensor& grad_out) {
+  Tensor output;
+  paddle::experimental::tanh_grad(out, grad_out, &output);
+  return output;
 }
 }  // namespace experimental
 }  // namespace backend

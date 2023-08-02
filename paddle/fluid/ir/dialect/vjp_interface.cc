@@ -16,35 +16,35 @@
 #include "paddle/ir/core/op_base.h"
 #include "paddle/primitive/rule/vjp/vjp_dispatch.h"
 #include "paddle/primitive/type/desc_tensor.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace dialect {
-std::vector<ir::OpResult> TanhOp::Vjp(ir::Operation* op,
-                                      std::vector<ir::OpResult> out_grads,
-                                      const std::vector<int>& stop_gradients) {
+std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<int>>& stop_gradients) {
   TanhOp op_obj = op->dyn_cast<TanhOp>();
   Tensor out(
       std::make_shared<primitive::experimental::DescTensor>(op_obj.out()));
   Tensor grad_out(
-      std::make_shared<primitive::experimental::DescTensor>(out_grads[0]));
-  std::vector<std::vector<Tensor>> tensor_res =
+      std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
+  paddle::optional<paddle::Tensor> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
-  std::vector<ir::OpResult> res;
-  res.reserve(tensor_res.size());
-  // TODO(wanghao107): maybe combile here
-  for (size_t i = 0; i < tensor_res.size(); ++i) {
-    res.emplace_back(
-        std::static_pointer_cast<primitive::experimental::DescTensor>(
-            tensor_res[i][0].impl())
-            ->getValue()
-            .dyn_cast<ir::OpResult>());
+  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
+  if (!stop_gradients[0][0]) {
+    res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
+                    tensor_res.get().impl())
+                    ->getValue()
+                    .dyn_cast<ir::OpResult>();
   }
   return res;
 }
 
-std::vector<ir::OpResult> Tanh_Op::Vjp(ir::Operation* op,
-                                       std::vector<ir::OpResult> out_grads,
-                                       const std::vector<int>& stop_gradients) {
+std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<int>>& stop_gradients) {
   return {};
 }
 }  // namespace dialect

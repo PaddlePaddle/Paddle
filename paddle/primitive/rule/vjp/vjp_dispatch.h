@@ -22,20 +22,15 @@
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/api/include/tensor.h"
-
-namespace ir {
-namespace api {
-std::vector<ir::OpResult> tanh_grad(ir::OpResult out, ir::OpResult grad_out);
-}  // namespace api
-}  // namespace ir
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace primitive {
 namespace experimental {
-std::vector<std::vector<Tensor>> tanh_vjp(
+paddle::optional<paddle::Tensor> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
-    const std::vector<int>& stop_gradients);
+    const std::vector<std::vector<int>>& stop_gradients);
 }
 }  // namespace primitive
 }  // namespace paddle

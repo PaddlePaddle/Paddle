@@ -21,11 +21,6 @@ namespace experimental {
 
 using Tensor = paddle::Tensor;
 
-template <typename T>
-Tensor tanh(const Tensor& x) {
-  return backend::experimental::tanh<T>(x);
-}
-
 }  // namespace experimental
 }  // namespace primitive
 }  // namespace paddle

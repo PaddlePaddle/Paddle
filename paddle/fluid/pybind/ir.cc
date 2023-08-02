@@ -246,8 +246,8 @@ void BindUtils(pybind11::module *m) {
   m->def(
       "call_vjp",
       [](ir::Operation &fwd_op,
-         std::vector<ir::OpResult> &out_grads,
-         const std::vector<int> &stop_gradients) {
+         const std::vector<std::vector<ir::OpResult>> &out_grads,
+         const std::vector<std::vector<int>> &stop_gradients) {
         py::list res;
         ir::IrContext *ctx = ir::IrContext::Instance();
         ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
@@ -257,35 +257,42 @@ void BindUtils(pybind11::module *m) {
           PADDLE_THROW(phi::errors::InvalidArgument(
               "The vjp function is not registered in %s op ", fwd_op.name()));
         }
-        std::vector<ir::OpResult> vjp_res =
+        std::vector<std::vector<ir::OpResult>> vjp_res =
             vjp_interface_impl->vjp_(&fwd_op, out_grads, stop_gradients);
-        PADDLE_ENFORCE_GE(
+        PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
             phi::errors::InvalidArgument(
-                "The size of stop_gradients should be greater than vjp_res "
+                "The size of stop_gradients should be the same as vjp_res "
                 "size."
                 "But the size of stop_gradients: %d, vjp_res size: %d",
                 stop_gradients.size(),
                 vjp_res.size()));
-        size_t res_size = stop_gradients.size();
-        int j = 0;
-        for (size_t i = 0; i < res_size; ++i) {
-          if (stop_gradients[i]) {
-            res.append(nullptr);
-          } else {
-            res.append(vjp_res[j]);
-            ++j;
+        for (size_t i = 0; i < vjp_res.size(); ++i) {
+          PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
+                            vjp_res[i].size(),
+                            phi::errors::InvalidArgument(
+                                "The size of stop_gradients[%d] should be the "
+                                "same as vjp_res[%d] "
+                                "size."
+                                "But the size of stop_gradients[%d]: %d, "
+                                "vjp_res[%d] size: %d",
+                                i,
+                                i,
+                                i,
+                                stop_gradients[i].size(),
+                                i,
+                                vjp_res[i].size()));
+          py::list sub_res;
+          for (size_t j = 0; j < vjp_res[i].size(); ++j) {
+            if (stop_gradients[i][j]) {
+              sub_res.append(nullptr);
+            } else {
+              sub_res.append(vjp_res[i][j]);
+            }
           }
+          res.append(sub_res);
         }
-        PADDLE_ENFORCE_EQ(j,
-                          vjp_res.size(),
-                          phi::errors::InvalidArgument(
-                              "The size of vjp_res should be the same with "
-                              "zero nums in stop_gradients container."
-                              "But zero nums: %d, vjp_res size: %d",
-                              j,
-                              vjp_res.size()));
         return res;
       });
   m->def("set_global_program",

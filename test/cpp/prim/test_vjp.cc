@@ -42,30 +42,25 @@ namespace framework {
 TEST(VJP, TanhBackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::Program program((ctx));
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
-  ir::Builder builder = ir::Builder(ctx, program.block());
-
-  paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
+  std::shared_ptr<ir::Builder> builder =
+      paddle::dialect::APIBuilder::Instance().GetBuilder();
+  paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
-
   paddle::dialect::TanhOp op2 =
-      builder.Build<paddle::dialect::TanhOp>(op1.out());
+      builder->Build<paddle::dialect::TanhOp>(op1.out());
 
-  paddle::dialect::FullOp op3 = builder.Build<paddle::dialect::FullOp>(
+  paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<int> stop_gradients{0};
-  std::vector<ir::OpResult> out_grads{op3.out()};
+  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
 
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh");
   auto tanh_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   tanh_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
-
-  std::ostringstream print_stream;
-  program.Print(print_stream);
-  std::cout << print_stream.str();
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -74,11 +69,13 @@ TEST(VJP, TanhBackwardTest) {
 
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, std::move(kernel_program), &scope);
-  test_core.BetaRun({});
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
+  test_core.SetSkipGcVars(
+      {prefix_str + "_inner_var_1", prefix_str + "_inner_var_3"});
+  test_core.BetaRun({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_1")->Get<phi::DenseTensor>()
