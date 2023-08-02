@@ -175,13 +175,7 @@ class TestNewIrDygraph(unittest.TestCase):
         z = func(x, y)
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
-        self.assertEqual(
-            np.array_equal(
-                z.numpy(),
-                gold_res,
-            ),
-            True,
-        )
+        np.testing.assert_array_equal(z.numpy(), gold_res)
 
 
 class TestNewIrBackwardDygraph(unittest.TestCase):
@@ -202,13 +196,7 @@ class TestNewIrBackwardDygraph(unittest.TestCase):
         loss = z.mean()
         loss.backward()
         gold_res = np.ones([2, 2], dtype="float32")
-        self.assertEqual(
-            np.array_equal(
-                z.numpy(),
-                gold_res,
-            ),
-            True,
-        )
+        np.testing.assert_array_equal(z.numpy(), gold_res)
 
         gold_res = np.ones([2, 2], dtype="float32") * 0.25
         np.testing.assert_array_equal(x.gradient(), gold_res)
@@ -235,13 +223,8 @@ class TestNewIrReshapeBackwardDygraph(unittest.TestCase):
         loss = z.mean()
         loss.backward()
         gold_res = np.ones([1, 2, 2], dtype="float32")
-        self.assertEqual(
-            np.array_equal(
-                z.numpy(),
-                gold_res,
-            ),
-            True,
-        )
+
+        np.testing.assert_array_equal(z.numpy(), gold_res)
 
         gold_res = np.ones([2, 2], dtype="float32") * 0.25
         np.testing.assert_array_equal(x.gradient(), gold_res)
