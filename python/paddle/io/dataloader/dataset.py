@@ -504,14 +504,14 @@ def random_split(dataset, lengths, generator=None):
 
             >>> # output of the first subset
             >>> for idx, v in enumerate(a_list[0]):
-            ...     print(idx, v)
+            ...     print(idx, v) # doctest: +skip
             0 7
             1 6
             2 5
 
             >>> # output of the second subset
             >>> for idx, v in enumerate(a_list[1]):
-            ...     print(idx, v)
+            ...     print(idx, v) # doctest: +skip
             0 1
             1 9
             2 4
