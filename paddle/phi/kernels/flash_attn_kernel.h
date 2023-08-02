@@ -57,4 +57,45 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset);
 
+template <typename T, typename Context>
+void FlashAttnUnpaddedWithMaskKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& cu_seqlens_q,
+    const DenseTensor& cu_seqlens_k,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const DenseTensor& rand_mask,
+    int64_t max_seqlen_q,
+    int64_t max_seqlen_k,
+    float scale,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset);
+
+template <typename T, typename Context>
+void FlashAttnWithMaskKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const DenseTensor& rand_mask,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset);
+
 }  // namespace phi

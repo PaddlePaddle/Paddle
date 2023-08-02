@@ -2158,6 +2158,18 @@
   inplace : (x -> out)
   backward : scale_grad
 
+- op : scaled_dot_product_attention
+  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor rand_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset
+  infer_meta :
+    func : FlashAttnInferMeta
+    param : [q, k, v]
+  kernel :
+    func : scaled_dot_product_attention
+    data_type : q
+  intermediate : softmax_lse, seed_offset
+
 - op : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
   output : Tensor(out)

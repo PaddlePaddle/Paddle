@@ -458,6 +458,21 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # xdoctest: -SKIP
     """
-    assert attn_mask is None, "attn_mask is not supported yet"
-    out, _ = flash_attention(query, key, value, dropout_p, is_causal)
-    return out
+    fixed_seed_offset = None
+    return_softmax = False
+    training = True
+    rng_name = ""
+    (result_attention, _) = _C_ops.scaled_dot_product_attention(
+        query,
+        key,
+        value,
+        fixed_seed_offset,
+        attn_mask,
+        dropout_p,
+        is_causal,
+        return_softmax,
+        not training,
+        rng_name,
+    )
+
+    return result_attention
