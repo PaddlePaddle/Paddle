@@ -26,7 +26,7 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from . import set_flags
+from . import set_flags, get_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -1071,7 +1071,13 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+                new_ir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                if get_flags(new_ir_flag_name)[new_ir_flag_name]:
+                    core.set_feed_variable(
+                        scope, cur_feed, feed_target_name, idx
+                    )
+                else:
+                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
                 break
 
