@@ -25,15 +25,16 @@ SimpleBuilder::SimpleBuilder(hlir::framework::GraphCompiler* graph_compiler)
 BuildResult SimpleBuilder::Build(const MeasureInput& input) {
   CHECK_NE(graph_compiler_, static_cast<GraphCompiler*>(nullptr))
       << "empty handle to GraphCompiler";
-  GraphCompiler::CompileOptions compile_options;
-  compile_options.groups.emplace_back(input.task->subgraph);
-  compile_options.lowered_funcs.emplace_back(input.lowered_funcs);
-  compile_options.remove_unused_variables = false;
+  GraphCompiler::CompilationContext& context =
+      graph_compiler_->GetCompilationContext();
+  context.groups.emplace_back(input.task->subgraph);
+  context.lowered_funcs.emplace_back(input.lowered_funcs);
+  context.remove_unused_variables = false;
   VLOG(5) << "call GraphCompiler to Build with Graph::Group size="
-          << compile_options.groups.size() << ", lowered_funcs group size="
-          << compile_options.lowered_funcs.size();
+          << context.groups.size()
+          << ", lowered_funcs group size=" << context.lowered_funcs.size();
   GraphCompiler::CompilationResult compiled_result =
-      graph_compiler_->Build(compile_options);
+      graph_compiler_->Build(&context);
 
   BuildResult build_result;
   build_result.compiled_scope = graph_compiler_->GetScope().get();

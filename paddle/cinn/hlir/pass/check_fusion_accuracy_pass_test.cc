@@ -46,7 +46,9 @@ void RunTest(const Target& target,
              const std::shared_ptr<Graph>& graph,
              const std::vector<std::string>& input_names) {
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::GraphCompiler::CompilationContext context(
+      graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     scope->Var<hlir::framework::Tensor>(input_names[i]);

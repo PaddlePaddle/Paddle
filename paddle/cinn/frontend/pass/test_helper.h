@@ -117,11 +117,11 @@ class PassTest {
     hlir::framework::ApplyPasses(graph.get(), DefaultOpFusionPasses());
 
     auto scope = hlir::framework::BuildScope(target_, graph);
-    hlir::framework::GraphCompiler gc(target_, scope, graph);
-    hlir::framework::GraphCompiler::CompileOptions options;
-    options.with_instantiate_variables = true;
-    auto result = gc.Build(options, std::move(fetch_var_ids));
-    auto runtime_program = std::move(result.runtime_program);
+    hlir::framework::GraphCompiler::CompilationContext context(
+        graph, scope, target_);
+    context.with_instantiate_variables = true;
+    hlir::framework::GraphCompiler gc(context);
+    auto runtime_program = std::move(gc.Build());
 
     for (auto& name : input_names) {
       SetInputTensor(name, scope);

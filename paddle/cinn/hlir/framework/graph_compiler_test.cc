@@ -48,7 +48,8 @@ TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
   ASSERT_EQ(scope->var_names().size(), 6);
   EXPECT_NE(scope->FindVar(c->id), nullptr);
 
-  GraphCompiler gc(target, scope, graph);
+  GraphCompiler::CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   ASSERT_EQ(scope->var_names().size(), 3);
   EXPECT_EQ(scope->FindVar(c->id), nullptr);
@@ -69,10 +70,11 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler gc_disable(target, scope, graph);
-  GraphCompiler::CompileOptions options;
+  GraphCompiler::CompilationContext context_disable(graph, scope, target);
+  GraphCompiler gc_disable(context_disable);
   // disable with_buffer_handle_instruction_inserted: only 1 instruction
-  auto runtime_program_disable = gc_disable.Build(options).runtime_program;
+  auto runtime_program_disable =
+      gc_disable.Build(&context_disable).runtime_program;
   ASSERT_EQ(runtime_program_disable->size(), 1);
   const auto& computation_instr_disable =
       runtime_program_disable->GetRunInstructions().front();
@@ -80,9 +82,11 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   // enable with_buffer_handle_instruction_inserted: 3 instructions, 1st ->
   // malloc instruction(a, b, d), 2nd -> the real computation
   // instruction(add + relu)  and 3rd -> free instruction
-  GraphCompiler gc_enable(target, scope, graph);
-  options.with_buffer_handle_instruction_inserted = true;
-  auto runtime_program_enable = gc_enable.Build(options).runtime_program;
+  GraphCompiler::CompilationContext context_enable(graph, scope, target);
+  context_enable.with_buffer_handle_instruction_inserted = true;
+  GraphCompiler gc_enable(context_enable);
+  auto runtime_program_enable =
+      gc_enable.Build(&context_enable).runtime_program;
   const auto& instructions = runtime_program_enable->GetRunInstructions();
   ASSERT_EQ(instructions.size(), 3);
 
@@ -193,7 +197,8 @@ void RunCublas(
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 
   auto scope = BuildScope(target, graph);
-  GraphCompiler gc(target, scope, graph);
+  GraphCompiler::CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
   auto exe_program = gc.Build();
 
   auto data_a = scope->GetTensor("A");
@@ -244,9 +249,9 @@ TEST(GraphCompilerTest, TestLowering) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler gc(target, scope, graph);
-  GraphCompiler::CompileOptions options;
-  GraphCompiler::CompilationResult result = gc.Lowering(options);
+  GraphCompiler::CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
+  GraphCompiler::CompilationResult result = gc.Lowering();
 
   LOG(INFO) << "Runtime program status: "
             << (result.runtime_program.get() == nullptr);
@@ -269,9 +274,9 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler gc(target, scope, graph);
-  GraphCompiler::CompileOptions options;
-  GraphCompiler::CompilationResult result = gc.CodegenAndJit(options);
+  GraphCompiler::CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
+  GraphCompiler::CompilationResult result = gc.CodegenAndJit();
 
   LOG(INFO) << "Runtime program status: "
             << (result.runtime_program.get() == nullptr);
@@ -294,9 +299,9 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler gc(target, scope, graph);
-  GraphCompiler::CompileOptions options;
-  GraphCompiler::CompilationResult result = gc.BuildInstruction(options);
+  GraphCompiler::CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
+  GraphCompiler::CompilationResult result = gc.BuildInstruction();
 
   LOG(INFO) << "Runtime program status: "
             << (result.runtime_program.get() == nullptr);

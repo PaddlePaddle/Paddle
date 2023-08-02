@@ -79,14 +79,13 @@ inline void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
   hlir::framework::ApplyPasses(graph.get(), graph_passes);
   VLOG(3) << "Graph Viz:\n" << graph->Visualize();
   BuildScope(target, graph, scope);
-  hlir::framework::GraphCompiler::CompileOptions options;
-  options.attached_code = "";
-  options.with_instantiate_variables = true;
-  hlir::framework::GraphCompiler gc(target, scope, graph);
-  auto runtime_program = gc.Build(options,
-                                  std::unordered_set<std::string>(
-                                      output_ids.begin(), output_ids.end()))
-                             .runtime_program;
+  hlir::framework::GraphCompiler::CompilationContext context(
+      graph, scope, target);
+  context.attached_code = "";
+  context.with_instantiate_variables = true;
+  context.fetch_var_ids.insert(output_ids.begin(), output_ids.end());
+  hlir::framework::GraphCompiler gc(context);
+  auto runtime_program = gc.Build();
   runtime_program->Execute();
 }
 

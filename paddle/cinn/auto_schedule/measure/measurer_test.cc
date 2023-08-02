@@ -62,7 +62,8 @@ class TestMeasurer : public ::testing::Test {
     auto program = CreateAddReluProgram();
     auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
     auto scope = BuildScope(target, graph);
-    graph_compiler = std::make_unique<GraphCompiler>(target, scope, graph);
+    GraphCompiler::CompilationContext context(graph, scope, target);
+    graph_compiler = std::make_unique<GraphCompiler>(context);
     TaskCreator task_creator;
     tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
     const auto& dtype_dict =

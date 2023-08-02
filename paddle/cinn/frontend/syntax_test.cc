@@ -69,7 +69,9 @@ TEST(syntax, program_execute_multi_elementwise_add) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::GraphCompiler::CompilationContext context(
+      graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   scope->Var<hlir::framework::Tensor>("A");
   scope->Var<hlir::framework::Tensor>("B");
@@ -88,7 +90,9 @@ TEST(syntax, program_execute_multi_elementwise_add2) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::GraphCompiler::CompilationContext context(
+      graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -121,8 +125,9 @@ std::get<2>(programTuple);
   auto graph = cinn::frontend::Optimize(program.get(), fetch_ids, target);
 
   scope = BuildScope(target, graph, scope);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
-  auto runtime_program = gc.Build();
+  hlir::framework::GraphCompiler::CompilationContext context(graph, scope,
+target); hlir::framework::GraphCompiler gc(context); auto runtime_program =
+gc.Build();
 
   auto at = scope->GetTensor("A");
   SetRandData<float>(at, target);

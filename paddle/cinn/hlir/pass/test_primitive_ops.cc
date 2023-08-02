@@ -66,7 +66,9 @@ TEST(batch_norm_meta, batch_norm_meta) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::GraphCompiler::CompilationContext context(
+      graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -104,7 +106,9 @@ TEST(reduction, reduce) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::GraphCompiler::CompilationContext context(
+      graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -136,7 +140,9 @@ TEST(Compare, Compare) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::GraphCompiler::CompilationContext context(
+      graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
