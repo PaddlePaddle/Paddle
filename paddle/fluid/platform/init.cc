@@ -263,7 +263,7 @@ void InitDevices(const std::vector<int> devices) {
 #ifndef _WIN32
 // Description Quoted from
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
-const struct {
+const struct {  // NOLINT
   int signal_number;
   const char *name;
   const char *error_string;

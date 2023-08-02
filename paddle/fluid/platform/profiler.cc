@@ -38,7 +38,7 @@ PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
                             false,
                             "Enable rpc profiler or not.");
 
-DEFINE_bool(enable_record_memory, false, "enable memory recorder");
+DEFINE_bool(enable_record_memory, false, "enable memory recorder");  // NOLINT
 
 #if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;

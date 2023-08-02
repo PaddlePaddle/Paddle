@@ -75,7 +75,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
 
   int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  const int64_t* pd_indices[7];
+  const int64_t* pd_indices[7];  // NOLINT
   for (size_t i = 0; i < indices.size(); ++i) {
     pd_indices[i] = indices[i]->data<int64_t>();
   }
