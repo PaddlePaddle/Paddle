@@ -288,11 +288,19 @@ class ForwardAPI(BaseAPI):
                     )
 
                 else:
-                    output_create = (
-                        output_create
-                        + f"""
+                    if for_auto_parallel is True:
+                        output_create = (
+                            output_create
+                            + f"""
+{code_indent}  auto kernel_out_{i}_dist = SetKernelDistOutput({get_out_code});
+{code_indent}  auto kernel_out_{i} = kernel_out_{i}_dist->mutable_value();"""
+                        )
+                    else:
+                        output_create = (
+                            output_create
+                            + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({get_out_code});"""
-                    )
+                        )
 
                 if (
                     not inplace_flag

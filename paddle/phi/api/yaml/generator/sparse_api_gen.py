@@ -278,7 +278,7 @@ class SparseAPI(ForwardAPI):
   }}
 """
 
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(self, inplace_flag=False, for_auto_parallel=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'

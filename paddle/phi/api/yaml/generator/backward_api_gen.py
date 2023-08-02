@@ -217,11 +217,19 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
 {code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
                         )
 
-                    output_create = (
-                        output_create
-                        + f"""
+                    if for_auto_parallel is True:
+                        output_create = (
+                            output_create
+                            + f"""
+{code_indent}  auto kernel_out_{i}_dist = SetKernelDistOutput({self.outputs['names'][i]});
+{code_indent}  auto kernel_out_{i} = kernel_out_{i}_dist->mutable_value();"""
+                        )
+                    else:
+                        output_create = (
+                            output_create
+                            + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]});"""
-                    )
+                        )
 
                 else:
                     if (

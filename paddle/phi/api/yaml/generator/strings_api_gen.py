@@ -305,7 +305,7 @@ class StringsAPI(ForwardAPI):
 
         return kernel_select_code
 
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(self, inplace_flag=False, for_auto_parallel=False):
         api_func_name = self.get_api_func_name()
         return f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{

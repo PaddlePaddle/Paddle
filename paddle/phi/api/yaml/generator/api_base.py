@@ -594,44 +594,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                         + param
                         + "_dist), "
                     )
-                elif (
-                    self.inputs['input_info'][param]
-                    == "const std::vector<Tensor>&"
-                ):
-                    meta_tensor_code = (
-                        meta_tensor_code
-                        + f"""
-{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
-{code_indent}  std::vector<const phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
-{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
-{code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
-{code_indent}  }}
-"""
-                    )
-                    param_code = param_code + param + "_metas, "
-                elif (
-                    self.inputs['input_info'][param]
-                    == "const paddle::optional<std::vector<Tensor>>&"
-                ):
-                    meta_tensor_code = (
-                        meta_tensor_code
-                        + f"""
-{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
-{code_indent}  paddle::optional<std::vector<const phi::MetaTensor*>> {param}_metas({param}_meta_vec.size());
-{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
-{code_indent}    {param}_metas->at(i) = &{param}_meta_vec[i];
-{code_indent}  }}
-"""
-                    )
-                    param_code = param_code + param + "_metas, "
-                elif param in self.optional_vars:
-                    param_code = (
-                        param_code
-                        + "MakeMetaTensor("
-                        + PREFIX_TENSOR_NAME
-                        + param
-                        + "), "
-                    )
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
@@ -646,19 +608,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 param_code = param_code + str(param) + ", "
 
         for i, out_name in enumerate(kernel_output_names):
-            if self.outputs['types'][i] == 'std::vector<Tensor>':
-                meta_tensor_code = (
-                    meta_tensor_code
-                    + f"""
-{code_indent}  auto {out_name}_{PREFIX_META_TENSOR_NAME}vec = MakeMetaTensor({out_name});
-{code_indent}  std::vector<phi::MetaTensor*> {out_name}_metas({out_name}_{PREFIX_META_TENSOR_NAME}vec.size());
-{code_indent}  for (size_t i = 0; i < {out_name}_{PREFIX_META_TENSOR_NAME}vec.size(); ++i) {{
-{code_indent}    {out_name}_metas[i] = {out_name}[i] ? &{out_name}_{PREFIX_META_TENSOR_NAME}vec[i] : nullptr;
-{code_indent}  }}"""
-                )
-
-                param_code = param_code + out_name + '_metas, '
-            else:
+            if self.outputs['types'][i] == 'Tensor':
                 meta_tensor_code = (
                     meta_tensor_code
                     + code_indent
@@ -995,11 +945,19 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  const auto& {PREFIX_TENSOR_NAME}{input_name} = *{PREFIX_TENSOR_NAME}{input_name}_uq_ptr;"""
                             )
                         else:
-                            input_tensor_code = (
-                                input_tensor_code
-                                + f"""
+                            if for_auto_parallel is True:
+                                input_tensor_code = (
+                                    input_tensor_code
+                                    + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_dist = {input_name}.impl();
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = static_cast<phi::distributed::DistTensor*>({PREFIX_TENSOR_NAME}{input_name}_dist.get())->mutable_value();"""
+                                )
+                            else:
+                                input_tensor_code = (
+                                    input_tensor_code
+                                    + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {input_name}.impl();"""
-                            )
+                                )
 
         return input_name_tensor_map, input_tensor_code
 
@@ -1423,6 +1381,15 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
   }}
 """
 
+    def check_argument_whether_support_auto_parallel(self):
+        for name in self.inputs['names']:
+            if self.inputs['input_info'][name] != "const Tensor&":
+                return False
+        for out_type in self.outputs['types']:
+            if out_type != "Tensor":
+                return False
+        return True
+
     def gene_auto_parallel_branch(self, kernel_name, code_indent, inplace_flag):
         # 1. If condition, as long as one input is a DistTensor, enter this branch
         # TODO(chenwiehang): only support Tensor and optional<Tensor>
@@ -1556,11 +1523,13 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
             # 1. only works for the ops contains single kernel
             # 2. doesn't support initialize ops now
             # 3. doesn't support view api
-            # 3. only for general forward and backward
+            # 4. only for general forward and backward
+            # 5. only support single tensor input and output
             if (
                 for_auto_parallel is True
                 and len(self.inputs['names']) > 0
                 and len(self.view_map) == 0
+                and self.check_argument_whether_support_auto_parallel()
             ):
                 api_code += self.gene_auto_parallel_branch(
                     self.kernel['func'][0], '  ', inplace_flag
