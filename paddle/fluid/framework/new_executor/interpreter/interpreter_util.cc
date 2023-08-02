@@ -980,7 +980,7 @@ void BuildOpFuncList(
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
         op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
+        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -1136,8 +1136,8 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
     int ring_id = operator_base->Attr<int>("ring_id");
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(ring_id)) {
-      auto comm_context = comm_context_manager.Get(ring_id);
+    if (comm_context_manager.Has(std::to_string(ring_id))) {
+      auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
       if (!dev_ctx->GetCommContext()) {
         dev_ctx->SetCommContext(comm_context);
       }
@@ -1156,8 +1156,8 @@ void SetDeviceCommContext(::ir::Operation* op,
         op_attributes.at("ring_id").dyn_cast<::ir::Int32Attribute>().data();
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(ring_id)) {
-      auto comm_context = comm_context_manager.Get(ring_id);
+    if (comm_context_manager.Has(std::to_string(ring_id))) {
+      auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
       if (!dev_ctx->GetCommContext()) {
         dev_ctx->SetCommContext(comm_context);
       }
