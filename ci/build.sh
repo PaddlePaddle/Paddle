@@ -74,8 +74,8 @@ ccache -s
 
 if [ ${BUILD_FROM_SCRATCH} -eq 0 ]; then
   # prepare the pre-built artifacts
-  wget --no-check-certificate ${CCACHE_ARTIFACTS_URL} -O ./ccache_artifacts.tar.gz
-  wget --no-check-certificate ${BUILD_ARTIFACTS_URL} -O ./build_artifacts.tar.gz
+  wget -q --no-check-certificate ${CCACHE_ARTIFACTS_URL} -O ./ccache_artifacts.tar.gz
+  wget -q --no-check-certificate ${BUILD_ARTIFACTS_URL} -O ./build_artifacts.tar.gz
 
   tar zmxf build_artifacts.tar.gz
   tar zmxf ccache_artifacts.tar.gz -C ${CCACHE_DIR}
@@ -86,7 +86,9 @@ fi
 git diff --name-only ${ref_revision} | xargs touch
 
 find build -name "CMakeCache*" | xargs rm
-WITH_MKL=ON WITH_AVX=ON PY_VERSION=3.8 /bin/bash paddle/scripts/paddle_build.sh build_only ${MAX_JOBS}
-find ./dist -name *whl | xargs pip install
+export MAX_JOBS=${MAX_JOBS}
+WITH_MKL=ON WITH_AVX=ON WITH_TESTING=ON python setup.py install 
+# WITH_MKL=ON WITH_AVX=ON PY_VERSION=3.8 /bin/bash paddle/scripts/paddle_build.sh build_only ${MAX_JOBS}
+# find ./dist -name *whl | xargs pip install
 
 popd

@@ -67,19 +67,6 @@ pipeline {
           cd ${env.paddle_musa_working_dir}
           /bin/bash ci/build.sh -j64
           """
-          // sh 'cd ${env.paddle_musa_working_dir} && \
-          //     if [ "BRANCH_NAME" = "develop" ]; then ref_revision=$($(git log -2 --pretty=%H | tail -1)); else ref_revision=origin/develop; fi; && \
-          //     git diff --name-only ${ref_revision} | xargs touch && \
-          //     find build -name "CMakeCache*" | xargs rm'
-          // sh '/bin/bash --login -c "cp -r $PADDLE_MUSA_REPO_PATH/third_party/. third_party \
-          //     && cp -r $PADDLE_MUSA_REPO_PATH/.git/modules .git"'
-          // sh '/bin/bash --login -c "ls -l && ls -l paddle"'
-          // When installing paddle via whl within v0.1.1 docker there is an error:
-          // paddlepaddle-0.0.0-cp37-cp37m-linux_x86_64.whl is not a supported wheel on this platform
-          // the whl's name needs to be modified according to the whl suffix supported by pip.
-          // sh '/bin/bash --login -c "PY_VERSION=3.8 /bin/bash paddle/scripts/paddle_build.sh build_only 64 && \
-          //     find ./dist -name *whl | xargs pip install"'
-          // sh '/bin/bash --login -c "MAX_JOBS=64 python setup.py install"'
         }
       }
     }

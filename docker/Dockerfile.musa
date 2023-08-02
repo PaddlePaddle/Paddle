@@ -134,12 +134,12 @@ RUN wget --no-check-certificate ${MUDNN_URL} -O /root/mudnn.tar && \
     rm -rf /root/*mudnn*
 
 # install MUSA math libs
-COPY ./install_math.sh install_math.sh
+COPY ./common/install_math.sh install_math.sh
 RUN bash install_math.sh && \
     rm -f install_math.sh
 
 # install mccl
-COPY ./install_mccl.sh install_mccl.sh
+COPY ./common/install_mccl.sh install_mccl.sh
 RUN bash install_mccl.sh && \
     rm -f install_mccl.sh
 
