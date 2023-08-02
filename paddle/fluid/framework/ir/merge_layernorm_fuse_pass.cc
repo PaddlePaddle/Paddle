@@ -142,10 +142,10 @@ void MergeLayernormFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_NODES;
     OpDesc merge_layer_op_desc(reshape2_00_op->Op()->Block());
     merge_layer_op_desc.SetType("merge_layernorm");
-    merge_layer_op_desc.SetInput("X", {subgraph.at(x)->Name()});
-    merge_layer_op_desc.SetInput("Bias", {layernorm_40_in_bias->Name()});
-    merge_layer_op_desc.SetInput("Scale", {layernorm_40_in_scale->Name()});
-    merge_layer_op_desc.SetOutput("Y", {layernorm_40_out->Name()});
+    merge_layer_op_desc.SetInput("x", {subgraph.at(x)->Name()});
+    merge_layer_op_desc.SetInput("bias", {layernorm_40_in_bias->Name()});
+    merge_layer_op_desc.SetInput("scale", {layernorm_40_in_scale->Name()});
+    merge_layer_op_desc.SetOutput("out", {layernorm_40_out->Name()});
     merge_layer_op_desc.SetAttr(
         "begin_norm_axis", layernorm_40_op->Op()->GetAttr("begin_norm_axis"));
     merge_layer_op_desc.SetAttr("epsilon",

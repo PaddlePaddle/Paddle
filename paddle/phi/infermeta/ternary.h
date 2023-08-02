@@ -117,6 +117,14 @@ void LinspaceRawInferMeta(const MetaTensor& start,
                           const MetaTensor& number,
                           MetaTensor* out);
 
+void MergeLayerNormInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& bias,
+                             float epsilon,
+                             int begin_norm_axis,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void LinspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
