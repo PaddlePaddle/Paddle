@@ -274,7 +274,7 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
-        # self.verify_predict()
+        self.verify_predict()
 
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)

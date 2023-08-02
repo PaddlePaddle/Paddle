@@ -40,29 +40,34 @@ def test_with_new_ir(func):
     return impl
 
 
-def test_and_compare_with_new_ir(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        outs = func(*args, **kwargs)
-        if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+def test_and_compare_with_new_ir(need_check_output: bool = True):
+    def decorator(func):
+        @wraps(func)
+        def impl(*args, **kwargs):
+            outs = func(*args, **kwargs)
+            if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+                return outs
+            # only run in CI-Coverage
+            if os.environ.get('FLAGS_NEW_IR_DY2ST_TEST', None) is None:
+                return outs
+            ir_outs = test_with_new_ir(func)(*args, **kwargs)
+            if not need_check_output:
+                return outs
+            for i in range(len(outs)):
+                np.testing.assert_array_equal(
+                    outs[i],
+                    ir_outs[i],
+                    err_msg='Dy2St Unittest Check ('
+                    + func.__name__
+                    + ') has diff '
+                    + '\nExpect '
+                    + str(outs[i])
+                    + '\n'
+                    + 'But Got'
+                    + str(ir_outs[i]),
+                )
             return outs
-        # only run in CI-Coverage
-        if os.environ.get('FLAGS_NEW_IR_DY2ST_TEST', None) is None:
-            return outs
-        ir_outs = test_with_new_ir(func)(*args, **kwargs)
-        for i in range(len(outs)):
-            np.testing.assert_array_equal(
-                outs[i],
-                ir_outs[i],
-                err_msg='Dy2St Unittest Check ('
-                + func.__name__
-                + ') has diff '
-                + '\nExpect '
-                + str(outs[i])
-                + '\n'
-                + 'But Got'
-                + str(ir_outs[i]),
-            )
-        return outs
 
-    return impl
+        return impl
+
+    return decorator
