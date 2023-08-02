@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 from audioop import reverse
 from collections.abc import Sequence
-import collections
 
 import paddle.ir
+from paddle.fluid.core import get_op_result_dtype, get_op_result_shape
+
 from . import bind, core
 from .distribute import State
 
-from paddle.fluid.core import (
-    get_op_result_shape,
-    get_op_result_dtype,
-)
 __all__ = [
     'grad',
 ]
@@ -87,12 +85,12 @@ def prepare_grad_outputs(block, grad_outputs, outputs, value_to_valuegrad, op_to
     if grad_outputs is none, add fill_1 op to create grad_outputs
     else check if outputs shape and dtype is same to grad_outputs, else raise error
 
-    if only part of op's outputs in outputs, add fill_0 op to create other grad_outputs 
-    eg: split 
+    if only part of op's outputs in outputs, add fill_0 op to create other grad_outputs
+    eg: split
 
     update value_to_valuegrad and op_to_opgrad
-    return complete_outputs and 
-    
+    return complete_outputs and
+
     """
     if not grad_outputs:
         grad_outputs = [None] * len(outputs)
@@ -100,7 +98,7 @@ def prepare_grad_outputs(block, grad_outputs, outputs, value_to_valuegrad, op_to
     if len(grad_outputs) != len(outputs):
         raise ValueError(
             "Should have the same number of grad_outputs as outputs"
-        ) 
+        )
     backward_ops = []
     for i, grad in grad_outputs:
         output = outputs[i]
@@ -110,8 +108,8 @@ def prepare_grad_outputs(block, grad_outputs, outputs, value_to_valuegrad, op_to
             paddle.full(opresult.shape(), 1.0, dtype = opresult.dtype())
             op_list = block.get_ops()
             fillop = op_list[len(op_list) - 1]
-            
-            update_all_structure(block, backward_ops, op_to_opgrad[output.get_defining_op()], fillop)            
+
+            update_all_structure(block, backward_ops, op_to_opgrad[output.get_defining_op()], fillop)
             value_to_valuegrad[output] = [fillop.result(0)]
         else:
             if get_op_result_shape(output) != get_op_result_shape(grad):
@@ -129,7 +127,7 @@ def prepare_grad_outputs(block, grad_outputs, outputs, value_to_valuegrad, op_to
     # add input for bwd first op
     complete_outputs = outputs
     complete_gradoutputs = grad_outputs
-    
+
     visited_output = set()
     for output in outputs:
         if output in visited_output:
@@ -143,10 +141,10 @@ def prepare_grad_outputs(block, grad_outputs, outputs, value_to_valuegrad, op_to
                 paddle.full(opresult.shape(), 0.0, dtype = opresult.dtype())
                 fillop = block.get_ops()[len(block.get_ops()) - 1]
                 grad_value = fillop.result(0)
-                
+
                 update_all_structure(backward_ops, op_to_opgrad[opresult.get_defining_op()], feedop)
                 value_to_valuegrad[opresult] = [grad_value]
-                
+
                 visited_output.add(opresult)
 
                 complete_outputs.append(opresult)
@@ -156,17 +154,17 @@ def prepare_grad_outputs(block, grad_outputs, outputs, value_to_valuegrad, op_to
 
 def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     '''
-       prune ops which do not in the path from inputs_set to outputs_set, 
-       prune ops which do not in the path from outputs_set to inputs_set, 
+       prune ops which do not in the path from inputs_set to outputs_set,
+       prune ops which do not in the path from outputs_set to inputs_set,
 
        pruned op in total_ops is uneffective_ops, else is effective_ops
-       
+
     '''
     relevant_op_flags = [True] * len(total_ops)
-    
+
     #from input to output
     if inputs_set != []:
-        for i, op in total_ops:                              
+        for i, op in total_ops:
             if some_in_set(op.operands_source(), inputs_set):
                 for value in op.results():
                     if value not in no_grad_set:
@@ -178,7 +176,7 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     for i, op in reverse(list(enumerate(total_ops))):
         # while op support
         if  some_in_set(op.results(), outputs_set):
-            for operand in op.operands_source(): 
+            for operand in op.operands_source():
                 if operand not in no_grad_set:
                     outputs_set.add(operand)
         else:
@@ -187,11 +185,11 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
 
     effective_ops = [total_ops[i] for i in range(len(total_ops)) if relevant_op_flags[i] ]
     uneffective_ops = [total_ops[i] for i in reverse(range(len(total_ops))) if not relevant_op_flags[i] ]
-    
+
     return effective_ops, uneffective_ops
 
 
-def update_no_grad_set_after_purne(block, effective_forward_op, no_grad_set, inputs, outputs):  
+def update_no_grad_set_after_purne(block, effective_forward_op, no_grad_set, inputs, outputs):
     '''
         update no_grad_set after forward purne
 
@@ -200,7 +198,7 @@ def update_no_grad_set_after_purne(block, effective_forward_op, no_grad_set, inp
     '''
     inputs_set = set(inputs)
     if inputs_set != []:
-        for op in block.get_ops():                              
+        for op in block.get_ops():
             if some_in_set(op.operands(), inputs_set):
                 for value in op.results():
                     if value not in no_grad_set:
@@ -211,48 +209,48 @@ def update_no_grad_set_after_purne(block, effective_forward_op, no_grad_set, inp
                 value = operand.source()
                 if value not in inputs_set: # and value.get_stopgradient():
                     no_grad_set.add(value)
-    
+
     outputs_set = set(outputs)
     no_grad_set_tmp = set()
     for op in reverse(effective_forward_op):
         for output in op.results():
             if (output not in outputs_set and not some_in_set([output]), set(op.operands())):
                 no_grad_set_tmp.add(output)
-            
+
         for input in op.operands():
             if input.source() not in no_grad_set:
                outputs_set.add(input.source())
-    
-    no_grad_set.update(no_grad_set_tmp)
-    
 
-def append_backward_ops(block, effective_forward_op, no_grad_set, backward_ops, state):            
+    no_grad_set.update(no_grad_set_tmp)
+
+
+def append_backward_ops(block, effective_forward_op, no_grad_set, backward_ops, state):
     '''
         add grad_op in order of topological sort
     '''
     for op in effective_forward_op:
-        if op.has_vjp():            
+        if op.has_vjp():
             # prepare output_grad
             output_grad_list = list() #(opresult)
             zero_flag = [False] * op.num_results()
-            
+
             for i, value in  enumerate(op.results()):
                 if value not in state.value_to_valuegrad.keys() or state.value_to_valuegrad[value] == None:
                     # first case:
-                    # this fwd_op's output didn't used by other fwd_op, 
+                    # this fwd_op's output didn't used by other fwd_op,
                     # so no output_grad created.
-                    
+
                     # second case:
-                    # last bwd_op return None because input in no_grad_set, 
+                    # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
-                    
+
                     paddle.full(get_op_result_shape(value), 0.0, dtype = get_op_result_dtype(value))
                     fillop = block.ops[len(block.ops) - 1]
-                    
+
                     update_all_structure(block, backward_ops, state.op_to_opgrad[op], fillop)
                     state.value_to_valuegrad[value] = [fillop.result(0)]
                     zero_flag[i] = True
-                
+
                 if len(state.value_to_valuegrad[value]) > 1:
                     # one value is input of more than one fwd_op,
                     # so more than one bwd_op create input_grad,
@@ -263,15 +261,15 @@ def append_backward_ops(block, effective_forward_op, no_grad_set, backward_ops, 
                     update_all_structure(block, backward_ops, state.op_to_opgrad[op], sumop)
                     state.value_to_valuegrad[value] = [sumop.result(0)]
                     state.value_to_sumvaluegrad[value] = state.value_to_valuegrad[value]
-                    
+
                 output_grad = state.value_to_valuegrad[value]
                 output_grad_list.append(output_grad)
-                
+
             # all(zero_flag) support this op has no contribution for grad
             # should be delete (prune sub_graph)
             if len(output_grad_list) == 0 or all(zero_flag):
                 continue
-            
+
             # prepare input_grad stop_gradient info
             input_grad_stopgradient_list = list()
             for input in op.operands():
@@ -279,31 +277,31 @@ def append_backward_ops(block, effective_forward_op, no_grad_set, backward_ops, 
                     input_grad_stopgradient_list.append(1)
                 else:
                     input_grad_stopgradient_list.append(0)
-                    
-               
+
+
             before_ops_num = len(block.ops)
-            # prim should be a globel flag, it will make create_grad_op choose diffrient func   
+            # prim should be a globel flag, it will make create_grad_op choose diffrient func
             input_grad_list  = get_vjp(op, output_grad_list, input_grad_stopgradient_list)
             after_ops_num = len(block.ops)
-            
+
             # find new gradop_list
             gradop_list = []
             for i in range(before_ops_num, after_ops_num):
                 gradop_list.append(block.ops[i])
-                
+
             for i , input in enumerate(op.operands()):
                 input_grad = input_grad_list[i]
                 state.value_to_valuegrad[input.source()].append(input_grad)
-            
+
             # add grad_op
             for gradop in gradop_list:
                 update_all_structure(block, backward_ops, state.op_to_opgrad[op], gradop)
-        
+
         else:
             if op.num_operands() == 0 and op.num_results() != 0:
                 for value in op.results():
                     if len(state.value_to_valuegrad[value]) > 1:
-                        # need add sum op 
+                        # need add sum op
                         paddle.add_n([item, for item in value_to_valuegrad[value]])
                         sumop = block.ops[len(block.ops) - 1]
                         update_all_structure(block, backward_ops, state.op_to_opgrad[op], sumop)
@@ -312,18 +310,18 @@ def append_backward_ops(block, effective_forward_op, no_grad_set, backward_ops, 
                     else:
                         state.op_to_opgrad[op] = []
                 else:
-                    state.op_to_opgrad[op] = []           
+                    state.op_to_opgrad[op] = []
 
-    
-        
+
+
 def inverse_sort_op(ops):
     '''
        if topo graph is op1 -> op2 -> op3
        return [ops, op2, op1]
-    
+
     '''
 
-    # init pending_count[op] which descibes number of 
+    # init pending_count[op] which descibes number of
     # pending edges for its gradop
 
     pending_count = collections.defaultdict(int)
@@ -335,7 +333,7 @@ def inverse_sort_op(ops):
             pending_count[x.source().get_defining_op()] += 1
 
     queue = collections.deque()
-       
+
     if pending_count[op] == 0:
         queue.append(op)
 
@@ -347,7 +345,7 @@ def inverse_sort_op(ops):
             x_op = x.source().get_defining_op()
             pending_count[x_op] -= 1
             if pending_count[x_op] == 0:
-                queue.append(x_op)   
+                queue.append(x_op)
 
     if len(sorted_list) != len(ops):
         raise ValueError(
@@ -355,7 +353,7 @@ def inverse_sort_op(ops):
         )
 
     return sorted_list
-    
+
 def remove_op(block, op, state):
     '''
        remove op from block
@@ -374,13 +372,13 @@ def remove_op(block, op, state):
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     state = State(block.get_program())
     block = outputs[0].get_defining_op().get_block()
-    
+
     # check all inputs and outputs in the same block
     check_all_puts(block, inputs, outputs)
 
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_stopgradient(block, no_grad_set)
-   
+
     complete_outputs, _, backward_ops = prepare_grad_outputs(block, grad_outputs, outputs, value_to_valuegrad, op_to_opgrad)
 
     inputs_set =  set(inputs)
@@ -391,27 +389,27 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     sorted_effective_forward_op = inverse_sort_op(effective_forward_op)
     append_backward_ops(block, sorted_effective_forward_op, no_grad_set, backward_ops, state)
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
-    
+
     no_gradvar_set = [] # no_grad_set 中前向对应的反向变量
     for key, value in state.value_to_valuegrad:
         if key in no_grad_set:
             no_gradvar_set.append(value[0])
-            
+
     for key, value in state.value_to_sumvaluegrad:
         if key in no_grad_set:
             for item in value:
                 no_gradvar_set.append(item)
-        
+
     outputs_set = [state.value_to_valuegrad[input.source()] for input in inputs]
-    inputs_set = [state.value_to_valuegrad[output] for output in complete_outputs] 
+    inputs_set = [state.value_to_valuegrad[output] for output in complete_outputs]
 
     _, remove_ops = prune_ops(backward_ops, inputs_set, outputs_set, no_gradvar_set)
-    
+
     state.turn_map()
 
     for bwd_op in inverse_sort_op(remove_ops):
         remove_op(block, bwd_op, state)
-   
+
     input_grad_map = state.value_to_valuegrad
     return input_grad_map
 

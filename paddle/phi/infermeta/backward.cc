@@ -1217,7 +1217,9 @@ void IndexPutGradInferMeta(const MetaTensor& x,
   }
 }
 
-void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+void FusedRopeGradInferMeta(const MetaTensor& sin,
+                            const MetaTensor& cos,
+                            const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
                             MetaTensor* dq,

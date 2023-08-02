@@ -57,11 +57,6 @@ void check_memory_size() const;
 
 void set_layout(const DataLayout layout);
 
-void clear() {
-  holder_.reset();
-  meta_.offset = 0;
-}
-
 void ShareBufferWith(const DenseTensor& tensor, bool only_buffer=false);
 
 void ShareDataTypeWith(const DenseTensor& tensor) {

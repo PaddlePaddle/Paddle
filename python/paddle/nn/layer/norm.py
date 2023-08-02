@@ -511,7 +511,11 @@ class GroupNorm(Layer):
                 "Mean": mean_out,
                 "Variance": variance_out,
             },
-            attrs={"epsilon": self._epsilon, "groups": self._num_groups},
+            attrs={
+                "epsilon": self._epsilon,
+                "groups": self._num_groups,
+                "data_layout": self._data_format,
+            },
         )
 
         return self._helper.append_activation(group_norm_out, None)

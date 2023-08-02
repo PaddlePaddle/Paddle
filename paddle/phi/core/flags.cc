@@ -1268,3 +1268,40 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
                          false,
                          "Enable new IR in executor");
+
+/**
+ * Using new IR API in Python
+ * Name: enable_new_ir_api
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, New IR API will be used in Python
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
+                         false,
+                         "Enable new IR API in Python");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor_beta_run
+ * Since Version: 2.6.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If Ture, executor will use new IR and run in beta version.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_beta_run,
+                         true,
+                         "Enable new IR in executor");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor_loop_run
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR and run in beta version by for loop
+ * version.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_loop_run,
+                         false,
+                         "Enable new IR in executor");

@@ -89,7 +89,11 @@ const std::map<std::string, int>& OpYamlInfoParser::InputName2Id() const {
 }
 
 const std::map<std::string, int>& OpYamlInfoParser::OutputName2Id() const {
-  return input_name2id_;
+  return output_name2id_;
+}
+
+const std::vector<int>& OpYamlInfoParser::NoNeedBufferIds() const {
+  return no_need_buffer_ids_;
 }
 
 bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
@@ -117,13 +121,15 @@ const std::string& OpYamlInfoParser::InplaceName(
 void OpYamlInfoParser::parse() {
   auto input_info = std::get<0>(op_info_tuple_);
 
-  int input_start_index = 0;
   for (size_t i = 0; i < input_info.size(); ++i) {
-    input_name2id_[input_info[i].name] = input_start_index++;
+    input_name2id_[input_info[i].name] = i;
     input_name_list_.push_back(input_info[i].name);
     input_info_[input_info[i].name] = input_info[i];
     if (!input_info[i].is_mutable_attribute) {
       input_tensor_number_++;
+    }
+    if (input_info[i].no_need_buffer) {
+      no_need_buffer_ids_.push_back(i);
     }
   }
 
@@ -133,10 +139,9 @@ void OpYamlInfoParser::parse() {
     attr_info_[attribute_info[i].name] = attribute_info[i];
   }
 
-  int output_start_index = 0;
   auto output_info = std::get<2>(op_info_tuple_);
   for (size_t i = 0; i < output_info.size(); ++i) {
-    output_name2id_[output_info[i].name] = output_start_index++;
+    output_name2id_[output_info[i].name] = i;
     output_name_list_.push_back(output_info[i].name);
     output_info_[output_info[i].name] = output_info[i];
   }

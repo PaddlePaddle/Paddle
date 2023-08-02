@@ -17,16 +17,16 @@ from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 
 
-def fused_rotary_position_embedding(q, k, v):
+def fused_rotary_position_embedding(q, k, v, sin=None, cos=None):
     r"""
     Fused rotary position embedding.
 
     Args:
         q (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if q must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
-        k (potional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if k must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
-
-        v (potional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if v must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
-
+        k (optional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if k must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
+        v (optional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if v must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
+        sin (optional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if sin must be [seq_len, head_dim] or [1, 1, seq_len, head_dim] and head_dim must be a multiple of 2.
+        cos (optional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if cos must be [seq_len, head_dim] or [1, 1, seq_len, head_dim] and head_dim must be a multiple of 2.
 
     Returns:
         out_q/out_k/out_v Tensor representing the fused rotary position embedding, has same shape and data type as `q` .
@@ -44,6 +44,12 @@ def fused_rotary_position_embedding(q, k, v):
             k = paddle.randn([1, 1, 4, 10], dtype='float16')
             v = paddle.randn([1, 1, 4, 10], dtype='float16')
             out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
+
+            x = paddle.randn([1, 1, 1, 10], dtype='float16')
+            y = paddle.randn([1, 1, 1, 10], dtype='float16')
+            sin = paddle.sin(x)
+            cos = paddle.cos(y)
+            out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos)
     """
     if in_dynamic_mode():
-        return _C_ops.fused_rotary_position_embedding(q, k, v)
+        return _C_ops.fused_rotary_position_embedding(q, k, v, sin, cos)
