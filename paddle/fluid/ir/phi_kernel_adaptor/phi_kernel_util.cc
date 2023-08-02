@@ -80,6 +80,9 @@ paddle::framework::Variable* CreateVar(
     VLOG(6) << "Create var: " << name << " in scope " << inner_scope;
     var = inner_scope->Var(name);
   }
+
+  std::cerr << "creater variable for value " << std::endl;
+  std::cerr << value.impl() << "\t" << name << std::endl;
   value_2_var_name->emplace(value, name);
   variable_2_var_name->emplace(var, name);
   auto id = var_name_2_id->size();

@@ -1601,8 +1601,7 @@ void NewIRInterpreter::BuildInstruction() {
                          .dyn_cast<::ir::StrAttribute>()
                          .AsString();
       if (op_name == "builtin.combine" || op_name == "builtin.slice" ||
-          op_name == "pd.feed" || op_name == "pd.fetch" ||
-          op_name == "builtin.set_parameter" ||
+          op_name == "pd.feed" || op_name == "builtin.set_parameter" ||
           op_name == "builtin.get_parameter") {
         VLOG(6) << "skip process " << op_name;
         continue;
@@ -2086,6 +2085,7 @@ void NewIRInterpreter::TraceInstructionList(
 
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
     auto instr_id = trace_execute_order_[idx];
+    std::cerr << "instr id  " << instr_id << std::endl;
     InstructionBase* instr_node = vec_instruction_base_.at(instr_id).get();
 
     VLOG(6) << "Run InstructionBase " << instr_id;
