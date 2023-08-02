@@ -435,7 +435,7 @@ class TestDistRunnerBase:
                     model_save_dir, "fleet_persistables"
                 )
                 infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer"
+                    model_save_dir, "fluid_infer/fluid_infer"
                 )
                 infer_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_infer"
@@ -448,7 +448,7 @@ class TestDistRunnerBase:
                     model_save_dir, "fleet_persistables_2"
                 )
                 infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer_2"
+                    model_save_dir, "fluid_infer_2/fluid_infer_2"
                 )
                 infer_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_infer_2"
@@ -459,10 +459,10 @@ class TestDistRunnerBase:
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
             feeded_var_names = [var.name for var in feed_var_list]
             paddle.static.io.save_inference_model(
-                infer_save_dir_fluid,
-                feed_var_list,
-                [avg_cost],
-                exe,
+                path_prefix=infer_save_dir_fluid,
+                feed_vars=feed_var_list,
+                fetch_vars=[avg_cost],
+                executor=exe,
                 program=fleet._origin_program,
             )
             fleet.save_inference_model(
