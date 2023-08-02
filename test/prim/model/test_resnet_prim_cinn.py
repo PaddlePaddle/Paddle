@@ -135,7 +135,6 @@ def run(model, data_loader, optimizer, mode):
             if mode == 'train':
                 avg_loss.backward()
                 optimizer.minimize(avg_loss)
-                optimizer.step()
                 model.clear_gradients()
 
             total_acc1 += acc_top1
