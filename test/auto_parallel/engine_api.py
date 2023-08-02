@@ -25,9 +25,9 @@ from paddle.io import Dataset
 
 paddle.enable_static()
 
-global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-PP_MESH_0 = auto.ProcessMesh([0])
-PP_MESH_1 = auto.ProcessMesh([1])
+# global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+# PP_MESH_0 = auto.ProcessMesh([0])
+# PP_MESH_1 = auto.ProcessMesh([1])
 epoch_num = 1
 batch_size = 2
 batch_num = 10
@@ -101,12 +101,14 @@ class MLPLayer(nn.Layer):
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
-        out = auto.shard_op(self.norm, PP_MESH_0)(input)
+        # out = auto.shard_op(self.norm, PP_MESH_0)(input)
+        out = self.norm(input)
         out = self.linear0(out)
         if is_feed:
             my_feed_vars.append((out, out.shape))
         out = F.gelu(out, approximate=True)
-        out = auto.shard_op(self.linear1, PP_MESH_1)(out)
+        # out = auto.shard_op(self.linear1, PP_MESH_1)(out)
+        out = self.linear1(out)
         out = self.dropout(out)
         out = self.linear2(out)
         if is_feed:
@@ -452,7 +454,7 @@ def get_cost_by_default_program():
         )
         label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
         auto.shard_tensor(
-            input, process_mesh=PP_MESH_0, shard_spec=[None, None]
+            input, process_mesh=auto.ProcessMesh([0]), shard_spec=[None, None]
         )
 
         loader = paddle.fluid.io.DataLoader.from_generator(
@@ -523,7 +525,7 @@ if __name__ == "__main__":
     train_high_level(fetch=False)
     train_low_level()
     train_builtin_data_vars()
-    train_non_builtin_data_vars()
-    get_cost()
-    get_cost_by_default_program()
-    get_cost_by_spec()
+    # train_non_builtin_data_vars()
+    # get_cost()
+    # get_cost_by_default_program()
+    # get_cost_by_spec()

@@ -26,7 +26,7 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from . import set_flags, get_flags
+from . import set_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -525,9 +525,8 @@ def _to_name_str(var):
 
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
-    from ..distributed.backup_env import getenv_or_backup
 
-    trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
+    trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
     fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
     cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
@@ -856,18 +855,11 @@ class _ExecutorCache:
             if build_strategy is None or build_strategy.enable_inplace
             else False
         )
-
         enable_addto = (
             True
             if build_strategy is not None and build_strategy.enable_addto
             else False
         )
-
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
-            # todo(phlrain), skip inplace add addto pass in new IR
-            enable_inplace = False
-            enable_addto = False
-
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
             skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
@@ -1070,14 +1062,29 @@ class Executor:
                             cur_feed, self.place, var.dtype
                         )
                     check_feed_shape_type(var, cur_feed)
-                idx = op.desc.attr('col')
-                new_ir_flag_name = 'FLAGS_enable_new_ir_in_executor'
-                if get_flags(new_ir_flag_name)[new_ir_flag_name]:
-                    core.set_feed_variable(
-                        scope, cur_feed, feed_target_name, idx
+                # get micro_batch_num
+                if (
+                    program._pipeline_opt
+                    and "num_micro_batches" in program._pipeline_opt
+                ):
+                    cur_opt = program._pipeline_opt["standalone_opt"]
+                    micro_batch_num = (
+                        cur_opt["num_micro_batches"]
+                        if "num_micro_batches" in cur_opt
+                        else 1
                     )
                 else:
-                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+                    micro_batch_num = 1
+                # reshard feed x
+                idx = op.desc.attr('col')
+                idx *= micro_batch_num
+                op.desc._set_attr('col', idx)
+
+                cur_feed_micro = _merge_tensors(cur_feed, micro_batch_num)
+                for i in range(int(micro_batch_num)):
+                    core.set_feed_variable(
+                        scope, cur_feed_micro[i], feed_var_name, idx + i
+                    )
             else:
                 break
 

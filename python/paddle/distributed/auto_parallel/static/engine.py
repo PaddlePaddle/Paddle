@@ -757,7 +757,7 @@ class Engine:
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
-        # For now, the completer has to be passed to the Parallelizer,
+        # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
@@ -947,11 +947,10 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        train_dataloader = self._prepare_dataloader_from_generator(
-            dataset=train_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
+        train_dataloader = self._prepare_dataloader(
+            train_data,
+            return_list=False,
+            batch_size=batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             collate_fn=collate_fn,
@@ -964,15 +963,13 @@ class Engine:
             engine=self,
             batch_size=micro_batch_size,
             epochs=epochs,
-            steps=train_dataloader._steps,
+            steps=train_dataloader.steps_per_epoch,
             log_freq=log_freq,
             save_freq=save_freq,
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=1
-            if self._strategy.pipeline.enable
-            else self._acc_steps,  # lr update once every local batch
+            acc_step=self._acc_steps,
         )
 
         cbks.on_begin('train')
@@ -980,7 +977,7 @@ class Engine:
             logs = {}
             cbks.on_epoch_begin(epoch)
 
-            for step, _ in enumerate(train_dataloader):
+            for step, data in enumerate(train_dataloader):
                 with paddle.profiler.utils._nvprof_range(
                     iter_id=step, start=nvprof_range[0], end=nvprof_range[1]
                 ):
@@ -988,6 +985,7 @@ class Engine:
                     try:
                         outs = self._executor.run(
                             self.main_program,
+                            feed=data,
                             fetch_list=fetch_names,
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy,
@@ -1097,11 +1095,10 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        valid_dataloader = self._prepare_dataloader_from_generator(
-            dataset=valid_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
+        valid_dataloader = self._prepare_dataloader(
+            valid_data,
+            return_list=False,
+            batch_size=batch_size,
             steps_per_epoch=steps,
             collate_fn=collate_fn,
         )
@@ -1117,16 +1114,17 @@ class Engine:
             metrics=self._metrics_name(),
         )
 
-        eval_steps = valid_dataloader._steps
+        eval_steps = valid_dataloader.steps_per_epoch
         cbks.on_begin(
             'eval', {'steps': eval_steps, 'metrics': self._metrics_name()}
         )
         logs = {}
-        for step, _ in enumerate(valid_dataloader):
+        for step, data in enumerate(valid_dataloader):
             cbks.on_batch_begin('eval', step, logs)
             try:
                 outs = self._executor.run(
                     self.main_program,
+                    feed=data,
                     fetch_list=fetch_names,
                     use_program_cache=self._strategy.use_cache,
                     return_numpy=self._strategy.return_numpy,
@@ -1198,17 +1196,16 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             test_data, test_sample_split, batch_size
         )
-        micro_batch_size = self._validate_batch_size(batch_size)
+        # micro_batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        test_dataloader = self._prepare_dataloader_from_generator(
-            dataset=test_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
+        test_dataloader = self._prepare_dataloader(
+            test_data,
+            return_list=False,
+            batch_size=batch_size,
             steps_per_epoch=steps,
             collate_fn=collate_fn,
         )
@@ -1217,14 +1214,15 @@ class Engine:
 
         outputs = []
         cbks = config_callbacks(callbacks, engine=self, verbose=verbose)
-        test_steps = test_dataloader._steps
+        test_steps = test_dataloader.steps_per_epoch
         cbks.on_begin('predict', {'steps': test_steps})
         logs = {}
-        for step, _ in enumerate(test_dataloader):
+        for step, data in enumerate(test_dataloader):
             cbks.on_batch_begin('predict', step, logs)
             try:
                 outs = self._executor.run(
                     self.main_program,
+                    feed=data,
                     fetch_list=fetch_names,
                     use_program_cache=self._strategy.use_cache,
                     return_numpy=self._strategy.return_numpy,
