@@ -655,7 +655,7 @@ void LarsMomentumKernel(
         param[i]->data<T>(),
         dev_ctx.template Alloc<T>(param_out[i]),
         velocity[i]->data<MT>(),
-        dev_ctx.template Alloc<T>(velocity_out[i]),
+        dev_ctx.template Alloc<MT>(velocity_out[i]),
         grad[i]->data<T>(),
         learning_rate[i]->data<MT>(),
         p_buffer,
