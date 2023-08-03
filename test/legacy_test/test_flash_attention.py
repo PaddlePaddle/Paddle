@@ -80,7 +80,7 @@ is_sm_supported = is_sm75 or is_sm8x
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 16)
+        self.shape = (2, 128, 8, 32)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -292,6 +292,48 @@ class TestFlashAttentionAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
+
+    def test_dot_scale_product(self):
+        print(
+            f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+        )
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k_ = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v_ = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        mask_shape = (self.shape[0], 1, self.shape[1], self.shape[1])
+        mask = np.random.random(mask_shape)
+        m = paddle.to_tensor(
+            mask, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        out = scaled_dot_product_attention(
+            q, k, v, m, self.dropout, self.causal, fixed_seed_offset=None
+        )
+        out_ = attention_naive(q_, k_, v_, self.causal)
+        out.backward()
+        out_.backward()
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):

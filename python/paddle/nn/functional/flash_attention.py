@@ -202,6 +202,7 @@ def flash_attention(
                 key,
                 value,
                 fixed_seed_offset,
+                None,
                 dropout,
                 causal,
                 return_softmax,
@@ -358,6 +359,7 @@ def flash_attn_unpadded(
             cu_seqlens_q,
             cu_seqlens_k,
             fixed_seed_offset,
+            None,
             max_seqlen_q,
             max_seqlen_k,
             scale,
@@ -408,7 +410,13 @@ def flash_attn_unpadded(
 
 
 def scaled_dot_product_attention(
-    query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False
+    query,
+    key,
+    value,
+    attn_mask=None,
+    dropout_p=0.0,
+    is_causal=False,
+    fixed_seed_offset=None,
 ):
     r"""
     The equation is:
@@ -458,6 +466,36 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # xdoctest: -SKIP
     """
-    assert attn_mask is None, "attn_mask is not supported yet"
-    out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    if attn_mask is None:
+        out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    else:
+        # out, _ = _C_ops.flash_attn(
+        #         query,
+        #         key,
+        #         value,
+        #         fixed_seed_offset,
+        #         attn_mask,
+        #         dropout_p ,
+        #         is_causal,
+        #         return_softmax = False,
+        #         training = False,
+        #         rng_name = "",
+        #     )
+        dropout = 0.0
+        causal = False
+        return_softmax = False
+        training = True
+        rng_name = ""
+        out, _ = _C_ops.flash_attn(
+            query,
+            key,
+            value,
+            fixed_seed_offset,
+            attn_mask,
+            dropout,
+            causal,
+            return_softmax,
+            not training,
+            rng_name,
+        )
     return out
