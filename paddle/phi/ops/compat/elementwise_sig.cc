@@ -159,8 +159,10 @@ KernelSignature ElementwiseSubDoubleGradOpArgumentMapping(
 
 KernelSignature ElementwiseDivGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "divide_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+  return KernelSignature("divide_grad",
+                         {"X", "Y", "Out", "Out@GRAD"},
+                         {"axis"},
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(

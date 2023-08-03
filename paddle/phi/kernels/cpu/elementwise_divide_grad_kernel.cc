@@ -27,13 +27,14 @@ template <typename T, typename Context>
 void DivideGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
+                      const DenseTensor& out,
                       const DenseTensor& dout,
                       int axis,
                       DenseTensor* dx,
                       DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
   phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivGradDY<T>>(
-      dev_ctx, x, y, dout, dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+      dev_ctx, x, y, out, dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
 }
 
 }  // namespace phi
