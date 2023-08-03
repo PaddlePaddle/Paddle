@@ -2,7 +2,6 @@
 <p align="center">
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
-
 --------------------------------------------------------------------------------
 
 [English](./README.md) | 简体中文 | [日本語](./README_ja.md)
@@ -12,7 +11,7 @@
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
-欢迎来到 PaddlePaddle GitHub
+我把这边修改了
 
 飞桨(PaddlePaddle)以百度多年的深度学习技术研究和业务应用为基础，是中国首个自主研发、功能完备、 开源开放的产业级深度学习平台，集深度学习核心训练和推理框架、基础模型库、端到端开发套件和丰富的工具组件于一体。目前，飞桨累计开发者535万，服务企业20万家，基于飞桨开源深度学习平台产生了67万个模型。飞桨助力开发者快速实现AI想法，快速上线AI业务。帮助越来越多的行业完成AI赋能，实现产业智能化升级。
 
