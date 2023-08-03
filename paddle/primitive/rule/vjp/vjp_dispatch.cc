@@ -64,6 +64,51 @@ paddle::optional<paddle::Tensor> tanh_vjp(
   }
   return vjp_res;
 }
+
+paddle::optional<paddle::Tensor> mean_vjp(
+    const Tensor& x,
+    const Tensor& out_grad,
+    std::vector<int64_t> axis,
+    bool keepdim,
+    bool reduce_all,
+    const std::vector<std::vector<int>>& stop_gradients) {
+  // get mean_grad res.
+  Tensor op_res =
+      backend::experimental::mean_grad<primitive::experimental::DescTensor>(
+          x, out_grad, axis, keepdim, reduce_all);
+
+  // set op stop_gradient info
+  // TODO(wanghao107): Replace with more generic code.
+  // Support set stop_gradients for all ops.
+  ir::Operation* grad_op =
+      std::static_pointer_cast<primitive::experimental::DescTensor>(
+          op_res.impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>()
+          .owner();
+  uint32_t num_res = grad_op->num_results();
+  std::vector<ir::Attribute> ir_stop_gradients(num_res);
+  for (size_t i = 0; i < num_res; i++) {
+    if (stop_gradients[0][i]) {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), true);
+    } else {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), false);
+    }
+  }
+  grad_op->set_attribute(
+      "stop_gradient",
+      ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
+
+  // construct vjp result by op result and stop_gradients info
+  paddle::optional<paddle::Tensor> vjp_res;
+  if (!stop_gradients[0][0]) {
+    vjp_res = paddle::make_optional<paddle::Tensor>(op_res);
+  }
+  return vjp_res;
+}
+
 }  // namespace experimental
 }  // namespace primitive
 }  // namespace paddle

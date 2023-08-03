@@ -29,6 +29,12 @@ using Tensor = paddle::Tensor;
 template <typename T>
 Tensor tanh_grad(const Tensor& out, const Tensor& grad_out);
 
+template <typename T>
+Tensor mean_grad(const Tensor& x,
+                 const Tensor& out_grad,
+                 std::vector<int64_t> axis = {},
+                 bool keepdim = false,
+                 bool reduce_all = false);
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive

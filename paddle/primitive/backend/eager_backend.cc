@@ -30,6 +30,19 @@ Tensor tanh_grad<Tensor>(const Tensor& out, const Tensor& grad_out) {
   paddle::experimental::tanh_grad(out, grad_out, &output);
   return output;
 }
+
+template <>
+Tensor mean_grad<Tensor>(const Tensor& x,
+                         const Tensor& out_grad,
+                         std::vector<int64_t> axis,
+                         bool keepdim,
+                         bool reduce_all) {
+  Tensor output;
+  paddle::experimental::mean_grad(
+      x, out_grad, axis, keepdim, reduce_all, &output);
+  return output;
+}
+
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive

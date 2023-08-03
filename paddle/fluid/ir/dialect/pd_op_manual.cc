@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/primitive/rule/vjp/vjp_dispatch.h"
@@ -46,6 +47,35 @@ std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
     const std::vector<std::vector<ir::OpResult>>& out_grads,
     const std::vector<std::vector<int>>& stop_gradients) {
   return {};
+}
+
+std::vector<std::vector<ir::OpResult>> MeanOp::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<int>>& stop_gradients) {
+  MeanOp op_obj = op->dyn_cast<MeanOp>();
+  Tensor x(std::make_shared<primitive::experimental::DescTensor>(op_obj.x()));
+  Tensor out_grad(
+      std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
+
+  std::vector<int64_t> axis =
+      op->attribute("axis")
+          .dyn_cast<paddle::dialect::IntArrayAttribute>()
+          .data()
+          .GetData();
+  bool keepdim = op->attribute("keepdim").dyn_cast<ir::BoolAttribute>().data();
+  bool reduce_all = false;
+  paddle::optional<paddle::Tensor> tensor_res =
+      primitive::experimental::mean_vjp(
+          x, out_grad, axis, keepdim, reduce_all, stop_gradients);
+  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
+  if (!stop_gradients[0][0]) {
+    res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
+                    tensor_res.get().impl())
+                    ->getValue()
+                    .dyn_cast<ir::OpResult>();
+  }
+  return res;
 }
 }  // namespace dialect
 }  // namespace paddle

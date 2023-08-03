@@ -39,6 +39,26 @@ Tensor tanh_grad<DescTensor>(const Tensor& out, const Tensor& grad_out) {
   return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
 }
 
+template <>
+Tensor mean_grad<DescTensor>(const Tensor& x,
+                             const Tensor& out_grad,
+                             std::vector<int64_t> axis,
+                             bool keepdim,
+                             bool reduce_all) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult out_grad_res =
+      std::static_pointer_cast<DescTensor>(out_grad.impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>();
+
+  ir::OpResult op_res = paddle::dialect::mean_grad(
+      x_res, out_grad_res, axis, keepdim, reduce_all);
+
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive

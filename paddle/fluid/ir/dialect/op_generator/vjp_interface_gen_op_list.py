@@ -15,6 +15,4 @@
 # =====================================
 # VjpInterface gen op list
 # =====================================
-vjp_interface_gen_op_list = [
-    "tanh",
-]
+vjp_interface_gen_op_list = ["tanh", "mean"]

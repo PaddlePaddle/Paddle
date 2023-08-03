@@ -26,6 +26,14 @@ paddle::optional<paddle::Tensor> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
     const std::vector<std::vector<int>>& stop_gradients);
-}
+
+paddle::optional<paddle::Tensor> mean_vjp(
+    const Tensor& x,
+    const Tensor& out_grad,
+    std::vector<int64_t> axis,
+    bool keepdim,
+    bool reduce_all,
+    const std::vector<std::vector<int>>& stop_gradients);
+}  // namespace experimental
 }  // namespace primitive
 }  // namespace paddle
