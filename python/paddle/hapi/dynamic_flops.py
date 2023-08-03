@@ -45,6 +45,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
             >>> import paddle
             >>> import paddle.nn as nn
 

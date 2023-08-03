@@ -46,6 +46,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
             >>> import paddle
             >>> import paddle.nn as nn
             >>> paddle.seed(2023)
