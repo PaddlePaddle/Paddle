@@ -497,12 +497,6 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
                 )
-                py_reader = fluid.io.DataLoader.from_generator(
-                    feed_list=[image, label],
-                    capacity=4,
-                    iterable=False,
-                    use_double_buffer=False,
-                )
 
                 net = vgg16_bn_drop(image)
                 logits = paddle.static.nn.fc(

@@ -42,6 +42,23 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               MetaTensor* variance,
                               MetaTensor* z_add);
 
+void Conv1dXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const MetaTensor& branch,
+                        const MetaTensor& branch_max,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        int dilations,
+                        int strides,
+                        int groups,
+                        int act_type,
+                        float act_param,
+                        MetaTensor* out,
+                        MetaTensor* out_max);
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
