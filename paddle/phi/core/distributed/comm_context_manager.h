@@ -68,6 +68,7 @@ class CommContextManager {
   std::unordered_map<std::string, std::unique_ptr<CommContext>>
       id_to_comm_context_;
   std::shared_ptr<Store> store_;
+  static int device_id;
 };
 
 }  // namespace distributed

@@ -13,6 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/macros.h"
@@ -29,9 +31,24 @@ namespace distributed {
 
 class NCCLCommContext final : public CommContext {
  public:
-  NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
+  NCCLCommContext(int ring_id, int rank, int size, ncclUniqueId nccl_id);
+  ~NCCLCommContext() {}
 
   ncclComm_t GetNcclComm();
+
+  gpuStream_t GetStream();
+
+  gpuEvent_t GetComputeEvent();
+
+  void SetComputeEvent(std::shared_ptr<paddle::platform::CudaEventObject>&& compute_event);
+
+  gpuEvent_t GetCommEvent();
+
+  void SetCommEvent(std::shared_ptr<paddle::platform::CudaEventObject>&& comm_event);
+
+  phi::GPUContext* GetDevContext();
+
+  void SetDevContext(std::unique_ptr<phi::GPUContext>&& dev_ctx); 
 
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
@@ -75,6 +92,14 @@ class NCCLCommContext final : public CommContext {
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
 
   ncclComm_t nccl_comm_;
+
+  std::unique_ptr<phi::GPUContext> dev_ctx_;
+
+  // used for comm wait compute, compute_stream-->event-->comm_stream
+  std::shared_ptr<paddle::platform::CudaEventObject> compute_event_;
+
+  // used for compute wait comm, comm_stream-->event-->compute_stream
+  std::shared_ptr<paddle::platform::CudaEventObject> comm_event_;
 };
 
 }  // namespace distributed

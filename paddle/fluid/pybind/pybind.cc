@@ -1690,6 +1690,7 @@ All parameter, weight, gradient are variables in Paddle.
                   return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
           });
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif

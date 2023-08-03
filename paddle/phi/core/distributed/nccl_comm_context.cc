@@ -29,13 +29,37 @@ namespace distributed {
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
-NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
-    : CommContext(rank, size) {
+NCCLCommContext::NCCLCommContext(int ring_id,
+                                 int rank,
+                                 int size,
+                                 ncclUniqueId nccl_id)
+    : CommContext(ring_id, rank, size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
 }
 
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
+
+gpuStream_t NCCLCommContext::GetStream() { return dev_ctx_->stream(); }
+
+phi::GPUContext* NCCLCommContext::GetDevContext() { return dev_ctx_.get(); }
+
+void NCCLCommContext::SetDevContext(std::unique_ptr<phi::GPUContext>&& dev_ctx) {
+  dev_ctx_ = std::move(dev_ctx);
+}
+
+gpuEvent_t NCCLCommContext::GetComputeEvent() { return compute_event_.get(); }
+
+void NCCLCommContext::SetComputeEvent(
+    std::shared_ptr<paddle::platform::CudaEventObject>&& compute_event) {
+  compute_event_ = std::move(compute_event);
+}
+
+gpuEvent_t NCCLCommContext::GetCommEvent() { return comm_event_.get(); }
+
+void NCCLCommContext::SetCommEvent(std::shared_ptr<paddle::platform::CudaEventObject>&& comm_event) {
+  comm_event_ = std::move(comm_event);
+}
 
 void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,

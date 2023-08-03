@@ -21,13 +21,16 @@ namespace distributed {
 
 class CommContext {
  public:
-  CommContext(int rank, int size) : rank_(rank), size_(size) {}
+  CommContext(int ring_id, int rank, int size)
+      : ring_id_(ring_id), rank_(rank), size_(size) {}
   virtual ~CommContext() = default;
 
-  int GetRank() { return rank_; }
-  int GetSize() { return size_; }
+  int GetRingId() const { return ring_id_; }
+  int GetRank() const { return rank_; }
+  int GetSize() const { return size_; }
 
  protected:
+  int ring_id_;
   int rank_;
   int size_;
 

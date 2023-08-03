@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -31,6 +32,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -298,7 +301,9 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    std::string use_new_comm = distributed::GetNewCommEnv();
+    platform::NCCLComm* comm = nullptr;
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -307,7 +312,22 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       // stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
       stream = ctx.cuda_device_context().stream();
     } else {
-      stream = comm->stream();
+      if (use_new_comm == "1") {
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(std::to_string(rid)));
+        PADDLE_ENFORCE_NE(
+            comm_ctx,
+            nullptr,
+            platform::errors::Unavailable(
+                "NCCLCommContext is nullptr, collective op should "
+                "has ring_id attr."));
+        stream = comm_ctx->GetStream();
+      } else {
+        comm = platform::NCCLCommContext::Instance().Get(rid, place);
+        stream = comm->stream();
+      }
     }
     VLOG(10) << "all reduce buffer:" << sendbuff << ", numel:" << numel
              << ", redtype:" << static_cast<int>(red_type)
@@ -337,8 +357,17 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+    if (comm_ctx) {
+      comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
+                                                                  recvbuff,
+                                                                  numel,
+                                                                  dtype,
+                                                                  nccl_red_type,
+                                                                  comm->comm(),
+                                                                  stream));
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
