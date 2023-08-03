@@ -1042,7 +1042,7 @@ struct SplitOpTranscriber : public OpTranscriber {
     int num = paddle::get<int>(op_desc.GetAttr("num"));
     if (num <= 0) {
       if (op_desc.HasInput("SectionsTensorList") &&
-          op_desc.Input("SectionsTensorList").size() > 0) {
+          !op_desc.Input("SectionsTensorList").empty()) {
         // get SectionsTensorList from input
 
         auto sec_tensor_list = op_desc.Input("SectionsTensorList");
@@ -1061,7 +1061,7 @@ struct SplitOpTranscriber : public OpTranscriber {
 
     // process axis
     if (op_desc.HasInput("AxisTensor") &&
-        op_desc.Input("AxisTensor").size() > 0) {
+        !op_desc.Input("AxisTensor").empty()) {
       // get axis from input
       auto axis_var_list = op_desc.Input("AxisTensor");
       IR_ENFORCE(axis_var_list.size() == 1,
@@ -1211,7 +1211,7 @@ ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
   const std::string legacy_tensor_name = "depth_tensor";
   std::vector<std::string> legacy_vars;
   if (op_desc.HasInput(legacy_tensor_name) &&
-      op_desc.Input(legacy_tensor_name).size() > 0) {
+      !op_desc.Input(legacy_tensor_name).empty()) {
     legacy_vars = op_desc.Input(legacy_tensor_name);
     IR_ENFORCE(legacy_vars.size() == 1,
                "depth_tensor input of one hot MUST be a tensor");

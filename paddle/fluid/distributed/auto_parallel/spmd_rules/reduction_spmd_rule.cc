@@ -48,10 +48,10 @@ ReductionSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   input_axes_vec.emplace_back(input_axes);
 
   // get einsum notation for output
-  for (int64_t i = 0, n = reduce_dims.size(); i < n; ++i) {
+  for (auto& reduce_dim : reduce_dims) {
     // convert the negative dim value to normal dim value
-    if (reduce_dims[i] < 0) {
-      reduce_dims[i] = ndim + reduce_dims[i];
+    if (reduce_dim < 0) {
+      reduce_dim = ndim + reduce_dim;
     }
   }
   std::string output_axes = "";
