@@ -710,12 +710,13 @@ std::vector<proto::VarType::Type> RuntimeInferShapeContext::GetVarTypes(
     const std::vector<Variable*>& vars) const {
   std::vector<proto::VarType::Type> retv;
   retv.resize(vars.size());
-  std::transform(vars.begin(),
-                 vars.end(),
-                 retv.begin(),
-                 std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),
-                           this,
-                           std::placeholders::_1));
+  std::transform(
+      vars.begin(),
+      vars.end(),
+      retv.begin(),
+      std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),  // NOLINT
+                this,
+                std::placeholders::_1));
   return retv;
 }
 
