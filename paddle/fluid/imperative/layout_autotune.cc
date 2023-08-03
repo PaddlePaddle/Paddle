@@ -159,7 +159,8 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     const paddle::imperative::NameVarMap<VarType>& outs,
     paddle::framework::AttributeMap* attrs,
     const std::shared_ptr<imperative::Tracer>& tracer) {
-  if (!tracer->UseLayoutAutoTune()) {
+  if (!tracer->UseLayoutAutoTune() ||
+      op_type.find("_grad") != std::string::npos) {
     return ins;
   }
   // When layout autotuning is enabled, the tuner will check the desired layout.
@@ -191,7 +192,8 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
           (conv_in_type == framework::proto::VarType::FP32);
       bool is_tune_fp16 =
           (PADDLE_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW") &&
-          (conv_in_type == framework::proto::VarType::FP16);
+          (conv_in_type == framework::proto::VarType::FP16 ||
+           conv_in_type == framework::proto::VarType::BF16);
       if (is_tune_fp32) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NCHW);
         LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NHWC);
