@@ -21,7 +21,7 @@ class LinspaceOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert a linspace op to tensorrt linspace layer";
+    VLOG(4) << "convert a linspace op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto* input_num = engine_->GetITensor(op_desc.Input("Num")[0]);
@@ -30,18 +30,19 @@ class LinspaceOpConverter : public OpConverter {
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     auto output_name = op_desc.Output("Out")[0];
 
-    auto* input_start_tensor =
-        TRT_ENGINE_ADD_LAYER(
-            engine_, Cast, *input_start, nvinfer1::DataType::kFLOAT)
-            ->getOutput(0);
-    auto* input_stop_tensor =
-        TRT_ENGINE_ADD_LAYER(
-            engine_, Cast, *input_stop, nvinfer1::DataType::kFLOAT)
-            ->getOutput(0);
-    auto* input_num_tensor =
-        TRT_ENGINE_ADD_LAYER(
-            engine_, Cast, *input_num, nvinfer1::DataType::kFLOAT)
-            ->getOutput(0);
+    auto* input_start_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Identity, *input_start);
+    input_start_layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+    auto* input_start_tensor = input_start_layer->getOutput(0);
+
+    auto* input_stop_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Identity, *input_stop);
+    input_stop_layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+    auto* input_stop_tensor = input_stop_layer->getOutput(0);
+
+    auto* input_num_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input_num);
+    input_num_layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+    auto* input_num_tensor = input_num_layer->getOutput(0);
 
     auto* new_num_tensor = Sub(input_num_tensor, Add1DConstantLayer(1.0f));
     auto* dis_tensor = Sub(input_stop_tensor, input_start_tensor);
@@ -63,8 +64,9 @@ class LinspaceOpConverter : public OpConverter {
     layer->setInput(1, *alpha_tensor);
     layer->setInput(2, *beta_tensor);
     if (dtype == 2 || dtype == 3) {
-      auto* cast_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Cast, *(layer->getOutput(0)), nvinfer1::DataType::kINT32);
+      auto* cast_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Identity, *(layer->getOutput(0)));
+      cast_layer->setOutputType(0, nvinfer1::DataType::kINT32);
       RreplenishLayerAndOutput(
           cast_layer, "linspace", {output_name}, test_mode);
     } else {
