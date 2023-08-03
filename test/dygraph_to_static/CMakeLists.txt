@@ -100,3 +100,12 @@ if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
 endif()
+
+set(NEWIR_DY2ST_TESTS test_cast)
+
+foreach(UNITTEST ${NEWIR_DY2ST_TESTS})
+  if($ENV{FLAGS_NEW_IR_DY2ST_TEST})
+    py_test_modules(${UNITTEST}_dy2st_new_ir MODULES ${UNITTEST} ENVS
+                    ${GC_ENVS} "FLAGS_enable_new_ir_in_executor=True")
+  endif()
+endforeach()
