@@ -368,24 +368,24 @@ def conv1d(
     Examples:
         .. code-block:: python
 
-          >>> import paddle
-          >>> import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          >>> x = paddle.to_tensor([[[4, 8, 1, 9],
-          >>>                        [7, 2, 0, 9],
-          >>>                        [6, 9, 2, 6]]], dtype="float32")
-          >>> w = paddle.to_tensor([[[9, 3, 4],
-          >>>                        [0, 0, 7],
-          >>>                        [2, 5, 6]],
-          >>>                       [[0, 3, 4],
-          >>>                        [2, 9, 7],
-          >>>                        [5, 6, 8]]], dtype="float32")
+            >>> x = paddle.to_tensor([[[4, 8, 1, 9],
+            >>>                        [7, 2, 0, 9],
+            >>>                        [6, 9, 2, 6]]], dtype="float32")
+            >>> w = paddle.to_tensor([[[9, 3, 4],
+            >>>                        [0, 0, 7],
+            >>>                        [2, 5, 6]],
+            >>>                       [[0, 3, 4],
+            >>>                        [2, 9, 7],
+            >>>                        [5, 6, 8]]], dtype="float32")
 
-          >>> y = F.conv1d(x, w)
-          >>> print(y)
-          >>> # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-          >>> #        [[[133., 238.],
-          >>> #          [160., 211.]]])
+            >>> y = F.conv1d(x, w)
+            >>> print(y)
+Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[[[133., 238.],
+[160., 211.]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -632,16 +632,16 @@ def conv2d(
     Examples:
         .. code-block:: python
 
-          >>> import paddle
-          >>> import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          >>> x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
-          >>> w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
+            >>> x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
+            >>> w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
 
-          >>> y_var = F.conv2d(x_var, w_var)
+            >>> y_var = F.conv2d(x_var, w_var)
 
-          >>> print(y_var.shape)
-          >>> # [2, 6, 6, 6]
+            >>> print(y_var.shape)
+[2, 6, 6, 6]
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -887,20 +887,20 @@ def conv1d_transpose(
     Examples:
         .. code-block:: python
 
-          >>> import paddle
-          >>> import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          >>> # shape: (1, 2, 4)
-          >>> x = paddle.to_tensor([[[4, 0, 9, 7],
-          >>>                       [8, 0, 9, 2,]]], dtype="float32")
-          >>> # shape: (2, 1, 2)
-          >>> w = paddle.to_tensor([[[7, 0]],
-          >>>                       [[4, 2]]], dtype="float32")
+            >>> # shape: (1, 2, 4)
+            >>> x = paddle.to_tensor([[[4, 0, 9, 7],
+            >>>                       [8, 0, 9, 2,]]], dtype="float32")
+            >>> # shape: (2, 1, 2)
+            >>> w = paddle.to_tensor([[[7, 0]],
+            >>>                       [[4, 2]]], dtype="float32")
 
-          >>> y = F.conv1d_transpose(x, w)
-          >>> print(y)
-          >>> # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-          >>> #        [[[60., 16., 99., 75., 4. ]]])
+            >>> y = F.conv1d_transpose(x, w)
+            >>> print(y)
+Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+[[[60., 16., 99., 75., 4. ]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -1183,16 +1183,16 @@ def conv2d_transpose(
     Examples:
         .. code-block:: python
 
-          >>> import paddle
-          >>> import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          >>> x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
-          >>> w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+            >>> x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
+            >>> w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
 
-          >>> y_var = F.conv2d_transpose(x_var, w_var)
+            >>> y_var = F.conv2d_transpose(x_var, w_var)
 
-          >>> print(y_var.shape)
-          >>> # [2, 6, 10, 10]
+            >>> print(y_var.shape)
+[2, 6, 10, 10]
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1485,7 +1485,7 @@ def conv3d(
             >>> y_var = F.conv3d(x_var, w_var)
 
             >>> print(y_var.shape)
-            >>> # [2, 6, 6, 6, 6]
+[2, 6, 6, 6, 6]
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1688,18 +1688,18 @@ def conv3d_transpose(
         variable storing transposed convolution and non-linearity activation result.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-          >>> import paddle
-          >>> import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          >>> x_var = paddle.randn((2, 3, 8, 8, 8), dtype='float32')
-          >>> w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
+            >>> x_var = paddle.randn((2, 3, 8, 8, 8), dtype='float32')
+            >>> w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
 
-          >>> y_var = F.conv3d_transpose(x_var, w_var)
+            >>> y_var = F.conv3d_transpose(x_var, w_var)
 
-          >>> print(y_var.shape)
-          >>> # [2, 6, 10, 10, 10]
+            >>> print(y_var.shape)
+[2, 6, 10, 10, 10]
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:
