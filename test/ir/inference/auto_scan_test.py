@@ -14,7 +14,6 @@
 
 import abc
 import enum
-import logging
 import os
 import shutil
 import time
@@ -36,8 +35,12 @@ import paddle
 import paddle.inference as paddle_infer
 from paddle.fluid.core import PassVersionChecker
 
+from paddle.static.log_helper import get_logger
+
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
-logging.basicConfig(level=LOGLEVEL, format="%(message)s")
+logging = get_logger(
+    __name__, LOGLEVEL, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 settings.register_profile(
     "ci",
