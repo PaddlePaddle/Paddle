@@ -133,7 +133,7 @@ PD_REGISTER_KERNEL(load, CPU, ALL_LAYOUT, ops::LoadKernel, float) {}
 PD_REGISTER_KERNEL(
     load_sr, CPU, ALL_LAYOUT, ops::LoadSelectedRowsKernel, float) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(load, GPU, ALL_LAYOUT, ops::LoadKernel, float) {}
 PD_REGISTER_KERNEL(
     load_sr, GPU, ALL_LAYOUT, ops::LoadSelectedRowsKernel, float) {}

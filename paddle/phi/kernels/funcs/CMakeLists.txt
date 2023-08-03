@@ -25,6 +25,8 @@ if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
     "sequence_pooling.cu"
     "softmax.cu"
     "matrix_inverse.cu"
+    "im2col.cu"
+    "selected_rows_functor.cu"
     "gather_scatter_functor.cu")
 endif()
 

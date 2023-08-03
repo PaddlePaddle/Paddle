@@ -129,7 +129,8 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
     // Since index in rows of SelectedRows can be duplicate, we can not use
     // tensor_out[index] += selected_rows[index]; Instead, we have to use
     // AtomicAdd to avoid concurrent write error.
-    phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
+    // TODO(@caizhi): enable it
+    // phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
   }
 }
 }  // namespace
@@ -281,7 +282,8 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
   for (int index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
+    // TODO(@caizhi): enable it
+    // phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
   }
 }
 }  // namespace
@@ -362,7 +364,8 @@ __global__ void MergeAddKernel(const T* input,
   input += ty * row_numel;
   out += out_idx * row_numel;
   for (int index = tid; index < row_numel; index += block_size) {
-    phi::CudaAtomicAdd(out + index, input[index]);
+    // TODO(@caizhi): enable it
+    // phi::CudaAtomicAdd(out + index, input[index]);
   }
 }
 

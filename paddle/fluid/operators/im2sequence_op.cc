@@ -201,7 +201,7 @@ PD_REGISTER_STRUCT_KERNEL(
 PD_REGISTER_STRUCT_KERNEL(
     im2sequence_grad, CPU, ALL_LAYOUT, ops::Im2SequenceGradKernel, float) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_STRUCT_KERNEL(
     im2sequence, GPU, ALL_LAYOUT, ops::Im2SequenceKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(
