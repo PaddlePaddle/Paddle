@@ -497,6 +497,20 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         float spatial_scale,
                         MetaTensor* out);
 
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& bias,
+                      const MetaTensor& residual,
+                      const MetaTensor& norm_weight,
+                      const MetaTensor& norm_bias,
+                      const float epsilon,
+                      const int begin_norm_axis,
+                      const float quant_scale,
+                      const int quant_round_type,
+                      const float quant_max_bound,
+                      const float quant_min_bound,
+                      MetaTensor* out,
+                      MetaTensor* residual_out);
+
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
                       const MetaTensor& grad,
