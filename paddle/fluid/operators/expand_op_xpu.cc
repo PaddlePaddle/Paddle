@@ -41,7 +41,7 @@ class ExpandXPUKernel : public framework::OpKernel<T> {
     }
 
     out->Resize(out_dims);
-    out->mutable_data<T>(context.GetPlace());
+    dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     auto& x_shape = vec_in_dims;
     auto out_shape = phi::vectorize<int>(out_dims);

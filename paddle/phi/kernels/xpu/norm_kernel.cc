@@ -42,11 +42,18 @@ void NormKernel(const Context& ctx,
   }
 
   PADDLE_ENFORCE_GE(
-      axis, 0, phi::errors::InvalidArgument("axis(%d) < 0", axis));
-  PADDLE_ENFORCE_LT(
       axis,
-      x_dims_size,
-      phi::errors::InvalidArgument("axis(%d) >= rank(%d)", axis, x_dims_size));
+      0,
+      phi::errors::InvalidArgument("axis must be greater than or equal to 0."
+                                   "But received axis: %d.",
+                                   axis));
+  PADDLE_ENFORCE_LT(axis,
+                    x_dims_size,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value must be less than rank of Input(X)"
+                        "But received axis: %d, rank: %d.",
+                        axis,
+                        x_dims_size));
 
   for (int i = 0; i < x_dims_size; i++) {
     xshape[i] = static_cast<int>(x_dims[i]);

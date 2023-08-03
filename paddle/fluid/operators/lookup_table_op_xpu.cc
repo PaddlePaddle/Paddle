@@ -31,9 +31,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
     auto* ids = context.Input<phi::DenseTensor>("Ids");
     auto* out = context.Output<phi::DenseTensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-    out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
+    dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     int xm = table->dims()[0];
     int n = table->dims()[1];
