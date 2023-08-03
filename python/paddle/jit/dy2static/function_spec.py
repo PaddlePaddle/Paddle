@@ -150,8 +150,17 @@ class FunctionSpec:
             # replace argument with corresponding InputSpec.
             args_with_spec = convert_to_input_spec(args, self._input_spec)
         else:
-            args_with_spec = _replace_value_with_input_spec(args)
-            kwargs_with_spec = _replace_value_with_input_spec(kwargs)
+            args_with_spec = _replace_to_input_spec_with_new_name(
+                args, self._arg_names
+            )
+            kwarg_names = ["kwargs." + key for key in kwargs.keys()]
+            kwargs_list_with_spec = _replace_to_input_spec_with_new_name(
+                list(kwargs.values()), kwarg_names
+            )
+            kwargs_with_spec = {
+                key: kwargs_list_with_spec[idx]
+                for idx, key in enumerate(kwargs)
+            }
 
         # If without specificing name in input_spec, add default name
         # according to argument name from decorated function.
@@ -298,6 +307,34 @@ def _replace_value_with_input_spec(args):
             input_var.stop_gradient = stop_gradient
 
         args_with_spec.append(input_var)
+    args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)
+    return args_with_spec
+
+
+def _replace_to_input_spec_with_new_name(args, arg_names):
+    assert len(args) == len(arg_names)
+    args_with_spec = []
+    for arg, name_prefix in zip(args, arg_names):
+        index = 0
+        for idx, input_var in enumerate(paddle.utils.flatten(arg)):
+            if isinstance(input_var, np.ndarray):
+                input_var = paddle.static.InputSpec.from_numpy(input_var)
+                input_var.stop_gradient = True
+            elif isinstance(input_var, core.eager.Tensor):
+                stop_gradient = input_var.stop_gradient
+                input_var = paddle.static.InputSpec.from_tensor(input_var)
+                input_var.stop_gradient = stop_gradient
+            elif isinstance(input_var, paddle.fluid.framework.Variable):
+                stop_gradient = input_var.stop_gradient
+                input_var = paddle.static.InputSpec(
+                    input_var.shape, input_var.dtype, input_var.name
+                )
+                input_var.stop_gradient = stop_gradient
+
+            if isinstance(input_var, paddle.static.InputSpec):
+                input_var.name = name_prefix + "." + str(index)
+                index += 1
+            args_with_spec.append(input_var)
     args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)
     return args_with_spec
 

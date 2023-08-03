@@ -149,6 +149,31 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
   }
 }
 
+static void ShareTensorsIntoScopeWithName(
+    const std::vector<Tensor> &tensors,
+    const std::vector<std::string> &tensor_names,
+    paddle::framework::Scope *scope) {
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    auto name = tensor_names[i];
+    if (name == paddle::framework::kFakeVarName) {
+      continue;
+    }
+    auto *var = scope->Var(name);
+    CheckInputVarStatus(tensors[i]);
+    // share tensor
+    auto tensor_base = tensors[i].impl();
+    if (phi::DenseTensor::classof(tensor_base.get())) {
+      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
+      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_base);
+      *dst_tensor = *t;
+    } else if (phi::SelectedRows::classof(tensor_base.get())) {
+      auto *dst_tensor = var->GetMutable<phi::SelectedRows>();
+      auto t = std::dynamic_pointer_cast<phi::SelectedRows>(tensor_base);
+      *dst_tensor = *t;
+    }
+  }
+}
+
 static void ShareTensorsFromScope(
     const std::vector<Tensor *> &tensors,
     const paddle::framework::BlockDesc &global_block,
@@ -321,7 +346,8 @@ inline void RunProgramAPI(
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
-  auto input_names = details::GetTensorsName(x);
+  auto input_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
   auto output_names = details::GetTensorsName(out);
   auto param_names = details::GetTensorsName(params);
   auto dout_names = details::GetTensorsName(dout);
@@ -371,7 +397,7 @@ inline void RunProgramAPI(
                "for program: "
             << program_id;
     // Step 1. share input_vars & parameters into scope
-    details::ShareTensorsIntoScope(x, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
@@ -433,7 +459,7 @@ inline void RunProgramAPI(
         interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
-    details::ShareTensorsIntoScope(x, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
     if (interpreter_core->GetVariableScope()->GetMutableScope() !=
         global_inner_scope) {
