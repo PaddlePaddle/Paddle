@@ -35,6 +35,20 @@ void SplitWithNumKernel(const Context& dev_ctx,
                         const Scalar& axis,
                         std::vector<DenseTensor*> out);
 
+template <typename Context>
+void SplitStridedKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const IntArray& sections,
+                        const Scalar& axis,
+                        std::vector<DenseTensor*> out);
+
+template <typename Context>
+void SplitWithNumStridedKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               int num,
+                               const Scalar& axis,
+                               std::vector<DenseTensor*> out);
+
 template <typename T, typename Context>
 std::vector<DenseTensor> Split(const Context& dev_ctx,
                                const DenseTensor& x,

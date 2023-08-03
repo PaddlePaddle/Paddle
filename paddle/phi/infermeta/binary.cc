@@ -1785,6 +1785,33 @@ void IndexSelectInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
+void IndexSelectStridedInferMeta(const MetaTensor& x,
+                                 int64_t index,
+                                 int dim,
+                                 MetaTensor* output) {
+  auto input_dim = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  auto output_dim = phi::vectorize(input_dim);
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  output_dim.erase(output_dim.begin() + dim);
+  output->set_dims(phi::make_ddim(output_dim));
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        const MetaTensor& add_value,
@@ -2636,6 +2663,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            MetaTensor* out) {
   auto sequences_dims = sorted_sequence.dims();
   auto values_dims = value.dims();
+  PADDLE_ENFORCE_GE(
+      sequences_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "Input sequences's dimension(%d) must be greater or equal than 1",
+          sequences_dims.size()));
 
   bool flag = true;
   if (sequences_dims.size() != values_dims.size()) {

@@ -79,7 +79,7 @@ std::vector<ir::LoweredFunc> NewIRCompiler::GetOpFunc(const ::ir::Operation& op,
   VLOG(4) << "GetOpFunc for op: " << op_name;
   // step 1: Deal with Oprands
   for (int i = 0; i < op.num_operands(); ++i) {
-    auto in_value = op.operand(i);
+    auto in_value = op.operand_source(i);
     // TODO(Aurelius84): For now, use addr as name but it's not wise.
     std::string input_id = CompatibleInfo::kInputPrefix +
                            std::to_string(std::hash<::ir::Value>()(in_value));
@@ -215,7 +215,7 @@ std::vector<std::string> NewIRCompiler::OpGetInputNames(
   std::vector<std::string> names;
   std::unordered_set<std::string> repeat;
   for (int i = 0; i < op.num_operands(); ++i) {
-    auto value = op.operand(i);
+    auto value = op.operand_source(i);
     std::string name = CompatibleInfo::kInputPrefix +
                        std::to_string(std::hash<::ir::Value>()(value));
     if (repeat.count(name)) {
@@ -264,7 +264,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
 
   for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
     for (auto i = 0; i < (*it)->num_operands(); ++i) {
-      auto in_value = (*it)->operand(i);
+      auto in_value = (*it)->operand_source(i);
       create_var(CompatibleInfo::kInputPrefix, in_value);
     }
 

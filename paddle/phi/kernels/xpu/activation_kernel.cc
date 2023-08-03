@@ -416,6 +416,23 @@ void SwishKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void EluKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               float alpha,
+               DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  dev_ctx.template Alloc<T>(out);
+  // template<typename T> int elu(Context* ctx, const T* x, T* y, int64_t len,
+  // float alpha = 1.0f, const float* max_x = nullptr, float* max_y = nullptr)
+  int r = xpu::elu(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(x.data<T>()),
+                   reinterpret_cast<XPUType*>(out->data<T>()),
+                   x.numel(),
+                   alpha);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "elu");
+}
+
+template <typename T, typename Context>
 void Relu6Kernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
@@ -545,6 +562,8 @@ PD_REGISTER_KERNEL(
     relu, XPU, ALL_LAYOUT, phi::ReluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
