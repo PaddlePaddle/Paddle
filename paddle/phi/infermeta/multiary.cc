@@ -3227,34 +3227,6 @@ void FusedAdamInferMeta(
   }
 }
 
-void FusedConvInferMeta(const MetaTensor& input,
-                        const MetaTensor& filter,
-                        const MetaTensor& bias,
-                        const MetaTensor& residual_param,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::string& padding_algorithm,
-                        const std::vector<int>& dilations,
-                        int groups,
-                        const std::string& data_format,
-                        const std::string& mkldnn_data_type,
-                        const std::string& fuse_activation,
-                        bool fuse_residual_conn,
-                        bool force_fp32_output,
-                        MetaTensor* out,
-                        MetaConfig config) {
-  ConvInferMeta(input,
-                filter,
-                strides,
-                paddings,
-                padding_algorithm,
-                dilations,
-                groups,
-                data_format,
-                out,
-                config);
-}
-
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
