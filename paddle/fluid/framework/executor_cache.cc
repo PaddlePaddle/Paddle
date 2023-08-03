@@ -156,8 +156,7 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
   std::unordered_set<std::string> op_outputs;
   std::unordered_set<std::string> op_inputs;
   std::unordered_set<std::string> no_need_buffer_ins;
-  for (size_t i = 0; i < backward_ops.size(); ++i) {
-    framework::OpDesc *op = backward_ops[i];
+  for (auto op : backward_ops) {
     VLOG(4) << "parse op type: " << op->Type();
     if (op->Type() == "share_buffer") {
       VLOG(1) << "skip share_buffer op";

@@ -198,9 +198,8 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
-      for (size_t k = 0; k < selected_indices->size(); ++k) {
+      for (int kept_idx : *selected_indices) {
         if (keep) {
-          const int kept_idx = (*selected_indices)[k];
           T overlap = T(0.);
           // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
@@ -279,8 +278,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         sdata = scores_data + label * scores->dims()[1];
 
         const std::vector<int>& label_indices = it.second;
-        for (size_t j = 0; j < label_indices.size(); ++j) {
-          int idx = label_indices[j];
+        for (auto idx : label_indices) {
           score_index_pairs.push_back(
               std::make_pair(sdata[idx], std::make_pair(label, idx)));
         }
@@ -293,9 +291,9 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
-      for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-        int label = score_index_pairs[j].second.first;
-        int idx = score_index_pairs[j].second.second;
+      for (auto& score_index_pair : score_index_pairs) {
+        int label = score_index_pair.second.first;
+        int idx = score_index_pair.second.second;
         new_indices[label].push_back(idx);
       }
 
@@ -330,9 +328,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
       int label = it.first;
       const std::vector<int>& indices = it.second;
       sdata = scores_data + label * predict_dim;
-      for (size_t j = 0; j < indices.size(); ++j) {
-        int idx = indices[j];
-
+      for (auto idx : indices) {
         odata[count * out_dim] = label;  // label
         const T* bdata;
         bdata = bboxes_data + idx * box_size;

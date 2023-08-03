@@ -504,8 +504,8 @@ void BindImperative(py::module *m_ptr) {
             obj.get_type()));
     py::list pids = py::cast<py::list>(obj);
     std::set<pid_t> pids_set = {};
-    for (size_t i = 0; i < pids.size(); i++) {
-      pids_set.insert(pids[i].cast<pid_t>());
+    for (auto &&pid : pids) {
+      pids_set.insert(pid.cast<pid_t>());
     }
     imperative::SetLoadProcessPIDs(key, pids_set);
   });
@@ -528,9 +528,9 @@ void BindImperative(py::module *m_ptr) {
                 obj.get_type()));
         py::list batch = py::cast<py::list>(obj);
         py::list tensors;
-        for (size_t i = 0; i < batch.size(); ++i) {
+        for (auto &&item : batch) {
           // 1. cast to python array
-          auto array = batch[i].cast<py::array>();
+          auto array = item.cast<py::array>();
           PADDLE_ENFORCE_NE(
               string::Sprintf("%s", array.dtype()).compare("object"),
               0,
@@ -605,8 +605,8 @@ void BindImperative(py::module *m_ptr) {
       py::return_value_policy::take_ownership);
 
   m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
-    for (size_t i = 0; i < tensor_list.size(); ++i) {
-      auto t = tensor_list[i].cast<phi::DenseTensor>();
+    for (auto &&tensor : tensor_list) {
+      auto t = tensor.cast<phi::DenseTensor>();
       auto *mmap_writer_allocation =
           dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
               t.Holder().get());
