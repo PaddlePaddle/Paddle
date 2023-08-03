@@ -75,13 +75,16 @@ def one_hot(x, num_classes, name=None):
             >>> import paddle
             # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
             >>> label = paddle.to_tensor([1, 1, 3, 0], dtype='int64')
-            # label.shape = [4]
+            >>> print(label.shape)
+            [4]
             >>> one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
-            # one_hot_label.shape = [4, 4]
-            # one_hot_label = [[0., 1., 0., 0.],
-            #                  [0., 1., 0., 0.],
-            #                  [0., 0., 0., 1.],
-            #                  [1., 0., 0., 0.]]
+            >>> print(one_hot_label.shape)
+            [4, 4]
+            >>> print(one_hot_label.data)
+            [[0., 1., 0., 0.],
+            [0., 1., 0., 0.],
+            [0., 0., 0., 1.],
+            [1., 0., 0., 0.]]
 
     """
 
@@ -172,18 +175,37 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             >>> x0 = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
             >>> w0 = paddle.full(shape=(10, 3), fill_value=2).astype(paddle.float32)
 
-            # x.data = [[3], [4], [5]]
-            # x.shape = [3, 1]
             >>> x = paddle.to_tensor(x0, stop_gradient=False)
+            >>> print(x.numpy())
+            [[3]
+             [4]
+             [5]]
+            >>> print(x.shape)
+            [3, 1]
 
-            # w.data = [[2. 2. 2.] ... [2. 2. 2.]]
-            # w.shape = [10, 3]
             >>> w = paddle.to_tensor(w0, stop_gradient=False)
-
-            # emb.data = [[[2., 2., 2.]], [[2., 2., 2.]], [[2., 2., 2.]]]
-            # emb.shape = [3, 1, 3]
+            >>> print(w.numpy())
+            [[2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]]
+            >>> print(w.shape)
+            [10, 3]
+            
             >>> emb = nn.functional.embedding(
             ...         x=x, weight=w, sparse=True, name="embedding")
+            >>> print(emb.numpy())
+            [[[2. 2. 2.]]
+             [[2. 2. 2.]]
+             [[2. 2. 2.]]]
+            >>> print(emb.shape)
+            [3, 1, 3]
 
     """
     padding_idx = (
