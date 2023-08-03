@@ -23,16 +23,16 @@ namespace fusion {
 
 template <typename T, typename MPType, int VecSize = 2>
 __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
-                                          int batch_size,
-                                          int seq_len,
-                                          int num_heads,
-                                          int head_dim,
+                                          int64_t batch_size,
+                                          int64_t seq_len,
+                                          int64_t num_heads,
+                                          int64_t head_dim,
                                           phi::Array<T*, 3> outs_data,
                                           int num_inputs,
                                           MPType div_c) {
-  int index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int stride = gridDim.x * blockDim.x * VecSize;
-  int size = batch_size * seq_len * num_heads * head_dim;
+  int64_t index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t stride = gridDim.x * blockDim.x * VecSize;
+  int64_t size = batch_size * seq_len * num_heads * head_dim;
   MPType sin_value[VecSize];
   MPType cos_value[VecSize];
   MPType result[VecSize];
@@ -42,10 +42,10 @@ __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
 
   for (; index < size; index += stride) {
 #pragma unroll
-    for (int nx = 0; nx < VecSize; ++nx) {
+    for (int64_t nx = 0; nx < VecSize; ++nx) {
       // get sin_index and cos_index
-      int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int pos_seq = index_wc / (num_heads * head_dim);
+      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+      int64_t pos_seq = index_wc / (num_heads * head_dim);
       MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
       MPType indicses =
           static_cast<MPType>(1) /
@@ -91,10 +91,9 @@ void FusedRopeKernel(const Context& dev_ctx,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
-  int numel = q.numel();
+  int64_t numel = q.numel();
   if (numel <= 0) return;
   dev_ctx.template Alloc<T>(out_q);
-  out_q->Resize(q.dims());
   // small size for broadcast
   auto batch_size = q.dims()[0];
   auto num_heads = q.dims()[2];
@@ -123,7 +122,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   if (k.get_ptr()) {
     dev_ctx.template Alloc<T>(out_k);
-    out_k->Resize(q.dims());
     ins_data[1] = k->data<T>();
     outs_data[1] = out_k->data<T>();
     num_inputs++;
@@ -131,7 +129,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   if (v.get_ptr()) {
     dev_ctx.template Alloc<T>(out_v);
-    out_v->Resize(q.dims());
     ins_data[2] = v->data<T>();
     outs_data[2] = out_v->data<T>();
     num_inputs++;

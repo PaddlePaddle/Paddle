@@ -47,3 +47,5 @@ def fused_rotary_position_embedding(q, k, v):
     """
     if in_dynamic_mode():
         return _C_ops.fused_rotary_position_embedding(q, k, v)
+
+    assert "This feature is currently supported only in dynamic mode and with CUDAPlace."
