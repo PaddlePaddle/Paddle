@@ -334,12 +334,13 @@ template <typename T, typename Context>
 void DivideGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
+                      const DenseTensor& out,
                       const DenseTensor& dout,
                       int axis,
                       DenseTensor* dx,
                       DenseTensor* dy) {
   ElementwiseGradKernel<T, dnnl::algorithm::binary_div>(
-      dev_ctx, x, y, &dout, dout, axis, dx, dy);
+      dev_ctx, x, y, &out, dout, axis, dx, dy);
 }
 }  // namespace phi
 

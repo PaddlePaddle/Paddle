@@ -75,20 +75,30 @@ from .linalg import lu  # noqa: F401
 from .linalg import lu_unpack  # noqa: F401
 from .linalg import cdist  # noqa: F401
 from .logic import equal  # noqa: F401
+from .logic import equal_  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
 from .logic import is_empty  # noqa: F401
 from .logic import less_equal  # noqa: F401
 from .logic import less_than  # noqa: F401
 from .logic import logical_and  # noqa: F401
+from .logic import logical_and_  # noqa: F401
 from .logic import logical_not  # noqa: F401
+from .logic import logical_not_  # noqa: F401
 from .logic import logical_or  # noqa: F401
+from .logic import logical_or_  # noqa: F401
 from .logic import logical_xor  # noqa: F401
+from .logic import logical_xor_  # noqa: F401
 from .logic import bitwise_and  # noqa: F401
+from .logic import bitwise_and_  # noqa: F401
 from .logic import bitwise_or  # noqa: F401
+from .logic import bitwise_or_  # noqa: F401
 from .logic import bitwise_xor  # noqa: F401
+from .logic import bitwise_xor_  # noqa: F401
 from .logic import bitwise_not  # noqa: F401
+from .logic import bitwise_not_  # noqa: F401
 from .logic import not_equal  # noqa: F401
+from .logic import not_equal_  # noqa: F401
 from .logic import allclose  # noqa: F401
 from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
@@ -164,9 +174,11 @@ from .math import tan_  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cosh_  # noqa: F401
 from .math import cumsum  # noqa: F401
+from .math import cumsum_  # noqa: F401
 from .math import cummax  # noqa: F401
 from .math import cummin  # noqa: F401
 from .math import cumprod  # noqa: F401
+from .math import cumprod_  # noqa: F401
 from .math import logcumsumexp  # noqa: F401
 from .math import logit  # noqa: F401
 from .math import logit_  # noqa: F401
@@ -214,11 +226,15 @@ from .math import amin  # noqa: F401
 from .math import minimum  # noqa: F401
 from .math import mm  # noqa: F401
 from .math import divide  # noqa: F401
+from .math import divide_  # noqa: F401
 from .math import floor_divide  # noqa: F401
+from .math import floor_divide_  # noqa: F401
 from .math import remainder  # noqa: F401
 from .math import remainder_  # noqa: F401
 from .math import mod  # noqa: F401
+from .math import mod_  # noqa: F401
 from .math import floor_mod  # noqa: F401
+from .math import floor_mod_  # noqa: F401
 from .math import multiply  # noqa: F401
 from .math import multiply_  # noqa: F401
 from .math import add  # noqa: F401
@@ -226,6 +242,7 @@ from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
+from .math import atan2_  # noqa: F401
 from .math import logsumexp  # noqa: F401
 from .math import logaddexp  # noqa: F401
 from .math import inverse  # noqa: F401
@@ -286,6 +303,7 @@ from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
 from .math import ldexp  # noqa: F401
+from .math import ldexp_  # noqa: F401
 from .math import trapezoid  # noqa: F401
 from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
@@ -381,9 +399,11 @@ tensor_method_func = [  # noqa
     'cos',
     'cosh',
     'cumsum',
+    'cumsum_',
     'cummax',
     'cummin',
     'cumprod',
+    'cumprod_',
     'logcumsumexp',
     'logit',
     'logit_',
@@ -444,7 +464,9 @@ tensor_method_func = [  # noqa
     'remainder',
     'remainder_',
     'mod',
+    'mod_',
     'floor_mod',
+    'floor_mod_',
     'multiply',
     'multiply_',
     'add',
@@ -474,6 +496,7 @@ tensor_method_func = [  # noqa
     'lgamma',
     'lgamma_',
     'equal',
+    'equal_',
     'equal_all',
     'greater_equal',
     'greater_equal_',
@@ -485,15 +508,20 @@ tensor_method_func = [  # noqa
     'less_than',
     'less_than_',
     'logical_and',
+    'logical_and_',
     'logical_not',
+    'logical_not_',
     'logical_or',
+    'logical_or_',
     'logical_xor',
+    'logical_xor_',
     'not_equal',
     'not_equal_',
     'allclose',
     'isclose',
     'is_tensor',
     'cast',
+    'cast_',
     'concat',
     'expand',
     'broadcast_to',
@@ -563,9 +591,13 @@ tensor_method_func = [  # noqa
     'frac',
     'frac_',
     'bitwise_and',
+    'bitwise_and_',
     'bitwise_or',
+    'bitwise_or_',
     'bitwise_xor',
+    'bitwise_xor_',
     'bitwise_not',
+    'bitwise_not_',
     'broadcast_tensors',
     'eig',
     'uniform_',
@@ -608,6 +640,7 @@ tensor_method_func = [  # noqa
     'sgn',
     'frexp',
     'ldexp',
+    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
