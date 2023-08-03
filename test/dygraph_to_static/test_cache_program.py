@@ -94,8 +94,8 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
-            adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=0.001, parameter_list=dygraph_net.parameters()
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=dygraph_net.parameters()
             )
             loss_data = []
             for batch_id in range(self.batch_num):

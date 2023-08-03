@@ -469,13 +469,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                         w1_param_attrs,
                         w2_param_attrs,
                     ) = self.net2()
-                    adam_optimizer1 = fluid.optimizer.AdamOptimizer(
-                        learning_rate=0.5
-                    )
+                    adam_optimizer1 = paddle.optimizer.Adam(learning_rate=0.5)
                     train1 = adam_optimizer1.minimize(loss1)
-                    adam_optimizer2 = fluid.optimizer.AdamOptimizer(
-                        learning_rate=0.5
-                    )
+                    adam_optimizer2 = paddle.optimizer.Adam(learning_rate=0.5)
                     train2 = adam_optimizer2.minimize(loss2)
                     exe.run(startup_program)
                     x_np = np.random.random(size=(10, 2)).astype('float32')

@@ -152,9 +152,9 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                         grad_clip=grad_clip,
                     )
                 elif name == 'adam':
-                    optimizer = paddle.fluid.optimizer.Adam(
+                    optimizer = paddle.optimizer.Adam(
                         learning_rate=0.01,
-                        regularization=regularization,
+                        weight_decay=regularization,
                         grad_clip=grad_clip,
                     )
                 elif name == 'adamw':

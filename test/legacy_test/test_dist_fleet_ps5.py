@@ -196,7 +196,7 @@ class TestPSPassWithBow(unittest.TestCase):
         fleet.init(role)
         loss, acc, _ = self.net()
 
-        optimizer = fluid.optimizer.Adam(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=base_lr,
                 gamma=0.969,

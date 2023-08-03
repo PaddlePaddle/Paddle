@@ -92,7 +92,7 @@ def static(
         label = paddle.static.data('label', [BATCH_SIZE, 1], 'int64')
         hidden, prediction = double_fc_net(image)
 
-        adam = optimizer.Adam(learning_rate=LR)
+        adam = paddle.optimizer.Adam(learning_rate=LR)
         sgd = optimizer.SGD(learning_rate=LR)
 
         id = paddle.static.data('id', [1], 'int32')
@@ -178,8 +178,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
         fluid.default_startup_program().random_seed = SEED
         fluid.default_main_program().random_seed = SEED
         dy_layer = DygraphLayer()
-        adam = fluid.optimizer.Adam(
-            learning_rate=LR, parameter_list=dy_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=LR, parameters=dy_layer.parameters()
         )
         sgd = fluid.optimizer.SGD(
             learning_rate=LR, parameter_list=dy_layer.parameters()

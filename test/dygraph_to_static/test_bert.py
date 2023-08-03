@@ -105,7 +105,7 @@ class TestBert(unittest.TestCase):
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
 
-            optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
+            optimizer = paddle.optimizer.Adam(parameters=bert.parameters())
             step_idx = 0
             speed_list = []
             for input_data in data_loader():

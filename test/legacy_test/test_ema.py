@@ -44,7 +44,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                     for_test=True
                 )
 
-                optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+                optimizer = paddle.optimizer.Adam(learning_rate=0.001)
                 optimizer.minimize(cost)
 
                 self._ema = fluid.optimizer.ExponentialMovingAverage(
