@@ -234,7 +234,7 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
     def test_pass(self):
         fused_rst = self.get_rst(use_pass=True)
         non_fused_rst = self.get_rst()
-        assert np.allclose(fused_rst, non_fused_rst, atol=1e-5)
+        np.testing.assert_allclose(fused_rst, non_fused_rst, atol=1e-5)
 
 
 if __name__ == "__main__":

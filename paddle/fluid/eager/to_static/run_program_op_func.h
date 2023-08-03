@@ -20,6 +20,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
@@ -51,6 +52,41 @@ static void clear_no_grad_edges_with_partial_block(
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
   }
+}
+
+static void clear_unused_out_var_in_backward(
+    const std::vector<paddle::Tensor*>& out,
+    const paddle::framework::BlockDesc* backward_block,
+    paddle::framework::Scope* scope) {
+  std::deque<std::shared_ptr<paddle::memory::Allocation>>* garbages =
+      new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
+  for (auto* out_tensor : out) {
+    if (!backward_block->HasVar(out_tensor->name())) {
+      auto var = scope->FindVar(out_tensor->name());
+      if (var == nullptr) {
+        continue;
+      }
+      if (var->IsType<phi::DenseTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+      }
+    }
+  }
+  delete garbages;
+}
+
+static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
+    const std::vector<paddle::Tensor>& x,
+    const paddle::framework::BlockDesc* backward_block) {
+  auto filter_x = std::vector<paddle::Tensor>(x);
+  for (size_t i = 0; i < x.size(); i++) {
+    if (!backward_block->HasVar(x[i].name())) {
+      auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
+      fake.set_name(paddle::framework::kFakeVarName);
+      filter_x[i] = fake;
+    }
+  }
+  return filter_x;
 }
 
 inline void run_program_ad_func(
@@ -87,8 +123,18 @@ inline void run_program_ad_func(
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
+
+    auto* forward_global_block = PADDLE_GET_CONST(
+        paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
+    auto* backward_global_block = PADDLE_GET_CONST(
+        paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
+    // Clear unused x vars
+    auto filter_x =
+        filter_unused_input_var_in_backward(x, backward_global_block);
     // Set TensorWrappers
-    grad_node->SetFwdX(x);
+    grad_node->SetFwdX(filter_x);
+    // Clear unused out vars
+    clear_unused_out_var_in_backward(out, backward_global_block, step_scope[0]);
 
     grad_node->SetFwdParams(params);
     grad_node->SetStepScope(step_scope);
@@ -97,10 +143,6 @@ inline void run_program_ad_func(
     // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
     // gradient. for example: x[1] is not used for output, the x[1] is ignored.
 
-    auto* forward_global_block = PADDLE_GET_CONST(
-        paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
-    auto* backward_global_block = PADDLE_GET_CONST(
-        paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     std::vector<const paddle::Tensor*> x_require_grad;
     for (size_t i = 0; i < x.size(); ++i) {
       auto& name = x[i].name();

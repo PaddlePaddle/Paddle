@@ -650,6 +650,9 @@ void BindPaddlePredictor(py::module *m) {
   paddle_predictor
       .def("run",
            [](PaddlePredictor &self, const std::vector<PaddleTensor> &inputs) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
              std::vector<PaddleTensor> outputs;
              self.Run(inputs, &outputs);
              return outputs;
@@ -698,6 +701,9 @@ void BindNativePredictor(py::module *m) {
       .def("run",
            [](NativePaddlePredictor &self,
               const std::vector<PaddleTensor> &inputs) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
              std::vector<PaddleTensor> outputs;
              self.Run(inputs, &outputs);
              return outputs;
@@ -1064,6 +1070,9 @@ void BindAnalysisPredictor(py::module *m) {
       .def(
           "run",
           [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+            pybind11::gil_scoped_release release;
+#endif
             std::vector<PaddleTensor> outputs;
             self.Run(inputs, &outputs);
             return outputs;
@@ -1114,6 +1123,9 @@ void BindPaddleInferPredictor(py::module *m) {
       .def(
           "run",
           [](paddle_infer::Predictor &self, py::handle py_in_tensor_list) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+            pybind11::gil_scoped_release release;
+#endif
             auto in_tensor_list =
                 CastPyArg2VectorOfTensor(py_in_tensor_list.ptr(), 0);
             std::vector<paddle::Tensor> outputs;
@@ -1121,7 +1133,13 @@ void BindPaddleInferPredictor(py::module *m) {
             return py::handle(ToPyObject(outputs));
           },
           py::arg("inputs"))
-      .def("run", [](paddle_infer::Predictor &self) { self.Run(); })
+      .def("run",
+           [](paddle_infer::Predictor &self) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
+             self.Run();
+           })
       .def("clone",
            [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

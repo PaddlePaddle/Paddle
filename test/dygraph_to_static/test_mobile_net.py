@@ -455,20 +455,33 @@ def create_optimizer(args, parameter_list):
     return optimizer
 
 
-def fake_data_reader(batch_size, label_size):
-    local_random = np.random.RandomState(SEED)
+class FakeDataSet(paddle.io.Dataset):
+    def __init__(self, batch_size, label_size, train_steps):
+        self.local_random = np.random.RandomState(SEED)
+        self.label_size = label_size
 
-    def reader():
-        batch_data = []
-        while True:
-            img = local_random.random_sample([3, 224, 224]).astype('float32')
-            label = local_random.randint(0, label_size, [1]).astype('int64')
-            batch_data.append([img, label])
-            if len(batch_data) == batch_size:
-                yield batch_data
-                batch_data = []
+        self.imgs = []
+        self.labels = []
 
-    return reader
+        self._generate_fake_data(batch_size * (train_steps + 1))
+
+    def _generate_fake_data(self, length):
+        for i in range(length):
+            img = self.local_random.random_sample([3, 224, 224]).astype(
+                'float32'
+            )
+            label = self.local_random.randint(0, self.label_size, [1]).astype(
+                'int64'
+            )
+
+            self.imgs.append(img)
+            self.labels.append(label)
+
+    def __getitem__(self, idx):
+        return [self.imgs[idx], self.labels[idx]]
+
+    def __len__(self):
+        return len(self.imgs)
 
 
 class Args:
@@ -513,9 +526,15 @@ def train_mobilenet(args, to_static):
         optimizer = create_optimizer(args=args, parameter_list=net.parameters())
 
         # 3. reader
-        train_reader = fake_data_reader(args.batch_size, args.class_dim)
-        train_data_loader = fluid.io.DataLoader.from_generator(capacity=16)
-        train_data_loader.set_sample_list_generator(train_reader)
+        train_dataset = FakeDataSet(
+            args.batch_size, args.class_dim, args.train_step
+        )
+        BatchSampler = paddle.io.BatchSampler(
+            train_dataset, batch_size=args.batch_size
+        )
+        train_data_loader = paddle.io.DataLoader(
+            train_dataset, batch_sampler=BatchSampler
+        )
 
         # 4. train loop
         loss_data = []

@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace paddle {
 namespace experimental {
@@ -79,7 +81,8 @@ static inline phi::TensorArgDef GetKernelInputArgDef(
 std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     const Tensor& input,
@@ -89,17 +92,20 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 // Only support transfering place for SelectedRows
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
@@ -111,6 +117,27 @@ paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
+
+// Only support transfering contiguous for SparseCooTensor
+std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous for SparseCsrTensor
+std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous
+std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const Tensor& input);
+
+paddle::optional<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const paddle::optional<Tensor>& input);
 
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
@@ -124,6 +151,9 @@ void TransDataBackend(const phi::SelectedRows* tensor,
                       Backend target_backend,
                       phi::SelectedRows* out);
 
+phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
+
+void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
 inline bool NeedTransformPlace(const phi::Place& src_place,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
