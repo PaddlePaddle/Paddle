@@ -1118,6 +1118,7 @@ def save(layer, path, input_spec=None, **configs):
                     )
                 )
             else:
+                static_func = get_ast_static_function(attr_func)
                 if inner_input_spec:
                     inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec

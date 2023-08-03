@@ -15,7 +15,11 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import ast_only_test, sot_only_test
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    sot_only_test,
+)
 
 import paddle
 from paddle.fluid import core
@@ -96,6 +100,7 @@ def case8(x):
     return a
 
 
+@dy2static_unittest
 class TestToTensorReturnVal(unittest.TestCase):
     def test_to_tensor_badreturn(self):
         paddle.disable_static()

@@ -39,6 +39,18 @@ def to_ast(func):
     return impl
 
 
+def to_sot(func):
+    """
+    convet run fall_back to ast
+    """
+
+    def impl(*args, **kwargs):
+        with enable_fallback_guard("True"):
+            func(*args, **kwargs)
+
+    return impl
+
+
 def dy2static_unittest(cls):
     """
     dy2static unittest must be decorated to each Dy2static Unittests.
@@ -54,6 +66,8 @@ def dy2static_unittest(cls):
             if not key.endswith("_ast"):
                 test_func = getattr(cls, key)
                 setattr(cls, key + "_ast", to_ast(test_func))
+            test_func = getattr(cls, key)
+            setattr(cls, key, to_sot(test_func))
     return cls
 
 
