@@ -29,8 +29,12 @@ __global__ void VectorizedFusedRopeGradKernel(phi::Array<const T*, 3> ins_data,
                                               phi::Array<T*, 3> outs_data,
                                               int num_inputs,
                                               MPType div_c) {
-  int64_t index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int64_t stride = gridDim.x * blockDim.x * VecSize;
+  int64_t index =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       threadIdx.x) *
+      VecSize;
+  int64_t stride = static_cast<int64_t>(gridDim.x) *
+                   static_cast<int64_t>(blockDim.x) * VecSize;
   int64_t size = batch_size * seq_len * num_heads * head_dim;
   MPType sin_value[VecSize];
   MPType cos_value[VecSize];
@@ -104,8 +108,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
 
-  int grid = config.block_per_grid.x;
-  int block = config.thread_per_block.x;
+  int64_t grid = config.block_per_grid.x;
+  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
