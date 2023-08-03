@@ -577,8 +577,8 @@ int StatisticsEngine::StatNormalizationTime(
   // verify
   uint64_t total = statistics_[name2idx_["Total"]].total_time;
   uint64_t normalization_sum = 0;
-  for (size_t idx = 0; idx < statistics_.size(); ++idx) {
-    normalization_sum += statistics_[idx].normalization_time;
+  for (auto& statistic : statistics_) {
+    normalization_sum += statistic.normalization_time;
   }
   if (total - normalization_sum != 0) {
     LOG(WARNING) << "total: " << total

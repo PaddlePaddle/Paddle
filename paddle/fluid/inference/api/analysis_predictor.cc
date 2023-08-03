@@ -999,8 +999,8 @@ bool AnalysisPredictor::LoadConverterConfig(
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
   std::vector<std::vector<int>> inputs_shape;
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs_shape.emplace_back(inputs[i].shape);
+  for (const auto &input : inputs) {
+    inputs_shape.emplace_back(input.shape);
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1010,8 +1010,8 @@ void AnalysisPredictor::MkldnnPreSet(
     const std::vector<paddle::Tensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
   std::vector<std::vector<int>> inputs_shape;
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs_shape.emplace_back(phi::vectorize<int>(inputs[i].dims()));
+  for (const auto &input : inputs) {
+    inputs_shape.emplace_back(phi::vectorize<int>(input.dims()));
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1029,9 +1029,9 @@ void AnalysisPredictor::MkldnnPreSet(
         phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
-    for (size_t i = 0; i < inputs_shape.size(); ++i) {
-      for (size_t j = 0; j < inputs_shape[i].size(); ++j) {
-        ss << inputs_shape[i][j] << "-";
+    for (const auto &input_shape : inputs_shape) {
+      for (int item : input_shape) {
+        ss << item << "-";
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
@@ -1237,13 +1237,13 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                         "wrong feed input size, need %d but get %d.",
                         feeds_.size(),
                         inputs.size()));
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    PADDLE_ENFORCE_EQ(inputs[i].defined(),
+  for (const auto &input : inputs) {
+    PADDLE_ENFORCE_EQ(input.defined(),
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "The input Tensor expected to be defined."));
     PADDLE_ENFORCE_EQ(
-        inputs[i].is_dense_tensor(),
+        input.is_dense_tensor(),
         true,
         paddle::platform::errors::InvalidArgument(
             "The input Tensor expected to be type of dense tensor."));
@@ -1252,10 +1252,10 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
   if (std::all_of(inputs.cbegin(), inputs.cend(), [&](const paddle::Tensor &t) {
         return !t.name().empty() && feed_names_.count(t.name());
       })) {
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      auto &t = framework::GetVariableTensor(*scope, inputs[i].name());
+    for (const auto &input : inputs) {
+      auto &t = framework::GetVariableTensor(*scope, input.name());
       t.ShareDataWith(
-          *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+          *std::dynamic_pointer_cast<phi::DenseTensor>(input.impl()));
     }
   } else {
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -2076,8 +2076,8 @@ bool AnalysisPredictor::ZeroCopyRun() {
   if (config_.use_mkldnn_) {
     std::vector<std::vector<int>> shape_vector;
     auto names = GetInputNames();
-    for (size_t i = 0; i < names.size(); ++i) {
-      auto in_tensor = GetInputTensor(names[i]);
+    for (auto &name : names) {
+      auto in_tensor = GetInputTensor(name);
       shape_vector.emplace_back(in_tensor->shape());
     }
     MkldnnPreSet(shape_vector);
@@ -2350,10 +2350,10 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
 
           for (size_t d = 0; d < shapes[0].size(); ++d) {
             std::map<int32_t, int32_t> counter;
-            for (size_t i = 0; i < shapes.size(); ++i) {
-              counter[shapes[i][d]] += 1;
-              if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
-              if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+            for (auto &shape : shapes) {
+              counter[shape[d]] += 1;
+              if (shape[d] < min_shape[d]) min_shape[d] = shape[d];
+              if (shape[d] > max_shape[d]) max_shape[d] = shape[d];
             }
             opt_shape[d] = ShapeMaxFreq(counter);
           }
@@ -2577,9 +2577,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=
         framework::global_transfer_scope_key().end()) {
       auto scope_key_set = framework::global_transfer_scope_key()[sub_scope_];
-      for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
-           iter++) {
-        framework::global_transfer_data_cache().erase(*iter);
+      for (auto item : scope_key_set) {
+        framework::global_transfer_data_cache().erase(item);
       }
       framework::global_transfer_scope_key().erase(sub_scope_);
     }
@@ -2918,6 +2917,7 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(unbind)
+USE_TRT_CONVERTER(flip)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
