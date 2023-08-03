@@ -31,6 +31,7 @@ from paddle.fluid.libpaddle.ir import (
     reset_insertion_point_to_end,
 )  # noqa: F401
 
+from .backward import grad, calc_gradient, calc_gradient_helper
 from . import core
 
 __all__ = [  # noqa
@@ -44,4 +45,7 @@ __all__ = [  # noqa
     'get_op_result_shape',
     'get_op_result_dtype',
     'translate_to_new_ir',
+    'grad',
+    'calc_gradient',
+    'calc_gradient_helper',
 ]
