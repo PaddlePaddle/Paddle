@@ -45,7 +45,7 @@ def fused_rotary_position_embedding(q, k, v, sin=None, cos=None):
             v = paddle.randn([1, 1, 4, 10], dtype='float16')
             out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
 
-            x = paddle.randn([1, 1, 1, 10], dtype='float16')
+            x = paddle.randn([1, 1, 1, 10], dtype='float16')o
             y = paddle.randn([1, 1, 1, 10], dtype='float16')
             sin = paddle.sin(x)
             cos = paddle.cos(y)
@@ -53,3 +53,5 @@ def fused_rotary_position_embedding(q, k, v, sin=None, cos=None):
     """
     if in_dynamic_mode():
         return _C_ops.fused_rotary_position_embedding(q, k, v, sin, cos)
+
+    assert "This feature is currently supported only in dynamic mode and with CUDAPlace."
