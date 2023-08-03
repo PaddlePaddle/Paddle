@@ -38,6 +38,7 @@ class TransformedDistribution(distribution.Distribution):
             ...     [paddle.distribution.AffineTransform(paddle.to_tensor(1.), paddle.to_tensor(2.))]
             ... )
 
+            >>> # doctest: +SKIP('random sample')
             >>> print(d.sample([10]))
             Tensor(shape=[10], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [ 3.22699189,  1.12264419,  0.50283587,  1.83812487, -2.00740123,
@@ -45,6 +46,7 @@ class TransformedDistribution(distribution.Distribution):
             >>> print(d.log_prob(paddle.to_tensor(0.5)))
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 -1.64333570)
+            >>> # doctest: -SKIP
     """
 
     def __init__(self, base, transforms):

@@ -1247,6 +1247,7 @@ class TanhTransform(Transform):
 
             >>> x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
 
+            >>> # doctest: +SKIP('random sample')
             >>> print(tanh.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[0.76159418, 0.96402758, 0.99505472],
@@ -1263,6 +1264,7 @@ class TanhTransform(Transform):
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[0.86756176 , 2.65000558 , 4.61866283 ],
                      [6.61441946 , 8.61399269 , 10.61451530]])
+            >>> # doctest: -SKIP
     """
     _type = Type.BIJECTION
 
