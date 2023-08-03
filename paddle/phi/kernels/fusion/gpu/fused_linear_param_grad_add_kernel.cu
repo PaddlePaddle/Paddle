@@ -65,7 +65,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
         use_addto);
   }
 
-  if (dbias_out == nullptr) return;
+  if (!has_bias) return;
 
   if (!fuse_bias_grad) {
     auto dout_copy = dout;
@@ -126,6 +126,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              const paddle::optional<DenseTensor> &dweight,
                              const paddle::optional<DenseTensor> &dbias,
                              bool multi_precision,
+                             bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -159,7 +160,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
     multi_precision = false;
   }
 
-  if (dbias_out) {
+  if (has_bias && dbias_out) {
     ctx.template Alloc<T>(dbias_out);
   }
 
@@ -176,6 +177,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
     PrintMeta<kLogLevel>(dweight_out, "dweight_out");
     PrintMeta<kLogLevel>(dbias_out, "dbias_out");
     VLOG(kLogLevel) << "multi_precision = " << multi_precision;
+    VLOG(kLogLevel) << "has_bias = " << has_bias;
     VLOG(kLogLevel) << "use_addto = " << use_addto;
     VLOG(kLogLevel) << "M = " << M;
     VLOG(kLogLevel) << "N = " << N;
@@ -199,6 +201,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              const paddle::optional<DenseTensor> &dweight,
                              const paddle::optional<DenseTensor> &dbias,
                              bool multi_precision,
+                             bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
   PADDLE_THROW(phi::errors::Unimplemented(
