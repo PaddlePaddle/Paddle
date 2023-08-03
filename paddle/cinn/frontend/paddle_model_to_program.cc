@@ -744,8 +744,8 @@ std::unique_ptr<Program> PaddleModelToProgram::operator()(
   paddle::cpp::ProgramDesc program_desc;
   if (FLAGS_cinn_infer_model_version < 2.0) {
     paddle::LoadModelPb(model_dir,
-                        "__model__",
-                        "",
+                        "/__model__",
+                        "/params",
                         scope_,
                         &program_desc,
                         is_combined,
