@@ -25,11 +25,11 @@ void FlipKernel(const Context& dev_ctx,
                 const std::vector<int>& axis,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  size_t x_rank = x.dims().size();
-  std::vector<int64_t> formated_axis = axis;
+  int x_rank = x.dims().size();
+  std::vector<int64_t> formated_axis(std::begin(axis), std::end(axis));
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = reinterpret_cast<int64_t>(axis[i] + x_rank);
+      formated_axis[i] = static_cast<int64_t>(axis[i] + x_rank);
     }
   }
   dev_ctx.template Alloc<T>(out);
@@ -41,7 +41,7 @@ void FlipKernel(const Context& dev_ctx,
     return;
   }
   std::vector<int64_t> x_shape = phi::vectorize(x.dims());
-  auto x_data = reinterpret_cast<XPUInTDType*>(x.data<T>());
+  auto x_data = reinterpret_cast<const XPUInTDType*>(x.data<T>());
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   auto numel = x.numel();
   if (numel <= 0) {
