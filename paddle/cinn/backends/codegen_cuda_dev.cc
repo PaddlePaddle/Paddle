@@ -389,7 +389,7 @@ bool CodeGenCUDA_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
   if (is_store && tensor->type().is_cpp_handle()) {
     str_ += tensor->name;
     str_ += "[";
-    str_ += index;
+    str_ += std::to_string(index);
     str_ += "]";
   } else {
     str_ += tensor->name;

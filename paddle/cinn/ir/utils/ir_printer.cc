@@ -467,7 +467,7 @@ void IrPrinter::Visit(const Ramp *x) {
   str_ += ",";
   Visit(x->stride);
   str_ += ",";
-  str_ += x->lanes;
+  str_ += std::to_string(x->lanes);
   str_ += ")";
 }
 
@@ -475,7 +475,7 @@ void IrPrinter::Visit(const Broadcast *x) {
   str_ += "Broadcast(";
   Visit(x->value);
   str_ += ",";
-  str_ += x->lanes;
+  str_ += std::to_string(x->lanes);
   str_ += ")";
 }
 
@@ -604,7 +604,15 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
       if (comma) str_ += ", ";
       str_ += kv.first;
       str_ += ":";
-      absl::visit([this](auto &&arg) { this->str_ += arg; }, kv.second);
+      // TODO(LiuYang): Here absl should be removed? here need to string?
+      absl::visit(
+          [this](auto &&arg) {
+            static std::ostringstream ss;
+            ss << arg;
+            this->str_ += ss.str();
+            ss.str("");
+          },
+          kv.second);
       comma = true;
     }
     str_ += ")\n";

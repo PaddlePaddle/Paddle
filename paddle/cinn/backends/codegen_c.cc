@@ -539,7 +539,7 @@ void CodeGenC::Visit(const ir::Let *op) {
   // native C array.
   if (op->type().lanes() > 1 && !is_vec) {
     str_ += "[";
-    str_ += op->type().lanes();
+    str_ += std::to_string(op->type().lanes());
     str_ += "]";
   }
 
@@ -556,7 +556,7 @@ void CodeGenC::Visit(const ir::Reduce *op) {
 
 void CodeGenC::Visit(const ir::Ramp *op) {
   str_ += "StackVec<";
-  str_ += op->lanes;
+  str_ += std::to_string(op->lanes);
   str_ += ",";
   str_ += GetTypeRepr(op->type().ElementOf());
   str_ += ">::Ramp(";
@@ -564,19 +564,19 @@ void CodeGenC::Visit(const ir::Ramp *op) {
   str_ += ", ";
   IrPrinter::Visit(op->stride);
   str_ += ", ";
-  str_ += op->lanes;
+  str_ += std::to_string(op->lanes);
   str_ += ")";
 }
 
 void CodeGenC::Visit(const ir::Broadcast *op) {
   str_ += "StackVec<";
-  str_ += op->lanes;
+  str_ += std::to_string(op->lanes);
   str_ += ",";
   str_ += GetTypeRepr(op->type().ElementOf());
   str_ += ">::Broadcast(";
   IrPrinter::Visit(op->value);
   str_ += ", ";
-  str_ += op->lanes;
+  str_ += std::to_string(op->lanes);
   str_ += ")";
 }
 
@@ -763,7 +763,7 @@ void CodeGenC::PrintStackVecType(Type type, int lanes) {
   str_ += "StackedVec<";
   str_ += GetTypeRepr(type);
   str_ += ",";
-  str_ += lanes;
+  str_ += std::to_string(lanes);
   str_ += ">";
 }
 
@@ -850,7 +850,7 @@ void CodeGenC::Visit(const ir::intrinsics::BufferCreate *op) {
   PrintShape(buffer_arg->shape);
   if (buffer_arg->data_alignment > 0) {
     str_ += ", ";
-    str_ += buffer_arg->data_alignment;
+    str_ += std::to_string(buffer_arg->data_alignment);
     str_ += "/*align*/";
   }
   str_ += ")";
@@ -875,7 +875,7 @@ void CodeGenC::Visit(const ir::intrinsics::ArgsConstruct *op) {
   str_ += "(";
   str_ += op->var->name;
   str_ += ", ";
-  str_ += op->args.size();
+  str_ += std::to_string(op->args.size());
   str_ += ", ";
   for (int i = 0; i < op->args.size() - 1; i++) {
     IrPrinter::Visit(op->args[i]);

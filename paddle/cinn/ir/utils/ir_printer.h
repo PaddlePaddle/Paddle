@@ -87,7 +87,9 @@ void IrPrinter::PrintBinaryOp(const std::string &op,
                               const BinaryOpNode<IRN> *x) {
   str_ += "(";
   Visit(x->a());
-  str_ += " " + op + " ";
+  str_ += " ";
+  str_ += op;
+  str_ += " ";
   Visit(x->b());
   str_ += ")";
 }
