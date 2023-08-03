@@ -165,16 +165,15 @@ void IrPrinter::PrintFullOperation(const Operation* op) {
 }
 
 void IrPrinter::PrintRegion(const Region& region) {
-  for (auto it = region.begin(); it != region.end(); ++it) {
-    auto* block = *it;
+  for (auto block : region) {
     PrintBlock(block);
   }
 }
 
 void IrPrinter::PrintBlock(const Block* block) {
   os << "{\n";
-  for (auto it = block->begin(); it != block->end(); ++it) {
-    PrintOperation(*it);
+  for (auto item : *block) {
+    PrintOperation(item);
     os << newline;
   }
   os << "}\n";
