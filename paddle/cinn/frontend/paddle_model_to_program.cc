@@ -743,7 +743,6 @@ std::unique_ptr<Program> PaddleModelToProgram::operator()(
     const std::string& model_dir, bool is_combined) {
   paddle::cpp::ProgramDesc program_desc;
   if (FLAGS_cinn_infer_model_version < 2.0) {
-    is_combined = false;
     paddle::LoadModelPb(model_dir,
                         "__model__",
                         "",
@@ -753,6 +752,7 @@ std::unique_ptr<Program> PaddleModelToProgram::operator()(
                         false,
                         target_);
   } else {
+    is_combined = true;
     paddle::LoadModelPb(model_dir,
                         ".pdmodel",
                         ".pdiparams",
