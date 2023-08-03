@@ -33,11 +33,12 @@ namespace phi {
 namespace distributed {
 
 GlooCommContext::GlooCommContext(
+    int ring_id,
     int rank,
     int size,
     std::shared_ptr<gloo::rendezvous::Store> store,
     std::shared_ptr<gloo::transport::Device> device)
-    : CommContext(rank, size) {
+    : CommContext(ring_id, rank, size) {
   gloo_context_ = std::make_shared<gloo::rendezvous::Context>(rank, size);
   gloo_context_->connectFullMesh(*store, device);
 }

@@ -497,6 +497,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
           << ", place: " << place_key;
 
+  phi::distributed::CommContextManager::SetCUDADeviceId(place.device);
   phi::distributed::CommContextManager::CreateNCCLCommContext(
       store_, std::to_string(gid_), rank_, size_);
 

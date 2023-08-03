@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import hashlib
+import os
 from collections import OrderedDict
 
 import paddle
@@ -58,6 +60,7 @@ def remove_process_group(ring_id):
 def new_process_group(
     ranks, group_id=None, force_new_group=False, group_type=None
 ):
+    logger.info(f"debug new_process_group group_id: {group_id}")
     global _g_process_group_map
     if not force_new_group:
         # A key constructed from ranks is used for avoiding duplication
@@ -72,6 +75,7 @@ def new_process_group(
     # so the created group id should start from the original _new_ring_id()
     if group_id is None:
         group_id = _new_ring_id() + num_groups + 1
+        logger.info(f"debug new_process_group group_id: {group_id}, num_groups: {num_groups}")
 
     new_pg = ProcessGroup(group_id, ranks, group_type)
     _g_process_group_map[group_id] = new_pg
@@ -87,6 +91,7 @@ def new_process_group(
 # handle the communication implementation choice.
 class ProcessGroup:
     def __init__(self, group_id, ranks, group_type=None):
+        logger.info(f"debug ProcessGroup group_id: {group_id}")
         if group_id == 0 and get_process_group(0) is not None:
             assert (
                 group_id != 0
@@ -159,9 +164,23 @@ class ProcessGroup:
             strategy.nrings = 1
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                core.NCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
+                use_new_comm = os.getenv("FLAGS_dynamic_static_unified_comm", "0")
+                logger.info(f"debug use_new_comm is {use_new_comm}, {type(use_new_comm)}")
+                if use_new_comm == "1":
+                    logger.info("debug use new comm")
+                    store = paddle.distributed.collective.StaticTCPStore()
+                    core.CommContextManager.set_cuda_device_id(genv.device_id)
+                    core.CommContextManager.create_nccl_comm_context(
+                        store,
+                        str(ring_id),
+                        strategy.local_rank,
+                        strategy.nranks,
+                    )
+                else:
+                    logger.info(f"debug use old comm, ring_id: {ring_id}")
+                    core.NCCLParallelContext(strategy, place).init_with_ring_id(
+                        ring_id
+                    )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(
@@ -194,28 +213,29 @@ class ProcessGroup:
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
-            barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', ring_id
-            )
+     #      barrier_tensor = paddle.full([1], 1, dtype="int32")
+     #      paddle._legacy_C_ops.barrier(
+     #          barrier_tensor, barrier_tensor, 'ring_id', ring_id
+     #      )
 
-            # NOTE(zhiqiu): to avoid send/recv hang in lazy init
-            if self._group_type == 'p2p':
-                alltoall_tmp = paddle.empty(
-                    shape=[self.nranks, self.nranks], dtype="int32"
-                )
-                paddle._legacy_C_ops.alltoall(
-                    alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
-                )
-                paddle.device.cuda.synchronize()
+     #      # NOTE(zhiqiu): to avoid send/recv hang in lazy init
+     #      if self._group_type == 'p2p':
+     #          alltoall_tmp = paddle.empty(
+     #              shape=[self.nranks, self.nranks], dtype="int32"
+     #          )
+     #          paddle._legacy_C_ops.alltoall(
+     #              alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
+     #          )
+     #          paddle.device.cuda.synchronize()
 
-        if self.nranks > 1:
-            barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', 0
-            )
+     #  if self.nranks > 1:
+     #      barrier_tensor = paddle.full([1], 1, dtype="int32")
+     #      paddle._legacy_C_ops.barrier(
+     #          barrier_tensor, barrier_tensor, 'ring_id', 0
+     #      )
 
         self._is_instantiate = True
+        logger.info(f"debug process_group {ring_id} is instantiate true")
 
     def is_member(self):
         return True
