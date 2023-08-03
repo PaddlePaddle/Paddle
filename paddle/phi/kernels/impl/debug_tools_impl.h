@@ -27,8 +27,8 @@ void CheckModelNanInfKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             DenseTensor* out) {
   phi::CastKernel<T>(dev_ctx, x, x.dtype(), out);
-  VLOG(4) << "Change FLAGS_check_nan_inf from " << FLAGS_check_nan_inf << " to "
-          << !FLAGS_check_nan_inf;
+  VLOG(6) << "model_check_nan_inf: Change FLAGS_check_nan_inf "
+          << FLAGS_check_nan_inf << " to " << !FLAGS_check_nan_inf;
   FLAGS_check_nan_inf = !(FLAGS_check_nan_inf);
 }
 
