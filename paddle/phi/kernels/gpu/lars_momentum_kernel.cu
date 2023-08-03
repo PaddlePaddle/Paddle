@@ -648,7 +648,7 @@ void LarsMomentumKernel(
     const MT* master_param_data =
         multi_precision ? master_param.get()[i]->data<MT>() : nullptr;
     MT* master_param_out_data =
-        multi_precision ? dev_ctx.template Alloc<T>(master_param_out[i])
+        multi_precision ? dev_ctx.template Alloc<MT>(master_param_out[i])
                         : nullptr;
     SeparatedLarsMomentumOpCUDAKernel<T, MT>(
         dev_ctx,
