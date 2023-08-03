@@ -2221,7 +2221,9 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       } else {
 #if IS_TRT_VERSION_GE(7000)
-        if (dtype != framework::proto::VarType::INT32 &&
+        if (!(dtype == framework::proto::VarType::BOOL &&
+              op_type == "reduce_sum") &&
+            dtype != framework::proto::VarType::INT32 &&
             dtype != framework::proto::VarType::INT64 &&
             dtype != framework::proto::VarType::FP32 &&
             dtype != framework::proto::VarType::FP64) {
