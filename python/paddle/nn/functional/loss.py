@@ -514,7 +514,7 @@ def edit_distance(
             >>> print(sequence_num)
             Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
                    [4])
-            
+
             >>> distance, sequence_num = F.loss.edit_distance(input=input, label=label, input_length=input_len, label_length=label_len, normalized=True)
             >>> print(distance)
             Tensor(shape=[4, 1], dtype=float32, place=CPUPlace, stop_gradient=True,
@@ -637,7 +637,7 @@ def binary_cross_entropy(
             >>> input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
             >>> label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')
             >>> output = paddle.nn.functional.binary_cross_entropy(input, label)
-            >>> print(output)  
+            >>> print(output)
             Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
                    [0.65537095])
 
@@ -947,7 +947,7 @@ def hsigmoid_loss(
 
             >>> input = paddle.uniform([4, 3])
             >>> print(input)
-            
+
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> num_classes = 5
             >>> weight=paddle.uniform([num_classes-1, 3])
