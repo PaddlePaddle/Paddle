@@ -82,7 +82,7 @@ PD_REGISTER_KERNEL(empty_like_csr,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(empty_like_coo,
                    GPU,
                    ALL_LAYOUT,

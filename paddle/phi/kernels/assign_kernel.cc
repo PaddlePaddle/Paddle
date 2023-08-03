@@ -135,7 +135,7 @@ PD_REGISTER_KERNEL(assign_value,
                    int8_t,
                    int64_t) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign,
                                  GPU,
                                  ALL_LAYOUT,

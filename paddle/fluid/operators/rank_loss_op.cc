@@ -246,7 +246,7 @@ PD_REGISTER_STRUCT_KERNEL(
 PD_REGISTER_STRUCT_KERNEL(
     rank_loss_grad, CPU, ALL_LAYOUT, ops::RankLossGradKernel, float) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_STRUCT_KERNEL(
     rank_loss, GPU, ALL_LAYOUT, ops::RankLossKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(
