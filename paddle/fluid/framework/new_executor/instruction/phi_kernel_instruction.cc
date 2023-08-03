@@ -111,6 +111,15 @@ OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
+  auto kernel_key = op->attributes()
+                        .at("kernel_key")
+                        .dyn_cast<dialect::KernelAttribute>()
+                        .data();
+  if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
+      phi::AllocationType::CPU) {
+    return OpFuncType::kCpuSync;
+  }
+
   PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
                     true,
                     phi::errors::Fatal("Unsupported current place %s", place));
