@@ -84,8 +84,8 @@ class TestTensorDataset(unittest.TestCase):
                 assert label.shape == [1, 1]
                 assert isinstance(input, fluid.core.eager.Tensor)
                 assert isinstance(label, fluid.core.eager.Tensor)
-                assert np.allclose(input.numpy(), input_np[i])
-                assert np.allclose(label.numpy(), label_np[i])
+                np.testing.assert_allclose(input.numpy(), input_np[i])
+                np.testing.assert_allclose(label.numpy(), label_np[i])
 
     def test_main(self):
         places = [paddle.CPUPlace()]
@@ -109,10 +109,10 @@ class TestComposeDataset(unittest.TestCase):
             input1, label1, input2, label2 = dataset[i]
             input1_t, label1_t = dataset1[i]
             input2_t, label2_t = dataset2[i]
-            assert np.allclose(input1, input1_t)
-            assert np.allclose(label1, label1_t)
-            assert np.allclose(input2, input2_t)
-            assert np.allclose(label2, label2_t)
+            np.testing.assert_allclose(input1, input1_t)
+            np.testing.assert_allclose(label1, label1_t)
+            np.testing.assert_allclose(input2, input2_t)
+            np.testing.assert_allclose(label2, label2_t)
 
 
 class TestRandomSplitApi(unittest.TestCase):
@@ -226,12 +226,12 @@ class TestChainDataset(unittest.TestCase):
 
         idx = 0
         for image, label in iter(dataset1):
-            assert np.allclose(image, samples[idx][0])
-            assert np.allclose(label, samples[idx][1])
+            np.testing.assert_allclose(image, samples[idx][0])
+            np.testing.assert_allclose(label, samples[idx][1])
             idx += 1
         for image, label in iter(dataset2):
-            assert np.allclose(image, samples[idx][0])
-            assert np.allclose(label, samples[idx][1])
+            np.testing.assert_allclose(image, samples[idx][0])
+            np.testing.assert_allclose(label, samples[idx][1])
             idx += 1
 
     def test_main(self):

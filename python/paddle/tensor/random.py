@@ -102,7 +102,7 @@ def poisson(x, name=None):
 
     Args:
         x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type
-            should be float32, float64.
+            should be bfloat16, float16, float32, float64.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.

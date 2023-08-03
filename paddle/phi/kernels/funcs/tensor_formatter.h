@@ -15,15 +15,14 @@
 #pragma once
 #include <string>
 
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/var_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace operators {
+namespace funcs {
 
 class TensorFormatter {
  public:
@@ -55,5 +54,5 @@ class TensorFormatter {
   bool print_tensor_layout_ = true;
 };
 
-}  // namespace operators
+}  // namespace funcs
 }  // namespace paddle

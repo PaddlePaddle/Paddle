@@ -37,19 +37,21 @@ namespace phi {
 namespace distributed {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+void CommContextManager::SetCUDADeviceId(int dev_id) {
+  phi::backends::gpu::SetDeviceId(dev_id);
+}
+
 void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
-    int dev_id,
-    int ring_id,
+    const std::string& unique_comm_key,
     int rank,
     int size) {
-  phi::backends::gpu::SetDeviceId(dev_id);
   ncclUniqueId nccl_id;
   if (rank == 0) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
-  std::string unique_key = "NCCLCommContext/" + std::to_string(ring_id);
+  std::string unique_key = "NCCLCommContext/" + unique_comm_key;
   if (rank == 0) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
@@ -64,16 +66,19 @@ void CommContextManager::CreateNCCLCommContext(
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
   auto& comm_context_manager = CommContextManager::GetInstance();
   comm_context_manager.SetStore(store);
-  comm_context_manager.Emplace(ring_id, std::move(nccl_comm_context));
+  comm_context_manager.Emplace(unique_comm_key, std::move(nccl_comm_context));
 }
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
 void CommContextManager::CreateGlooCommContext(
-    const std::shared_ptr<Store>& store, int ring_id, int rank, int size) {
+    const std::shared_ptr<Store>& store,
+    const std::string& unique_comm_key,
+    int rank,
+    int size) {
   GlooStore store_wrapper(store);
   auto gloo_store = std::make_shared<gloo::rendezvous::PrefixStore>(
-      std::to_string(ring_id), store_wrapper);
+      unique_comm_key, store_wrapper);
 
   auto gloo_device = CreateGlooDevice();
 
@@ -82,31 +87,33 @@ void CommContextManager::CreateGlooCommContext(
   auto& comm_context_manager = CommContextManager::GetInstance();
   // set actual store to manager
   comm_context_manager.SetStore(store);
-  comm_context_manager.Emplace(ring_id, std::move(gloo_comm_context));
+  comm_context_manager.Emplace(unique_comm_key, std::move(gloo_comm_context));
 }
 #endif
 
 CommContext* CommContextManager::Emplace(
-    int ring_id, std::unique_ptr<CommContext> comm_context) {
+    const std::string& unique_comm_key,
+    std::unique_ptr<CommContext> comm_context) {
   PADDLE_ENFORCE_EQ(
-      id_to_comm_context_.find(ring_id),
+      id_to_comm_context_.find(unique_comm_key),
       id_to_comm_context_.end(),
-      errors::AlreadyExists("Ring id %d already exists in the map.", ring_id));
-  id_to_comm_context_.emplace(ring_id, std::move(comm_context));
-  return id_to_comm_context_.at(ring_id).get();
+      errors::AlreadyExists("The unique key %s already exists in the map.",
+                            unique_comm_key));
+  id_to_comm_context_.emplace(unique_comm_key, std::move(comm_context));
+  return id_to_comm_context_.at(unique_comm_key).get();
 }
 
-CommContext* CommContextManager::Get(int ring_id) const {
+CommContext* CommContextManager::Get(const std::string& unique_comm_key) const {
   PADDLE_ENFORCE_NE(
-      id_to_comm_context_.find(ring_id),
+      id_to_comm_context_.find(unique_comm_key),
       id_to_comm_context_.end(),
-      errors::NotFound("Can not find ring id %d in map.", ring_id));
+      errors::NotFound("Can not find unique key %s in map.", unique_comm_key));
 
-  return id_to_comm_context_.at(ring_id).get();
+  return id_to_comm_context_.at(unique_comm_key).get();
 }
 
-bool CommContextManager::Has(int ring_id) const {
-  return id_to_comm_context_.find(ring_id) != id_to_comm_context_.end();
+bool CommContextManager::Has(const std::string& unique_comm_key) const {
+  return id_to_comm_context_.find(unique_comm_key) != id_to_comm_context_.end();
 }
 
 }  // namespace distributed
