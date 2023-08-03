@@ -43,18 +43,19 @@ epoch_num = 1
 #     10.256929397583008,
 # ]
 
+# note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the fluid version.
 # The results in ci as as follows:
 DY2ST_PRIM_GT = [
-    5.82879114151001,
-    8.33370590209961,
-    5.091761589050293,
-    8.776082992553711,
-    8.274380683898926,
-    7.546653747558594,
-    9.607137680053711,
-    8.27371597290039,
-    8.429732322692871,
-    10.362630844116211,
+    5.828791,
+    8.333706,
+    5.104889,
+    8.546337,
+    8.263966,
+    7.413934,
+    9.569124,
+    8.251557,
+    8.51361,
+    10.603094,
 ]
 
 if core.is_compiled_with_cuda():
