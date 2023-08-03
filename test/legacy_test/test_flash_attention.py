@@ -189,9 +189,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         value = np.random.random(self.shape)
 
         mask_shape = (self.shape[0], 1, self.shape[1], self.shape[1])
-        mask = np.ones(mask_shape)
-        mask = np.triu(mask)
-        # print(mask)
+        mask = np.random.random(mask_shape)
 
         q = paddle.to_tensor(
             query, place=self.place, dtype=self.dtype, stop_gradient=False
