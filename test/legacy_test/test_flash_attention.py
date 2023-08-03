@@ -224,7 +224,6 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 enable_mem_efficient=self.enable_mem_efficient,
             ):
                 if self.use_sdp_api:
-                    print("self.use_sdp_api = ", self.use_sdp_api)
                     out = scaled_dot_product_attention(
                         q, k, v, m, self.dropout, self.causal
                     )
