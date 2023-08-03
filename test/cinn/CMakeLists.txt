@@ -121,7 +121,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv1.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv1.py
       "${CMAKE_BINARY_DIR}/third_party/MobilenetV1" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -140,7 +141,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_squeezenet.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_squeezenet.py
       "${CMAKE_BINARY_DIR}/third_party/SqueezeNet" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
