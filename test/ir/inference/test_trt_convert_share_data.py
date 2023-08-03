@@ -43,6 +43,7 @@ class TrtConvertShareData(TrtLayerAutoScanTest):
                         "output_data",
                     ]
                 },
+                "op_attrs": {},
             }
         ]
         ops = self.generate_op_config(ops_config)
