@@ -69,37 +69,12 @@ void Float32Bfloat16OrFloat16AddCudaFunctor(const Context& dev_ctx,
   }
 }
 
-// TODO(MTAI): The following code is temporary, which is just a demo for MUSA.
-// It will be removed later.
-using muTensor = ::musa::dnn::Tensor;
-using BINARY_MODE = ::musa::dnn::Binary::Mode;
-muTensor CreateMUTensor(const DenseTensor& tensor) {
-  muTensor mu_tensor;
-  mu_tensor.SetNdInfo(tensor.dims().size(), tensor.dims().Get());
-  switch (tensor.dtype()) {
-    case DataType::FLOAT32:
-      mu_tensor.SetType(muTensor::Type::FLOAT);
-      break;
-    case DataType::INT32:
-      mu_tensor.SetType(muTensor::Type::INT32);
-      break;
-    case DataType::INT64:
-      mu_tensor.SetType(muTensor::Type::INT64);
-      break;
-    default:
-      std::cerr << "=========mismatch dtype in add kernel=====\n";
-      throw;
-  }
-  mu_tensor.SetAddr(tensor.data());
-  return mu_tensor;
-}
-
 template <typename T, typename Context>
 void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
        y.dtype() == phi::DataType::FLOAT16)) {
@@ -107,19 +82,8 @@ void AddKernel(const Context& dev_ctx,
     Float32Bfloat16OrFloat16AddCudaFunctor<Type, Context>(dev_ctx, x, y, out);
   } else {
 #endif
-    // AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
-  dev_ctx.template Alloc<T>(out);
-  using muHandle = ::musa::dnn::Handle;
-  ::musa::dnn::Handle h;
-  muTensor musa_self = CreateMUTensor(x);
-  muTensor musa_other = CreateMUTensor(y);
-  muTensor musa_out = CreateMUTensor(*out);
-
-  ::musa::dnn::Binary binary_op;
-  binary_op.SetMode(BINARY_MODE::ADD);
-  binary_op.Run(h, musa_out, musa_self, musa_other);
-
-#ifdef PADDLE_WITH_CUDA
+    AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
   }
 #endif
 }
