@@ -18,8 +18,11 @@
 namespace paddle {
 namespace primitive {
 namespace experimental {
-
-using Tensor = paddle::Tensor;
+// why exist this file?
+// We provide this file to divide
+// the basic prim set in the backend.
+// It will be called by the vjp composite
+// rules and composite ops rules.
 
 }  // namespace experimental
 }  // namespace primitive

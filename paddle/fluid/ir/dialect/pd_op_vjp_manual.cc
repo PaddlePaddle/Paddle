@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO(wanghao107)
+// this file will be generated in pd_op.cc
+
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/core/op_base.h"
@@ -46,7 +49,25 @@ std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
     ir::Operation* op,
     const std::vector<std::vector<ir::OpResult>>& out_grads,
     const std::vector<std::vector<int>>& stop_gradients) {
-  return {};
+  // TODO(wanghao107)
+  // we don't support inplace now,
+  // so use the non-inplace version instead currently.
+  // Support inplace in the future.
+  Tanh_Op op_obj = op->dyn_cast<Tanh_Op>();
+  Tensor out(
+      std::make_shared<primitive::experimental::DescTensor>(op_obj.out()));
+  Tensor grad_out(
+      std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
+  paddle::optional<paddle::Tensor> tensor_res =
+      primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
+  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
+  if (!stop_gradients[0][0]) {
+    res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
+                    tensor_res.get().impl())
+                    ->getValue()
+                    .dyn_cast<ir::OpResult>();
+  }
+  return res;
 }
 
 std::vector<std::vector<ir::OpResult>> MeanOp::Vjp(

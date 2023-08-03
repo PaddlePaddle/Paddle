@@ -29,7 +29,6 @@ from paddle.fluid.libpaddle.ir import (
     set_insertion_point,
     reset_insertion_point_to_start,
     reset_insertion_point_to_end,
-    call_vjp,
 )  # noqa: F401
 
 from . import core
@@ -44,6 +43,5 @@ __all__ = [  # noqa
     'Type',
     'get_op_result_shape',
     'get_op_result_dtype',
-    'call_vjp',
     'translate_to_new_ir',
 ]
