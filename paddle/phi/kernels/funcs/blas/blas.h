@@ -594,5 +594,5 @@ inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
 #include "paddle/phi/kernels/funcs/blas/blas_impl.hip.h"
 #endif
 #ifdef PADDLE_WITH_MUSA
-// TODO
+#include "paddle/phi/kernels/funcs/blas/blas_impl.mu.h"
 #endif

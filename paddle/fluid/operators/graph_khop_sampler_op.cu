@@ -92,7 +92,7 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   hiprandState rng;
   hiprand_init(rand_seed * gridDim.x + blockIdx.x,
                threadIdx.y * WARP_SIZE + threadIdx.x,

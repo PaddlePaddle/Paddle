@@ -54,7 +54,6 @@ void recompute_bias_and_weights(const Scope* scope,
                                 const ir::Node& ac_scale,
                                 const phi::DenseTensor& ac_bias_tensor,
                                 phi::DenseTensor* eltwise_y_in_tensor) {
-#if 0
   using EigenVectorArrayMap =
       Eigen::Map<Eigen::Array<float, Eigen::Dynamic, 1>>;
   using ConstEigenVectorArrayMap =
@@ -103,7 +102,6 @@ void recompute_bias_and_weights(const Scope* scope,
   for (int i = 0; i < weights->numel(); ++i) {
     if (std::fpclassify(weights_data[i]) == FP_SUBNORMAL) weights_data[i] = 0;
   }
-#endif
 }
 
 ConvAffineChannelFusePass::ConvAffineChannelFusePass() {

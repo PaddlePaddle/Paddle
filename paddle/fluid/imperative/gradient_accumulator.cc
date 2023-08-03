@@ -204,7 +204,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     PADDLE_TENSOR_ADD(float, phi::GPUContext);
     PADDLE_TENSOR_ADD(double, phi::GPUContext);
     PADDLE_TENSOR_ADD(phi::dtype::float16, phi::GPUContext);
@@ -313,7 +313,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
     return;                                                              \
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (paddle::platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::GPUContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::GPUContext, double);
@@ -321,7 +321,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 #endif
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::CPUContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::CPUContext, double);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   }
 #endif
 
@@ -364,7 +364,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
     return;                                                            \
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::GPUContext, float);
     PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::GPUContext, double);
@@ -372,7 +372,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
 #endif
     PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::CPUContext, float);
     PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::CPUContext, double);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   }
 #endif
 
@@ -425,7 +425,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
     return dst_var;                                                  \
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (paddle::platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD(phi::GPUContext, float);
     PADDLE_SELECTED_ROWS_ADD(phi::GPUContext, double);
@@ -441,7 +441,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 #if defined(PADDLE_WITH_XPU)
     }
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   }
 #endif
 
@@ -712,7 +712,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         }
       }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       if (paddle::platform::is_gpu_place(place)) {
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
@@ -778,7 +778,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
           // Increase count
           IncreaseCurCnt();
         }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       }
 #endif
       tmp_grad_vars_.clear();

@@ -49,6 +49,7 @@ file(
   "gpu/full_kernel.cu"
   "gpu/matmul_kernel.cu"
   "gpu/expand_kernel.cu"
+  "gpu/isfinite_kernel.cu"
   "kps/*.cu"
   "legacy/kps/*.cu"
   )

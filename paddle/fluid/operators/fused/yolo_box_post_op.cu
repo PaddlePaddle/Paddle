@@ -252,7 +252,7 @@ static void YoloTensorParseCuda(
 
   // Estimate how many boxes will be choosed
   int bbox_count = 0;
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   hipMemcpy(
       bbox_count_device_ptr, &bbox_count, sizeof(int), hipMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_MUSA)

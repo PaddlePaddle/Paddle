@@ -67,7 +67,7 @@ bool TensorIsfinite(const phi::DenseTensor& tensor);
 FiniteVisitor(Isnan, Any, CPU);
 FiniteVisitor(Isinf, Any, CPU);
 FiniteVisitor(Isfinite, All, CPU);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 FiniteVisitor(Isnan, Any, GPU);
 FiniteVisitor(Isinf, Any, GPU);
 FiniteVisitor(Isfinite, All, GPU);
@@ -82,7 +82,7 @@ inline void TensorContainsNAN(const phi::DenseTensor& tensor,
                         IsnanVisitorCPU(tensor, out));
     return;
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (platform::is_gpu_place(place)) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorGPU(tensor, out));
@@ -99,7 +99,7 @@ inline void TensorContainsInf(const phi::DenseTensor& tensor,
                         IsinfVisitorCPU(tensor, out));
     return;
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (platform::is_gpu_place(place)) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorGPU(tensor, out));
@@ -116,7 +116,7 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
                         IsfiniteVisitorCPU(tensor, out));
     return;
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (platform::is_gpu_place(place)) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorGPU(tensor, out));

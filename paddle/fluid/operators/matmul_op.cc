@@ -926,7 +926,7 @@ REGISTER_OP_CPU_KERNEL(matmul_grad_grad,
                        ops::MatMulDoubleGradKernel<phi::CPUContext, float>,
                        ops::MatMulDoubleGradKernel<phi::CPUContext, double>);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 REGISTER_OP_CUDA_KERNEL(
     matmul,
     ops::MatMulKernel<phi::GPUContext, float>,
