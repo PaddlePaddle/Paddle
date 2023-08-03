@@ -188,6 +188,11 @@ class TestFlashAttentionAPI(unittest.TestCase):
         key = np.random.random(self.shape)
         value = np.random.random(self.shape)
 
+        mask_shape = (self.shape[0], 1, self.shape[1], self.shape[1])
+        mask = np.ones(mask_shape)
+        mask = np.triu(mask)
+        # print(mask)
+
         q = paddle.to_tensor(
             query, place=self.place, dtype=self.dtype, stop_gradient=False
         )
@@ -196,6 +201,10 @@ class TestFlashAttentionAPI(unittest.TestCase):
         )
         v = paddle.to_tensor(
             value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        m = paddle.to_tensor(
+            mask, place=self.place, dtype=self.dtype, stop_gradient=False
         )
 
         q_ = paddle.to_tensor(
@@ -215,8 +224,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 enable_mem_efficient=self.enable_mem_efficient,
             ):
                 if self.use_sdp_api:
+                    print("self.use_sdp_api = ", self.use_sdp_api)
                     out = scaled_dot_product_attention(
-                        q, k, v, None, self.dropout, self.causal
+                        q, k, v, m, self.dropout, self.causal
                     )
                 else:
                     out, _ = flash_attention(
@@ -254,6 +264,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
             vs = paddle.static.data(
                 name="v", shape=self.shape, dtype=self.dtype
             )
+            mas = paddle.static.data(
+                name="m", shape=self.shape, dtype=self.dtype
+            )
 
             if self.use_sdp_kernel:
                 with paddle.nn.functional.sdp_kernel(
@@ -263,7 +276,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 ):
                     if self.use_sdp_api:
                         outs = scaled_dot_product_attention(
-                            qs, ks, vs, None, self.dropout, self.causal
+                            qs, ks, vs, mas, self.dropout, self.causal
                         )
                     else:
                         outs, softmax = flash_attention(
