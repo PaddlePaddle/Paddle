@@ -40,6 +40,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
                                  int64_t K,
                                  int64_t N,
                                  bool use_addto,
+                                 bool has_bias,
                                  DenseTensor *dweight_out,
                                  DenseTensor *dbias_out) {
   constexpr bool kIsMultiPrecision = !std::is_same<T, MT>::value;
@@ -185,11 +186,29 @@ void FusedLinearParamGradAdd(const Context &ctx,
   }
 
   if (multi_precision) {
-    FusedLinearParamGradAddImpl<T, MT, Context>(
-        ctx, x, dout, dbias, M, K, N, use_addto, dweight_out, dbias_out);
+    FusedLinearParamGradAddImpl<T, MT, Context>(ctx,
+                                                x,
+                                                dout,
+                                                dbias,
+                                                M,
+                                                K,
+                                                N,
+                                                use_addto,
+                                                has_bias,
+                                                dweight_out,
+                                                dbias_out);
   } else {
-    FusedLinearParamGradAddImpl<T, T, Context>(
-        ctx, x, dout, dbias, M, K, N, use_addto, dweight_out, dbias_out);
+    FusedLinearParamGradAddImpl<T, T, Context>(ctx,
+                                               x,
+                                               dout,
+                                               dbias,
+                                               M,
+                                               K,
+                                               N,
+                                               use_addto,
+                                               has_bias,
+                                               dweight_out,
+                                               dbias_out);
   }
 }
 
