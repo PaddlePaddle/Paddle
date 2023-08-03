@@ -13,9 +13,11 @@ and use `-v` to map the local `paddle_musa` into the container when creating the
 
 Then, you can run these commands below to create a new paddle_musa docker image and run it:
 ```shell
+# DOCKER_FILE=/path/to/Dockerfile
 bash build.sh -i paddle_musa_docker    \
               -m ${MUSA_TOOLKITS_URL}  \
-              -n ${MUDNN_URL}
+              -n ${MUDNN_URL}          \
+              -f ${DOCKER_FILE}
 
 docker run -it  --privileged=true                    \
                 --env MTHREADS_VISIBLE_DEVICES=all   \

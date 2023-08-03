@@ -20,6 +20,7 @@ IMAGE_DOCKER_NAME=NULL
 TAG=latest
 MUSA_TOOLKITS_URL=""
 MUDNN_URL=""
+DOCKER_FILE="./Dockerfile.musa"
 
 usage() {
   echo -e "\033[1;32mThis script is used to build docker image for paddle_musa. \033[0m"
@@ -28,11 +29,12 @@ usage() {
   echo -e "\033[32m    -t/--tag                   : Tag of the docker image. \033[0m"
   echo -e "\033[32m    -m/--musa_toolkits_url     : The download link of MUSA ToolKit. \033[0m"
   echo -e "\033[32m    -n/--mudnn_url             : The download link of MUDNN. \033[0m"
+  echo -e "\033[32m    -f/--file                  : The dockerfile used for docker image building. \033[0m"
   echo -e "\033[32m    -h/--help                  : Help information. \033[0m"
 }
 
 # parse parameters
-parameters=$(getopt -o i:t:m:n:h:: --long image_docker_name:,tag:,musa_toolkits_url:,mudnn_url:,help::, -n "$0" -- "$@")
+parameters=$(getopt -o i:t:m:n:f:h:: --long image_docker_name:,tag:,musa_toolkits_url:,mudnn_url:,file:,help::, -n "$0" -- "$@")
 [ $? -ne 0 ] && { echo -e "\033[34mTry '$0 --help' for more information. \033[0m"; exit 1; }
 
 eval set -- "$parameters"
@@ -43,6 +45,7 @@ while true;do
     -t|--tag) TAG=$2; shift 2;;
     -m|--musa_toolkits_url) MUSA_TOOLKITS_URL=$2; shift 2;;
     -n|--mudnn_url) MUDNN_URL=$2; shift 2;;
+    -f|--file) DOCKER_FILE=$2; shift 2;;
     -h|--help) usage; exit ;;
     --) shift ; break ;;
     *) usage; exit 1 ;;
