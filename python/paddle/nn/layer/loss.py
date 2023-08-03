@@ -447,14 +447,14 @@ class HSigmoidLoss(Layer):
              [ 0.94041789,  0.48874724,  0.03570259],
              [ 0.46585739,  0.95573163, -0.91368192]])
             >>> label = paddle.to_tensor([0, 1, 4, 5])
-            >>> m = paddle.nn.HSigmoidLoss(3, 5)
+            >>> m = paddle.nn.HSigmoidLoss(3, 6)
             >>> out = m(input, label)
             >>> print(out)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [[2.22472525],
-             [1.97849643],
-             [1.69004655],
-             [2.50623918]])
+            [[1.94512916],
+             [2.26129627],
+             [2.36135936],
+             [2.97453213]])
     """
 
     def __init__(
