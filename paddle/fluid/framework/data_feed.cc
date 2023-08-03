@@ -1438,8 +1438,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   ins_content_vec_.reserve(ins_vec.size());
   ins_id_vec_.clear();
   ins_id_vec_.reserve(ins_vec.size());
-  for (size_t i = 0; i < ins_vec.size(); ++i) {
-    auto& r = ins_vec[i];
+  for (const auto& r : ins_vec) {
     ins_id_vec_.push_back(r.ins_id_);
     ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
@@ -1935,8 +1934,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
   ins_content_vec_.reserve(ins_vec.size());
   ins_id_vec_.clear();
   ins_id_vec_.reserve(ins_vec.size());
-  for (size_t i = 0; i < ins_vec.size(); ++i) {
-    auto r = ins_vec[i];
+  for (auto r : ins_vec) {
     ins_id_vec_.push_back(r->ins_id_);
     ins_content_vec_.push_back(r->content_);
     for (auto& item : r->float_feasigns_) {
@@ -2460,8 +2458,7 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
   int float_total_slot_num = 0;
   int uint64_total_slot_num = 0;
 
-  for (size_t i = 0; i < all_slots_info_.size(); ++i) {
-    auto& info = all_slots_info_[i];
+  for (auto& info : all_slots_info_) {
     int num = strtol(&str[pos], &endptr, 10);
     PADDLE_ENFORCE(num,
                    "The number of ids can not be zero, you need padding "

@@ -44,13 +44,19 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : adagrad_
+- op : adadelta_ (adadelta)
+  inputs :
+    {param : Param, grad: Grad, avg_squared_grad : AvgSquaredGrad, avg_squared_update : AvgSquaredUpdate, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    {param_out : ParamOut, moment_out : AvgSquaredGradOut, inf_norm_out : AvgSquaredUpdateOut, master_param_out : MasterParamOut}
+
+- op : adagrad_ (adagrad)
   inputs :
     { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
-- op : adam_
+- op : adam_ (adam)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -67,13 +73,13 @@
       tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
-- op : adamax_
+- op : adamax_ (adamax)
   inputs :
     {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
 
-- op : adamw_
+- op : adamw_ (adamw)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -1454,7 +1460,7 @@
   outputs :
     out : Out
 
-- op : lamb_
+- op : lamb_ (lamb)
   inputs :
     {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
   outputs :
@@ -1859,7 +1865,7 @@
   outputs :
     {out : Out, indices : Indices}
 
-- op : momentum_
+- op : momentum_ (momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -2264,7 +2270,7 @@
       support_tensor : true
   manual_signature : [reverse]
 
-- op : rmsprop_
+- op : rmsprop_ (rmsprop)
   inputs :
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
   outputs :
@@ -2402,7 +2408,7 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
-- op : sgd_
+- op : sgd_ (sgd)
   inputs :
     {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
   outputs :

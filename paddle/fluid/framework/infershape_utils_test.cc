@@ -64,7 +64,7 @@ void TestInferMeta(bool bool_attr,
 
 class InferShapeUtilsTestOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddAttr<bool>("bool", "bool attr of test op");
     AddAttr<int>("int", "int attr of test op");
     AddAttr<int64_t>("int64", "int64 attr of test op");
@@ -132,7 +132,7 @@ void TestOutputInferMeta(const phi::MetaTensor& x, phi::MetaTensor* out) {
 
 class InferShapeUtilsTestOutputOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "input of test op");
     AddOutput("Out", "output of test op");
     AddComment("This is test op");

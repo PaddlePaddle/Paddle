@@ -14,7 +14,7 @@
 
 # generator op member function
 
-OP_GET_INPUT_TEMPLATE = """  ir::Value {input_name}() {{ return operand({input_index}); }}
+OP_GET_INPUT_TEMPLATE = """  ir::Value {input_name}() {{ return operand_source({input_index}); }}
 """
 OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return result({output_index}); }}
 """

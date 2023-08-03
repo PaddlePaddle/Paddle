@@ -286,8 +286,8 @@ std::vector<std::string> DeviceManager::GetAllDeviceTypes() {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
-  for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
-    devices.push_back(iter->first);
+  for (const auto& map_item : dev_impl_map) {
+    devices.push_back(map_item.first);
   }
   return devices;
 }
@@ -296,9 +296,9 @@ std::vector<std::string> DeviceManager::GetAllCustomDeviceTypes() {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
-  for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
-    if (iter->second->IsCustom()) {
-      devices.push_back(iter->first);
+  for (const auto& map_item : dev_impl_map) {
+    if (map_item.second->IsCustom()) {
+      devices.push_back(map_item.first);
     }
   }
   return devices;
@@ -308,9 +308,9 @@ std::vector<std::string> DeviceManager::GetAllDeviceList() {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
-  for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
-    size_t device_count = iter->second->GetDeviceCount();
-    std::string dev_type = iter->second->Type();
+  for (const auto& map_item : dev_impl_map) {
+    size_t device_count = map_item.second->GetDeviceCount();
+    std::string dev_type = map_item.second->Type();
     if (device_count == 1) {
       devices.push_back(dev_type);
     } else {
@@ -326,10 +326,10 @@ std::vector<std::string> DeviceManager::GetAllCustomDeviceList() {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
-  for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
-    size_t device_count = iter->second->GetDeviceCount();
-    std::string dev_type = iter->second->Type();
-    if (iter->second->IsCustom()) {
+  for (const auto& map_item : dev_impl_map) {
+    size_t device_count = map_item.second->GetDeviceCount();
+    std::string dev_type = map_item.second->Type();
+    if (map_item.second->IsCustom()) {
       if (device_count == 1) {
         devices.push_back(dev_type);
       } else {

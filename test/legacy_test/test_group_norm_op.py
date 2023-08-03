@@ -350,6 +350,97 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.attrs['groups'] = 1
+        self.data_format = "NHWC"
+        self.attrs['epsilon'] = 0.5
+        self.shape = (1, 100, 4, 4)
+        self.dtype = np.float16
+        input = np.sin(
+            np.arange(
+                self.shape[0] * self.shape[1] * self.shape[2] * self.shape[3]
+            )
+        )
+        input = np.transpose(input.reshape(self.shape), (0, 2, 3, 1)).astype(
+            self.dtype
+        )
+        scale = np.sin(np.arange(self.shape[1])).astype(self.dtype)
+        bias = np.sin(np.arange(self.shape[1])).astype(self.dtype)
+        output, mean, var = group_norm_naive(
+            input,
+            scale,
+            bias,
+            self.attrs['epsilon'],
+            self.attrs['groups'],
+            self.data_format,
+        )
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(input),
+            'Scale': OpTest.np_dtype_to_fluid_dtype(scale),
+            'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
+        }
+        self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+        self.attrs['data_layout'] = self.data_format
+
+    def test_check_output(self):
+        rtol = 2e-3
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, rtol=rtol)
+
+
+class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
+    def setUp(self):
+        self.op_type = "group_norm"
+        self.python_api = group_norm_wrapper
+        self.python_out_sig = ["Y"]
+        self.data_format = "NHWC"
+        self.dtype = np.uint16
+        self.shape = (1, 3, 5, 100)
+        self.attrs = {
+            'epsilon': 5e-2,
+            'groups': 2,
+            'data_layout': self.data_format,
+        }
+        self.compare_between_place = False
+        self.init_test_case()
+        input = (
+            np.sin(
+                np.arange(
+                    self.shape[0]
+                    * self.shape[1]
+                    * self.shape[2]
+                    * self.shape[3]
+                )
+            )
+            .reshape(self.shape)
+            .astype(np.float32)
+        )
+        scale = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        bias = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        output, mean, var = group_norm_naive(
+            input,
+            scale,
+            bias,
+            self.attrs['epsilon'],
+            self.attrs['groups'],
+            self.data_format,
+        )
+
+        self.inputs = {
+            'X': convert_float_to_uint16(input),
+            'Scale': convert_float_to_uint16(scale),
+            'Bias': convert_float_to_uint16(bias),
+        }
+        self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+
+    def test_check_output(self):
+        rtol = 2e-2
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, rtol=rtol)
+
+
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
