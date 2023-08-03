@@ -71,9 +71,11 @@ class CodeGenC : public ir::IrPrinter {
   // @}
 
   void PrintFunctionDeclaration(const ir::_LoweredFunc_* op) {
-    os() << "void " << op->name << "(";
-    os() << "void* _args, int32_t num_args";
-    os() << ")";
+    str_ += "void ";
+    str_ += op->name;
+    str_ += "(";
+    str_ += "void* _args, int32_t num_args";
+    str_ += ")";
   }
 
   void PrintShape(const std::vector<Expr>& shape,
