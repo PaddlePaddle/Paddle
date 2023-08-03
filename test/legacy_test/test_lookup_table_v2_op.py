@@ -304,6 +304,17 @@ class TestEmbedOpError(unittest.TestCase):
 
 
 class TestEmbeddingFP16OP(TestLookupTableOp):
+    def setUp(self):
+        self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
+        self.init_dtype()
+
+        table = np.random.random((18, 32)).astype(self.dtype)
+        ids = np.random.randint(0, 18, 4).astype(self.id_dtype())
+
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids]}
+
     def init_dtype(self):
         self.dtype = np.float16
 
