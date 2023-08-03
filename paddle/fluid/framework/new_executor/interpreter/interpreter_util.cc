@@ -980,7 +980,7 @@ void BuildOpFuncList(
     if (op_name == "builtin.combine" || op_name == "pd.feed" ||
         op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.placeholder" || op_name == "pd.shadow_output") {
+        op_name == "pd.data" || op_name == "pd.shadow_output") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }

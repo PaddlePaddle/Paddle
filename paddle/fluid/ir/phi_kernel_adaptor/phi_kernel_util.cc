@@ -264,8 +264,8 @@ void HandleForSpecialOp(
                variable_list);
   }
 
-  if (op_name == "pd.placeholder") {
-    VLOG(6) << "Handle for pd.placeholder";
+  if (op_name == "pd.data") {
+    VLOG(6) << "Handle for pd.data";
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
@@ -492,7 +492,7 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.placeholder" || op_name == "pd.shadow_output") {
+        op_name == "pd.data" || op_name == "pd.shadow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,

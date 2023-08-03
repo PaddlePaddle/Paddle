@@ -630,6 +630,18 @@
     data_type : x
   backward : cumsum_grad
 
+- op : data
+  args : (int64_t index, DataType dtype, str name, Place place)
+  output : Tensor(out)
+  infer_meta :
+    func : FeedWithPlaceInferMeta
+    param : [index, dtype]
+  kernel:
+    func : data
+    param : [index, dtype]
+    data_type : dtype
+    backend : place
+
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -1896,18 +1908,6 @@
   kernel :
     func : pixel_shuffle
   backward : pixel_shuffle_grad
-
-- op : placeholder
-  args : (int64_t index, DataType dtype, str name, Place place)
-  output : Tensor(out)
-  infer_meta :
-    func : FeedWithPlaceInferMeta
-    param : [index, dtype]
-  kernel:
-    func : placeholder
-    param : [index, dtype]
-    data_type : dtype
-    backend : place
 
 - op : poisson
   args : (Tensor x)

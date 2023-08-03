@@ -19,11 +19,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PlaceholderKernel(const Context& ctx,
-                       int64_t index,
-                       phi::DataType data_type,
-                       // std::string name,
-                       DenseTensor* out);
+void DataKernel(const Context& ctx,
+                int64_t index,
+                phi::DataType data_type,
+                // std::string name,
+                DenseTensor* out);
 
 template <typename T, typename Context>
 void ShadowOutputKernel(const Context& ctx,

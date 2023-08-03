@@ -986,7 +986,7 @@ struct FeedOpTranscriber : public OpTranscriber {
   }
 };
 
-struct PlaceholderOpTranscriber : public FeedOpTranscriber {
+struct DataOpTranscriber : public FeedOpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
       const std::string& normalized_op_name,
@@ -1463,7 +1463,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
-  special_handlers["placeholder"] = PlaceholderOpTranscriber();
+  special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
