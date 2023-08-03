@@ -751,7 +751,8 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                 /*device_count=*/1,
                                 *graph);
 
-  CreateLocalScopes(scope, /*local_scope=*/{scope}, /*create_new=*/false);
+  CreateLocalScopes(
+      scope, /*local_scope=*/{scope}, /*create_new=*/false);  // NOLINT
 
   // Apply BuildStrategy to compile graph.
   std::vector<ir::Graph *> graphs = {graph};

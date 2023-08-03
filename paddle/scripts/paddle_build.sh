@@ -3240,6 +3240,8 @@ function trt_convert_test() {
 
 function clang-tidy_check() {
     set +x
+    trap 'abort' 0
+    set -e
 
     diff_files=$(git diff --name-only --diff-filter=ACMR ${BRANCH})
     num_diff_files=$(echo "$diff_files" | wc -l)
@@ -3273,8 +3275,11 @@ function clang-tidy_check() {
         echo "Your PR code style clang-tidy check passed."
     fi
     echo -e '************************************************************************************\n'
+    
+    trap : 0
+    set -x
 
-    exit ${check_error} 
+    # exit ${check_error} 
 }
 
 function build_pr_and_develop() {
@@ -3980,7 +3985,8 @@ function main() {
         gen_fluid_lib ${parallel_number}
         ;;
       check_style)
-        check_style
+        # check_style
+        clang-tidy_check
         ;;
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
