@@ -89,10 +89,6 @@ DEFINE_bool(cinn_use_cuda_vectorize,
             BoolFromEnv("FLAGS_cinn_use_cuda_vectorize", false),
             "Whether use cuda vectroize on schedule config");
 
-DEFINE_bool(cinn_ir_schedule,
-            BoolFromEnv("FLAGS_cinn_ir_schedule", true),
-            "Whether use reconstructed schedule primitives.");
-
 DEFINE_bool(use_reduce_split_pass,
             BoolFromEnv("FLAGS_use_reduce_split_pass", false),
             "Whether use reduce split pass.");
@@ -164,8 +160,8 @@ DEFINE_int32(cinn_profiler_state,
              "Specify the ProfilerState by Int in CINN, 0 for kDisabled, 1 for "
              "kCPU, 2 for kCUDA, 3 for kAll, default 0.");
 
-DEFINE_int32(cinn_schedule_error_message_level,
-             Int32FromEnv("FLAGS_cinn_schedule_error_message_level", 0),
+DEFINE_int32(cinn_error_message_level,
+             Int32FromEnv("FLAGS_cinn_error_message_level", 0),
              "Specify the level of printing error message in the schedule."
              "0 means short, 1 means detailed.");
 

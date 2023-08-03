@@ -16,7 +16,7 @@
 
 #include "gflags/gflags.h"
 
-DEFINE_bool(color, true, "Whether to turn on pretty log");
+DEFINE_bool(color, true, "Whether to turn on pretty log");  // NOLINT
 
 namespace paddle {
 namespace string {}  // namespace string

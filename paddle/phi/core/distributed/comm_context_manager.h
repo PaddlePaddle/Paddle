@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 #include "paddle/phi/core/distributed/comm_context.h"
@@ -38,23 +39,25 @@ class CommContextManager {
 
   void SetStore(const std::shared_ptr<Store>& store) { store_ = store; }
 
-  CommContext* Emplace(int ring_id, std::unique_ptr<CommContext> comm_context);
+  CommContext* Emplace(const std::string& unique_comm_key,
+                       std::unique_ptr<CommContext> comm_context);
 
-  CommContext* Get(int ring_id) const;
+  CommContext* Get(const std::string& unique_comm_key) const;
 
-  bool Has(int ring_id) const;
+  bool Has(const std::string& unique_comm_key) const;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
-                                    int dev_id,
-                                    int ring_id,
+                                    const std::string& unique_comm_key,
                                     int rank,
                                     int size);
+
+  static void SetCUDADeviceId(int dev_id);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
   static void CreateGlooCommContext(const std::shared_ptr<Store>& store,
-                                    int ring_id,
+                                    const std::string& unique_comm_key,
                                     int rank,
                                     int size);
 #endif
@@ -62,7 +65,8 @@ class CommContextManager {
  private:
   DISABLE_COPY_AND_ASSIGN(CommContextManager);
 
-  std::unordered_map<int, std::unique_ptr<CommContext>> id_to_comm_context_;
+  std::unordered_map<std::string, std::unique_ptr<CommContext>>
+      id_to_comm_context_;
   std::shared_ptr<Store> store_;
 };
 

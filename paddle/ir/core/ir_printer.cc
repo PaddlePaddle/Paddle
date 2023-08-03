@@ -30,7 +30,7 @@
 namespace ir {
 
 namespace {
-constexpr char newline[] = "\n";
+constexpr char newline[] = "\n";  // NOLINT
 }  // namespace
 
 void BasicIrPrinter::PrintType(Type type) {
@@ -239,7 +239,7 @@ void IrPrinter::PrintOpOperands(const Operation* op) {
   std::vector<Value> op_operands;
   op_operands.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    op_operands.push_back(op->operand(idx));
+    op_operands.push_back(op->operand_source(idx));
   }
   PrintInterleave(
       op_operands.begin(),
@@ -254,7 +254,7 @@ void IrPrinter::PrintOperandsType(const Operation* op) {
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    auto op_operand = op->op_operand(idx);
+    auto op_operand = op->operand(idx);
     if (op_operand) {
       op_operand_types.push_back(op_operand.type());
     } else {
