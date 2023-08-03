@@ -18,6 +18,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/feed_with_place_impl.h"
 
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -26,15 +28,20 @@ void FeedWithPlaceKernel(const Context& ctx,
                          phi::DataType data_type,
                          DenseTensor* out) {}
 
+template <typename T, typename Context>
+void ShadowOutputKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        DenseTensor* out) {}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     feed_with_place, CPU, ALL_LAYOUT, phi::FeedWithPlaceKernel, float) {}
 
-PD_REGISTER_KERNEL(shaddow_feed,
+PD_REGISTER_KERNEL(shadow_feed,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ShaddowFeedKernel,
+                   phi::ShadowFeedKernel,
                    bool,
                    float,
                    int32_t,
@@ -44,3 +51,20 @@ PD_REGISTER_KERNEL(shaddow_feed,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {}
+
+PD_REGISTER_KERNEL(print_kernel,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PrintKernel,
+                   bool,
+                   float,
+                   int32_t,
+                   int64_t,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
+PD_REGISTER_KERNEL(
+    shadow_output, CPU, ALL_LAYOUT, phi::ShadowOutputKernel, float) {}

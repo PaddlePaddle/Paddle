@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include <array>
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
@@ -43,7 +44,7 @@ DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-PHI_DEFINE_EXPORTED_bool(use_pinned_memory,
+PHI_DEFINE_EXPORTED_bool(use_pinned_memory,  // NOLINT
                          true,
                          "If set, allocate cpu pinned memory.");
 
@@ -53,12 +54,12 @@ namespace cpu {
 
 size_t CpuTotalPhysicalMemory() {
 #ifdef __APPLE__
-  int mib[2];
+  std::array<int, 2> mib;
   mib[0] = CTL_HW;
   mib[1] = HW_MEMSIZE;
   int64_t size = 0;
   size_t len = sizeof(size);
-  if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) {
+  if (sysctl(mib.data(), 2, &size, &len, NULL, 0) == 0) {
     return static_cast<size_t>(size);
   }
   return 0L;

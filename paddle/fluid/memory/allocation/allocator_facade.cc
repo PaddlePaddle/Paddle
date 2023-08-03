@@ -127,7 +127,7 @@ class CUDAGraphAllocator
       : underlying_allocator_(allocator) {}
 
  public:
-  ~CUDAGraphAllocator() {}
+  ~CUDAGraphAllocator() override {}
 
   static std::shared_ptr<Allocator> Create(
       const std::shared_ptr<Allocator>& allocator) {
@@ -135,14 +135,14 @@ class CUDAGraphAllocator
   }
 
  protected:
-  phi::Allocation* AllocateImpl(size_t size) {
+  phi::Allocation* AllocateImpl(size_t size) override {
     VLOG(10) << "Allocate " << size << " for CUDA Graph";
     return new PrivateAllocation(this,
                                  static_unique_ptr_cast<Allocation>(
                                      underlying_allocator_->Allocate(size)));
   }
 
-  void FreeImpl(phi::Allocation* allocation) {
+  void FreeImpl(phi::Allocation* allocation) override {
     VLOG(10) << "delete for CUDA Graph";
     delete allocation;
   }
@@ -1454,8 +1454,8 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   auto& allocator = cuda_graph_map_[id];
   auto& ref_cnt = cuda_graph_ref_cnt_[id];
   if (allocator.get() == nullptr) {
-    allocator.reset(
-        new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
+    allocator = std::make_unique<AllocatorFacadePrivate>(
+        /*allow_free_idle_chunk=*/false);
     VLOG(10) << "Create memory pool for CUDA Graph with memory ID " << id;
   } else {
     VLOG(10) << "Use created memory pool for CUDA Graph with memory ID " << id;

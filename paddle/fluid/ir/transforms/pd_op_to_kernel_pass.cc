@@ -62,6 +62,20 @@ phi::KernelKey GetKernelKey(
             TransToPhiDataType(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
+
+  if (op->name() == "pd.feed_with_place") {
+    // NOTE, for now feed op don't need a kernel, so the data type from Op
+    // Result the next op use base program datatype
+    auto t =
+        op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
+
+    auto backend = paddle::experimental::ParseBackend(t);
+    return {backend,
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+  }
+
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
@@ -83,7 +97,7 @@ phi::KernelKey GetKernelKey(
       } else if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
-        auto type = map_value_pair.at(op->operand(in_index)).type();
+        auto type = map_value_pair.at(op->operand_source(in_index)).type();
 
         if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
           kernel_data_type = TransToPhiDataType(
@@ -137,7 +151,7 @@ phi::KernelKey GetKernelKey(
       if (op->name() == "pd.uniform") {
         // try to process uniform, use shape to determin backend
         // TODO(phlrain): shuold support other initilize op
-        auto define_op = op->operand(0).GetDefiningOp();
+        auto define_op = op->operand_source(0).GetDefiningOp();
         if (define_op->name() == "pd.full_int_array") {
           auto shape = define_op->attributes()
                            .at("value")
@@ -169,7 +183,7 @@ phi::KernelKey GetKernelKey(
       if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
         continue;
       }
-      auto input_tmp = op->operand(i);
+      auto input_tmp = op->operand_source(i);
       // NOTE: if not input_tmp, it's an optional input
       if (!input_tmp) {
         continue;
@@ -256,10 +270,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     auto kernel_key =
         GetKernelKey(*it, place, map_value_pair, std::move(op_info_parser));
-    VLOG(6) << "kernel type " << kernel_key;
 
-    // only for single output
-    // need update new kernel key layout and data tyep
+    VLOG(6) << "kernel type " << kernel_key;
 
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
@@ -278,16 +290,33 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           std::vector<ir::Type> vec_inner_types;
           auto base_types = result_type.dyn_cast<ir::VectorType>().data();
           for (size_t j = 0; j < base_types.size(); ++j) {
-            if (base_types[j].isa<dialect::DenseTensorType>()) {
+            if (base_types[j]) {
+              if (base_types[j].isa<dialect::DenseTensorType>()) {
+                auto allocated_dense_tensor_dtype =
+                    paddle::dialect::AllocatedDenseTensorType::get(
+                        ctx,
+                        phi::TransToPhiPlace(kernel_key.backend()),
+                        base_types[j].dyn_cast<dialect::DenseTensorType>());
+                vec_inner_types.push_back(allocated_dense_tensor_dtype);
+              } else {
+                PADDLE_THROW(phi::errors::Unimplemented(
+                    "only support dense tensor in vector type for now"));
+              }
+            } else {
+              // NOTE(phlrain), kernel not support a nullptr in output
+              ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+              phi::DDim dims = {};
+              phi::DataLayout data_layout = phi::DataLayout::NCHW;
+              phi::LoD lod = {{}};
+              size_t offset = 0;
+              auto dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+                  ctx, fp32_dtype, dims, data_layout, lod, offset);
               auto allocated_dense_tensor_dtype =
                   paddle::dialect::AllocatedDenseTensorType::get(
                       ctx,
                       phi::TransToPhiPlace(kernel_key.backend()),
-                      base_types[j].dyn_cast<dialect::DenseTensorType>());
+                      dense_tensor_dtype);
               vec_inner_types.push_back(allocated_dense_tensor_dtype);
-            } else {
-              PADDLE_THROW(phi::errors::Unimplemented(
-                  "only support dense tensor in vector type for now"));
             }
           }
 
@@ -312,7 +341,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     if ((*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        auto cur_in = (*it)->operand(i);
+        auto cur_in = (*it)->operand_source(i);
         if (!cur_in) {
           vec_inputs.push_back(ir::OpResult());
           continue;
@@ -406,30 +435,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     program->block()->push_back(op);
 
     if ((*it)->name() == "pd.feed" && platform::is_gpu_place(place)) {
-      // add shaddow feed op
-      phi::KernelKey shaddow_key{
+      // add shadow feed op
+      phi::KernelKey shadow_key{
           phi::Backend::GPU,
           phi::DataLayout::ANY,
           TransToPhiDataType(
               (*it)->result(0).type().dyn_cast<DenseTensorType>().dtype())};
       std::unordered_map<std::string, ir::Attribute> attr_map{
-          {"op_name", ir::StrAttribute::get(ctx, "pd.shaddow_feed")},
-          {"kernel_name", ir::StrAttribute::get(ctx, "shaddow_feed")},
-          {"kernel_key", dialect::KernelAttribute::get(ctx, shaddow_key)}};
+          {"op_name", ir::StrAttribute::get(ctx, "pd.shadow_feed")},
+          {"kernel_name", ir::StrAttribute::get(ctx, "shadow_feed")},
+          {"kernel_key", dialect::KernelAttribute::get(ctx, shadow_key)}};
 
       auto out_type = paddle::dialect::AllocatedDenseTensorType::get(
           ctx,
-          phi::TransToPhiPlace(shaddow_key.backend()),
+          phi::TransToPhiPlace(shadow_key.backend()),
           (*it)->result(0).type().dyn_cast<dialect::DenseTensorType>());
 
-      ir::Operation* shaddow_op =
+      ir::Operation* shadow_op =
           ir::Operation::Create({op->result(0)}, attr_map, {out_type}, op_info);
 
-      map_op_pair[*it] = shaddow_op;
-      program->block()->push_back(shaddow_op);
+      map_op_pair[*it] = shadow_op;
+      program->block()->push_back(shadow_op);
       if ((*it)->num_results() > 0) {
-        for (size_t i = 0; i < shaddow_op->num_results(); ++i) {
-          map_value_pair[(*it)->result(i)] = shaddow_op->result(i);
+        for (size_t i = 0; i < shadow_op->num_results(); ++i) {
+          map_value_pair[(*it)->result(i)] = shadow_op->result(i);
         }
       }
     }

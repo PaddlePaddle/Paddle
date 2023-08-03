@@ -988,6 +988,10 @@ void ReduceKernel(const KPDevice& dev_ctx,
                   const TransformOp& transform,
                   const std::vector<int>& origin_reduce_dims,
                   bool is_mean = false) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
@@ -1298,6 +1302,11 @@ void ReduceKernelImpl(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
+  PADDLE_ENFORCE_GT(
+      input.numel(),
+      0,
+      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+
   dev_ctx.template Alloc<OutT>(output);
 
   if (reduce_all) {
