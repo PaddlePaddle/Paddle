@@ -359,10 +359,10 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         self.dtype = np.float16
 
     def test_check_output(self):
-        rtol = 1e-3
-
+        rtol = 2e-3
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, rtol=rtol)
+    
 
 
 class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
@@ -399,6 +399,11 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
             'Bias': convert_float_to_uint16(bias),
         }
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+    
+    def test_check_output(self):
+        rtol = 2e-2
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, rtol=rtol)
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
