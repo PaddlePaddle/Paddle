@@ -1227,7 +1227,7 @@ bool OpSupportGPU(const std::string& op_type) {
 }
 
 struct OperatorWithKernel::CacheImpl {
-  static const char kNotAllowInferShapeCahce[];
+  static const char kNotAllowInferShapeCahce[];  // NOLINT
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
                      const std::vector<phi::DenseTensor*>& tensors,
@@ -1273,8 +1273,9 @@ struct OperatorWithKernel::CacheImpl {
   bool not_allow_infer_shape_cache_;
   std::vector<phi::DDim> last_ddims_;
 };
-const char OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
-    "@NOT_ALLOW_INFERSHAPE_CACHE@";
+const char  // NOLINT
+    OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
+        "@NOT_ALLOW_INFERSHAPE_CACHE@";
 
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,

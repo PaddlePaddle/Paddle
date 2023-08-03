@@ -663,7 +663,7 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyMethodDef pylayer_methods[] = {
+PyMethodDef pylayer_methods[] = {  // NOLINT
     {"name", (PyCFunction)(void (*)())pylayer_method_name, METH_NOARGS, NULL},
     {"apply",
      (PyCFunction)(void (*)())pylayer_method_apply,
@@ -671,7 +671,7 @@ PyMethodDef pylayer_methods[] = {
      NULL},
     {NULL, NULL, 0, NULL}};
 
-struct PyGetSetDef pylayer_properties[] {
+struct PyGetSetDef pylayer_properties[] {  // NOLINT
   {"container",
    (getter)tensor_properties_get_container,
    (setter)tensor_properties_set_container,

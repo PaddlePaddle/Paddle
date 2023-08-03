@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <array>
 #include <ctime>
 
 #include "paddle/fluid/framework/barrier.h"
@@ -425,12 +426,14 @@ void HogwildWorker::PrintFetchVars() {
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
     time_t curtime;
     time(&curtime);
-    char mbstr[80];
-    std::strftime(
-        mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
+    std::array<char, 80> mbstr;
+    std::strftime(mbstr.data(),
+                  sizeof(mbstr),
+                  "%Y-%m-%d %H:%M:%S",
+                  std::localtime(&curtime));
 
     std::stringstream ss;
-    ss << "time: [" << mbstr << "], ";
+    ss << "time: [" << mbstr.data() << "], ";
     ss << "batch: [" << batch_num_ << "], ";
 
     for (int i = 0; i < fetch_var_num; ++i) {

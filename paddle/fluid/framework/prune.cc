@@ -23,12 +23,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-const char kFeedOpType[] = "feed";
-const char kFetchOpType[] = "fetch";
+const char kFeedOpType[] = "feed";    // NOLINT
+const char kFetchOpType[] = "fetch";  // NOLINT
 
-const char kRecurrent[] = "recurrent";
-const char kStates[] = "states";
-const char kExStates[] = "ex_states";
+const char kRecurrent[] = "recurrent";  // NOLINT
+const char kStates[] = "states";        // NOLINT
+const char kExStates[] = "ex_states";   // NOLINT
 
 bool HasDependentInputVar(
     const proto::OpDesc& op_desc,

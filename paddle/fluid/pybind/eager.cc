@@ -777,7 +777,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   PyObject* kw_dist_attr = NULL;
 
   // the keywords argument
-  static char* kwlist[] = {const_cast<char*>("value"),
+  static char* kwlist[] = {const_cast<char*>("value"),  // NOLINT
                            const_cast<char*>("place"),
                            const_cast<char*>("persistable"),
                            const_cast<char*>("zero_copy"),
@@ -1129,7 +1129,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   PyObject* kw_dims = NULL;
 
   // the keywords argument
-  static char* kwlist[] = {const_cast<char*>("value"),
+  static char* kwlist[] = {const_cast<char*>("value"),  // NOLINT
                            const_cast<char*>("zero_copy"),
                            const_cast<char*>("name"),
                            const_cast<char*>("dims"),
@@ -1317,12 +1317,12 @@ static void TensorDealloc(TensorObject* self) {
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
-extern struct PyGetSetDef variable_properties[];
-extern struct PyGetSetDef string_tensor_variable_properties[];
+extern struct PyGetSetDef variable_properties[];                // NOLINT
+extern struct PyGetSetDef string_tensor_variable_properties[];  // NOLINT
 
-extern PyMethodDef variable_methods[];
-extern PyMethodDef math_op_patch_methods[];
-extern PyMethodDef string_tensor_variable_methods[];
+extern PyMethodDef variable_methods[];                // NOLINT
+extern PyMethodDef math_op_patch_methods[];           // NOLINT
+extern PyMethodDef string_tensor_variable_methods[];  // NOLINT
 
 PyNumberMethods number_methods;
 PySequenceMethods sequence_methods;

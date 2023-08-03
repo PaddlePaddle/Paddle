@@ -24,10 +24,10 @@ EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];   // NOLINT
 EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];  // NOLINT
 EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];    // NOLINT
 EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];  // NOLINT
-EventSetFinishedFunction
-    DeviceEvent::event_finished_setter_[MaxDeviceTypes];  // NOLINT
-EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes]
-                                            [MaxDeviceTypes];     // NOLINT
+EventSetFinishedFunction                                           // NOLINT
+    DeviceEvent::event_finished_setter_[MaxDeviceTypes];
+EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes]  // NOLINT
+                                            [MaxDeviceTypes];
 EventResetFunction DeviceEvent::event_resetter_[MaxDeviceTypes];  // NOLINT
 
 /*

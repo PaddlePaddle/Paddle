@@ -455,7 +455,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
         longest_pstring->data(), longest_pstring->size());
     max_unicode_length = (max_unicode_length == 0) ? 1 : max_unicode_length;
     VLOG(6) << "The max unicode length is " << max_unicode_length;
-    auto sp = std::make_unique<uint32_t[]>(max_unicode_length * numel);
+    auto sp =
+        std::make_unique<uint32_t[]>(max_unicode_length * numel);  // NOLINT
     auto py_array_data = sp.get();
     memset(py_array_data, 0, max_unicode_length * numel * sizeof(uint32_t));
     for (int64_t i = 0; i < numel; ++i) {

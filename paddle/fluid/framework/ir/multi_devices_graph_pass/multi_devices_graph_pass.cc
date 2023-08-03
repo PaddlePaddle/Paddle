@@ -50,7 +50,7 @@ namespace {
 // all operators. NOTE that even we use a vector here, the operators is
 // unordered.
 typedef std::vector<details::OpHandleBase *> GraphOps;
-const char kGraphOps[] = "ops";
+const char kGraphOps[] = "ops";  // NOLINT
 
 bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
   return PADDLE_GET_CONST(

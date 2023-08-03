@@ -33,7 +33,7 @@ TEST(StringHelper, EndsWith) {
 
 TEST(StringHelper, FormatStringAppend) {
   std::string str("hello");
-  char fmt[] = "%d";
+  char fmt[] = "%d";  // NOLINT
 
   paddle::string::format_string_append(str, fmt, 10);
   EXPECT_EQ(str, "hello10");

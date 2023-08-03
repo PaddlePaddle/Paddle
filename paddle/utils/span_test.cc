@@ -13,6 +13,7 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 //    (See accompanying file ../../LICENSE_1_0.txt or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
+#include <array>
 #include <cassert>
 #include <deque>
 #include <initializer_list>
@@ -69,8 +70,8 @@ TEST(pointer_length_ctor, span) {
 
   // dynamic size
   {
-    int arr[] = {1, 2, 3};
-    span<int> s(arr, 3);
+    std::array<int, 3> arr = {1, 2, 3};
+    span<int> s(arr.data(), 3);
 
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -80,8 +81,8 @@ TEST(pointer_length_ctor, span) {
 
   // fixed size
   {
-    int arr[] = {1, 2, 3};
-    span<int, 3> s(arr, 3);
+    std::array<int, 3> arr = {1, 2, 3};
+    span<int, 3> s(arr.data(), 3);
 
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -100,8 +101,8 @@ TEST(pointer_pointer_ctor, span) {
 
   // dynamic size
   {
-    int arr[] = {1, 2, 3};
-    span<int> s{arr, arr + 3};
+    std::array<int, 3> arr = {1, 2, 3};
+    span<int> s{arr.data(), arr.data() + 3};
 
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -111,8 +112,8 @@ TEST(pointer_pointer_ctor, span) {
 
   // fixed size
   {
-    int arr[] = {1, 2, 3};
-    span<int, 3> s{arr, arr + 3};
+    std::array<int, 3> arr = {1, 2, 3};
+    span<int, 3> s{arr.data(), arr.data() + 3};
 
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -122,8 +123,8 @@ TEST(pointer_pointer_ctor, span) {
 }
 
 TEST(c_array_ctor, span) {
-  using int_array_t = int[3];
-  using float_array_t = float[3];
+  using int_array_t = int[3];      // NOLINT
+  using float_array_t = float[3];  // NOLINT
 
   static_assert(std::is_nothrow_constructible<span<int>, int_array_t&>::value,
                 "");
@@ -171,7 +172,7 @@ TEST(c_array_ctor, span) {
 
   // non-const, dynamic size
   {
-    int arr[] = {1, 2, 3};
+    std::array<int, 3> arr = {1, 2, 3};
     span<int> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -181,7 +182,7 @@ TEST(c_array_ctor, span) {
 
   // const, dynamic size
   {
-    int arr[] = {1, 2, 3};
+    std::array<int, 3> arr = {1, 2, 3};
     span<int const> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -191,7 +192,7 @@ TEST(c_array_ctor, span) {
 
   // non-const, static size
   {
-    int arr[] = {1, 2, 3};
+    std::array<int, 3> arr = {1, 2, 3};
     span<int, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -201,7 +202,7 @@ TEST(c_array_ctor, span) {
 
   // const, dynamic size
   {
-    int arr[] = {1, 2, 3};
+    std::array<int, 3> arr = {1, 2, 3};
     span<int const, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -492,7 +493,7 @@ TEST(ctor_from_spans, span) {
 TEST(subview, span) {
   // first<N>
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    std::array<int, 5> arr = {1, 2, 3, 4, 5};
     span<int, 5> s{arr};
     auto f = s.first<3>();
 
@@ -500,38 +501,38 @@ TEST(subview, span) {
     CHECK_EQ(f.size(), 3UL);
     CHECK_EQ(f.data(), arr);
     CHECK_EQ(f.begin(), arr);
-    CHECK_EQ(f.end(), arr + 3);
+    CHECK_EQ(f.end(), arr.data() + 3);
   }
 
   // last<N>
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    std::array<int, 5> arr = {1, 2, 3, 4, 5};
     span<int, 5> s{arr};
     auto l = s.last<3>();
 
     static_assert(std::is_same<decltype(l), span<int, 3>>::value, "");
     CHECK_EQ(l.size(), 3UL);
-    CHECK_EQ(l.data(), arr + 2);
-    CHECK_EQ(l.begin(), arr + 2);
+    CHECK_EQ(l.data(), arr.data() + 2);
+    CHECK_EQ(l.begin(), arr.data() + 2);
     CHECK_EQ(l.end(), std::end(arr));
   }
 
   // subspan<N>
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    std::array<int, 5> arr = {1, 2, 3, 4, 5};
     span<int, 5> s{arr};
     auto ss = s.subspan<1, 2>();
 
     static_assert(std::is_same<decltype(ss), span<int, 2>>::value, "");
     CHECK_EQ(ss.size(), 2UL);
-    CHECK_EQ(ss.data(), arr + 1);
-    CHECK_EQ(ss.begin(), arr + 1);
-    CHECK_EQ(ss.end(), arr + 1 + 2);
+    CHECK_EQ(ss.data(), arr.data() + 1);
+    CHECK_EQ(ss.begin(), arr.data() + 1);
+    CHECK_EQ(ss.end(), arr.data() + 1 + 2);
   }
 
   // first(n)
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    std::array<int, 5> arr = {1, 2, 3, 4, 5};
     span<int, 5> s{arr};
     auto f = s.first(3);
 
@@ -539,33 +540,33 @@ TEST(subview, span) {
     CHECK_EQ(f.size(), 3UL);
     CHECK_EQ(f.data(), arr);
     CHECK_EQ(f.begin(), arr);
-    CHECK_EQ(f.end(), arr + 3);
+    CHECK_EQ(f.end(), arr.data() + 3);
   }
 
   // last(n)
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    std::array<int, 5> arr = {1, 2, 3, 4, 5};
     span<int, 5> s{arr};
     auto l = s.last(3);
 
     static_assert(std::is_same<decltype(l), span<int>>::value, "");
     CHECK_EQ(l.size(), 3UL);
-    CHECK_EQ(l.data(), arr + 2);
-    CHECK_EQ(l.begin(), arr + 2);
+    CHECK_EQ(l.data(), arr.data() + 2);
+    CHECK_EQ(l.begin(), arr.data() + 2);
     CHECK_EQ(l.end(), std::end(arr));
   }
 
   // subspan(n)
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    std::array<int, 5> arr = {1, 2, 3, 4, 5};
     span<int, 5> s{arr};
     auto ss = s.subspan(1, 2);
 
     static_assert(std::is_same<decltype(ss), span<int>>::value, "");
     CHECK_EQ(ss.size(), 2UL);
-    CHECK_EQ(ss.data(), arr + 1);
-    CHECK_EQ(ss.begin(), arr + 1);
-    CHECK_EQ(ss.end(), arr + 1 + 2);
+    CHECK_EQ(ss.data(), arr.data() + 1);
+    CHECK_EQ(ss.begin(), arr.data() + 1);
+    CHECK_EQ(ss.end(), arr.data() + 1 + 2);
   }
 
   // TODO(tcbrindle): Test all the dynamic subspan possibilities
@@ -577,13 +578,13 @@ TEST(observers, span) {
   static_assert(empty.size() == 0, "");  // NOLINT
   static_assert(empty.empty(), "");
 
-  constexpr int arr[] = {1, 2, 3};
+  constexpr int arr[] = {1, 2, 3};  // NOLINT
   static_assert(span<const int>{arr}.size() == 3, "");
   static_assert(!span<const int>{arr}.empty(), "");
 }
 
 TEST(element_access, span) {
-  constexpr int arr[] = {1, 2, 3};
+  constexpr int arr[] = {1, 2, 3};  // NOLINT
   span<const int> s{arr};
 
   CHECK_EQ(s[0], arr[0]);
