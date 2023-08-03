@@ -752,7 +752,6 @@ std::unique_ptr<Program> PaddleModelToProgram::operator()(
                         false,
                         target_);
   } else {
-    is_combined = true;
     paddle::LoadModelPb(model_dir,
                         ".pdmodel",
                         ".pdiparams",
