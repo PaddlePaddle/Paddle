@@ -98,8 +98,8 @@ class BackWardOpDepsPass : public ir::Pass {
       VisitChildrens(op, &visit);
     }
 
-    for (size_t i = 0; i < result->size(); i++) {
-      VLOG(10) << "get potential head op:" << (*result)[i]->DebugString();
+    for (auto item : *result) {
+      VLOG(10) << "get potential head op:" << item->DebugString();
     }
 
     // sort by param_grad order
@@ -139,8 +139,8 @@ class BackWardOpDepsPass : public ir::Pass {
       result->emplace_back(p.first);
     }
 
-    for (size_t i = 0; i < result->size(); i++) {
-      VLOG(10) << "get head op:" << (*result)[i]->DebugString();
+    for (auto item : *result) {
+      VLOG(10) << "get head op:" << item->DebugString();
     }
   }
 

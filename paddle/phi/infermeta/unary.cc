@@ -1164,11 +1164,11 @@ void FFTC2CInferMeta(const MetaTensor& x,
   // they might be -1 to indicate unknown size ar compile time
   if (config.is_runtime) {
     const phi::DDim x_dim = x.dims();
-    for (size_t i = 0; i < axes.size(); i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+    for (auto axis : axes) {
+      PADDLE_ENFORCE_GT(x_dim[axis],
                         0,
                         phi::errors::InvalidArgument(
-                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+                            "Invalid fft n-point (%d).", x_dim[axis]));
     }
   }
   out->share_meta(x);
@@ -1236,11 +1236,11 @@ void FFTR2CInferMeta(const MetaTensor& x,
   // only ensure that fft axes' size greater than zero at runtime
   // they might be -1 to indicate unknown size ar compile time
   if (config.is_runtime) {
-    for (size_t i = 0; i < axes.size(); i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+    for (auto axis : axes) {
+      PADDLE_ENFORCE_GT(x_dim[axis],
                         0,
                         phi::errors::InvalidArgument(
-                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+                            "Invalid fft n-point (%d).", x_dim[axis]));
     }
   }
 
@@ -4497,11 +4497,11 @@ void UnbindInferMeta(const MetaTensor& x,
   }
   auto out_dims = phi::make_ddim(out_dim);
 
-  for (size_t i = 0; i < outs.size(); ++i) {
-    outs[i]->set_dtype(x.dtype());
-    outs[i]->set_dims(out_dims);
-    outs[i]->set_layout(x.layout());
-    outs[i]->share_lod(x);
+  for (auto& out : outs) {
+    out->set_dtype(x.dtype());
+    out->set_dims(out_dims);
+    out->set_layout(x.layout());
+    out->share_lod(x);
   }
 }
 

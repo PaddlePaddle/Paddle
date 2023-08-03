@@ -192,7 +192,11 @@ class IR_API OpResult : public Value {
 
   uint32_t GetResultIndex() const;
 
+  bool operator==(const OpResult &other) const;
+
   friend Operation;
+
+  detail::ValueImpl *value_impl() const;
 
  private:
   static uint32_t GetValidInlineIndex(uint32_t index);
@@ -209,4 +213,5 @@ struct hash<ir::Value> {
     return std::hash<const ir::detail::ValueImpl *>()(obj.impl_);
   }
 };
+
 }  // namespace std

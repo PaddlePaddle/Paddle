@@ -16,10 +16,10 @@
 
 set -e
 
-export XDNN_PATH=/opt/xdnn # <path_to_xdnn>
-export XRE_PATH=/opt/xre # <path_to_xre>
-export CLANG_PATH=/opt/xtdk # <path_to_xtdk>
-export HOST_SYSROOT=/opt/compiler/gcc-8.2 # <path_to_gcc>
+#export XDNN_PATH=/opt/xdnn # <path_to_xdnn>
+#export XRE_PATH=/opt/xre # <path_to_xre>
+#export CLANG_PATH=/opt/xtdk # <path_to_xtdk>
+#export HOST_SYSROOT=/opt/compiler/gcc-8.2 # <path_to_gcc>
 
 rm -rf build
 mkdir build

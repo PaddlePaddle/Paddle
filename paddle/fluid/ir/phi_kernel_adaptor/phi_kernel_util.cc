@@ -479,9 +479,7 @@ void BuildScope(const ir::Block& block,
           << paddle::framework::GenScopeTreeDebugInfo(
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
 
-  for (auto it = block.begin(); it != block.end(); ++it) {
-    ir::Operation* op = *it;
-
+  for (auto op : block) {
     std::string op_name = op->name();
     if (op->attributes().count("op_name")) {
       op_name = op->attributes()

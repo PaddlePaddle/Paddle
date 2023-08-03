@@ -613,8 +613,7 @@ std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
   auto& out_var_list = out_it->second;
 
   std::vector<LoD> ret;
-  for (size_t i = 0; i < out_var_list.size(); ++i) {
-    Variable* out_var = out_var_list[i];
+  for (auto* out_var : out_var_list) {
     if (out_var != nullptr) {
       auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
       ret.push_back(out_tensor->lod());
@@ -710,12 +709,13 @@ std::vector<proto::VarType::Type> RuntimeInferShapeContext::GetVarTypes(
     const std::vector<Variable*>& vars) const {
   std::vector<proto::VarType::Type> retv;
   retv.resize(vars.size());
-  std::transform(vars.begin(),
-                 vars.end(),
-                 retv.begin(),
-                 std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),
-                           this,
-                           std::placeholders::_1));
+  std::transform(
+      vars.begin(),
+      vars.end(),
+      retv.begin(),
+      std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),  // NOLINT
+                this,
+                std::placeholders::_1));
   return retv;
 }
 
@@ -2782,9 +2782,9 @@ void OperatorWithKernel::ParseInputDataType(
       return;
     } else if (var->IsType<LoDTensorArray>()) {
       auto t_arr = &var->Get<LoDTensorArray>();
-      for (size_t j = 0; j < t_arr->size(); j++) {
-        if (t_arr->at(j).IsInitialized()) {
-          t = &(t_arr->at(j));
+      for (const auto& item : *t_arr) {
+        if (item.IsInitialized()) {
+          t = &(item);
         }
       }
     }
@@ -2800,8 +2800,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  for (size_t i = 0; i < vars.size(); ++i) {
-    const Variable* var = vars[i];
+  for (auto* var : vars) {
     if (var != nullptr) {
       const phi::DenseTensor* t = nullptr;
       if (var->IsType<phi::DenseTensor>()) {
@@ -2833,9 +2832,9 @@ void OperatorWithKernel::ParseMultiInputDataType(
         *data_type = tmp;
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = &var->Get<LoDTensorArray>();
-        for (size_t j = 0; j < t_arr->size(); j++) {
-          if (t_arr->at(j).IsInitialized()) {
-            t = &(t_arr->at(j));
+        for (const auto& item : *t_arr) {
+          if (item.IsInitialized()) {
+            t = &(item);
           }
         }
       }
@@ -3145,9 +3144,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
     auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
-    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+    for (auto* var : ins_vector) {
       const phi::TensorBase* tensor_in = nullptr;
-      auto* var = ins_vector[offset];
       if (var->IsType<phi::DenseTensor>()) {
         tensor_in = &(var->Get<phi::DenseTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
@@ -3198,9 +3196,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
     size_t end_idx = start_idx + outs_vector.size();
 
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+    for (auto* var : outs_vector) {
       phi::TensorBase* tensor_out = nullptr;
-      auto* var = outs_vector[offset];
       if (var) {
         if (var->template IsType<phi::DenseTensor>()) {
           tensor_out = var->template GetMutable<phi::DenseTensor>();
