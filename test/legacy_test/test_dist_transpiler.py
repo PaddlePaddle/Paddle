@@ -48,7 +48,7 @@ class TranspilerTest(unittest.TestCase):
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
         sgd_optimizer.minimize(avg_cost)
 
     def get_main_program(self):
@@ -306,7 +306,7 @@ class TestLRDecay(TranspilerTest):
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(
+        sgd_optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=1.0,
                 gamma=0.1,
@@ -445,7 +445,7 @@ class TestFakeInit(TranspilerTest):
         )
         avg_cost = paddle.mean(cost)
 
-        sgd_optimizer = fluid.optimizer.SGD(
+        sgd_optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=1.0,
                 gamma=0.1,
@@ -516,7 +516,7 @@ class TestLRDecayConditional(TranspilerTest):
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(
+        sgd_optimizer = paddle.optimizer.SGD(
             learning_rate=fluid.layers.piecewise_decay(
                 [10000, 20000], [1.0, 0.5, 1.0]
             )
@@ -581,7 +581,7 @@ class TestL2Decay(TranspilerTest):
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
 
         def filter(param):
             return param.name == "fc_w"
@@ -692,7 +692,7 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         sgd_optimizer.minimize(avg_cost)
 
     def transpiler_test_impl(self):
@@ -1454,7 +1454,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
 
         avg_cost = paddle.mean(cost)
         # optimizer
-        optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.003)
         optimizer.minimize(avg_cost)
 
     def net_conf(self):

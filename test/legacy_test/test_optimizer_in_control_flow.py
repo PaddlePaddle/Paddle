@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core, optimizer
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
 
 BATCH_SIZE = 1
@@ -93,7 +93,7 @@ def static(
         hidden, prediction = double_fc_net(image)
 
         adam = paddle.optimizer.Adam(learning_rate=LR)
-        sgd = optimizer.SGD(learning_rate=LR)
+        sgd = paddle.optimizer.SGD(learning_rate=LR)
 
         id = paddle.static.data('id', [1], 'int32')
         two = paddle.tensor.fill_constant([1], 'int32', 2)
@@ -181,8 +181,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
         adam = paddle.optimizer.Adam(
             learning_rate=LR, parameters=dy_layer.parameters()
         )
-        sgd = fluid.optimizer.SGD(
-            learning_rate=LR, parameter_list=dy_layer.parameters()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=LR, parameters=dy_layer.parameters()
         )
 
         for epoch in range(EPOCH_NUM):

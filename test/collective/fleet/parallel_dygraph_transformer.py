@@ -1089,8 +1089,8 @@ class TestTransformer(TestParallelDyGraphRunnerBase):
             fake_data_reader(), TrainTaskConfig.batch_size
         )
         if naive_optimize:
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=0.001, parameter_list=model.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.001, parameters=model.parameters()
             )
         else:
             optimizer = paddle.optimizer.Adam(

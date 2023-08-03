@@ -1150,8 +1150,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     parameters=transformer.parameters(),
                 )
             else:
-                optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.003, parameter_list=transformer.parameters()
+                optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.003, parameters=transformer.parameters()
                 )
             dy_param_init = {}
             dy_param_updated = {}
@@ -1220,7 +1220,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 if not core.is_compiled_with_cuda()
                 else fluid.CUDAPlace(0)
             )
-            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.003)
 
             data_input_names = (
                 encoder_data_input_fields

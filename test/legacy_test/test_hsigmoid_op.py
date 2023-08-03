@@ -332,7 +332,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             label = np.array([1, 4]).astype('int64')
 
             loss, data_list = self.hs_net_conf(is_sparse)
-            optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
+            optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
 
             main_program = fluid.default_main_program()

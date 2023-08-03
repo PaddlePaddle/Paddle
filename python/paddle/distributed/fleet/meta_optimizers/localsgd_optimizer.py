@@ -51,7 +51,6 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 paddle.optimizer.momentum.Momentum,
                 paddle.fluid.optimizer.Momentum,
                 paddle.optimizer.sgd.SGD,
-                paddle.fluid.optimizer.SGD,
             ),
         )
 
@@ -237,7 +236,6 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 paddle.optimizer.Momentum,
                 paddle.fluid.optimizer.Momentum,
                 paddle.optimizer.sgd.SGD,
-                paddle.fluid.optimizer.SGD,
             ),
         )
 
