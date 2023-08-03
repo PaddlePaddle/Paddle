@@ -98,7 +98,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # opt = paddle.optimizer.Adam(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
         if not use_dgc:
-            opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+            opt = paddle.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
             opt = paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
                 learning_rate=self.lr, momentum=0.9, rampup_begin_step=2

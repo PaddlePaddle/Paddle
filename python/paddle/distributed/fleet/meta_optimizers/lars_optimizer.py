@@ -13,7 +13,8 @@
 
 import logging
 
-from paddle.fluid.optimizer import LarsMomentumOptimizer, Momentum
+from paddle.fluid.optimizer import LarsMomentumOptimizer
+from paddle.optimizer import Momentum
 
 from .meta_optimizer_base import MetaOptimizerBase
 

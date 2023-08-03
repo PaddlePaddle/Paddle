@@ -30,7 +30,6 @@ from paddle.fluid.optimizer import (
     LarsMomentumOptimizer,
     LookaheadOptimizer,
     ModelAverage,
-    MomentumOptimizer,
     PipelineOptimizer,
     RecomputeOptimizer,
 )
@@ -687,13 +686,13 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
 class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Momentum(
+            learning_rate=0.001, momentum=0.9, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
         return optimizer
 
     def test_momentum(self):

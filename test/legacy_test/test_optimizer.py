@@ -122,7 +122,7 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
 
 
 class TestMomentumOptimizer(unittest.TestCase):
-    class MockMomentum(optimizer.MomentumOptimizer):
+    class MockMomentum(paddle.optimizer.Momentum):
         def get_accumulators(self):
             return self._accumulators
 
@@ -184,9 +184,9 @@ class TestMomentumOptimizer(unittest.TestCase):
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
         self.assertEqual(init_ops[0].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[0].attr('value'), 0.0)
+        self.assertAlmostEqual(init_ops[1].attr('value'), 0.0)
 
     def test_nesterov_momentum_optimizer(self):
         init_program = framework.Program()
@@ -243,9 +243,9 @@ class TestMomentumOptimizer(unittest.TestCase):
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
         self.assertEqual(init_ops[0].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[0].attr('value'), 0.0)
+        self.assertAlmostEqual(init_ops[1].attr('value'), 0.0)
 
 
 class TestAdamOptimizer(unittest.TestCase):

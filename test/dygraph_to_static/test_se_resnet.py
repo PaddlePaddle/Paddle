@@ -77,13 +77,13 @@ def optimizer_setting(params, parameter_list):
     bd = [step * e for e in ls["epochs"]]
     lr = params["lr"]
     num_epochs = params["num_epochs"]
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=fluid.layers.cosine_decay(
-            learning_rate=lr, step_each_epoch=step, epochs=num_epochs
+    optimizer = paddle.optimizer.Momentum(
+        learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=lr, T_max=num_epochs
         ),
         momentum=momentum_rate,
-        regularization=paddle.regularizer.L2Decay(l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer

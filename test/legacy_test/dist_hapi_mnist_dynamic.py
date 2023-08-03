@@ -63,8 +63,8 @@ class TestDistTraning(unittest.TestCase):
         labels = [Input([None, 1], 'int64', 'label')]
 
         model = Model(LeNet(), inputs, labels)
-        optim = fluid.optimizer.Momentum(
-            learning_rate=0.001, momentum=0.9, parameter_list=model.parameters()
+        optim = paddle.optimizer.Momentum(
+            learning_rate=0.001, momentum=0.9, parameters=model.parameters()
         )
         model.prepare(optim, CrossEntropyLoss(), Accuracy())
 

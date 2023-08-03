@@ -108,7 +108,7 @@ class TestFuseSGDOps(TestFuseAdamOps):
 
 class TestFuseMomentumOps(TestFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.Momentum(
+        return paddle.optimizer.Momentum(
             learning_rate=learning_rate, momentum=0.1
         )
 
@@ -158,7 +158,7 @@ class TestSpareFuseSGDOps(TestSpareFuseAdamOps):
 
 class TestSpareFuseMomentumOps(TestSpareFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.Momentum(
+        return paddle.optimizer.Momentum(
             learning_rate=learning_rate, momentum=0.1
         )
 
@@ -206,7 +206,7 @@ class TestFuseSGDOpsPassConflict(TestFuseAdamOpsPassConflict):
 
 class TestFuseMomentumOpsPassConflict(TestFuseAdamOpsPassConflict):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.Momentum(
+        return paddle.optimizer.Momentum(
             learning_rate=learning_rate, momentum=0.1
         )
 
