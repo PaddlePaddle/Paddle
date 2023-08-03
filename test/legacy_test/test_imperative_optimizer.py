@@ -32,7 +32,6 @@ from paddle.fluid.optimizer import (
     ModelAverage,
     MomentumOptimizer,
     PipelineOptimizer,
-    RecomputeOptimizer,
     SGDOptimizer,
 )
 
@@ -775,19 +774,6 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
 
     def test_lookahead(self):
         exception_message = "In dygraph, don't support LookaheadOptimizer."
-        self._check_exception(exception_message)
-
-
-class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = fluid.optimizer.SGD(
-            learning_rate=0.5, parameter_list=parameter_list
-        )
-        optimizer = RecomputeOptimizer(optimizer)
-        return optimizer
-
-    def test_recompute(self):
-        exception_message = "In dygraph, don't support RecomputeOptimizer."
         self._check_exception(exception_message)
 
 

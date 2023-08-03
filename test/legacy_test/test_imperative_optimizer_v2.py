@@ -31,7 +31,6 @@ from paddle.fluid.optimizer import (
     ModelAverage,
     MomentumOptimizer,
     PipelineOptimizer,
-    RecomputeOptimizer,
 )
 
 # Note(wangzhongpu)
@@ -929,7 +928,7 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = RecomputeOptimizer(optimizer)
+        optimizer = paddle.incubate.optimizer.RecomputeOptimizer(optimizer)
         return optimizer
 
     def test_recompute(self):

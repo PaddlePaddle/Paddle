@@ -53,7 +53,7 @@ class CollectiveOptimizerTest(unittest.TestCase):
 
     def test_recompute_strategy(self):
         optimizer = fluid.optimizer.AdamOptimizer()
-        optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+        optimizer = paddle.incubate.optimizer.RecomputeOptimizer(optimizer)
         dist_strategy = DistributedStrategy()
         dist_strategy.forward_recompute = True
         dist_strategy.recompute_checkpoints = ["Test"]
