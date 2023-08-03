@@ -7,4 +7,4 @@ endif()
 cc_library(
   experimental_static_primitive_backend
   SRCS static_backend.cc
-  DEPS pd_dialect phi)
+  DEPS pd_dialect phi type_info)

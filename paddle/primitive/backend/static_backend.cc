@@ -15,7 +15,6 @@
 #include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/primitive/backend/backend.h"
 #include "paddle/primitive/type/desc_tensor.h"
-#include "paddle/primitive/type/primitive_context.h"
 
 namespace paddle {
 namespace primitive {

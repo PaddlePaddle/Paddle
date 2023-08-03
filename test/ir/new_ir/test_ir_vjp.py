@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
+from paddle.fluid.core import call_vjp, has_vjp
 
 paddle.enable_static()
 
@@ -42,7 +43,7 @@ class TestTanhVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[0]]
         with paddle.ir.core.program_guard(newir_program):
-            grad_outs = ir.call_vjp(tanh_op, out_grads, stop_gradients)
+            grad_outs = call_vjp(tanh_op, out_grads, stop_gradients)
         self.assertEqual(
             grad_outs[0][0].get_defining_op().name(), "pd.tanh_grad"
         )
@@ -73,8 +74,87 @@ class TestTanhVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[1]]
         with paddle.ir.core.program_guard(newir_program):
-            grad_outs = ir.call_vjp(tanh_op, out_grads, stop_gradients)
+            grad_outs = call_vjp(tanh_op, out_grads, stop_gradients)
         self.assertEqual(grad_outs[0][0], None)
+
+
+class TestMeanVjp(unittest.TestCase):
+    def test_mean_vjp1(self):
+        main_program, start_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.static.data('x', [4, 4], 'float32')
+            x.stop_gradient = False
+            paddle.mean(x, axis=[0, 1])
+            paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
+        newir_program = ir.translate_to_new_ir(main_program.desc)
+        fill_constant_op = newir_program.block().get_ops()[-1]
+        mean_op = newir_program.block().get_ops()[-2]
+        out_grads = [[fill_constant_op.result(0)]]
+        stop_gradients = [[0]]
+        with paddle.ir.core.program_guard(newir_program):
+            grad_outs = call_vjp(mean_op, out_grads, stop_gradients)
+            self.assertEqual(
+                grad_outs[0][0].get_defining_op().name(), "pd.mean_grad"
+            )
+            self.assertEqual(
+                grad_outs[0][0]
+                .get_defining_op()
+                .operands()[0]
+                .source()
+                .get_defining_op()
+                .name(),
+                "builtin.get_parameter",
+            )
+            self.assertEqual(
+                grad_outs[0][0]
+                .get_defining_op()
+                .operands()[1]
+                .source()
+                .get_defining_op()
+                .name(),
+                "pd.full",
+            )
+            self.assertEqual(len(newir_program.block().get_ops()), 4)
+
+    def test_mean_vjp2(self):
+        main_program, start_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.static.data('x', [4, 4], 'float32')
+            x.stop_gradient = False
+            paddle.mean(x, axis=[0, 1])
+            paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
+        newir_program = ir.translate_to_new_ir(main_program.desc)
+        fill_constant_op = newir_program.block().get_ops()[-1]
+        mean_op = newir_program.block().get_ops()[-2]
+        out_grads = [[fill_constant_op.result(0)]]
+        stop_gradients = [[1]]
+        with paddle.ir.core.program_guard(newir_program):
+            grad_outs = call_vjp(mean_op, out_grads, stop_gradients)
+            self.assertEqual(grad_outs[0][0], None)
+
+
+class TesthasVjp(unittest.TestCase):
+    def test_has_vjp(self):
+        main_program, start_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.static.data('x', [4, 4], 'float32')
+            x.stop_gradient = False
+            paddle.mean(x, axis=[0, 1])
+            paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
+        newir_program = ir.translate_to_new_ir(main_program.desc)
+        fill_constant_op = newir_program.block().get_ops()[-1]
+        mean_op = newir_program.block().get_ops()[-2]
+        self.assertEqual(has_vjp(fill_constant_op), False)
+        self.assertEqual(has_vjp(mean_op), True)
 
 
 if __name__ == "__main__":

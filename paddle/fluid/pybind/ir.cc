@@ -25,7 +25,6 @@
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/interface/vjp.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
@@ -279,58 +278,6 @@ void BindUtils(pybind11::module *m) {
           "DenseTensorType"));
     }
   });
-  m->def(
-      "call_vjp",
-      [](ir::Operation &fwd_op,
-         const std::vector<std::vector<ir::OpResult>> &out_grads,
-         const std::vector<std::vector<int>> &stop_gradients) {
-        py::list res;
-        ir::IrContext *ctx = ir::IrContext::Instance();
-        ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
-        auto vjp_interface_impl =
-            fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-        if (vjp_interface_impl == nullptr) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "The vjp function is not registered in %s op ", fwd_op.name()));
-        }
-        std::vector<std::vector<ir::OpResult>> vjp_res =
-            vjp_interface_impl->vjp_(&fwd_op, out_grads, stop_gradients);
-        PADDLE_ENFORCE_EQ(
-            stop_gradients.size(),
-            vjp_res.size(),
-            phi::errors::InvalidArgument(
-                "The size of stop_gradients should be the same as vjp_res "
-                "size."
-                "But the size of stop_gradients: %d, vjp_res size: %d",
-                stop_gradients.size(),
-                vjp_res.size()));
-        for (size_t i = 0; i < vjp_res.size(); ++i) {
-          PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
-                            vjp_res[i].size(),
-                            phi::errors::InvalidArgument(
-                                "The size of stop_gradients[%d] should be the "
-                                "same as vjp_res[%d] "
-                                "size."
-                                "But the size of stop_gradients[%d]: %d, "
-                                "vjp_res[%d] size: %d",
-                                i,
-                                i,
-                                i,
-                                stop_gradients[i].size(),
-                                i,
-                                vjp_res[i].size()));
-          py::list sub_res;
-          for (size_t j = 0; j < vjp_res[i].size(); ++j) {
-            if (stop_gradients[i][j]) {
-              sub_res.append(nullptr);
-            } else {
-              sub_res.append(vjp_res[i][j]);
-            }
-          }
-          res.append(sub_res);
-        }
-        return res;
-      });
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",
