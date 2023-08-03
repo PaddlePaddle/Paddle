@@ -358,6 +358,11 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         self.shape = (1, 100, 4, 4)
         self.dtype = np.float16
 
+    def test_check_output(self):
+        rtol = 1e-3
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, rtol=rtol)
+
 
 class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def setUp(self):
