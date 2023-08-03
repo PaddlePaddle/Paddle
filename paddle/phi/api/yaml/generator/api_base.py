@@ -1276,7 +1276,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return input_tensor_code, ", ".join(kernel_args), kernel_signature
 
     # Override by child class
-    def gene_return_code(self):
+    def gene_return_code(self, for_auto_parallel=False):
         return "return api_output;"
 
     # Override by child class
@@ -1479,7 +1479,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  }}"""
 
         # 7. Return
-        return_code = self.gene_return_code()
+        return_code = self.gene_return_code(for_auto_parallel=True)
 
         return f"""
   if ({condition_code}) {{

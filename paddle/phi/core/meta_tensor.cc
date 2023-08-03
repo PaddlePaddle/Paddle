@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -72,6 +73,10 @@ void MetaTensor::set_dims(const DDim& dims) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dims = dims;
+  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(
+        static_cast<distributed::DistTensor*>(tensor_))
+        ->dims = dims;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
@@ -95,7 +100,10 @@ void MetaTensor::set_dtype(DataType dtype) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dtype = dtype;
-    // No need to set dtype
+  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(
+        static_cast<distributed::DistTensor*>(tensor_))
+        ->dtype = dtype;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -119,6 +127,10 @@ void MetaTensor::set_layout(DataLayout layout) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->layout = layout;
+  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(
+        static_cast<distributed::DistTensor*>(tensor_))
+        ->layout = layout;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
@@ -129,7 +141,8 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   ValidCheck(meta_tensor);
   if (phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_)) {
+      phi::SparseCsrTensor::classof(tensor_) ||
+      phi::distributed::DistTensor::classof(tensor_)) {
     return;
   }
   if (meta_tensor.lod().empty()) {
@@ -152,11 +165,11 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
 
 void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
-  VLOG(3) << "tensor name: " << tensor_->type_info().name();
   if (phi::DenseTensor::classof(tensor_) ||
       phi::SelectedRows::classof(tensor_) ||
       phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_)) {
+      phi::SparseCsrTensor::classof(tensor_) ||
+      phi::distributed::DistTensor::classof(tensor_)) {
     share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
     set_layout(meta_tensor.layout());
@@ -181,7 +194,9 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   bool is_selected_rows = phi::SelectedRows::classof(tensor_);
   bool is_sparse_coo = phi::SparseCooTensor::classof(tensor_);
   bool is_sparse_csr = phi::SparseCsrTensor::classof(tensor_);
-  if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr) {
+  bool is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
+  if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr ||
+      is_dist_tensor) {
     if (is_selected_rows) {
       const auto in_tensor_base = meta_tensor.tensor();
       PADDLE_ENFORCE_EQ(

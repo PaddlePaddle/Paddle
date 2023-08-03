@@ -108,8 +108,11 @@ class BackwardAPI(BaseAPI):
         result = intputs_and_attrs + ', ' + ", ".join(outs)
         return result
 
-    def gene_return_code(self):
-        return ""
+    def gene_return_code(self, for_auto_parallel=False):
+        if for_auto_parallel is True:
+            return "return;"
+        else:
+            return ""
 
     def gene_api_declaration(self):
         if not self.is_base_api and not self.is_only_composite_api:

@@ -151,7 +151,7 @@ class ForwardAPI(BaseAPI):
         else:
             return "std::tuple<" + ", ".join(out_type_list) + ">"
 
-    def gene_return_code(self):
+    def gene_return_code(self, for_auto_parallel=False):
         if self.is_dygraph_api or len(self.intermediate_outs) == 0:
             return "return api_output;"
         else:

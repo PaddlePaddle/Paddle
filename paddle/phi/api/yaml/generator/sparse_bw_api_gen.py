@@ -32,7 +32,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def get_return_type(self, inplace_flag=False):
         return BackwardAPI.get_return_type(self)
 
-    def gene_return_code(self):
+    def gene_return_code(self, for_auto_parallel=False):
         return "return;"
 
     def gene_api_declaration(self):

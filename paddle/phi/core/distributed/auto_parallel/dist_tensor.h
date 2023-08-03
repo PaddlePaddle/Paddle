@@ -18,6 +18,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+
+class DenseTensorUtils;
+
 namespace distributed {
 
 namespace auto_parallel {
@@ -128,6 +131,8 @@ class DistTensor final
   void set_meta(const DenseTensorMeta& meta);
 
  private:
+  friend class phi::DenseTensorUtils;
+
   DenseTensorMeta meta_;
   std::shared_ptr<TensorDistAttr> dist_attr_{nullptr};
   std::unique_ptr<DenseTensor> value_{nullptr};
