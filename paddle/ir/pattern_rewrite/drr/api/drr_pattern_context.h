@@ -20,6 +20,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "paddle/ir/pattern_rewrite/drr/api/match_context.h"
+
 namespace ir {
 namespace drr {
 
@@ -38,18 +40,17 @@ class Attribute {
  public:
   explicit Attribute(const std::string& id) : attr_id_(id) {}
 
-  enum class Type { OP_ATTR, TENSOR_SHAPE, TENSOR_DTYPE };
-
-  // Type type() const { return type_; }
+  const std::string& id() const { return attr_id_; }
 
  private:
   std::string attr_id_;
 };
 
-class TensorShape : public Attribute {
+class TensorShape {
  public:
-  explicit TensorShape(const std::string& tensor_id)
-      : Attribute(tensor_id + "_shape_"), tensor_id_(tensor_id) {}
+  explicit TensorShape(const std::string& tensor_id) : tensor_id_(tensor_id) {}
+
+  const std::string& tensor_id() const { return tensor_id_; }
 
  private:
   std::string tensor_id_;
@@ -57,14 +58,16 @@ class TensorShape : public Attribute {
 
 class Constraint {
  public:
-  Constraint() = default;
-  // bool operator()(const MatchContext& match_context) const {
-  //   return IsContextMatchConstraint_(match_context);
-  // }
+  Constraint(const std::function<bool(const MatchContext& match_context)>&
+                 constrain_fn)
+      : IsContextMatchConstraint_(constrain_fn) {}
+  bool operator()(const MatchContext& match_context) const {
+    return IsContextMatchConstraint_(match_context);
+  }
 
  private:
-  // std::function<bool(const MatchContext& match_context)>
-  //     IsContextMatchConstraint_;
+  std::function<bool(const MatchContext& match_context)>
+      IsContextMatchConstraint_;
 };
 
 class DrrPatternContext {
@@ -98,16 +101,14 @@ class DrrPatternContext {
       const std::unordered_map<std::string, Attribute>& attributes = {});
   const drr::Tensor& ResultTensorPattern(const std::string& tensor_id);
 
+  // void RequireEqual(const Attribute& first, const Attribute& second);
+  void RequireEqual(const TensorShape& first, const TensorShape& second);
+
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   std::vector<Constraint> constraints_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
   std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
-};
-
-class DrrPass {
- public:
-  virtual void operator()(DrrPatternContext* ctx) const;
 };
 
 class Op : public std::enable_shared_from_this<Op> {
