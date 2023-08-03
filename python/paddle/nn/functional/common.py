@@ -354,17 +354,15 @@ def interpolate(
             >>> input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
             >>> output_1 = F.interpolate(x=input_data, size=[12,12])
             >>> print(output_1.shape)
-            >>> # [2L, 3L, 12L, 12L]
-
+            [2, 3, 12, 12]
             >>> # given scale
             >>> output_2 = F.interpolate(x=input_data, scale_factor=[2,1])
             >>> print(output_2.shape)
-            >>> # [2L, 3L, 12L, 10L]
-
+            [2, 3, 12, 10]
             >>> # bilinear interp
             >>> output_3 = F.interpolate(x=input_data, scale_factor=[2,1], mode="bilinear")
             >>> print(output_2.shape)
-            >>> # [2L, 3L, 12L, 10L]
+            [2, 3, 12, 10]
     """
     data_format = data_format.upper()
     resample = mode.upper()
@@ -881,10 +879,9 @@ def upsample(
 
             >>> input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
             >>> upsample_out = paddle.nn.Upsample(size=[12,12])
-
             >>> output = upsample_out(x=input_data)
             >>> print(output.shape)
-            >>> # [2L, 3L, 12L, 12L]
+            [2, 3, 12, 12]
 
     """
     return interpolate(
@@ -919,10 +916,9 @@ def bilinear(x1, x2, weight, bias=None, name=None):
             >>> x2 = paddle.randn((5, 4)).astype(paddle.float32)
             >>> w = paddle.randn((1000, 5, 4)).astype(paddle.float32)
             >>> b = paddle.randn((1, 1000)).astype(paddle.float32)
-
             >>> result = F.bilinear(x1, x2, w, b)
             >>> print(result.shape)
-            >>> # [5, 1000]
+            [5, 1000]
     """
 
     if in_dynamic_mode():
@@ -1061,7 +1057,7 @@ def dropout(
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(2023)
             >>> x = paddle.to_tensor([[1,2,3], [4,5,6]]).astype(paddle.float32)
             >>> y_train = paddle.nn.functional.dropout(x, 0.5)
             >>> y_test = paddle.nn.functional.dropout(x, 0.5, training=False)
@@ -1069,30 +1065,29 @@ def dropout(
             >>> y_1 = paddle.nn.functional.dropout(x, axis=1)
             >>> y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
             >>> print(x)
-            >>> # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[1., 2., 3.],
-            >>> #         [4., 5., 6.]])
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+            [4., 5., 6.]])
             >>> print(y_train)
-            >>> # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[2. , 0. , 6. ],
-            >>> #         [8. , 0. , 12.]])
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 4., 0.],
+            [8., 0., 0.]])
             >>> print(y_test)
-            >>> # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[1., 2., 3.],
-            >>> #         [4., 5., 6.]])
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+            [4., 5., 6.]])
             >>> print(y_0)
-            >>> # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[0. , 0. , 0. ],
-            >>> #         [8. , 10., 12.]])
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 4., 6.],
+            [8. , 10., 12.]])
             >>> print(y_1)
-            >>> # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[2. , 0. , 6. ],
-            >>> #         [8. , 0. , 12.]])
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2. , 4. , 6. ],
+            [8. , 10., 12.]])
             >>> print(y_01)
-            >>> # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[0. , 0. , 0. ],
-            >>> #         [8. , 0. , 12.]])
-
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 6.],
+            [0., 0., 0.]])
     """
     if not isinstance(p, (float, int, Variable)):
         raise TypeError("p argument should be a number or Variable")
@@ -1371,18 +1366,18 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(1)
             >>> x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
             >>> y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
             >>> y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
             >>> print(y_train)
-            >>> # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[-0.10721093, -0.77919382],
-            >>> #         [-0.10721093,  1.66559887]]) (randomly)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.77919382,  1.66559887],
+            [-0.10721093, -0.77919382]])
             >>> print(y_test)
-            >>> # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            >>> #        [[-1.,  1.],
-            >>> #         [-1.,  1.]])
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+            [-1.,  1.]])
     """
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a float or int")
@@ -1523,24 +1518,27 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
             >>> x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             >>> y = F.pad(x, [0, 0, 0, 0, 2, 3], value=1, mode='constant', data_format="NCL")
             >>> print(y)
-            >>> # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
+            Tensor(shape=[1, 1, 8], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 1., 1., 2., 3., 1., 1., 1.]]])
 
             >>> # example 2
             >>> x_shape = (1, 1, 3)
             >>> x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             >>> y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
             >>> print(y)
-            >>> # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
+            Tensor(shape=[1, 1, 8], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 1., 1., 2., 3., 1., 1., 1.]]])
 
             >>> # example 3
             >>> x_shape = (1, 1, 2, 3)
             >>> x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             >>> y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
             >>> print(y)
-            >>> # [[[[6. 4. 5. 6. 4. 5.]
-            >>> #    [3. 1. 2. 3. 1. 2.]
-            >>> #    [6. 4. 5. 6. 4. 5.]
-            >>> #    [3. 1. 2. 3. 1. 2.]]]]
+            Tensor(shape=[1, 1, 4, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[6., 4., 5., 6., 4., 5.],
+               [3., 1., 2., 3., 1., 2.],
+               [6., 4., 5., 6., 4., 5.],
+               [3., 1., 2., 3., 1., 2.]]]])
     """
     assert mode in [
         'reflect',
@@ -1714,14 +1712,16 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
 
             >>> import paddle
             >>> import paddle.nn.functional as F
+
             >>> x_shape = paddle.to_tensor([1, 1, 2, 3])
             >>> x = paddle.arange(paddle.prod(x_shape), dtype="float32").reshape(x_shape) + 1
             >>> y = F.zeropad2d(x, [1, 2, 1, 1])
             >>> print(y)
-            >>> # [[[[0. 0. 0. 0. 0. 0.]
-            >>> #    [0. 1. 2. 3. 0. 0.]
-            >>> #    [0. 4. 5. 6. 0. 0.]
-            >>> #    [0. 0. 0. 0. 0. 0.]]]]
+            Tensor(shape=[1, 1, 4, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0., 0., 0., 0., 0., 0.],
+               [0., 1., 2., 3., 0., 0.],
+               [0., 4., 5., 6., 0., 0.],
+               [0., 0., 0., 0., 0., 0.]]]])
     """
 
     return pad(
@@ -1775,7 +1775,8 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
             >>> result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
             >>> print(result)
-            >>> # [0.97689527,  0.99996042, -0.55138415]
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [ 0.97689527,  0.99996042, -0.55138415])
 
     """
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
@@ -1821,21 +1822,21 @@ def linear(x, weight, bias=None, name=None):
     Examples:
         .. code-block:: python
 
-          >>> import paddle
+            >>> import paddle
 
-          >>> x = paddle.randn((3, 2), dtype="float32")
-          >>> # x: [[-0.32342386 -1.200079  ]
-          >>> #     [ 0.7979031  -0.90978354]
-          >>> #     [ 0.40597573  1.8095392 ]]
-          >>> weight = paddle.full(shape=[2, 4], fill_value="0.5", dtype="float32", name="weight")
-          >>> # weight: [[0.5 0.5 0.5 0.5]
-          >>> #          [0.5 0.5 0.5 0.5]]
-          >>> bias = paddle.ones(shape=[4], dtype="float32", name="bias")
-          >>> # bias: [1. 1. 1. 1.]
-          >>> y = paddle.nn.functional.linear(x, weight, bias)
-          >>> # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
-          >>> #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
-          >>> #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
+            >>> x = paddle.randn((3, 2), dtype="float32")
+            >>> # x: [[-0.32342386 -1.200079  ]
+            >>> #     [ 0.7979031  -0.90978354]
+            >>> #     [ 0.40597573  1.8095392 ]]
+            >>> weight = paddle.full(shape=[2, 4], fill_value="0.5", dtype="float32", name="weight")
+            >>> # weight: [[0.5 0.5 0.5 0.5]
+            >>> #          [0.5 0.5 0.5 0.5]]
+            >>> bias = paddle.ones(shape=[4], dtype="float32", name="bias")
+            >>> # bias: [1. 1. 1. 1.]
+            >>> y = paddle.nn.functional.linear(x, weight, bias)
+            >>> # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
+            >>> #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
+            >>> #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
@@ -2008,9 +2009,9 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
 
             >>> output = paddle.nn.functional.label_smooth(x)
             >>> print(output)
-            >>> # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            >>> #        [[[0.03333334, 0.93333334, 0.03333334],
-            >>> #          [0.93333334, 0.03333334, 0.93333334]]])
+            Tensor(shape=[1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[0.03333334, 0.93333334, 0.03333334],
+            [0.93333334, 0.03333334, 0.93333334]]])
     """
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
@@ -2081,7 +2082,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     .. code-block:: python
         :name: code-example1
 
-        # CPU or single GPU
+        >>> # CPU or single GPU
         >>> import paddle
         >>> num_classes = 20
         >>> batch_size = 10
@@ -2092,20 +2093,19 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         >>> print(label)
         >>> print(remapped_label)
         >>> print(sampled_class_index)
-
         >>> # the output is
-        >>> #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
-        >>> #       [11, 5 , 1 , 3 , 12, 2 , 15, 19, 18, 19])
-        >>> #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
-        >>> #       [4, 3, 0, 2, 5, 1, 6, 8, 7, 8])
-        >>> #Tensor(shape=[9], dtype=int64, place=CPUPlace, stop_gradient=True,
-        >>> #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
+        Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
+        [10, 3 , 11, 14, 15, 15, 7 , 12, 5 , 13])
+        Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
+        [3, 0, 4, 7, 8, 8, 2, 5, 1, 6])
+        Tensor(shape=[9], dtype=int64, place=Place(cpu), stop_gradient=True,
+        [3 , 5 , 7 , 10, 11, 12, 13, 14, 15])
 
     .. code-block:: python
         :name: code-example2
 
-        # required: distributed
-        # Multi GPU, test_class_center_sample.py
+        >>> # required: distributed
+        >>> # Multi GPU, test_class_center_sample.py
         >>> import paddle
         >>> import paddle.distributed as dist
         >>> strategy = dist.fleet.DistributedStrategy()
@@ -2125,23 +2125,21 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         >>> print(label)
         >>> print(remapped_label)
         >>> print(sampled_class_index)
-
         >>> #python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
         >>> # rank 0 output:
-        >>> #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-        >>> #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
-        >>> #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-        >>> #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
-        >>> #Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-        >>> #       [0, 2, 4, 8, 9, 3])
-
+        Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+        Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+        Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        [0, 2, 4, 8, 9, 3])
         >>> # rank 1 output:
-        >>> #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-        >>> #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
-        >>> #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-        >>> #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
-        >>> #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-        >>> #       [0, 1, 2, 3, 5, 7, 8])
+        Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+        Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+        Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        [0, 1, 2, 3, 5, 7, 8])
     """
     if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(

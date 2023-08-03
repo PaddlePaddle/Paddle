@@ -181,7 +181,7 @@ def flash_attention(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
+            >>> # required: skiptest
             >>> import paddle
 
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
@@ -339,7 +339,7 @@ def flash_attn_unpadded(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
+            >>> # required: skiptest
             >>> import paddle
 
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)

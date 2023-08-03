@@ -62,41 +62,39 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 
             >>> diag_embed_output1 = F.diag_embed(diag_embed_input)
             >>> print(diag_embed_output1)
-            >>> # Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
-            >>> #        [[0, 0, 0, 0, 0, 0],
-            >>> #         [0, 1, 0, 0, 0, 0],
-            >>> #         [0, 0, 2, 0, 0, 0],
-            >>> #         [0, 0, 0, 3, 0, 0],
-            >>> #         [0, 0, 0, 0, 4, 0],
-            >>> #         [0, 0, 0, 0, 0, 5]])
+            Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0],
+             [0, 0, 0, 0, 4, 0],
+             [0, 0, 0, 0, 0, 5]])
 
             >>> diag_embed_output2 = F.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
             >>> print(diag_embed_output2)
-            >>> # Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
-            >>> #        [[0, 0, 0, 0, 0, 0, 0],
-            >>> #         [0, 0, 0, 0, 0, 0, 0],
-            >>> #         [0, 1, 0, 0, 0, 0, 0],
-            >>> #         [0, 0, 2, 0, 0, 0, 0],
-            >>> #         [0, 0, 0, 3, 0, 0, 0],
-            >>> #         [0, 0, 0, 0, 4, 0, 0],
-            >>> #         [0, 0, 0, 0, 0, 5, 0]])
+            Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0, 0],
+             [0, 0, 0, 0, 4, 0, 0],
+             [0, 0, 0, 0, 0, 5, 0]])
 
             >>> diag_embed_input_2dim = paddle.reshape(diag_embed_input,[2,3])
             >>> print(diag_embed_input_2dim)
-            >>> # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            >>> #        [[0, 1, 2],
-            >>> #         [3, 4, 5]])
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 2],
+            [3, 4, 5]])
             >>> diag_embed_output3 = F.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
             >>> print(diag_embed_output3)
-            >>> # Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            >>> #        [[[0, 0, 0],
-            >>> #          [3, 0, 0]],
-
-            >>> #         [[0, 1, 0],
-            >>> #          [0, 4, 0]],
-
-            >>> #         [[0, 0, 2],
-            >>> #          [0, 0, 5]]])
+            Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0, 0, 0],
+              [3, 0, 0]],
+             [[0, 1, 0],
+              [0, 4, 0]],
+             [[0, 0, 2],
+              [0, 0, 5]]])
     """
     if not isinstance(input, Variable):
         input = assign(input)
@@ -206,10 +204,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             >>> mask = paddle.nn.functional.sequence_mask(lengths)
 
             >>> print(mask)
-            >>> # Tensor(shape=[3, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-            >>> #        [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            >>> #         [1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-            >>> #         [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
+            Tensor(shape=[3, 10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+             [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
 
     """
 
@@ -303,7 +301,7 @@ def gather_tree(ids, parents):
             >>> parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
 
             >>> final_sequences = paddle.nn.functional.gather_tree(ids, parents)
-            >>> # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+            >>> [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
 
     """
     if ids.ndim != 3:

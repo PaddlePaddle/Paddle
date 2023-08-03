@@ -51,10 +51,13 @@ def celu(x, alpha=1.0, name=None):
 
             >>> import paddle
             >>> import paddle.nn.functional as F
+
             >>> x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
             >>> out = F.celu(x, alpha=0.2)
-            >>> # [[-0.19865242,  6.        ],
-            >>> #  [ 1.        , 15.60000038]]
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
     """
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
@@ -105,8 +108,10 @@ def elu(x, alpha=1.0, name=None):
 
             >>> x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
             >>> out = F.elu(x, alpha=0.2)
-            >>> # [[-0.12642411  6.        ]
-            >>> #  [ 1.          15.6      ]]
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
     """
 
     if in_dynamic_mode():
@@ -173,11 +178,15 @@ def gelu(x, approximate=False, name=None):
 
             >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
             >>> out1 = F.gelu(x)
-            >>> # [[-0.15865529,  0.34573123],
-            >>> #  [ 0.84134471,  1.39978933]]
+            >>> print(out1)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
             >>> out2 = F.gelu(x, True)
-            >>> # [[-0.15880799,  0.34571400],
-            >>> #  [ 0.84119201,  1.39957154]]
+            >>> print(out2)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
     """
 
     if in_dynamic_mode():
@@ -227,7 +236,11 @@ def hardshrink(x, threshold=0.5, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([-1, 0.3, 2.5])
-            >>> out = F.hardshrink(x) # [-1., 0., 2.5]
+            >>> out = F.hardshrink(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1.       ,  0.       , 2.50000000])
+
 
     """
     if in_dynamic_mode():
@@ -278,7 +291,10 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([-1.5, 0.3, 2.5])
-            >>> out = F.hardtanh(x) # [-1., 0.3, 1.]
+            >>> out = F.hardtanh(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1.       , 0.30000001,  1.       ])
     """
 
     if in_dynamic_mode():
@@ -342,7 +358,10 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([-4., 5., 1.])
-            >>> out = F.hardsigmoid(x) # [0., 1., 0.666667]
+            >>> out = F.hardsigmoid(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.        , 0.66666669])
     """
 
     if in_dynamic_mode():
@@ -394,7 +413,10 @@ def hardswish(x, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([-4., 5., 1.])
-            >>> out = F.hardswish(x) # [0., 5., 0.666667]
+            >>> out = F.hardswish(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.       , 5.        , 0.66666669])
     """
     if in_dynamic_mode():
         return _C_ops.hardswish(x)
@@ -448,7 +470,8 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             >>> x = paddle.to_tensor([-2., 0., 1.])
             >>> out = F.leaky_relu(x)
             >>> print(out)
-            >>> # [-0.02, 0., 1.]
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.02000000,  0.        ,  1.        ])
 
     """
     if in_dynamic_mode():
@@ -506,21 +529,22 @@ def prelu(x, weight, data_format="NCHW", name=None):
             >>> import paddle.nn.functional as F
 
             >>> data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-            >>>                    [ 3.0, -4.0,  5.0, -6.0],
-            >>>                    [-7.0, -8.0,  8.0,  9.0]],
-            >>>                   [[ 1.0, -2.0, -3.0,  4.0],
-            >>>                    [-5.0,  6.0,  7.0, -8.0],
-            >>>                    [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+            ...                            [ 3.0, -4.0,  5.0, -6.0],
+            ...                            [-7.0, -8.0,  8.0,  9.0]],
+            ...                           [[ 1.0, -2.0, -3.0,  4.0],
+            ...                            [-5.0,  6.0,  7.0, -8.0],
+            ...                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
 
             >>> w = paddle.to_tensor([0.25], dtype='float32')
             >>> out = F.prelu(data, w)
             >>> print(out)
-            >>> # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
-            >>> #    [ 3.  , -1.  ,  5.  , -1.5 ],
-            >>> #    [-1.75, -2.  ,  8.  ,  9.  ]],
-            >>> #   [[ 1.  , -0.5 , -0.75,  4.  ],
-            >>> #    [-1.25,  6.  ,  7.  , -2.  ],
-            >>> #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[-0.50000000,  3.        , -1.        ,  5.        ],
+               [ 3.        , -1.        ,  5.        , -1.50000000],
+               [-1.75000000, -2.        ,  8.        ,  9.        ]],
+              [[ 1.        , -0.50000000, -0.75000000,  4.        ],
+               [-1.25000000,  6.        ,  7.        , -2.        ],
+               [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
     assert (
         len(weight.shape) == 0 or len(weight.shape) == 1
@@ -638,20 +662,20 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
             >>> import paddle.nn.functional as F
 
             >>> input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-            >>>                                 [ 3.0, -4.0,  5.0, -6.0],
-            >>>                                 [-7.0, -8.0,  8.0,  9.0]],
-            >>>                                 [[ 1.0, -2.0, -3.0,  4.0],
-            >>>                                 [-5.0,  6.0,  7.0, -8.0],
-            >>>                                 [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
-
+            ...                                    [ 3.0, -4.0,  5.0, -6.0],
+            ...                                    [-7.0, -8.0,  8.0,  9.0]],
+            ...                                   [[ 1.0, -2.0, -3.0,  4.0],
+            ...                                    [-5.0,  6.0,  7.0, -8.0],
+            ...                                    [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
             >>> out = F.rrelu(input_tensor, 0.1, 0.3)
             >>> print(out)
-            >>> #[[[[-0.20000899  3.         -0.8810822   5.        ]
-            >>> #   [ 3.         -0.55175185  5.         -1.0776101 ]
-            >>> #   [-1.0680687  -1.9896201   8.          9.        ]]
-            >>> #  [[ 1.         -0.5238267  -0.65515125  4.        ]
-            >>> #   [-1.3766339   6.          7.         -2.3465784 ]
-            >>> #   [ 6.          7.          8.          9.        ]]]]
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[-0.37894946,  3.        , -0.53791130,  5.        ],
+               [ 3.        , -1.07578683,  5.        , -1.34144068],
+               [-1.99465966, -0.88882494,  8.        ,  9.        ]],
+              [[ 1.        , -0.21715607, -0.79473138,  4.        ],
+               [-1.41272187,  6.        ,  7.        , -2.01925254],
+               [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
@@ -728,7 +752,8 @@ def relu(x, name=None):
             >>> x = paddle.to_tensor([-2, 0, 1], dtype='float32')
             >>> out = F.relu(x)
             >>> print(out)
-            # [0., 0., 1.]
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0., 0., 1.])
     """
 
     if in_dynamic_mode():
@@ -774,7 +799,10 @@ def log_sigmoid(x, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            >>> out = F.log_sigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
+            >>> out = F.log_sigmoid(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.31326166, -0.12692805, -0.04858733, -0.01814996])
     """
 
     if in_dynamic_mode():
@@ -833,17 +861,22 @@ def maxout(x, groups, axis=1, name=None):
             >>> import paddle
             >>> import paddle.nn.functional as F
 
+            >>> paddle.seed(2023)
             >>> x = paddle.rand([1, 2, 3, 4])
-            >>> # [[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
-            >>> #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
-            >>> #    [0.02879342 0.88725346 0.61093384 0.38833922]]
-            >>> #   [[0.5231306  0.03807496 0.91661984 0.15602879]
-            >>> #    [0.666127   0.616567   0.30741522 0.24044901]
-            >>> #    [0.7142536  0.7351477  0.31588817 0.23782359]]]]
+            >>> print(x)
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.86583614, 0.52014720, 0.25960937, 0.90525323],
+               [0.42400089, 0.40641287, 0.97020894, 0.74437362],
+               [0.51785129, 0.73292869, 0.97786582, 0.04315904]],
+              [[0.42639419, 0.71958369, 0.20811461, 0.19731510],
+               [0.38424349, 0.14603184, 0.22713774, 0.44607511],
+               [0.21657862, 0.67685395, 0.46460176, 0.92382854]]]])
             >>> out = F.maxout(x, groups=2)
-            >>> # [[[[0.5231306  0.22272532 0.91661984 0.2874594 ]
-            >>> #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
-            >>> #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
+            >>> print(out)
+            Tensor(shape=[1, 1, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.86583614, 0.71958369, 0.25960937, 0.90525323],
+               [0.42400089, 0.40641287, 0.97020894, 0.74437362],
+               [0.51785129, 0.73292869, 0.97786582, 0.92382854]]]])
     """
     if in_dynamic_mode():
         return _C_ops.maxout(x, groups, axis)
@@ -894,7 +927,8 @@ def relu6(x, name=None):
             >>> x = paddle.to_tensor([-1, 0.3, 6.5])
             >>> out = F.relu6(x)
             >>> print(out)
-            >>> # [0, 0.3, 6]
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.30000001, 6.        ])
     """
     threshold = 6.0
     if in_dynamic_mode():
@@ -951,7 +985,9 @@ def selu(
             >>> x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
             >>> out = F.selu(x)
             >>> print(out)
-            >>> # [[0, 1.050701],[2.101402, 3.152103]]
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 1.05070102],
+             [2.10140204, 3.15210295]])
     """
     if scale <= 1.0:
         raise ValueError(
@@ -1004,7 +1040,10 @@ def silu(x, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            >>> out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+            >>> out = F.silu(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
     if in_dynamic_mode():
@@ -1115,21 +1154,31 @@ def softmax(x, axis=-1, dtype=None, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-            >>>             [3.0, 4.0, 5.0, 6.0],
-            >>>             [7.0, 8.0, 8.0, 9.0]],
-            >>>             [[1.0, 2.0, 3.0, 4.0],
-            >>>             [5.0, 6.0, 7.0, 8.0],
-            >>>             [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            ...                        [3.0, 4.0, 5.0, 6.0],
+            ...                        [7.0, 8.0, 8.0, 9.0]],
+            ...                       [[1.0, 2.0, 3.0, 4.0],
+            ...                        [5.0, 6.0, 7.0, 8.0],
+            ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
             >>> out1 = F.softmax(x)
             >>> out2 = F.softmax(x, dtype='float64')
-            >>> # out1's data type is float32; out2's data type is float64
-            >>> # out1 and out2's value is as follows:
-            >>> # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            >>> #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            >>> #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-            >>> # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            >>> #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            >>> #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+            >>> #out1's data type is float32; out2's data type is float64
+            >>> #out1 and out2's value is as follows:
+            >>> print(out1)
+            >>> print(out2)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.07232949, 0.19661194, 0.19661194, 0.53444666]],
+             [[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428]]])
+            Tensor(shape=[2, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+             [[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
@@ -1218,7 +1267,10 @@ def softplus(x, beta=1, threshold=20, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
-            >>> out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+            >>> out = F.softplus(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
     """
 
     if in_dynamic_mode():
@@ -1270,8 +1322,8 @@ def softshrink(x, threshold=0.5, name=None):
             >>> x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
             >>> out = F.softshrink(x)
             >>> print(out)
-            >>> # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            >>> #        [-0.39999998,  0.        ,  0.        ,  0.30000001])
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.39999998,  0.        ,  0.        ,  0.30000001])
     """
     if threshold < 0:
         raise ValueError(
@@ -1321,8 +1373,8 @@ def softsign(x, name=None):
             >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             >>> out = F.softsign(x)
             >>> print(out)
-            >>> # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            >>> #        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
     if in_dynamic_mode():
         return _C_ops.softsign(x)
@@ -1360,8 +1412,8 @@ def swish(x, name=None):
             >>> x = paddle.to_tensor([-2., 0., 1.])
             >>> out = F.swish(x)
             >>> print(out)
-            >>> # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            >>> #        [-0.23840584,  0.        ,  0.73105854])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.23840584,  0.        ,  0.73105860])
     """
     if in_dynamic_mode():
         return _C_ops.swish(x)
@@ -1407,7 +1459,10 @@ def mish(x, name=None):
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([-5., 0., 5.])
-            >>> out = F.mish(x) # [-0.03357624, 0., 4.99955208]
+            >>> out = F.mish(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.03357624,  0.        ,  4.99955177])
     """
     if in_dynamic_mode():
         return _C_ops.mish(x, 20)
@@ -1445,8 +1500,8 @@ def tanhshrink(x, name=None):
             >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             >>> out = F.tanhshrink(x)
             >>> print(out)
-            >>> # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            >>> #        [-0.02005106, -0.00262468,  0.00033200,  0.00868741])
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
     """
     if in_dynamic_mode():
         return _C_ops.tanh_shrink(x)
@@ -1494,8 +1549,8 @@ def thresholded_relu(x, threshold=1.0, name=None):
             >>> x = paddle.to_tensor([2., 0., 1.])
             >>> out = F.thresholded_relu(x)
             >>> print(out)
-            >>> # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            >>> #        [2., 0., 0.])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2., 0., 0.])
     """
 
     if in_dynamic_mode():
@@ -1563,24 +1618,33 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
             >>> import paddle
             >>> import paddle.nn.functional as F
-
             >>> x = [[[-2.0, 3.0, -4.0, 5.0],
-            >>>       [3.0, -4.0, 5.0, -6.0],
-            >>>       [-7.0, -8.0, 8.0, 9.0]],
-            >>>      [[1.0, -2.0, -3.0, 4.0],
-            >>>       [-5.0, 6.0, 7.0, -8.0],
-            >>>       [6.0, 7.0, 8.0, 9.0]]]
+            ...       [3.0, -4.0, 5.0, -6.0],
+            ...       [-7.0, -8.0, 8.0, 9.0]],
+            ...      [[1.0, -2.0, -3.0, 4.0],
+            ...       [-5.0, 6.0, 7.0, -8.0],
+            ...       [6.0, 7.0, 8.0, 9.0]]]
             >>> x = paddle.to_tensor(x)
             >>> out1 = F.log_softmax(x)
             >>> out2 = F.log_softmax(x, dtype='float64')
-            >>> # out1's data type is float32; out2's data type is float64
-            >>> # out1 and out2's value is as follows:
-            >>> # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
-            >>> #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
-            >>> #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
-            >>> #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
-            >>> #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
-            >>> #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+            >>> #out1's data type is float32; out2's data type is float64
+            >>> #out1 and out2's value is as follows:
+            >>> print(out1)
+            >>> print(out2)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[-7.12783957 , -2.12783957 , -9.12783909 , -0.12783945 ],
+              [-2.12705135 , -9.12705135 , -0.12705141 , -11.12705135],
+              [-16.31326103, -17.31326103, -1.31326187 , -0.31326184 ]],
+             [[-3.05181193 , -6.05181217 , -7.05181217 , -0.05181199 ],
+              [-12.31326675, -1.31326652 , -0.31326646 , -15.31326675],
+              [-3.44018984 , -2.44018984 , -1.44018972 , -0.44018975 ]]])
+            Tensor(shape=[2, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[[-7.12783948 , -2.12783948 , -9.12783948 , -0.12783948 ],
+              [-2.12705141 , -9.12705141 , -0.12705141 , -11.12705141],
+              [-16.31326180, -17.31326180, -1.31326180 , -0.31326180 ]],
+             [[-3.05181198 , -6.05181198 , -7.05181198 , -0.05181198 ],
+              [-12.31326640, -1.31326640 , -0.31326640 , -15.31326640],
+              [-3.44018970 , -2.44018970 , -1.44018970 , -0.44018970 ]]])
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
@@ -1657,15 +1721,14 @@ def glu(x, axis=-1, name=None):
 
             >>> import paddle
             >>> from paddle.nn import functional as F
-
             >>> x = paddle.to_tensor(
-            >>>     [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-            >>>         [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
-            >>> )
+            ...     [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
+            ...         [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+            ... )
             >>> print(F.glu(x))
-            >>> # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            >>> #        [[-0.15216254, -0.90048921],
-            >>> #         [-1.05778778, -0.46985325]])
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15216254, -0.90048921],
+            [-1.05778778, -0.46985325]])
 
     """
     check_variable_and_dtype(
@@ -1734,11 +1797,12 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
             >>> temperature = 0.01
             >>> gumbel_softmax = F.gumbel_softmax(logits, temperature)
             >>> print(gumbel_softmax)
-            >>> # out's value is as follows:
-            >>> # [[0.00000001, 1.        , 0.00000000, 0.00000000, 0.00000006, 0.00000000],
-            >>> # [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
-            >>> # [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],
-            >>> # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
+            >>> #out's value is as follows:
+            Tensor(shape=[4, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.00000000, 0.00000000, 1.        , 0.00000000, 0.00000000, 0.00000000],
+             [0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        , 0.00000000],
+             [0.00000000, 0.00000000, 1.        , 0.00000000, 0.00000000, 0.00000000],
+             [1.        , 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000]])
 
     """
     if in_dynamic_mode():
