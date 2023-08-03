@@ -236,13 +236,6 @@ void HandleForSpecialOp(
     var->GetMutable<phi::DenseTensor>();
     auto value = op->result(0);
 
-    value_2_var_name->emplace(value, fetch_var_name);
-
-    auto id = var_name_2_id->size();
-    var_name_2_id->emplace(fetch_var_name, id);
-    variable_list->push_back(var);
-    variable_2_var_name->emplace(var, fetch_var_name);
-
     AddNewData(value,
                fetch_var_name,
                var,
