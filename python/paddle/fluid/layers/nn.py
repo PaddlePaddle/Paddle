@@ -54,3 +54,5 @@ from ..data_feeder import (
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 from collections.abc import Iterable
+
+__all__ = []
