@@ -49,7 +49,8 @@ void BuildScope(const ir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list);
+                std::vector<paddle::framework::Variable*>* variable_list,
+                std::vector<::ir::Value>* parameter_values);
 
 void BuildRuntimeContext(
     ir::Operation* op,
@@ -285,7 +286,6 @@ void BuildPhiContext(ir::Operation* op,
   }
 
   // TODO(phlrain): use var type instead of op name
-
   for (size_t i = 0; i < op->num_results(); ++i) {
     ir::Value out_ptr = op->result(i);
     auto name = name_map.at(out_ptr);

@@ -82,8 +82,7 @@ class ConstantFoldingPattern : public ir::RewritePattern {
           fetch_var_names.resize(index + 1);
         }
 
-        fetch_var_names[index] = "ConstantFoldPrefix_" +
-                                 (*it)
+        fetch_var_names[index] = (*it)
                                      ->attributes()
                                      .at("name")
                                      .dyn_cast<ir::StrAttribute>()
