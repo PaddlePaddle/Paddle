@@ -57,7 +57,7 @@ class ContextManager {
   }
 
  private:
-  ContextManager() {}
+  ContextManager() = default;
   DISABLE_COPY_AND_ASSIGN(ContextManager);
 
   std::mutex ctx_mtx_;

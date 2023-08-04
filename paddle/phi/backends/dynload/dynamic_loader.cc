@@ -103,7 +103,7 @@ namespace phi {
 namespace dynload {
 
 struct PathNode {
-  PathNode() {}
+  PathNode() = default;
   std::string path = "";
 };
 

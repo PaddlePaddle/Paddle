@@ -47,7 +47,7 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
       comm_event_(place),
       task_place_(place) {}
 
-ProcessGroupNCCL::NCCLTask::~NCCLTask() {}
+ProcessGroupNCCL::NCCLTask::~NCCLTask() = default;
 
 bool ProcessGroupNCCL::NCCLTask::IsCompleted() { return comm_event_.Query(); }
 

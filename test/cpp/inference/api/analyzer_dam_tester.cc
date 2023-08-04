@@ -35,7 +35,7 @@ struct DataRecord {
   size_t batch_size{1};
   size_t num_samples;  // total number of samples
 
-  DataRecord() {
+  DataRecord() {  // NOLINT
     turns = new std::vector<std::vector<
         int64_t>>[FLAGS_max_turn_num];  // turns data : FLAGS_max_turn_num
     turns_mask = new std::vector<std::vector<
@@ -48,7 +48,7 @@ struct DataRecord {
     Load(path);
   }
 
-  ~DataRecord() {
+  ~DataRecord() {  // NOLINT
     delete[] turns;
     delete[] turns_mask;
   }

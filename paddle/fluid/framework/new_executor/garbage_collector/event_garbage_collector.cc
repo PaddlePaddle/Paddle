@@ -37,7 +37,8 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
   }
 }
 
-InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
+InterpreterCoreEventGarbageCollector::
+    ~InterpreterCoreEventGarbageCollector() {  // NOLINT
   queue_.reset(nullptr);
 }
 

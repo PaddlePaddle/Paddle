@@ -53,7 +53,7 @@ void CreateLstmGrad(phi::funcs::LstmMetaGrad<T>* lstm_grad) {
 
 template <typename T>
 struct GradCell {
-  virtual ~GradCell() {}
+  virtual ~GradCell() = default;
   virtual void operator()(const CPUContext& dev_ctx UNUSED,
                           DenseTensor* gate_tensor UNUSED,
                           DenseTensor* state_tensor UNUSED,
@@ -355,7 +355,7 @@ struct LSTMGradCell : GradCell<T> {
 template <typename T, typename GradCellType>
 struct GradLayer {
   explicit GradLayer(const GradCellType& cell) : cell_(cell) {}
-  virtual ~GradLayer() {}
+  virtual ~GradLayer() = default;
   void run_rnn_grad_function(
       const CPUContext& dev_ctx,
       const DenseTensor* input,
@@ -690,7 +690,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
   // explicit SingleGradLayer(GradCellType& cell) : cell_(cell) {}
   explicit SingleGradLayer(const GradCellType& cell)
       : GradLayer<T, GradCellType>(cell) {}
-  virtual ~SingleGradLayer() {}
+  virtual ~SingleGradLayer() = default;
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* input,
                   const DenseTensor* output,
@@ -802,7 +802,7 @@ template <typename T, typename GradCellType>
 struct BidirGradLayer : GradLayer<T, GradCellType> {
   explicit BidirGradLayer(const GradCellType& cell)
       : GradLayer<T, GradCellType>(cell) {}
-  virtual ~BidirGradLayer() {}
+  virtual ~BidirGradLayer() = default;
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* input,
                   const DenseTensor* output,

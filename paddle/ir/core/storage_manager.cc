@@ -66,7 +66,7 @@ struct ParametricStorageManager {
   std::function<void(StorageBase *)> destroy_;
 };
 
-StorageManager::StorageManager() {}
+StorageManager::StorageManager() = default;
 
 StorageManager::~StorageManager() = default;
 

@@ -1205,7 +1205,7 @@ Node *GraphShard::find_node(uint64_t id) {
   return iter == node_location.end() ? nullptr : bucket[iter->second];
 }
 
-GraphTable::~GraphTable() {
+GraphTable::~GraphTable() {  // NOLINT
 #ifdef PADDLE_WITH_GPU_GRAPH
   clear_graph();
 #endif

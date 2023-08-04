@@ -23,7 +23,7 @@ namespace tensorrt {
 
 class ExprWrapper {
  public:
-  ExprWrapper() {}
+  ExprWrapper() = default;
   ExprWrapper(const nvinfer1::IDimensionExpr* expr,
               nvinfer1::IExprBuilder* expr_builder) {
     this->expr = expr;
