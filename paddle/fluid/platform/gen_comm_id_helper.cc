@@ -260,13 +260,13 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(port);
 
-  char* ip = NULL;
-  struct hostent* hp = NULL;
+  char* ip = nullptr;
+  struct hostent* hp = nullptr;
 
   // sleep for get_host_by_name_time seconds.
   for (int i = 0; 2 * i < FLAGS_get_host_by_name_time; i++) {
     hp = gethostbyname(host.c_str());
-    if (hp != NULL) {
+    if (hp != nullptr) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -277,7 +277,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
       platform::errors::InvalidArgument("Fail to get host by name %s.", host));
 
   int i = 0;
-  while (hp->h_addr_list[i] != NULL) {
+  while (hp->h_addr_list[i] != nullptr) {
     ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
     VLOG(3) << "gethostbyname  host:" << host << "  ->ip: " << ip;
     break;

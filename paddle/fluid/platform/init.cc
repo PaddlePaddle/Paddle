@@ -348,7 +348,7 @@ void DisableSignalHandler() {
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;
-    sigaction(signal_number, &sig_action, NULL);
+    sigaction(signal_number, &sig_action, nullptr);
   }
 #endif
 }
@@ -367,10 +367,10 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
                                 GENERIC_WRITE,
                                 0,
-                                NULL,
+                                nullptr,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL,
-                                NULL);
+                                nullptr);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -384,8 +384,8 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                      hDumpFile,
                      MiniDumpWithPrivateReadWriteMemory,
                      &dumpInfo,
-                     NULL,
-                     NULL);
+                     nullptr,
+                     nullptr);
   CloseHandle(hDumpFile);
 }
 

@@ -83,7 +83,7 @@ static int close_open_fds_internal() {
       break;
     }
 
-    linux_dirent* entry = NULL;
+    linux_dirent* entry = nullptr;
 
     for (int offset = 0; offset < bytes; offset += entry->d_reclen) {
       entry = reinterpret_cast<linux_dirent*>(buffer + offset);
@@ -141,9 +141,9 @@ static int shell_popen_fork_internal(const char* real_cmd,
   close_open_fds_internal();
 
 #if defined(PADDLE_WITH_MUSL)
-  PCHECK(execl("/bin/sh", "sh", "-c", real_cmd, NULL) >= 0);
+  PCHECK(execl("/bin/sh", "sh", "-c", real_cmd, nullptr) >= 0);
 #else
-  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
+  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, nullptr) >= 0);
 #endif
   // Note: just for compilation. the child don't run this line.
   _exit(0);
@@ -180,7 +180,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
   bool do_write = mode == "w";
   if (!(do_read || do_write)) {
     *err_no = -1;
-    return NULL;
+    return nullptr;
   }
 
   VLOG(3) << "Opening pipe[" << cmd << "] with mode[" << mode << "]";
@@ -190,7 +190,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
     *err_no = -1;
-    return NULL;
+    return nullptr;
   }
   int parent_end = 0;
   int child_end = 0;
@@ -213,11 +213,11 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   close(child_end);
 
-  FILE* fp = NULL;
-  if ((fp = fdopen(parent_end, mode.c_str())) == NULL) {
+  FILE* fp = nullptr;
+  if ((fp = fdopen(parent_end, mode.c_str())) == nullptr) {
     *err_no = -1;
     signal(SIGCHLD, old_handler);
-    return NULL;
+    return nullptr;
   }
 
   return {fp, [cmd, child_pid, old_handler, err_no, status](FILE* fp) {
@@ -282,7 +282,7 @@ static int shell_p2open_fork_internal(const char* real_cmd,
   }
 
   close_open_fds_internal();
-  if (execl("/bin/sh", "sh", "-c", real_cmd, NULL) < 0) {
+  if (execl("/bin/sh", "sh", "-c", real_cmd, nullptr) < 0) {
     return -1;
   }
   exit(127);
@@ -303,10 +303,10 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
   int pipein_fds[2];
   int pipeout_fds[2];
   if (pipe(pipein_fds) != 0) {
-    return {NULL, NULL};
+    return {nullptr, nullptr};
   }
   if (pipe(pipeout_fds) != 0) {
-    return {NULL, NULL};
+    return {nullptr, nullptr};
   }
 
   int child_pid =
@@ -318,7 +318,7 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
   fcntl(pipeout_fds[1], F_SETFD, FD_CLOEXEC);
 
   std::shared_ptr<int> child_life = {
-      NULL, [child_pid, cmd](void*) {
+      nullptr, [child_pid, cmd](void*) {
         if (shell_verbose()) {
           LOG(INFO) << "Closing bidirectional pipe[" << cmd << "]";
         }
@@ -341,9 +341,9 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
       }};
 
   FILE* in_fp;
-  PCHECK((in_fp = fdopen(pipein_fds[0], "r")) != NULL);
+  PCHECK((in_fp = fdopen(pipein_fds[0], "r")) != nullptr);
   FILE* out_fp;
-  PCHECK((out_fp = fdopen(pipeout_fds[1], "w")) != NULL);
+  PCHECK((out_fp = fdopen(pipeout_fds[1], "w")) != nullptr);
   return {{in_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }},
           {out_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }}};
 #endif
