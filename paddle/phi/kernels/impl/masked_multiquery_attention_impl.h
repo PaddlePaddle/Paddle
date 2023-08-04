@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// #ifndef PADDLE_WITH_HIP
 #pragma once
 
 #include "glog/logging.h"
@@ -60,6 +61,8 @@ struct Masked_multiquery_attention_params {
   // TODO(wangxi): optimize with input_lengths and max_input_len?
   // [bsz, 1, 1, time_step(cache_seq_length)+1]
   const T *attn_mask;
+  // [bsz, seq_len]
+  const int *cum_offsets;
   int mask_length;
   // whether to broadcast num_heads(2nd) dimension for attn_mask
   // in MMHA, if false, attn_mask shape should be
@@ -88,6 +91,7 @@ struct Masked_multiquery_attention_params {
   bool split_kv;
   int timestep;  // cache_seq_length
   int max_seq_length;
+  int seq_len;
   // 1.f / sqrt(Dh)
   float inv_sqrt_dh;
 
@@ -121,6 +125,8 @@ struct V_vec_acum_fp32_<uint4> {
   using Type = Float8_;
 };
 
+
+#ifdef ENABLE_BF16
 template <>
 struct V_vec_acum_fp32_<__nv_bfloat162> {
   using Type = float2;
@@ -133,6 +139,7 @@ template <>
 struct V_vec_acum_fp32_<bf16_8_t> {
   using Type = Float8_;
 };
+#endif  // ENABLE_BF16
 
 #endif
 
@@ -398,7 +405,9 @@ __global__ void masked_multiquery_attention_kernel(
   const int tid = threadIdx.x;
   const int bhi_kv = bi * params.head_kv + hi % params.head_kv;
   const int bi_seq_len_offset = bi * params.max_seq_length;
-
+  const int ti =
+       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
+   const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
   float qk_max = -FLT_MAX;
   float qk = 0;
 
@@ -851,10 +860,14 @@ __global__ void masked_multiquery_attention_kernel(
     //                    out);
     V_vec tmp_out;
     convert_from_float(tmp_out, out);
-    store_func.template store<V_vec>(tmp_out, bhi * Dh + vi);
+    // store_func.template store<V_vec>(tmp_out, bhi * Dh + vi);
+    store_func.template store<V_vec>(tmp_out,
+                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #else
     // *reinterpret_cast<V_vec *>(&params.out[bhi * Dh + vi]) = out;
-    store_func.template store<V_vec>(out, bhi * Dh + vi);
+    // store_func.template store<V_vec>(out, bhi * Dh + vi);
+    store_func.template store<V_vec>(out,
+                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
   }
 

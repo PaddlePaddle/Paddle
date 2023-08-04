@@ -19,22 +19,20 @@ from paddle.framework import in_dynamic_mode
 
 def masked_multiquery_attention(
     x,
+    cache_kv=None,
     kv_input=None,
-    bias=None,
     src_mask=None,
+    cum_offsets=None,
     sequence_lengths=None,
     rotary_tensor=None,
     beam_cache_offset=None,
-    cache_kv=None,
     qkv_out_scale=None,
     out_linear_shift=None,
     out_linear_smooth=None,
-    beam_size=1,
+    seq_len=1,
     rotary_emb_dims=0,
     kv_split=False,
     head_kv=1,
-    mask_broadcast_num_heads=True,
-    compute_bias=False,
     use_neox_rotary_style=False,
     out_linear_in_scale=-1,
     quant_round_type=1,
@@ -115,22 +113,20 @@ def masked_multiquery_attention(
     if in_dynamic_mode():
         return _C_ops.masked_multiquery_attention_(
             x,
+            cache_kv,
             kv_input,
-            bias,
             src_mask,
+            cum_offsets,
             sequence_lengths,
             rotary_tensor,
-            beam_cache_offset,
-            cache_kv,
+            beam_cache_offset,        
             qkv_out_scale,
             out_linear_shift,
             out_linear_smooth,
-            beam_size,
+            seq_len,
             rotary_emb_dims,
             kv_split,
             head_kv,
-            mask_broadcast_num_heads,
-            compute_bias,
             use_neox_rotary_style,
             out_linear_in_scale,
             quant_round_type,
@@ -140,24 +136,25 @@ def masked_multiquery_attention(
 
     helper = LayerHelper('masked_multiquery_attention', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    cache_kv_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    beam_cache_offset_out = helper.create_variable_for_type_inference(
-        dtype="int"
-    )
     inputs = {}
     inputs['x'] = x
+    inputs['cache_kv'] = cache_kv
     if kv_input:
         inputs['kv_input'] = kv_input
-    if bias:
-        inputs['bias'] = bias
     if src_mask:
         inputs['src_mask'] = src_mask
     if sequence_lengths:
         inputs['sequence_lengths'] = sequence_lengths
     if rotary_tensor:
         inputs['rotary_tensor'] = rotary_tensor
+    beam_cache_offset_flag = False
     if beam_cache_offset:
         inputs['beam_cache_offset'] = beam_cache_offset
+        beam_cache_offset_flag = True
+    else:
+        beam_cache_offset = helper.create_variable_for_type_inference(
+            dtype="int"
+        )
     if qkv_out_scale:
         inputs['qkv_out_scale'] = qkv_out_scale
     if out_linear_shift:
@@ -167,20 +164,18 @@ def masked_multiquery_attention(
 
     outputs = {
         'out': out,
-        'cache_kv_out': cache_kv_out,
-        'beam_cache_offset_out': beam_cache_offset_out,
+        'cache_kv_out': cache_kv,
+        'beam_cache_offset_out': beam_cache_offset,
     }
     helper.append_op(
-        type='masked_multiquery_attention_',
+        type='masked_multiquery_attention',
         inputs=inputs,
         outputs=outputs,
         attrs={
-            'beam_size': beam_size,
+            'seq_len': seq_len,
             'rotary_emb_dims': rotary_emb_dims,
             'kv_split': kv_split,
             'head_kv': head_kv,
-            'mask_broadcast_num_heads': mask_broadcast_num_heads,
-            'compute_bias': compute_bias,
             'use_neox_rotary_style': use_neox_rotary_style,
             'out_linear_in_scale': out_linear_in_scale,
             'quant_round_type': quant_round_type,
@@ -189,7 +184,7 @@ def masked_multiquery_attention(
         },
     )
     return (
-        (out, cache_kv, beam_cache_offset_out)
-        if beam_cache_offset
+        (out, cache_kv, beam_cache_offset)
+        if beam_cache_offset_flag
         else (out, cache_kv)
     )
