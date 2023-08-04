@@ -1120,6 +1120,9 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       eager_gil_scoped_release guard;
       out = strided_slice_ad_func(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
+      if (!decrease_axis_tmp.empty()) {
+        out = squeeze_ad_func(out, decrease_axis_tmp);
+      }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Slice is only support slice and strided_slice, but we got %s which "
