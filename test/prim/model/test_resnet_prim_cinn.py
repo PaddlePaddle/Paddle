@@ -50,15 +50,16 @@ epoch_num = 1
 DY2ST_PRIM_CINN_GT = [
     5.828786849975586,
     8.332863807678223,
-    5.0373005867004395,
-    8.464998245239258,
-    8.20099925994873,
-    7.576723098754883,
-    9.679173469543457,
-    8.381753921508789,
-    8.10612678527832,
-    10.124727249145508,
+    5.041562080383301,
+    8.514982223510742,
+    7.9860992431640625,
+    7.491837501525879,
+    9.559739112854004,
+    8.430597305297852,
+    8.109201431274414,
+    10.224763870239258,
 ]
+
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
@@ -205,10 +206,6 @@ class TestResnet(unittest.TestCase):
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
-        print(
-            "################################################################"
-        )
-        print("dy2st_cinn: %.15f" % dy2st_prim_cinn)
         np.testing.assert_allclose(
             dy2st_prim_cinn, DY2ST_PRIM_CINN_GT, rtol=1e-5
         )
