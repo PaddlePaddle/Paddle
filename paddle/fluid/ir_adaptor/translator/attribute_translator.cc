@@ -62,7 +62,7 @@ class AttributeVisitor {
     return ir::DoubleAttribute::get(ctx, d);
   }
 
-  virtual ir::Attribute operator()(std::string str) {
+  virtual ir::Attribute operator()(const std::string& str) {
     VLOG(10) << "translating string";
     return ir::StrAttribute::get(ctx, str);
   }

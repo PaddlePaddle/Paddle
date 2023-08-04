@@ -86,9 +86,9 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   }
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
-  for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
-    input_shapes[it->first] = shape_ctx.GetInputsDim(it->first);
-    dtypes[it->first] = shape_ctx.GetInputsVarType(it->first);
+  for (const auto &input : ctx.inputs) {
+    input_shapes[input.first] = shape_ctx.GetInputsDim(input.first);
+    dtypes[input.first] = shape_ctx.GetInputsVarType(input.first);
   }
 
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
@@ -108,10 +108,8 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   }
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
-  for (auto it = kernel_signature.input_names.begin();
-       it != kernel_signature.input_names.end();
-       it++) {
-    std::string input_name(*it);
+  for (auto input_name_char : kernel_signature.input_names) {
+    std::string input_name(input_name_char);
     if (shape_ctx.HasInputs(input_name)) {
       input_shapes[input_name] = shape_ctx.GetInputsDim(input_name);
       dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
@@ -717,15 +715,11 @@ void ResetProfiler() {
   MemEvenRecorder::Instance().Flush();
   std::lock_guard<std::mutex> guard(
       phi::ProfilerHelper::g_all_event_lists_mutex);
-  for (auto it = phi::ProfilerHelper::g_all_event_lists.begin();
-       it != phi::ProfilerHelper::g_all_event_lists.end();
-       ++it) {
-    (*it)->Clear();
+  for (auto &all_event_list : phi::ProfilerHelper::g_all_event_lists) {
+    all_event_list->Clear();
   }
-  for (auto it = phi::ProfilerHelper::g_all_mem_event_lists.begin();
-       it != phi::ProfilerHelper::g_all_mem_event_lists.end();
-       ++it) {
-    (*it)->Clear();
+  for (auto &all_mem_event_list : phi::ProfilerHelper::g_all_mem_event_lists) {
+    all_mem_event_list->Clear();
   }
 }
 
@@ -801,10 +795,8 @@ std::vector<std::vector<Event>> GetAllEvents() {
   std::lock_guard<std::mutex> guard(
       phi::ProfilerHelper::g_all_event_lists_mutex);
   std::vector<std::vector<Event>> result;
-  for (auto it = phi::ProfilerHelper::g_all_event_lists.begin();
-       it != phi::ProfilerHelper::g_all_event_lists.end();
-       ++it) {
-    result.emplace_back((*it)->Reduce());
+  for (auto &all_event_list : phi::ProfilerHelper::g_all_event_lists) {
+    result.emplace_back(all_event_list->Reduce());
   }
   return result;
 }
@@ -822,8 +814,8 @@ std::string OpName(const framework::VariableNameMap &name_map,
     return "";
 
   std::string ret = type_name + "%";
-  for (auto it = name_map.begin(); it != name_map.end(); it++) {
-    auto name_outputs = it->second;
+  for (const auto &map_item : name_map) {
+    auto name_outputs = map_item.second;
     if (!name_outputs.empty()) {
       ret = ret + name_outputs[0];
       break;

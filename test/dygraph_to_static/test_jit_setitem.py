@@ -178,5 +178,24 @@ class TestCase11(TestSetItemBase):
         return y, x_grad, value_grad
 
 
+class TestCase12(TestSetItemBase):
+    # Test combind-indexing
+    def init_func(self):
+        def foo(x, value):
+            y = x + 1
+            y[[0, 1], 1, :2] = value
+            return y
+
+        return foo
+
+    def run_dygrah(self, func):
+        x = self.init_data()
+        value = paddle.ones((32,))
+        value.stop_gradient = False
+        y = func(x, value)
+        x_grad, value_grad = paddle.grad(y, [x, value])
+        return y, x_grad, value_grad
+
+
 if __name__ == '__main__':
     unittest.main()

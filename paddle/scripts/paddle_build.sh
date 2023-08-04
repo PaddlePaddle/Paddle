@@ -624,6 +624,7 @@ EOF
 
 
 function run_mac_test() {
+    export FLAGS_NEW_IR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -770,6 +771,7 @@ EOF
 }
 
 function run_linux_cpu_test() {
+    export FLAGS_NEW_IR_OPTEST=True
     export FLAGS_CI_PIPELINE=py3
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -3961,6 +3963,7 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         export FLAGS_NEW_IR_OPTEST=True
+        export FLAGS_NEW_IR_DY2ST_TEST=True
         parallel_test
         check_coverage
         ;;

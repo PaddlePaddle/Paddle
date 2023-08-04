@@ -143,7 +143,7 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == "Fake_var") {
+    if (var_names[i] == framework::kFakeVarName) {
       continue;
     }
     auto *var = scope->Var(var_names[i]);
@@ -162,7 +162,8 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     // because we can't findthem in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     if (var_names[i] == framework::kEmptyVarName ||
-        var_names[i] == "Fake_var" || !global_block.HasVar(var_names[i])) {
+        var_names[i] == framework::kFakeVarName ||
+        !global_block.HasVar(var_names[i])) {
       VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
