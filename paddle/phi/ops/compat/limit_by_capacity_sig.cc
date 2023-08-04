@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/verify.h"
-#include "paddle/ir/core/operation.h"
-namespace ir {
-void Verify(Operation *op, bool verify_recursively) {
-  op->Verify();
-  if (!verify_recursively) return;
-  for (size_t index = 0; index < op->num_regions(); ++index) {
-    auto &region = op->region(index);
-    for (auto block : region) {
-      for (auto op_item : *block) {
-        Verify(op_item, verify_recursively);
-      }
-    }
-  }
+#include "paddle/phi/core/compat/op_utils.h"
+
+namespace phi {
+
+KernelSignature LimitByCapacityOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature(
+      "limit_by_capacity", {"expert_count", "capacity"}, {"n_worker"}, {"Out"});
 }
-}  // namespace ir
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(limit_by_capacity,
+                           phi::LimitByCapacityOpArgumentMapping);

@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/verify.h"
-#include "paddle/ir/core/operation.h"
-namespace ir {
-void Verify(Operation *op, bool verify_recursively) {
-  op->Verify();
-  if (!verify_recursively) return;
-  for (size_t index = 0; index < op->num_regions(); ++index) {
-    auto &region = op->region(index);
-    for (auto block : region) {
-      for (auto op_item : *block) {
-        Verify(op_item, verify_recursively);
-      }
-    }
-  }
-}
-}  // namespace ir
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void LimitByCapacityKernel(const Context& dev_ctx,
+                           const DenseTensor& expert_count,
+                           const DenseTensor& capacity,
+                           int n_worker,
+                           DenseTensor* Out);
+
+}  // namespace phi

@@ -2748,9 +2748,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_low_precision_op_list", [] {
     py::dict op_list;
     auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
+    for (auto &op_item : list_op) {
+      auto op_name = (op_item.first).c_str();
+      auto counts = op_item.second;
       op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
                          std::to_string(counts.bf16_called_) + "," +
                          std::to_string(counts.fp32_called_) + "," +
