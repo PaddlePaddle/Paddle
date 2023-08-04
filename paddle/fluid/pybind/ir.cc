@@ -22,8 +22,11 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
+
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/block.h"
@@ -113,6 +116,15 @@ void BindOperation(py::module *m) {
              }
              return op_list;
            })
+      .def("attrs",
+           [](Operation &self) -> py::dict {
+             py::dict attrs_dict;
+             for (auto &pair : self.attributes()) {
+               attrs_dict[pair.first.c_str()] =
+                   paddle::dialect::GetAttributeData(pair.second);
+             }
+             return attrs_dict;
+           })
       .def("get_input_names",
            [](Operation &self) -> py::list {
              py::list op_list;
@@ -168,6 +180,39 @@ void BindOpOperand(py::module *m) {
       });
 }
 
+bool GetStopGradient(const OpResult &self) {
+  auto *defining_op = self.owner();
+  if (defining_op->HasAttribute(kAttrStopGradients)) {
+    auto stop_gradients = defining_op->attribute(kAttrStopGradients)
+                              .dyn_cast<ir::ArrayAttribute>()
+                              .AsVector();
+    return stop_gradients[self.GetResultIndex()]
+        .dyn_cast<ir::BoolAttribute>()
+        .data();
+  } else {
+    return false;
+  }
+}
+
+void SetStopGradient(const OpResult &self, bool stop_gradient) {
+  auto *defining_op = self.owner();
+  std::vector<ir::Attribute> stop_gradients;
+  if (defining_op->HasAttribute(kAttrStopGradients)) {
+    stop_gradients = defining_op->attribute(kAttrStopGradients)
+                         .dyn_cast<ir::ArrayAttribute>()
+                         .AsVector();
+  } else {
+    stop_gradients = std::vector<ir::Attribute>(
+        defining_op->num_results(),
+        ir::BoolAttribute::get(ir::IrContext::Instance(), false));
+  }
+  stop_gradients[self.GetResultIndex()] =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), stop_gradient);
+  defining_op->set_attribute(
+      kAttrStopGradients,
+      ir::ArrayAttribute::get(ir::IrContext::Instance(), stop_gradients));
+}
+
 void BindOpResult(py::module *m) {
   py::class_<OpResult> op_result(*m, "OpResult");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
@@ -177,39 +222,12 @@ void BindOpResult(py::module *m) {
            return_value_policy::reference)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
-      .def("set_stop_gradient",
-           [](OpResult &self, bool stop_gradient) {
-             auto *defining_op = self.owner();
-             std::vector<ir::Attribute> stop_gradients;
-             if (defining_op->HasAttribute(kAttrStopGradients)) {
-               stop_gradients = defining_op->attribute(kAttrStopGradients)
-                                    .dyn_cast<ir::ArrayAttribute>()
-                                    .AsVector();
-             } else {
-               stop_gradients = std::vector<ir::Attribute>(
-                   defining_op->num_results(),
-                   ir::BoolAttribute::get(ir::IrContext::Instance(), false));
-             }
-             stop_gradients[self.GetResultIndex()] = ir::BoolAttribute::get(
-                 ir::IrContext::Instance(), stop_gradient);
-             defining_op->set_attribute(
-                 kAttrStopGradients,
-                 ir::ArrayAttribute::get(ir::IrContext::Instance(),
-                                         stop_gradients));
-           })
-      .def("get_stop_gradient", [](OpResult &self) {
-        auto *defining_op = self.owner();
-        if (defining_op->HasAttribute(kAttrStopGradients)) {
-          auto stop_gradients = defining_op->attribute(kAttrStopGradients)
-                                    .dyn_cast<ir::ArrayAttribute>()
-                                    .AsVector();
-          return stop_gradients[self.GetResultIndex()]
-              .dyn_cast<ir::BoolAttribute>()
-              .data();
-        } else {
-          return false;
-        }
-      });
+      .def_property(
+          "stop_gradient",
+          [](OpResult &self) { return GetStopGradient(self); },
+          [](OpResult &self, bool stop_gradient) {
+            SetStopGradient(self, stop_gradient);
+          });
 }
 
 void BindType(py::module *m) {

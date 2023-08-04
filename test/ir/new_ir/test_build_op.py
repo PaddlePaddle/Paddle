@@ -64,7 +64,12 @@ class TestBuildOp(unittest.TestCase):
 
         with paddle.ir.core.program_guard(newir_program):
             ir.set_insertion_point(tanh_op)
-            out = paddle.mean(add_out)
+            full_out = paddle.tensor.fill_constant(
+                shape=[4, 4], dtype="float", value=2
+            )
+            divide_out = paddle.divide(full_out, full_out)
+            sum_out = paddle.sum(divide_out)
+            out = paddle.mean(sum_out)
             tanh_operand.set_source(out)
 
         print(newir_program)

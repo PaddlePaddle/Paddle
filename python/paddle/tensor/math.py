@@ -850,6 +850,8 @@ def divide(x, y, name=None):
     if in_dynamic_mode():
         return _C_ops.divide(x, y)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
@@ -1410,6 +1412,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.sum(x, axis, dtype, keepdim)
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
 
