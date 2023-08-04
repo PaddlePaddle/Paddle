@@ -17,8 +17,9 @@ import math
 
 import numpy as np
 
+from paddle.nn.initializer.lazy_init import lazy_init_helper
+
 from ...fluid.framework import default_main_program, in_dygraph_mode
-from ...fluid.lazy_init import lazy_init_helper
 
 __all__ = []
 

@@ -66,8 +66,8 @@ def optimizer_setting(params, parameter_list=None):
             parameter_list=parameter_list,
         )
     else:
-        optimizer = paddle.optimizer.Momentum(
-            learning_rate=fluid.layers.cosine_decay(
+        optimizer = fluid.optimizer.Momentum(
+            learning_rate=paddle.optimizer.lr.cosine_decay(
                 learning_rate=lr, step_each_epoch=step, epochs=num_epochs
             ),
             momentum=momentum_rate,

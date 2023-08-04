@@ -42,7 +42,7 @@ from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401, F403
-from .fluid.lazy_init import LazyGuard  # noqa: F401
+from .nn.initializer.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import finfo  # noqa: F401
