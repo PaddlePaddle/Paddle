@@ -51,16 +51,6 @@ if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
 endif()
 
-# TODO(@caizhi): optimize me instead of hard code
-if(WITH_MUSA)
-  set(DEPENDENT_LIBRARIES "")
-  list(APPEND DEPENDENT_LIBRARIES "/usr/local/musa/lib/libmudnn.so")
-  list(APPEND DEPENDENT_LIBRARIES "/usr/local/musa/lib/libmccl.so")
-  list(APPEND DEPENDENT_LIBRARIES "/usr/local/musa/lib/libmusart.so")
-  list(APPEND DEPENDENT_LIBRARIES "/usr/local/musa/lib/libmublas.so")
-  list(APPEND PHI_DEPS ${DEPENDENT_LIBRARIES})
-endif()
-
 if(WITH_ASCEND_CL)
   list(APPEND PHI_DEPS npu_hccl)
 endif()

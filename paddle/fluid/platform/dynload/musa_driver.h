@@ -14,11 +14,44 @@ limitations under the License. */
 
 #pragma once
 
+#include <musa.h>
+
+#include <mutex>  // NOLINT
+
+#include "paddle/phi/backends/dynload/musa_driver.h"
+
 namespace paddle {
 namespace platform {
 namespace dynload {
 
 extern bool HasCUDADriver();
+
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_MUSA_WRAP(__name)      \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
+  extern DynLoad__##__name __name
+
+/**
+ * include all needed musa driver functions
+ **/
+#define MUSA_ROUTINE_EACH(__macro)                      \
+  __macro(muInit);                                      \
+  __macro(muDriverGetVersion);                          \
+  __macro(muGetErrorString);                            \
+  __macro(muModuleLoadData);                            \
+  __macro(muModuleGetFunction);                         \
+  __macro(muModuleUnload);                              \
+  __macro(muOccupancyMaxActiveBlocksPerMultiprocessor); \
+  __macro(muLaunchKernel);                              \
+  __macro(muCtxCreate);                                 \
+  __macro(muCtxGetCurrent);                             \
+  __macro(muDeviceGetCount);                            \
+  __macro(muDevicePrimaryCtxGetState);                  \
+  __macro(muDeviceGetAttribute);                        \
+  __macro(muDeviceGet)
+
+MUSA_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_MUSA_WRAP);
+
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_MUSA_WRAP
 
 }  // namespace dynload
 }  // namespace platform

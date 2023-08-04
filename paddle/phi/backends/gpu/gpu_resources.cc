@@ -268,9 +268,9 @@ void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream) {
   phi::dynload::rocblas_create_handle(blas_handle);
   phi::dynload::rocblas_set_stream(*blas_handle, stream);
 #elif defined(PADDLE_WITH_MUSA)
-  PADDLE_RETRY_CUDA_SUCCESS(mublasCreate(blas_handle));
+  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::mublasCreate(blas_handle));
   PADDLE_RETRY_CUDA_SUCCESS(
-      mublasSetStream(*blas_handle, stream));
+      phi::dynload::mublasSetStream(*blas_handle, stream));
 #else   // PADDLE_WITH_MUSA
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(blas_handle));
   PADDLE_RETRY_CUDA_SUCCESS(
@@ -286,7 +286,7 @@ void DestroyBlasHandle(blasHandle_t handle) {
   }
 #elif defined(PADDLE_WITH_MUSA)
   if (handle != nullptr) {
-    mublasDestroy(handle);
+    phi::dynload::mublasDestroy(handle);
     handle = nullptr;
   }
 #else

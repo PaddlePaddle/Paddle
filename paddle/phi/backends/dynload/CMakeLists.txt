@@ -34,7 +34,8 @@ if(WITH_MUSA)
   list(
     APPEND
     MUSA_SRCS
-    mudnn.cc)
+    mudnn.cc
+    mublas.cc)
 endif()
 
 # There is no macOS version of NCCL.
