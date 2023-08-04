@@ -289,7 +289,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // Add new block for TensorRTEngineOP
   const framework::BlockDesc &main_block =
       program_desc->Block(framework::kRootBlockIndex);
-  // const framework::BlockDesc& main_block = program_desc->Block(0);
   framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
 
   // A fake block desc.
@@ -338,33 +337,15 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     // So we reserved a name for later use when casting INT64 -> INT32 or
     // FP64->FP32. We must check whether scope has had the same name var!
     if (x->Var()->GetDataType() == framework::proto::VarType::INT64) {
-      std::string tmp_name = x->Name() + "_cast_to_INT32";
       LOG(WARNING)
           << "tensorrt_subgraph's input named " << x->Name()
           << " having int64 dtype in pdmodel description, we will cast them to "
              "int32 dtype to feed them into paddle-trt.";
-      /*
-            PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                              nullptr,
-                              platform::errors::InvalidArgument(
-                                  "The  var name %s has exists in scope.",
-         tmp_name));
-      */
-      scope->Var(tmp_name);
     } else if (x->Var()->GetDataType() == framework::proto::VarType::FP64) {
-      std::string tmp_name = x->Name() + "_cast_to_FP32";
       LOG(WARNING) << "tensorrt_subgraph's input named " << x->Name()
                    << " having float64 dtype in pdmodel description, we will "
                       "cast them to "
                       "float32 dtype to feed them into paddle-trt.";
-      /*
-            PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                              nullptr,
-                              platform::errors::InvalidArgument(
-                                  "The  var name %s has exists in scope.",
-         tmp_name));
-      */
-      scope->Var(tmp_name);
     }
   }
 
@@ -507,32 +488,20 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     if (static_cast<framework::proto::VarType_Type>(
             map_origin_outputs_dtype[name]) ==
         framework::proto::VarType::INT64) {
-      std::string tmp_name = name + "_cast_to_INT64";
       LOG(WARNING) << "tensorrt_subgraph's output named " << name
                    << " having int64 dtype in pdmodel description, but in fact "
                       "it is int32 "
                       "dtype after executing this tensorrt_subgraph, so we "
                       "need cast them into int64.";
-      PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                        nullptr,
-                        platform::errors::InvalidArgument(
-                            "The  var name %s has exists in scope.", tmp_name));
-      scope->Var(tmp_name);
     } else if (static_cast<framework::proto::VarType_Type>(
                    map_origin_outputs_dtype[name]) ==
                framework::proto::VarType::FP64) {
-      std::string tmp_name = name + "_cast_to_FP64";
       LOG(WARNING)
           << "tensorrt_subgraph's output named " << name
           << " having float64 dtype in pdmodel description, but in fact "
              "it is float32 "
              "dtype after executing this tensorrt_subgraph, so we "
              "need cast them into float64.";
-      PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                        nullptr,
-                        platform::errors::InvalidArgument(
-                            "The  var name %s has exists in scope.", tmp_name));
-      scope->Var(tmp_name);
     }
   }
   PADDLE_ENFORCE_EQ(output_mapping.empty(),
@@ -580,6 +549,37 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("use_inspector", use_inspector);
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
   op_desc->SetAttr("enable_low_precision_io", enable_low_precision_io);
+
+  if (!trt_tuned_dynamic_shape) {
+    std::vector<std::string> dynamic_shape_names;
+    std::vector<int> dynamic_shape_lens;
+    std::vector<int> min_input_shape_vector;
+    std::vector<int> max_input_shape_vector;
+    std::vector<int> opt_input_shape_vector;
+    for (const auto &it : min_input_shape) {
+      dynamic_shape_names.push_back(it.first);
+      dynamic_shape_lens.push_back(it.second.size());
+      for (const auto &value : it.second) {
+        min_input_shape_vector.push_back(value);
+      }
+    }
+    for (const auto &it : max_input_shape) {
+      for (const auto &value : it.second) {
+        max_input_shape_vector.push_back(value);
+      }
+    }
+    for (const auto &it : optim_input_shape) {
+      for (const auto &value : it.second) {
+        opt_input_shape_vector.push_back(value);
+      }
+    }
+
+    op_desc->SetAttr("dynamic_shape_names", dynamic_shape_names);
+    op_desc->SetAttr("dynamic_shape_lens", dynamic_shape_lens);
+    op_desc->SetAttr("min_input_shape_vector", min_input_shape_vector);
+    op_desc->SetAttr("max_input_shape_vector", max_input_shape_vector);
+    op_desc->SetAttr("opt_input_shape_vector", opt_input_shape_vector);
+  }
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.

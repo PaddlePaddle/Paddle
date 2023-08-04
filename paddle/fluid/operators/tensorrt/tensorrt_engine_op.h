@@ -15,6 +15,7 @@
 #pragma once
 
 #ifdef PADDLE_WITH_CUDA
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -624,8 +625,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                  t.numel() * sizeof(int),
                                  nullptr);
           } else if (t.dtype() == phi::DataType::INT64) {
-            auto int32_tensor = scope.FindVar(x + "_cast_to_INT32")
-                                    ->GetMutable<phi::DenseTensor>();
+            std::string x_t = x + "_cast_to_INT32";
+            if (scope.FindVar(x_t) == nullptr) {
+              const_cast<framework::Scope *>(&scope)->Var(x_t);
+            }
+            auto int32_tensor =
+                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
             *int32_tensor = phi::Cast<int64_t>(
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
@@ -658,16 +663,22 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (t.dtype() == phi::DataType::FLOAT32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (t.dtype() == phi::DataType::FLOAT64) {
-        auto fp32_tensor =
-            scope.FindVar(x + "_cast_to_FP32")->GetMutable<phi::DenseTensor>();
+        std::string x_t = x + "_cast_to_FP32";
+        if (scope.FindVar(x_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(x_t);
+        }
+        auto fp32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
         *fp32_tensor = phi::Cast<double>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             t,
             phi::DataType::FLOAT32);
         buffers[bind_index] = static_cast<void *>(fp32_tensor->data<float>());
       } else if (t.dtype() == phi::DataType::INT64) {
-        auto int32_tensor =
-            scope.FindVar(x + "_cast_to_INT32")->GetMutable<phi::DenseTensor>();
+        std::string x_t = x + "_cast_to_INT32";
+        if (scope.FindVar(x_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(x_t);
+        }
+        auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
         *int32_tensor = phi::Cast<int64_t>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             t,
@@ -782,8 +793,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto y = Outputs("Ys")[i];
         auto *fluid_v = scope.FindVar(y);
         auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
-        auto int32_tensor =
-            scope.FindVar(y + "_cast_to_INT64")->GetMutable<phi::DenseTensor>();
+        std::string y_t = y + "_cast_to_INT64";
+        if (scope.FindVar(y_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(y_t);
+        }
+        auto int32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
         int32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<int32_t>(int32_tensor);
         framework::TensorCopy(*fluid_t, dev_place, dev_ctx, int32_tensor);
@@ -795,8 +809,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto y = Outputs("Ys")[i];
         auto *fluid_v = scope.FindVar(y);
         auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
-        auto fp32_tensor =
-            scope.FindVar(y + "_cast_to_FP64")->GetMutable<phi::DenseTensor>();
+        std::string y_t = y + "_cast_to_FP64";
+        if (scope.FindVar(y_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(y_t);
+        }
+        auto fp32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
         fp32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<float>(fp32_tensor);
         framework::TensorCopy(*fluid_t, dev_place, dev_ctx, fp32_tensor);
@@ -833,6 +850,47 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                              &params.min_shape_tensor,
                                              &params.max_shape_tensor,
                                              &params.optim_shape_tensor);
+      } else {
+        if (HasAttr("dynamic_shape_names") &&
+            HasAttr("min_input_shape_vector") &&
+            HasAttr("max_input_shape_vector") &&
+            HasAttr("opt_input_shape_vector")) {
+          std::vector<std::string> dynamic_shape_names;
+          std::vector<std::vector<int>> min_input_shapes;
+          std::vector<std::vector<int>> max_input_shapes;
+          std::vector<std::vector<int>> opt_input_shapes;
+          std::vector<int> dynamic_shape_lens;
+          dynamic_shape_names =
+              Attr<std::vector<std::string>>("dynamic_shape_names");
+          std::vector<int> min_shapes =
+              Attr<std::vector<int>>("min_input_shape_vector");
+          std::vector<int> max_shapes =
+              Attr<std::vector<int>>("max_input_shape_vector");
+          std::vector<int> opt_shapes =
+              Attr<std::vector<int>>("opt_input_shape_vector");
+          dynamic_shape_lens = Attr<std::vector<int>>("dynamic_shape_lens");
+          int idx = 0;
+          for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
+            std::vector<int> tmp1, tmp2, tmp3;
+            for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
+              tmp1.push_back(min_shapes[idx]);
+              tmp2.push_back(max_shapes[idx]);
+              tmp3.push_back(opt_shapes[idx++]);
+            }
+            min_input_shapes.emplace_back(tmp1);
+            max_input_shapes.emplace_back(tmp2);
+            opt_input_shapes.emplace_back(tmp3);
+          }
+
+          for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
+            params.min_input_shape.insert(
+                std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
+            params.max_input_shape.insert(
+                std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
+            params.optim_input_shape.insert(
+                std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
+          }
+        }
       }
 
       trt_engine_ =
