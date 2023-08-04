@@ -60,7 +60,7 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
                                               bool is_pipe,
                                               const std::string& mode,
                                               size_t buffer_size,
-                                              int* err_no = 0) {
+                                              int* err_no = nullptr) {
   std::shared_ptr<FILE> fp = nullptr;
 
   if (!is_pipe) {
