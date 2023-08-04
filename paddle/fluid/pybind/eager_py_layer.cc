@@ -393,8 +393,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
 
-    for (auto it = inplace_tensors.begin(); it != inplace_tensors.end(); ++it) {
-      auto inplace_tensor = *it;
+    for (auto inplace_tensor : inplace_tensors) {
       auto inplace_tensor_autograd_meta =
           egr::EagerUtils::autograd_meta(inplace_tensor);
       PADDLE_ENFORCE_EQ(!inplace_tensor_autograd_meta->StopGradient() &&

@@ -456,11 +456,11 @@ void DeviceWorker::DumpField(const Scope& scope,
   }
 
   // #pragma omp parallel for
-  for (size_t i = 0; i < ars.size(); i++) {
-    if (ars[i].length() == 0) {
+  for (auto& ar : ars) {
+    if (ar.length() == 0) {
       continue;
     }
-    writer_ << ars[i];
+    writer_ << ar;
   }
   writer_.Flush();
 }

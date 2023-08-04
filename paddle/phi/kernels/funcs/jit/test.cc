@@ -990,18 +990,18 @@ void TestKernelSgd() {
           T* o_data = out.data();
           tgt(&lr, param_data, grad_data, rows_data, o_data, &attr);
           // only the selected rows should be equal
-          for (size_t i = 0; i < rows.size(); ++i) {
-            ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
-                        oref_data + rows[i] * attr.grad_width,
+          for (auto row : rows) {
+            ExpectEQ<T>(o_data + row * attr.grad_width,
+                        oref_data + row * attr.grad_width,
                         attr.grad_width);
           }
 
           // inplace
           std::copy(param.begin(), param.end(), out.begin());
           tgt(&lr, o_data, grad_data, rows_data, o_data, &attr);
-          for (size_t i = 0; i < rows.size(); ++i) {
-            ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
-                        oref_data + rows[i] * attr.grad_width,
+          for (auto row : rows) {
+            ExpectEQ<T>(o_data + row * attr.grad_width,
+                        oref_data + row * attr.grad_width,
                         attr.grad_width);
           }
         };
@@ -1194,9 +1194,9 @@ TEST(JITKernel_helper, pack_weights) {
   int acc = 0;
   for (int g : groups) {
     g = g * block;
-    for (int k = 0; k < K; ++k) {
+    for (auto& item : src) {
       for (int i = 0; i < g; ++i) {
-        *(ref + offset) = src[k][i + acc];
+        *(ref + offset) = item[i + acc];
         offset++;
       }
     }
