@@ -181,14 +181,9 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
       continue;
     }
 
-    std::set<std::string> set_input_var_names;
-    for (const auto& n : (*op_desc)->Inputs()) {
-      const auto& input_var_names = n.second;
-
-      for (const auto& var_name : input_var_names) {
-        set_input_var_names.insert(var_name);
-      }
-    }
+    const auto& input_var_names = (*op_desc)->InputArgumentNames();
+    std::unordered_set<std::string> set_input_var_names(input_var_names.begin(),
+                                                        input_var_names.end());
 
     for (const auto& n : (*op_desc)->Outputs()) {
       const auto& output_var_names = n.second;
