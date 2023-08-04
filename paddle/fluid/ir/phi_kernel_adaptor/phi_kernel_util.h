@@ -83,10 +83,11 @@ void BuildPhiContext(ir::Operation* op,
           << inner_scope << "]";
 
   auto attr_map = op->attributes();
-  std::cerr
-      << "op name "
-      << op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString()
-      << std::endl;
+  // std::cerr
+  //     << "op name "
+  //     <<
+  //     op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString()
+  //     << std::endl;
 
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
 

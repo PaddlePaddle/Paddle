@@ -84,6 +84,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     hookfuncs_ = hookfuncs;
   }
+  void SetScopePrefix(const std::string& prefix) override;
+  const std::string& GetScopePrefix() const override;
 
  private:
   // build graph

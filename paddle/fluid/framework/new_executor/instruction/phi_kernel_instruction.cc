@@ -112,6 +112,15 @@ OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
+  auto kernel_key = op->attributes()
+                        .at("kernel_key")
+                        .dyn_cast<dialect::KernelAttribute>()
+                        .data();
+  if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
+      phi::AllocationType::CPU) {
+    return OpFuncType::kCpuSync;
+  }
+
   PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
                     true,
                     phi::errors::Fatal("Unsupported current place %s", place));
@@ -281,8 +290,11 @@ std::vector<int> GetValueIds(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   std::vector<int> ids;
+  std::cerr << "11" << std::endl;
   std::string var_name = value_2_var_name.at(value);
+  std::cerr << "22 " << var_name << std::endl;
   ids.push_back(var_name_2_id.at(var_name));
+  std::cerr << "33" << std::endl;
   // NOTE(zhangbo): Value maybe a VariableRefArray
   auto var = inner_scope->FindVar(var_name);
   if (var->IsType<paddle::framework::VariableRefArray>()) {
@@ -301,6 +313,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
     const std::map<std::string, int>& var_name_2_id,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
+  std::cerr << "init id" << std::endl;
   std::unordered_map<ir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
     ir::Value value = op->operand_source(i);
@@ -312,6 +325,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               phi_op_name_));
+      std::cerr << "i " << i << std::endl;
       std::vector<int> inputs_id = GetValueIds(value,
                                                inner_scope,
                                                value_2_var_name,
@@ -320,6 +334,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
       inputs.emplace(value, inputs_id);
     }
   }
+  std::cerr << "befor set " << std::endl;
   SetInputs(inputs);
   VLOG(8) << "finish process inputs_index";
   std::unordered_map<ir::Value, std::vector<int>> outputs;

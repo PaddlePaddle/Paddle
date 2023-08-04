@@ -96,6 +96,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             std::move(kernel_program),
                                             scope_,
                                             execution_config));
+      auto prefix = interpretercores_.back()->Impl()->GetScopePrefix();
+
+      for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
+        fetch_var_names_[i] = prefix + "_" + fetch_var_names_[i];
+      }
     } else {
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,

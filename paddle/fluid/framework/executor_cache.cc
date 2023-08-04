@@ -402,11 +402,23 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
   }
 
   std::set<std::string> set_parameter_names;
+  std::set<std::string> set_backward_inputs;
   for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
     for (const auto &n : op_desc->Inputs()) {
       const auto &input_var_names = n.second;
       for (const auto &var_name : input_var_names) {
-        set_parameter_names.insert(var_name);
+        set_backward_inputs.insert(var_name);
+      }
+    }
+  }
+
+  for (auto op_desc : forward_global_block->Program()->Block(0).AllOps()) {
+    for (const auto &n : op_desc->Outputs()) {
+      const auto &output_var_names = n.second;
+      for (const auto &var_name : output_var_names) {
+        if (set_backward_inputs.count(var_name)) {
+          set_parameter_names.insert(var_name);
+        }
       }
     }
   }
@@ -419,6 +431,8 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     if (!set_output_names.count(name)) {
       continue;
     }
+
+    std::cerr << "shadow output " << name << std::endl;
 
     auto op_desc = local_program.MutableBlock(0)->AppendOp();
     op_desc->SetType("shadow_output");

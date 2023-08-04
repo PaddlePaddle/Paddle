@@ -137,7 +137,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter || is_unseen_variable;
+        bool need_get_parameter_op = is_unseen_variable;
         if (need_get_parameter_op) {
           ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
@@ -177,13 +177,30 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
+    if ((*op_desc)->Type() == "feed_with_place") {
+      continue;
+    }
+
+    std::set<std::string> set_input_var_names;
+    for (const auto& n : (*op_desc)->Inputs()) {
+      const auto& input_var_names = n.second;
+
+      for (const auto& var_name : input_var_names) {
+        set_input_var_names.insert(var_name);
+      }
+    }
+
     for (const auto& n : (*op_desc)->Outputs()) {
       const auto& output_var_names = n.second;
+
       for (const auto& var_name : output_var_names) {
         bool need_set_parameter_op = (parameter_name_mappings_.find(var_name) !=
                                       parameter_name_mappings_.end());
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
+
+        need_set_parameter_op &= (!set_input_var_names.count(var_name));
+        // need_set_parameter_op = false;
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
           if (!defining_op_result) {

@@ -56,11 +56,18 @@ void AddNewData(ir::Value value,
                 std::vector<paddle::framework::Variable*>* variable_list) {
   value_2_var_name->emplace(value, name);
   variable_2_var_name->emplace(var, name);
+  std::cerr << "add " << name << "\t" << std::endl;
   if (var_name_2_id->count(name) == 0) {
     auto id = var_name_2_id->size();
+    std::cerr << "emplace name " << name << "\t" << id << std::endl;
+    std::cerr << "befor insert" << var_name_2_id->size() << "\t"
+              << variable_list->size() << std::endl;
     var_name_2_id->emplace(name, id);
     variable_list->push_back(var);
+    std::cerr << "after insert" << var_name_2_id->size() << "\t"
+              << variable_list->size() << std::endl;
   }
+  std::cerr << "fin " << std::endl;
   PADDLE_ENFORCE_EQ(
       variable_list->size(),
       var_name_2_id->size(),
@@ -230,7 +237,7 @@ void HandleForSpecialOp(
     auto fetch_src_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
-    auto fetch_var_name = fetch_src_name + "@fetch";
+    auto fetch_var_name = var_name_prefix + "_" + fetch_src_name + "@fetch";
     auto* var = const_cast<paddle::framework::Scope*>(inner_scope->root())
                     ->Var(fetch_var_name);
     var->GetMutable<phi::DenseTensor>();
@@ -325,8 +332,13 @@ void HandleForSpecialOp(
                           .AsString();
 
     auto value = op->operand_source(0);
+    if (!value) {
+      return;
+    }
     // change opreand name to param_name
+    std::cerr << "before get orign " << param_name << std::endl;
     auto orig_name = value_2_var_name->at(value);
+    std::cerr << "failed" << std::endl;
 
     if (inner_scope->root()->FindVar(param_name) == nullptr) {
       const_cast<paddle::framework::Scope*>(inner_scope->root())
@@ -334,6 +346,8 @@ void HandleForSpecialOp(
       VLOG(6) << "set_parameter rename var: " << orig_name << " -> "
               << param_name;
     }
+    std::cerr << "set parameter " << param_name << "\t" << orig_name
+              << std::endl;
     RenameData(value,
                param_name,
                orig_name,
@@ -376,6 +390,7 @@ void HandleForSpecialOp(
     auto value = op->result(0);
 
     paddle::framework::Variable* var = inner_scope->FindVar(param_name);
+    std::cerr << "get parmet name " << param_name << std::endl;
     AddNewData(value,
                param_name,
                var,

@@ -336,7 +336,7 @@ class ResNetHelper:
                         #         self.dy_state_dict_save_path + '.pdparams',
                         #     )
                         # avoid dataloader throw abort signaal
-                        data_loader._reset()
+                        # data_loader._reset()
                         break
 
         return total_loss.numpy()

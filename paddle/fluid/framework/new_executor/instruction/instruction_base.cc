@@ -57,6 +57,8 @@ void InstructionBase::WaitEvent(const Place& place) const {
   if (platform::is_cpu_place(place)) {
     return;
   }
+  // std::cerr << "events_to_wait_ size " << Name() << "\t" <<
+  // events_to_wait_.size() << std::endl;
   for (const EventInter& event_iter : events_to_wait_) {
     platform::RecordEvent record(
         "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
