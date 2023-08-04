@@ -342,8 +342,8 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
     refs_[i]->ResetVariable(var_list[i]);
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); i++) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 }
 
@@ -495,8 +495,7 @@ void NewIRInterpreter::BuildInplace() {
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    auto& instr = vec_instruction_[i];
+  for (auto& instr : vec_instruction_) {
     auto* op_base = instr.OpBase();
     if (!op_base->Info().infer_inplace_) {
       continue;
@@ -1493,9 +1492,8 @@ void NewIRInterpreter::TraceInstructionList(
   }
 
   // TODO(phlrain) use orignal order for now, use better dependecy
-  for (size_t instr_id = 0; instr_id < vec_instruction_.size(); ++instr_id) {
+  for (auto& instr_node : vec_instruction_) {
     /// auto instr_id = trace_execute_order_[idx];
-    auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
 
@@ -1535,9 +1533,9 @@ void NewIRInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
 
 void NewIRInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    if (vec_instruction_[i].KernelType() == OpFuncType::kCpuSync ||
-        vec_instruction_[i].KernelType() == OpFuncType::kGpuSync) {
+  for (auto& ins : vec_instruction_) {
+    if (ins.KernelType() == OpFuncType::kCpuSync ||
+        ins.KernelType() == OpFuncType::kGpuSync) {
       sync_op_num = sync_op_num + 1;
     }
   }
@@ -1611,27 +1609,24 @@ void NewIRInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
-  for (auto it = ir_program_->block()->begin();
-       it != ir_program_->block()->end();
-       ++it) {
+  for (auto& op : *ir_program_->block()) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
-    if ((*it)->dialect()->name() == "pd_kernel") {
-      auto op_name = (*it)
-                         ->attributes()
+    if (op->dialect()->name() == "pd_kernel") {
+      auto op_name = op->attributes()
                          .at("op_name")
                          .dyn_cast<::ir::StrAttribute>()
                          .AsString();
       if (op_name == "builtin.combine" || op_name == "pd.feed" ||
           op_name == "builtin.set_parameter" ||
           op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-          op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
+          op_name == "pd.data" || op_name == "pd.shaddow_output") {
         VLOG(6) << "skip process " << op_name;
         continue;
       }
       vec_instruction_base_.emplace_back(
           std::make_unique<PhiKernelInstruction>(op_idx++,
                                                  place_,
-                                                 (*it),
+                                                 op,
                                                  scope_,
                                                  local_scope_,
                                                  value_2_var_name_,
