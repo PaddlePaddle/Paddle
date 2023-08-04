@@ -45,16 +45,16 @@ epoch_num = 1
 # note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the fluid version.
 # The results in ci as as follows:
 DY2ST_CINN_GT = [
-    5.82879,
-    8.340765,
-    4.998947,
-    8.461368,
-    8.033733,
-    7.352843,
-    9.833618,
-    8.223792,
-    8.195696,
-    10.508797,
+    5.828789710998535,
+    8.340764999389648,
+    4.998946666717529,
+    8.4613676071167,
+    8.033733367919922,
+    7.352842807769775,
+    9.8336181640625,
+    8.22379207611084,
+    8.195695877075195,
+    10.508796691894531,
 ]
 
 if core.is_compiled_with_cuda():
