@@ -3267,13 +3267,15 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 
             >>> loss = F.hinge_embedding_loss(input, label, margin=1.0, reduction='none')
             >>> print(loss)
-            Tensor([[0., -2., 0.],
-                    [0., -1., 2.],
-                    [1., 1., 1.]])
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[ 0., -2.,  0.],
+                    [ 0., -1.,  2.],
+                    [ 1.,  1.,  1.]])
 
             >>> loss = F.hinge_embedding_loss(input, label, margin=1.0, reduction='mean')
             >>> print(loss)
-            Tensor(0.22222222)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.22222224)
     """
 
     if reduction not in ['sum', 'mean', 'none']:
@@ -3356,16 +3358,18 @@ def cosine_embedding_loss(
 
             >>> output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean')
             >>> print(output)
-            0.21155193
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.21155193)
 
             >>> output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='sum')
             >>> print(output)
-            0.42310387
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.42310387)
 
             >>> output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='none')
             >>> print(output)
-            [0.42310387, 0.        ]
-
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.42310387, 0.        ])
     """
     if len(label.shape) != 1:
         raise ValueError(
@@ -3492,13 +3496,13 @@ def triplet_margin_with_distance_loss(
             >>> negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
             >>> loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='none')
             >>> print(loss)
-            Tensor([0.        , 0.57496738, 0.        ])
-
+            Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.57496595, 0.        ])
 
             >>> loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='mean')
             >>> print(loss)
-            Tensor(0.19165580)
-
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.19165532)
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -3642,12 +3646,13 @@ def triplet_margin_loss(
             >>> negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
             >>> loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='none')
             >>> print(loss)
-            Tensor([0.        , 0.57496738, 0.        ])
+            Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.57496595, 0.        ])
 
             >>> loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='mean')
             >>> print(loss)
-            Tensor(0.19165580)
-
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.19165532)
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
