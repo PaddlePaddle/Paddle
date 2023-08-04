@@ -87,7 +87,7 @@ void IrPrinter::Visit(const UIntImm *x) {
   }
 }
 void IrPrinter::Visit(const FloatImm *x) {
-  static std::ostringstream ss;
+  std::ostringstream ss;
   if (x->type().is_float16()) {
     if (std::isinf(x->value)) {
       ss << "cinn::common::raw_uint16_to_float16(0x7c00)";
@@ -123,7 +123,6 @@ void IrPrinter::Visit(const FloatImm *x) {
     LOG(FATAL) << "Not support float type: " << x->type();
   }
   str_ += ss.str();
-  ss.str("");
 }
 void IrPrinter::Visit(const StringImm *x) {
   str_ += "\"";
@@ -607,10 +606,9 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
       // TODO(LiuYang): Here absl should be removed? here need to string?
       absl::visit(
           [this](auto &&arg) {
-            static std::ostringstream ss;
+            std::ostringstream ss;
             ss << arg;
             this->str_ += ss.str();
-            ss.str("");
           },
           kv.second);
       comma = true;
