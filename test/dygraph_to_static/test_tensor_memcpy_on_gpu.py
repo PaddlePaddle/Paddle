@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -34,7 +35,13 @@ class TestTensorCopyToCpuOnDefaultGPU(unittest.TestCase):
         return x1.place, x2.place, x2.numpy()
 
     def test_tensor_cpu_on_default_gpu(self):
-        paddle.fluid.framework._set_expected_place(paddle.CUDAPlace(0))
+        if paddle.fluid.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(
+                int(os.environ.get('FLAGS_selected_gpus', 0))
+            )
+        else:
+            return
+        paddle.fluid.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
