@@ -132,6 +132,8 @@ class Instruction {
 
   int size() { return fn_ptrs_.size(); }
 
+  std::string DumpInstruction();
+
   std::vector<std::vector<std::string>> GetInArgs() { return in_args_; }
   std::vector<std::vector<std::string>> GetOutArgs() { return out_args_; }
   void ClearInArgs() { in_args_.clear(); }
