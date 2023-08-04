@@ -73,7 +73,7 @@ def one_hot(x, num_classes, name=None):
         .. code-block:: python
 
             >>> import paddle
-            # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
+            >>> # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
             >>> label = paddle.to_tensor([1, 1, 3, 0], dtype='int64')
             >>> print(label.shape)
             [4]
