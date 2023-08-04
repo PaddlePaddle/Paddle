@@ -81,7 +81,7 @@ GraphCompiler::CompilationResult GraphCompiler::Build(
   auto result = (*parallel_compiler_.get())();
 
   // Dump compilation result
-  backends::DumpCompilationInfo dumper(result);
+  backends::CompilationInfoDumper dumper(result);
 
   if (options.remove_unused_variables) {
     RemoveInvalidVariables(result.instructions);
