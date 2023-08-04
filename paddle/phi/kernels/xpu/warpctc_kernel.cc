@@ -158,7 +158,7 @@ void WarpctcKernel(const Context& dev_ctx,
                               sequence_width,
                               max_target_seq_length,
                               blank);
-  } else if (logits_length_dtype == DataType::INT64) {
+  } else {
     auto logits_length_data = logits_length.get_ptr()->data<int64_t>();
     auto labels_length_data = labels_length.get_ptr()->data<int64_t>();
     r = xpu::ctc_loss<T, int64_t>(dev_ctx.x_context(),
