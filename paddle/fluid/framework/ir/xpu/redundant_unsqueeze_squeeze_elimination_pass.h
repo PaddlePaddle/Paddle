@@ -31,51 +31,51 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class RedundantOnnxOpsEliminationPass : public FusePassBase {
+class RedundantUnsqueeze2EliminationPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
   /*
    Origin subgraph:
-           x                    filter
-           |                      |
-      unsqueeze2(axes={-2})   unsqueeze2(axes={-2})
-            \                   /
-              \               /
-                conv2d(conv1d)
+                      x
                       |
-                elementwise_add
+                   transpose2
                       |
-                squeeze2(axes={-2})
+             unsqueeze2(axes={-2})
                       |
-                 batch_norm
+                  reduce_sum
                       |
                      act
                       |
-                  unsqueeze2
+                  transpose2
                       |
-                  conv2d(conv1d)
    Fused subgraph:
-           x                    filter
-           |                      |
-      unsqueeze2(axes={-2})   unsqueeze2(axes={-2})
-            \                   /
-              \               /
-                conv2d(conv1d)
-                      |
-                elementwise_add
-                      |
-                  batch_norm
+                      x
                       |
                      act
                       |
-                  conv2d(conv1d)
   */
-  void FoldConv1dSqueeze2Ops(ir::Graph* graph,
-                             const std::string& act_type) const;
+  void FoldTranspose2Ops(ir::Graph* graph, const std::string& act_type) const;
+  /*
+      Origin subgraph:
+                      x
+                      |
+             unsqueeze2(axes={-2})
+                      |
+                    gather
+                      |
+                   squeeze2
+                      |
+   Fused subgraph:
+                      x
+                      |
+                    gather
+                      |
+  */
+  void FoldGatherSqueeze2Ops(ir::Graph* graph) const;
 
-  const std::string name_scope_{"redundant_onnx_ops_elimination_pass"};
+  const std::string name_scope_{"redundant_unsqueeze_squeeze_elimination_pass"};
 };
 
 }  // namespace ir

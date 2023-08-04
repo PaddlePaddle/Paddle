@@ -58,6 +58,11 @@ void RepeatInterleaveKernel(const Context& ctx,
                             int repeats,
                             int dim,
                             DenseTensor* out) {
+  PADDLE_ENFORCE_GT(repeats,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "repeats must grater than 0, but got %d", repeats));
+
   auto place = ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 

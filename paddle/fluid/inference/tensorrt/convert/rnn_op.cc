@@ -306,8 +306,7 @@ class RnnNativeOpConverter : public OpConverter {
     RreplenishLayerAndOutput(finally_layer, "rnn", {output_name}, test_mode);
     // free
     if (is_bidirec) {
-      for (size_t i = 0; i < weight_bias_vec.size(); i++)
-        delete[] weight_bias_vec[i];
+      for (auto& weight_bias : weight_bias_vec) delete[] weight_bias;
     }
 #endif
   }
