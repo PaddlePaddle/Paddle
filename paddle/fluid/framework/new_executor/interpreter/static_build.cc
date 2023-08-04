@@ -407,8 +407,8 @@ void FakeInitializeOutputsForFunctionKernel(
       continue;
     }
     auto& outs_vector = it->second;
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
+    for (auto out_var : outs_vector) {
+      phi::TensorBase* out_tensor = GetTensorFormVar(out_var);
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
 

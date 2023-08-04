@@ -373,8 +373,8 @@ void HeterSectionWorker::Run() {
     for (auto& op : backward_ops_) {
       op_name_.push_back(op->Type());
     }
-    for (size_t i = 0; i < op_total_time_.size(); ++i) {
-      op_total_time_[i] = 0.0;
+    for (double& op_time : op_total_time_) {
+      op_time = 0.0;
     }
   }
   bool is_first_stage = (pipeline_stage_ == 0);

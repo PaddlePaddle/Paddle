@@ -30,9 +30,8 @@ def get_ir_program():
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         y_s = paddle.matmul(x_s, x_s)
-        y_s = paddle.add(x_s, y_s)
-        y_s = paddle.tanh(y_s)
-
+        z_s = paddle.add(y_s, y_s)
+        k_s = paddle.tanh(z_s)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
 
@@ -41,6 +40,11 @@ class TestPybind(unittest.TestCase):
     def test_program(self):
         newir_program = get_ir_program()
         print(newir_program)
+
+        block = newir_program.block()
+        program = block.get_parent_program()
+
+        self.assertEqual(newir_program, program)
 
     def test_block(self):
         newir_program = get_ir_program()
@@ -58,7 +62,7 @@ class TestPybind(unittest.TestCase):
         matmul_op = newir_program.block().get_ops()[1]
         add_op = newir_program.block().get_ops()[2]
         tanh_op = newir_program.block().get_ops()[3]
-        parent_block = tanh_op.get_parent()
+        parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.get_ops())
         self.assertEqual(parent_ops_num, 4)
         self.assertEqual(tanh_op.num_results(), 1)
@@ -80,6 +84,27 @@ class TestPybind(unittest.TestCase):
         matmul_op.result(0).stop_gradient = True
         self.assertEqual(matmul_op.result(0).stop_gradient, True)
 
+        # test opresult hash
+        result_set = set()
+        for opresult in matmul_op.results():
+            result_set.add(opresult)
+        # test opresult hash and hash(opresult) == hash(operesult)
+        self.assertTrue(add_op.operands()[0].source() in result_set)
+        # test value hash and hash(value) == hash(operesult)
+        self.assertTrue(add_op.operands_source()[0] in result_set)
+        # test value == value
+        self.assertEqual(
+            add_op.operands_source()[0], add_op.operands_source()[0]
+        )
+        # test value == opresult
+        self.assertEqual(add_op.operands_source()[0], matmul_op.results()[0])
+        # test opresult == value
+        self.assertEqual(
+            add_op.operands()[0].source(), add_op.operands_source()[0]
+        )
+        # test opresult == opresult
+        self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
+
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(), "pd.add"
         )
@@ -88,6 +113,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(), "pd.matmul"
         )
+
         self.assertEqual(add_op.result(0).use_empty(), True)
 
     def test_type(self):

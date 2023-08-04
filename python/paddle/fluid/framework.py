@@ -63,6 +63,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
+    '_stride_in_no_check_dy2st_diff',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
