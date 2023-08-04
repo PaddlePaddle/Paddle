@@ -662,13 +662,15 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyMethodDef pylayer_methods[] = {
-    {"name", (PyCFunction)(void (*)())pylayer_method_name, METH_NOARGS, NULL},
-    {"apply",
-     (PyCFunction)(void (*)())pylayer_method_apply,
-     METH_CLASS | METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {NULL, NULL, 0, NULL}};
+PyMethodDef pylayer_methods[] = {{"name",
+                                  (PyCFunction)(void (*)())pylayer_method_name,
+                                  METH_NOARGS,
+                                  nullptr},
+                                 {"apply",
+                                  (PyCFunction)(void (*)())pylayer_method_apply,
+                                  METH_CLASS | METH_VARARGS | METH_KEYWORDS,
+                                  nullptr},
+                                 {nullptr, nullptr, 0, nullptr}};
 
 struct PyGetSetDef pylayer_properties[] {
   {"container",
