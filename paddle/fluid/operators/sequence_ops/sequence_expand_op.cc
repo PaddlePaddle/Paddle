@@ -78,7 +78,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
 
       if (ref_level == -1) ref_level = y_lod.size() - 1;
 
-      if (x_lod.size() > 0) {
+      if (!x_lod.empty()) {
         PADDLE_ENFORCE_EQ(
             x_lod[0].size(),
             y_lod[ref_level].size(),

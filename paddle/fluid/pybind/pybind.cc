@@ -195,7 +195,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -2685,9 +2684,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_low_precision_op_list", [] {
     py::dict op_list;
     auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
+    for (auto &op_item : list_op) {
+      auto op_name = (op_item.first).c_str();
+      auto counts = op_item.second;
       op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
                          std::to_string(counts.bf16_called_) + "," +
                          std::to_string(counts.fp32_called_) + "," +
@@ -2748,7 +2747,6 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-  m.def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram);
   BindFleetWrapper(&m);
   BindIO(&m);
   BindParallelExecutor(m);

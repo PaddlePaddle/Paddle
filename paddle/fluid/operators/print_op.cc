@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/tensor_formatter.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 class DenseTensor;
@@ -87,7 +87,7 @@ class PrintOp : public framework::OperatorBase {
     int first_n = Attr<int>("first_n");
     if (first_n > 0 && ++times_ > first_n) return;
 
-    TensorFormatter formatter;
+    funcs::TensorFormatter formatter;
     const std::string &name =
         Attr<bool>("print_tensor_name") ? printed_var_name : "";
     formatter.SetPrintTensorType(Attr<bool>("print_tensor_type"));

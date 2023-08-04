@@ -4762,7 +4762,7 @@ def erfinv(x, name=None):
             erfinv(erf(x)) = x.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        x (Tensor): An N-D Tensor, the data type is float16, bfloat16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4781,7 +4781,9 @@ def erfinv(x, name=None):
     if in_dynamic_mode():
         return _C_ops.erfinv(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'float16', 'uint16'], 'erfinv'
+        )
         helper = LayerHelper('erfinv', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})

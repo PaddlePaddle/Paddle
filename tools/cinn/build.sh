@@ -18,7 +18,7 @@ set -ex
 workspace=$(cd $(dirname ${BASH_SOURCE[0]})/../..; pwd)
 build_dir_name=${cinn_build:-build_cinn}
 build_dir=$workspace/${build_dir_name}
-py_version=${py_version:-3.8}
+py_version=${py_version:-3.10}
 cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 
 
@@ -92,7 +92,7 @@ function prepare_ci {
   python${py_version} -m pip install -U --no-cache-dir pip
   python${py_version} -m pip install wheel
   python${py_version} -m pip install sphinx==3.3.1 sphinx_gallery==0.8.1 recommonmark==0.6.0 exhale scipy breathe==4.24.0 matplotlib sphinx_rtd_theme
-  python${py_version} -m pip install paddlepaddle-gpu==0.0.0.post112 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
+  python${py_version} -m pip install paddlepaddle-gpu==0.0.0.post118 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
 }
 
 
