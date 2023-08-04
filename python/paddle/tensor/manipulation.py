@@ -543,6 +543,8 @@ def unstack(x, axis=0, num=None):
         raise ValueError(
             '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
         )
+    if num is not None and (num < 0 or num > x.shape[axis]):
+        raise ValueError(f'`num` must be in the range [0, {x.shape[axis]})')
     if in_dynamic_mode():
         if num is None:
             num = x.shape[axis]
@@ -4372,7 +4374,6 @@ def repeat_interleave(x, repeats, axis=None, name=None):
     if axis is None:
         x = paddle.flatten(x)
         axis = 0
-
     if in_dynamic_mode():
         if isinstance(repeats, Variable):
             return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)

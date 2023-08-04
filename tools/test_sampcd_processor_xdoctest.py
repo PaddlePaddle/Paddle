@@ -144,6 +144,207 @@ class TestXdoctester(unittest.TestCase):
 
 
 class TestGetTestResults(unittest.TestCase):
+    def test_global_exec(self):
+        _clear_environ()
+
+        # test set_default_dtype
+        docstrings_to_test = {
+            'before_set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.set_default_dtype('float64')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'after_set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+            global_exec=r"\n".join(
+                [
+                    "import paddle",
+                    "paddle.device.set_device('cpu')",
+                ]
+            ),
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_set_default', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('set_default', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_set_default', tr_2.name)
+        self.assertFalse(tr_2.passed)
+
+        # test new default global_exec
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_set_default', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('set_default', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_set_default', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        # test disable static
+        docstrings_to_test = {
+            'before_enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> print(paddle.in_dynamic_mode())
+                    True
+            """,
+            'enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> print(paddle.in_dynamic_mode())
+                    False
+            """,
+            'after_enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> print(paddle.in_dynamic_mode())
+                    True
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+            global_exec=r"\n".join(
+                [
+                    "import paddle",
+                    "paddle.device.set_device('cpu')",
+                ]
+            ),
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_enable_static', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('enable_static', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_enable_static', tr_2.name)
+        self.assertFalse(tr_2.passed)
+
+        # test new default global_exec
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_enable_static', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('enable_static', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_enable_static', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
     def test_patch_xdoctest(self):
         # test patch tensor place
         _clear_environ()
