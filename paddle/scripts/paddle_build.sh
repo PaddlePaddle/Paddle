@@ -4008,6 +4008,7 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
+        export FLAGS_NEW_IR_DY2ST_TEST=True
         parallel_test
         check_coverage
         ;;
