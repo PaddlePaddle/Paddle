@@ -239,6 +239,7 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(do_trans_filter_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_onnx_ops_elimination_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(redundant_squeeze_unsqueeze_elimination_pass inference DIR xpu

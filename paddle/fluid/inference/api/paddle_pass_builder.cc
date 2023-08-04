@@ -529,6 +529,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "reduce_ops_fuse_pass",
       "delete_cast_op_pass",
       "xpu_delete_cast_op_pass",
+      "do_trans_filter_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
       "relu6_fuse_pass",
