@@ -117,9 +117,3 @@ namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb_init,
                              ops::DistributedFusedLambInitOp,
                              ops::DistributedFusedLambInitOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(distributed_fused_lamb_init,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::DistributedFusedLambInitOpKernel,
-                          float) {}
