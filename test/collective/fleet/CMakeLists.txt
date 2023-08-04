@@ -575,6 +575,11 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
     test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_fleet_qat_meta_optimizer MODULES test_fleet_qat_meta_optimizer ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()
 if(WITH_NCCL)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     if((WITH_GPU) AND LOCAL_ALL_PLAT)

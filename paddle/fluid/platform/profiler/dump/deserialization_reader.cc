@@ -116,13 +116,13 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
       }
     }
     // restore parent-child relationship
-    for (auto it = child_parent_map.begin(); it != child_parent_map.end();
-         it++) {
-      if (it->second != -1) {  // not root node
-        index_node_map[it->second]->AddChild(index_node_map[it->first]);
+    for (auto& map_item : child_parent_map) {
+      if (map_item.second != -1) {  // not root node
+        index_node_map[map_item.second]->AddChild(
+            index_node_map[map_item.first]);
       } else {
         thread_event_trees_map[current_threadid] =
-            index_node_map[it->first];  // root node
+            index_node_map[map_item.first];  // root node
       }
     }
   }

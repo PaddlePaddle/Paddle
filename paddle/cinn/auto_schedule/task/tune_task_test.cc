@@ -31,11 +31,9 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace auto_schedule {
@@ -59,8 +57,6 @@ Program CreateAddProgram() {
 }
 
 TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
-  // Auto tuner is combined with IR schedule
-  FLAGS_cinn_ir_schedule = true;
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();
@@ -170,8 +166,6 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
 }
 
 TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
-  // Auto tuner is combined with IR schedule
-  FLAGS_cinn_ir_schedule = true;
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();

@@ -14,7 +14,9 @@
 
 #pragma once
 #include <memory>
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
+#include "paddle/ir/core/value.h"
 
 namespace ir {
 class Program;
@@ -33,6 +35,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
  public:
   NewIRInterpreter(const platform::Place& place,
+                   const std::vector<std::string>& fetch_var_names,
                    std::unique_ptr<::ir::Program> ir_prog,
                    Scope* scope,
                    const ExecutionConfig& execution_config = ExecutionConfig());
@@ -46,7 +49,22 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
+  paddle::framework::FetchList BetaRun(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true) override;
+
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
+
+  void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
+
+  // op dependences
+  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
+
+  std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
+
+  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
+
+  bool IsSharedResultsBuild() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
 
@@ -68,6 +86,10 @@ class NewIRInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
+  std::string GetNameById(int id) const;
+
+  int GetIdByName(const std::string& name) const;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -75,7 +97,11 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
-  void AnalyseExecuteOrderForTrace();
+  void AnalyseExecuteOrderForTrace(
+      std::map<size_t, std::set<size_t>> op_downstream_map,
+      InstructionSchedulingPriorityLess compare);
+  void ConstructEventForJitInput();
+  void CalculateLastLiveOps();
 
   // inplace
   void BuildInplace();
@@ -178,9 +204,63 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
+  /// ======================== ///
+  ///        For new ir        ///
+  /// ======================== ///
+  std::string DebugValueInfo();
+
+  void PreAnalysis();
+
+  void BuildInstruction();
+
+  void BuildInstructionDependences();
+
+  void LoopRunImpl();
+
+  void TraceRunImpl();
+
+  void TraceRunInstructionList(
+      const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
+
+  void LoopRunInstructionList(
+      const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
+
+  void RunInstructionBase(InstructionBase* instr_node);
+
+  void RecordMemcpyD2H(InstructionBase* instr_node);
+
+  ::ir::Value GetValueByName(const std::string& var_name);
+
+  void CheckGC(InstructionBase* instr);
+
+  void RecordStreamForGC(InstructionBase* instr);
+
+  InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
+
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
+  std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
+
+  std::unordered_map<::ir::Value, std::string> value_2_var_name_;
+
+  std::unordered_map<const paddle::framework::Variable*, std::string>
+      variable_2_var_name_;
+
+  std::map<std::string, int> var_name_2_id_;
+
+  std::vector<Variable*> variable_list_;
+
+  std::vector<int> var_ref_count_;
+
+  interpreter::NewIrDependencyBuilder ir_dependency_builder_;
+
+  interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
+
+  std::vector<std::string> fetch_var_names_;
+
+  // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
+  // belongs to a parameter and cannot GC.
+  std::vector<::ir::Value> parameter_values_;
 };
 
 }  // namespace framework

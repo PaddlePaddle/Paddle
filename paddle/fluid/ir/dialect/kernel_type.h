@@ -83,11 +83,11 @@ class AllocatedSelectedRowsType : public ir::Type {
                                        const phi::DataLayout &layout,
                                        const phi::LoD &lod,
                                        size_t offset) {
-    dialect::SelectedRowsType dense_tensor_type =
+    dialect::SelectedRowsType type =
         dialect::SelectedRowsType::get(ctx, dtype, dims, layout, lod, offset);
 
     return ir::TypeManager::template get<AllocatedSelectedRowsType>(
-        ctx, place, dense_tensor_type);
+        ctx, place, type);
   }
 
   const phi::Place &place() const;

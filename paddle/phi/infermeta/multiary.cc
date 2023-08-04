@@ -860,8 +860,8 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
   if (config.is_runtime) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int64_t numel = 0;
-    for (size_t i = 0; i < input.size(); ++i) {
-      const auto& dim = input[i]->dims();
+    for (auto item : input) {
+      const auto& dim = item->dims();
       auto size = phi::product(dim);
       auto len = use_align
                      ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
@@ -892,8 +892,8 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
     if (use_align && align_size > 0) {
       int64_t numel = 0;
 
-      for (size_t i = 0; i < input.size(); ++i) {
-        const auto& dim = input[i]->dims();
+      for (auto item : input) {
+        const auto& dim = item->dims();
         auto size = phi::product(dim);
         auto len = use_align
                        ? alignment(static_cast<size_t>(size) * size_of_dtype,
@@ -919,10 +919,10 @@ void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
     return;
   }
   int64_t numel = 0;
-  for (size_t i = 0; i < input.size(); ++i) {
-    const auto& dim = input[i]->dims();
+  for (auto item : input) {
+    const auto& dim = item->dims();
     auto size = phi::product(dim);
-    auto len = size * phi::SizeOf(input[i]->dtype());
+    auto len = size * phi::SizeOf(item->dtype());
     numel += len;
   }
   output->set_dims(phi::make_ddim({numel}));
@@ -1335,11 +1335,142 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void FusedBiasActInferMeta(const MetaTensor& x,
+                           const MetaTensor& bias,
+                           const MetaTensor& dequant_scales,
+                           const MetaTensor& shift,
+                           const MetaTensor& smooth,
+                           const std::string& act_method,
+                           const std::string& compute_dtype,
+                           int rows,
+                           int cols,
+                           float quant_scale,
+                           int quant_round_type,
+                           float quant_max_bound,
+                           float quant_min_bound,
+                           MetaTensor* out) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The size of Input(x) must be 2: %s", x_dims));
+  auto token_num = x_dims[0];
+  auto dim = x_dims[1];
+
+  PADDLE_ENFORCE_GT(
+      rows, 0, phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
+
+  PADDLE_ENFORCE_GT(
+      cols, 0, phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+
+  if (act_method == "geglu" || act_method == "swiglu") {
+    PADDLE_ENFORCE_EQ(
+        dim % 2,
+        0,
+        phi::errors::InvalidArgument(
+            "The seconde dimension of x must be even, but receive %d", dim));
+    dim /= 2;
+    out->set_dims(phi::make_ddim({token_num, dim}));
+  } else if (act_method == "gelu") {
+    out->set_dims(phi::make_ddim({token_num, dim}));
+  } else {
+    PADDLE_THROW(
+        errors::InvalidArgument("act_method must be geglu, swiglu or gelu, "
+                                "but get act_method (%s)",
+                                act_method));
+  }
+
+  auto FBADtypeCheck = [](const MetaTensor& check_tensor,
+                          const std::string& tensor_name,
+                          const std::string& compute_dtype) {
+    if (compute_dtype == "bf16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::BFLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp32") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT32,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    }
+  };
+
+  // In the case of quantization enabled, the dtype for computation is
+  // determined based on compute_dtype.
+  if (x.dtype() == phi::DataType::INT32) {
+    PADDLE_ENFORCE_NE(
+        compute_dtype,
+        "default",
+        phi::errors::InvalidArgument(
+            "If Input(x) dtype is INT32, Attr(compute_dtype) must be set."));
+
+    if (bias) {
+      FBADtypeCheck(bias, "bias", compute_dtype);
+    }
+
+    if (quant_scale > 0) {
+      out->set_dtype(phi::DataType::INT8);
+    } else {
+      if (compute_dtype == "bf16") {
+        out->set_dtype(phi::DataType::BFLOAT16);
+      } else if (compute_dtype == "fp16") {
+        out->set_dtype(phi::DataType::FLOAT16);
+      } else if (compute_dtype == "fp32") {
+        out->set_dtype(phi::DataType::FLOAT32);
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "In the case of quantization enabled with Input(x) INT32, "
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+            "but get compute_dtype (%s)",
+            compute_dtype));
+      }
+    }
+  } else {
+    // x.dtype() != phi::DataType::INT32
+    if (bias) {
+      if (compute_dtype != "default") {
+        FBADtypeCheck(bias, "bias", compute_dtype);
+        FBADtypeCheck(x, "x", compute_dtype);
+      } else {
+        PADDLE_ENFORCE_EQ(
+            x.dtype(),
+            bias.dtype(),
+            phi::errors::InvalidArgument("Input(x) and Input(bias) must be the "
+                                         "same dtype in this situation"));
+      }
+    } else {
+      // bias not exist
+      if (compute_dtype != "default") {
+        FBADtypeCheck(x, "x", compute_dtype);
+      }
+    }
+    if (quant_scale > 0) {
+      out->set_dtype(phi::DataType::INT8);
+    } else {
+      out->set_dtype(x.dtype());
+    }
+  }
+  out->set_layout(x.layout());
+}
+
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
                                       const MetaTensor& dweight,
                                       const MetaTensor& dbias,
                                       bool multi_precision,
+                                      bool has_bias,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out) {
   const auto dtype = dout.dtype();
@@ -1383,7 +1514,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
           ? DataType::FLOAT32
           : dtype;
 
-  if (dbias_out) {
+  if (has_bias && dbias_out) {
     dbias_out->set_dims({weight_dims[1]});
     dbias_out->set_dtype(multi_precision ? mp_dtype : dtype);
   }
@@ -2412,9 +2543,9 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
     }
   }
   auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i]->set_dims(out_dims);
-    outputs[i]->set_dtype(inputs[0]->dtype());
+  for (auto& output : outputs) {
+    output->set_dims(out_dims);
+    output->set_dtype(inputs[0]->dtype());
   }
 }
 
@@ -3357,14 +3488,14 @@ void YoloLossInferMeta(const MetaTensor& x,
                         "Attr(anchors) length should be even integer."
                         "But received anchors length(%s)",
                         anchors.size()));
-  for (size_t i = 0; i < anchor_mask.size(); i++) {
+  for (auto& item : anchor_mask) {
     PADDLE_ENFORCE_LT(
-        anchor_mask[i],
+        item,
         anchor_num,
         phi::errors::InvalidArgument(
             "Attr(anchor_mask) should not crossover Attr(anchors)."
             "But received anchor_mask[i](%s) > anchor_num(%s)",
-            anchor_mask[i],
+            item,
             anchor_num));
   }
   PADDLE_ENFORCE_GT(class_num,
@@ -3487,6 +3618,8 @@ void FusedConvInferMeta(const MetaTensor& input,
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
+                        const MetaTensor& sin,
+                        const MetaTensor& cos,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {

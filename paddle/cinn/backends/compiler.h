@@ -24,6 +24,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/hlir/framework/parallel_compiler.h"
 #include "paddle/cinn/lang/packed_func.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
@@ -31,6 +32,38 @@
 
 namespace cinn {
 namespace backends {
+
+/**
+ * A class for dumping the code after compilation.
+ * Use FLAGS_cinn_dump_group_lowered_func to specify the directory to dump
+ * lowered function. Use FLAGS_cinn_dump_group_source_code to specify the
+ * directory to dump the source code. Use FLAGS_cinn_dump_group_ptx to specify
+ * the directory to dump ptx. Use FLAGS_cinn_dump_group_instruction to specify
+ * the directory to dump instruction.
+ */
+class CompilationInfoDumper {
+ public:
+  explicit CompilationInfoDumper(
+      const hlir::framework::ParallelCompiler::CompilationResult& info)
+      : info_(info) {
+    DumpLoweredFunc();
+    DumpSourceCode();
+    DumpPtxCode();
+    DumpInstruction();
+  }
+
+ private:
+  void DumpLoweredFunc();
+  void DumpSourceCode();
+  void DumpPtxCode();
+  void DumpInstruction();
+  void Dump(const std::string& base_path,
+            const int idx,
+            const std::string& file_name,
+            const std::string& content);
+
+  const hlir::framework::ParallelCompiler::CompilationResult& info_;
+};
 
 class SourceCodePrint {
  public:

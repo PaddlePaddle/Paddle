@@ -38,8 +38,6 @@
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace hlir {
 namespace op {
@@ -178,12 +176,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        auto tensor_name = UniqName("Sort_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2U);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2U);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
         std::vector<ir::Tensor> out =
             Sort(tensor_A, target, stages, axis, is_ascend, tensor_name);
         stages->InsertLazily(out[0]);
@@ -195,48 +190,40 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         *ret = CINNValuePack{res};
       });
 
-  framework::CINNSchedule sort_schedule([=](lang::Args args,
-                                            lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input argument of sort_schedule is empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
+  framework::CINNSchedule sort_schedule(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input argument of sort_schedule is empty! Please check.\n";
+        common::CINNValuePack arg_pack = args[0];
+        std::vector<Expr> vec_ast;
+        for (int i = 0; i < arg_pack.size(); i++) {
+          if (arg_pack[i].is_expr()) {
+            Expr temp = arg_pack[i];
+            vec_ast.emplace_back(temp);
+          }
         }
-      }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      auto blocks = ir_sch.GetAllBlocks();
-      // TODO(Shixiaowei02): remove external calls, do not use local variables,
-      // because the size will exceed the limit.
-      ir_sch.SetBuffer(blocks[0], "local");
-      ir_sch.SetBuffer(blocks[1], "local");
+        CHECK(!vec_ast.empty());
+        ir::ModuleExpr mod_expr(vec_ast);
+        ir::IRSchedule ir_sch(mod_expr);
+        ir_sch.MergeExprs();
+        auto blocks = ir_sch.GetAllBlocks();
+        // TODO(Shixiaowei02): remove external calls, do not use local
+        // variables, because the size will exceed the limit.
+        ir_sch.SetBuffer(blocks[0], "local");
+        ir_sch.SetBuffer(blocks[1], "local");
 
-      int64_t prod_size = std::accumulate(output_shapes[0].begin(),
-                                          output_shapes[0].end(),
-                                          1,
-                                          std::multiplies<int>());
-      if (prod_size > 1 && target.arch == Target::Arch::X86) {
-        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-      }
-      std::vector<common::CINNValue> res{
-          common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = common::CINNValuePack{res};
-    } else {
-      CHECK(!args.empty())
-          << "The input argument of sort_schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      Expr out = arg_pack[0];
-      CHECK(out.as_tensor());
-      *ret = arg_pack;
-    }
-  });
+        int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                            output_shapes[0].end(),
+                                            1,
+                                            std::multiplies<int>());
+        if (prod_size > 1 && target.arch == Target::Arch::X86) {
+          pe::IRScheduleInjectiveCPU(
+              ir_sch, output_shapes.front(), target, true);
+        }
+        std::vector<common::CINNValue> res{
+            common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+        *ret = common::CINNValuePack{res};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(sort_compute, sort_schedule, "strategy.sort", 1);
@@ -271,12 +258,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     auto stages = CreateStages({tensor_A});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    auto tensor_name = UniqName("ArgSort_out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 3U);
-      CHECK(pack_args[1].is_string());
-      tensor_name = pack_args[1].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 3U);
+    CHECK(pack_args[1].is_string());
+    std::string tensor_name = pack_args[1].operator std::string();
     auto out = ArgSort(tensor_A, target, stages, axis, is_ascend, tensor_name);
     std::vector<CINNValue> res;
     stages->InsertLazily(out.at(0));
@@ -291,45 +275,36 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
 
   framework::CINNSchedule argsort_schedule([=](lang::Args args,
                                                lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input argument of argsort_schedule is empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        }
+    CHECK(!args.empty())
+        << "The input argument of argsort_schedule is empty! Please check.\n";
+    common::CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      auto blocks = ir_sch.GetAllBlocks();
-      // TODO(Shixiaowei02): remove external calls, do not use local variables,
-      // because the size will exceed the limit.
-      // TODO(lanxianghit): There is a bug, setting buffer to "local" here will
-      // cause the var declared twice at CodeGen. ir_sch.SetBuffer(blocks[0],
-      // "local");
-      int64_t prod_size = std::accumulate(output_shapes[0].begin(),
-                                          output_shapes[0].end(),
-                                          1,
-                                          std::multiplies<int>());
-      if (prod_size > 1 && target.arch == Target::Arch::X86) {
-        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-      }
-      std::vector<common::CINNValue> res{
-          common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = common::CINNValuePack{res};
-    } else {
-      CHECK(!args.empty())
-          << "The input argument of argsort_schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      Expr out = arg_pack[0];
-      CHECK(out.as_tensor());
-      *ret = arg_pack;
     }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    auto blocks = ir_sch.GetAllBlocks();
+    // TODO(Shixiaowei02): remove external calls, do not use local variables,
+    // because the size will exceed the limit.
+    // TODO(lanxianghit): There is a bug, setting buffer to "local" here will
+    // cause the var declared twice at CodeGen. ir_sch.SetBuffer(blocks[0],
+    // "local");
+    int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                        output_shapes[0].end(),
+                                        1,
+                                        std::multiplies<int>());
+    if (prod_size > 1 && target.arch == Target::Arch::X86) {
+      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
+    }
+    std::vector<common::CINNValue> res{
+        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -349,8 +324,18 @@ std::vector<std::vector<int>> InferShapeForSort(
       break;
     }
   }
-  CHECK_GT(inputs_shape[0].size(), axis)
-      << "The input's dim should be greater than axis! ";
+  if (inputs_shape[0].empty()) {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
+  } else {
+    if (axis < 0) {
+      axis += inputs_shape[0].size();
+    }
+    CHECK_GT(inputs_shape[0].size(), axis)
+        << "The input's dim should be greater than axis! ";
+  }
+
   std::vector<std::vector<int>> res{inputs_shape[0]};
   return res;
 }
@@ -375,11 +360,17 @@ std::vector<std::vector<int>> InferShapeForArgSort(
       break;
     }
   }
-  if (axis < 0) {
-    axis += inputs_shape[0].size();
+  if (inputs_shape[0].empty()) {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
+  } else {
+    if (axis < 0) {
+      axis += inputs_shape[0].size();
+    }
+    CHECK_GT(inputs_shape[0].size(), axis)
+        << "The input's dim should be greater than axis! ";
   }
-  CHECK_GT(inputs_shape[0].size(), axis)
-      << "The input's dim should be greater than axis! ";
   std::vector<std::vector<int>> res{inputs_shape[0], inputs_shape[0]};
 
   return res;
@@ -404,12 +395,19 @@ std::vector<std::vector<int>> InferShapeForTopK(
   auto axis_it = attrs.find("axis");
   CHECK(axis_it != attrs.end()) << "The attr axis of topk does not exist.";
   int axis = absl::get<int>(axis_it->second);
-  if (axis < 0) {
-    axis += res[0].size();
+
+  if (inputs_shape[0].empty()) {
+    // 0D Tensor
+    CHECK(axis == 0 || axis == -1)
+        << "Axis must be 0 or -1 if input tensor is 0-dim";
+  } else {
+    if (axis < 0) {
+      axis += inputs_shape[0].size();
+    }
+    CHECK_GE(axis, 0);
+    CHECK_LT(axis, res[0].size());
+    res[0][axis] = std::min(res[0][axis], k);
   }
-  CHECK_GE(axis, 0);
-  CHECK_LT(axis, res[0].size());
-  res[0][axis] = std::min(res[0][axis], k);
   return {res[0], res[0]};
 }
 

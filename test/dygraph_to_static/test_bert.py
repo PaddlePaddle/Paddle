@@ -35,6 +35,46 @@ STEP_NUM = 10
 PRINT_STEP = 2
 
 
+class FakeBertDataset(paddle.io.Dataset):
+    def __init__(self, data_reader, steps):
+        self.src_ids = []
+        self.pos_ids = []
+        self.sent_ids = []
+        self.input_mask = []
+        self.mask_label = []
+        self.mask_pos = []
+        self.labels = []
+        self.data_reader = data_reader
+
+        self._generate_fake_data(1 * (steps + 1))
+
+    def _generate_fake_data(self, length):
+        for i, data in enumerate(self.data_reader.data_generator()()):
+            if i >= length:
+                break
+            self.src_ids.append(data[0])
+            self.pos_ids.append(data[1])
+            self.sent_ids.append(data[2])
+            self.input_mask.append(data[3])
+            self.mask_label.append(data[4])
+            self.mask_pos.append(data[5])
+            self.labels.append(data[6])
+
+    def __getitem__(self, idx):
+        return [
+            self.src_ids[idx],
+            self.pos_ids[idx],
+            self.sent_ids[idx],
+            self.input_mask[idx],
+            self.mask_label[idx],
+            self.mask_pos[idx],
+            self.labels[idx],
+        ]
+
+    def __len__(self):
+        return len(self.src_ids)
+
+
 class TestBert(unittest.TestCase):
     def setUp(self):
         self.bert_config = get_bert_config()
@@ -56,11 +96,9 @@ class TestBert(unittest.TestCase):
             fluid.default_main_program().random_seed = SEED
             fluid.default_startup_program().random_seed = SEED
 
-            data_loader = fluid.io.DataLoader.from_generator(
-                capacity=50, iterable=True
-            )
-            data_loader.set_batch_generator(
-                data_reader.data_generator(), places=place
+            fake_dataset = FakeBertDataset(data_reader, STEP_NUM)
+            data_loader = paddle.io.DataLoader(
+                fake_dataset, places=place, batch_size=None
             )
 
             bert = PretrainModelLayer(
@@ -80,6 +118,7 @@ class TestBert(unittest.TestCase):
                     mask_pos,
                     labels,
                 ) = input_data
+
                 next_sent_acc, mask_lm_loss, total_loss = bert(
                     src_ids=src_ids,
                     position_ids=pos_ids,

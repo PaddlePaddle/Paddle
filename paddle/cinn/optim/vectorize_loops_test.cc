@@ -21,7 +21,7 @@
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/optimize.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"

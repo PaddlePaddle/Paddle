@@ -55,7 +55,6 @@ DEFINE_string(resnet50_model_dir,
 DEFINE_int32(evaluate_knobs,
              -1,
              "the options to control which schedule tests will be run.");
-DECLARE_int32(cinn_parallel_compile_size);
 
 namespace cinn {
 namespace auto_schedule {
@@ -77,8 +76,6 @@ class PerformanceTester : public ::testing::Test {
     // FLAGS_evaluate_knobs explanation
     std::bitset<3> evaluate_knobs = 0UL;
   };
-
-  void SetUp() override { FLAGS_cinn_parallel_compile_size = 0; }
 
   void Evaluate(const frontend::Program& program) {
     if (FLAGS_evaluate_knobs >= 0) {
@@ -157,7 +154,9 @@ class PerformanceTester : public ::testing::Test {
 
     for (auto group : graph->fusion_groups) {
       compile_options.lowered_funcs.push_back(
-          op_lowerer->LowerWithoutSchedule(group));
+          op_lowerer->Lower(group,
+                            /*apply_op_schedule = */ false,
+                            /*apply_group_schedule=*/false));
     }
 
     VLOG(3) << "===========================No Schedule LoweredFunc "

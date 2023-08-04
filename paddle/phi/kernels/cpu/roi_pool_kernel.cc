@@ -37,6 +37,11 @@ void RoiPoolKernel(const Context& dev_ctx,
   int width = x_dims[3];
   int rois_num = boxes.dims()[0];
 
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   auto in_stride = phi::stride(x_dims);
   auto arg_max_stride = phi::stride(arg_max->dims());
   auto box_stride = phi::stride(boxes.dims());

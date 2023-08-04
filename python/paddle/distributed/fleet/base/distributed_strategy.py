@@ -985,6 +985,59 @@ class DistributedStrategy:
             logger.warning("asp should have value of bool type")
 
     @property
+    def qat(self):
+        """
+        Indicating whether we are using quantization aware training
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.qat = True # by default this is false
+
+        """
+        return self.strategy.qat
+
+    @qat.setter
+    @is_strict_auto
+    def qat(self, flag):
+        assert isinstance(flag, bool), "qat should have value of bool type"
+        self.strategy.qat = flag
+
+    @property
+    def qat_configs(self):
+        """
+        Set quantization training configurations. In general, qat has serveral configurable
+        settings that can be configured through a dict.
+        **Notes**:
+            channel_wise_abs_max(bool): Whether to use `per_channel` quantization training. Default is True.
+            weight_bits(int): quantization bit number for weight. Default is 8.
+            activation_bits(int): quantization bit number for activation. Default is 8.
+            not_quant_pattern(list[str]): When the skip pattern is detected in an op's name scope,
+                the corresponding op will not be quantized.
+            algo(str): Other quantization training algorithm.
+        Exampless:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.qat = True
+            strategy.qat_configs = {
+                "channel_wise_abs_max": True,
+                "weight_bits": 8,
+                "activation_bits: 8,
+                "not_quant_pattern": ['skip_quant']}
+        """
+        return get_msg_dict(self.strategy.qat_configs)
+
+    @qat_configs.setter
+    def qat_configs(self, configs):
+        check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
+        assign_configs_value(self.strategy.qat_configs, configs)
+
+    @property
     def recompute(self):
         """
         Indicating whether we are using forward recomputation for memory optimization
@@ -2538,8 +2591,10 @@ class DistributedStrategy:
                                     google._upb._message.RepeatedScalarContainer
                                 )
                             else:
+                                from google.protobuf.pyext import _message
+
                                 RepeatedScalarContainer = (
-                                    google.protobuf.pyext._message.RepeatedScalarContainer
+                                    _message.RepeatedScalarContainer
                                 )
                             for ff in config_fields:
                                 if isinstance(

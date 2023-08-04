@@ -183,14 +183,6 @@ execute_process(
     --dygraph_api_header_path ${dygraph_api_header_file_tmp}
     --dygraph_api_source_path ${dygraph_api_source_file_tmp})
 
-# generate wrapped infermeta
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${wrapped_infermeta_gen_file} --api_yaml_path
-    ${api_yaml_file} ${legacy_api_yaml_file} --wrapped_infermeta_header_path
-    ${wrapped_infermeta_header_file} --wrapped_infermeta_source_path
-    ${wrapped_infermeta_source_file})
-
 # generate tensor and tensor operants file
 message("create or copy auto-geneated tensor files")
 execute_process(
@@ -264,7 +256,6 @@ collect_srcs(
 collect_generated_srcs(
   api_srcs
   SRCS
-  ${wrapped_infermeta_source_file}
   ${api_source_file}
   ${bw_api_source_file}
   ${fused_api_source_file}

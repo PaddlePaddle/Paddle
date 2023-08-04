@@ -25,13 +25,12 @@ from sampcd_processor import (
     extract_code_blocks_from_docstr,
     find_all,
     find_last_future_line_end,
-    get_api_md5,
-    get_incrementapi,
     get_test_capacity,
     insert_codes_into_codeblock,
     is_required_match,
     sampcd_extract_to_file,
 )
+from sampcd_processor_utils import get_api_md5, get_incrementapi
 
 
 class Test_find_all(unittest.TestCase):
@@ -114,6 +113,7 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
                     'name': None,
                     'id': 1,
                     'required': None,
+                    'in_examples': True,
                 }
             ],
         )
@@ -142,6 +142,7 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
                     'name': None,
                     'id': 1,
                     'required': None,
+                    'in_examples': True,
                 },
                 {
                     'codes': """# required: gpu
@@ -149,6 +150,7 @@ print(1+1)""",
                     'name': 'one_plus_one',
                     'id': 2,
                     'required': 'gpu',
+                    'in_examples': True,
                 },
             ],
         )
@@ -478,6 +480,20 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
         self.assertCountEqual(
             sampcd_processor.SUMMARY_INFO['distributed'], [funcname + '-5']
         )
+
+    def test_skip_ps_wrapped_code(self):
+        comments = """
+        placeholder
+        Examples:
+            .. code-block:: python
+
+                >>> print(1 + 1)
+                2
+
+        """
+        funcname = 'one_plus_one'
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([], sample_code_filenames)
 
 
 class Test_get_api_md5(unittest.TestCase):

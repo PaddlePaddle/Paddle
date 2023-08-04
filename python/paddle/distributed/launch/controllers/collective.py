@@ -282,6 +282,13 @@ class CollectiveElasticController(CollectiveController):
                 self.job.replicas = replicas
             else:
                 self.ctx.logger.warning(f"peer not ready {self.job}")
+                if self.ctx.is_auto_tuner_mode():
+                    self.ctx.logger.info(
+                        "Failed to start peer, auto tuner exit."
+                    )
+                    import sys
+
+                    sys.exit(-1)
                 break
 
             self.ctx.logger.debug(f"Run {self.job}")

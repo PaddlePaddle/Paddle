@@ -153,6 +153,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_save_load MODULES test_engine_save_load)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
+  py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
