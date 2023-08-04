@@ -53,7 +53,7 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
-            x_emb = fluid.layers.embedding(
+            x_emb = paddle.static.nn.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
@@ -117,7 +117,7 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
-            x_emb = fluid.layers.embedding(
+            x_emb = paddle.static.nn.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
@@ -179,7 +179,7 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
-            x_emb = fluid.layers.embedding(
+            x_emb = paddle.static.nn.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)

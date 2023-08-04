@@ -352,7 +352,7 @@ class TestFakeInit(TranspilerTest):
         inputs = [input_word, true_word, neg_word]
 
         init_width = 0.5 / embedding_size
-        input_emb = fluid.layers.embedding(
+        input_emb = paddle.static.nn.embedding(
             input=inputs[0],
             is_sparse=True,
             size=[dict_size, embedding_size],
@@ -364,7 +364,7 @@ class TestFakeInit(TranspilerTest):
             ),
         )
 
-        true_emb_w = fluid.layers.embedding(
+        true_emb_w = paddle.static.nn.embedding(
             input=inputs[1],
             is_sparse=True,
             size=[dict_size, embedding_size],
@@ -374,7 +374,7 @@ class TestFakeInit(TranspilerTest):
             ),
         )
 
-        true_emb_b = fluid.layers.embedding(
+        true_emb_b = paddle.static.nn.embedding(
             input=inputs[1],
             is_sparse=True,
             size=[dict_size, 1],
@@ -387,7 +387,7 @@ class TestFakeInit(TranspilerTest):
         neg_word_reshape = paddle.reshape(inputs[2], shape=[-1, 1])
         neg_word_reshape.stop_gradient = True
 
-        neg_emb_w = fluid.layers.embedding(
+        neg_emb_w = paddle.static.nn.embedding(
             input=neg_word_reshape,
             is_sparse=True,
             size=[dict_size, embedding_size],
@@ -398,7 +398,7 @@ class TestFakeInit(TranspilerTest):
             neg_emb_w, shape=[-1, neg_num, embedding_size]
         )
 
-        neg_emb_b = fluid.layers.embedding(
+        neg_emb_b = paddle.static.nn.embedding(
             input=neg_word_reshape,
             is_sparse=True,
             size=[dict_size, 1],
@@ -712,7 +712,7 @@ class TestDistLookupTableBase(TranspilerTest):
         self.lookup_table_name = 'shared_w'
 
         def emb_pool(ids, table_name, is_distributed):
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=ids,
                 size=[self.table_size, self.emb_size],
                 dtype='float32',
@@ -1427,7 +1427,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             )
         )
 
-        emb = fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=input,
             is_sparse=is_sparse,
             size=[3, 3],

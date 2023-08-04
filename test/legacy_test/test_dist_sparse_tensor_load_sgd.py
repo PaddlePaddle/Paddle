@@ -49,7 +49,7 @@ class TestSparseLoadProgram(unittest.TestCase):
                     inputs = paddle.static.data(
                         'input', shape=[None, 1], dtype="int64"
                     )
-                    emb = fluid.layers.embedding(
+                    emb = paddle.static.nn.embedding(
                         inputs, is_sparse=True, size=[10000, 128]
                     )
                     fc1 = paddle.static.nn.fc(
