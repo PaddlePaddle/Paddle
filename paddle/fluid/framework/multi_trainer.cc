@@ -107,7 +107,7 @@ void MultiTrainer::InitDumpEnv() {
     }
   }
   for (int i = 0; i < dump_thread_num_; i++) {
-    dump_thread_.push_back(std::thread([this, i] { DumpWork(i); }));
+    dump_thread_.emplace_back([this, i] { DumpWork(i); });
   }
 }
 
