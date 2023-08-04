@@ -3240,41 +3240,35 @@ function trt_convert_test() {
 
 function clang-tidy_check() {
     set +x
+    trap 'abort' 0
+    set -e
 
-    diff_files=$(git diff --name-only --diff-filter=ACMR ${BRANCH})
-    num_diff_files=$(echo "$diff_files" | wc -l)
-    echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
+    clang-tidy --version
 
-    echo "Checking code style by clang-tidy ..."
+    num_diff_files=$(git diff --numstat ${BRANCH} | wc -l)
+    commit_files=on
     startTime_s=`date +%s`
-    pre-commit run clang-tidy --files ${diff_files};check_error=$?
+    for file_name in `git diff --numstat ${BRANCH} |awk '{print $NF}'`;do
+        if ! pre-commit run clang-tidy --files $file_name ; then
+            commit_files=off
+        fi
+    done
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
-    echo "Files Num: $[ $num_diff_files ]"
-    echo "Check Time: $[ $endTime_s - $startTime_s ]s"
-
-    echo -e '\n************************************************************************************'
-    if [ ${check_error} != 0 ];then
+    if [ $commit_files == 'off' ];then
         echo "Your PR code style clang-tidy check failed."
-        echo "Please install clang-tidy locally:"
-        echo ""
-        echo "    pip install clang-tidy==15.0.2.1"
-        echo ""
-        echo ""
-        if [[ $num_diff_files -le 100 ]];then
-            echo "After the build is completed, run clang-tidy to check codestyle issues in your PR:"
-            echo ""
-            echo "    pre-commit run clang-tidy --files" $(echo ${diff_files} | tr "\n" " ")
-            echo ""
-        fi
-        echo "For more information, please refer to our codestyle check guide:"
-        echo "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/git_guides/codestyle_check_guide_cn.html"
+        echo "File Count: $[ $num_diff_files ]"
+        echo "Check Time: $[ $endTime_s - $startTime_s ]s"
+        git diff 2>&1
+        exit 4
     else
+        echo "File Count: $[ $num_diff_files ]"
+        echo "Check Time: $[ $endTime_s - $startTime_s ]s"
         echo "Your PR code style clang-tidy check passed."
     fi
-    echo -e '************************************************************************************\n'
 
-    exit ${check_error} 
+    trap : 0
+    set -x
 }
 
 function build_pr_and_develop() {
