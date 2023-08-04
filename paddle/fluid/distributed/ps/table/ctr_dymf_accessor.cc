@@ -48,6 +48,13 @@ int CtrDymfAccessor::Initialize() {
     VLOG(0) << "CtrDymfAccessor::Initialize() load filter slot:"
             << _config.ctr_accessor_param().load_filter_slots(i);
   }
+  for (int i = 0; i < _config.ctr_accessor_param().save_filter_slots_size();
+       i++) {
+    _save_filtered_slots.insert(
+        _config.ctr_accessor_param().save_filter_slots(i));
+    VLOG(0) << "CtrDymfAccessor::Initialize() save filter slot:"
+            << _config.ctr_accessor_param().save_filter_slots(i);
+  }
   VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
           << common_feature_value.embed_sgd_dim
           << " embedx_dim:" << common_feature_value.embedx_dim
@@ -116,6 +123,15 @@ bool CtrDymfAccessor::FilterSlot(float* value) {
     return true;
   }
   return false;
+}
+
+bool CtrDymfAccessor::SaveFilterSlot(float* value) {
+  // 热启时过滤掉_filtered_slots中的feasign
+  if (_save_filtered_slots.find(common_feature_value.Slot(value)) !=
+      _save_filtered_slots.end()) {
+    return false;
+  }
+  return true;
 }
 
 bool CtrDymfAccessor::Save(float* value, int param) {

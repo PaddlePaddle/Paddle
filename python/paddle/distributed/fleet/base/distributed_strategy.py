@@ -622,6 +622,7 @@ class DistributedStrategy:
             'feature_learning_rate',
             'nodeid_slot',
             'sparse_load_filter_slots',
+            'sparse_save_filter_slots',
         ]
         support_sparse_table_class = [
             'DownpourSparseTable',
@@ -786,7 +787,7 @@ class DistributedStrategy:
             )
             if accessor_class not in support_sparse_accessor_class:
                 raise ValueError(
-                    "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
+                    "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor', 'DownpourCtrDymfAccessor'], but actual %s"
                     % (accessor_class)
                 )
 
@@ -841,6 +842,10 @@ class DistributedStrategy:
             load_filter_slots = config.get('sparse_load_filter_slots', [])
             table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
                 load_filter_slots
+            )
+            save_filter_slots = config.get('sparse_save_filter_slots', [])
+            table_data.accessor.ctr_accessor_param.save_filter_slots.extend(
+                save_filter_slots
             )
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")

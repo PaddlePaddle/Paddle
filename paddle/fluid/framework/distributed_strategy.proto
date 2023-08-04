@@ -322,7 +322,9 @@ message CtrAccessorParameter {
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
   optional bool show_scale = 10 [ default = true ];
-  repeated float load_filter_slots = 11;
+  optional bool zero_init = 11 [ default = true ];
+  repeated float load_filter_slots = 12;
+  repeated float save_filter_slots = 13;
 }
 
 message TableAccessorSaveParameter {

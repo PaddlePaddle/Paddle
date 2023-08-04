@@ -210,6 +210,7 @@ class CtrDymfAccessor : public ValueAccessor {
                  double global_cache_threshold) override;
   bool SaveSSD(float* value) override;
   bool FilterSlot(float* value);
+  bool SaveFilterSlot(float* value) override;
   // update delta_score and unseen_days after save
   void UpdateStatAfterSave(float* value, int param) override;
   // keys不存在时，为values生成随机值
@@ -243,6 +244,14 @@ class CtrDymfAccessor : public ValueAccessor {
     return 0.0;
   }
 
+  robin_hood::unordered_set<float>* GetFilteredSlots() override {
+    return &_filtered_slots;
+  }
+
+  robin_hood::unordered_set<float>* GetSaveFilteredSlots() override {
+    return &_save_filtered_slots;
+  }
+
   // 根据pass_id和show_threashold阈值来判断cache到ssd
   bool SaveMemCache(float* value,
                     int param,
@@ -268,6 +277,7 @@ class CtrDymfAccessor : public ValueAccessor {
   SparseValueSGDRule* _embed_sgd_rule;
   SparseValueSGDRule* _embedx_sgd_rule;
   robin_hood::unordered_set<float> _filtered_slots;
+  robin_hood::unordered_set<float> _save_filtered_slots;
 };
 }  // namespace distributed
 }  // namespace paddle

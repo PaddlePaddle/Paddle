@@ -114,6 +114,13 @@ class Table {
   // 指定保存路径
   virtual int32_t Save(const std::string &path,
                        const std::string &converter) = 0;
+
+#ifdef PADDLE_WITH_GPU_GRAPH
+  // pglbox支持将非9008 slot的feature额外保存一份，实际支持用户可配置过滤slot
+  virtual int32_t Save_v2(const std::string &path,
+                          const std::string &converter) = 0;
+#endif
+
   // for cache
   virtual int32_t SaveCache(
       const std::string &path UNUSED,
