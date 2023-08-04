@@ -239,7 +239,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
 
         if not use_dgc:
             optimizer = paddle.optimizer.Momentum(
-                learning_rate=fluid.layers.piecewise_decay(
+                learning_rate=paddle.optimizer.lr.PiecewiseDecay(
                     boundaries=bd, values=lr
                 ),
                 momentum=0.9,
