@@ -340,8 +340,10 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
       VLOG(3) << "no need to transform, return orignal";
       return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
     }
-    phi::DenseTensor out =
-        TransformData(&dense_tensor, target_args_def, transform_flag);
+    phi::DenseTensor out = TransformData(&dense_tensor,
+                                         target_args_def,
+                                         transform_flag,
+                                         /*is_stride_kernel=*/false);
     // TODO(chenweihang): The global meta in DistTensor is not changed,
     // but the local meta in DenseTensor maybe changed, such as layout
     // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
