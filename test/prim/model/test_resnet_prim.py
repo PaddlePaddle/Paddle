@@ -17,6 +17,8 @@ import unittest
 
 import numpy as np
 
+np.set_printoptions(precision=15)
+
 import paddle
 from paddle import fluid
 from paddle.fluid import core
@@ -202,6 +204,10 @@ class TestResnet(unittest.TestCase):
     )
     def test_prim(self):
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
+        print(
+            "################################################################"
+        )
+        print("dy2st_cinn: %.15f" % dy2st_prim)
         np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
 
 

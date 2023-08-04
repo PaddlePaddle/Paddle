@@ -17,6 +17,8 @@ import unittest
 
 import numpy as np
 
+np.set_printoptions(precision=15)
+
 import paddle
 from paddle import fluid
 from paddle.fluid import core
@@ -201,6 +203,10 @@ class TestResnet(unittest.TestCase):
     )
     def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
+        print(
+            "################################################################"
+        )
+        print("dy2st_cinn: %.15f" % dy2st_cinn)
         np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
 
 
