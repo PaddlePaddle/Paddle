@@ -986,7 +986,7 @@ struct FeedOpTranscriber : public OpTranscriber {
   }
 };
 
-struct FeedWithPlaceOpTranscriber : public OpTranscriber {
+struct DataOpTranscriber : public FeedOpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
       const std::string& normalized_op_name,
@@ -1006,16 +1006,6 @@ struct FeedWithPlaceOpTranscriber : public OpTranscriber {
     };
 
     return attribute_map;
-  }
-
-  std::vector<ir::OpResult> GenerateOperationInput(
-      ir::IrContext* ctx,
-      TranslationContext* param_map,
-      const OpDesc& op_desc,
-      const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos,
-      ir::Program* program) override {
-    return {};
   }
 };
 
@@ -1473,7 +1463,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
-  special_handlers["feed_with_place"] = FeedWithPlaceOpTranscriber();
+  special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
