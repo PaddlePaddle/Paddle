@@ -21,15 +21,17 @@
 #include "paddle/primitive/rule/vjp/vjp.h"
 #include "paddle/primitive/type/desc_tensor.h"
 // TODO(wanghao107):
-//  op's vjp will be generated in other files.
+//  op's vjp will be auto generated.
 
 namespace paddle {
 namespace primitive {
 namespace experimental {
-paddle::optional<paddle::Tensor> tanh_vjp(
+std::vector<std::vector<paddle::Tensor>> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
     const std::vector<std::vector<int>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res(
+      1, std::vector<paddle::Tensor>(1));
   // get tanh_grad res.
   Tensor op_res =
       backend::experimental::tanh_grad<primitive::experimental::DescTensor>(
@@ -60,20 +62,21 @@ paddle::optional<paddle::Tensor> tanh_vjp(
       ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
 
   // construct vjp result by op result and stop_gradients info
-  paddle::optional<paddle::Tensor> vjp_res;
   if (!stop_gradients[0][0]) {
-    vjp_res = paddle::make_optional<paddle::Tensor>(op_res);
+    vjp_res[0][0] = op_res;
   }
   return vjp_res;
 }
 
-paddle::optional<paddle::Tensor> mean_vjp(
+std::vector<std::vector<paddle::Tensor>> mean_vjp(
     const Tensor& x,
     const Tensor& out_grad,
     std::vector<int64_t> axis,
     bool keepdim,
     bool reduce_all,
     const std::vector<std::vector<int>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res(
+      1, std::vector<paddle::Tensor>(1));
   // get mean_grad res.
   Tensor op_res =
       backend::experimental::mean_grad<primitive::experimental::DescTensor>(
@@ -104,9 +107,8 @@ paddle::optional<paddle::Tensor> mean_vjp(
       ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
 
   // construct vjp result by op result and stop_gradients info
-  paddle::optional<paddle::Tensor> vjp_res;
   if (!stop_gradients[0][0]) {
-    vjp_res = paddle::make_optional<paddle::Tensor>(op_res);
+    vjp_res[0][0] = op_res;
   }
   return vjp_res;
 }

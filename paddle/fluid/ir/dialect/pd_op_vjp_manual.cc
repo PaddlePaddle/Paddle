@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO(wanghao107)
-// this file will be generated in pd_op.cc
-
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/primitive/rule/vjp/vjp.h"
 #include "paddle/primitive/type/desc_tensor.h"
 #include "paddle/utils/optional.h"
+
+// TODO(wanghao107)
+// this file will be generated in pd_op.cc
 
 namespace paddle {
 namespace dialect {
@@ -33,12 +33,12 @@ std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
       std::make_shared<primitive::experimental::DescTensor>(op_obj.out()));
   Tensor grad_out(
       std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
-  paddle::optional<paddle::Tensor> tensor_res =
+  std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
   if (!stop_gradients[0][0]) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
-                    tensor_res.get().impl())
+                    tensor_res[0][0].impl())
                     ->getValue()
                     .dyn_cast<ir::OpResult>();
   }
@@ -58,12 +58,12 @@ std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
       std::make_shared<primitive::experimental::DescTensor>(op_obj.out()));
   Tensor grad_out(
       std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
-  paddle::optional<paddle::Tensor> tensor_res =
+  std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
   if (!stop_gradients[0][0]) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
-                    tensor_res.get().impl())
+                    tensor_res[0][0].impl())
                     ->getValue()
                     .dyn_cast<ir::OpResult>();
   }
@@ -86,13 +86,13 @@ std::vector<std::vector<ir::OpResult>> MeanOp::Vjp(
           .GetData();
   bool keepdim = op->attribute("keepdim").dyn_cast<ir::BoolAttribute>().data();
   bool reduce_all = false;
-  paddle::optional<paddle::Tensor> tensor_res =
+  std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::mean_vjp(
           x, out_grad, axis, keepdim, reduce_all, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
   if (!stop_gradients[0][0]) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
-                    tensor_res.get().impl())
+                    tensor_res[0][0].impl())
                     ->getValue()
                     .dyn_cast<ir::OpResult>();
   }

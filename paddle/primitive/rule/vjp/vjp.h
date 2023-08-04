@@ -31,13 +31,13 @@ namespace paddle {
 namespace primitive {
 namespace experimental {
 // TODO(wanghao107):
-//  op's vjp will be generated in other files.
-paddle::optional<paddle::Tensor> tanh_vjp(
+//  op's vjp will be auto generated.
+std::vector<std::vector<paddle::Tensor>> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
     const std::vector<std::vector<int>>& stop_gradients);
 
-paddle::optional<paddle::Tensor> mean_vjp(
+std::vector<std::vector<paddle::Tensor>> mean_vjp(
     const Tensor& x,
     const Tensor& out_grad,
     std::vector<int64_t> axis,
