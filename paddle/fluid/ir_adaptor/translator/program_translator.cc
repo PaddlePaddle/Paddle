@@ -191,6 +191,10 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
       }
     }
 
+    for (auto& t : set_input_var_names) {
+      std::cerr << "input " << t << std::endl;
+    }
+
     for (const auto& n : (*op_desc)->Outputs()) {
       const auto& output_var_names = n.second;
 
@@ -200,7 +204,11 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
 
+        std::cerr << "output var aname " << var_name << std::endl;
         need_set_parameter_op &= (!set_input_var_names.count(var_name));
+
+        std::cerr << "!!!!!!! " << (!set_input_var_names.count(var_name))
+                  << "\t" << need_set_parameter_op << std::endl;
         // need_set_parameter_op = false;
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;

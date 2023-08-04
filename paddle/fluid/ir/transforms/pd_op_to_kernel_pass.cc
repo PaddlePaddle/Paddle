@@ -367,7 +367,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
   for (auto op_item : *block) {
     VLOG(6) << "op name " << op_item->name();
     paddle::dialect::OpYamlInfoInterface op_info_interface =
-        (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+        op_item->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
     std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
     if (op_info_interface) {
       op_info_parser.reset(new OpYamlInfoParser(op_info_interface.GetOpInfo()));
@@ -379,15 +379,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     auto kernel_key =
-        GetKernelKey(*it, place, map_value_pair, op_info_parser.get());
-
+        GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
-    if (NeedFallBackCpu((*it), kernel_fn_str, kernel_key)) {
+    if (NeedFallBackCpu((op_item), kernel_fn_str, kernel_key)) {
       kernel_key.set_backend(phi::Backend::CPU);
     }
 
-    if (NeedFallBackFromGPUDNN2GPU(*it, kernel_key)) {
+    if (NeedFallBackFromGPUDNN2GPU(op_item, kernel_key)) {
       kernel_key.set_backend(phi::Backend::GPU);
     }
 
@@ -396,29 +395,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     std::vector<ir::Type> op_output_types;
 
-    if ((*it)->num_results() > 0) {
+    if (op_item->num_results() > 0) {
       auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
           kernel_fn_str, kernel_key);
       auto args_def = phi_kernel.args_def();
       auto output_defs = args_def.output_defs();
-      if (!UnchangeOutputOps.count((*it)->name())) {
+      if (!UnchangeOutputOps.count(op_item->name())) {
         PADDLE_ENFORCE_EQ(
-            (*it)->num_results(),
+            op_item->num_results(),
             output_defs.size(),
             phi::errors::PreconditionNotMet(
                 "op [%s] kernel output args defs should equal op outputs",
-                (*it)->name()));
+                op_item->name()));
       }
 
-      for (size_t i = 0; i < (*it)->num_results(); ++i) {
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
         phi::Place out_place;
-        if ((!UnchangeOutputOps.count((*it)->name())) && phi_kernel.IsValid()) {
+        if ((!UnchangeOutputOps.count(op_item->name())) &&
+            phi_kernel.IsValid()) {
           out_place = phi::TransToPhiPlace(output_defs[i].backend);
         } else {
           out_place = phi::TransToPhiPlace(kernel_key.backend());
         }
 
-        auto result_type = (*it)->result(i).type();
+        auto result_type = op_item->result(i).type();
         if (!result_type) {
           op_output_types.push_back(result_type);
         } else if (result_type.isa<dialect::DenseTensorType>()) {
@@ -438,7 +438,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                     paddle::dialect::AllocatedDenseTensorType::get(
                         ctx,
                         out_place,
-                        base_types[j].dyn_cast<dialect::DenseTensorType>());
+                        base_type.dyn_cast<dialect::DenseTensorType>());
                 vec_inner_types.push_back(allocated_dense_tensor_dtype);
               } else {
                 PADDLE_THROW(phi::errors::Unimplemented(
@@ -499,7 +499,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
             kernel_fn_str, kernel_key);
 
-        if (kernel.IsValid() && (!UnchangeOutputOps.count((*it)->name()))) {
+        if (kernel.IsValid() && (!UnchangeOutputOps.count(op_item->name()))) {
           if (new_in_type.isa<dialect::AllocatedDenseTensorType>()) {
             // allocated type
             auto place =

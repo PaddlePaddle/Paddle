@@ -386,6 +386,8 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     op_desc->SetOutput("out", {name});
   }
 
+  std::set<std::string> input_param_names;
+
   for (auto &param : params) {
     auto &name = param.name();
     auto place = param.place().GetType();
@@ -398,6 +400,8 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     op_desc->SetAttr("place", static_cast<int>(place));
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
+
+    input_param_names.insert(name);
   }
 
   std::set<std::string> set_parameter_names;
@@ -428,6 +432,10 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   for (auto &name : set_parameter_names) {
     if (!set_output_names.count(name)) {
+      continue;
+    }
+
+    if (input_param_names.count(name)) {
       continue;
     }
 

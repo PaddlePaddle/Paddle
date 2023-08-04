@@ -340,21 +340,22 @@ void PhiKernelInstruction::InitInputsOutputsIds(
   std::unordered_map<ir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < op->num_results(); i++) {
     ir::Value value = op->result(i);
-    if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
-          phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              phi_op_name_));
-      std::vector<int> outputs_id = GetValueIds(value,
-                                                inner_scope,
-                                                value_2_var_name,
-                                                var_name_2_id,
-                                                variable_2_var_name);
-      outputs.emplace(value, outputs_id);
+    if ((!value) || (!value.type())) {
+      continue;
     }
+
+    PADDLE_ENFORCE_NE(value_2_var_name.find(value),
+                      value_2_var_name.end(),
+                      phi::errors::PreconditionNotMet(
+                          "input should in name map, [%d] 'th input of [%s] op",
+                          i,
+                          phi_op_name_));
+    std::vector<int> outputs_id = GetValueIds(value,
+                                              inner_scope,
+                                              value_2_var_name,
+                                              var_name_2_id,
+                                              variable_2_var_name);
+    outputs.emplace(value, outputs_id);
   }
   SetOutputs(outputs);
   VLOG(8) << "finish process outputs_index";
