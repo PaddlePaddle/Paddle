@@ -254,8 +254,8 @@ void BindOpResult(py::module *m) {
           [](OpResult &self) { return GetStopGradient(self); },
           [](OpResult &self, bool stop_gradient) {
             SetStopGradient(self, stop_gradient);
-          });
-  .def("__eq__", &OpResult::operator==)
+          })
+      .def("__eq__", &OpResult::operator==)
       .def("__eq__",
            [](OpResult &self, Value &other) {
              return self.value_impl() == other.impl();
