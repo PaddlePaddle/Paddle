@@ -76,13 +76,11 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
   if (is_test) dropout = 0.0f;
-  // printf("welcom to FlashAttnUnpaddedKernel\n");
 
   ctx.template Alloc<T>(out);
 
   cudaStream_t stream = ctx.stream();
   bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
-  // printf("is_bf16\n", is_bf16);
 
   // q,k,v [total_*, num_heads, head_dim]
 
@@ -157,10 +155,8 @@ void FlashAttnUnpaddedKernel(
 
   uint64_t workspace_size;
   bool succ;
-  // printf("welcome to flash_attention_with_mask\n");
   if (attn_mask.get_ptr()) {
     // compute scale Q
-    // printf("compute scale Q start\n");
     int64_t q_size = total_q * num_heads * head_size;
 
     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, q_size, 1);
@@ -172,10 +168,8 @@ void FlashAttnUnpaddedKernel(
                                0,
                                ctx.stream()>>>(q_size, scale, q_ptr);
     scale = 1.0f;
-    // printf("compute scale Q finish\n");
     std::vector<int64_t> temp_rand_mask_dim;
     const DenseTensor* attn_mask_ptr = attn_mask.get_ptr();
-    // const const int64_t* attn_mask_ptr = attn_mask.get_ptr();
     int64_t first_dim = 1;
     const auto& origin_dims = attn_mask_ptr->dims();
     auto rank = origin_dims.size();
@@ -186,34 +180,6 @@ void FlashAttnUnpaddedKernel(
                           origin_dims[rank - 3],
                           origin_dims[rank - 2],
                           origin_dims[rank - 1]};
-    // printf("start to exec flash_attn_fwd_with_bias_and_mask\n");
-    // succ =phi::dynload::flash_attn_fwd(
-    //                             q.data(),
-    //                             k.data(),
-    //                             v.data(),
-    //                             nullptr,  // for calculation workspace size
-    //                             cu_seqlens_q.data(),
-    //                             cu_seqlens_k.data(),
-    //                             total_q,
-    //                             total_k,
-    //                             batch_size,
-    //                             num_heads,
-    //                             head_size,
-    //                             max_seqlen_q,
-    //                             max_seqlen_k,
-    //                             dropout,
-    //                             scale,
-    //                             zero_tensors,
-    //                             causal,
-    //                             is_bf16,
-    //                             num_splits,
-    //                             softmax_lse->data(),
-    //                             return_softmax ? softmax->data() : nullptr,
-    //                             nullptr,
-    //                             &workspace_size,
-    //                             stream,
-    //                             seed,
-    //                             offset);
     succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
         static_cast<const void*>(q_ptr),
         static_cast<const void*>(k.data()),
@@ -374,7 +340,6 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
-  // printf("welcome to FlashAttnKernel\n");
   auto dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
                     4,

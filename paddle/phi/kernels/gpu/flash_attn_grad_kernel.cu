@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -31,6 +32,13 @@ DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
+template <typename T>
+__global__ void SimleScaleWithMaskKernel(int64_t numel, float scale, T* inout) {
+  CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
+    inout[i] = static_cast<T>(scale * static_cast<float>(inout[i]));
+  }
+}
+
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  const DenseTensor& q,
@@ -41,6 +49,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  const DenseTensor& out,
                                  const DenseTensor& softmax_lse,
                                  const DenseTensor& seed_offset,
+                                 const paddle::optional<DenseTensor>& attn_mask,
                                  const DenseTensor& dout,
                                  int64_t max_seqlen_q,
                                  int64_t max_seqlen_k,
@@ -85,85 +94,189 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   DenseTensor dsoftmax = Empty<float>(ctx, {batch_size, num_heads, seq_len_q});
 
   uint64_t workspace_size;
+  bool succ;
 
-  // calculate workspace size before execution
-  bool succ = phi::dynload::flash_attn_bwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      dq->data(),
-      dk->data(),
-      dv->data(),
-      nullptr,  // for calculation workspace size
-      dout.data(),
-      cu_seqlens_q.data(),
-      cu_seqlens_k.data(),
-      total_q,
-      total_k,
-      batch_size,
-      num_heads,
-      head_size,
-      max_seqlen_q,
-      max_seqlen_k,
-      dropout,
-      scale,
-      zero_tensors,
-      causal,
-      is_bf16,
-      num_splits,
-      const_cast<float*>(softmax_lse.data<float>()),
-      dsoftmax.data(),
-      nullptr,
-      &workspace_size,
-      stream,
-      seed,
-      offset);
+  if (attn_mask.get_ptr()) {
+    scale = 1.0f;
+    std::vector<int64_t> temp_rand_mask_dim;
+    const DenseTensor* attn_mask_ptr = attn_mask.get_ptr();
+    int64_t first_dim = 1;
+    const auto& origin_dims = attn_mask_ptr->dims();
+    auto rank = origin_dims.size();
+    for (int i = 0; i < rank - 3; i++) {
+      first_dim *= origin_dims[i];
+    }
+    temp_rand_mask_dim = {first_dim,
+                          origin_dims[rank - 3],
+                          origin_dims[rank - 2],
+                          origin_dims[rank - 1]};
+    succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
+        static_cast<const void*>(q.data()),
+        static_cast<const void*>(k.data()),
+        static_cast<const void*>(v.data()),
+        static_cast<void*>(dq->data()),
+        static_cast<void*>(dk->data()),
+        static_cast<void*>(dv->data()),
+        nullptr,  // set out to nullptr to calculate workspace size
+        dout.data(),
+        static_cast<const int32_t*>(cu_seqlens_q.data()),
+        static_cast<const int32_t*>(cu_seqlens_k.data()),
+        total_q,
+        total_k,
+        batch_size,
+        num_heads,
+        head_size,
+        max_seqlen_q,
+        max_seqlen_k,
+        dropout,
+        scale,
+        zero_tensors,
+        is_bf16,
+        num_splits,
+        static_cast<const void*>(softmax_lse.data()),
+        static_cast<void*>(dsoftmax.data()),
+        nullptr,
+        nullptr,
+        &workspace_size,
+        stream,
+        seed,
+        offset,
+        attn_mask_ptr ? attn_mask_ptr->data() : nullptr,
+        nullptr,
+        temp_rand_mask_dim.data() ? temp_rand_mask_dim.data() : nullptr,
+        nullptr);
+    PADDLE_ENFORCE_EQ(
+        succ, true, phi::errors::External(phi::dynload::flash_attn_error()));
 
-  if (!succ) {
-    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+    DenseTensor workspace;
+    if (workspace_size > 0) {
+      workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+    }
+
+    succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
+        static_cast<const void*>(q.data()),
+        static_cast<const void*>(k.data()),
+        static_cast<const void*>(v.data()),
+        static_cast<void*>(dq->data()),
+        static_cast<void*>(dk->data()),
+        static_cast<void*>(dv->data()),
+        out.data(),  // set out to nullptr to calculate workspace size
+        dout.data(),
+        static_cast<const int32_t*>(cu_seqlens_q.data()),
+        static_cast<const int32_t*>(cu_seqlens_k.data()),
+        total_q,
+        total_k,
+        batch_size,
+        num_heads,
+        head_size,
+        max_seqlen_q,
+        max_seqlen_k,
+        dropout,
+        scale,
+        zero_tensors,
+        is_bf16,
+        num_splits,
+        static_cast<const void*>(softmax_lse.data()),
+        static_cast<void*>(dsoftmax.data()),
+        nullptr,
+        workspace_size > 0 ? workspace.data() : nullptr,
+        &workspace_size,
+        stream,
+        seed,
+        offset,
+        attn_mask_ptr ? attn_mask_ptr->data() : nullptr,
+        nullptr,
+        temp_rand_mask_dim.data() ? temp_rand_mask_dim.data() : nullptr,
+        nullptr);
+    PADDLE_ENFORCE_EQ(
+        succ, true, phi::errors::External(phi::dynload::flash_attn_error()));
+
+    int64_t q_size = total_q * num_heads * head_size;
+    auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, q_size, 1);
+    SimleScaleWithMaskKernel<<<gpu_config.block_per_grid,
+                               gpu_config.thread_per_block,
+                               0,
+                               ctx.stream()>>>(
+        q_size, scale, static_cast<T*>(dq->data()));
+  } else {
+    // calculate workspace size before execution
+    succ = phi::dynload::flash_attn_bwd(
+        q.data(),
+        k.data(),
+        v.data(),
+        dq->data(),
+        dk->data(),
+        dv->data(),
+        nullptr,  // for calculation workspace size
+        dout.data(),
+        cu_seqlens_q.data(),
+        cu_seqlens_k.data(),
+        total_q,
+        total_k,
+        batch_size,
+        num_heads,
+        head_size,
+        max_seqlen_q,
+        max_seqlen_k,
+        dropout,
+        scale,
+        zero_tensors,
+        causal,
+        is_bf16,
+        num_splits,
+        const_cast<float*>(softmax_lse.data<float>()),
+        dsoftmax.data(),
+        nullptr,
+        &workspace_size,
+        stream,
+        seed,
+        offset);
+
+    if (!succ) {
+      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+    }
+
+    DenseTensor workspace;
+    if (workspace_size > 0) {
+      workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+    }
+
+    succ = phi::dynload::flash_attn_bwd(
+        q.data(),
+        k.data(),
+        v.data(),
+        dq->data(),
+        dk->data(),
+        dv->data(),
+        out.data(),
+        dout.data(),
+        cu_seqlens_q.data(),
+        cu_seqlens_k.data(),
+        total_q,
+        total_k,
+        batch_size,
+        num_heads,
+        head_size,
+        max_seqlen_q,
+        max_seqlen_k,
+        dropout,
+        scale,
+        zero_tensors,
+        causal,
+        is_bf16,
+        num_splits,
+        const_cast<float*>(softmax_lse.data<float>()),
+        dsoftmax.data(),
+        workspace_size > 0 ? workspace.data() : nullptr,
+        &workspace_size,
+        stream,
+        seed,
+        offset);
+
+    if (!succ) {
+      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+    }
   }
-
-  DenseTensor workspace;
-  if (workspace_size > 0) {
-    workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
-  }
-
-  succ = phi::dynload::flash_attn_bwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      dq->data(),
-      dk->data(),
-      dv->data(),
-      out.data(),
-      dout.data(),
-      cu_seqlens_q.data(),
-      cu_seqlens_k.data(),
-      total_q,
-      total_k,
-      batch_size,
-      num_heads,
-      head_size,
-      max_seqlen_q,
-      max_seqlen_k,
-      dropout,
-      scale,
-      zero_tensors,
-      causal,
-      is_bf16,
-      num_splits,
-      const_cast<float*>(softmax_lse.data<float>()),
-      dsoftmax.data(),
-      workspace_size > 0 ? workspace.data() : nullptr,
-      &workspace_size,
-      stream,
-      seed,
-      offset);
-
-  if (!succ) {
-    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-  }
-
 #endif
 }
 
@@ -175,6 +288,7 @@ void FlashAttnGradKernel(const Context& ctx,
                          const DenseTensor& out,
                          const DenseTensor& softmax_lse,
                          const DenseTensor& seed_offset,
+                         const paddle::optional<DenseTensor>& attn_mask,
                          const DenseTensor& dout,
                          float dropout,
                          bool causal,
@@ -221,6 +335,7 @@ void FlashAttnGradKernel(const Context& ctx,
                                           out,
                                           softmax_lse,
                                           seed_offset,
+                                          attn_mask,
                                           dout,
                                           seq_len_q,
                                           seq_len_k,

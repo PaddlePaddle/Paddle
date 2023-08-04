@@ -57,6 +57,18 @@ def attention_naive(q, k, v, causal=False):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
+def attention_naive_with_mask(q, k, v, attn_bias):
+    qt = paddle.transpose(q, [0, 2, 1, 3])
+    kt = paddle.transpose(k, [0, 2, 1, 3])
+    vt = paddle.transpose(v, [0, 2, 1, 3])
+    scale = 1.0 / np.sqrt(q.shape[-1])
+    s = paddle.matmul(qt, paddle.transpose(kt, [0, 1, 3, 2]))
+    s = paddle.scale(s, scale)
+    p = F.softmax(s + attn_bias)
+    o = paddle.matmul(p, vt)
+    return paddle.transpose(o, [0, 2, 1, 3])
+
+
 is_sm75 = (
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] == 7
@@ -80,7 +92,7 @@ is_sm_supported = is_sm75 or is_sm8x
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 32)
+        self.shape = (2, 128, 8, 16)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -293,10 +305,22 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
 
+
+class TestFlashAttentionWithMaskAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 128, 8, 32)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = True
+
     def test_dot_scale_product(self):
         print(
-            f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+            f"Test flash attn mask case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
+        # test dynamic
+        paddle.disable_static()
+
         query = np.random.random(self.shape)
         key = np.random.random(self.shape)
         value = np.random.random(self.shape)
@@ -330,7 +354,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         out = scaled_dot_product_attention(
             q, k, v, m, self.dropout, self.causal, fixed_seed_offset=None
         )
-        out_ = attention_naive(q_, k_, v_, self.causal)
+        out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
         out_.backward()
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
@@ -408,6 +432,15 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
         self.enable_math = True
         self.enable_flash = False
         self.enable_mem_efficient = False
+
+
+class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = True
 
 
 if __name__ == '__main__':

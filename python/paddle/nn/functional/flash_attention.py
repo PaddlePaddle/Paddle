@@ -417,6 +417,9 @@ def scaled_dot_product_attention(
     dropout_p=0.0,
     is_causal=False,
     fixed_seed_offset=None,
+    return_softmax=False,
+    training=True,
+    rng_name="",
 ):
     r"""
     The equation is:
@@ -469,31 +472,14 @@ def scaled_dot_product_attention(
     if attn_mask is None:
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
     else:
-        # out, _ = _C_ops.flash_attn(
-        #         query,
-        #         key,
-        #         value,
-        #         fixed_seed_offset,
-        #         attn_mask,
-        #         dropout_p ,
-        #         is_causal,
-        #         return_softmax = False,
-        #         training = False,
-        #         rng_name = "",
-        #     )
-        dropout = 0.0
-        causal = False
-        return_softmax = False
-        training = True
-        rng_name = ""
         out, _ = _C_ops.flash_attn(
             query,
             key,
             value,
             fixed_seed_offset,
             attn_mask,
-            dropout,
-            causal,
+            dropout_p,
+            is_causal,
             return_softmax,
             not training,
             rng_name,
