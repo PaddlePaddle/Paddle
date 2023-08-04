@@ -47,6 +47,38 @@ enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
   CHECK_CASE(2, flags, kernel_name, __VA_ARGS__)  \
   CHECK_CASE(3, flags, kernel_name, __VA_ARGS__)
 
+#define CHECK_CASE_NHWC(i, flags, kernel_name, ...)                    \
+  if (i == flags) {                                                    \
+    kernel_name<T, AccT, i, vec_size>                                  \
+        <<<grid_nhwc, block_nhwc, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
+  }
+
+// 0 for no scale, no bias
+// 1 for has scale, no bias
+// 2 for no scale, has bias
+// 3 for has scale, has bias
+#define UNROLL_ALL_CASES_NHWC(flags, kernel_name, ...) \
+  CHECK_CASE_NHWC(0, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_NHWC(1, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_NHWC(2, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_NHWC(3, flags, kernel_name, __VA_ARGS__)
+
+#define CHECK_CASE_BACKWARD(i, flags, kernel_name, ...)                \
+  if (i == flags) {                                                    \
+    kernel_name<T, AccT, i>                                            \
+        <<<grid_nhwc, block_nhwc, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
+  }
+
+// 0 for no scale, no bias
+// 1 for has scale, no bias
+// 2 for no scale, has bias
+// 3 for has scale, has bias
+#define UNROLL_ALL_CASES_BACKWARD(flags, kernel_name, ...) \
+  CHECK_CASE_BACKWARD(0, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_BACKWARD(1, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_BACKWARD(2, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE_BACKWARD(3, flags, kernel_name, __VA_ARGS__)
+
 template <typename T>
 __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
   typedef cub::WarpReduce<T> WarpReduce;
