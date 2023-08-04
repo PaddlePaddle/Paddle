@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/device_context.h"
@@ -933,6 +934,23 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
       phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
           <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
     }
+
+    GroupNormForward<T, AccT, 3>
+        <<<grid, threads, 0, stream>>>(input,
+                                       mean,
+                                       temp_variance,
+                                       scale,
+                                       bias,
+                                       input_ddim[0],
+                                       C,
+                                       W,
+                                       image_size,
+                                       groups,
+                                       group_size,
+                                       static_cast<AccT>(eps),
+                                       output,
+                                       variance,
+                                       data_layout);
   } else {
 #ifdef PADDLE_WITH_HIP
     hipMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
@@ -959,23 +977,35 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
                                        group_size,
                                        mean,
                                        temp_variance);
+
+    auto* device_ctx = static_cast<phi::GPUContext*>(
+        paddle::platform::DeviceContextPool::Instance().Get(
+            paddle::platform::CUDAPlace(0)));
+    const phi::GPUContext& dev_ctx = *device_ctx;
+    int numel = input_ddim[0] * input_ddim[1] * input_ddim[2] * input_ddim[3];
+    constexpr const int vec_size = 2;
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+    int grid_nhwc = config.block_per_grid.x;
+    int block_nhwc = config.thread_per_block.x;
+
+    GroupNormForwardNHWC<T, AccT, 3>
+        <<<grid_nhwc, block_nhwc, 0, stream>>>(input,
+                                               mean,
+                                               temp_variance,
+                                               scale,
+                                               bias,
+                                               input_ddim[0],
+                                               C,
+                                               W,
+                                               image_size,
+                                               groups,
+                                               group_size,
+                                               static_cast<AccT>(eps),
+                                               output,
+                                               variance,
+                                               data_layout);
   }
-  GroupNormForward<T, AccT, 3>
-      <<<grid, threads, 0, stream>>>(input,
-                                     mean,
-                                     temp_variance,
-                                     scale,
-                                     bias,
-                                     input_ddim[0],
-                                     C,
-                                     W,
-                                     image_size,
-                                     groups,
-                                     group_size,
-                                     static_cast<AccT>(eps),
-                                     output,
-                                     variance,
-                                     data_layout);
 }
 template class GroupNormDirectCUDAFunctor<float, float>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
