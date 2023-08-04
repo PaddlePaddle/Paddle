@@ -1134,11 +1134,6 @@ void LogDeviceMemoryStats(const platform::Place& place) {
                    "Reserved", place.device)) /
                    1024 / 1024
             << " MB";
-    VLOG(0) << "RecordedGpuMallocSize: "
-            << static_cast<double>(
-                   platform::RecordedGpuMallocSize(place.device)) /
-                   1024 / 1024
-            << " MB";
   }
 }
 
