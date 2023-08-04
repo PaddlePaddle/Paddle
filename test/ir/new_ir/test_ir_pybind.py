@@ -75,6 +75,11 @@ class TestPybind(unittest.TestCase):
         matmul_op = newir_program.block().get_ops()[1]
         add_op = newir_program.block().get_ops()[2]
         tanh_op = newir_program.block().get_ops()[3]
+
+        self.assertEqual(
+            matmul_op.result(0).dtype, paddle.fluid.core.DataType.FLOAT32
+        )
+        self.assertEqual(matmul_op.result(0).shape, [4, 4])
         self.assertEqual(
             matmul_op.results()[0].get_defining_op().name(), "pd.matmul"
         )
@@ -124,12 +129,6 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
         )
-
-    def test_utils(self):
-        newir_program = get_ir_program()
-        matmul_op = newir_program.block().get_ops()[1]
-        print(ir.get_op_result_dtype(matmul_op.result(0)))
-        self.assertEqual(ir.get_op_result_shape(matmul_op.result(0)), [4, 4])
 
     def test_attr(self):
         main_program, start_program = (

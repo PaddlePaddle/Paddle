@@ -243,7 +243,15 @@ void SetStopGradient(const OpResult &self, bool stop_gradient) {
 void BindOpResult(py::module *m) {
   py::class_<OpResult> op_result(*m, "OpResult");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result
+  op_result.def("__eq__", &OpResult::operator==)
+      .def("__eq__",
+           [](OpResult &self, Value &other) {
+             return self.value_impl() == other.impl();
+           })
+      .def("__hash__",
+           [](OpResult &self) {
+             return std::hash<ir::Value>{}(self.dyn_cast<ir::Value>());
+           })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
@@ -255,14 +263,36 @@ void BindOpResult(py::module *m) {
           [](OpResult &self, bool stop_gradient) {
             SetStopGradient(self, stop_gradient);
           })
-      .def("__eq__", &OpResult::operator==)
-      .def("__eq__",
-           [](OpResult &self, Value &other) {
-             return self.value_impl() == other.impl();
-           })
-      .def("__hash__", [](OpResult &self) {
-        return std::hash<ir::Value>{}(self.dyn_cast<ir::Value>());
-      });
+      .def_property(
+          "shape",
+          [](OpResult &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return phi::vectorize(
+                  self.type().dyn_cast<DenseTensorType>().dims());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get shape for dense tensor."));
+            }
+          },
+          [](OpResult &self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](OpResult &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return paddle::dialect::TransToPhiDataType(
+                  self.type().dyn_cast<DenseTensorType>().dtype());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get dtype for dense tensor."));
+            }
+          },
+          [](OpResult &self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          });
 }
 
 void BindType(py::module *m) {
@@ -276,25 +306,6 @@ void BindType(py::module *m) {
 }
 
 void BindUtils(pybind11::module *m) {
-  m->def("get_op_result_shape", [](const OpResult &op_result) {
-    if (op_result.type().isa<DenseTensorType>()) {
-      return phi::vectorize(
-          op_result.type().dyn_cast<DenseTensorType>().dims());
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "get_op_result_shape currently only support op_result that is a "
-          "DenseTensorType"));
-    }
-  });
-  m->def("get_op_result_dtype", [](const OpResult &op_result) {
-    if (op_result.type().isa<DenseTensorType>()) {
-      return op_result.type().dyn_cast<DenseTensorType>().dtype();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "get_op_result_dtype currently only support op_result that is a "
-          "DenseTensorType"));
-    }
-  });
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",

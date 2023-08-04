@@ -53,6 +53,7 @@ class TestBuildOp(unittest.TestCase):
             .name(),
             "pd.tanh",
         )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_insertion_point(self):
         newir_program = get_ir_program()
@@ -76,6 +77,7 @@ class TestBuildOp(unittest.TestCase):
         self.assertEqual(
             tanh_operand.source().get_defining_op().name(), "pd.mean"
         )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 if __name__ == "__main__":
