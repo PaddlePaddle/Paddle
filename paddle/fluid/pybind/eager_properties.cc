@@ -232,6 +232,31 @@ int tensor_properties_set_persistable(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
+PyDoc_STRVAR(tensor_dist_attr__doc__,
+             R"DOC(dist_attr
+
+Get dist_attr property from shard tensor.
+
+Returns:
+    core.TensorDistAttr: the dist attr of shard tensor
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.distributed as dist
+
+        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+        a = paddle.to_tensor([[1,2,3],
+                              [5,6,7]])
+        d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+
+        print(d_tensor.dist_attr)
+
+)DOC");
+
 PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
   EAGER_TRY
   if (self->tensor.is_dist_tensor()) {
@@ -488,7 +513,7 @@ struct PyGetSetDef variable_properties[] = {
     {"dist_attr",
      (getter)tensor_properties_get_dist_attr,
      nullptr,
-     nullptr,
+     tensor_dist_attr__doc__,
      nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
