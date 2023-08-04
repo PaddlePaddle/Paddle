@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import layers
 
 pos_enc_param_names = (
     "src_pos_enc_table",
@@ -264,13 +263,13 @@ def prepare_encoder(
 
     This module is used at the bottom of the encoder stacks.
     """
-    src_word_emb = layers.embedding(
+    src_word_emb = paddle.static.nn.embedding(
         src_word,
         size=[src_vocab_size, src_emb_dim],
         padding_idx=src_pad_idx,
         param_attr=paddle.nn.initializer.Normal(0.0, 1.0),
     )
-    src_pos_enc = layers.embedding(
+    src_pos_enc = paddle.static.nn.embedding(
         src_pos,
         size=[src_max_len, src_emb_dim],
         padding_idx=pos_pad_idx,
