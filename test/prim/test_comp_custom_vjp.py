@@ -14,7 +14,6 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
 
 
 class TestCustomVJP(unittest.TestCase):
@@ -64,8 +63,8 @@ class TestCustomVJP(unittest.TestCase):
         )
 
     def test_enable_prim_fwd(self):
-        core._set_prim_forward_enabled(True)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(False)
         self.assertEqual(
             self.ops_fwd_enable_bwd_disable,
             tuple(
@@ -76,12 +75,12 @@ class TestCustomVJP(unittest.TestCase):
                 .ops
             ),
         )
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_enable_prim_bwd(self):
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(True)
         self.assertEqual(
             self.ops_fwd_disable_bwd_enable,
             tuple(
@@ -92,11 +91,11 @@ class TestCustomVJP(unittest.TestCase):
                 .ops
             ),
         )
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_enable_prim_all(self):
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         self.assertEqual(
             self.ops_all_enable,
             tuple(
@@ -107,7 +106,7 @@ class TestCustomVJP(unittest.TestCase):
                 .ops
             ),
         )
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
 
 
 if __name__ == '__main__':

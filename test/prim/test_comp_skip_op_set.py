@@ -57,7 +57,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
         paddle.disable_static()
 
     def test_get_grad_op_desc_without_skip(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         actual = tuple(
             desc.type()
             for desc in core.get_grad_op_desc(
@@ -65,10 +65,10 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
             )[0]
         )
         self.assertEqual(actual, self.desired_ops_no_skip)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_get_grad_op_desc_with_skip(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         core._add_skip_comp_ops("tanh")
         actual = tuple(
             desc.type()
@@ -78,7 +78,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
         )
         core._remove_skip_comp_ops("tanh")
         self.assertEqual(actual[0], self.desired_ops)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

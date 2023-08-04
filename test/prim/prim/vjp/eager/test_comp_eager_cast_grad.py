@@ -19,7 +19,6 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
 
 @param.parameterized_class(
@@ -52,7 +51,7 @@ class TestCastGradComp(unittest.TestCase):
         cls.cotangent = cls.cotangent.astype(cls.src_dtype)
 
     def test_cast_grad_comp(self):
-        core.set_prim_eager_enabled(True)
+        paddle.framework.core.set_prim_eager_enabled(True)
 
         def actual(primal, cotangent):
             x = paddle.to_tensor(primal)
@@ -78,7 +77,7 @@ class TestCastGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

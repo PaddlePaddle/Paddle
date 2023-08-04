@@ -18,9 +18,8 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
-core.set_prim_eager_enabled(True)
+paddle.framework.core.set_prim_eager_enabled(True)
 
 
 @param.parameterized_class(
@@ -42,7 +41,7 @@ class TestReshapeGradComp(unittest.TestCase):
 
     def test_reshape_grad_comp(self):
         def actual(primal0, shape):
-            core.set_prim_eager_enabled(True)
+            paddle.framework.core.set_prim_eager_enabled(True)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
@@ -51,7 +50,7 @@ class TestReshapeGradComp(unittest.TestCase):
             return res[0].numpy()
 
         def desired(primal0, shape):
-            core.set_prim_eager_enabled(False)
+            paddle.framework.core.set_prim_eager_enabled(False)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
@@ -69,7 +68,7 @@ class TestReshapeGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

@@ -1412,7 +1412,7 @@ class ProgramCache:
             concrete_program, cache_key.class_instance is not None
         )
         with backend_guard(backend):
-            if core._is_fwd_prim_enabled():
+            if framework.core._is_fwd_prim_enabled():
                 partial_program.set_hooker(
                     PrimHooker(concrete_program.main_program, backend)
                 )
@@ -1483,7 +1483,7 @@ class PrimHooker(PartialProgramLayerHook):
         self.backend = backend
         self.custom_vjps = set()
         with backend_guard(self.backend):
-            if core._is_all_prim_enabled():
+            if framework.core._is_all_prim_enabled():
                 self.custom_vjps = {
                     op.type
                     for op in original_program.block(0).ops
@@ -1492,7 +1492,7 @@ class PrimHooker(PartialProgramLayerHook):
 
     def before_append_backward(self, forward_program):
         with backend_guard(self.backend):
-            if core._is_fwd_prim_enabled():
+            if framework.core._is_fwd_prim_enabled():
                 _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
             return forward_program
 
@@ -1501,7 +1501,10 @@ class PrimHooker(PartialProgramLayerHook):
             backward_length = (
                 len(whole_program.block(0).ops) - backward_start_idx
             )
-            if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+            if (
+                framework.core._is_fwd_prim_enabled()
+                and len(self.custom_vjps) != 0
+            ):
                 # only process backward part of block
                 _to_prim(whole_program.blocks, backward_length=backward_length)
             new_start_index = len(whole_program.block(0).ops) - backward_length
@@ -1512,7 +1515,7 @@ class PrimHooker(PartialProgramLayerHook):
 
     def after_infer(self, infer_program):
         with backend_guard(self.backend):
-            if core._is_fwd_prim_enabled():
+            if framework.core._is_fwd_prim_enabled():
                 _to_prim(infer_program.block(0))
             return infer_program
 

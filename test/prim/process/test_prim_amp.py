@@ -49,7 +49,7 @@ class TestPrimAMPO1(unittest.TestCase):
         self.x.stop_gradient = False
 
     def train(self, use_prim):
-        core._set_prim_all_enabled(use_prim)
+        paddle.framework.core._set_prim_all_enabled(use_prim)
         paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
@@ -80,13 +80,13 @@ class TestPrimAMPO1(unittest.TestCase):
     def test_amp_O1_infer(self):
         if not isinstance(framework._current_expected_place(), core.CPUPlace):
             net = PrimeNet()
-            core._set_prim_all_enabled(False)
+            paddle.framework.core._set_prim_all_enabled(False)
             net.eval()
             static_net = paddle.jit.to_static(net, build_strategy=False)
             res = static_net(self.x)
 
             # set prim all enabled
-            core._set_prim_all_enabled(True)
+            paddle.framework.core._set_prim_all_enabled(True)
             net.eval()
             static_net = paddle.jit.to_static(net, build_strategy=False)
             with paddle.amp.auto_cast(level='O1'):

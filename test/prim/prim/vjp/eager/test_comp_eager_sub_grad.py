@@ -18,9 +18,8 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
-core.set_prim_eager_enabled(True)
+paddle.framework.core.set_prim_eager_enabled(True)
 
 
 @param.parameterized_class(
@@ -61,7 +60,7 @@ class TestSubGradComp(unittest.TestCase):
 
     def test_sub_grad_comp(self):
         def actual(primal0, primal1):
-            core.set_prim_eager_enabled(True)
+            paddle.framework.core.set_prim_eager_enabled(True)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
@@ -72,7 +71,7 @@ class TestSubGradComp(unittest.TestCase):
             return res[0].numpy(), res[1].numpy()
 
         def desired(primal0, primal1):
-            core.set_prim_eager_enabled(False)
+            paddle.framework.core.set_prim_eager_enabled(False)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
@@ -98,7 +97,7 @@ class TestSubGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

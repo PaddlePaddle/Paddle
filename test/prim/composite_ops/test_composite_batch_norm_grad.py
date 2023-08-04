@@ -19,7 +19,6 @@ from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 from paddle.incubate.autograd import primapi
 
 np.random.seed(2023)
@@ -156,7 +155,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
         self, inputs, running_mean, running_variance, weight, bias
     ):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -209,7 +208,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
             fetch_list=[z],
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res
 
     def compare_backward(self):

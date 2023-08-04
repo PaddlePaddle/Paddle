@@ -1640,11 +1640,11 @@ class TestCompositeDropout(unittest.TestCase):
             if cls.dtype != "bfloat16"
             else cls.x.astype("float32")
         )
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
 
     @classmethod
     def tearDownClass(cls):
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
 
     def setUp(self):
         paddle.seed(self.seed)
@@ -1662,7 +1662,7 @@ class TestCompositeDropout(unittest.TestCase):
             paddle.set_device("cpu")
         if isinstance(place, fluid.CUDAPlace):
             paddle.set_device("gpu")
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
             data=self.x,
             dtype=self.dtype if self.dtype != "bfloat16" else "float32",
@@ -1702,7 +1702,7 @@ class TestCompositeDropout(unittest.TestCase):
                         training=(not self.is_test),
                         mode=self.mode,
                     )
-                    if core._is_fwd_prim_enabled():
+                    if paddle.framework.core._is_fwd_prim_enabled():
                         primapi.to_prim(mp.blocks)
                     grad = paddle.static.gradients(output, input_)[0]
                     if self.dtype == "bfloat16":

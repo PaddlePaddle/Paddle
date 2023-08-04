@@ -75,16 +75,15 @@ class TestAddHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
             [x, y], y=out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.add_wrapper, [x, y], y=out, x_init=[x_arr, y_arr], place=place
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     @prog_scope()
     def func_triple(self, place):
@@ -101,16 +100,15 @@ class TestAddHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
             [x, y], y=out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
         gradient_checker.triple_grad_check_for_dygraph(
             self.add_wrapper, [x, y], y=out, x_init=[x_arr, y_arr], place=place
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_high_grad(self):
         paddle.enable_static()
@@ -171,9 +169,8 @@ class TestSubtractHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
             [x, y], y=out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
@@ -184,7 +181,7 @@ class TestSubtractHighGradCheck(unittest.TestCase):
             x_init=[x_arr, y_arr],
             place=place,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     @prog_scope()
     def func_triple(self, place):
@@ -201,9 +198,8 @@ class TestSubtractHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
             [x, y], y=out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
@@ -214,7 +210,7 @@ class TestSubtractHighGradCheck(unittest.TestCase):
             x_init=[x_arr, y_arr],
             place=place,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_high_grad(self):
         paddle.enable_static()
@@ -275,9 +271,8 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
             [x, y], y=out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
@@ -288,7 +283,7 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
             x_init=[x_arr, y_arr],
             place=place,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     @prog_scope()
     def func_triple(self, place):
@@ -305,9 +300,8 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
             [x, y], y=out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
@@ -318,7 +312,7 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
             x_init=[x_arr, y_arr],
             place=place,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_high_grad(self):
         paddle.enable_static()
@@ -360,9 +354,8 @@ class TestSiluHighGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
 
         # silu double grad only has CompositeOpMaker,don't need set prim_flag
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
             [x], y=out, x_init=[x_arr], place=place, eps=eps
         )
@@ -373,7 +366,7 @@ class TestSiluHighGradCheck(unittest.TestCase):
             x_init=[x_arr],
             place=place,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     @prog_scope()
     def func_triple(self, place):
@@ -386,9 +379,8 @@ class TestSiluHighGradCheck(unittest.TestCase):
         out = paddle.nn.functional.silu(x)
         x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
-        from paddle.fluid import core
 
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
             [x], y=out, x_init=[x_arr], place=place, eps=eps
         )
@@ -399,7 +391,7 @@ class TestSiluHighGradCheck(unittest.TestCase):
             x_init=[x_arr],
             place=place,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
     def test_high_grad(self):
         paddle.enable_static()

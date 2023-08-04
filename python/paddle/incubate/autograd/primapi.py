@@ -16,7 +16,7 @@ import logging
 import typing
 
 import paddle
-from paddle.fluid import backward, core, framework
+from paddle.fluid import backward, framework
 from paddle.fluid.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
@@ -238,7 +238,7 @@ def to_prim(
         start_idx(int): If start_idx exceeds -1, ops[start_idx:] will be processed. Default: -1.
         backward_length(int): If backward_length exceeds -1, ops[:-backward_length] will be processed. Default: -1.
     """
-    if not core._is_fwd_prim_enabled():
+    if not paddle.framework.core._is_fwd_prim_enabled():
         return
     if isinstance(blocks, paddle.fluid.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")

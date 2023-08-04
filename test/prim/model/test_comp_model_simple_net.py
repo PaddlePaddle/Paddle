@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.fluid import framework
 
 
 @param.parameterized_class(
@@ -100,10 +100,10 @@ class TestMultiplyGradComp(unittest.TestCase):
         )
 
     def test_comp(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         actual = self.net()
 
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         desired = self.net()
 
         self.assertEqual(len(actual), len(desired))

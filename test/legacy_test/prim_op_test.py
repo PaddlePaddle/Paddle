@@ -579,7 +579,7 @@ class PrimForwardChecker:
         if self.prim_op_type == "prim":
             return
         with paddle.fluid.framework._static_guard():
-            core._set_prim_forward_enabled(self.enable_fw_comp)
+            paddle.framework.core._set_prim_forward_enabled(self.enable_fw_comp)
             startup_program, main_program = (
                 paddle.static.Program(),
                 paddle.static.Program(),
@@ -649,7 +649,7 @@ class PrimForwardChecker:
                 ),
             )
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
 
     def check_jit_comp(self):
         if self.prim_op_type == "prim":
@@ -661,7 +661,7 @@ class PrimForwardChecker:
             paddle.device.set_device("gpu:0")
         atol = self.fw_comp_atol if self.enable_fw_comp else self.jit_comp_atol
         rtol = self.fw_comp_rtol if self.enable_fw_comp else self.jit_comp_rtol
-        core._set_prim_forward_enabled(self.enable_fw_comp)
+        paddle.framework.core._set_prim_forward_enabled(self.enable_fw_comp)
         (
             eager_tensor_inputs,
             attrs_outputs,
@@ -726,7 +726,7 @@ class PrimForwardChecker:
                     )
                 ),
             )
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         net.forward.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
@@ -750,7 +750,7 @@ class PrimForwardChecker:
             if self.enable_cinn and core.is_compiled_with_cinn()
             else self.fw_comp_rtol
         )
-        core._set_prim_forward_enabled(self.enable_fw_comp)
+        paddle.framework.core._set_prim_forward_enabled(self.enable_fw_comp)
         if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
         if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
@@ -823,7 +823,7 @@ class PrimForwardChecker:
                     )
                 ),
             )
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         net.forward.program_cache.clear()
 
 
@@ -984,7 +984,7 @@ class PrimGradChecker(PrimForwardChecker):
             paddle.device.set_device("gpu:0")
         atol = self.rev_comp_atol
         rtol = self.rev_comp_rtol
-        core.set_prim_eager_enabled(self.enable_rev_comp)
+        paddle.framework.core.set_prim_eager_enabled(self.enable_rev_comp)
         actual_ret = self.get_eager_desire()
         # check static forward
         if len(actual_ret) != len(self.eager_desire):
@@ -1017,14 +1017,18 @@ class PrimGradChecker(PrimForwardChecker):
                     )
                 ),
             )
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
         if self.prim_op_type == "prim":
-            core._set_prim_backward_enabled(self.enable_rev_comp)
+            paddle.framework.core._set_prim_backward_enabled(
+                self.enable_rev_comp
+            )
         else:
-            core._set_prim_forward_enabled(self.enable_fw_comp)
-            core._set_prim_backward_enabled(self.enable_rev_comp)
+            paddle.framework.core._set_prim_forward_enabled(self.enable_fw_comp)
+            paddle.framework.core._set_prim_backward_enabled(
+                self.enable_rev_comp
+            )
         atol = self.rev_comp_atol if self.enable_rev_comp else self.fw_comp_atol
         rtol = self.rev_comp_rtol if self.enable_rev_comp else self.fw_comp_rtol
         with paddle.fluid.framework._static_guard():
@@ -1124,8 +1128,8 @@ class PrimGradChecker(PrimForwardChecker):
                     )
                 ),
             )
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         paddle.disable_static()
 
     def check_jit_comp(self):
@@ -1135,10 +1139,14 @@ class PrimGradChecker(PrimForwardChecker):
         if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         if self.prim_op_type == "prim":
-            core._set_prim_backward_enabled(self.enable_rev_comp)
+            paddle.framework.core._set_prim_backward_enabled(
+                self.enable_rev_comp
+            )
         else:
-            core._set_prim_forward_enabled(self.enable_fw_comp)
-            core._set_prim_backward_enabled(self.enable_rev_comp)
+            paddle.framework.core._set_prim_forward_enabled(self.enable_fw_comp)
+            paddle.framework.core._set_prim_backward_enabled(
+                self.enable_rev_comp
+            )
         atol = (
             self.fw_comp_atol
             if self.enable_fw_comp and not self.enable_rev_comp
@@ -1240,8 +1248,8 @@ class PrimGradChecker(PrimForwardChecker):
                     )
                 ),
             )
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         net.forward.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
@@ -1258,10 +1266,14 @@ class PrimGradChecker(PrimForwardChecker):
         if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         if self.prim_op_type == "prim":
-            core._set_prim_backward_enabled(self.enable_rev_comp)
+            paddle.framework.core._set_prim_backward_enabled(
+                self.enable_rev_comp
+            )
         else:
-            core._set_prim_forward_enabled(self.enable_fw_comp)
-            core._set_prim_backward_enabled(self.enable_rev_comp)
+            paddle.framework.core._set_prim_forward_enabled(self.enable_fw_comp)
+            paddle.framework.core._set_prim_backward_enabled(
+                self.enable_rev_comp
+            )
         if self.enable_cinn and core.is_compiled_with_cinn():
             atol = self.cinn_atol
             rtol = self.cinn_rtol
@@ -1373,6 +1385,6 @@ class PrimGradChecker(PrimForwardChecker):
                 ),
             )
 
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         net.forward.program_cache.clear()

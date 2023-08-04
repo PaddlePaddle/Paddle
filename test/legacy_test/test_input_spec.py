@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
 from paddle.static import InputSpec
@@ -337,10 +336,10 @@ class NegSpecNet(paddle.nn.Layer):
 class TestNegSpecWithPrim(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
 
     def tearDown(self):
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
 
     def test_run(self):
         net = NegSpecNet()

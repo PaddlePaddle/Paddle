@@ -18,7 +18,6 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
 
 def apply_to_static(net, use_cinn):
@@ -82,7 +81,7 @@ class TestDivGradComp(unittest.TestCase):
         self.x.stop_gradient = False
         self.y.stop_gradient = False
         net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
+        paddle.framework.core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x, self.y)
         res = paddle.autograd.grad(out, [self.x, self.y])
@@ -107,7 +106,7 @@ class TestDivGradComp(unittest.TestCase):
         paddle.enable_static()
 
         def actual(primal0, primal1):
-            core._set_prim_backward_enabled(True)
+            paddle.framework.core._set_prim_backward_enabled(True)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
@@ -130,7 +129,7 @@ class TestDivGradComp(unittest.TestCase):
             return out[0], out[1]
 
         def desired(primal0, primal1):
-            core._set_prim_backward_enabled(False)
+            paddle.framework.core._set_prim_backward_enabled(False)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data(
@@ -172,7 +171,7 @@ class TestDivGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         paddle.disable_static()
 
 

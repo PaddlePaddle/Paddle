@@ -23,7 +23,6 @@ from test_fetch_feed import Linear
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid, nn
-from paddle.fluid import core
 from paddle.nn import BatchNorm
 from paddle.optimizer import Adam
 
@@ -119,7 +118,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
             self.x.stop_gradient = False
             net = PrimeNet(data_layout="NCHW")
-            core._set_prim_all_enabled(True)
+            paddle.framework.core._set_prim_all_enabled(True)
             net.eval()
             static_net = apply_to_static(net)
             res = static_net(self.x)
@@ -161,7 +160,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             self.x.stop_gradient = False
             net = PrimeNet(data_layout="NCHW")
             net.register_forward_post_hook(forward_post_hook_for_prim_net)
-            core._set_prim_all_enabled(True)
+            paddle.framework.core._set_prim_all_enabled(True)
             net.eval()
             static_net = apply_to_static(net)
             res = static_net(self.x)

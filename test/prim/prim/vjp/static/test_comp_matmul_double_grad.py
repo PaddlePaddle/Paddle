@@ -18,9 +18,8 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
-core._set_prim_backward_enabled(True)
+paddle.framework.core._set_prim_backward_enabled(True)
 
 # when dim = 1 reshape op will be deleted by backward algorithm ,
 # it's better to use matmul_grad in static composite pattern
@@ -213,7 +212,7 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
 
     def test_matmul_grad_comp(self):
         def actual(primal0, primal1, primal2, trans_0, trans_1):
-            core._set_prim_backward_enabled(True)
+            paddle.framework.core._set_prim_backward_enabled(True)
             paddle.enable_static()
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
@@ -247,7 +246,7 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             return out[0], out[1], out[2]
 
         def desired(primal0, primal1, primal2, trans_0, trans_1):
-            core._set_prim_backward_enabled(False)
+            paddle.framework.core._set_prim_backward_enabled(False)
             paddle.enable_static()
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
@@ -325,7 +324,7 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             )
 
 
-core._set_prim_backward_enabled(False)
+paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

@@ -24,7 +24,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
@@ -454,9 +453,9 @@ class TestResnet(unittest.TestCase):
         self.verify_predict()
 
     def test_resnet_composite_forward_backward(self):
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         static_loss = self.train(to_static=True)
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         dygraph_loss = self.train(to_static=True)
         np.testing.assert_allclose(
             static_loss,

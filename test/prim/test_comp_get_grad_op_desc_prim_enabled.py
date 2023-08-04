@@ -15,14 +15,12 @@
 
 import unittest
 
-from paddle.fluid import core
-
-core._set_prim_backward_enabled(True)
-
 import parameterized as param
 
 import paddle
 from paddle.fluid import core, framework
+
+paddle.framework.core._set_prim_backward_enabled(True)
 
 
 @param.parameterized_class(
@@ -86,7 +84,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
             )[0]
         )
         self.assertEqual(actual, self.desired_ops)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

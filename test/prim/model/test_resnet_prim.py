@@ -171,7 +171,7 @@ def train(to_static, enable_prim, enable_cinn):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    fluid.core._set_prim_all_enabled(enable_prim)
+    fluid.paddle.framework.core._set_prim_all_enabled(enable_prim)
 
     dataset = TransedFlowerDataSet(
         reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),

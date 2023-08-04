@@ -21,7 +21,6 @@ from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
@@ -132,9 +131,9 @@ class TestResnet(unittest.TestCase):
         )
 
     def test_resnet_composite(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         static_loss = self.train(to_static=True)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(
             static_loss,

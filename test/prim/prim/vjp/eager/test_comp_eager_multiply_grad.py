@@ -18,7 +18,6 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
 
 @param.parameterized_class(
@@ -81,10 +80,10 @@ class TestMultiplyGradComp(unittest.TestCase):
         return [g for g in grads if g is not None]
 
     def test_comp(self):
-        core.set_prim_eager_enabled(True)
+        paddle.framework.core.set_prim_eager_enabled(True)
         actual = self.vjp()
 
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
         desired = self.vjp()
 
         for i, j in zip(actual, desired):

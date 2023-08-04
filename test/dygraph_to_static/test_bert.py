@@ -25,7 +25,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 place = (
@@ -288,12 +287,12 @@ class TestBert(unittest.TestCase):
         self.verify_predict()
 
     def test_train_composite(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         # core._add_skip_comp_ops("layer_norm")
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         # core._add_skip_comp_ops("layer_norm")
         dygraph_loss, dygraph_ppl = self.train_dygraph(
             self.bert_config, self.data_reader

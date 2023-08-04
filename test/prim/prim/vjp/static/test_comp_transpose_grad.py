@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.fluid import framework
 
 
 def apply_to_static(net, use_cinn):
@@ -128,7 +128,7 @@ class TestTransposeGradComp(unittest.TestCase):
         self.x = paddle.randn([3, 4, 10])
         self.x.stop_gradient = False
         net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
+        paddle.framework.core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x)
         res = paddle.autograd.grad(out, [self.x])
@@ -158,7 +158,7 @@ class TestTransposeGradComp(unittest.TestCase):
         paddle.enable_static()
 
         def actual(primal, axis, cotangent):
-            core._set_prim_backward_enabled(True)
+            paddle.framework.core._set_prim_backward_enabled(True)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 if isinstance(primal, np.ndarray):
@@ -184,7 +184,7 @@ class TestTransposeGradComp(unittest.TestCase):
             )[0]
 
         def desired(primal, axis, cotangent):
-            core._set_prim_backward_enabled(False)
+            paddle.framework.core._set_prim_backward_enabled(False)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 if isinstance(primal, np.ndarray):
@@ -220,7 +220,7 @@ class TestTransposeGradComp(unittest.TestCase):
                 rtol=self.rtol,
                 atol=self.rtol,
             )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

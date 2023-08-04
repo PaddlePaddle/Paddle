@@ -138,7 +138,7 @@ def expect_forward(
 
 def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
     paddle.enable_static()
-    core._set_prim_all_enabled(True)
+    paddle.framework.core._set_prim_all_enabled(True)
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     with paddle.static.program_guard(main_program, startup_program):
@@ -249,7 +249,7 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
             fetch_list=vars_list,
         )
     paddle.disable_static()
-    core._set_prim_all_enabled(False)
+    paddle.framework.core._set_prim_all_enabled(False)
     if not use_run_stat:
         return Y, MeanOut, VarianceOut, SavedMean, SavedVariance
     else:
@@ -411,7 +411,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.x.stop_gradient = False
 
     def train(self, use_prim, data_layout="NCHW", is_test=False):
-        core._set_prim_all_enabled(use_prim)
+        paddle.framework.core._set_prim_all_enabled(use_prim)
         paddle.seed(2022)
         net = PrimeNet(data_layout=data_layout, is_test=is_test)
         sgd = paddle.optimizer.SGD(
@@ -487,7 +487,7 @@ class TestPrimEvalBranch(unittest.TestCase):
         self.x.stop_gradient = False
 
     def train(self, use_prim):
-        core._set_prim_all_enabled(use_prim)
+        paddle.framework.core._set_prim_all_enabled(use_prim)
         paddle.seed(2022)
         net = BatchNorm(2, is_test=True)
         net = apply_to_static(net, False)

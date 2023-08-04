@@ -19,7 +19,6 @@ from prim.composite_ops.utils import TOLERANCE
 
 import paddle
 from paddle import tensor
-from paddle.fluid import core
 from paddle.incubate.autograd import primapi
 
 
@@ -85,7 +84,7 @@ class TestCompositeMean(unittest.TestCase):
 
     def cal_composite_grad(self, inputs):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -116,7 +115,7 @@ class TestCompositeMean(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return res
 
     def compare_backward(self):
@@ -164,7 +163,7 @@ class TestCompositeMeanPrimBackward(unittest.TestCase):
 
     def cal_composite_grad(self, inputs):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -181,7 +180,7 @@ class TestCompositeMeanPrimBackward(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res
 
     def compare_backward(self):

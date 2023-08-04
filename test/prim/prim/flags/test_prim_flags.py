@@ -25,58 +25,58 @@ from paddle.incubate.autograd import primapi
 
 class TestPrimFlags(unittest.TestCase):
     def test_prim_flags(self):
-        self.assertFalse(core._is_bwd_prim_enabled())
-        self.assertFalse(core._is_fwd_prim_enabled())
+        self.assertFalse(paddle.framework.core._is_bwd_prim_enabled())
+        self.assertFalse(paddle.framework.core._is_fwd_prim_enabled())
 
         os.environ['FLAGS_prim_backward'] = "True"
-        core.check_and_set_prim_all_enabled()
-        self.assertTrue(core._is_bwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertTrue(paddle.framework.core._is_bwd_prim_enabled())
         os.environ['FLAGS_prim_forward'] = "True"
-        core.check_and_set_prim_all_enabled()
-        self.assertTrue(core._is_fwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertTrue(paddle.framework.core._is_fwd_prim_enabled())
         os.environ['FLAGS_prim_all'] = "False"
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_bwd_prim_enabled())
-        self.assertFalse(core._is_fwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertFalse(paddle.framework.core._is_bwd_prim_enabled())
+        self.assertFalse(paddle.framework.core._is_fwd_prim_enabled())
 
         os.environ['FLAGS_prim_all'] = "True"
-        core.check_and_set_prim_all_enabled()
-        self.assertTrue(core._is_bwd_prim_enabled())
-        self.assertTrue(core._is_fwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertTrue(paddle.framework.core._is_bwd_prim_enabled())
+        self.assertTrue(paddle.framework.core._is_fwd_prim_enabled())
 
         del os.environ['FLAGS_prim_all']
         os.environ['FLAGS_prim_backward'] = "False"
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_bwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertFalse(paddle.framework.core._is_bwd_prim_enabled())
         os.environ['FLAGS_prim_forward'] = "False"
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_fwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertFalse(paddle.framework.core._is_fwd_prim_enabled())
 
         del os.environ['FLAGS_prim_backward']
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_bwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertFalse(paddle.framework.core._is_bwd_prim_enabled())
         del os.environ['FLAGS_prim_forward']
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_fwd_prim_enabled())
+        paddle.framework.core.check_and_set_prim_all_enabled()
+        self.assertFalse(paddle.framework.core._is_fwd_prim_enabled())
 
-        core.set_prim_eager_enabled(True)
-        self.assertTrue(core._is_eager_prim_enabled())
+        paddle.framework.core.set_prim_eager_enabled(True)
+        self.assertTrue(paddle.framework.core._is_eager_prim_enabled())
 
         with self.assertRaises(TypeError):
             core._test_use_sync("aaaa")
 
-        core._set_prim_all_enabled(True)
-        self.assertTrue(core._is_all_prim_enabled())
+        paddle.framework.core._set_prim_all_enabled(True)
+        self.assertTrue(paddle.framework.core._is_all_prim_enabled())
 
-        core._set_prim_all_enabled(False)
-        self.assertFalse(core._is_all_prim_enabled())
+        paddle.framework.core._set_prim_all_enabled(False)
+        self.assertFalse(paddle.framework.core._is_all_prim_enabled())
 
 
 class TestPrimBlacklistFlags(unittest.TestCase):
     def not_in_blacklist(self):
         inputs = np.random.random([2, 3, 4]).astype("float32")
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -100,13 +100,13 @@ class TestPrimBlacklistFlags(unittest.TestCase):
         exe.run(startup_program)
         _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return
 
     def in_blacklist(self):
         inputs = np.random.random([2, 3, 4]).astype("float32")
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -130,13 +130,13 @@ class TestPrimBlacklistFlags(unittest.TestCase):
         exe.run(startup_program)
         _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return
 
     def test_prim_forward_blackward(self):
         # self.not_in_blacklist()
 
-        core._set_prim_forward_blacklist("softmax")
+        paddle.framework.core._set_prim_forward_blacklist("softmax")
         self.in_blacklist()
 
 

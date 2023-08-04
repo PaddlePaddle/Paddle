@@ -293,11 +293,11 @@ if paddle.is_compiled_with_cuda():
 class TestCompositeInstanceNormNorm(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
 
     @classmethod
     def tearDownClass(cls):
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
 
     def setUp(self):
         np.random.seed(1234)
@@ -329,7 +329,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             paddle.set_device("cpu")
         if isinstance(place, fluid.CUDAPlace):
             paddle.set_device("gpu")
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
         paddle.disable_static()
         input_ = paddle.to_tensor(
             data=self.x, dtype=self.dtype, place=place, stop_gradient=False
@@ -348,7 +348,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
         return output, grad[0]
 
     def get_static_desire(self, place):
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         paddle.enable_static()
         if isinstance(place, fluid.CPUPlace):
             paddle.set_device("cpu")
@@ -396,7 +396,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             # Ensure that instance_norm in original block
             assert 'instance_norm' in fwd_ops
 
-            if core._is_fwd_prim_enabled():
+            if paddle.framework.core._is_fwd_prim_enabled():
                 paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                 fwd_ops_new = [op.type for op in blocks[0].ops]
                 # Ensure that instance_norm is splitted into small ops
@@ -416,7 +416,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             fetch_list=vars_list + [grads],
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
 
         return out_list[:3], out_list[3:]
 
@@ -480,7 +480,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                     # Ensure that instance_norm in original block
                     assert 'instance_norm' in fwd_ops
 
-                    if core._is_fwd_prim_enabled():
+                    if paddle.framework.core._is_fwd_prim_enabled():
                         paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                         fwd_ops_new = [op.type for op in blocks[0].ops]
                         # Ensure that instance_norm is splitted into small ops

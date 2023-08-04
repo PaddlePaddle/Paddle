@@ -952,7 +952,10 @@ def save(layer, path, input_spec=None, **configs):
 
     # 1. input build & check
     prog_translator = ProgramTranslator()
-    is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
+    is_prim_infer = (
+        paddle.framework.core._is_fwd_prim_enabled()
+        and paddle.framework.core._is_bwd_prim_enabled()
+    )
     if not prog_translator.enable_to_static:
         raise RuntimeError(
             "The paddle.jit.save doesn't work when setting 'paddle.jit.enable_to_static' to False."

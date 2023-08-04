@@ -19,7 +19,6 @@ from prim.composite_ops.utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 
 
 def generate_data(shape, dtype="float32"):
@@ -69,13 +68,13 @@ class TestCompositeReluPrimBackward(unittest.TestCase):
     "test composite relu and prim backward"
 
     def setUp(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         self.dtypes = ["float16", "float32", "float64"]
         self.shapes = [[2, 3, 4], [2, 3]]
 
     def cal_composite_grad(self, inputs):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -92,7 +91,7 @@ class TestCompositeReluPrimBackward(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res
 
     def compare_backward(self):

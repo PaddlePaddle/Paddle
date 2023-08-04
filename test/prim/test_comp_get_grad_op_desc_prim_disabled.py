@@ -15,14 +15,12 @@
 
 import unittest
 
-from paddle.fluid import core
-
-core._set_prim_backward_enabled(False)
-
 import parameterized as param
 
 import paddle
 from paddle.fluid import core, framework
+
+paddle.framework.core._set_prim_backward_enabled(False)
 
 
 @param.parameterized_class(

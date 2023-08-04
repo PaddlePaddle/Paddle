@@ -1464,7 +1464,10 @@ def prim_or_cinn_is_enabled(build_strategy, backend):
     if build_strategy is not None and build_strategy.build_cinn_pass:
         return True
 
-    if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+    if (
+        paddle.framework.core._is_bwd_prim_enabled()
+        or paddle.framework.core._is_fwd_prim_enabled()
+    ):
         return True
 
     env_flags = [
@@ -1500,17 +1503,17 @@ def is_builtin(func, name=None):
 
 @signature_safe_contextmanager
 def backend_guard(backend):
-    core.check_and_set_prim_all_enabled()
-    orign_fwd = core._is_fwd_prim_enabled()
-    orign_bwd = core._is_bwd_prim_enabled()
+    paddle.framework.core.check_and_set_prim_all_enabled()
+    orign_fwd = paddle.framework.core._is_fwd_prim_enabled()
+    orign_bwd = paddle.framework.core._is_bwd_prim_enabled()
 
     if backend == 'CINN':
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
     try:
         yield
     finally:
-        core._set_prim_forward_enabled(orign_fwd)
-        core._set_prim_backward_enabled(orign_bwd)
+        paddle.framework.core._set_prim_forward_enabled(orign_fwd)
+        paddle.framework.core._set_prim_backward_enabled(orign_bwd)
 
 
 def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):

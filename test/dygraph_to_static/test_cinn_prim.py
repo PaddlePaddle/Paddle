@@ -19,7 +19,6 @@ from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 
 
 def apply_to_static(net, use_cinn):
@@ -58,7 +57,7 @@ class TestPrimForward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_forward_enabled(use_prim)
+        paddle.framework.core._set_prim_forward_enabled(use_prim)
         if use_prim:
             net = apply_to_static(net, use_prim)
 
@@ -118,7 +117,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_all_enabled(use_prim)
+        paddle.framework.core._set_prim_all_enabled(use_prim)
         if use_prim:
             net = apply_to_static(net, use_prim)
 

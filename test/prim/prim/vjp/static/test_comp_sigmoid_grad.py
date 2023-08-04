@@ -19,7 +19,6 @@ import parameterized as param
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 
 
 @param.parameterized_class(
@@ -31,7 +30,7 @@ from paddle.fluid import core
 class TestExpGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        core.set_prim_eager_enabled(True)
+        paddle.framework.core.set_prim_eager_enabled(True)
         cls.primal = cls.primal.astype(cls.dtype)
         if cls.cotangent is not None:
             cls.cotangent = cls.cotangent.astype(cls.dtype)
@@ -44,7 +43,7 @@ class TestExpGradComp(unittest.TestCase):
 
     def test_sigmoid_grad_comp(self):
         def actual(primal, cotangent):
-            core._set_prim_backward_enabled(True)
+            paddle.framework.core._set_prim_backward_enabled(True)
             paddle.enable_static()
 
             mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -73,7 +72,7 @@ class TestExpGradComp(unittest.TestCase):
             return out[0]
 
         def desired(primal, cotangent):
-            core._set_prim_backward_enabled(False)
+            paddle.framework.core._set_prim_backward_enabled(False)
             paddle.enable_static()
 
             mp, sp = paddle.static.Program(), paddle.static.Program()

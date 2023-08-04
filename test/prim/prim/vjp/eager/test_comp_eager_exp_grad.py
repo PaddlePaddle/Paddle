@@ -20,7 +20,6 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
 
 @param.parameterized_class(
@@ -32,14 +31,14 @@ from paddle.fluid import core
 class TestExpGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        core.set_prim_eager_enabled(True)
+        paddle.framework.core.set_prim_eager_enabled(True)
         cls.primal = cls.primal.astype(cls.dtype)
         if cls.cotangent is not None:
             cls.cotangent = cls.cotangent.astype(cls.dtype)
 
     @classmethod
     def tearDownClass(cls):
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
 
     def test_exp_grad_comp(self):
         def actual(primal, cotangent):

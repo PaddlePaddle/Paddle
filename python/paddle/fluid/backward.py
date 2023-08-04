@@ -749,7 +749,7 @@ def _remove_no_grad_branch_(
     ]
     # Insert fill_any_like_op with value 0
     to_insert = []
-    if not core._is_bwd_prim_enabled():
+    if not paddle.framework.core._is_bwd_prim_enabled():
         for idx, op_desc in enumerate(op_descs):
             for arg in op_desc.input_arg_names():
                 # arg is a gradient var name and arg should not have gradient
@@ -1349,7 +1349,7 @@ def _append_backward_ops_(
         rename_var_map = {}
     assert isinstance(rename_var_map, dict)
 
-    if core._is_bwd_prim_enabled():
+    if paddle.framework.core._is_bwd_prim_enabled():
         composite_block = program.clone().current_block()
         # Create output and infer shape for operators whose output haven't
         # been created.
@@ -1407,7 +1407,7 @@ def _append_backward_ops_(
         #       x_grad = reduce_sum(x_grad_unreduce)
         grad_op_desc = []
         op_grad_to_var = {}
-        if core._is_bwd_prim_enabled():
+        if paddle.framework.core._is_bwd_prim_enabled():
 
             def find_op_index(block_desc, cur_op_desc):
                 for idx in range(block_desc.op_size()):
@@ -1563,7 +1563,7 @@ def _append_backward_ops_(
 
     # remove some backward ops
     # TODO(Jiabin): Support this in prime later, it will prune add_grad, fix this problem
-    if not core._is_bwd_prim_enabled():
+    if not paddle.framework.core._is_bwd_prim_enabled():
         not_need_ops = _find_not_need_ops(
             grad_op_descs, ops, input_grad_names_set
         )
@@ -2470,7 +2470,7 @@ def calc_gradient_helper(
 
         grad_name_set.add(grad_name)
 
-    if core._is_bwd_prim_enabled():
+    if paddle.framework.core._is_bwd_prim_enabled():
         core._set_prim_target_grad_name(target_grad_map)
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to
@@ -2496,7 +2496,7 @@ def calc_gradient_helper(
     # targets_gradients = var1_grad, need to add var2_grad here.
     tmp_targets = targets
 
-    if core._is_bwd_prim_enabled():
+    if paddle.framework.core._is_bwd_prim_enabled():
         for op in reversed(block.ops):
             if op.type == "fill_any_like":
                 continue

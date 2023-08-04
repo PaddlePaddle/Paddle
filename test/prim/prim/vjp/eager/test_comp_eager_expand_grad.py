@@ -18,7 +18,6 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
 
 @param.parameterized_class(
@@ -62,7 +61,7 @@ class TestExpandGradComp(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
 
     def test_comp(self):
         def func(primal, cotangent, shape):
@@ -74,11 +73,11 @@ class TestExpandGradComp(unittest.TestCase):
             ]
 
         def actual(primal, cotangent, shape):
-            core.set_prim_eager_enabled(True)
+            paddle.framework.core.set_prim_eager_enabled(True)
             return func(primal, cotangent, shape)
 
         def desired(primal, cotangent, shape):
-            core.set_prim_eager_enabled(False)
+            paddle.framework.core.set_prim_eager_enabled(False)
             return func(primal, cotangent, shape)
 
         np.testing.assert_allclose(

@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 from paddle.incubate.autograd import primapi
 
 paddle.framework.random._manual_program_seed(2023)
@@ -36,7 +35,7 @@ class TestCompositeCopyOp(unittest.TestCase):
 
     def cal_composite(self, inputs):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -60,11 +59,11 @@ class TestCompositeCopyOp(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return res
 
     def test_forward(self):
-        core._set_prim_forward_blacklist("dropout")
+        paddle.framework.core._set_prim_forward_blacklist("dropout")
         np_data = np.random.random([16, 64, 128, 128]).astype("float32")
         tensor_data = paddle.to_tensor(np_data)
 

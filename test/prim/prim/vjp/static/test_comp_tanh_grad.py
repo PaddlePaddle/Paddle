@@ -14,16 +14,14 @@
 
 import unittest
 
-from paddle.fluid import core
-
-core._set_prim_backward_enabled(True)
-
 import autograd
 import autograd.numpy
 import numpy as np
 import parameterized as param
 
 import paddle
+
+paddle.framework.core._set_prim_backward_enabled(True)
 
 
 def apply_to_static(net, use_cinn):
@@ -60,7 +58,7 @@ class TestTanhGradComp(unittest.TestCase):
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
         net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
+        paddle.framework.core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x)
         res = paddle.autograd.grad(out, [self.x])
@@ -109,7 +107,7 @@ class TestTanhGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

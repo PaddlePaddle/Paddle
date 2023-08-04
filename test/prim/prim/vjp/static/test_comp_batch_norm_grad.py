@@ -266,7 +266,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
             )
 
     def test_backward_prim_static_vjp(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         for i in self.training:
             for j in self.dtypes:
                 for k in self.data_formats:
@@ -284,7 +284,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
                     attrs.set_shape(n)
                     attrs.set_use_global_stats(t)
                     self.compare_backward()
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

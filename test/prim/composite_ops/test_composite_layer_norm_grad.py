@@ -21,7 +21,6 @@ from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 from paddle.incubate.autograd import primapi
 
 TOLERANCE_NUMPY = {
@@ -194,7 +193,7 @@ class TestCompositelayer_norm(unittest.TestCase):
 
     def static_comp_forward(self, inputs, norm_shape, weight, bias, y_g):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -246,14 +245,14 @@ class TestCompositelayer_norm(unittest.TestCase):
             fetch_list=z,
         )
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return res
 
     def static_comp_forward_withNone(
         self, inputs, norm_shape, weight, bias, y_g
     ):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -294,7 +293,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             fetch_list=z,
         )
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return res
 
     # to_pirm after gradient can call comp_layer_norm_grad
@@ -302,7 +301,7 @@ class TestCompositelayer_norm(unittest.TestCase):
         self, inputs, norm_shape, weight, bias, y_g
     ):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -346,14 +345,14 @@ class TestCompositelayer_norm(unittest.TestCase):
             fetch_list=z,
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res
 
     def static_comp_forward_and_backward_withNone(
         self, inputs, norm_shape, weight, bias, y_g
     ):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -389,7 +388,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             fetch_list=z,
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res
 
     def compare_comp_forward(self):
@@ -490,7 +489,7 @@ class TestCompositelayer_norm(unittest.TestCase):
 
 class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
         self.dtypes = ["float32"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
@@ -501,7 +500,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         self, inputs, norm_shape, weight, bias
     ):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -531,14 +530,14 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
             fetch_list=[z],
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res
 
     def static_comp_forward_and_backward_withNone(
         self, inputs, norm_shape, weight, bias
     ):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -562,7 +561,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
             fetch_list=[z],
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res
 
     def compare_backward(self):
@@ -640,7 +639,7 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
 
     def static_comp_forward(self, inputs, norm_shape, weight, bias, y_grad):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -687,14 +686,14 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
             fetch_list=[y, z[0]],
         )
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return res[0], res[1]
 
     def static_comp_forward_prim(
         self, inputs, norm_shape, weight, bias, y_grad
     ):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -723,7 +722,7 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
             fetch_list=[y, z[0]],
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
         return res[0], res[1]
 
     def compare_backward(self):

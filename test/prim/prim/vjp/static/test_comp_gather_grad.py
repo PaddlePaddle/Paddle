@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.fluid import framework
 
 np.random.seed(2023)
 
@@ -104,7 +104,7 @@ class TestGatherGradComp(unittest.TestCase):
         self.index = paddle.to_tensor(np.array([0, 1]))
         self.x.stop_gradient = False
         net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
+        paddle.framework.core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x, self.index, 0)
         res = paddle.autograd.grad(out, [self.x])
@@ -136,7 +136,7 @@ class TestGatherGradComp(unittest.TestCase):
         paddle.enable_static()
 
         def actual(primal0, index, axis, v):
-            core._set_prim_backward_enabled(True)
+            paddle.framework.core._set_prim_backward_enabled(True)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
@@ -162,7 +162,7 @@ class TestGatherGradComp(unittest.TestCase):
             return out[0]
 
         def desired(primal0, index, axis, v):
-            core._set_prim_backward_enabled(False)
+            paddle.framework.core._set_prim_backward_enabled(False)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
@@ -234,7 +234,7 @@ class TestGatherGradComp(unittest.TestCase):
                 rtol=1e-5,
                 atol=0,
             )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         paddle.disable_static()
 
 

@@ -74,7 +74,7 @@ class TestCompositeSoftmax(unittest.TestCase):
 
     def cal_composite(self, inputs):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -98,7 +98,7 @@ class TestCompositeSoftmax(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         return res
 
     def compare_forward(self):
@@ -158,7 +158,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def train(self, use_prim):
         self.x = paddle.randn(attrs.shape, dtype="float32")
         self.x.stop_gradient = False
-        core._set_prim_all_enabled(use_prim)
+        paddle.framework.core._set_prim_all_enabled(use_prim)
         paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(

@@ -56,7 +56,7 @@ def train(to_static, enable_prim, enable_cinn):
         paddle.set_device('gpu')
     else:
         paddle.set_device('cpu')
-    fluid.core._set_prim_all_enabled(enable_prim)
+    fluid.paddle.framework.core._set_prim_all_enabled(enable_prim)
 
     np.random.seed(SEED)
     paddle.seed(SEED)

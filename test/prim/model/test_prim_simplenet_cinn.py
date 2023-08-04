@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 from paddle.nn import BatchNorm
 
 np.random.seed(2023)
@@ -55,7 +54,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         sgd = paddle.optimizer.SGD(
             learning_rate=1.0, parameters=net.parameters()
         )
-        core._set_prim_all_enabled(use_prim)
+        paddle.framework.core._set_prim_all_enabled(use_prim)
 
         net = paddle.amp.decorate(models=net, level='O2')
         if use_prim:

@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
 
 np.random.seed(2023)
 
@@ -240,7 +239,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
         )
 
     def test_backward_prim_dygraph_vjp(self):
-        core.set_prim_eager_enabled(True)
+        paddle.framework.core.set_prim_eager_enabled(True)
         for i in self.training:
             for j in self.dtypes:
                 for m in self.momentum:
@@ -254,7 +253,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
                 attrs.set_shape(n)
                 attrs.set_use_global_stats(t)
                 self.compare_backward()
-        core.set_prim_eager_enabled(False)
+        paddle.framework.core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

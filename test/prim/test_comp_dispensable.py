@@ -19,10 +19,10 @@ import paddle
 
 class TestDispensable(unittest.TestCase):
     def setUp(self):
-        paddle.fluid.core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
 
     def tearDown(self):
-        paddle.fluid.core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
 
     def test_dispensable(self):
         @paddle.jit.to_static

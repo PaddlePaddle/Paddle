@@ -24,7 +24,6 @@ import parameterized as param
 import utils
 
 import paddle
-from paddle.fluid import core
 from paddle.incubate.autograd import primapi, primx
 
 
@@ -1039,10 +1038,10 @@ class TestGradWithHigherOrder(unittest.TestCase):
 class TestToPrim(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(True)
 
     def tearDown(self):
-        core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
         paddle.disable_static()
 
     @param.parameterized.expand((({'dropout'},),))

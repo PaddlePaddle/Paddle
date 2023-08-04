@@ -17,11 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 
 
 def actual(primal, cotangent, axis, keep_dim):
-    core.set_prim_eager_enabled(False)
+    paddle.framework.core.set_prim_eager_enabled(False)
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)
@@ -30,7 +29,7 @@ def actual(primal, cotangent, axis, keep_dim):
 
 
 def desired(primal, cotangent, axis, keep_dim):
-    core.set_prim_eager_enabled(True)
+    paddle.framework.core.set_prim_eager_enabled(True)
     x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
     v = paddle.to_tensor(cotangent, dtype='float32', stop_gradient=False)
     y = paddle.sum(x, axis=axis, keepdim=keep_dim)

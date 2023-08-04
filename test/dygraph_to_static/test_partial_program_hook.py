@@ -16,7 +16,6 @@ import os
 import unittest
 
 import paddle
-from paddle.fluid import core
 from paddle.jit.dy2static import partial_program, program_translator
 
 
@@ -38,7 +37,7 @@ class TestPartiaProgramLayerHook(unittest.TestCase):
 class TestPrimHook(unittest.TestCase):
     def setUp(self):
         os.environ["ENABLE_FALL_BACK"] = "False"
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
 
         def f():
             return paddle.nn.functional.dropout(paddle.rand((1,)))
@@ -52,10 +51,10 @@ class TestPrimHook(unittest.TestCase):
         self._forward = partial_program.forward_program
         self._whole = partial_program._train_program
 
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
 
     def tearDown(self):
-        core._set_prim_all_enabled(False)
+        paddle.framework.core._set_prim_all_enabled(False)
 
     def test_before_append_backward(self):
         self._hook.before_append_backward(self._forward)

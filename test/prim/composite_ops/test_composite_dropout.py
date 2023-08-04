@@ -18,7 +18,6 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 from paddle.incubate.autograd import primapi
 
 np.random.seed(2023)
@@ -154,7 +153,7 @@ class TestCompositeDropout(unittest.TestCase):
                 output = paddle.nn.functional.dropout(
                     input_, p, training=(not is_test), mode=mode
                 )
-                if core._is_fwd_prim_enabled():
+                if paddle.framework.core._is_fwd_prim_enabled():
                     primapi.to_prim(mp.blocks)
                 grad = paddle.static.gradients(output, input_)[0]
             exe = paddle.static.Executor(self.place)
@@ -164,14 +163,14 @@ class TestCompositeDropout(unittest.TestCase):
             )
             return fwd, rev, mp
 
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
         desired_fwd, desired_rev, _ = dropout(
             self.x, self.p, self.is_test, self.mode, self.seed
         )
 
-        core._set_prim_forward_enabled(True)
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_forward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(False)
         actual_fwd, actual_rev, prog = dropout(
             self.x, self.p, self.is_test, self.mode, self.seed
         )
@@ -191,8 +190,8 @@ class TestCompositeDropout(unittest.TestCase):
             atol=0,
         )
 
-        core._set_prim_forward_enabled(False)
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_forward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(True)
         actual_fwd, actual_rev, _ = dropout(
             self.x, self.p, self.is_test, self.mode, self.seed
         )
@@ -208,7 +207,7 @@ class TestCompositeDropout(unittest.TestCase):
             rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
             atol=0,
         )
-        core._set_prim_all_enabled(True)
+        paddle.framework.core._set_prim_all_enabled(True)
         actual_fwd, actual_rev, _ = dropout(
             self.x, self.p, self.is_test, self.mode, self.seed
         )

@@ -19,7 +19,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.fluid import framework
 
 
 def apply_to_static(net, use_cinn):
@@ -79,7 +79,7 @@ class TestCastGradComp(unittest.TestCase):
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
         net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
+        paddle.framework.core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x)
         res = paddle.autograd.grad(out, [self.x])
@@ -108,7 +108,7 @@ class TestCastGradComp(unittest.TestCase):
         paddle.enable_static()
 
     def test_cast_grad_comp(self):
-        core._set_prim_backward_enabled(True)
+        paddle.framework.core._set_prim_backward_enabled(True)
 
         def actual(primal, cotangent):
             mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -141,7 +141,7 @@ class TestCastGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

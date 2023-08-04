@@ -18,7 +18,6 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
 
 
 def apply_to_static(net, use_cinn):
@@ -82,7 +81,7 @@ class TestSubGradComp(unittest.TestCase):
         self.x.stop_gradient = False
         self.y.stop_gradient = False
         net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
+        paddle.framework.core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x, self.y)
         res = paddle.autograd.grad(out, [self.x, self.y])
@@ -105,7 +104,7 @@ class TestSubGradComp(unittest.TestCase):
 
     def test_tanh_grad_comp(self):
         def actual(primal0, primal1):
-            core._set_prim_backward_enabled(True)
+            paddle.framework.core._set_prim_backward_enabled(True)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
@@ -127,7 +126,7 @@ class TestSubGradComp(unittest.TestCase):
             return out[0], out[1]
 
         def desired(primal0, primal1):
-            core._set_prim_backward_enabled(False)
+            paddle.framework.core._set_prim_backward_enabled(False)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data(
@@ -168,7 +167,7 @@ class TestSubGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

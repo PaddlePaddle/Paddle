@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.fluid import framework
 
 
 def apply_to_static(net, use_cinn):
@@ -96,7 +96,7 @@ class TestReshapeGradComp(unittest.TestCase):
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
         net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
+        paddle.framework.core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x)
         res = paddle.autograd.grad(out, [self.x])
@@ -126,7 +126,7 @@ class TestReshapeGradComp(unittest.TestCase):
 
     def test_reshape_grad_comp(self):
         def actual(primal, shape, cotangent):
-            core._set_prim_backward_enabled(True)
+            paddle.framework.core._set_prim_backward_enabled(True)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
@@ -145,7 +145,7 @@ class TestReshapeGradComp(unittest.TestCase):
             )[0]
 
         def desired(primal, shape, cotangent):
-            core._set_prim_backward_enabled(False)
+            paddle.framework.core._set_prim_backward_enabled(False)
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
@@ -175,7 +175,7 @@ class TestReshapeGradComp(unittest.TestCase):
                 rtol=self.rtol,
                 atol=self.rtol,
             )
-        core._set_prim_backward_enabled(False)
+        paddle.framework.core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':
