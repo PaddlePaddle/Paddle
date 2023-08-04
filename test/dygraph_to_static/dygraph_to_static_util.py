@@ -43,7 +43,7 @@ def to_sot(func):
     """
     convet run fall_back to ast
     """
-    enable_sot = os.environ.get("ENABLE_SOT", "False") == "True"
+    enable_sot = os.environ.get("ENABLE_SOT", "True") == "True"
 
     def impl(*args, **kwargs):
         if enable_sot:

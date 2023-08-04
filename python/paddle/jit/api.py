@@ -292,7 +292,7 @@ def to_static(
 
         nonlocal enable_fallback
         if enable_fallback is None:
-            flag = os.environ.get("ENABLE_FALL_BACK", None)
+            flag = os.environ.get("ENABLE_FALL_BACK", "True")
             if flag == "True":
                 enable_fallback = True
             else:  # None or True
