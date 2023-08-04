@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/primitive/backend/static_backend.h"
 #include "paddle/fluid/ir/dialect/pd_api.h"
-#include "paddle/primitive/backend/backend.h"
+#include "paddle/primitive/primitive/primitive.h"
 #include "paddle/primitive/type/desc_tensor.h"
 
 namespace paddle {

@@ -14,26 +14,15 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
-#include "paddle/ir/core/value.h"
+
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace primitive {
-namespace experimental {
-paddle::optional<paddle::Tensor> tanh_vjp(
-    const Tensor& out,
-    const Tensor& grad_out,
-    const std::vector<std::vector<int>>& stop_gradients);
-
-paddle::optional<paddle::Tensor> mean_vjp(
-    const Tensor& x,
-    const Tensor& out_grad,
-    std::vector<int64_t> axis,
-    bool keepdim,
-    bool reduce_all,
-    const std::vector<std::vector<int>>& stop_gradients);
-}  // namespace experimental
+namespace backend {
+namespace experimental {}  // namespace experimental
+}  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

@@ -18,7 +18,7 @@
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/core/op_base.h"
-#include "paddle/primitive/rule/vjp/vjp_dispatch.h"
+#include "paddle/primitive/rule/vjp/vjp.h"
 #include "paddle/primitive/type/desc_tensor.h"
 #include "paddle/utils/optional.h"
 

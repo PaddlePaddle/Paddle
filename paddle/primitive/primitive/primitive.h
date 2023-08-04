@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/primitive/backend/backend.h"
 namespace paddle {
 namespace primitive {
 namespace experimental {

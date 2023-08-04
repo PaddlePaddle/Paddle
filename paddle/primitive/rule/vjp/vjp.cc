@@ -17,9 +17,11 @@
 
 #include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/primitive/backend/backend.h"
-#include "paddle/primitive/rule/vjp/vjp_dispatch.h"
+#include "paddle/primitive/backend/static_backend.h"
+#include "paddle/primitive/rule/vjp/vjp.h"
 #include "paddle/primitive/type/desc_tensor.h"
+// TODO(wanghao107):
+//  op's vjp will be generated in other files.
 
 namespace paddle {
 namespace primitive {

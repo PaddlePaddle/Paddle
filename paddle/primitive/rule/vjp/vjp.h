@@ -21,18 +21,33 @@
 #include <math.h>
 #include <vector>
 
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
+#include "paddle/ir/core/value.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/primitive/primitive/primitive.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace primitive {
 namespace experimental {
+// TODO(wanghao107):
+//  op's vjp will be generated in other files.
+paddle::optional<paddle::Tensor> tanh_vjp(
+    const Tensor& out,
+    const Tensor& grad_out,
+    const std::vector<std::vector<int>>& stop_gradients);
+
+paddle::optional<paddle::Tensor> mean_vjp(
+    const Tensor& x,
+    const Tensor& out_grad,
+    std::vector<int64_t> axis,
+    bool keepdim,
+    bool reduce_all,
+    const std::vector<std::vector<int>>& stop_gradients);
+
 namespace details {
-template <typename T>
-void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
-  if (!grad_x) return;
-  auto grad_x_tmp = grad_out * (1 - out * out);
-  set_output<T>(grad_x_tmp, grad_x);
-}
+// NOTE: this namespace will store
+// primitive ops grad composite rules.
 
 }  // namespace details
 }  // namespace experimental

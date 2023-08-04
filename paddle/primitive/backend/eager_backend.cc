@@ -12,38 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/primitive/backend/eager_backend.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/phi/api/backward/backward_api.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/primitive/backend/backend.h"
 #include "paddle/primitive/primitive/primitive.h"
 
 namespace paddle {
 namespace primitive {
 namespace backend {
-namespace experimental {
-
-template <>
-Tensor tanh_grad<Tensor>(const Tensor& out, const Tensor& grad_out) {
-  Tensor output;
-  paddle::experimental::tanh_grad(out, grad_out, &output);
-  return output;
-}
-
-template <>
-Tensor mean_grad<Tensor>(const Tensor& x,
-                         const Tensor& out_grad,
-                         std::vector<int64_t> axis,
-                         bool keepdim,
-                         bool reduce_all) {
-  Tensor output;
-  paddle::experimental::mean_grad(
-      x, out_grad, axis, keepdim, reduce_all, &output);
-  return output;
-}
-
-}  // namespace experimental
+namespace experimental {}  // namespace experimental
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle
