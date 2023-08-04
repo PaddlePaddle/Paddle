@@ -54,13 +54,19 @@ class TestGradientAdd(unittest.TestCase):
         sparse_loss = sparse_out.values().mean()
         sparse_loss.backward(retain_graph=True)
 
-        assert np.allclose(dense_out.numpy(), sparse_out.to_dense().numpy())
-        assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
+        np.testing.assert_allclose(
+            dense_out.numpy(), sparse_out.to_dense().numpy()
+        )
+        np.testing.assert_allclose(
+            x.grad.numpy(), sparse_x.grad.to_dense().numpy()
+        )
 
         loss.backward()
         sparse_loss.backward()
 
-        assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
+        np.testing.assert_allclose(
+            x.grad.numpy(), sparse_x.grad.to_dense().numpy()
+        )
 
 
 if __name__ == "__main__":

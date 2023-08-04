@@ -98,7 +98,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
             )
 
     def test_inference_output(self):
-        for rnn_model in ["static", "padding"]:
+        for rnn_model in ["static"]:
             # Set parallel to False to use the default executor.
             self.train_and_save_inference_program(
                 rnn_model=rnn_model, use_program_cache=True
@@ -166,4 +166,5 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

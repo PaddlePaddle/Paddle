@@ -28,7 +28,6 @@ from paddle.fluid.framework import (
     in_dygraph_mode,
     program_guard,
 )
-from paddle.fluid.layers import control_flow
 from paddle.framework import core
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
@@ -90,14 +89,18 @@ def rnn(
 
         .. code-block:: python
 
-            import paddle
-            paddle.disable_static()
+            >>> import paddle
 
-            cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> inputs = paddle.rand((4, 23, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            inputs = paddle.rand((4, 23, 16))
-            prev_h = paddle.randn((4, 32))
-            outputs, final_states = paddle.nn.layer.rnn(cell, inputs, prev_h)
+            >>> cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> rnn = paddle.nn.RNN(cell)
+            >>> outputs, final_states = rnn(inputs, prev_h)
+            >>> print(outputs.shape)
+            [4, 23, 32]
+            >>> print(final_states.shape)
+            [4, 32]
 
     """
 
@@ -275,7 +278,7 @@ def _rnn_static_graph(
 
         end = paddle.cast(end, "int64")
         cond = start_i < end
-    while_op = control_flow.While(cond)
+    while_op = paddle.static.nn.control_flow.While(cond)
 
     out_array = paddle.tensor.create_array(
         dtype=paddle.utils.flatten(inputs)[0].dtype
@@ -398,18 +401,17 @@ def birnn(
 
         .. code-block:: python
 
-            import paddle
-            paddle.disable_static()
+            >>> import paddle
 
-            cell_fw = paddle.nn.LSTMCell(16, 32)
-            cell_bw = paddle.nn.LSTMCell(16, 32)
-
-            inputs = paddle.rand((4, 23, 16))
-            hf, cf = paddle.rand((4, 32)), paddle.rand((4, 32))
-            hb, cb = paddle.rand((4, 32)), paddle.rand((4, 32))
-            initial_states = ((hf, cf), (hb, cb))
-            outputs, final_states = paddle.nn.layer.birnn(
-                cell_fw, cell_bw, inputs, initial_states)
+            >>> cell_fw = paddle.nn.LSTMCell(16, 32)
+            >>> cell_bw = paddle.nn.LSTMCell(16, 32)
+            >>> rnn = paddle.nn.BiRNN(cell_fw, cell_bw)
+            >>> inputs = paddle.rand((2, 23, 16))
+            >>> outputs, final_states = rnn(inputs)
+            >>> print(outputs.shape)
+            [2, 23, 64]
+            >>> print(final_states[0][0].shape)
+            [2, 32]
 
     """
 
@@ -601,7 +603,9 @@ class RNNCellBase(Layer):
 
         class Shape:
             def __init__(self, shape):
-                self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
+                self.shape = (
+                    list(shape) if shape[0] == -1 else ([-1] + list(shape))
+                )
 
         # nested structure of shapes
         states_shapes = self.state_shape if shape is None else shape
@@ -622,16 +626,35 @@ class RNNCellBase(Layer):
             states_dtypes = paddle.utils.map_structure(
                 lambda shape: dtype, states_shapes
             )
+        fill_shapes = states_shapes
+        if batch_ref.shape[batch_dim_idx] > 0:
+            if isinstance(fill_shapes, list):
+                for s in fill_shapes[0]:
+                    s.shape[0] = batch_ref.shape[batch_dim_idx]
+            elif isinstance(fill_shapes, tuple):
+                for s in fill_shapes:
+                    s.shape[0] = batch_ref.shape[batch_dim_idx]
+            else:
+                fill_shapes.shape[0] = batch_ref.shape[batch_dim_idx]
+        else:
+            if isinstance(fill_shapes, list):
+                for s in fill_shapes[0]:
+                    s.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
+            elif isinstance(fill_shapes, tuple):
+                for s in fill_shapes:
+                    s.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
+            else:
+                fill_shapes.shape[0] = paddle.shape(batch_ref)[
+                    batch_dim_idx
+                ].item()
 
         init_states = paddle.utils.map_structure(
-            lambda shape, dtype: paddle.fluid.layers.fill_constant_batch_size_like(
-                input=batch_ref,
+            lambda shape, dtype: paddle.full(
                 shape=shape.shape,
+                fill_value=init_value,
                 dtype=dtype,
-                value=init_value,
-                input_dim_idx=batch_dim_idx,
             ),
-            states_shapes,
+            fill_shapes,
             states_dtypes,
         )
         return init_states
@@ -723,16 +746,15 @@ class SimpleRNNCell(RNNCellBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn((4, 16))
-            prev_h = paddle.randn((4, 32))
+            >>> x = paddle.randn((4, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            cell = paddle.nn.SimpleRNNCell(16, 32)
-            y, h = cell(x, prev_h)
-            print(y.shape)
-
-            #[4,32]
+            >>> cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> y, h = cell(x, prev_h)
+            >>> print(y.shape)
+            [4, 32]
 
     """
 
@@ -877,22 +899,21 @@ class LSTMCell(RNNCellBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn((4, 16))
-            prev_h = paddle.randn((4, 32))
-            prev_c = paddle.randn((4, 32))
+            >>> x = paddle.randn((4, 16))
+            >>> prev_h = paddle.randn((4, 32))
+            >>> prev_c = paddle.randn((4, 32))
 
-            cell = paddle.nn.LSTMCell(16, 32)
-            y, (h, c) = cell(x, (prev_h, prev_c))
+            >>> cell = paddle.nn.LSTMCell(16, 32)
+            >>> y, (h, c) = cell(x, (prev_h, prev_c))
 
-            print(y.shape)
-            print(h.shape)
-            print(c.shape)
-
-            #[4,32]
-            #[4,32]
-            #[4,32]
+            >>> print(y.shape)
+            [4, 32]
+            >>> print(h.shape)
+            [4, 32]
+            >>> print(c.shape)
+            [4, 32]
 
     """
 
@@ -1039,19 +1060,19 @@ class GRUCell(RNNCellBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn((4, 16))
-            prev_h = paddle.randn((4, 32))
+            >>> x = paddle.randn((4, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            cell = paddle.nn.GRUCell(16, 32)
-            y, h = cell(x, prev_h)
+            >>> cell = paddle.nn.GRUCell(16, 32)
+            >>> y, h = cell(x, prev_h)
 
-            print(y.shape)
-            print(h.shape)
+            >>> print(y.shape)
+            [4, 32]
+            >>> print(h.shape)
+            [4, 32]
 
-            #[4,32]
-            #[4,32]
 
     """
 
@@ -1169,20 +1190,19 @@ class RNN(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inputs = paddle.rand((4, 23, 16))
-            prev_h = paddle.randn((4, 32))
+            >>> inputs = paddle.rand((4, 23, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            cell = paddle.nn.SimpleRNNCell(16, 32)
-            rnn = paddle.nn.RNN(cell)
-            outputs, final_states = rnn(inputs, prev_h)
+            >>> cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> rnn = paddle.nn.RNN(cell)
+            >>> outputs, final_states = rnn(inputs, prev_h)
 
-            print(outputs.shape)
-            print(final_states.shape)
-
-            #[4,23,32]
-            #[4,32]
+            >>> print(outputs.shape)
+            [4, 23, 32]
+            >>> print(final_states.shape)
+            [4, 32]
 
     """
 
@@ -1243,20 +1263,19 @@ class BiRNN(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            cell_fw = paddle.nn.LSTMCell(16, 32)
-            cell_bw = paddle.nn.LSTMCell(16, 32)
-            rnn = paddle.nn.BiRNN(cell_fw, cell_bw)
+            >>> cell_fw = paddle.nn.LSTMCell(16, 32)
+            >>> cell_bw = paddle.nn.LSTMCell(16, 32)
+            >>> rnn = paddle.nn.BiRNN(cell_fw, cell_bw)
 
-            inputs = paddle.rand((2, 23, 16))
-            outputs, final_states = rnn(inputs)
+            >>> inputs = paddle.rand((2, 23, 16))
+            >>> outputs, final_states = rnn(inputs)
 
-            print(outputs.shape)
-            print(final_states[0][0].shape,len(final_states),len(final_states[0]))
-
-            #[4,23,64]
-            #[2,32] 2 2
+            >>> print(outputs.shape)
+            [2, 23, 64]
+            >>> print(final_states[0][0].shape,len(final_states),len(final_states[0]))
+            [2, 32] 2 2
 
     """
 
@@ -1535,7 +1554,6 @@ class RNNBase(LayerList):
                 'Reserve': reserve,
                 'DropoutState': self._dropout_state,
             }
-
             self._helper.append_op(
                 type="rnn", inputs=inputs, outputs=outputs, attrs=attrs
             )
@@ -1556,11 +1574,15 @@ class RNNBase(LayerList):
                 -1,
                 self.hidden_size,
             )
+
+            fill_shape = list(state_shape)
+            if inputs.shape[batch_index] > 0:
+                fill_shape[1] = inputs.shape[batch_index]
+            else:
+                fill_shape[1] = paddle.shape(inputs)[batch_index].item()
             initial_states = tuple(
                 [
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1
-                    )
+                    paddle.full(shape=fill_shape, fill_value=0, dtype=dtype)
                     for _ in range(self.state_components)
                 ]
             )
@@ -1679,19 +1701,19 @@ class SimpleRNN(RNNBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            rnn = paddle.nn.SimpleRNN(16, 32, 2)
+            >>> rnn = paddle.nn.SimpleRNN(16, 32, 2)
 
-            x = paddle.randn((4, 23, 16))
-            prev_h = paddle.randn((2, 4, 32))
-            y, h = rnn(x, prev_h)
+            >>> x = paddle.randn((4, 23, 16))
+            >>> prev_h = paddle.randn((2, 4, 32))
+            >>> y, h = rnn(x, prev_h)
 
-            print(y.shape)
-            print(h.shape)
+            >>> print(y.shape)
+            [4, 23, 32]
+            >>> print(h.shape)
+            [2, 4, 32]
 
-            #[4,23,32]
-            #[2,4,32]
 
     """
 
@@ -1810,22 +1832,22 @@ class LSTM(RNNBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            rnn = paddle.nn.LSTM(16, 32, 2)
+            >>> rnn = paddle.nn.LSTM(16, 32, 2)
 
-            x = paddle.randn((4, 23, 16))
-            prev_h = paddle.randn((2, 4, 32))
-            prev_c = paddle.randn((2, 4, 32))
-            y, (h, c) = rnn(x, (prev_h, prev_c))
+            >>> x = paddle.randn((4, 23, 16))
+            >>> prev_h = paddle.randn((2, 4, 32))
+            >>> prev_c = paddle.randn((2, 4, 32))
+            >>> y, (h, c) = rnn(x, (prev_h, prev_c))
 
-            print(y.shape)
-            print(h.shape)
-            print(c.shape)
+            >>> print(y.shape)
+            [4, 23, 32]
+            >>> print(h.shape)
+            [2, 4, 32]
+            >>> print(c.shape)
+            [2, 4, 32]
 
-            #[4,23,32]
-            #[2,4,32]
-            #[2,4,32]
 
     """
 
@@ -1932,19 +1954,19 @@ class GRU(RNNBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            rnn = paddle.nn.GRU(16, 32, 2)
+            >>> rnn = paddle.nn.GRU(16, 32, 2)
 
-            x = paddle.randn((4, 23, 16))
-            prev_h = paddle.randn((2, 4, 32))
-            y, h = rnn(x, prev_h)
+            >>> x = paddle.randn((4, 23, 16))
+            >>> prev_h = paddle.randn((2, 4, 32))
+            >>> y, h = rnn(x, prev_h)
 
-            print(y.shape)
-            print(h.shape)
+            >>> print(y.shape)
+            [4, 23, 32]
+            >>> print(h.shape)
+            [2, 4, 32]
 
-            #[4,23,32]
-            #[2,4,32]
 
     """
 

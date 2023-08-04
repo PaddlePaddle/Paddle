@@ -45,9 +45,9 @@ class InstructionBase {
   OpFuncType KernelType() const;
   void SetKernelType(OpFuncType type) { type_ = type; }
 
-  int GetStreamPriority() const { return scheduling_priority_; }
-  void SetStreamPriority(SchedulingPriority scheduling_priority) {
-    scheduling_priority_ = scheduling_priority;
+  int GetStreamPriority() const { return stream_priority_; }
+  void SetStreamPriority(int stream_priority) {
+    stream_priority_ = stream_priority;
   }
 
   SchedulingPriority GetSchedulingPriority() const {
@@ -107,22 +107,31 @@ class InstructionBase {
   std::map<int, int>& GetMutableInplaceBackMap() { return inplace_back_map_; }
   const std::map<int, int>& GetInplaceBackMap() { return inplace_back_map_; }
 
-  const std::unordered_map<ir::Value, std::vector<int>>& Inputs() const {
+  const std::unordered_map<::ir::Value, std::vector<int>>& Inputs() const {
     return input_index_;
   }
-  std::unordered_map<ir::Value, std::vector<int>>& GetMutableInputs() {
+  std::unordered_map<::ir::Value, std::vector<int>>& GetMutableInputs() {
     return input_index_;
   }
-  void SetInputs(const std::unordered_map<ir::Value, std::vector<int>>& inputs);
+  void SetInputs(
+      const std::unordered_map<::ir::Value, std::vector<int>>& inputs);
 
-  const std::unordered_map<ir::Value, std::vector<int>>& Outputs() const {
+  const std::unordered_map<::ir::Value, std::vector<int>>& Outputs() const {
     return output_index_;
   }
-  std::unordered_map<ir::Value, std::vector<int>>& GetMutableOutputs() {
+  std::unordered_map<::ir::Value, std::vector<int>>& GetMutableOutputs() {
     return output_index_;
   }
   void SetOutputs(
-      const std::unordered_map<ir::Value, std::vector<int>>& outputs);
+      const std::unordered_map<::ir::Value, std::vector<int>>& outputs);
+
+  const std::unordered_set<::ir::Value>& NoNeedBuffer() const {
+    return no_need_buffer_values_;
+  }
+  void SetNoNeedBuffer(
+      const std::unordered_set<::ir::Value>& no_need_buffer_values) {
+    no_need_buffer_values_ = no_need_buffer_values;
+  }
 
   virtual void Run() = 0;
 
@@ -159,9 +168,11 @@ class InstructionBase {
 
   std::map<int, int> inplace_back_map_;
 
-  std::unordered_map<ir::Value, std::vector<int>> input_index_;
+  std::unordered_map<::ir::Value, std::vector<int>> input_index_;
 
-  std::unordered_map<ir::Value, std::vector<int>> output_index_;
+  std::unordered_map<::ir::Value, std::vector<int>> output_index_;
+
+  std::unordered_set<::ir::Value> no_need_buffer_values_;
 };
 
 }  // namespace framework

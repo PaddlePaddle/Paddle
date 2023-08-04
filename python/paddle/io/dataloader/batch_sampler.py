@@ -58,40 +58,44 @@ class BatchSampler(Sampler):
 
         .. code-block:: python
 
-            from paddle.io import RandomSampler, BatchSampler, Dataset
+            >>> import numpy as np
+            >>> from paddle.io import RandomSampler, BatchSampler, Dataset
 
-            # init with dataset
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
-
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            bs = BatchSampler(dataset=RandomDataset(100),
-                              shuffle=False,
-                              batch_size=16,
-                              drop_last=False)
-
-            for batch_indices in bs:
-                print(batch_indices)
-
-            # init with sampler
-            sampler = RandomSampler(RandomDataset(100))
-            bs = BatchSampler(sampler=sampler,
-                              batch_size=8,
-                              drop_last=True)
-
-            for batch_indices in bs:
-                print(batch_indices)
-
-
-
+            >>> np.random.seed(2023)
+            >>> # init with dataset
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> bs = BatchSampler(dataset=RandomDataset(100),
+            ...                     shuffle=False,
+            ...                     batch_size=16,
+            ...                     drop_last=False)
+            ...
+            >>> for batch_indices in bs:
+            ...     print(batch_indices)
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+            ...
+            [96, 97, 98, 99]
+            >>> # init with sampler
+            >>> sampler = RandomSampler(RandomDataset(100))
+            >>> bs = BatchSampler(sampler=sampler,
+            ...                     batch_size=8,
+            ...                     drop_last=True)
+            ...
+            >>> for batch_indices in bs:
+            ...     print(batch_indices)
+            [56, 12, 68, 0, 82, 66, 91, 44]
+            ...
+            [53, 17, 22, 86, 52, 3, 92, 33]
     """
 
     def __init__(
@@ -203,29 +207,29 @@ class DistributedBatchSampler(BatchSampler):
     Examples:
         .. code-block:: python
 
-            import numpy as np
+            >>> import numpy as np
 
-            from paddle.io import Dataset, DistributedBatchSampler
+            >>> from paddle.io import Dataset, DistributedBatchSampler
 
-            # init with dataset
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> # init with dataset
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> dataset = RandomDataset(100)
+            >>> sampler = DistributedBatchSampler(dataset, batch_size=64)
 
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            dataset = RandomDataset(100)
-            sampler = DistributedBatchSampler(dataset, batch_size=64)
-
-            for data in sampler:
-                # do something
-                break
+            >>> for data in sampler:
+            ...     # do something
+            ...     break
     """
 
     def __init__(
@@ -339,27 +343,27 @@ class DistributedBatchSampler(BatchSampler):
         Examples:
             .. code-block:: python
 
-                import numpy as np
+                >>> import numpy as np
 
-                from paddle.io import Dataset, DistributedBatchSampler
+                >>> from paddle.io import Dataset, DistributedBatchSampler
 
-                # init with dataset
-                class RandomDataset(Dataset):
-                    def __init__(self, num_samples):
-                        self.num_samples = num_samples
+                >>> # init with dataset
+                >>> class RandomDataset(Dataset):
+                ...     def __init__(self, num_samples):
+                ...         self.num_samples = num_samples
+                ...
+                ...     def __getitem__(self, idx):
+                ...         image = np.random.random([784]).astype('float32')
+                ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+                ...         return image, label
+                ...
+                ...     def __len__(self):
+                ...         return self.num_samples
+                ...
+                >>> dataset = RandomDataset(100)
+                >>> sampler = DistributedBatchSampler(dataset, batch_size=64)
 
-                    def __getitem__(self, idx):
-                        image = np.random.random([784]).astype('float32')
-                        label = np.random.randint(0, 9, (1, )).astype('int64')
-                        return image, label
-
-                    def __len__(self):
-                        return self.num_samples
-
-                dataset = RandomDataset(100)
-                sampler = DistributedBatchSampler(dataset, batch_size=64)
-
-                for epoch in range(10):
-                    sampler.set_epoch(epoch)
+                >>> for epoch in range(10):
+                ...     sampler.set_epoch(epoch)
         """
         self.epoch = epoch
