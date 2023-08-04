@@ -192,7 +192,7 @@ struct normal_distribution<double> {
 #elif defined(__MUSACC__)
 template <typename T>
 struct uniform_distribution {
-  __device__ inline T operator()(murandStatePhilox4_32_10_t *state) const {
+  __device__ inline T operator()(murand_state_philox4x32_10 *state) const {
     return static_cast<T>(murand_uniform(state));
   }
   static constexpr int kReturnsCount = 1;
@@ -200,7 +200,7 @@ struct uniform_distribution {
 
 template <>
 struct uniform_distribution<float> {
-  __device__ inline float4 operator()(murandStatePhilox4_32_10_t *state) const {
+  __device__ inline float4 operator()(murand_state_philox4x32_10 *state) const {
     return murand_uniform4(state);
   }
   static constexpr int kReturnsCount = 4;
@@ -209,15 +209,15 @@ struct uniform_distribution<float> {
 template <>
 struct uniform_distribution<double> {
   __device__ inline double2 operator()(
-      murandStatePhilox4_32_10_t *state) const {
-    return murand_uniform2_double(state);
+      murand_state_philox4x32_10 *state) const {
+    return murand_uniform_double2(state);
   }
   static constexpr int kReturnsCount = 2;
 };
 
 template <>
 struct uniform_distribution<uint32_t> {
-  __device__ inline uint4 operator()(murandStatePhilox4_32_10_t *state) const {
+  __device__ inline uint4 operator()(murand_state_philox4x32_10 *state) const {
     return murand4(state);
   }
   static constexpr int kReturnsCount = 4;
@@ -226,7 +226,7 @@ struct uniform_distribution<uint32_t> {
 template <>
 struct uniform_distribution<uint64_t> {
   __device__ inline ulonglong2 operator()(
-      murandStatePhilox4_32_10_t *state) const {
+      murand_state_philox4x32_10 *state) const {
     ulonglong2 result;
     uint4 rand = murand4(state);
     result.x = (uint64_t)rand.x << 32 | rand.y;
@@ -238,7 +238,7 @@ struct uniform_distribution<uint64_t> {
 
 template <>
 struct normal_distribution<float> {
-  __device__ inline float4 operator()(murandStatePhilox4_32_10_t *state) const {
+  __device__ inline float4 operator()(murand_state_philox4x32_10 *state) const {
     return murand_normal4(state);
   }
   static constexpr int kReturnsCount = 4;
@@ -247,8 +247,8 @@ struct normal_distribution<float> {
 template <>
 struct normal_distribution<double> {
   __device__ inline double2 operator()(
-      murandStatePhilox4_32_10_t *state) const {
-    return murand_normal2_double(state);
+      murand_state_philox4x32_10 *state) const {
+    return murand_normal_double2(state);
   }
   static constexpr int kReturnsCount = 2;
 };
@@ -334,6 +334,10 @@ __global__ void DistributionKernel(size_t size,
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx + THREAD_ID_X, offset, &state);
   using SType = curandStatePhilox4_32_10_t;
+#elif defined(__MUSACC__)
+  murand_state_philox4x32_10 state;
+  murand_init(seed, idx + THREAD_ID_X, offset, &state);
+  using SType = murand_state_philox4x32_10;
 #else
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, offset, &state);

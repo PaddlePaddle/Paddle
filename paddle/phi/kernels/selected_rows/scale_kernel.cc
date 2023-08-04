@@ -54,7 +54,7 @@ PD_REGISTER_KERNEL(scale_sr,
                    int,
                    int64_t) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(scale_sr,
                    GPU,
                    ALL_LAYOUT,

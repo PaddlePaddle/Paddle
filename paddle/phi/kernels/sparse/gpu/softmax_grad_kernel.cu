@@ -218,7 +218,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   bool is_same_offset = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #elif defined(PADDLE_WITH_MUSA)
   const auto& policy = thrust::musa::par.on(dev_ctx.stream());
-  bool is_same_offset = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
+  bool is_same_offset = thrust::equal(thrust::musa::par.on(dev_ctx.stream()),
 #else
   const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
   bool is_same_offset = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),

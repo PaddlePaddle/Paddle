@@ -324,7 +324,7 @@ void SliceCsrTensor2D(const Context& dev_ctx,
                                                         out_crows_data);
 #ifdef PADDLE_WITH_HIP
   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
-#ifdef PADDLE_WITH_MUSA
+#elif defined(PADDLE_WITH_MUSA)
   thrust::inclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
