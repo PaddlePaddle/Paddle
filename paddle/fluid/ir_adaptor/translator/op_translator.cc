@@ -388,7 +388,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     if (legacy_input_vars.empty()) {
       if (info.optional) {
-        op_inputs.push_back(ir::OpResult(nullptr));
+        op_inputs.emplace_back(nullptr);
         continue;
       }
     }
@@ -484,7 +484,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                  "Op %s arg %s should be optional if it can be empty",
                  op_desc.Type(),
                  legacy_output_name);
-      op_output_types.push_back(ir::Type(nullptr));
+      op_output_types.emplace_back(nullptr);
       continue;
     }
 
@@ -521,7 +521,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << info.type_name << " " << legacy_output_name << " "
                << legacy_output_vars.size();
       if (legacy_output_vars.empty()) {
-        op_output_types.push_back(ir::Type(nullptr));
+        op_output_types.emplace_back(nullptr);
         continue;
       }
 
@@ -548,7 +548,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
       std::vector<ir::Type> types;
       for (const auto& var_name : legacy_output_vars) {
         if (var_name == kEmptyVarName) {
-          types.push_back(ir::Type(nullptr));
+          types.emplace_back(nullptr);
           arg_to_idx[var_name] = cur_output_idx;
           continue;
         }

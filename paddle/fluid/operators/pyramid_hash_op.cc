@@ -307,8 +307,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     top_offset.resize(offset.size());
     top_offset[0] = 0;
 
-    math::bloomfilter* _filter = NULL;
-    math::bloomfilter* _black_filter = NULL;
+    math::bloomfilter* _filter = nullptr;
+    math::bloomfilter* _black_filter = nullptr;
     if (use_filter) {
       if (white_list_len != 0) {
         _filter = (math::bloomfilter*)_blobs_1->data<float>();
