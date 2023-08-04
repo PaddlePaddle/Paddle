@@ -177,7 +177,7 @@ def vector_to_parameters(vec, parameters, name=None):
             >>> vec = paddle.nn.utils.parameters_to_vector(linear1.parameters())
 
             >>> linear2 = paddle.nn.Linear(10, 15)
-            # copy weight of linear1 to linear2
+            >>> # copy weight of linear1 to linear2
             >>> paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
             >>> print(linear2.weight)
             Parameter containing:
