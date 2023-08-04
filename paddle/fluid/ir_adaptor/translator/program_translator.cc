@@ -164,7 +164,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
-    if (op->Type() == "shaddow_output") {
+    if (op->Type() == "shadow_output") {
       if (!param_map_.count(op->Input("x")[0])) {
         continue;
       }
@@ -177,7 +177,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
-    if ((*op_desc)->Type() == "feed_with_place") {
+    if ((*op_desc)->Type() == "data") {
       continue;
     }
 
