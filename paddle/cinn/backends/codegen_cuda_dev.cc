@@ -81,9 +81,8 @@ void CodeGenCUDA_Dev::Compile(const ir::Module &module,
   }
 }
 
-std::string CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
+void CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
   IrPrinter::Visit(Expr(func));
-  return str_;
 }
 
 std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(

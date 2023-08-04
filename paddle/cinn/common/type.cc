@@ -63,14 +63,6 @@ std::string Type::to_string() const {
 std::ostream &operator<<(std::ostream &os, const Type &t) {
   os << t.to_string();
   return os;
-  // if (t.is_cpp_const()) os << "const ";
-  // os << Type2Str(t);
-
-  // if (t.lanes() > 1) os << "<" << t.lanes() << ">";
-  // if (t.is_cpp_handle()) os << "*";
-  // if (t.is_cpp_handle2()) os << "**";
-
-  // return os;
 }
 
 std::ostream &operator<<(std::ostream &os, Type::type_t t) {

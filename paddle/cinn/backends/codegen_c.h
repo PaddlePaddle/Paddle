@@ -56,8 +56,7 @@ class CodeGenC : public ir::IrPrinter {
   void SetInlineBuiltinCodes(bool x = true) { inline_builtin_codes_ = x; }
 
  protected:
-  std::string Compile(const ir::LoweredFunc& function);
-  std::string Compile(const ir::Buffer& buffer);
+  void Compile(const ir::LoweredFunc& function);
 
   void GenerateHeaderFile(const ir::Module& module);
 

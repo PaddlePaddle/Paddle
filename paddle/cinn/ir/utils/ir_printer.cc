@@ -603,7 +603,6 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
       if (comma) str_ += ", ";
       str_ += kv.first;
       str_ += ":";
-      // TODO(LiuYang): Here absl should be removed? here need to string?
       absl::visit(
           [this](auto &&arg) {
             std::ostringstream ss;

@@ -73,12 +73,6 @@ std::string CodeGenC::Compile(const ir::Module &module,
 
     if (inline_builtin_codes_) PrintBuiltinCodes();
 
-    // TODO(LiuYang): What's the usage of this code seg
-    std::vector<ir::Buffer> buffers;
-    for (auto &buffer : module->buffers) {
-      buffers.emplace_back(buffer.as_buffer_ref());
-    }
-
     for (auto &func : module.functions()) {
       Compile(func);
     }
@@ -89,11 +83,10 @@ std::string CodeGenC::Compile(const ir::Module &module,
 }
 
 // TODO(LiuYang): Here the Ret type seems unuseful
-std::string CodeGenC::Compile(const ir::LoweredFunc &function) {
+void CodeGenC::Compile(const ir::LoweredFunc &function) {
   CHECK(function.defined());
   IrPrinter::Visit(function);
   str_ += "\n\n";
-  return str_;
 }
 
 std::string CodeGenC::GetTypeName(Type type) {
