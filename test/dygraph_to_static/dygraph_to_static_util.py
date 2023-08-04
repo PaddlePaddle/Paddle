@@ -43,10 +43,14 @@ def to_sot(func):
     """
     convet run fall_back to ast
     """
+    enable_sot = os.environ.get("ENABLE_SOT", "False") == "True"
 
     def impl(*args, **kwargs):
-        with enable_fallback_guard("True"):
-            func(*args, **kwargs)
+        if enable_sot:
+            with enable_fallback_guard("True"):
+                func(*args, **kwargs)
+        else:
+            return
 
     return impl
 
