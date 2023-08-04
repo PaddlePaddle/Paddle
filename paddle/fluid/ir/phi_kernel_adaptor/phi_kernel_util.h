@@ -294,6 +294,7 @@ void BuildPhiContext(ir::Operation* op,
       phi::DenseTensor* ptr = nullptr;
       OutType out_ptr(ptr);
       ctx->EmplaceBackOutput(out_ptr);
+      continue;
     }
     auto name = name_map.at(out_ptr);
     VLOG(6) << "ctx->EmplaceBackOutput: " << name;
