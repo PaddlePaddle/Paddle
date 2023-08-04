@@ -69,11 +69,11 @@ LoD SliceInLevel(const LoD &in,
     out_level.assign(in_level.begin() + above_level.front(),
                      in_level.begin() + above_level.back() + 1);
   }
-  for (size_t lvl = 0; lvl < res.size(); lvl++) {
+  for (auto &item : res) {
     // to make the first offset equals 0, all the elements minus the first
     // element
-    size_t front = res[lvl].front();
-    for (auto &ele : res[lvl]) {
+    size_t front = item.front();
+    for (auto &ele : item) {
       ele -= front;
     }
   }
@@ -323,13 +323,13 @@ void DeserializeFromStream(std::istream &is,
 LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
   LoD offset_lod;
   offset_lod.reserve(length_lod.size());
-  for (size_t lvl = 0; lvl < length_lod.size(); ++lvl) {
+  for (const auto &item : length_lod) {
     std::vector<size_t> level;
-    level.reserve(length_lod[lvl].size() + 1);
+    level.reserve(item.size() + 1);
     size_t tmp = 0;
     level.push_back(tmp);
-    for (size_t idx = 0; idx < length_lod[lvl].size(); ++idx) {
-      tmp += length_lod[lvl][idx];
+    for (auto i : item) {
+      tmp += i;
       level.push_back(tmp);
     }
     offset_lod.push_back(level);
@@ -362,10 +362,10 @@ std::vector<phi::DenseTensor> SplitLoDTensor(
   if (batch_size == 0) {
     std::vector<phi::DenseTensor> empty_results;
     empty_results.reserve(places.size());
-    for (size_t i = 0; i < places.size(); ++i) {
+    for (auto item : places) {
       phi::DenseTensor dst;
       dst.Resize(src.dims());
-      dst.mutable_data(places[i], src.dtype());
+      dst.mutable_data(item, src.dtype());
       if (!src.lod().empty()) {
         dst.set_lod(src.lod());
       }
