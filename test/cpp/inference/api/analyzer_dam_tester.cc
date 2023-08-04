@@ -159,11 +159,11 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   TensorAssignData<float>(&response_mask_tensor, one_batch.response_mask);
 
   // Set inputs.
-  for (int i = 0; i < FLAGS_max_turn_num; ++i) {
-    input_slots->push_back(std::move(turns_tensor[i]));
+  for (auto &item : turns_tensor) {
+    input_slots->push_back(std::move(item));
   }
-  for (int i = 0; i < FLAGS_max_turn_num; ++i) {
-    input_slots->push_back(std::move(turns_mask_tensor[i]));
+  for (auto &item : turns_mask_tensor) {
+    input_slots->push_back(std::move(item));
   }
   input_slots->push_back(std::move(response_tensor));
   input_slots->push_back(std::move(response_mask_tensor));

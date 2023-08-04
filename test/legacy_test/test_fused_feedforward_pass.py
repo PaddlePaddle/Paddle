@@ -165,7 +165,9 @@ class TestFusedFeedforwadPass(unittest.TestCase):
                         self.use_dropout_2 = use_dropout_2
                         ret_loss = self.get_value()
                         ret_loss_fused = self.get_value(use_pass=True)
-                        assert np.allclose(ret_loss, ret_loss_fused)
+                        np.testing.assert_allclose(
+                            ret_loss, ret_loss_fused, rtol=1e-5, atol=1e-8
+                        )
 
 
 if __name__ == "__main__":

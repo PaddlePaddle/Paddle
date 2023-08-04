@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/phi/api/lib/data_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -47,6 +48,13 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   phi::DenseTensor out;
   const DataLayout lin = kernel_type_for_var.layout();
   const DataLayout lout = expected_kernel_type.layout();
+
+  if (NeedTransform2Contiguous(in.meta().is_contiguous())) {
+    out = paddle::experimental::Trans2Contiguous(in);
+    transformed = true;
+    PassTensorData(&out, &in);
+  }
+
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
 #ifdef PADDLE_WITH_MKLDNN

@@ -243,8 +243,8 @@ void MasterDaemon::run() {
 
   bool finished = false;
   while (!finished) {
-    for (size_t i = 0; i < fds.size(); i++) {
-      fds[i].revents = 0;
+    for (auto& item : fds) {
+      item.revents = 0;
     }
 
     VLOG(9) << "begin to poll fds_size:"
