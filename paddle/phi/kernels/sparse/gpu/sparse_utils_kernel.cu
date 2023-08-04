@@ -282,6 +282,15 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
     PADDLE_THROW(
         phi::errors::Unimplemented("'rocsparse_csr2coo' only supports batches "
                                    "with a value of 1 currently."));
+#elif defined(PADDLE_WITH_MUSA)
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
+    GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(
+        csr_crows_data, rows, batches, offsets_ptr);
+
+    thrust::exclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
+                           offsets_ptr,
+                           offsets_ptr + batches,
+                           offsets_ptr);
 #else
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
     GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(

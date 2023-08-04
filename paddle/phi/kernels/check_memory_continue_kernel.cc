@@ -88,7 +88,7 @@ PD_REGISTER_KERNEL(check_memory_continue,
                    float,
                    double) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(check_memory_continue,
                    GPU,
                    ALL_LAYOUT,

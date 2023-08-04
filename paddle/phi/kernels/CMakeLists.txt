@@ -46,11 +46,16 @@ file(
   "gpu/c*.cu"
   "gpu/s*.cu"
   "gpu/abs_kernel.cu"
+  "gpu/uniform_kernel.cu"
+  "gpu/activation_kernel.cu"
   "gpu/full_kernel.cu"
+  "gpu/p_norm_grad_kernel.cu"
   "gpu/matmul_kernel.cu"
   "gpu/expand_kernel.cu"
   "gpu/isfinite_kernel.cu"
   "kps/*.cu"
+  "legacy/gpu/uniform_kernel.cu"
+  "sparse/gpu/mask_kernel.cu"
   "legacy/kps/*.cu"
   )
 list(REMOVE_ITEM kernel_cu

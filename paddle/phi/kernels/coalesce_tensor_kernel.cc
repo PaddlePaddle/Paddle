@@ -292,7 +292,7 @@ PD_REGISTER_KERNEL(coalesce_tensor,
 }
 #endif
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(coalesce_tensor,
                    GPU,
                    ALL_LAYOUT,

@@ -789,9 +789,9 @@ function(musa_library TARGET_NAME)
     if(musa_library_SRCS)
       # TODO(MTAI): enable compiling static library
       if(musa_library_SHARED OR musa_library_shared) # build *.so
-        add_library(${TARGET_NAME} SHARED ${musa_library_SRCS})
+        musa_add_library(${TARGET_NAME} SHARED ${musa_library_SRCS})
       else()
-        add_library(${TARGET_NAME} STATIC ${musa_library_SRCS})
+        musa_add_library(${TARGET_NAME} STATIC ${musa_library_SRCS})
         find_fluid_modules(${TARGET_NAME})
         find_phi_modules(${TARGET_NAME})
       endif()

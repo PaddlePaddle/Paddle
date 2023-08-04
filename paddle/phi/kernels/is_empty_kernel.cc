@@ -43,7 +43,7 @@ PD_REGISTER_KERNEL(is_empty,
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(is_empty,
                    GPU,
                    ALL_LAYOUT,

@@ -606,7 +606,7 @@ inline void CallThrustScan(const GPUContext& dev_ctx,
                            int* h_offsets_ptr) {
 #ifdef PADDLE_WITH_HIP
   thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
-#elif definfed(PADDLE_WITH_MUSA)
+#elif defined(PADDLE_WITH_MUSA)
   thrust::exclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
