@@ -219,9 +219,10 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
-                     &variable_list_,
-                     &parameter_values_);
+                     &variable_list_);
     VLOG(4) << DebugValueInfo();
+
+    SolvePersisableVarNames();
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     interpreter::BuildOpFuncList(place_,
@@ -1616,10 +1617,7 @@ void NewIRInterpreter::BuildInstruction() {
                          .at("op_name")
                          .dyn_cast<::ir::StrAttribute>()
                          .AsString();
-      if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-          op_name == "builtin.set_parameter" ||
-          op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-          op_name == "pd.data" || op_name == "pd.shaddow_output") {
+      if (interpreter::GetSpecialOpNames().count(op_name)) {
         VLOG(6) << "skip process " << op_name;
         continue;
       }
@@ -1793,18 +1791,8 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
     VLOG(4) << "GC sync " << GetNameById(var_id);
 
     // persistable var will be ignore while GC
-    ::ir::Value value = GetValueByName(GetNameById(var_id));
-    bool is_parameter = false;
-    if (value) {
-      for (auto item : parameter_values_) {
-        if (item == value) {
-          is_parameter = true;
-          break;
-        }
-      }
-    }
-    if (is_parameter) {
-      VLOG(4) << "value " << value.impl() << " is a parameter, skip gc";
+    if (parameter_var_names_.count(GetNameById(var_id))) {
+      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
       continue;
     }
 
@@ -1851,18 +1839,8 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
             << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
-    ::ir::Value value = GetValueByName(GetNameById(var_id));
-    bool is_parameter = false;
-    if (value) {
-      for (auto item : parameter_values_) {
-        if (item == value) {
-          is_parameter = true;
-          break;
-        }
-      }
-    }
-    if (is_parameter) {
-      VLOG(4) << "value " << value.impl() << " is a parameter, skip gc";
+    if (parameter_var_names_.count(GetNameById(var_id))) {
+      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
       continue;
     }
 
@@ -2020,10 +1998,16 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
-                     &variable_list_,
-                     &parameter_values_);
+                     &variable_list_);
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
+
+    SolvePersisableVarNames();
+
+    VLOG(4) << "Parameter value include: ";
+    for (auto parameter : parameter_var_names_) {
+      VLOG(4) << "Parameter value: " << parameter;
+    }
 
     BuildInstruction();
     VLOG(4) << "Done BuildInstruction";
@@ -2261,6 +2245,27 @@ void NewIRInterpreter::PreAnalysis() {
     }
   }
   return nullptr;
+}
+
+void NewIRInterpreter::SolvePersisableVarNames() {
+  VLOG(6) << "SolvePersisableVarNames";
+  for (auto kv : value_2_var_name_) {
+    ::ir::Value value = kv.first;
+    std::string var_name = kv.second;
+    ::ir::OpResult result = value.dyn_cast<::ir::OpResult>();
+    auto* defining_op = value.GetDefiningOp();
+    if (defining_op->HasAttribute(kAttrIsPersisable)) {
+      auto is_persisables = defining_op->attribute(kAttrIsPersisable)
+                                .dyn_cast<::ir::ArrayAttribute>()
+                                .AsVector();
+      if (is_persisables[result.GetResultIndex()]
+              .dyn_cast<::ir::BoolAttribute>()
+              .data()) {
+        VLOG(6) << "parameter_var_names_ include: " << var_name;
+        parameter_var_names_.insert(var_name);
+      }
+    }
+  }
 }
 
 }  // namespace framework

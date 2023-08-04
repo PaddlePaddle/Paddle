@@ -977,10 +977,7 @@ void BuildOpFuncList(
         attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.data" || op_name == "pd.shadow_output") {
+    if (GetSpecialOpNames().count(op_name)) {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -1127,6 +1124,21 @@ void LogDeviceMemoryStats(const platform::Place& place) {
                    "Allocated", place.device)) /
                    1024 / 1024
             << " MB";
+    VLOG(0) << "memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Reserved", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "max_memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Reserved", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "RecordedGpuMallocSize: "
+            << static_cast<double>(
+                   platform::RecordedGpuMallocSize(place.device)) /
+                   1024 / 1024
+            << " MB";
   }
 }
 
@@ -1169,6 +1181,19 @@ void SetDeviceCommContext(::ir::Operation* op,
               << ", ring_id: " << ring_id << ", get comm_context failed!";
     }
   }
+}
+
+static const std::unordered_set<std::string> special_op_names = {
+    "builtin.combine",
+    "builtin.slice",
+    "pd.feed",
+    "builtin.set_parameter",
+    "builtin.get_parameter",
+    "pd.data",
+    "pd.shadow_output",
+};
+const std::unordered_set<std::string>& GetSpecialOpNames() {
+  return special_op_names;
 }
 
 }  // namespace interpreter
