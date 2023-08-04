@@ -1084,13 +1084,13 @@ void MultiSlotInMemoryDataFeed::Init(
   feed_vec_.resize(use_slots_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
-    batch_float_feasigns_.push_back(std::vector<float>());
-    batch_uint64_feasigns_.push_back(std::vector<uint64_t>());
+    batch_float_feasigns_.emplace_back();
+    batch_uint64_feasigns_.emplace_back();
     batch_float_feasigns_[i].reserve(default_batch_size_ *
                                      kEstimatedFeasignNumPerSlot);
     batch_uint64_feasigns_[i].reserve(default_batch_size_ *
                                       kEstimatedFeasignNumPerSlot);
-    offset_.push_back(std::vector<size_t>());
+    offset_.emplace_back();
     offset_[i].reserve(default_batch_size_ +
                        1);  // Each lod info will prepend a zero
   }
@@ -1224,7 +1224,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             }
             FeatureFeasign f;
             f.float_feasign_ = feasign;
-            instance->float_feasigns_.push_back(FeatureItem(f, idx));
+            instance->float_feasigns_.emplace_back(f, idx);
           }
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
@@ -1236,7 +1236,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             }
             FeatureFeasign f;
             f.uint64_feasign_ = feasign;
-            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
+            instance->uint64_feasigns_.emplace_back(f, idx);
           }
         }
         pos = endptr - str;
@@ -1297,7 +1297,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             }
             FeatureFeasign f;
             f.float_feasign_ = feasign;
-            instance->float_feasigns_.push_back(FeatureItem(f, idx));
+            instance->float_feasigns_.emplace_back(f, idx);
           }
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
@@ -1307,7 +1307,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             }
             FeatureFeasign f;
             f.uint64_feasign_ = feasign;
-            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
+            instance->uint64_feasigns_.emplace_back(f, idx);
           }
         }
         pos = endptr - str;
@@ -2093,13 +2093,13 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   feed_vec_.resize(used_slots_info_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
-    batch_float_feasigns_.push_back(std::vector<float>());
-    batch_uint64_feasigns_.push_back(std::vector<uint64_t>());
+    batch_float_feasigns_.emplace_back();
+    batch_uint64_feasigns_.emplace_back();
     batch_float_feasigns_[i].reserve(default_batch_size_ *
                                      kEstimatedFeasignNumPerSlot);
     batch_uint64_feasigns_[i].reserve(default_batch_size_ *
                                       kEstimatedFeasignNumPerSlot);
-    offset_.push_back(std::vector<size_t>());
+    offset_.emplace_back();
     offset_[i].reserve(default_batch_size_ +
                        1);  // Each lod info will prepend a zero
   }
