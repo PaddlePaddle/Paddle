@@ -387,7 +387,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
   }
 
   for (auto &param : params) {
-    auto name = param.name();
+    auto &name = param.name();
     auto place = param.place().GetType();
 
     auto op_desc = local_program.MutableBlock(0)->PrependOp();
