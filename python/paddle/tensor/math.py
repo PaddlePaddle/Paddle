@@ -14,15 +14,12 @@
 """
 math functions
 """
-# TODO: define math functions
 
 import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
-
-# TODO: define math functions
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..common_ops_import import Variable
@@ -170,7 +167,7 @@ def log(x, name=None):
             >>> print(paddle.log(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.69314718, 1.09861231, 1.38629436],
-            [1.94591010, 2.07944155, 2.19722462]])
+             [1.94591010, 2.07944155, 2.19722462]])
     """
     if in_dynamic_mode():
         return _C_ops.log(x)
@@ -233,17 +230,33 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             >>> # scale as a float32 number
             >>> import paddle
 
-            >>> data = paddle.randn(shape=[2,3], dtype='float32')
+            >>> data = paddle.arange(6).astype("float32").reshape([2, 3])
+            >>> print(data)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 1., 2.],
+             [3., 4., 5.]])
             >>> res = paddle.scale(data, scale=2.0, bias=1.0)
+            >>> print(res)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1. , 3. , 5. ],
+             [7. , 9. , 11.]])
 
         .. code-block:: python
 
             >>> # scale with parameter scale as a Tensor
             >>> import paddle
 
-            >>> data = paddle.randn(shape=[2, 3], dtype='float32')
+            >>> data = paddle.arange(6).astype("float32").reshape([2, 3])
+            >>> print(data)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 1., 2.],
+             [3., 4., 5.]])
             >>> factor = paddle.to_tensor([2], dtype='float32')
             >>> res = paddle.scale(data, scale=factor, bias=1.0)
+            >>> print(res)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1. , 3. , 5. ],
+             [7. , 9. , 11.]])
 
     """
 
@@ -705,14 +718,14 @@ def logaddexp(x, y, name=None):
 
         For example:
 
-        .. code-block:: python
+        .. code-block:: text
 
-            >>> shape(X) = (2, 3, 4, 5), shape(Y) = (,)
-            >>> shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
-            >>> shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
-            >>> shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
-            >>> shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
-            >>> shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+            shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+            shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
         x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
