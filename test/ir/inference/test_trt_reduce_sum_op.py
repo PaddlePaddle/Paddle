@@ -63,8 +63,7 @@ class TRTReduceSumBoolTest(InferencePassTest):
             data = paddle.static.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="bool"
             )
-            reduce_sum = paddle.sum(data, axis=[1], keepdim=False)
-            out = nn.batch_norm(reduce_sum, is_test=True)
+            out = paddle.sum(data, axis=[1], keepdim=False)
 
         self.feeds = {
             "data": np.random.random([3, 3, 10, 192]).astype("bool"),
