@@ -59,8 +59,8 @@ class BufferedLineFileReader {
   int read_lines(T* reader, LineFunc func, int skip_lines) {
     int lines = 0;
     size_t ret = 0;
-    char* ptr = NULL;
-    char* eol = NULL;
+    char* ptr = nullptr;
+    char* eol = nullptr;
     total_len_ = 0;
     error_line_ = 0;
 
@@ -70,7 +70,7 @@ class BufferedLineFileReader {
       total_len_ += ret;
       ptr = buff_;
       eol = reinterpret_cast<char*>(memchr(ptr, '\n', ret));
-      while (eol != NULL) {
+      while (eol != nullptr) {
         int size = static_cast<int>((eol - ptr) + 1);
         x.append(ptr, size - 1);
         ++lines;
@@ -1106,13 +1106,13 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
                                                  uint32_t* cmatch,
                                                  uint32_t* rank) {
   std::string searchid_str = log_key.substr(16, 16);
-  *search_id = (uint64_t)strtoull(searchid_str.c_str(), NULL, 16);
+  *search_id = (uint64_t)strtoull(searchid_str.c_str(), nullptr, 16);
 
   std::string cmatch_str = log_key.substr(11, 3);
-  *cmatch = (uint32_t)strtoul(cmatch_str.c_str(), NULL, 16);
+  *cmatch = (uint32_t)strtoul(cmatch_str.c_str(), nullptr, 16);
 
   std::string rank_str = log_key.substr(14, 2);
-  *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
+  *rank = (uint32_t)strtoul(rank_str.c_str(), nullptr, 16);
 }
 
 int MultiSlotInMemoryDataFeed::ParseInstanceFromSo(
@@ -1657,8 +1657,8 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   fstat(fd_, &sb);
   end_ = static_cast<size_t>(sb.st_size);
 
-  buffer_ =
-      reinterpret_cast<char*>(mmap(NULL, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
+  buffer_ = reinterpret_cast<char*>(
+      mmap(nullptr, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
   PADDLE_ENFORCE_NE(
       buffer_,
       MAP_FAILED,
@@ -2401,11 +2401,12 @@ static void parser_log_key(const std::string& log_key,
                            uint32_t* cmatch,
                            uint32_t* rank) {
   std::string searchid_str = log_key.substr(16, 16);
-  *search_id = static_cast<uint64_t>(strtoull(searchid_str.c_str(), NULL, 16));
+  *search_id =
+      static_cast<uint64_t>(strtoull(searchid_str.c_str(), nullptr, 16));
   std::string cmatch_str = log_key.substr(11, 3);
-  *cmatch = static_cast<uint32_t>(strtoul(cmatch_str.c_str(), NULL, 16));
+  *cmatch = static_cast<uint32_t>(strtoul(cmatch_str.c_str(), nullptr, 16));
   std::string rank_str = log_key.substr(14, 2);
-  *rank = static_cast<uint32_t>(strtoul(rank_str.c_str(), NULL, 16));
+  *rank = static_cast<uint32_t>(strtoul(rank_str.c_str(), nullptr, 16));
 }
 
 bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
