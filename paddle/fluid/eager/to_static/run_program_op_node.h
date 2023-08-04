@@ -130,7 +130,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var") {
+    if (name == paddle::framework::kFakeVarName) {
       continue;
     }
     auto *var = scope->Var(name);
@@ -159,8 +159,8 @@ static void ShareTensorsFromScope(
     // because we can't find them in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     auto &name = tensors[i]->name();
-    if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
-        !global_block.HasVar(name)) {
+    if (name == paddle::framework::kEmptyVarName ||
+        name == paddle::framework::kFakeVarName || !global_block.HasVar(name)) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
@@ -197,7 +197,8 @@ static void ShareTensorsFromScopeWithPartialBlock(
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
-    if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
+    if (name == paddle::framework::kEmptyVarName ||
+        name == paddle::framework::kFakeVarName ||
         (!forward_global_block.HasVar(name) &&
          !backward_global_block.HasVar(name))) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
@@ -377,7 +378,7 @@ inline void RunProgramAPI(
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
       auto ir_program = paddle::framework::ConstructFowardIrProgram(
-          forward_global_block, backward_global_block, output_names, x);
+          forward_global_block, backward_global_block, output_names, x, params);
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
               std::move(ir_program),
@@ -482,8 +483,6 @@ inline void RunProgramAPI(
 }
 
 inline void RunProgramGradAPI(
-    const std::vector<paddle::Tensor> &x UNUSED,
-    const std::vector<paddle::Tensor> &params UNUSED,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
@@ -529,8 +528,12 @@ inline void RunProgramGradAPI(
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
     if (FLAGS_enable_new_ir_in_executor) {
-      auto res = paddle::framework::ConstructBackwardIrProgram(
-          backward_global_block, out_grad, x_grad, params_grad);
+      auto res =
+          paddle::framework::ConstructBackwardIrProgram(backward_global_block,
+                                                        out_grad,
+                                                        x_grad,
+                                                        params_grad,
+                                                        global_inner_scope);
 
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
@@ -697,20 +700,19 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     for (size_t i = 0; i < out_grad_names.size(); ++i) {
       hooked_grads[0][i].set_name(out_grad_names[i]);
     }
-    RunProgramGradAPI(x_,
-                      params_,
-                      hooked_grads[0],
-                      step_scope_,
-                      attrs_,
-                      x_grad_ptr,
-                      params_grad_ptr);
+    RunProgramGradAPI(
+        hooked_grads[0], step_scope_, attrs_, x_grad_ptr, params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 
     executed_ = true;
     return {x_grad, params_grad};
   }
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  void ClearTensorWrappers() override {
+    x_.clear();
+    params_.clear();
+    SetIsTensorWrappersCleared(true);
+  }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {

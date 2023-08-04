@@ -31,9 +31,9 @@ void FlipKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   const int total_dims = x_dims.size();
   std::bitset<dim_bitset_size> dim_bitset;
-  for (size_t i = 0; i < axis.size(); ++i) {
-    int dim = axis[i];
-    if (axis[i] < 0) {
+  for (auto& item : axis) {
+    auto dim = item;
+    if (item < 0) {
       dim += total_dims;
     }
     dim_bitset[dim] = true;

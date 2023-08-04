@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dy2st_test_utils import test_and_compare_with_new_ir
 
 from paddle import fluid
 from paddle.jit.api import to_static
@@ -88,6 +89,7 @@ class TestCastBase(unittest.TestCase):
             res = self.func(self.input)
             return res
 
+    @test_and_compare_with_new_ir(False)
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -154,6 +156,7 @@ class TestMixCast(TestCastBase):
     def set_func(self):
         self.func = test_mix_cast
 
+    @test_and_compare_with_new_ir(False)
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -186,6 +189,7 @@ class TestNotVarCast(TestCastBase):
     def set_func(self):
         self.func = test_not_var_cast
 
+    @test_and_compare_with_new_ir(False)
     def test_cast_result(self):
         res = self.do_test()
         self.assertTrue(type(res) == int, msg='The casted dtype is not int.')

@@ -287,15 +287,13 @@ void AnalysisConfig::SetIpuCustomInfo(
     const std::vector<std::vector<std::string>> &ipu_custom_ops_info,
     const std::map<std::string, bool> &ipu_custom_patterns) {
   ipu_custom_ops_info_ = ipu_custom_ops_info;
-  for (auto iter = ipu_custom_patterns.begin();
-       iter != ipu_custom_patterns.end();
-       iter++) {
-    if (iter->second == true) {
+  for (const auto &ipu_custom_pattern : ipu_custom_patterns) {
+    if (ipu_custom_pattern.second == true) {
       ipu_custom_patterns_.push_back(
-          std::vector<std::string>{iter->first, "True"});
-    } else if (iter->second == false) {
+          std::vector<std::string>{ipu_custom_pattern.first, "True"});
+    } else if (ipu_custom_pattern.second == false) {
       ipu_custom_patterns_.push_back(
-          std::vector<std::string>{iter->first, "False"});
+          std::vector<std::string>{ipu_custom_pattern.first, "False"});
     }
   }
 
