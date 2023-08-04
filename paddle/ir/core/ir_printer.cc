@@ -257,7 +257,7 @@ void IrPrinter::PrintOperandsType(const Operation* op) {
     if (op_operand) {
       op_operand_types.push_back(op_operand.type());
     } else {
-      op_operand_types.push_back(Type());
+      op_operand_types.emplace_back();
     }
   }
   os << " (";
@@ -278,7 +278,7 @@ void IrPrinter::PrintOpReturnType(const Operation* op) {
     if (op_result) {
       op_result_types.push_back(op_result.type());
     } else {
-      op_result_types.push_back(Type(nullptr));
+      op_result_types.emplace_back(nullptr);
     }
   }
   PrintInterleave(

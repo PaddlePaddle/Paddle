@@ -174,8 +174,8 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
       return;
     }
     std::vector<std::pair<Node*, Node*>> ins;
-    ins.push_back(std::make_pair(lookup_table1_x, lookup_table1_w));
-    ins.push_back(std::make_pair(lookup_table2_x, lookup_table2_w));
+    ins.emplace_back(lookup_table1_x, lookup_table1_w);
+    ins.emplace_back(lookup_table2_x, lookup_table2_w);
     start_pattern_in_nodes.push_back(ins);
     start_pattern_out_node.push_back(eltwise_add_out);
 
@@ -294,7 +294,7 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
 
     for (size_t k = 0; k < end_pattern_elt_out.size(); ++k) {
       if (tmp == end_pattern_elt_out[k]) {
-        fusion_ids.push_back(std::make_pair(i, std::make_pair(k, js)));
+        fusion_ids.emplace_back(i, std::make_pair(k, js));
         break;
       }
     }
