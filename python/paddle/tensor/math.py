@@ -396,7 +396,10 @@ def multiplex(inputs, index, name=None):
             >>> inputs = [img1, img2]
             >>> index = paddle.to_tensor([[1], [0]], dtype=paddle.int32)
             >>> res = paddle.multiplex(inputs, index)
-            >>> print(res) # Tensor([[5., 6.], [3., 4.]], dtype=float32)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[5., 6.],
+             [3., 4.]])
 
     """
     if in_dynamic_mode():
