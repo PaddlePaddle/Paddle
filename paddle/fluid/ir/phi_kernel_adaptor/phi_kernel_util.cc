@@ -264,8 +264,8 @@ void HandleForSpecialOp(
                variable_list);
   }
 
-  if (op_name == "pd.feed_with_place") {
-    VLOG(6) << "Handle for pd.feed_with_place";
+  if (op_name == "pd.data") {
+    VLOG(6) << "Handle for pd.data";
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
@@ -328,12 +328,19 @@ void HandleForSpecialOp(
     // change opreand name to param_name
     auto orig_name = value_2_var_name->at(value);
 
+    PADDLE_ENFORCE_NE(
+        param_name,
+        orig_name,
+        phi::errors::PreconditionNotMet(
+            "SetParamer param name should not equal with var name"));
+
     if (inner_scope->root()->FindVar(param_name) == nullptr) {
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
       VLOG(6) << "set_parameter rename var: " << orig_name << " -> "
               << param_name;
     }
+
     RenameData(value,
                param_name,
                orig_name,
@@ -479,9 +486,7 @@ void BuildScope(const ir::Block& block,
           << paddle::framework::GenScopeTreeDebugInfo(
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
 
-  for (auto it = block.begin(); it != block.end(); ++it) {
-    ir::Operation* op = *it;
-
+  for (auto op : block) {
     std::string op_name = op->name();
     if (op->attributes().count("op_name")) {
       op_name = op->attributes()
@@ -494,7 +499,7 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
+        op_name == "pd.data" || op_name == "pd.shadow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,

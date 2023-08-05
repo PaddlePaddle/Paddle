@@ -55,8 +55,7 @@ ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
     // TODO(Yancey1989): binding the thread on the specify CPU numberw
-    thread =
-        std::make_unique<std::thread>(std::bind(&ThreadPool::TaskLoop, this));
+    thread = std::make_unique<std::thread>([this] { ThreadPool::TaskLoop(); });
   }
 }
 

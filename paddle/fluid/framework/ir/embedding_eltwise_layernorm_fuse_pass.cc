@@ -174,8 +174,8 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
       return;
     }
     std::vector<std::pair<Node*, Node*>> ins;
-    ins.push_back(std::make_pair(lookup_table1_x, lookup_table1_w));
-    ins.push_back(std::make_pair(lookup_table2_x, lookup_table2_w));
+    ins.emplace_back(lookup_table1_x, lookup_table1_w);
+    ins.emplace_back(lookup_table2_x, lookup_table2_w);
     start_pattern_in_nodes.push_back(ins);
     start_pattern_out_node.push_back(eltwise_add_out);
 
@@ -294,24 +294,24 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
 
     for (size_t k = 0; k < end_pattern_elt_out.size(); ++k) {
       if (tmp == end_pattern_elt_out[k]) {
-        fusion_ids.push_back(std::make_pair(i, std::make_pair(k, js)));
+        fusion_ids.emplace_back(i, std::make_pair(k, js));
         break;
       }
     }
   }
 
-  for (size_t num = 0; num < fusion_ids.size(); ++num) {
-    int i = fusion_ids[num].first;
-    int k = fusion_ids[num].second.first;
-    std::vector<size_t> js = fusion_ids[num].second.second;
+  for (auto& fusion_id : fusion_ids) {
+    int i = fusion_id.first;
+    int k = fusion_id.second.first;
+    std::vector<size_t> js = fusion_id.second.second;
 
     std::vector<std::string> ids;
     std::vector<std::string> embs;
 
     auto ids0_shape = start_pattern_in_nodes[i][0].first->Var()->GetShape();
     bool flag = true;
-    for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
-      auto ids_shape = start_pattern_in_nodes[i][iter].first->Var()->GetShape();
+    for (auto& start_pattern : start_pattern_in_nodes[i]) {
+      auto ids_shape = start_pattern.first->Var()->GetShape();
       if (ids_shape.size() != ids0_shape.size()) {
         VLOG(3) << "Shape check failed, ids'rank are not all equal, stop "
                    "embedding_eltwise_layernorm_fuse_pass.";
@@ -326,11 +326,11 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
           }
         }
       }
-      ids.push_back(start_pattern_in_nodes[i][iter].first->Name());
-      embs.push_back(start_pattern_in_nodes[i][iter].second->Name());
+      ids.push_back(start_pattern.first->Name());
+      embs.push_back(start_pattern.second->Name());
     }
-    for (size_t iter = 0; iter < js.size(); ++iter) {
-      auto ids_shape = inner_pattern_ins[js[iter]].first->Var()->GetShape();
+    for (auto item : js) {
+      auto ids_shape = inner_pattern_ins[item].first->Var()->GetShape();
       if (ids_shape.size() != ids0_shape.size()) {
         VLOG(3) << "Shape check failed, ids'rank are not all equal, stop "
                    "embedding_eltwise_layernorm_fuse_pass.";
@@ -345,8 +345,8 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
           }
         }
       }
-      ids.push_back(inner_pattern_ins[js[iter]].first->Name());
-      embs.push_back(inner_pattern_ins[js[iter]].second->Name());
+      ids.push_back(inner_pattern_ins[item].first->Name());
+      embs.push_back(inner_pattern_ins[item].second->Name());
     }
 
     // todo: support any inputs with lookup_table_v2
@@ -387,16 +387,14 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
 
       auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);
 
-      for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
-        IR_NODE_LINK_TO(start_pattern_in_nodes[i][iter].first,
-                        embedding_eltwise_layernorm);
-        IR_NODE_LINK_TO(start_pattern_in_nodes[i][iter].second,
-                        embedding_eltwise_layernorm);
+      for (auto& start_pattern : start_pattern_in_nodes[i]) {
+        IR_NODE_LINK_TO(start_pattern.first, embedding_eltwise_layernorm);
+        IR_NODE_LINK_TO(start_pattern.second, embedding_eltwise_layernorm);
       }
-      for (size_t iter = 0; iter < js.size(); ++iter) {
-        IR_NODE_LINK_TO(inner_pattern_ins[js[iter]].first,
+      for (auto item : js) {
+        IR_NODE_LINK_TO(inner_pattern_ins[item].first,
                         embedding_eltwise_layernorm);
-        IR_NODE_LINK_TO(inner_pattern_ins[js[iter]].second,
+        IR_NODE_LINK_TO(inner_pattern_ins[item].second,
                         embedding_eltwise_layernorm);
       }
       IR_NODE_LINK_TO(end_pattern_biases[k], embedding_eltwise_layernorm);
@@ -409,9 +407,9 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
                           start_pattern_remove_nodes[i].end());
       marked_nodes.insert(end_pattern_remove_nodes[k].begin(),
                           end_pattern_remove_nodes[k].end());
-      for (size_t iter = 0; iter < js.size(); ++iter) {
-        marked_nodes.insert(inner_pattern_remove_nodes[js[iter]].begin(),
-                            inner_pattern_remove_nodes[js[iter]].end());
+      for (auto item : js) {
+        marked_nodes.insert(inner_pattern_remove_nodes[item].begin(),
+                            inner_pattern_remove_nodes[item].end());
       }
       GraphSafeRemoveNodes(graph, marked_nodes);
       ++fusion_count;

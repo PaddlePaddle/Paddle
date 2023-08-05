@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dy2st_test_utils import test_and_compare_with_new_ir
 from dygraph_to_static_util import ast_only_test
 
 from paddle import fluid
@@ -89,6 +90,7 @@ class TestCastBase(unittest.TestCase):
             return res
 
     @ast_only_test  # TODO: add new symbolic only test.
+    @test_and_compare_with_new_ir(False)
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -156,6 +158,7 @@ class TestMixCast(TestCastBase):
         self.func = test_mix_cast
 
     @ast_only_test  # TODO: add new symbolic only test.
+    @test_and_compare_with_new_ir(False)
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -189,6 +192,7 @@ class TestNotVarCast(TestCastBase):
         self.func = test_not_var_cast
 
     @ast_only_test  # TODO: add new symbolic only test.
+    @test_and_compare_with_new_ir(False)
     def test_cast_result(self):
         res = self.do_test()
         self.assertTrue(type(res) == int, msg='The casted dtype is not int.')
