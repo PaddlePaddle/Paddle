@@ -61,7 +61,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   // q,k,v [total_*, num_heads, head_dim]
 
   auto dims = q.dims();
-  const int total_q = dims[0];
+  const int64_t total_q = dims[0];
   const int batch_size = cu_seqlens_q.numel() - 1;
   const int num_heads = dims[1];
   const int head_size_og = dout.dims()[2];
