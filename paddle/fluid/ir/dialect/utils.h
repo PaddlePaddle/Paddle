@@ -196,49 +196,50 @@ static std::unordered_map<AttrType,
     attr_cast_map = {
         {AttrType::BOOL,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<ir::BoolAttribute>().data();
+           return VariantType{attr.dyn_cast<ir::BoolAttribute>().data()};
          }},
         {AttrType::FLOAT,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<ir::FloatAttribute>().data();
+           return VariantType{attr.dyn_cast<ir::FloatAttribute>().data()};
          }},
         {AttrType::DOUBLE,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<ir::DoubleAttribute>().data();
+           return VariantType{attr.dyn_cast<ir::DoubleAttribute>().data()};
          }},
         {AttrType::INT32,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<ir::Int32Attribute>().data();
+           return VariantType{attr.dyn_cast<ir::Int32Attribute>().data()};
          }},
         {AttrType::INT64,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<ir::Int64Attribute>().data();
+           return VariantType{attr.dyn_cast<ir::Int64Attribute>().data()};
          }},
         {AttrType::INT_ARRAY,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
-               .data()
-               .GetData();
+           return VariantType{
+               attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
+                   .data()
+                   .GetData()};
          }},
         {AttrType::STRING,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<ir::StrAttribute>().AsString();
+           return VariantType{attr.dyn_cast<ir::StrAttribute>().AsString()};
          }},
         {AttrType::DATA_TYPE,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
+           return VariantType{
+               attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data()};
          }},
         {AttrType::PLACE,
          [](const ir::Attribute& attr) {
-           return attr.dyn_cast<paddle::dialect::PlaceAttribute>().data();
+           return VariantType{
+               attr.dyn_cast<paddle::dialect::PlaceAttribute>().data()};
          }},
         {AttrType::ARRAY,
          [](const ir::Attribute& attr) {
            auto attr_vec = attr.dyn_cast<ir::ArrayAttribute>().AsVector();
-           VariantType ret;
            if (attr_vec.size() == 0) {
-             ret = std::vector<int>();
-             return ret;
+             return VariantType{std::vector<int>()};
            }
            AttrType element_type = GetAttributeType(attr_vec[0]);
 
@@ -248,41 +249,40 @@ static std::unordered_map<AttrType,
                vec_bools.push_back(
                    vec_element.dyn_cast<ir::BoolAttribute>().data());
              }
-             ret = vec_bools;
+             return VariantType{vec_bools};
            } else if (element_type == AttrType::INT32) {
              std::vector<int> vec_int32;
              for (auto vec_element : attr_vec) {
                vec_int32.push_back(
                    vec_element.dyn_cast<ir::Int32Attribute>().data());
              }
-             ret = vec_int32;
+             return VariantType{vec_int32};
            } else if (element_type == AttrType::INT64) {
              std::vector<int64_t> vec_int64;
              for (auto vec_element : attr_vec) {
                vec_int64.push_back(
                    vec_element.dyn_cast<ir::Int64Attribute>().data());
              }
-             ret = vec_int64;
+             return VariantType{vec_int64};
            } else if (element_type == AttrType::FLOAT) {
              std::vector<float> vec_float;
              for (auto vec_element : attr_vec) {
                vec_float.push_back(
                    vec_element.dyn_cast<ir::FloatAttribute>().data());
              }
-             ret = vec_float;
+             return VariantType{vec_float};
            } else if (element_type == AttrType::DOUBLE) {
              std::vector<double> vec_double;
              for (auto vec_element : attr_vec) {
                vec_double.push_back(
                    vec_element.dyn_cast<ir::DoubleAttribute>().data());
              }
-             ret = vec_double;
+             return VariantType{vec_double};
            } else {
              PADDLE_THROW(phi::errors::Unimplemented(
                  "Unsupported ir Attribute type when casting it into "
                  "vector."));
            }
-           return ret;
          }},
 };
 

@@ -39,7 +39,5 @@ __all__ = [  # noqa
     'OpOperand',
     'OpResult',
     'Type',
-    'get_op_result_shape',
-    'get_op_result_dtype',
     'translate_to_new_ir',
 ]
