@@ -164,7 +164,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
-    if (op->Type() == "shaddow_output") {
+    if (op->Type() == "shadow_output") {
       if (!param_map_.count(op->Input("x")[0])) {
         continue;
       }
@@ -177,6 +177,14 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
+    if ((*op_desc)->Type() == "data") {
+      continue;
+    }
+
+    const auto& input_var_names = (*op_desc)->InputArgumentNames();
+    std::unordered_set<std::string> set_input_var_names(input_var_names.begin(),
+                                                        input_var_names.end());
+
     for (const auto& n : (*op_desc)->Outputs()) {
       const auto& output_var_names = n.second;
       for (const auto& var_name : output_var_names) {
@@ -184,6 +192,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                                       parameter_name_mappings_.end());
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
+        need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
           if (!defining_op_result) {
