@@ -22,8 +22,8 @@ namespace phi {
 template <typename T, typename Context>
 void DistributedFusedLambInitOpKernel(
     const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& grad,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& grad,
     DenseTensor* fp32_fused_param,
     DenseTensor* fp32_fused_grad,
     DenseTensor* fp16_fused_param,
@@ -37,9 +37,9 @@ void DistributedFusedLambInitOpKernel(
     DenseTensor* fp16_shard_fused_param_offsets,
     DenseTensor* param_info,
     DenseTensor* param_order,
-    DenseTensor* param_out,
-    DenseTensor* master_param_out,
-    DenseTensor* grad_out,
+    std::vector<DenseTensor*>* param_out,
+    std::vector<DenseTensor*>* master_param_out,
+    std::vector<DenseTensor*>* grad_out,
     DenseTensor* global_scale,
     DenseTensor* step,
     float beta1,

@@ -17,12 +17,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
 void DistributedFusedLambInitOpKernel(
     const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& grad,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& grad,
     DenseTensor* fp32_fused_param,
     DenseTensor* fp32_fused_grad,
     DenseTensor* fp16_fused_param,
@@ -36,9 +37,9 @@ void DistributedFusedLambInitOpKernel(
     DenseTensor* fp16_shard_fused_param_offsets,
     DenseTensor* param_info,
     DenseTensor* param_order,
-    DenseTensor* param_out,
-    DenseTensor* master_param_out,
-    DenseTensor* grad_out,
+    std::vector<DenseTensor*>* param_out,
+    std::vector<DenseTensor*>* master_param_out,
+    std::vector<DenseTensor*>* grad_out,
     DenseTensor* global_scale,
     DenseTensor* step,
     float beta1,
@@ -50,11 +51,11 @@ void DistributedFusedLambInitOpKernel(
   PADDLE_THROW(phi::errors::Unavailable(
       "Do not support expert count op for cpu kernel now."));
 }
-
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(distributed_fused_lamb_init_op,
                    CPU,
                    ALL_LAYOUT,
-                   phi::DistributedFusedLambInitOpKernel,
+                   phi::fusion::DistributedFusedLambInitOpKernel,
                    float) {}
