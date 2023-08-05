@@ -1596,7 +1596,9 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
   std::stringstream ss;
   ss << "trace order: ";
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    ss << trace_execute_order_[idx] << " -> ";
+    ss << vec_instruction_base_[trace_execute_order_[idx]]->Name() << "["
+       << trace_execute_order_[idx] << "]"
+       << " -> ";
   }
   ss << "end\n";
   VLOG(6) << ss.str();
@@ -2016,15 +2018,18 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_loop_run) {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with for_loop version.";
-      LoopRunImpl();
-    } else {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with trace version.";
-      TraceRunImpl();
-    }
+    // if (FLAGS_enable_new_ir_in_executor_loop_run) {
+    //   LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode
+    //   "
+    //                           "with for_loop version.";
+    //   LoopRunImpl();
+    // } else {
+    //   LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode
+    //   "
+    //                           "with trace version.";
+    //   TraceRunImpl();
+    // }
+    LoopRunImpl();
     is_build_ = true;
   } else {
     if (FLAGS_enable_new_ir_in_executor_loop_run) {
@@ -2161,7 +2166,8 @@ void NewIRInterpreter::TraceRunInstructionList(
     auto instr_id = trace_execute_order_[idx];
     InstructionBase* instr_node = vec_instruction_base_.at(instr_id).get();
 
-    VLOG(6) << "Run InstructionBase " << instr_id;
+    VLOG(6) << "Run InstructionBase " << instr_node->Name() << "[" << instr_id
+            << "]";
     RunInstructionBase(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
