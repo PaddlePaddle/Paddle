@@ -222,13 +222,14 @@ def remove_weight_norm(layer, name='weight'):
             >>> import paddle
             >>> from paddle.nn import Conv2D
             >>> from paddle.nn.utils import weight_norm, remove_weight_norm
+            >>> paddle.seed(2023)
 
             >>> conv = Conv2D(3, 5, 3)
             >>> wn = weight_norm(conv)
             >>> print(conv.weight_g)
             Parameter containing:
-            Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                   [1.47473538, 1.04822731, 1.62955081, 1.47163594, 1.44334817])
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [1.35883713, 1.32126212, 1.56303072, 1.20874095, 1.22893476])
             >>> remove_weight_norm(conv)
             # The following is the effect after removing the weight norm:
             >>> print(conv.weight_g)
