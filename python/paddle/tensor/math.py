@@ -1939,18 +1939,12 @@ def trunc(input, name=None):
 
             >>> import paddle
 
-            >>> paddle.seed(2023)
-            >>> input = paddle.randn([2, 2], 'float32')
-            >>> input
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 1.11349595,  0.06132207],
-             [-0.24858207,  0.41906244]])
-
+            >>> input = paddle.to_tensor([[0.1, 1.5], [-0.2, -2.4]], 'float32')
             >>> output = paddle.trunc(input)
             >>> output
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1. , 0. ],
-             [-0., 0. ]])
+            [[ 0.,  1.],
+             [-0., -2.]])
     '''
     if in_dynamic_mode():
         return _C_ops.trunc(input)
