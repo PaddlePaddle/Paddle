@@ -56,16 +56,11 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
-#if 0
-  if (is_test) dropout = 0.0f;
-#endif
 
   ctx.template Alloc<T>(out);
 
   cudaStream_t stream = ctx.stream();
-#if 0
-  bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
-#endif
+
   // q,k,v [total_*, num_heads, head_dim]
 
   auto dims = q.dims();
@@ -105,58 +100,8 @@ void FlashAttnUnpaddedKernel(
                               seed_offset,
                               fixed_seed_offset.get_ptr());
 
-#if 0
-  uint64_t seed;
-  uint64_t offset;
-
-  if (fixed_seed_offset.get_ptr()) {
-    const int64_t* fixed_seed_offset_data =
-        fixed_seed_offset.get_ptr()->data<int64_t>();
-    seed = static_cast<uint64_t>(fixed_seed_offset_data[0]);
-    offset = static_cast<uint64_t>(fixed_seed_offset_data[1]);
-  } else {
-    uint64_t inc = batch_size * num_heads * 32;
-    std::pair<uint64_t, uint64_t> seed_offset_pair;
-    if (rng_name != "") {
-      auto gen = phi::GetRandomSeedGenerator(rng_name);
-      seed_offset_pair = gen->IncrementOffset(inc);
-    } else {
-      auto* gen = ctx.GetGenerator();
-      seed_offset_pair = gen->IncrementOffset(inc);
-    }
-    seed = seed_offset_pair.first;
-    offset = seed_offset_pair.second;
-  }
-#endif
-
   VLOG(4) << "FlashAttn fwd seed: " << params.seed
           << ", offset: " << params.offset;
-
-#if 0
-  seed_offset->Resize({2});
-  int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
-  seed_offset_data[0] = static_cast<int64_t>(params.seed);
-  seed_offset_data[1] = static_cast<int64_t>(params.offset);
-
-  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-  const int head_size_rounded = round_multiple(head_size, 32);
-  const int seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
-  const int seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
-
-  softmax_lse->Resize({params.batch_size,
-                       params.num_heads,
-                       params.max_seqlen_q});
-  ctx.template Alloc<float>(softmax_lse);
-
-  if (params.return_softmax) {
-    // may allocate more space than *max_seqlen_k*
-    softmax->Resize({params.batch_size,
-                     params.num_heads,
-                     params.seqlen_q_rounded,
-                     params.seqlen_k_rounded});
-    ctx.template Alloc<T>(softmax);
-  }
-#endif
 
   const bool succ = phi::dynload::flash_attn_varlen_fwd(
       q.data(),
@@ -251,69 +196,12 @@ void FlashAttnKernel(const Context& ctx,
   VLOG(4) << "FlashAttn fwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";
 
-#if 0
-  if (is_test) dropout = 0.0f;
-#endif
-
   ctx.template Alloc<T>(out);
 
   cudaStream_t stream = ctx.stream();
-#if 0
-  const bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
-
-  uint64_t seed;
-  uint64_t offset;
-
-  if (fixed_seed_offset.get_ptr()) {
-    const int64_t* fixed_seed_offset_data =
-        fixed_seed_offset.get_ptr()->data<int64_t>();
-    seed = static_cast<uint64_t>(fixed_seed_offset_data[0]);
-    offset = static_cast<uint64_t>(fixed_seed_offset_data[1]);
-  } else {
-    uint64_t inc = batch_size * num_heads * 32;
-    std::pair<uint64_t, uint64_t> seed_offset_pair;
-    if (rng_name != "") {
-      auto gen = phi::GetRandomSeedGenerator(rng_name);
-      seed_offset_pair = gen->IncrementOffset(inc);
-    } else {
-      auto* gen = ctx.GetGenerator();
-      seed_offset_pair = gen->IncrementOffset(inc);
-    }
-    seed = seed_offset_pair.first;
-    offset = seed_offset_pair.second;
-  }
-#endif
 
   VLOG(4) << "FlashAttn fwd seed: " << params.seed
           << ", offset: " << params.offset;
-
-#if 0
-  seed_offset->Resize({2});
-  int64_t* seed_offset_data =
-      ctx.template HostAlloc<int64_t>(params.seed_offset);
-  seed_offset_data[0] = static_cast<int64_t>(params.seed);
-  seed_offset_data[1] = static_cast<int64_t>(params.offset);
-
-  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-
-  const int head_size_rounded = round_multiple(head_size, 32);
-  const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
-  const int seqlen_k_rounded = round_multiple(seqlen_k, 128);
-
-  softmax_lse->Resize({params.batch_size,
-                       params.num_heads,
-                       params.max_seqlen_q});
-  ctx.template Alloc<float>(softmax_lse);
-
-  if (return_softmax) {
-    softmax->Resize(
-        {params.batch_size,
-         params.num_heads,
-         params.seqlen_q_rounded,
-         params.seqlen_k_rounded});
-    ctx.template Alloc<T>(softmax);
-  }
-#endif
 
   bool succ = phi::dynload::flash_attn_fwd(
       q.data(),
