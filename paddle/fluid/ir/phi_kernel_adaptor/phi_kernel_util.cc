@@ -329,12 +329,19 @@ void HandleForSpecialOp(
     // change opreand name to param_name
     auto orig_name = value_2_var_name->at(value);
 
+    PADDLE_ENFORCE_NE(
+        param_name,
+        orig_name,
+        phi::errors::PreconditionNotMet(
+            "SetParamer param name should not equal with var name"));
+
     if (inner_scope->root()->FindVar(param_name) == nullptr) {
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
       VLOG(6) << "set_parameter rename var: " << orig_name << " -> "
               << param_name;
     }
+
     RenameData(value,
                param_name,
                orig_name,

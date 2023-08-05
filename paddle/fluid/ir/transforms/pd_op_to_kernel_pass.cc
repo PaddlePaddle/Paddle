@@ -50,7 +50,7 @@ std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
 };
 
 const std::unordered_set<std::string> UnchangeOutputOps = {
-    "pd.feed_with_place",
+    "pd.data",
     "builtin.combine",
     "builtin.slice",
     "pd.feed",
