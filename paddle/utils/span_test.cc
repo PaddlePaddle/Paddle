@@ -74,9 +74,9 @@ TEST(pointer_length_ctor, span) {
     span<int> s(arr.data(), 3);
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 
   // fixed size
@@ -85,9 +85,9 @@ TEST(pointer_length_ctor, span) {
     span<int, 3> s(arr.data(), 3);
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 }
 
@@ -105,9 +105,9 @@ TEST(pointer_pointer_ctor, span) {
     span<int> s{arr.data(), arr.data() + 3};
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 
   // fixed size
@@ -116,9 +116,9 @@ TEST(pointer_pointer_ctor, span) {
     span<int, 3> s{arr.data(), arr.data() + 3};
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 }
 
@@ -175,9 +175,9 @@ TEST(c_array_ctor, span) {
     std::array<int, 3> arr = {1, 2, 3};
     span<int> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 
   // const, dynamic size
@@ -185,9 +185,9 @@ TEST(c_array_ctor, span) {
     std::array<int, 3> arr = {1, 2, 3};
     span<int const> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 
   // non-const, static size
@@ -195,9 +195,9 @@ TEST(c_array_ctor, span) {
     std::array<int, 3> arr = {1, 2, 3};
     span<int, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 
   // const, dynamic size
@@ -205,9 +205,9 @@ TEST(c_array_ctor, span) {
     std::array<int, 3> arr = {1, 2, 3};
     span<int const, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    CHECK_EQ(s.data(), arr.data());
+    CHECK_EQ(s.begin(), arr.begin());
+    CHECK_EQ(s.end(), arr.end());
   }
 }
 
@@ -499,8 +499,8 @@ TEST(subview, span) {
 
     static_assert(std::is_same<decltype(f), span<int, 3>>::value, "");
     CHECK_EQ(f.size(), 3UL);
-    CHECK_EQ(f.data(), arr);
-    CHECK_EQ(f.begin(), arr);
+    CHECK_EQ(f.data(), arr.data());
+    CHECK_EQ(f.begin(), arr.data());
     CHECK_EQ(f.end(), arr.data() + 3);
   }
 
@@ -538,8 +538,8 @@ TEST(subview, span) {
 
     static_assert(std::is_same<decltype(f), span<int>>::value, "");
     CHECK_EQ(f.size(), 3UL);
-    CHECK_EQ(f.data(), arr);
-    CHECK_EQ(f.begin(), arr);
+    CHECK_EQ(f.data(), arr.data());
+    CHECK_EQ(f.begin(), arr.data());
     CHECK_EQ(f.end(), arr.data() + 3);
   }
 

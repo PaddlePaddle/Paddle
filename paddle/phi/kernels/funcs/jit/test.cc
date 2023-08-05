@@ -1174,7 +1174,7 @@ TEST(JITKernel_helper, pack_weights) {
   const int N = 8 * 60, K = 2;
   std::array<std::array<float, N>, K> src;
   std::array<std::array<float, N>, K> yref;
-  std::array<std::array<float, N>, K> y;
+  std::array<float, N * K> y;
   float* x = &(src[0][0]);
   float* ref = &(yref[0][0]);
   for (int i = 0; i < N * K; ++i) {
@@ -1203,8 +1203,8 @@ TEST(JITKernel_helper, pack_weights) {
     acc += g;
   }
 
-  jit::pack_weights<float>(x, y, N, K);
-  ExpectEQ<float>(y, ref, N * K);
+  jit::pack_weights<float>(x, y.data(), N, K);
+  ExpectEQ<float>(y.data(), ref, N * K);
 }
 
 TEST(JITKernel_helper, attr) {
