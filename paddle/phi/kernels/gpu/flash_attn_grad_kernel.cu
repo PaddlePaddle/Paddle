@@ -25,6 +25,7 @@
 
 #ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
+#include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #endif
 
 DECLARE_bool(cudnn_deterministic);
@@ -56,7 +57,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   ctx.template Alloc<T>(dv);
 
   const cudaStream_t stream = ctx.stream();
+#if 0
   const bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
+#endif
 
   // q,k,v [total_*, num_heads, head_dim]
 
@@ -78,12 +81,30 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       phi::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
 
+  FlashAttnBwdParamsV2 params =
+      FlashAttnBwdParamsV2(ctx,
+                           batch_size,
+                           max_seqlen_q,
+                           max_seqlen_k,
+                           num_heads,
+                           num_heads_k,
+                           head_size,
+                           dropout,
+                           scale,
+                           causal,
+                           q.dtype(),
+                           seed_offset.data<int64_t>());
+
+#if 0
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
   uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
+#endif
 
-  VLOG(4) << "FlashAttn bwd seed: " << seed << ", offset: " << offset;
+  VLOG(4) << "FlashAttn bwd seed: " << params.seed
+          << ", offset: " << params.offset;
 
+#if 0
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
   const int head_size_rounded = round_multiple(head_size, 32);
   const int seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
@@ -93,6 +114,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       Empty<float>(ctx, {batch_size, num_heads, seqlen_q_rounded});
   DenseTensor dq_accum = Empty<float>(
       ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
+#endif
 
   const bool succ =
       phi::dynload::flash_attn_varlen_bwd(dout.data(),
@@ -100,30 +122,30 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                           k.data(),
                                           v.data(),
                                           out.data(),
-                                          softmax_d.data(),
+                                          params.softmax_d.data(),
                                           softmax_lse.data(),
                                           dq->data(),
                                           dk->data(),
                                           dv->data(),
-                                          dq_accum.data(),
+                                          params.dq_accum.data(),
                                           cu_seqlens_q.data<int32_t>(),
                                           cu_seqlens_k.data<int32_t>(),
-                                          batch_size,
-                                          max_seqlen_q,
-                                          max_seqlen_k,
-                                          seqlen_q_rounded,
-                                          seqlen_k_rounded,
-                                          num_heads,
-                                          num_heads_k,
-                                          head_size,
-                                          head_size_rounded,
-                                          dropout,
-                                          scale,
-                                          causal,
-                                          is_bf16,
+                                          params.batch_size,
+                                          params.max_seqlen_q,
+                                          params.max_seqlen_k,
+                                          params.seqlen_q_rounded,
+                                          params.seqlen_k_rounded,
+                                          params.num_heads,
+                                          params.num_heads_k,
+                                          params.head_size,
+                                          params.head_size_rounded,
+                                          params.dropout,
+                                          params.scale,
+                                          params.causal,
+                                          params.is_bf16,
                                           stream,
-                                          seed,
-                                          offset);
+                                          params.seed,
+                                          params.offset);
 
   if (!succ) {
     PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
@@ -158,10 +180,12 @@ void FlashAttnGradKernel(const Context& ctx,
   const int seqlen_k = k.dims()[1];
   const int num_heads_k = k.dims()[2];
 
+#if 0
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
   const int head_size_rounded = round_multiple(head_size, 32);
   const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
   const int seqlen_k_rounded = round_multiple(seqlen_k, 128);
+#endif
 
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
@@ -175,11 +199,26 @@ void FlashAttnGradKernel(const Context& ctx,
 
   const float scale = 1.0f / std::sqrt(head_size);
 
+  FlashAttnBwdParamsV2 params =
+      FlashAttnBwdParamsV2(ctx,
+                           batch_size,
+                           seqlen_q,
+                           seqlen_k,
+                           num_heads,
+                           num_heads_k,
+                           head_size,
+                           dropout,
+                           scale,
+                           causal,
+                           q.dtype(),
+                           seed_offset.data<int64_t>());
+
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
   ctx.template Alloc<T>(dv);
 
   cudaStream_t stream = ctx.stream();
+#if 0
   bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
 
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
@@ -190,36 +229,38 @@ void FlashAttnGradKernel(const Context& ctx,
       Empty<float>(ctx, {batch_size, num_heads, seqlen_q_rounded});
   DenseTensor dq_accum = Empty<float>(
       ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
+#endif
 
-  VLOG(4) << "FlashAttn bwd seed: " << seed << ", offset: " << offset;
+  VLOG(4) << "FlashAttn bwd seed: " << params.seed
+          << ", offset: " << params.offset;
 
   const bool succ = phi::dynload::flash_attn_bwd(dout.data(),
                                                  q.data(),
                                                  k.data(),
                                                  v.data(),
                                                  out.data(),
-                                                 softmax_d.data(),
+                                                 params.softmax_d.data(),
                                                  softmax_lse.data(),
                                                  dq->data(),
                                                  dk->data(),
                                                  dv->data(),
-                                                 dq_accum.data(),
-                                                 batch_size,
-                                                 seqlen_q,
-                                                 seqlen_k,
-                                                 seqlen_q_rounded,
-                                                 seqlen_k_rounded,
-                                                 num_heads,
-                                                 num_heads_k,
-                                                 head_size,
-                                                 head_size_rounded,
-                                                 dropout,
-                                                 scale,
-                                                 causal,
-                                                 is_bf16,
+                                                 params.dq_accum.data(),
+                                                 params.batch_size,
+                                                 params.max_seqlen_q,
+                                                 params.max_seqlen_k,
+                                                 params.seqlen_q_rounded,
+                                                 params.seqlen_k_rounded,
+                                                 params.num_heads,
+                                                 params.num_heads_k,
+                                                 params.head_size,
+                                                 params.head_size_rounded,
+                                                 params.dropout,
+                                                 params.scale,
+                                                 params.causal,
+                                                 params.is_bf16,
                                                  stream,
-                                                 seed,
-                                                 offset);
+                                                 params.seed,
+                                                 params.offset);
 
   if (!succ) {
     PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));

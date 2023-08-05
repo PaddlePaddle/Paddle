@@ -47,8 +47,8 @@ struct FlashAttnFwdParamsV2 {
                        const int _num_heads,
                        const int _num_heads_k,
                        const int _head_size,
-                       const float _scale,
                        const float _dropout,
+                       const float _scale,
                        const bool _causal,
                        const bool _return_softmax,
                        const DataType q_dtype,
@@ -111,6 +111,61 @@ struct FlashAttnFwdParamsV2 {
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
       ctx.template Alloc<T>(softmax);
     }
+  }
+};
+
+struct FlashAttnBwdParamsV2 {
+  int batch_size;
+  int64_t max_seqlen_q;
+  int64_t max_seqlen_k;
+  int seqlen_q_rounded;
+  int seqlen_k_rounded;
+  int num_heads;
+  int num_heads_k;
+  int head_size;
+  int head_size_rounded;
+  float dropout;
+  float scale;
+  bool causal;
+  bool is_bf16;
+  uint64_t seed;
+  uint64_t offset;
+  DenseTensor softmax_d;
+  DenseTensor dq_accum;
+
+  FlashAttnBwdParamsV2(const GPUContext& ctx,
+                       const int _batch_size,
+                       const int64_t _max_seqlen_q,
+                       const int64_t _max_seqlen_k,
+                       const int _num_heads,
+                       const int _num_heads_k,
+                       const int _head_size,
+                       const float _dropout,
+                       const float _scale,
+                       const bool _causal,
+                       const DataType q_dtype,
+                       const int64_t* seed_offset_data)
+      : batch_size(_batch_size),
+        max_seqlen_q(_max_seqlen_q),
+        max_seqlen_k(_max_seqlen_k),
+        num_heads(_num_heads),
+        num_heads_k(_num_heads_k),
+        head_size(_head_size),
+        dropout(_dropout),
+        scale(_scale),
+        causal(_causal) {
+    is_bf16 = q_dtype == DataType::BFLOAT16;
+    seed = static_cast<uint64_t>(seed_offset_data[0]);
+    offset = static_cast<uint64_t>(seed_offset_data[1]);
+    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+
+    head_size_rounded = round_multiple(head_size, 32);
+    seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
+    seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
+
+    softmax_d = Empty<float>(ctx, {batch_size, num_heads, seqlen_q_rounded});
+    dq_accum = Empty<float>(
+        ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
   }
 };
 }  // namespace phi
