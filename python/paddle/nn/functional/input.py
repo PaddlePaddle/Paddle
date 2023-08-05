@@ -80,11 +80,12 @@ def one_hot(x, num_classes, name=None):
             >>> one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
             >>> print(one_hot_label.shape)
             [4, 4]
-            >>> print(one_hot_label.data)
-            [[0., 1., 0., 0.],
-            [0., 1., 0., 0.],
-            [0., 0., 0., 1.],
-            [1., 0., 0., 0.]]
+            >>> print(one_hot_label)
+            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0., 1., 0., 0.],
+                    [0., 1., 0., 0.],
+                    [0., 0., 0., 1.],
+                    [1., 0., 0., 0.]])
 
     """
 
