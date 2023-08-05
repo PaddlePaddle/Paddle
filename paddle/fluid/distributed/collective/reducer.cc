@@ -609,8 +609,8 @@ void EagerReducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->origin_shapes_.push_back(IntArray(tensor.shape()));
-    p_group->dense_tensors_.push_back(phi::DenseTensor());
+    p_group->origin_shapes_.emplace_back(tensor.shape());
+    p_group->dense_tensors_.emplace_back();
 
     const auto &dtype = tensor.dtype();
     const auto &inner_place = tensor.impl()->place();
