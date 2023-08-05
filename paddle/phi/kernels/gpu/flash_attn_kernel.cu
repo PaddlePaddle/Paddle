@@ -35,19 +35,23 @@ DECLARE_bool(cudnn_deterministic);
 namespace phi {
 
 template <typename T>
-__global__ void SimleScaleWithMaskKernel(int64_t numel, float scale, T* inout) {
+__global__ void SimleScaleWithMaskKernel(int64_t numel,
+                                         float scale,
+                                         const T* input,
+                                         T* ouput) {
   CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
-    inout[i] = static_cast<T>(scale * static_cast<float>(inout[i]));
+    ouput[i] = static_cast<T>(scale * static_cast<float>(input[i]));
   }
 }
 
 template <typename T, typename Context>
-void ComputeScaleQ(const Context& ctx, int64_t numel, T* scale_q, float scale) {
+void ComputeScaleQ(
+    const Context& ctx, int64_t numel, float scale, const T* input, T* output) {
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
   SimleScaleWithMaskKernel<<<gpu_config.block_per_grid,
                              gpu_config.thread_per_block,
                              0,
-                             ctx.stream()>>>(numel, scale, scale_q);
+                             ctx.stream()>>>(numel, scale, input, output);
 }
 
 template <typename T, typename Context>
@@ -151,19 +155,24 @@ void FlashAttnUnpaddedKernel(
     ctx.template Alloc<T>(softmax);
   }
 
-  uint64_t workspace_size;
+  uint64_t workspace_size = 0;
   bool succ;
+  DenseTensor workspace;
+
   if (attn_mask.get_ptr()) {
-    PADDLE_ENFORCE(causal != true,
-                   "When attn_mask is not nullptr, causal can not be true");
+    PADDLE_ENFORCE_NE(causal,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "attn_mask is not nullptr, causal can not be true"));
 
     int64_t q_size = total_q * num_heads * head_size;
-    DenseTensor scale_q;
-    scale_q.ShareDataWith(q).Resize({total_q, num_heads, head_size});
+    DenseTensor* scale_q = new DenseTensor;
+    scale_q->Resize({total_q, num_heads, head_size});
+    ctx.template Alloc<T>(scale_q);
     // compute scale Q
-    ComputeScaleQ(ctx, q_size, scale_q.data<T>(), scale);
+    ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scale_q->data<T>());
 
-    scale = 1.0f;
+    float fa_with_mask_scale = 1.0f;
     std::vector<int64_t> temp_rand_mask_dim;
     const DenseTensor* attn_mask_ptr = attn_mask.get_ptr();
     int64_t first_dim = 1;
@@ -177,7 +186,7 @@ void FlashAttnUnpaddedKernel(
                           origin_dims[rank - 2],
                           origin_dims[rank - 1]};
     succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
-        static_cast<const void*>(scale_q.data()),
+        static_cast<const void*>(scale_q->data()),
         static_cast<const void*>(k.data()),
         static_cast<const void*>(v.data()),
         nullptr,  // for calculation workspace size
@@ -191,7 +200,7 @@ void FlashAttnUnpaddedKernel(
         max_seqlen_q,
         max_seqlen_k,
         dropout,
-        scale,
+        fa_with_mask_scale,
         zero_tensors,
         is_bf16,
         num_splits,
@@ -209,12 +218,12 @@ void FlashAttnUnpaddedKernel(
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
 
-    DenseTensor workspace;
     if (workspace_size > 0) {
-      workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+      workspace = Empty<float>(
+          ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
     }
     succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
-        static_cast<const void*>(scale_q.data()),
+        static_cast<const void*>(scale_q->data()),
         k.data(),
         v.data(),
         out->data(),  // set out to nullptr to calculate workspace size
@@ -228,7 +237,7 @@ void FlashAttnUnpaddedKernel(
         max_seqlen_q,
         max_seqlen_k,
         dropout,
-        scale,
+        fa_with_mask_scale,
         zero_tensors,
         is_bf16,
         num_splits,
@@ -245,6 +254,7 @@ void FlashAttnUnpaddedKernel(
     if (!succ) {
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
+    delete scale_q;
   } else {
     succ =
         phi::dynload::flash_attn_fwd(q.data(),
@@ -279,7 +289,8 @@ void FlashAttnUnpaddedKernel(
 
     DenseTensor workspace;
     if (workspace_size > 0) {
-      workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+      workspace = Empty<float>(
+          ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
     }
 
     succ = phi::dynload::flash_attn_fwd(

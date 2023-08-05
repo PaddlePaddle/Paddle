@@ -96,9 +96,11 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   uint64_t workspace_size;
   bool succ;
   if (attn_mask.get_ptr()) {
-    PADDLE_ENFORCE(causal != true,
-                   "When attn_mask is not nullptr, causal can not be true");
-    scale = 1.0f;
+    PADDLE_ENFORCE_NE(causal,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "attn_mask is not nullptr, causal can not be true"));
+    float fa_with_mask_scale = 1.0f;
     std::vector<int64_t> temp_rand_mask_dim;
     const DenseTensor* attn_mask_ptr = attn_mask.get_ptr();
     int64_t first_dim = 1;
@@ -130,7 +132,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
         max_seqlen_q,
         max_seqlen_k,
         dropout,
-        scale,
+        fa_with_mask_scale,
         zero_tensors,
         is_bf16,
         num_splits,
@@ -151,7 +153,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 
     DenseTensor workspace;
     if (workspace_size > 0) {
-      workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+      workspace = Empty<float>(
+          ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
     }
 
     succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
@@ -173,7 +176,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
         max_seqlen_q,
         max_seqlen_k,
         dropout,
-        scale,
+        fa_with_mask_scale,
         zero_tensors,
         is_bf16,
         num_splits,
@@ -239,7 +242,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 
     DenseTensor workspace;
     if (workspace_size > 0) {
-      workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+      workspace = Empty<float>(
+          ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
     }
 
     succ = phi::dynload::flash_attn_bwd(
