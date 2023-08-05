@@ -22,15 +22,6 @@ import paddle
 from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
-from paddle.fluid.optimizer import (
-    DecayedAdagradOptimizer,
-    DpsgdOptimizer,
-    ExponentialMovingAverage,
-    FtrlOptimizer,
-    LookaheadOptimizer,
-    ModelAverage,
-    PipelineOptimizer,
-)
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -744,44 +735,6 @@ class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01,
-            clip=10.0,
-            batch_size=16.0,
-            sigma=1.0,
-            parameter_list=parameter_list,
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def test_dpsgd(self):
-        self._check_mlp(place=fluid.CPUPlace())
-
-
-class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DecayedAdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DecayedAdagradOptimizer(learning_rate=0.2)
-        return optimizer
-
-    def test_decayadagrad(self):
-        self._check_mlp()
-
-
 class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.Adadelta(
@@ -817,21 +770,6 @@ class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-class TestImperativeFtrlOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = FtrlOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = FtrlOptimizer(learning_rate=0.1)
-        return optimizer
-
-    def test_ftrl(self):
-        self._check_mlp()
-
-
 def exclude_fn(param):
     return param.name.endswith('.b_0')
 
@@ -858,7 +796,7 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeModelAverage(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ModelAverage(
+        optimizer = paddle.incubate.ModelAverage(
             0.15, min_average_window=10000, max_average_window=12500
         )
         return optimizer
@@ -886,7 +824,7 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ExponentialMovingAverage(0.999)
+        optimizer = paddle.static.ExponentialMovingAverage(0.999)
         return optimizer
 
     def test_exponentialmoving(self):
@@ -901,7 +839,7 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = PipelineOptimizer(optimizer)
+        optimizer = paddle.incubate.optimizer.PipelineOptimizer(optimizer)
         return optimizer
 
     def test_pipline(self):
@@ -914,7 +852,9 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = LookaheadOptimizer(optimizer, alpha=0.5, k=5)
+        optimizer = paddle.incubate.optimizer.LookAhead(
+            optimizer, alpha=0.5, k=5
+        )
         return optimizer
 
     def test_lookahead(self):

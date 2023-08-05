@@ -19,6 +19,7 @@ from . import amp  # noqa: F401
 from . import nn  # noqa: F401
 
 from .nn.common import py_func  # noqa: F401
+from .nn.common import ExponentialMovingAverage  # noqa: F401
 
 from .io import save_inference_model  # noqa: F401
 from .io import load_inference_model  # noqa: F401
@@ -70,7 +71,6 @@ from ..fluid.framework import set_ipu_shard  # noqa: F401
 from .nn.control_flow import Print  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
-from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 
 from ..fluid.layers import exponential_decay  # noqa: F401
 from ..fluid.layers import learning_rate_scheduler  # noqa: F401

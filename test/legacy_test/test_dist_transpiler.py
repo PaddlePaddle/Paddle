@@ -464,46 +464,6 @@ class TestFakeInit(TranspilerTest):
         self.assertEqual(len(fake_init_ops), 3)
 
 
-class TestDecayedAdagrad(TranspilerTest):
-    def net_conf(self):
-        x = paddle.static.data(name='x', shape=[-1, 1000], dtype='float32')
-        y_predict = paddle.static.nn.fc(
-            x,
-            size=1000,
-            weight_attr=fluid.ParamAttr(name='fc_w'),
-            bias_attr=fluid.ParamAttr(name='fc_b'),
-        )
-        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
-        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-        avg_cost = paddle.mean(cost)
-        opt = fluid.optimizer.DecayedAdagrad(learning_rate=0.1)
-        opt.minimize(avg_cost)
-
-    def transpiler_test_impl(self):
-        pserver, startup = self.get_pserver(self.pserver1_ep)
-        trainer, _ = self.get_trainer()
-
-
-class TestFtrl(TranspilerTest):
-    def net_conf(self):
-        x = paddle.static.data(name='x', shape=[-1, 1000], dtype='float32')
-        y_predict = paddle.static.nn.fc(
-            x,
-            size=1000,
-            weight_attr=fluid.ParamAttr(name='fc_w'),
-            bias_attr=fluid.ParamAttr(name='fc_b'),
-        )
-        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
-        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-        avg_cost = paddle.mean(cost)
-        opt = fluid.optimizer.Ftrl(learning_rate=0.1)
-        opt.minimize(avg_cost)
-
-    def transpiler_test_impl(self):
-        pserver, startup = self.get_pserver(self.pserver1_ep)
-        trainer, _ = self.get_trainer()
-
-
 class TestLRDecayConditional(TranspilerTest):
     def net_conf(self):
         x = paddle.static.data(name='x', shape=[-1, 1000], dtype='float32')
@@ -1134,7 +1094,7 @@ class TestRMSPropOptimizer(TranspilerTest):
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
-        optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+        optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
 
     def transpiler_test_impl(self):

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import unittest
 
 import numpy as np
@@ -22,14 +21,6 @@ import paddle
 from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
-from paddle.fluid.optimizer import (
-    DecayedAdagradOptimizer,
-    DpsgdOptimizer,
-    ExponentialMovingAverage,
-    FtrlOptimizer,
-    LookaheadOptimizer,
-    ModelAverage,
-)
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -236,102 +227,6 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 )
 
 
-class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        bd = [3, 6, 9]
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd,
-                values=[0.1 * (0.1**i) for i in range(len(bd) + 1)],
-            ),
-            parameters=parameter_list,
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        bd = [3, 6, 9]
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd,
-                values=[0.1 * (0.1**i) for i in range(len(bd) + 1)],
-            )
-        )
-        return optimizer
-
-    def test_sgd(self):
-        self._check_mlp()
-
-
-class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.NaturalExpDecay(
-                learning_rate=0.1,
-                gamma=0.5,
-            ),
-            parameters=parameter_list,
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.ExponentialDecay(
-                learning_rate=0.1,
-                gamma=0.5,
-            )
-        )
-        return optimizer
-
-    def test_sgd(self):
-        self._check_mlp()
-
-
-class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.ExponentialDecay(
-                learning_rate=0.1,
-                gamma=0.5,
-            ),
-            parameters=parameter_list,
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.ExponentialDecay(
-                learning_rate=0.1,
-                gamma=0.5,
-            )
-        )
-        return optimizer
-
-    def test_sgd(self):
-        self._check_mlp()
-
-
-class TestImperativeOptimizerCosineDecay(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
-                learning_rate=0.1, T_max=120
-            ),
-            parameters=parameter_list,
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
-                learning_rate=0.1, T_max=120
-            )
-        )
-        return optimizer
-
-    def test_sgd(self):
-        self._check_mlp()
-
-
 class TestOptimizerLearningRate(unittest.TestCase):
     def test_constant_lr(self):
         with fluid.dygraph.guard():
@@ -455,73 +350,8 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 adam.set_lr(0.01)
 
 
-class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01,
-            clip=10.0,
-            batch_size=16.0,
-            sigma=1.0,
-            parameter_list=parameter_list,
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def test_dpsgd(self):
-        self._check_mlp(place=fluid.CPUPlace())
-
-
-class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DecayedAdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DecayedAdagradOptimizer(learning_rate=0.2)
-        return optimizer
-
-    def test_decayadagrad(self):
-        self._check_mlp()
-
-
-class TestImperativeFtrlOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = FtrlOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = FtrlOptimizer(learning_rate=0.1)
-        return optimizer
-
-    def test_ftrl(self):
-        self._check_mlp()
-
-
 def exclude_fn(param):
     return param.name.endswith('.b_0')
-
-
-class TestImperativeModelAverage(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ModelAverage(
-            0.15, min_average_window=10000, max_average_window=12500
-        )
-        return optimizer
-
-    def test_modelaverage(self):
-        exception_message = "In dygraph, don't support ModelAverage."
-        self._check_exception(exception_message)
 
 
 class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
@@ -538,59 +368,6 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
     def test_dgcmomentum(self):
         exception_message = "In dygraph, don't support DGCMomentumOptimizer."
         self._check_exception(exception_message)
-
-
-class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ExponentialMovingAverage(0.999)
-        return optimizer
-
-    def test_exponentialmoving(self):
-        exception_message = (
-            "In dygraph, don't support ExponentialMovingAverage."
-        )
-        self._check_exception(exception_message)
-
-
-class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=0.5, parameters=parameter_list
-        )
-        optimizer = LookaheadOptimizer(optimizer, alpha=0.5, k=5)
-        return optimizer
-
-    def test_lookahead(self):
-        exception_message = "In dygraph, don't support LookaheadOptimizer."
-        self._check_exception(exception_message)
-
-
-class TestImperativeOptimizerList(unittest.TestCase):
-    def test_parameter_list(self):
-        with fluid.dygraph.guard():
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-
-            sgd = paddle.optimizer.SGD(
-                1.0,
-                parameters=itertools.chain(
-                    linear_1.parameters(), linear_2.parameters()
-                ),
-            )
-
-            in_np = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-            in_data = fluid.dygraph.to_variable(in_np)
-
-            y = linear_1(in_data)
-            y = linear_2(y)
-            loss = paddle.mean(y)
-            loss.backward()
-            sgd.minimize(loss)
-
-            self.assertTrue(
-                len(sgd._parameter_list)
-                == len(linear_1.parameters() + linear_2.parameters())
-            )
 
 
 if __name__ == '__main__':

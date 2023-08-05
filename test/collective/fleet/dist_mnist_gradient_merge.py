@@ -54,7 +54,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         inference_program = fluid.default_main_program().clone()
         # Optimization
         opt = paddle.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
-        opt = fluid.optimizer.GradientMergeOptimizer(opt, 2)
+        opt = paddle.incubate.optimizer.GradientMergeOptimizer(opt, 2)
         if single_device:
             opt.minimize(avg_cost)
         else:
