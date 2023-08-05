@@ -333,7 +333,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
   std::unordered_map<ir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < op->num_results(); i++) {
     ir::Value value = op->result(i);
-    if (value) {
+    if (value && value.type()) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
           value_2_var_name.end(),

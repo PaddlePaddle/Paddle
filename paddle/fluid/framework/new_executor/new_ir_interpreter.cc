@@ -2018,17 +2018,8 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    // if (FLAGS_enable_new_ir_in_executor_loop_run) {
-    //   LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode
-    //   "
-    //                           "with for_loop version.";
-    //   LoopRunImpl();
-    // } else {
-    //   LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode
-    //   "
-    //                           "with trace version.";
-    //   TraceRunImpl();
-    // }
+    LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                            "with for_loop version(First step).";
     LoopRunImpl();
     is_build_ = true;
   } else {
