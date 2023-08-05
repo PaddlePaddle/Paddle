@@ -228,6 +228,11 @@ void FlashAttnKernel(const Context& ctx,
       params.seed,
       params.offset);
 
+  PADDLE_ENFORCE_EQ(
+      succ,
+      true,
+      phi::errors::External("Error in Flash-Attention-2, detail information is",
+                            phi::dynload::flash_attn_error()));
 #endif
 }
 
