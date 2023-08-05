@@ -1966,8 +1966,8 @@ def rnnt_loss(
 
             >>> costs = fn(acts, labels, lengths, label_lengths)
             >>> print(costs)
-            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=False,
-                   4.49566677)
+            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=False,
+                   [-2.85042444])
     """
 
     def warprnnt(
@@ -2980,6 +2980,7 @@ def sigmoid_focal_loss(
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
 
             >>> logit = paddle.to_tensor([[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]], dtype='float32')
             >>> label = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
@@ -3138,7 +3139,7 @@ def multi_label_soft_margin_loss(
             >>> import paddle
             >>> import paddle.nn.functional as F
             >>> input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
-            # label elements in {1., -1.}
+            >>> # label elements in {1., -1.}
             >>> label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
             >>> loss = F.multi_label_soft_margin_loss(input, label, reduction='none')
             >>> print(loss)
@@ -3863,6 +3864,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
 
             >>> input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
             >>> label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
@@ -3877,12 +3879,12 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
             >>> output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')
             >>> print(output)
-            Tensor(shape=[5, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[1.09917796, 0.52613139, 0.56263304, 0.82736146, 0.38776723],
-                    [1.07179427, 1.11924267, 0.49877715, 1.10026348, 0.46184641],
-                    [0.84367639, 0.74795729, 0.44629076, 0.55123353, 0.77659678],
-                    [0.39465919, 0.76651484, 0.54485321, 0.76609844, 0.77166790],
-                    [0.51283568, 0.84757161, 0.78913331, 1.05268764, 0.45318675]])
+            Tensor(shape=[5, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[1.10725629, 0.48778144, 0.56217247, 1.12581408, 0.51430041],
+                    [0.90375793, 0.37761253, 0.43007556, 0.95089805, 0.43288314],
+                    [1.16043591, 0.63015938, 0.51362717, 0.43617544, 0.57783306],
+                    [0.81927848, 0.52558368, 0.59713912, 0.83100700, 0.50811619],
+                    [0.82684207, 1.02064908, 0.50296998, 1.13461733, 0.93222517]])
 
     """
     if reduction not in ['sum', 'mean', 'none']:
