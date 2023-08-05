@@ -306,13 +306,20 @@ class TestFlashAttentionAPI(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+    "and device's compute capability must be 7.5 or 8.x",
+)
 class TestFlashAttentionWithMaskAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 128, 8, 32)
         self.dtype = 'float16'
         self.dropout = 0.0
-        self.causal = True
+        self.causal = False
 
     def test_dot_scale_product(self):
         print(
@@ -352,7 +359,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         )
 
         out = scaled_dot_product_attention(
-            q, k, v, m, self.dropout, self.causal, fixed_seed_offset=None
+            q, k, v, m, self.dropout, self.causal
         )
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
@@ -440,7 +447,7 @@ class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
         self.shape = (8, 1024, 16, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0
-        self.causal = True
+        self.causal = False
 
 
 if __name__ == '__main__':

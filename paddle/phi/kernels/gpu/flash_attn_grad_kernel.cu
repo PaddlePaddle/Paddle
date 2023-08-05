@@ -95,8 +95,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 
   uint64_t workspace_size;
   bool succ;
-
   if (attn_mask.get_ptr()) {
+    PADDLE_ENFORCE(causal != true,
+                   "When attn_mask is not nullptr, causal can not be true");
     scale = 1.0f;
     std::vector<int64_t> temp_rand_mask_dim;
     const DenseTensor* attn_mask_ptr = attn_mask.get_ptr();

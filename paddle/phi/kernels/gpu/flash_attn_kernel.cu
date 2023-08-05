@@ -34,22 +34,20 @@ DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
-// template <typename T, typename Context>
-// void ComputeScaleQ(const Context& ctx, const DenseTensor& q, int64_t numel,
-// int64_t head_dim, T* q_ptr){
-//     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel,
-//     1); DenseTensor q_(q); T* q_ptr = static_cast<T*>(q_.data<T>());
-//     SimleScaleWithMaskKernel<<<gpu_config.block_per_grid,
-//                               gpu_config.thread_per_block,
-//                               0,
-//                               ctx.stream()>>>(q_size, scale, q_ptr);
-// }
-
 template <typename T>
 __global__ void SimleScaleWithMaskKernel(int64_t numel, float scale, T* inout) {
   CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
     inout[i] = static_cast<T>(scale * static_cast<float>(inout[i]));
   }
+}
+
+template <typename T, typename Context>
+void ComputeScaleQ(const Context& ctx, int64_t numel, T* scale_q, float scale) {
+  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
+  SimleScaleWithMaskKernel<<<gpu_config.block_per_grid,
+                             gpu_config.thread_per_block,
+                             0,
+                             ctx.stream()>>>(numel, scale, scale_q);
 }
 
 template <typename T, typename Context>
@@ -156,17 +154,15 @@ void FlashAttnUnpaddedKernel(
   uint64_t workspace_size;
   bool succ;
   if (attn_mask.get_ptr()) {
-    // compute scale Q
+    PADDLE_ENFORCE(causal != true,
+                   "When attn_mask is not nullptr, causal can not be true");
+
     int64_t q_size = total_q * num_heads * head_size;
+    DenseTensor scale_q;
+    scale_q.ShareDataWith(q).Resize({total_q, num_heads, head_size});
+    // compute scale Q
+    ComputeScaleQ(ctx, q_size, scale_q.data<T>(), scale);
 
-    auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, q_size, 1);
-    DenseTensor q_(q);
-    T* q_ptr = static_cast<T*>(q_.data<T>());
-
-    SimleScaleWithMaskKernel<<<gpu_config.block_per_grid,
-                               gpu_config.thread_per_block,
-                               0,
-                               ctx.stream()>>>(q_size, scale, q_ptr);
     scale = 1.0f;
     std::vector<int64_t> temp_rand_mask_dim;
     const DenseTensor* attn_mask_ptr = attn_mask.get_ptr();
@@ -181,7 +177,7 @@ void FlashAttnUnpaddedKernel(
                           origin_dims[rank - 2],
                           origin_dims[rank - 1]};
     succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
-        static_cast<const void*>(q_ptr),
+        static_cast<const void*>(scale_q.data()),
         static_cast<const void*>(k.data()),
         static_cast<const void*>(v.data()),
         nullptr,  // for calculation workspace size
@@ -218,7 +214,7 @@ void FlashAttnUnpaddedKernel(
       workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
     }
     succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
-        static_cast<const void*>(q_ptr),
+        static_cast<const void*>(scale_q.data()),
         k.data(),
         v.data(),
         out->data(),  // set out to nullptr to calculate workspace size

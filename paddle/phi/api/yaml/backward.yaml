@@ -818,7 +818,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : flash_attn_grad
-  forward : flash_attn (Tensor q, Tensor k, Tensor v,  Tensor fixed_seed_offset,Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  forward : flash_attn (Tensor q, Tensor k, Tensor v,  Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor attn_mask, Tensor out_grad, float dropout = 0.0, bool causal = false)
   optional : attn_mask
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
