@@ -228,9 +228,6 @@ void FlashAttnKernel(const Context& ctx,
       params.seed,
       params.offset);
 
-  if (!succ) {
-    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-  }
 #endif
 }
 

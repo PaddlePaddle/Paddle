@@ -57,9 +57,6 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   ctx.template Alloc<T>(dv);
 
   const cudaStream_t stream = ctx.stream();
-#if 0
-  const bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
-#endif
 
   // q,k,v [total_*, num_heads, head_dim]
 
@@ -95,26 +92,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                            q.dtype(),
                            seed_offset.data<int64_t>());
 
-#if 0
-  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
-  uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
-  uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
-#endif
-
   VLOG(4) << "FlashAttn bwd seed: " << params.seed
           << ", offset: " << params.offset;
-
-#if 0
-  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-  const int head_size_rounded = round_multiple(head_size, 32);
-  const int seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
-  const int seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
-
-  DenseTensor softmax_d =
-      Empty<float>(ctx, {batch_size, num_heads, seqlen_q_rounded});
-  DenseTensor dq_accum = Empty<float>(
-      ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
-#endif
 
   const bool succ =
       phi::dynload::flash_attn_varlen_bwd(dout.data(),
@@ -180,13 +159,6 @@ void FlashAttnGradKernel(const Context& ctx,
   const int seqlen_k = k.dims()[1];
   const int num_heads_k = k.dims()[2];
 
-#if 0
-  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-  const int head_size_rounded = round_multiple(head_size, 32);
-  const int seqlen_q_rounded = round_multiple(seqlen_q, 128);
-  const int seqlen_k_rounded = round_multiple(seqlen_k, 128);
-#endif
-
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
       head_size_og,
@@ -218,18 +190,6 @@ void FlashAttnGradKernel(const Context& ctx,
   ctx.template Alloc<T>(dv);
 
   cudaStream_t stream = ctx.stream();
-#if 0
-  bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
-
-  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
-  uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
-  uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
-
-  DenseTensor softmax_d =
-      Empty<float>(ctx, {batch_size, num_heads, seqlen_q_rounded});
-  DenseTensor dq_accum = Empty<float>(
-      ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
-#endif
 
   VLOG(4) << "FlashAttn bwd seed: " << params.seed
           << ", offset: " << params.offset;
@@ -261,10 +221,6 @@ void FlashAttnGradKernel(const Context& ctx,
                                                  stream,
                                                  params.seed,
                                                  params.offset);
-
-  if (!succ) {
-    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-  }
 
 #endif
 }
