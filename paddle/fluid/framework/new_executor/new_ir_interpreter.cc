@@ -1620,6 +1620,7 @@ void NewIRInterpreter::BuildInstruction() {
                          .dyn_cast<::ir::StrAttribute>()
                          .AsString();
       if (interpreter::GetSpecialOpNames().count(op_name)) {
+        VLOG(6) << "skip process " << op_name;
         continue;
       }
       vec_instruction_base_.emplace_back(
