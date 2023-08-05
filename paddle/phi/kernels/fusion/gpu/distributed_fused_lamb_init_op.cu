@@ -350,9 +350,9 @@ void DistributedFusedLambInitOpKernel(
     DenseTensor *fp16_shard_fused_param_offsets,
     DenseTensor *param_info,
     DenseTensor *param_order,
-    std::vector<DenseTensor *> *param_out,
-    std::vector<DenseTensor *> *master_param_out,
-    std::vector<DenseTensor *> *grad_out,
+    const std::vector<DenseTensor *> &param_out,
+    const std::vector<DenseTensor *> &master_param_out,
+    const std::vector<DenseTensor *> &grad_out,
     DenseTensor *global_scale,
     DenseTensor *step,
     float beta1,
@@ -580,10 +580,10 @@ void DistributedFusedLambInitOpKernel(
     master_param_out[info.idx]->Resize(info.param_t->dims());
     master_param_out[info.idx]->ShareBufferWith(sliced_tensor);
 
-    // PADDLE_ENFORCE_EQ(
-    //     dev_ctx.template Alloc<float>(master_param_out[info.idx]),
-    //     sliced_tensor.data<float>(),
-    //     errors::InvalidArgument("Invalid master weight tensor pointer."));
+    PADDLE_ENFORCE_EQ(
+        (dev_ctx.template Alloc<float>(master_param_out[info.idx])),
+        sliced_tensor.data<float>(),
+        errors::InvalidArgument("Invalid master weight tensor pointer."));
     if (info.grad_t->IsInitialized()) {
       CopyAndShareBufferForInitedTensor(
           dev_ctx, info.grad_t, fp32_g_t, info.numel_offset);
