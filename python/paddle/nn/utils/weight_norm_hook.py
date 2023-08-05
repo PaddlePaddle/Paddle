@@ -231,7 +231,7 @@ def remove_weight_norm(layer, name='weight'):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=False,
                    [1.35883713, 1.32126212, 1.56303072, 1.20874095, 1.22893476])
             >>> remove_weight_norm(conv)
-            # The following is the effect after removing the weight norm:
+            >>> # The following is the effect after removing the weight norm:
             >>> print(conv.weight_g)
             >>> # AttributeError: 'Conv2D' object has no attribute 'weight_g'
     """
