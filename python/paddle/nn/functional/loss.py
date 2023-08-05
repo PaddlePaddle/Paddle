@@ -1830,8 +1830,8 @@ def ctc_loss(
             ...     blank=0,
             ...     reduction='none')
             >>> print(loss)
-            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [3.91798496, 2.90765190])
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [3.91798496, 2.90765166])
 
             >>> loss = F.ctc_loss(log_probs, labels,
             ...     input_lengths,
@@ -1839,8 +1839,8 @@ def ctc_loss(
             ...     blank=0,
             ...     reduction='mean')
             >>> print(loss)
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   1.13760614)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [1.13760614])
 
     """
 
