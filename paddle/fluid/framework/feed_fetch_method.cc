@@ -38,10 +38,9 @@ void SetFeedVariable(Scope* scope,
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
   if (FLAGS_enable_new_ir_in_executor) {
     // shared data with input tensor
-    auto inner_var_name = var_name + "_" + std::to_string(index);
-    auto feed_ele = scope->Var(inner_var_name);
+    auto feed_ele = scope->Var(var_name);
     if (!feed_ele->IsType<phi::DenseTensor>()) {
-      VLOG(3) << "Reset " << inner_var_name << " to phi::DenseTensor";
+      VLOG(3) << "Reset " << var_name << " to phi::DenseTensor";
       feed_ele->Clear();
     }
     auto val = feed_ele->GetMutable<phi::DenseTensor>();

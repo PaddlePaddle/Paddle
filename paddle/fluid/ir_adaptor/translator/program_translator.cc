@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
@@ -163,7 +164,6 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
-
     if (op->Type() == "shaddow_output") {
       if (!param_map_.count(op->Input("x")[0])) {
         continue;
@@ -189,6 +189,13 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           if (!defining_op_result) {
             continue;
           }
+
+          if (param_map_[var_name].generated_by_vector) {
+            InsertSliceOperationForTarget(
+                ctx_, &param_map_, program_, param_map_[var_name], var_name);
+            defining_op_result = param_map_.at(var_name).value;
+          }
+
           ir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
@@ -218,6 +225,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
   // Currently we set stop gradient for operation that generated a value
   // connected with VarDesc
   for (const auto& [var_name, value_info] : param_map_) {
+    if (no_cast_var_names.count(var_name) != 0) continue;
     VLOG(10) << "[op translated][stop gradient]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
