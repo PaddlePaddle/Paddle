@@ -126,13 +126,5 @@ void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 
-void InterpreterCore::SetScopePrefix(const std::string& prefix) {
-  impl_->SetScopePrefix(prefix);
-}
-
-const std::string& InterpreterCore::GetScopePrefix() const {
-  return impl_->GetScopePrefix();
-}
-
 }  // namespace framework
 }  // namespace paddle

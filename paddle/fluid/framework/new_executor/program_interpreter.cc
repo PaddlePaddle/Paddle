@@ -1505,14 +1505,5 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
   trace_execute_order_ = trace_order;
 }
 
-void ProgramInterpreter::SetScopePrefix(const std::string& prefix) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "Program Interpreter not support SetScopePrefix"));
-}
-const std::string& ProgramInterpreter::GetScopePrefix() const {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "Program Interpreter not support GetScopePrefix"));
-}
-
 }  // namespace framework
 }  // namespace paddle

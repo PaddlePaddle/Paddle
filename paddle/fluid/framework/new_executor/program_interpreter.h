@@ -85,9 +85,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
-  void SetScopePrefix(const std::string& prefix) override;
-  const std::string& GetScopePrefix() const override;
-
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);

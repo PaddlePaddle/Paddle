@@ -113,10 +113,6 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
-
-  std::stringstream ss;
-  ss << this;
-  scope_prefix_ = ss.str();
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -1633,7 +1629,7 @@ void NewIRInterpreter::BuildInstruction() {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,
-                                                      (*it),
+                                                      op,
                                                       scope_,
                                                       local_scope_,
                                                       value_2_var_name_,
@@ -1643,7 +1639,7 @@ void NewIRInterpreter::BuildInstruction() {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(op_idx++,
                                                    place_,
-                                                   (*it),
+                                                   op,
                                                    scope_,
                                                    local_scope_,
                                                    value_2_var_name_,

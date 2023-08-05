@@ -20,9 +20,16 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
+
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/fluid/platform/collective_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -46,57 +53,6 @@ std::vector<int> GetValueIds(
     }
   }
   return ids;
-}
-
-void PhiKernelInstruction::InitInputsOutputsIds(
-    ::ir::Operation* op,
-    Scope* inner_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
-    const std::map<std::string, int>& var_name_2_id,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name) {
-  std::unordered_map<ir::Value, std::vector<int>> inputs;
-  for (size_t i = 0; i < op->num_operands(); i++) {
-    ir::Value value = op->operand_source(i);
-    if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
-          phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              phi_op_name_));
-      std::vector<int> inputs_id = GetValueIds(value,
-                                               inner_scope,
-                                               value_2_var_name,
-                                               var_name_2_id,
-                                               variable_2_var_name);
-      inputs.emplace(value, inputs_id);
-    }
-  }
-  SetInputs(inputs);
-  VLOG(8) << "finish process inputs_index";
-  std::unordered_map<ir::Value, std::vector<int>> outputs;
-  for (size_t i = 0; i < op->num_results(); i++) {
-    ir::Value value = op->result(i);
-    if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
-          phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              phi_op_name_));
-      std::vector<int> outputs_id = GetValueIds(value,
-                                                inner_scope,
-                                                value_2_var_name,
-                                                var_name_2_id,
-                                                variable_2_var_name);
-      outputs.emplace(value, outputs_id);
-    }
-  }
-  SetOutputs(outputs);
-  VLOG(8) << "finish process outputs_index";
 }
 
 platform::DeviceContext* ParseDeviceContext(
@@ -170,7 +126,8 @@ platform::DeviceContext* ParseDeviceContext(
   return origin_dev_ctx;
 }
 
-OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place) {
+OpFuncType AnalyseOpFuncType(::ir::Operation* op,
+                             const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }

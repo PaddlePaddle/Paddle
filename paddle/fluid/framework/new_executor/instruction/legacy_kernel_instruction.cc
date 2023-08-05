@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/scope.h"
@@ -27,10 +28,6 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
-
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
 
 namespace paddle {
 namespace framework {

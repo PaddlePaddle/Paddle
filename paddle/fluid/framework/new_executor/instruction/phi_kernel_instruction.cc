@@ -32,6 +32,7 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 namespace paddle {
 namespace framework {
 
