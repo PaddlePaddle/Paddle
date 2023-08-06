@@ -357,13 +357,16 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         self.attrs['epsilon'] = 0.5
         self.shape = (1, 100, 4, 4)
         self.dtype = np.float16
-        
+
     def test_check_output(self):
         rtol = 2e-3
         atol = 2e-3
         inplace_atol = 2e-3
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, rtol=rtol, atol=atol, inplace_atol=inplace_atol)
+        self.check_output_with_place(
+            place, rtol=rtol, atol=atol, inplace_atol=inplace_atol
+        )
+
 
 class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def setUp(self):
