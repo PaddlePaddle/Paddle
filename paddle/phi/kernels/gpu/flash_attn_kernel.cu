@@ -174,6 +174,9 @@ void FlashAttnUnpaddedKernel(
     DenseTensor scale_q;
     scale_q.Resize({total_q, num_heads, head_size});
     ctx.template Alloc<T>(&scale_q);
+    // DenseTensor* scale_q =  new DenseTensor;
+    // scale_q->Resize({total_q, num_heads, head_size});
+    // ctx.template Alloc<T>(scale_q);
     // compute scale Q
     ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scale_q.data<T>());
 
@@ -220,10 +223,11 @@ void FlashAttnUnpaddedKernel(
         nullptr,
         rand_mask_dim.data() ? rand_mask_dim.data() : nullptr,
         nullptr);
-    PADDLE_ENFORCE_EQ(succ,
-                      true,
-                      "Error in Flash-Attention, detail information is ",
-                      phi::errors::External(phi::dynload::flash_attn_error()));
+    PADDLE_ENFORCE_EQ(
+        succ,
+        true,
+        phi::errors::External("Error in Flash-Attention, detail information is",
+                              phi::dynload::flash_attn_error()));
 
     if (workspace_size > 0) {
       workspace = Empty<float>(
@@ -258,10 +262,12 @@ void FlashAttnUnpaddedKernel(
         nullptr,
         rand_mask_dim.data() ? rand_mask_dim.data() : nullptr,
         nullptr);
-    PADDLE_ENFORCE_EQ(succ,
-                      true,
-                      "Error in Flash-Attention, detail information is ",
-                      phi::errors::External(phi::dynload::flash_attn_error()));
+    PADDLE_ENFORCE_EQ(
+        succ,
+        true,
+        phi::errors::External("Error in Flash-Attention, detail information is",
+                              phi::dynload::flash_attn_error()));
+    // delete scale_q;
   } else {
     bool succ =
         phi::dynload::flash_attn_fwd(q.data(),
@@ -290,10 +296,11 @@ void FlashAttnUnpaddedKernel(
                                      stream,
                                      seed,
                                      offset);
-    PADDLE_ENFORCE_EQ(succ,
-                      true,
-                      "Error in Flash-Attention, detail information is ",
-                      phi::errors::External(phi::dynload::flash_attn_error()));
+    PADDLE_ENFORCE_EQ(
+        succ,
+        true,
+        phi::errors::External("Error in Flash-Attention, detail information is",
+                              phi::dynload::flash_attn_error()));
 
     if (workspace_size > 0) {
       workspace = Empty<float>(
@@ -328,10 +335,11 @@ void FlashAttnUnpaddedKernel(
         seed,
         offset);
 
-    PADDLE_ENFORCE_EQ(succ,
-                      true,
-                      "Error in Flash-Attention, detail information is ",
-                      phi::errors::External(phi::dynload::flash_attn_error()));
+    PADDLE_ENFORCE_EQ(
+        succ,
+        true,
+        phi::errors::External("Error in Flash-Attention, detail information is",
+                              phi::dynload::flash_attn_error()));
   }
 
 #endif
