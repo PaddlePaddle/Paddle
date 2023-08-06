@@ -158,7 +158,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
 
     DenseTensor workspace;
     if (workspace_size > 0) {
@@ -205,7 +205,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
 
     int64_t q_size = total_q * num_heads * head_size;
     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, q_size, 1);
@@ -251,7 +251,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
 
     DenseTensor workspace;
     if (workspace_size > 0) {
@@ -294,7 +294,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
   }
 #endif
 }

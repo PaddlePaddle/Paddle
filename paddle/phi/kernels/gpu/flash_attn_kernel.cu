@@ -223,7 +223,7 @@ void FlashAttnUnpaddedKernel(
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
 
     if (workspace_size > 0) {
       workspace = Empty<float>(
@@ -261,7 +261,7 @@ void FlashAttnUnpaddedKernel(
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
   } else {
     bool succ =
         phi::dynload::flash_attn_fwd(q.data(),
@@ -293,7 +293,7 @@ void FlashAttnUnpaddedKernel(
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
 
     if (workspace_size > 0) {
       workspace = Empty<float>(
@@ -331,7 +331,7 @@ void FlashAttnUnpaddedKernel(
     PADDLE_ENFORCE_EQ(succ,
                       true,
                       "Error in Flash-Attention, detail information is ",
-                      phi::dynload::flash_attn_error());
+                      phi::errors::External(phi::dynload::flash_attn_error()));
   }
 
 #endif
