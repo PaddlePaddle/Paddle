@@ -69,6 +69,12 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   const int total_k = k.dims()[0];
   const int num_heads_k = k.dims()[1];
 
+  // TODO(umiswing): add deterministic in fa2.
+  // int num_splits = 0;  // 0 for an internal heuristic, which is optimal
+  // if (FLAGS_cudnn_deterministic) {
+  //   num_splits = 1;
+  // }
+
   const bool zero_tensors = false;
 
   // TODO(umiswing): add shape check
@@ -130,7 +136,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   if (!succ) {
     PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
   }
-
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "FlashAttention is unsupported, please set use_flash_attn to false."));
 #endif
 }
 
@@ -229,6 +237,9 @@ void FlashAttnGradKernel(const Context& ctx,
       true,
       phi::errors::External("Error in Flash-Attention-2, detail information is",
                             phi::dynload::flash_attn_error()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "FlashAttention is unsupported, please set use_flash_attn to false."));
 #endif
 }
 

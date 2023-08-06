@@ -76,7 +76,7 @@
 	ignore = dirty
 [submodule "third_party/flashattn"]
 	path = third_party/flashattn
-	url = https://github.com/umiswing/flash-attention.git
+	url = https://github.com/PaddlePaddle/flash-attention.git
 	ignore = dirty
 [submodule "third_party/gtest"]
 	path = third_party/gtest
