@@ -84,7 +84,7 @@ class SoftmaxMaskFuseUpperTriangleGradOpMaker
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("fused_softmax_mask_upper_triangle_grad");
-    op->SetInput("Softmax", this->Output("Out"));
+    op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }

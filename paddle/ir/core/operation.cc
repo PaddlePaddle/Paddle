@@ -40,7 +40,7 @@ Operation *Operation::Create(OperationArgument &&argument) {
 
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
-// OpInlineResult, Operation, Operand.
+// OpInlineResult, Operation, operand.
 Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                              const AttributeMap &attributes,
                              const std::vector<ir::Type> &output_types,
@@ -132,7 +132,7 @@ void Operation::Destroy() {
 
   // 4. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
-    op_operand(idx).impl()->~OpOperandImpl();
+    operand(idx).impl()->~OpOperandImpl();
   }
   // 5. Free memory.
   uint32_t max_inline_result_num =
@@ -186,7 +186,7 @@ ir::OpResult Operation::result(uint32_t index) const {
   }
 }
 
-OpOperand Operation::op_operand(uint32_t index) const {
+OpOperand Operation::operand(uint32_t index) const {
   if (index >= num_operands_) {
     IR_THROW("index exceeds OP input range.");
   }
@@ -195,8 +195,8 @@ OpOperand Operation::op_operand(uint32_t index) const {
   return OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
 }
 
-Value Operation::operand(uint32_t index) const {
-  OpOperand val = op_operand(index);
+Value Operation::operand_source(uint32_t index) const {
+  OpOperand val = operand(index);
   return val ? val.source() : Value();
 }
 
@@ -210,7 +210,7 @@ Attribute Operation::attribute(const std::string &key) const {
   return attributes_.at(key);
 }
 
-Region *Operation::GetParentRegion() const {
+Region *Operation::GetParentRegion() {
   return parent_ ? parent_->GetParent() : nullptr;
 }
 
@@ -218,8 +218,8 @@ Operation *Operation::GetParentOp() const {
   return parent_ ? parent_->GetParentOp() : nullptr;
 }
 
-Program *Operation::GetParentProgram() {
-  Operation *op = this;
+const Program *Operation::GetParentProgram() const {
+  Operation *op = const_cast<Operation *>(this);
   while (Operation *parent_op = op->GetParentOp()) {
     op = parent_op;
   }
@@ -247,6 +247,14 @@ void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
              "the num of result should be the same.");
   for (uint32_t i = 0; i < num_results_; ++i) {
     result(i).ReplaceAllUsesWith(values[i]);
+  }
+}
+
+void Operation::ReplaceAllUsesWith(const std::vector<OpResult> &op_results) {
+  IR_ENFORCE(num_results_ == op_results.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(op_results[i]);
   }
 }
 

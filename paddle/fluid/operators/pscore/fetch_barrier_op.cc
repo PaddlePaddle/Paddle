@@ -46,7 +46,7 @@ class FetchBarrierOp : public framework::OperatorBase {
 
 class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Any) Dummy inputs, used for control dependency")
         .AsDispensable()
         .AsDuplicable();

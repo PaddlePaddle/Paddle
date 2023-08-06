@@ -544,16 +544,6 @@
     func : reduce_scatter
     param: [x, nranks]
 
-- op : relu6
-  args : (Tensor x, float threshold = 6.0f)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : relu6_raw
-  backward : relu6_grad
-
 - op : remainder
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor (out)

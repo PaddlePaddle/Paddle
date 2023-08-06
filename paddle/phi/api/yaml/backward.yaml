@@ -104,6 +104,16 @@
   output : Tensor(x_grad)
   invoke : as_complex(out_grad)
 
+- backward_op : as_strided_grad
+  forward : as_strided (Tensor input, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0) -> Tensor(out)
+  args : (Tensor input, Tensor out_grad, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : as_strided_grad
+
 - backward_op : asin_grad
   forward : asin (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -991,7 +1001,7 @@
     func : UnchangedInferMeta
     param : [out]
   kernel :
-    func : hard_sigmoid_grad
+    func : hardsigmoid_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hardtanh_grad
@@ -1092,8 +1102,7 @@
   args : (Tensor x, Tensor[] indices, Tensor value, Tensor out_grad, bool accumulate=false)
   output : Tensor(x_grad), Tensor(value_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, value]
+    func : IndexPutGradInferMeta
   kernel :
     func : index_put_grad
     data_type : out_grad
@@ -1119,6 +1128,18 @@
     param : [x]
   kernel :
     func : index_select_grad
+    data_type : out_grad
+  no_need_buffer : x
+
+- backward_op : index_select_strided_grad
+  forward : index_select_strided(Tensor x, int64_t index, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int64_t index, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : index_select_strided_grad
     data_type : out_grad
   no_need_buffer : x
 
@@ -1700,9 +1721,9 @@
   optional : boxes_num
 
 - backward_op : put_along_axis_grad
-  forward : put_along_axis (Tensor arr, Tensor indices, Tensor value, int axis, str reduce = "assign") -> Tensor(out)
+  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign") -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
-  output : Tensor(arr_grad), Tensor(value_grad)
+  output : Tensor(arr_grad), Tensor(values_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [arr, indices]
@@ -1738,6 +1759,17 @@
     param : [out]
   kernel :
     func : reciprocal_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : relu6_grad
+  forward : relu6 (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : relu6_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : relu_double_grad
@@ -2325,6 +2357,16 @@
     func : temporal_shift_grad
     data_type : out_grad
 
+- backward_op : tensor_unfold_grad
+  forward : tensor_unfold (Tensor input, int64_t axis, int64_t size, int64_t step) -> Tensor(out)
+  args : (Tensor input, Tensor out_grad, int64_t axis, int64_t size, int64_t step)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : tensor_unfold_grad
+
 - backward_op : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float threshold)
@@ -2452,6 +2494,27 @@
     func : UnStackGradInferMeta
   kernel :
     func : unstack_grad
+
+- backward_op : view_dtype_grad
+  forward : view_dtype (Tensor input, DataType dtype) -> Tensor(out)
+  args : (Tensor input, Tensor out_grad, DataType dtype)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : view_dtype_grad
+    data_type : out_grad
+
+- backward_op : view_shape_grad
+  forward : view_shape (Tensor input, int64_t[] dims = {}) -> Tensor(out)
+  args : (Tensor input, Tensor out_grad, int64_t[] dims = {})
+  output : Tensor(input_grad)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : view_shape_grad
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false) -> Tensor(loss), Tensor(warpctcgrad)

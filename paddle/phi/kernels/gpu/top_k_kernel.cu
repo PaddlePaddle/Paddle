@@ -77,6 +77,11 @@ void TopkKernel(const Context& dev_ctx,
   if (axis < 0) axis += in_dims.size();
 
   int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
   if (k_scalar.FromTensor()) {
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;

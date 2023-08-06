@@ -75,7 +75,7 @@ class SendOp : public framework::OperatorBase {
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
         .AsDuplicable();
     AddOutput("Out", "(Any) Dummy outputs, used for control dependency")

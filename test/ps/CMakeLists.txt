@@ -11,7 +11,7 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
   list(APPEND TEST_OPS ${TEST_OP})
-  set_tests_properties(${TEST_OP} PROPERTIES TIMEOUT 50)
+  set_tests_properties(${TEST_OP} PROPERTIES TIMEOUT 120)
 endforeach()
 
 if(WITH_HETERPS AND NOT WITH_PSLIB)

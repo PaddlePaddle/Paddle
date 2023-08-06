@@ -74,13 +74,27 @@ class TestFullAPI(unittest.TestCase):
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
         )
 
-        assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_3, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_4, np.full([1, 2], 1.2, dtype="float32"))
-        assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_7, np.full([1, 2], 1.1, dtype="float32"))
+        np.testing.assert_array_equal(
+            res_1, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_2, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_3, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_4, np.full([1, 2], 1.2, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_5, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_6, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_7, np.full([1, 2], 1.1, dtype="float32")
+        )
 
     def test_api_eager(self):
         with fluid.dygraph.base.guard():
@@ -134,18 +148,36 @@ class TestFullAPI(unittest.TestCase):
                 out_7, dtype=np.float32, fill_value=np.abs(1.1)
             )
 
-            assert np.array_equal(out_1, np.full([1, 2], 1.1, dtype="float32"))
-            assert np.array_equal(out_2, np.full([1, 2], 1.1, dtype="float32"))
-            assert np.array_equal(out_3, np.full([1, 2], 1.1, dtype="float32"))
-            assert np.array_equal(out_4, np.full([1, 2], 1.2, dtype="float32"))
-            assert np.array_equal(out_5, np.full([1, 2], 1.1, dtype="float32"))
-            assert np.array_equal(out_6, np.full([1, 2], 1.1, dtype="float32"))
-            assert np.array_equal(out_7, np.full([1, 2], 1.1, dtype="float32"))
-            assert np.array_equal(out_8, np.full([2], 1.1, dtype="float32"))
-            assert np.array_equal(
+            np.testing.assert_array_equal(
+                out_1, np.full([1, 2], 1.1, dtype="float32")
+            )
+            np.testing.assert_array_equal(
+                out_2, np.full([1, 2], 1.1, dtype="float32")
+            )
+            np.testing.assert_array_equal(
+                out_3, np.full([1, 2], 1.1, dtype="float32")
+            )
+            np.testing.assert_array_equal(
+                out_4, np.full([1, 2], 1.2, dtype="float32")
+            )
+            np.testing.assert_array_equal(
+                out_5, np.full([1, 2], 1.1, dtype="float32")
+            )
+            np.testing.assert_array_equal(
+                out_6, np.full([1, 2], 1.1, dtype="float32")
+            )
+            np.testing.assert_array_equal(
+                out_7, np.full([1, 2], 1.1, dtype="float32")
+            )
+            np.testing.assert_array_equal(
+                out_8, np.full([2], 1.1, dtype="float32")
+            )
+            np.testing.assert_array_equal(
                 out_9, np.full([2, 2, 4], 1.1, dtype="float32")
             )
-            assert np.array_equal(out_10, np.full([1, 2], 1.1, dtype="float32"))
+            np.testing.assert_array_equal(
+                out_10, np.full([1, 2], 1.1, dtype="float32")
+            )
 
 
 class TestFullOpError(unittest.TestCase):

@@ -44,13 +44,19 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : adagrad_
+- op : adadelta_ (adadelta)
+  inputs :
+    {param : Param, grad: Grad, avg_squared_grad : AvgSquaredGrad, avg_squared_update : AvgSquaredUpdate, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    {param_out : ParamOut, moment_out : AvgSquaredGradOut, inf_norm_out : AvgSquaredUpdateOut, master_param_out : MasterParamOut}
+
+- op : adagrad_ (adagrad)
   inputs :
     { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
-- op : adam_
+- op : adam_ (adam)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -67,13 +73,13 @@
       tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
-- op : adamax_
+- op : adamax_ (adamax)
   inputs :
     {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
 
-- op : adamw_
+- op : adamw_ (adamw)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -213,7 +219,6 @@
 - op : argmax(arg_max)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -224,7 +229,6 @@
 - op : argmin(arg_min)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -265,6 +269,10 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : assert
+  inputs :
+    {cond : Cond, data : Data}
 
 - op : assign
   backward : assign_grad
@@ -350,6 +358,7 @@
     attrs : [bool use_mkldnn = false]
 
 - op : bilinear (bilinear_tensor_product)
+  backward: bilinear_grad (bilinear_tensor_product_grad)
   inputs :
     {x : X, y : Y,weight: Weight, bias: Bias}
   outputs :
@@ -419,6 +428,12 @@
   outputs :
     out : Out
   drop_empty_grad : [input_grad]
+
+- op : cast
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : ceil
   backward : ceil_grad
@@ -638,18 +653,6 @@
     {input : Logits, label : Label}
   outputs :
     {softmax : Softmax, loss : Loss}
-
-- op : cummax
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
-
-- op : cummin
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
 
 - op : cumprod
   backward : cumprod_grad
@@ -1149,6 +1152,8 @@
     attrs : [bool use_mkldnn = false]
 
 - op : full (fill_constant)
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1319,36 +1324,19 @@
   outputs :
     out : Out
 
+- op : hsigmoid_loss(hierarchical_sigmoid)
+  backward: hsigmoid_loss_grad(hierarchical_sigmoid_grad)
+  inputs:
+   {x: X, w: W, label: Label, bias: Bias, path: PathTable, code: PathCode}
+  outputs:
+   {out: Out, pre_out: PreOut, w_out: W_Out}
+
 - op : huber_loss
   backward : huber_loss_grad
   inputs :
     {input : X, label : Y}
   outputs :
     {out : Out, residual : Residual}
-
-- op : i0
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i0e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
 
 - op : imag
   backward : imag_grad
@@ -1472,7 +1460,7 @@
   outputs :
     out : Out
 
-- op : lamb_
+- op : lamb_ (lamb)
   inputs :
     {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
   outputs :
@@ -1816,7 +1804,7 @@
       data_type : float
       support_tensor : true
 
-- op : merged_momentum_
+- op : merged_momentum_ (merged_momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -1877,7 +1865,7 @@
   outputs :
     {out : Out, indices : Indices}
 
-- op : momentum_
+- op : momentum_ (momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -1957,12 +1945,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : nextafter
-  inputs :
-    {x : x, y : y}
-  outputs :
-    out : out
 
 - op : nll_loss
   backward : nll_loss_grad
@@ -2067,12 +2049,6 @@
     x : X
   outputs :
     out : Out
-
-- op : polygamma
-  inputs :
-    x : x
-  outputs :
-    out : out
 
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
@@ -2238,7 +2214,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, float threshold = 6.0]
 
 - op : remainder (elementwise_mod)
   inputs :
@@ -2259,6 +2235,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : repeat_interleave
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    repeats : Repeats
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
@@ -2286,7 +2270,7 @@
       support_tensor : true
   manual_signature : [reverse]
 
-- op : rmsprop_
+- op : rmsprop_ (rmsprop)
   inputs :
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
   outputs :
@@ -2424,7 +2408,7 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
-- op : sgd_
+- op : sgd_ (sgd)
   inputs :
     {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
   outputs :
@@ -2433,6 +2417,10 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
+
+- op : shadow_output
+  inputs: {x: x}
+  outputs: {out: out}
 
 - op : shape
   inputs :
@@ -2513,6 +2501,15 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
 
 - op : slogdet(slogdeterminant)
   backward : slogdet_grad(slogdeterminant_grad)
@@ -2812,10 +2809,6 @@
   outputs :
     out : Out
 
-- op : tril_indices
-  outputs :
-    out : out
-
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2831,10 +2824,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : triu_indices
-  outputs :
-    out : out
 
 - op : trunc
   inputs :
@@ -2961,12 +2950,6 @@
   outputs :
     {warpctcgrad : WarpCTCGrad, loss : Loss}
 
-- op : warprnnt
-  inputs :
-    {input : input, label : label,  input_lengths : input_lengths, label_lengths : label_lengths}
-  outputs :
-    {loss : loss, warprnntgrad : warprnntgrad}
-
 - op : where
   backward : where_grad
   inputs :
@@ -2995,11 +2978,27 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
-- op: fetch
+- op: channel_shuffle
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out}
+
+- op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
 
 - op: full_batch_size_like (fill_constant_batch_size_like)
+  inputs:
+    {input: Input}
+  outputs:
+    {out: Out}
+
+- op: logspace
+  inputs:
+    {start: Start, stop: Stop, num: Num, base: Base}
+  outputs:
+    {out: Out}
 
 - op: lu
   backward: lu_grad
@@ -3016,10 +3015,16 @@
   outputs :
     {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
+- op: rrelu
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out, noise: Noise}
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label, pos_weight : pos_weight}
+    {x: X, label: Label}
   outputs :
     out : Out
 
