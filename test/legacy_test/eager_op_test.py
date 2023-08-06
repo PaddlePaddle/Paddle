@@ -3038,7 +3038,6 @@ class OpTest(unittest.TestCase):
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
-            print(prog)
             res = list(
                 map(
                     np.array,

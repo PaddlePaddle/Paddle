@@ -100,6 +100,7 @@ class ConstantFoldingPattern : public ir::RewritePattern {
         paddle::dialect::PdOpLowerToKernelPass(temp_program.get()),
         &scope_,
         exe_config);
+
     paddle::framework::FetchList fetch_list = core.Run({});
 
     // TODO(liuyuanle): Support multiple output.

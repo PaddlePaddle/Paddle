@@ -230,7 +230,7 @@ void HandleForSpecialOp(
     auto fetch_src_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
-    auto fetch_var_name = var_name_prefix + "_" + fetch_src_name + "@fetch";
+    auto fetch_var_name = fetch_src_name + "@fetch";
     auto* var = const_cast<paddle::framework::Scope*>(inner_scope->root())
                     ->Var(fetch_var_name);
     var->GetMutable<phi::DenseTensor>();

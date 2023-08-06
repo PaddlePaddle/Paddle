@@ -90,21 +90,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
-      std::cerr << "print" << std::endl;
-      base_program->Print(std::cout);
-      kernel_program->Print(std::cout);
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,
                                             std::move(kernel_program),
                                             scope_,
                                             execution_config));
-      std::stringstream pre_ss;
-      pre_ss << interpretercores_.back()->Impl();
-
-      for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-        fetch_var_names_[i] = pre_ss.str() + "_" + fetch_var_names_[i];
-      }
     } else {
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
@@ -162,14 +153,12 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       interpretercores_[job_idx]->ShareBuildResultsFrom(
           interpretercores_[type_to_first_id[job_type]]);
     }
-    interpretercores_[job_idx]->BetaRun(feed_names, /*need_fetch = */ false);
+    interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
   }
 
   // return Fetch Tensors
   if (FLAGS_enable_new_ir_in_executor) {
     framework::FetchList fetch_res;
-
-    std::cerr << "before fetch " << std::endl;
     for (auto& var_name : fetch_var_names_) {
       auto* var = scope_->FindVar(var_name);
       fetch_res.push_back(var->Get<phi::DenseTensor>());
