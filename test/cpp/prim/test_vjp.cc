@@ -94,6 +94,60 @@ TEST(VJP, TanhBackwardTest) {
   ASSERT_NEAR(grad_out_tensor.data<float>()[0], 0.83995, 1e-5);
 }
 
+TEST(VJP, Tanh_BackwardTest) {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+
+  std::shared_ptr<ir::Builder> builder =
+      paddle::dialect::APIBuilder::Instance().GetBuilder();
+  paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
+  paddle::dialect::Tanh_Op op2 =
+      builder->Build<paddle::dialect::Tanh_Op>(op1.out());
+
+  paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
+
+  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
+
+  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh_");
+  auto tanh_vjp_interface_impl =
+      op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+  tanh_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = platform::CPUPlace();
+  Scope scope;
+
+  ProgramDesc prog_desc;
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string prefix_str = os.str();
+  test_core.SetSkipGcVars(
+      {prefix_str + "_inner_var_0", prefix_str + "_inner_var_2"});
+  test_core.BetaRun({});
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_0")
+                ->Get<phi::DenseTensor>();
+  auto grad_out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_2")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_2")
+                ->Get<phi::DenseTensor>();
+
+  ASSERT_NEAR(out_tensor.data<float>()[0], 0.76159, 1e-5);
+  ASSERT_NEAR(grad_out_tensor.data<float>()[0], 0.83995, 1e-5);
+}
+
 TEST(VJP, MeanBackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::Program program((ctx));
