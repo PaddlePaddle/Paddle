@@ -33,7 +33,6 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..framework import Variable
-from ..dygraph import learning_rate_scheduler as imperate_lr
 from ..data_feeder import check_variable_and_dtype, check_type
 
 __all__ = [
