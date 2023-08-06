@@ -77,10 +77,14 @@ from .linalg import cdist  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import equal_  # noqa: F401
 from .logic import greater_equal  # noqa: F401
+from .logic import greater_equal_  # noqa: F401
 from .logic import greater_than  # noqa: F401
+from .logic import greater_than_  # noqa: F401
 from .logic import is_empty  # noqa: F401
 from .logic import less_equal  # noqa: F401
+from .logic import less_equal_  # noqa: F401
 from .logic import less_than  # noqa: F401
+from .logic import less_than_  # noqa: F401
 from .logic import logical_and  # noqa: F401
 from .logic import logical_and_  # noqa: F401
 from .logic import logical_not  # noqa: F401

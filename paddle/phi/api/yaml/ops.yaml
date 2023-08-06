@@ -1521,6 +1521,7 @@
     func : logical_and
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logical_not
   args : (Tensor x)
@@ -1531,6 +1532,7 @@
     func : logical_not
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logical_or
   args : (Tensor x, Tensor y)
@@ -1541,6 +1543,7 @@
     func : logical_or
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logical_xor
   args : (Tensor x, Tensor y)
@@ -1551,6 +1554,7 @@
     func : logical_xor
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
