@@ -450,6 +450,7 @@ def scaled_dot_product_attention(
                         not supported yet.
         dropout_p(float): The dropout ratio.
         is_causal(bool): Whether enable causal mode.
+        training(bool): Whether it is in the training phase
 
     Returns:
         out(Tensor): The attention tensor.

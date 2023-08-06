@@ -55,6 +55,216 @@ void ComputeScaleQ(
 }
 
 template <typename T, typename Context>
+void FlashAttnFwdWithBiasAndMask(
+    const Context& ctx,
+    const void*
+        q,  // total_q x num_heads x head_size, total_q := \sum_{i=0}^{b} s_i
+    const void*
+        k,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const void*
+        v,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    void*
+        out,  // total_q x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const int32_t*
+        cu_seqlens_q,  // int32, batch_size+1, starting offset of each sequence
+    const int32_t*
+        cu_seqlens_k,  // int32, batch_size+1, starting offset of each sequence
+    const int total_q,
+    const int total_k,
+    const int batch_size,
+    const int num_heads,
+    const int head_size,
+    const int max_seqlen_q,
+    const int max_seqlen_k,
+    const float dropout,
+    const float scale,
+    const bool zero_tensors,
+    const bool is_bf16,
+    const int num_splits,   // SMs per attention matrix, can be 1
+    void* softmax_lse_ptr,  // softmax log_sum_exp
+    cudaStream_t stream,
+    uint64_t seed,
+    uint64_t offset,
+    const void* attn_mask,
+    const int64_t* mask_dims) {
+  // to get workspace,these are temp variable
+  DenseTensor workspace;
+  uint64_t workspace_size = 0;
+  bool succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
+      q,
+      k,
+      v,
+      nullptr,  // for calculation workspace size
+      cu_seqlens_q,
+      cu_seqlens_k,
+      total_q,
+      total_k,
+      batch_size,
+      num_heads,
+      head_size,
+      max_seqlen_q,
+      max_seqlen_k,
+      dropout,
+      scale,
+      zero_tensors,
+      is_bf16,
+      num_splits,
+      softmax_lse_ptr,
+      nullptr,
+      &workspace_size,
+      stream,
+      seed,
+      offset,
+      attn_mask,
+      nullptr,
+      mask_dims,
+      nullptr);
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
+
+  if (workspace_size > 0) {
+    workspace = Empty<float>(
+        ctx, {static_cast<int64_t>((workspace_size) / sizeof(float))});
+  }
+  succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
+      q,
+      k,
+      v,
+      out,  // set out to nullptr to calculate workspace size
+      cu_seqlens_q,
+      cu_seqlens_k,
+      total_q,
+      total_k,
+      batch_size,
+      num_heads,
+      head_size,
+      max_seqlen_q,
+      max_seqlen_k,
+      dropout,
+      scale,
+      zero_tensors,
+      is_bf16,
+      num_splits,
+      softmax_lse_ptr,
+      workspace_size > 0 ? workspace.data() : nullptr,
+      &workspace_size,
+      stream,
+      seed,
+      offset,
+      attn_mask,
+      nullptr,
+      mask_dims,
+      nullptr);
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
+}
+
+template <typename T, typename Context>
+void FlashAttnFwd(
+    const Context& ctx,
+    const void*
+        q,  // total_q x num_heads x head_size, total_q := \sum_{i=0}^{b} s_i
+    const void*
+        k,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const void*
+        v,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    void*
+        out,  // total_q x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const void*
+        cu_seqlens_q,  // int32, batch_size+1, starting offset of each sequence
+    const void*
+        cu_seqlens_k,  // int32, batch_size+1, starting offset of each sequence
+    const int total_q,
+    const int total_k,
+    const int batch_size,
+    const int num_heads,
+    const int head_size,
+    const int max_seqlen_q,
+    const int max_seqlen_k,
+    const float dropout,
+    const float scale,
+    const bool zero_tensors,
+    const bool causal,
+    const bool is_bf16,
+    const int num_splits,   // SMs per attention matrix, can be 1
+    void* softmax_lse_ptr,  // softmax log_sum_exp
+    const bool return_softmax,
+    cudaStream_t stream,
+    uint64_t seed,
+    uint64_t offset) {
+  DenseTensor workspace;
+  uint64_t workspace_size = 0;
+  bool succ =
+      phi::dynload::flash_attn_fwd(q,
+                                   k,
+                                   v,
+                                   nullptr,  // for calculation workspace size
+                                   cu_seqlens_q,
+                                   cu_seqlens_k,
+                                   total_q,
+                                   total_k,
+                                   batch_size,
+                                   num_heads,
+                                   head_size,
+                                   max_seqlen_q,
+                                   max_seqlen_k,
+                                   dropout,
+                                   scale,
+                                   zero_tensors,
+                                   causal,
+                                   is_bf16,
+                                   num_splits,
+                                   softmax_lse_ptr,
+                                   return_softmax ? softmax_lse_ptr : nullptr,
+                                   nullptr,
+                                   &workspace_size,
+                                   stream,
+                                   seed,
+                                   offset);
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
+  if (workspace_size > 0) {
+    workspace = Empty<float>(
+        ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
+  }
+
+  succ = phi::dynload::flash_attn_fwd(
+      q,
+      k,
+      v,
+      out,
+      cu_seqlens_q,
+      cu_seqlens_k,
+      total_q,
+      total_k,
+      batch_size,
+      num_heads,
+      head_size,
+      max_seqlen_q,
+      max_seqlen_k,
+      dropout,
+      scale,
+      zero_tensors,
+      causal,
+      is_bf16,
+      num_splits,
+      softmax_lse_ptr,
+      return_softmax ? softmax_lse_ptr : nullptr,
+      workspace_size > 0 ? workspace.data() : nullptr,
+      &workspace_size,
+      stream,
+      seed,
+      offset);
+
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
+}
+
+template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
     const Context& ctx,
     const DenseTensor& q,
@@ -156,7 +366,6 @@ void FlashAttnUnpaddedKernel(
   }
 
   uint64_t workspace_size = 0;
-  bool succ;
   DenseTensor workspace;
 
   if (attn_mask.get_ptr()) {
@@ -164,16 +373,21 @@ void FlashAttnUnpaddedKernel(
                       true,
                       phi::errors::InvalidArgument(
                           "attn_mask is not nullptr, causal can not be true"));
+    PADDLE_ENFORCE_NE(
+        head_size,
+        32 || 64 || 128,
+        phi::errors::InvalidArgument(
+            "Currently, the mask only supports head_dim of 32, 64, and 128"));
 
     int64_t q_size = total_q * num_heads * head_size;
-    DenseTensor* scale_q = new DenseTensor;
-    scale_q->Resize({total_q, num_heads, head_size});
-    ctx.template Alloc<T>(scale_q);
+    DenseTensor scale_q;
+    scale_q.Resize({total_q, num_heads, head_size});
+    ctx.template Alloc<T>(&scale_q);
     // compute scale Q
-    ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scale_q->data<T>());
+    ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scale_q.data<T>());
 
     float fa_with_mask_scale = 1.0f;
-    std::vector<int64_t> temp_rand_mask_dim;
+    std::vector<int64_t> rand_mask_dim;
     const DenseTensor* attn_mask_ptr = attn_mask.get_ptr();
     int64_t first_dim = 1;
     const auto& origin_dims = attn_mask_ptr->dims();
@@ -181,15 +395,16 @@ void FlashAttnUnpaddedKernel(
     for (int i = 0; i < rank - 3; i++) {
       first_dim *= origin_dims[i];
     }
-    temp_rand_mask_dim = {first_dim,
-                          origin_dims[rank - 3],
-                          origin_dims[rank - 2],
-                          origin_dims[rank - 1]};
-    succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
-        static_cast<const void*>(scale_q->data()),
+    rand_mask_dim = {first_dim,
+                     origin_dims[rank - 3],
+                     origin_dims[rank - 2],
+                     origin_dims[rank - 1]};
+    FlashAttnFwdWithBiasAndMask<T, Context>(
+        ctx,
+        static_cast<const void*>(scale_q.data()),
         static_cast<const void*>(k.data()),
         static_cast<const void*>(v.data()),
-        nullptr,  // for calculation workspace size
+        static_cast<void*>(out->data()),  // for calculation workspace size
         static_cast<const int32_t*>(cu_seqlens_q.data()),
         static_cast<const int32_t*>(cu_seqlens_k.data()),
         total_q,
@@ -204,126 +419,38 @@ void FlashAttnUnpaddedKernel(
         zero_tensors,
         is_bf16,
         num_splits,
-        softmax_lse->data(),
-        nullptr,
-        &workspace_size,
+        static_cast<void*>(softmax_lse->data()),
         stream,
         seed,
         offset,
-        attn_mask_ptr ? attn_mask_ptr->data() : nullptr,
-        nullptr,
-        temp_rand_mask_dim.data() ? temp_rand_mask_dim.data() : nullptr,
-        nullptr);
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
-
-    if (workspace_size > 0) {
-      workspace = Empty<float>(
-          ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
-    }
-    succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
-        static_cast<const void*>(scale_q->data()),
-        k.data(),
-        v.data(),
-        out->data(),  // set out to nullptr to calculate workspace size
-        static_cast<const int32_t*>(cu_seqlens_q.data()),
-        static_cast<const int32_t*>(cu_seqlens_k.data()),
-        total_q,
-        total_k,
-        batch_size,
-        num_heads,
-        head_size,
-        max_seqlen_q,
-        max_seqlen_k,
-        dropout,
-        fa_with_mask_scale,
-        zero_tensors,
-        is_bf16,
-        num_splits,
-        softmax_lse->data(),
-        workspace_size > 0 ? workspace.data() : nullptr,
-        &workspace_size,
-        stream,
-        seed,
-        offset,
-        attn_mask_ptr ? attn_mask_ptr->data() : nullptr,
-        nullptr,
-        temp_rand_mask_dim.data() ? temp_rand_mask_dim.data() : nullptr,
-        nullptr);
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
-    delete scale_q;
+        attn_mask_ptr->data(),
+        static_cast<const int64_t*>(rand_mask_dim.data()));
   } else {
-    succ =
-        phi::dynload::flash_attn_fwd(q.data(),
-                                     k.data(),
-                                     v.data(),
-                                     nullptr,  // for calculation workspace size
-                                     cu_seqlens_q.data(),
-                                     cu_seqlens_k.data(),
-                                     total_q,
-                                     total_k,
-                                     batch_size,
-                                     num_heads,
-                                     head_size,
-                                     max_seqlen_q,
-                                     max_seqlen_k,
-                                     dropout,
-                                     scale,
-                                     zero_tensors,
-                                     causal,
-                                     is_bf16,
-                                     num_splits,
-                                     softmax_lse->data(),
-                                     return_softmax ? softmax->data() : nullptr,
-                                     nullptr,
-                                     &workspace_size,
-                                     stream,
-                                     seed,
-                                     offset);
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
-
-    DenseTensor workspace;
-    if (workspace_size > 0) {
-      workspace = Empty<float>(
-          ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
-    }
-
-    succ = phi::dynload::flash_attn_fwd(
-        q.data(),
-        k.data(),
-        v.data(),
-        out->data(),
-        cu_seqlens_q.data(),
-        cu_seqlens_k.data(),
-        total_q,
-        total_k,
-        batch_size,
-        num_heads,
-        head_size,
-        max_seqlen_q,
-        max_seqlen_k,
-        dropout,
-        scale,
-        zero_tensors,
-        causal,
-        is_bf16,
-        num_splits,
-        softmax_lse->data(),
-        return_softmax ? softmax->data() : nullptr,
-        workspace_size > 0 ? workspace.data() : nullptr,
-        &workspace_size,
-        stream,
-        seed,
-        offset);
-
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
+    FlashAttnFwd<T, Context>(ctx,
+                             q.data(),
+                             k.data(),
+                             v.data(),
+                             out->data(),
+                             static_cast<const void*>(cu_seqlens_q.data()),
+                             static_cast<const void*>(cu_seqlens_k.data()),
+                             total_q,
+                             total_k,
+                             batch_size,
+                             num_heads,
+                             head_size,
+                             max_seqlen_q,
+                             max_seqlen_k,
+                             dropout,
+                             scale,
+                             zero_tensors,
+                             causal,
+                             is_bf16,
+                             num_splits,
+                             softmax_lse->data(),
+                             return_softmax,
+                             stream,
+                             seed,
+                             offset);
   }
 
 #endif

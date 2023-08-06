@@ -306,13 +306,6 @@ class TestFlashAttentionAPI(unittest.TestCase):
             )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
-    or not is_sm_supported,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
-    "and device's compute capability must be 7.5 or 8.x",
-)
 class TestFlashAttentionWithMaskAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
@@ -322,6 +315,12 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         self.causal = False
 
     def test_dot_scale_product(self):
+        if (
+            not core.is_compiled_with_cuda()
+            or get_cuda_version() < 11030
+            or not is_sm_supported
+        ):
+            pass
         print(
             f"Test flash attn mask case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )

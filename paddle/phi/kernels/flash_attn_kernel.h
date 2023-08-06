@@ -20,6 +20,74 @@
 namespace phi {
 
 template <typename T, typename Context>
+void FlashAttnFwdWithBiasAndMask(
+    const Context& ctx,
+    const void*
+        q,  // total_q x num_heads x head_size, total_q := \sum_{i=0}^{b} s_i
+    const void*
+        k,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const void*
+        v,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    void*
+        out,  // total_q x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const int32_t*
+        cu_seqlens_q,  // int32, batch_size+1, starting offset of each sequence
+    const int32_t*
+        cu_seqlens_k,  // int32, batch_size+1, starting offset of each sequence
+    const int total_q,
+    const int total_k,
+    const int batch_size,
+    const int num_heads,
+    const int head_size,
+    const int max_seqlen_q,
+    const int max_seqlen_k,
+    const float dropout,
+    const float scale,
+    const bool zero_tensors,
+    const bool is_bf16,
+    const int num_splits,   // SMs per attention matrix, can be 1
+    void* softmax_lse_ptr,  // softmax log_sum_exp
+    cudaStream_t stream,
+    uint64_t seed,
+    uint64_t offset,
+    const void* attn_mask,
+    const int64_t* mask_dims);
+
+template <typename T, typename Context>
+void FlashAttnFwd(
+    const Context& ctx,
+    const void*
+        q,  // total_q x num_heads x head_size, total_q := \sum_{i=0}^{b} s_i
+    const void*
+        k,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const void*
+        v,  // total_k x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    void*
+        out,  // total_q x num_heads x head_size, total_k := \sum_{i=0}^{b} s_i
+    const void*
+        cu_seqlens_q,  // int32, batch_size+1, starting offset of each sequence
+    const void*
+        cu_seqlens_k,  // int32, batch_size+1, starting offset of each sequence
+    const int total_q,
+    const int total_k,
+    const int batch_size,
+    const int num_heads,
+    const int head_size,
+    const int max_seqlen_q,
+    const int max_seqlen_k,
+    const float dropout,
+    const float scale,
+    const bool zero_tensors,
+    const bool causal,
+    const bool is_bf16,
+    const int num_splits,   // SMs per attention matrix, can be 1
+    void* softmax_lse_ptr,  // softmax log_sum_exp
+    const bool return_softmax,
+    cudaStream_t stream,
+    uint64_t seed,
+    uint64_t offset);
+
+template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
     const Context& ctx,
     const DenseTensor& q,
