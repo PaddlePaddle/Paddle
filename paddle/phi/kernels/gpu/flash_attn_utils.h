@@ -36,6 +36,7 @@ struct FlashAttnFwdParamsV2 {
   bool is_bf16;
   uint64_t seed;
   uint64_t offset;
+  DenseTensor rng_state;
   DenseTensor* softmax;
   DenseTensor* softmax_lse;
   DenseTensor* seed_offset;
@@ -74,6 +75,9 @@ struct FlashAttnFwdParamsV2 {
     dropout = is_test ? 0.0f : _dropout;
     is_bf16 = q_dtype == DataType::BFLOAT16;
 
+    // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
+    // with the same size.
+    rng_state = Empty<int64_t>(ctx, {2});
     if (fixed_seed_offset_ptr) {
       const int64_t* fixed_seed_offset_data =
           fixed_seed_offset_ptr->data<int64_t>();
@@ -132,6 +136,7 @@ struct FlashAttnBwdParamsV2 {
   uint64_t offset;
   DenseTensor softmax_d;
   DenseTensor dq_accum;
+  DenseTensor rng_state;
 
   FlashAttnBwdParamsV2(const GPUContext& ctx,
                        const int _batch_size,
@@ -157,6 +162,11 @@ struct FlashAttnBwdParamsV2 {
     is_bf16 = q_dtype == DataType::BFLOAT16;
     seed = static_cast<uint64_t>(seed_offset_data[0]);
     offset = static_cast<uint64_t>(seed_offset_data[1]);
+
+    // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
+    // with the same size.
+    rng_state = Empty<int64_t>(ctx, {2});
+
     auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
 
     head_size_rounded = round_multiple(head_size, 32);
