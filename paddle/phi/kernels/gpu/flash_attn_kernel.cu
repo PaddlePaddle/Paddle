@@ -78,9 +78,15 @@ void FlashAttnUnpaddedKernel(
   const int num_heads_k = k.dims()[1];
   const int batch_size = cu_seqlens_q.numel() - 1;
 
+  // TODO(umiswing): add deterministic accumulation for dq in fa2.
+  // int num_splits = 0;  // 0 for an internal heuristic, which is optimal
+  // if (FLAGS_cudnn_deterministic) {
+  //   num_splits = 1;
+  // }
+
   // TODO(umiswing): add shape check
 
-  const FlashAttnFwdParamsV2<T> params =
+  FlashAttnFwdParamsV2<T> params =
       FlashAttnFwdParamsV2<T>(ctx,
                               batch_size,
                               max_seqlen_q,
@@ -95,10 +101,10 @@ void FlashAttnUnpaddedKernel(
                               q.dtype(),
                               is_test,
                               rng_name,
+                              fixed_seed_offset.get_ptr(),
                               softmax,
                               softmax_lse,
-                              seed_offset,
-                              fixed_seed_offset.get_ptr());
+                              seed_offset);
 
   VLOG(4) << "FlashAttn fwd seed: " << params.seed
           << ", offset: " << params.offset;
@@ -174,7 +180,7 @@ void FlashAttnKernel(const Context& ctx,
 
   const float scale = 1.0f / std::sqrt(head_size);
 
-  const FlashAttnFwdParamsV2<T> params =
+  FlashAttnFwdParamsV2<T> params =
       FlashAttnFwdParamsV2<T>(ctx,
                               batch_size,
                               seqlen_q,
@@ -189,10 +195,10 @@ void FlashAttnKernel(const Context& ctx,
                               q.dtype(),
                               is_test,
                               rng_name,
+                              fixed_seed_offset.get_ptr(),
                               softmax,
                               softmax_lse,
-                              seed_offset,
-                              fixed_seed_offset.get_ptr());
+                              seed_offset);
 
   VLOG(4) << "FlashAttn fwd dims q[" << q.dims() << "], k[" << k.dims()
           << "], v[" << v.dims() << "]";

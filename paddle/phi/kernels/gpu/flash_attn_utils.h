@@ -55,10 +55,10 @@ struct FlashAttnFwdParamsV2 {
                        const DataType q_dtype,
                        const bool is_test,
                        const std::string& rng_name,
+                       const DenseTensor* const fixed_seed_offset_ptr,
                        DenseTensor* _softmax,
                        DenseTensor* _softmax_lse,
-                       DenseTensor* _seed_offset,
-                       const DenseTensor* const fixed_seed_offset_ptr)
+                       DenseTensor* _seed_offset)
       : batch_size(_batch_size),
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
