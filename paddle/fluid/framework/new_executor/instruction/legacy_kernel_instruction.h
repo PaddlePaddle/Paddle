@@ -62,7 +62,7 @@ class LegacyKernelInstruction : public InstructionBase {
 
   std::shared_ptr<framework::RuntimeContext> runtime_context_;
   std::shared_ptr<paddle::framework::OperatorBase> operator_base_;
-  std::shared_ptr<paddle::framework::ExecutionContext> kernel_context_;
+  paddle::framework::ExecutionContext* kernel_context_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
 };

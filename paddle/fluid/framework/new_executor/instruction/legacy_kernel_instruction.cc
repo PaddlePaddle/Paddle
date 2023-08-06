@@ -138,9 +138,8 @@ LegacyKernelInstruction::LegacyKernelInstruction(
                           local_scope,
                           yaml_info_parser,
                           runtime_context_.get());
-  kernel_context_ = std::make_shared<paddle::framework::ExecutionContext>(
-      paddle::framework::ExecutionContext(
-          *operator_base_, *local_scope, *dev_ctx, *(runtime_context_.get())));
+  kernel_context_ = new paddle::framework::ExecutionContext(
+      *operator_base_, *local_scope, *dev_ctx, *(runtime_context_.get()));
 
   VLOG(6) << "finish process kernel context";
   SetDeviceContext(
@@ -169,7 +168,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
 void LegacyKernelInstruction::Run() {
   infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
-  (*(phi_kernel_))((kernel_context_.get()));
+  (*(phi_kernel_))((kernel_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
 }
 
