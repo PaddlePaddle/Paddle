@@ -306,6 +306,13 @@ class TestFlashAttentionAPI(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+    "and device's compute capability must be 7.5 or 8.x",
+)
 class TestFlashAttentionWithMaskAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
