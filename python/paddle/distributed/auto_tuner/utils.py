@@ -333,9 +333,10 @@ def read_metric_log(
             01: no metric
             10: out of memory
     """
+    err_code = 0
     target_file = path + "/" + file
     if not os.path.exists(target_file):
-        return (0.0, True)
+        return (0.0, 1)
     with open(target_file, "r") as f:
         # read file
         re_metric_pattern = (
@@ -343,7 +344,6 @@ def read_metric_log(
         )
         re_out_of_memory_pattern = r"Out of memory"
         out_of_memory_flag = 0
-        err_code = 0
         metric_list = []
         lines = f.readlines()
         for line in lines:
@@ -429,9 +429,12 @@ def read_log(
     res_metric, metric_flag = read_metric_log(path, metric_file, target_metric)
     err_code = metric_flag | err_code
     # check max memory usage
-    res_memory, memory_flag = read_memory_log(path, memory_file)
-    if memory_flag:
+    try:
+        res_memory, memory_flag = read_memory_log(path, memory_file)
         err_code = (memory_flag << 2) | err_code
+    except:
+        res_memory = 0.0
+        err_code = (1 << 2) | err_code
     return res_metric, res_memory, err_code
 
 
