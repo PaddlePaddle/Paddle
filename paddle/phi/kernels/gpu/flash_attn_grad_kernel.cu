@@ -100,9 +100,10 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                       true,
                       phi::errors::InvalidArgument(
                           "attn_mask is not nullptr, causal can not be true"));
-    PADDLE_ENFORCE_NE(
-        head_size,
-        32 || 64 || 128,
+    bool flag = (head_size == 32 || head_size == 64 || head_size == 128);
+    PADDLE_ENFORCE_EQ(
+        flag,
+        true,
         phi::errors::InvalidArgument(
             "Currently, the mask only supports head_dim of 32, 64, and 128"));
     float fa_with_mask_scale = 1.0f;
@@ -247,9 +248,10 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
         seed,
         offset);
 
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
+    PADDLE_ENFORCE_EQ(succ,
+                      true,
+                      "Error in Flash-Attention, detail information is ",
+                      phi::dynload::flash_attn_error());
 
     DenseTensor workspace;
     if (workspace_size > 0) {
@@ -289,9 +291,10 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
         seed,
         offset);
 
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
+    PADDLE_ENFORCE_EQ(succ,
+                      true,
+                      "Error in Flash-Attention, detail information is ",
+                      phi::dynload::flash_attn_error());
   }
 #endif
 }
