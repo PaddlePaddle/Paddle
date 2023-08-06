@@ -223,9 +223,10 @@ void FlashAttnFwd(
                                    stream,
                                    seed,
                                    offset);
-  if (!succ) {
-    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-  }
+  PADDLE_ENFORCE_EQ(succ,
+                    true,
+                    "Error in Flash-Attention, detail information is",
+                    phi::dynload::flash_attn_error());
   if (workspace_size > 0) {
     workspace = Empty<float>(
         ctx, {static_cast<int64_t>(workspace_size / sizeof(float))});
@@ -259,9 +260,10 @@ void FlashAttnFwd(
       seed,
       offset);
 
-  if (!succ) {
-    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-  }
+  PADDLE_ENFORCE_EQ(succ,
+                    true,
+                    "Error in Flash-Attention, detail information is",
+                    phi::dynload::flash_attn_error());
 }
 
 template <typename T, typename Context>
