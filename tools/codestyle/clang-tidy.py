@@ -80,8 +80,8 @@ def find_compilation_database(path):
     result = './'
     while not os.path.isfile(os.path.join(result, path)):
         if os.path.realpath(result) == '/':
-            print('Error: could not find compilation database.')
-            sys.exit(1)
+            print('Warning: could not find compilation database.')
+            sys.exit(0)
         result += '../'
     return os.path.realpath(result)
 
