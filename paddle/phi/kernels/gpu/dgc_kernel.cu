@@ -156,7 +156,7 @@ void DGCKernel(const Context& dev_ctx,
     u_out_e.device(eigen_ctx) = m * (u_e + grad_out_e);
 
     // v = u + v + grad
-    v_out->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(v_out);
     phi::funcs::ElementwiseCompute<phi::funcs::AddFunctor<T>, T>(
         dev_ctx, u, v, phi::funcs::AddFunctor<T>(), v_out, 0);
 
@@ -167,16 +167,19 @@ void DGCKernel(const Context& dev_ctx,
     u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
 
     // v = u + v
-    v_out->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(v_out);
     phi::funcs::ElementwiseCompute<phi::funcs::AddFunctor<T>, T>(
         dev_ctx, u, v, phi::funcs::AddFunctor<T>(), v_out, 0);
   }
 
-  T* v_out_data = v_out->mutable_data<T>(dev_ctx.GetPlace());
-  T* u_out_data = u_out->mutable_data<T>(dev_ctx.GetPlace());
-  T* encode_grad_out_data =
-      encode_grad_out->mutable_data<T>(phi::DDim{2 * k}, dev_ctx.GetPlace());
-  gather_buff->mutable_data<T>(phi::DDim{2 * k * nranks}, dev_ctx.GetPlace());
+  T* v_out_data = dev_ctx.template Alloc<T>(v_out);
+  T* u_out_data = dev_ctx.template Alloc<T>(u_out);
+
+  encode_grad_out->Resize(phi::DDim{2 * k});
+  T* encode_grad_out_data = dev_ctx.template Alloc<T>(encode_grad_out);
+
+  gather_buff->Resize(phi::DDim{2 * k * nranks});
+  dev_ctx.template Alloc<T>(gather_buff);
 
   int buf_size = paddle::communication::dgc::get_buffer_size(k);
   phi::Allocator::AllocationPtr tmp_ious_data;
