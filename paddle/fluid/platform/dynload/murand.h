@@ -17,26 +17,14 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/murand.h"
 
-namespace phi {
+namespace paddle {
+namespace platform {
 namespace dynload {
-extern std::once_flag murand_dso_flag;
-extern void *murand_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_MURAND_WRAP(__name)                   \
-  struct DynLoad__##__name {                                       \
-    template <typename... Args>                                    \
-    murandStatus_t operator()(Args... args) {                      \
-      using murandFunc = decltype(&::__name);                      \
-      std::call_once(murand_dso_flag, []() {                       \
-        murand_dso_handle = phi::dynload::GetCurandDsoHandle();    \
-      });                                                          \
-      static void *p_##__name = dlsym(murand_dso_handle, #__name); \
-      return reinterpret_cast<murandFunc>(p_##__name)(args...);    \
-    }                                                              \
-  };                                                               \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_MURAND_WRAP(__name)    \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define MURAND_RAND_ROUTINE_EACH(__macro)      \
@@ -48,7 +36,8 @@ extern void *murand_dso_handle;
   __macro(murandGenerateNormal);               \
   __macro(murandDestroyGenerator);
 
-MURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MURAND_WRAP);
+MURAND_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_MURAND_WRAP);
 
 }  // namespace dynload
-}  // namespace phi
+}  // namespace platform
+}  // namespace paddle
