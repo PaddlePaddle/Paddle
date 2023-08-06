@@ -63,6 +63,8 @@ class PhiKernelInstruction : public InstructionBase {
   phi::KernelContext kernel_context_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
+
+  std::string phi_op_name_;
 };
 
 }  // namespace framework

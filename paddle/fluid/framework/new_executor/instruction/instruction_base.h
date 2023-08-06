@@ -183,9 +183,6 @@ class InstructionBase {
   std::unordered_map<::ir::Value, std::vector<int>> output_index_;
 
   std::unordered_set<::ir::Value> no_need_buffer_values_;
-
- protected:
-  std::string phi_op_name_;
 };
 
 }  // namespace framework
