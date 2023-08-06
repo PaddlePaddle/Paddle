@@ -691,7 +691,15 @@ class SymbolicStaticFunction(StaticFunction):
         ) = self._function_spec.args_to_input_spec(args, kwargs)
         self.last_call_input_spec = input_args_with_spec
 
-        from sot import symbolic_translate
+        try:
+            from sot import symbolic_translate
+        except:
+            import os
+
+            os.system(
+                "pip install git+https://github.com/PaddlePaddle/PaddleSOT@develop"
+            )
+            from sot import symbolic_translate
 
         build_strategy = self._kwargs.get("build_strategy", None)
         traced_fun = symbolic_translate(

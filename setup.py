@@ -881,9 +881,6 @@ def get_setup_requires():
                 continue
             setup_requires_tmp += [setup_requires_i]
         setup_requires = setup_requires_tmp
-        setup_requires.append(
-            "paddlesot @ git+https://github.com/PaddlePaddle/PaddleSOT@develop"
-        )
         return setup_requires
     else:
         raise RuntimeError(

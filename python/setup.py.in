@@ -513,7 +513,6 @@ if sys.version_info >= (3,7):
         if "<\"3.6\"" in setup_requires_i or "<=\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i or "<\"3.7\"" in setup_requires_i:
             continue
         setup_requires_tmp+=[setup_requires_i]
-    setup_requires_tmp.append("paddlesot @ git+https://github.com/PaddlePaddle/PaddleSOT@develop")
     setup_requires = setup_requires_tmp
 
 # the prefix is sys.prefix which should always be usr
