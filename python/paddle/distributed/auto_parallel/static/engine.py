@@ -1006,17 +1006,17 @@ class Engine:
                         )
                     except core.EOFException:
                         break
-                    # lr = auto_utils.get_lr(self.optimizer)
-                    # logs = self._prepare_logger(
-                    #     outs,
-                    #     epoch,
-                    #     step,
-                    #     lr,
-                    #     fetch_names,
-                    #     fetch_indices,
-                    #     self._mode,
-                    # )
-                    # cbks.on_batch_end('train', step, logs)
+                    lr = auto_utils.get_lr(self.optimizer)
+                    logs = self._prepare_logger(
+                        outs,
+                        epoch,
+                        step,
+                        lr,
+                        fetch_names,
+                        fetch_indices,
+                        self._mode,
+                    )
+                    cbks.on_batch_end('train', step, logs)
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(

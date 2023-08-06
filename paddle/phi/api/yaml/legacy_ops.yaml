@@ -405,15 +405,6 @@
     func : fused_softmax_mask_upper_triangle
   backward: fused_softmax_mask_upper_triangle_grad
 
-- op : fused_softmax_mask_upper_triangle
-  args : (Tensor X)
-  output : Tensor(Out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel:
-    func : fused_softmax_mask_upper_triangle
-  backward: fused_softmax_mask_upper_triangle_grad
-
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
   output: Tensor(out)

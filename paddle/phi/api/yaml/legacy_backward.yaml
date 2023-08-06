@@ -252,16 +252,6 @@
   kernel:
     func : fused_softmax_mask_upper_triangle_grad
 
-- backward_op : fused_softmax_mask_upper_triangle_grad
-  forward : fused_softmax_mask_upper_triangle(Tensor X) -> Tensor(Out)
-  args: (Tensor Out, Tensor Out_grad)
-  output : Tensor(X_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [Out_grad]
-  kernel:
-    func : fused_softmax_mask_upper_triangle_grad
-
 - backward_op : hardswish_grad
   forward : hardswish (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
