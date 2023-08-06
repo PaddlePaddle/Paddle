@@ -20,6 +20,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
@@ -77,21 +78,24 @@ GraphCompiler::CompilationResult GraphCompiler::Build(
 
   parallel_compiler_ =
       std::make_shared<ParallelCompiler>(scope_, graph_, option, target_);
-  auto instructions = (*parallel_compiler_.get())();
+  auto result = (*parallel_compiler_.get())();
+
+  // Dump compilation result
+  backends::CompilationInfoDumper dumper(result);
 
   if (options.remove_unused_variables) {
-    RemoveInvalidVariables(instructions);
+    RemoveInvalidVariables(result.instructions);
   }
 
   if (options.with_buffer_handle_instruction_inserted) {
     VLOG(3) << "option.with_buffer_handle_instruction_inserted enable";
-    InsertBufferHandlers(&instructions);
+    InsertBufferHandlers(&result.instructions);
   }
   VLOG(2) << "Compile With Parallel Compiler Done!";
 
   GraphCompiler::CompilationResult compilation_result;
   compilation_result.runtime_program.reset(
-      new Program(scope_, std::move(instructions)));
+      new Program(scope_, std::move(result.instructions)));
   return compilation_result;
 }
 

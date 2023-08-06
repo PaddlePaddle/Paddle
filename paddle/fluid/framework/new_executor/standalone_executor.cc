@@ -157,7 +157,6 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   // return Fetch Tensors
-
   if (FLAGS_enable_new_ir_in_executor) {
     framework::FetchList fetch_res;
 

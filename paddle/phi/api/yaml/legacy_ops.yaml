@@ -9,7 +9,7 @@
   kernel :
     func : adadelta
     data_type : param
-  optional : master_param
+  optional : master_param, master_param_out
   inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out), (master_param -> master_param_out)
 
 - op : add
