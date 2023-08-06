@@ -146,11 +146,17 @@ from .tensor.logic import logical_and  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
 from .tensor.logic import logical_xor  # noqa: F401
+from .tensor.logic import logical_xor_  # noqa: F401
 from .tensor.logic import bitwise_and  # noqa: F401
+from .tensor.logic import bitwise_and_  # noqa: F401
 from .tensor.logic import bitwise_not  # noqa: F401
+from .tensor.logic import bitwise_not_  # noqa: F401
 from .tensor.logic import bitwise_or  # noqa: F401
+from .tensor.logic import bitwise_or_  # noqa: F401
 from .tensor.logic import bitwise_xor  # noqa: F401
+from .tensor.logic import bitwise_xor_  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
+from .tensor.logic import not_equal_  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
 from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
@@ -217,6 +223,7 @@ from .tensor.math import asin_  # noqa: F401
 from .tensor.math import atan  # noqa: F401
 from .tensor.math import atan_  # noqa: F401
 from .tensor.math import atan2  # noqa: F401
+from .tensor.math import atan2_  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import cos_  # noqa: F401
@@ -225,9 +232,11 @@ from .tensor.math import tan_  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cosh_  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
+from .tensor.math import cumsum_  # noqa: F401
 from .tensor.math import cummax  # noqa: F401
 from .tensor.math import cummin  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
+from .tensor.math import cumprod_  # noqa: F401
 from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
 from .tensor.math import logit_  # noqa: F401
@@ -276,13 +285,18 @@ from .tensor.math import minimum  # noqa: F401
 from .tensor.math import amin  # noqa: F401
 from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
+from .tensor.math import divide_  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
+from .tensor.math import floor_divide_  # noqa: F401
 from .tensor.math import remainder  # noqa: F401
 from .tensor.math import remainder_  # noqa: F401
 from .tensor.math import mod  # noqa: F401
+from .tensor.math import mod_  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
+from .tensor.math import floor_mod_  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
 from .tensor.math import renorm  # noqa: F401
+from .tensor.math import renorm_  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
@@ -337,6 +351,7 @@ from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
 from .tensor.math import ldexp  # noqa: F401
+from .tensor.math import ldexp_  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
@@ -486,9 +501,11 @@ __all__ = [  # noqa
     'empty_like',
     'eye',
     'cumsum',
+    'cumsum_',
     'cummax',
     'cummin',
     'cumprod',
+    'cumprod_',
     'logaddexp',
     'logcumsumexp',
     'logit',
@@ -553,8 +570,11 @@ __all__ = [  # noqa
     'isinf',
     'uniform',
     'floor_divide',
+    'floor_divide_',
     'remainder',
+    'remainder_',
     'floor_mod',
+    'floor_mod_',
     'roll',
     'batch',
     'max',
@@ -600,6 +620,7 @@ __all__ = [  # noqa
     'set_grad_enabled',
     'is_grad_enabled',
     'mod',
+    'mod_',
     'abs',
     'abs_',
     'tril',
@@ -640,10 +661,12 @@ __all__ = [  # noqa
     'square',
     'square_',
     'divide',
+    'divide_',
     'ceil',
     'atan',
     'atan_',
     'atan2',
+    'atan2_',
     'rad2deg',
     'deg2rad',
     'gcd',
@@ -750,6 +773,7 @@ __all__ = [  # noqa
     'clone',
     'kthvalue',
     'renorm',
+    'renorm_',
     'take_along_axis',
     'put_along_axis',
     'nan_to_num',
@@ -764,6 +788,7 @@ __all__ = [  # noqa
     'take',
     'frexp',
     'ldexp',
+    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',

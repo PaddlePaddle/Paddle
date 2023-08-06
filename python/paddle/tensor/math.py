@@ -2381,6 +2381,31 @@ def renorm(x, p, axis, max_norm):
         return out
 
 
+def renorm_(x, p, axis, max_norm):
+    """
+    Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_renorm`.
+    """
+    input_shape = x.shape
+    if not axis < len(input_shape):
+        raise ValueError(
+            "the axis:{} should be less then the shape's size {}:{}".format(
+                axis, len(input_shape), input_shape
+            )
+        )
+    if not axis >= 0:
+        if not axis >= -1 * len(input_shape):
+            raise ValueError(
+                "the axis:{} should not be less than -1 * length of input_shape:{}".format(
+                    axis, -1 * len(input_shape)
+                )
+            )
+        axis = axis + len(input_shape)
+    if in_dynamic_mode():
+        out = _C_ops.renorm_(x, p, axis, max_norm)
+        return out
+
+
 def inner(x, y, name=None):
     """
 
