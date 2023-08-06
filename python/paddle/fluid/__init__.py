@@ -108,7 +108,6 @@ __all__ = (
         'disable_dygraph',
         'enable_imperative',
         'disable_imperative',
-        'optimizer',
         'backward',
         'LoDTensor',
         'LoDTensorArray',

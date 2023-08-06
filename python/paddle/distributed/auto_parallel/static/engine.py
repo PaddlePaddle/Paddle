@@ -146,11 +146,10 @@ class Engine:
 
         if optimizer and not isinstance(
             optimizer,
-            (paddle.optimizer.Optimizer, paddle.static.Optimizer),
+            (paddle.optimizer.Optimizer),
         ):
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-                " or `paddle.static.Optimizer`."
             )
         self._optimizer = auto_utils.validate_opt(optimizer)
 
