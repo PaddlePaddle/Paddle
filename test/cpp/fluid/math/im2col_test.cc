@@ -87,7 +87,7 @@ void testIm2col() {
   im2col_ocf(*context, input, dilation, stride, padding, &output_ocf);
 
   std::array<float, 8> out_cfo_data = {0, 1, 1, 2, 3, 4, 4, 5};
-  std::array<float, 8> out_ocf_data = {0, 1, 1, 2, 3, 4, 4, 5};
+  std::array<float, 8> out_ocf_data = {0, 1, 3, 4, 1, 2, 4, 5};
 
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
