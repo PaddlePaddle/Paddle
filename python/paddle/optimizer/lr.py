@@ -45,14 +45,6 @@ __all__ = [  # noqa
     'MultiplicativeDecay',
     'OneCycleLR',
     'CyclicLR',
-    'exponential_decay',
-    'natural_exp_decay',
-    'inverse_time_decay',
-    'polynomial_decay',
-    'piecewise_decay',
-    'noam_decay',
-    'cosine_decay',
-    'linear_lr_warmup',
 ]
 
 
