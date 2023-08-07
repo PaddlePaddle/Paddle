@@ -745,13 +745,13 @@ class TestMobileNet(unittest.TestCase):
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
-    #     self.verify_predict()
+        self.verify_predict()
 
-    # def verify_predict(self):
-    #     # MobileNet-V1
-    #     self.assert_same_predict("MobileNetV1")
-    #     # MobileNet-V2
-    #     self.assert_same_predict("MobileNetV2")
+    def verify_predict(self):
+        # MobileNet-V1
+        self.assert_same_predict("MobileNetV1")
+        # MobileNet-V2
+        self.assert_same_predict("MobileNetV2")
 
 
 if __name__ == '__main__':
