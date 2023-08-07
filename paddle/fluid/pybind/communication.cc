@@ -111,7 +111,7 @@ void BindTCPStore(py::module *m) {
            py::arg("timeout") = 900,
            py::call_guard<py::gil_scoped_release>());
 
-  m->def("create_or_get_tcp_store",
+  m->def("create_or_get_global_tcp_store",
          &phi::distributed::CreateOrGetGlobalTCPStore);
 }
 

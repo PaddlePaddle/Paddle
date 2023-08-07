@@ -20,10 +20,10 @@
 #include <string>
 #include <vector>
 
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
 namespace phi {
 namespace distributed {
-class TCPStore;
-
 namespace auto_parallel {
 
 class ProcessMesh;

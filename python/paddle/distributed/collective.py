@@ -319,7 +319,7 @@ def is_available():
 
 
 def _init_parallel_env(backend):
-    store = core.get_global_tcp_store()
+    store = core.create_or_get_global_tcp_store()
     global_env = _get_global_env()
     rank = global_env.rank
     world_size = global_env.world_size

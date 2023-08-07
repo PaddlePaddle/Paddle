@@ -17,7 +17,6 @@
 #include <cstdlib>
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace phi {
 namespace distributed {
