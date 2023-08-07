@@ -168,13 +168,13 @@ class TestPybind(unittest.TestCase):
         newir_program = get_ir_program()
         matmul_op = newir_program.block().get_ops()[1]
         operands = matmul_op.operands()
-        self.assertEqual(len(operands), 0)
+        self.assertEqual(len(operands), 2)
 
     def test_results(self):
         newir_program = get_ir_program()
         matmul_op = newir_program.block().get_ops()[1]
         results = matmul_op.results()
-        self.assertEqual(len(results), 0)
+        self.assertEqual(len(results), 1)
 
 
 if __name__ == "__main__":
