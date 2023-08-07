@@ -69,12 +69,10 @@ using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
                                                   ir::Program*)>;
 using AttributeHandlerFn = std::function<ir::Attribute(
     ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
-constexpr char kTargetDialectPrefix[] = "pd.";
-constexpr char kEmptyVarName[] = "@EMPTY@";
+constexpr char kTargetDialectPrefix[] = "pd.";  // NOLINT
+constexpr char kEmptyVarName[] = "@EMPTY@";     // NOLINT
 
-static const std::unordered_set<std::string> special_non_inplace_ops = {
-    "batch_norm",
-};
+static const std::unordered_set<std::string> special_non_inplace_ops = {};
 
 static const std::unordered_set<std::string> special_inplace_ops = {
     "adagrad",
@@ -388,7 +386,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     if (legacy_input_vars.empty()) {
       if (info.optional) {
-        op_inputs.push_back(ir::OpResult(nullptr));
+        op_inputs.emplace_back(nullptr);
         continue;
       }
     }
@@ -484,7 +482,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                  "Op %s arg %s should be optional if it can be empty",
                  op_desc.Type(),
                  legacy_output_name);
-      op_output_types.push_back(ir::Type(nullptr));
+      op_output_types.emplace_back(nullptr);
       continue;
     }
 
@@ -521,7 +519,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << info.type_name << " " << legacy_output_name << " "
                << legacy_output_vars.size();
       if (legacy_output_vars.empty()) {
-        op_output_types.push_back(ir::Type(nullptr));
+        op_output_types.emplace_back(nullptr);
         continue;
       }
 
@@ -548,7 +546,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
       std::vector<ir::Type> types;
       for (const auto& var_name : legacy_output_vars) {
         if (var_name == kEmptyVarName) {
-          types.push_back(ir::Type(nullptr));
+          types.emplace_back(nullptr);
           arg_to_idx[var_name] = cur_output_idx;
           continue;
         }
@@ -986,7 +984,7 @@ struct FeedOpTranscriber : public OpTranscriber {
   }
 };
 
-struct FeedWithPlaceOpTranscriber : public OpTranscriber {
+struct DataOpTranscriber : public FeedOpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
       const std::string& normalized_op_name,
@@ -1006,16 +1004,6 @@ struct FeedWithPlaceOpTranscriber : public OpTranscriber {
     };
 
     return attribute_map;
-  }
-
-  std::vector<ir::OpResult> GenerateOperationInput(
-      ir::IrContext* ctx,
-      TranslationContext* param_map,
-      const OpDesc& op_desc,
-      const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos,
-      ir::Program* program) override {
-    return {};
   }
 };
 
@@ -1473,7 +1461,7 @@ OpTranslator::OpTranslator() {
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
-  special_handlers["feed_with_place"] = FeedWithPlaceOpTranscriber();
+  special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();

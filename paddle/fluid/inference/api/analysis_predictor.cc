@@ -641,7 +641,7 @@ bool AnalysisPredictor::PrepareProgram(
 }
 
 bool AnalysisPredictor::CreateExecutor() {
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  executor_ = std::make_unique<paddle::framework::NaiveExecutor>(place_);
   return true;
 }
 
@@ -1341,7 +1341,7 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
 void AnalysisPredictor::PrepareArgument() {
   VLOG(3) << "AnalysisPredictor::PrepareArgument";
   // Init std::unique_ptr argument_.
-  argument_.reset(new Argument);
+  argument_ = std::make_unique<Argument>();
   argument_->SetUseGPU(config_.use_gpu());
   argument_->SetUseCutlass(config_.use_cutlass_);
   argument_->SetUseFcPadding(config_.use_fc_padding());
@@ -1570,7 +1570,8 @@ void AnalysisPredictor::PrepareArgument() {
 
   if (!config_.ir_optim()) {
     argument_->SetEnableIrOptim(false);
-    if (config_.enable_gpu_mixed_) {
+    if (config_.enable_gpu_mixed_ &&
+        model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
@@ -1886,6 +1887,10 @@ AnalysisPredictor::GetInputTypes() {
       input_type[name] = paddle_infer::DataType::UINT8;
     } else if (dtype == paddle::framework::proto::VarType::INT8) {
       input_type[name] = paddle_infer::DataType::INT8;
+    } else if (dtype == paddle::framework::proto::VarType::FP64) {
+      input_type[name] = paddle_infer::DataType::FLOAT64;
+    } else if (dtype == paddle::framework::proto::VarType::BOOL) {
+      input_type[name] = paddle_infer::DataType::BOOL;
     } else {
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported data type `%s` when get input dtype ", dtype));
@@ -2338,7 +2343,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
           auto ShapeMaxFreq =
               [](const std::map<int32_t, int32_t> &m) -> int32_t {
             std::vector<std::pair<int32_t, int32_t>> counter;
-            for (auto &it : m) counter.push_back(it);
+            for (auto &it : m) counter.emplace_back(it);
             std::sort(counter.begin(),
                       counter.end(),
                       [](std::pair<int32_t, int32_t> &a,
@@ -2609,7 +2614,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.trt_engine_memory_sharing()) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .releaseContextMemory(predictor_id_);
+        .ReleaseContextMemory(predictor_id_);
   }
 #endif
 }

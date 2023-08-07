@@ -95,7 +95,7 @@ struct TestFusedLayernormResidualDropoutBias {
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
-  ~TestFusedLayernormResidualDropoutBias() {}
+  ~TestFusedLayernormResidualDropoutBias() = default;
 
   void SetUp() {
     using U = LayerNormParamType<T>;

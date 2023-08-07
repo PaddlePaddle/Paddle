@@ -3132,10 +3132,10 @@ def cholesky_solve(x, y, upper=False, name=None):
     is also batches.
 
     Args:
-        x (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
-        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
+        x (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
             zero or more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
         upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
         name(str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
