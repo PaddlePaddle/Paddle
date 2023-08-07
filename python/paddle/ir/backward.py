@@ -17,11 +17,10 @@ from collections.abc import Sequence
 
 import paddle.ir
 from paddle.fluid.core import call_vjp, has_vjp
-from paddle.fluid.libpaddle.ir import get_op_result_dtype, get_op_result_shape
 from paddle.ir.backward_utils import State
 
 """
-    grad only: for templete test, will combine in paddle.grad .
+    grad: for templete test, will combine in paddle.grad .
     calc_gradient: for internal use, optest, parallel etc .
     calc_gradient_helper: for dygraph to static .
 """
@@ -76,7 +75,7 @@ def prepare_grad_outputs(
     eg: split
 
     update value_to_valuegrad and op_to_opgrad
-    return complete_outputs and
+    return complete_outputs and complete_gradoutputs, backward_ops
 
     """
     if not grad_outputs:
@@ -93,9 +92,9 @@ def prepare_grad_outputs(
         # bwd : op1G <- op2G <- op3G <- outputG <- fillop/feedop
         if grad is None:
             paddle.full(
-                get_op_result_shape(output),
+                output.shape,
                 1.0,
-                dtype=get_op_result_dtype(output),
+                dtype=output.dtype,
             )
             op_list = block.get_ops()
             fillop = op_list[len(op_list) - 1]
@@ -107,12 +106,12 @@ def prepare_grad_outputs(
             )
             value_to_valuegrad[output] = [[fillop.result(0)]]
         else:
-            if get_op_result_shape(output) != get_op_result_shape(grad):
+            if output.shape != grad.shape:
                 raise ValueError(
                     "The shape of grad_output[%d] should be the same as the shape of output[%d]"
                     % (i, i)
                 )
-            if get_op_result_dtype(output) != get_op_result_dtype(grad):
+            if output.dtype != grad.dtype:
                 raise ValueError(
                     "The dtype of grad_output[%d] should be the same as the dtype of output[%d]"
                     % (i, i)
@@ -138,9 +137,9 @@ def prepare_grad_outputs(
                 continue
             else:
                 paddle.full(
-                    get_op_result_shape(opresult),
+                    opresult.shape,
                     0.0,
-                    dtype=get_op_result_dtype(opresult),
+                    opresult.dtype,
                 )
                 fillop = block.get_ops()[len(block.get_ops()) - 1]
                 grad_value = fillop.result(0)
@@ -329,9 +328,9 @@ def append_backward_ops(
                     # but this bwd_op need a input.
 
                     paddle.full(
-                        get_op_result_shape(value),
+                        value.shape,
                         0.0,
-                        dtype=get_op_result_dtype(value),
+                        dtype=value.dtype,
                     )
                     fillop = block.ops[len(block.ops) - 1]
 
