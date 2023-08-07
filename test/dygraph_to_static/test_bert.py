@@ -20,8 +20,7 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
-from dy2st_test_utils import test_with_new_ir
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
