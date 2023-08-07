@@ -45,9 +45,7 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
       var_scope_(scope) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op &&
+  static_build_ = !FLAGS_new_executor_use_cuda_graph &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
