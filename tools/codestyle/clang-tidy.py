@@ -81,7 +81,7 @@ def find_compilation_database(path):
     while not os.path.isfile(os.path.join(result, path)):
         if os.path.realpath(result) == '/':
             print('Warning: could not find compilation database.')
-            sys.exit(0)
+            return None
         result += '../'
     return os.path.realpath(result)
 
@@ -320,6 +320,8 @@ def main():
     else:
         # Find our database
         build_path = find_compilation_database(db_path)
+        if build_path is None:
+            sys.exit(0)
 
     try:
         invocation = [args.clang_tidy_binary, '-list-checks']
