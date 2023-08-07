@@ -234,11 +234,9 @@ def get_skip_gc_vars(program_list: List[Program]):
                 op_info = OpInOutInfo()
                 op_info.build_info(op)
                 for arg_name in op.input_arg_names + op.output_arg_names:
-                    print(f"{op.type} check arg name {arg_name}")
                     if var_can_be_deleted(
                         arg_name, block
                     ) and op_info.is_needed(arg_name):
-                        print(f"{arg_name} is needed")
                         required_vars[idx].add(arg_name)
 
     # step2: Get the `skip_gc_vars` that vars of current sub_program might be used in the later sub_program
