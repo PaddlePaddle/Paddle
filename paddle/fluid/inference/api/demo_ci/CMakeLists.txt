@@ -248,7 +248,8 @@ if(WITH_GPU)
 endif()
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
-target_link_libraries(${DEMO_NAME} ${DEPS})
+target_link_libraries(${DEMO_NAME} "-Wl,--start-group" ${DEPS}
+                      "-Wl,--end-group")
 if(WIN32)
   if("${CMAKE_GENERATOR}" MATCHES "Ninja")
     set(LIB_PATH ${CMAKE_BINARY_DIR})
