@@ -261,4 +261,5 @@ __all__ = [  # noqa
     'multi_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',
+    'scaled_dot_product_attention',
 ]
