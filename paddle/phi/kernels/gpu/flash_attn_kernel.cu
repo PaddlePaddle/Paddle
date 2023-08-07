@@ -25,6 +25,9 @@
 #include "paddle/phi/kernels/reshape_kernel.h"
 
 PD_DECLARE_bool(cudnn_deterministic);
+#ifdef PADDLE_WITH_FLASHATTN
+#include "paddle/phi/backends/dynload/flashattn.h"
+#endif
 
 namespace phi {
 
