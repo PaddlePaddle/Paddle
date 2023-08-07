@@ -21,12 +21,8 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
-
-#ifdef PADDLE_WITH_FLASHATTN
-#include "paddle/phi/backends/dynload/flashattn.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
-#endif
+#include "paddle/phi/kernels/reshape_kernel.h"
 
 DECLARE_bool(cudnn_deterministic);
 
@@ -52,6 +48,7 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
                                DenseTensor* dq,
                                DenseTensor* dk,
                                DenseTensor* dv) {
+#ifdef PADDLE_WITH_FLASHATTN
   const cudaStream_t stream = ctx.stream();
 
   auto dims = q.dims();
@@ -77,8 +74,7 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
   uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
-  VLOG(10) << "FlashAttn bwd seed: " << seed << ", offset: " << offset
-           << ", num_splits:" << num_splits;
+  VLOG(10) << "FlashAttn bwd seed: " << seed << ", offset: " << offset;
 
   int64_t seqlen_q = ((max_seqlen_q + 16 - 1) / 16) * 16;
   DenseTensor dsoftmax = Empty<float>(ctx, {batch_size, num_heads, seqlen_q});
@@ -174,6 +170,9 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
 
   int64_t q_size = total_q * num_heads * head_size;
   ComputeScaleQ(ctx, q_size, scale, dq->data<T>(), dq->data<T>());
+#else
+  RaiseNotSupportedError();
+#endif
 }
 
 template <typename T, typename Context>

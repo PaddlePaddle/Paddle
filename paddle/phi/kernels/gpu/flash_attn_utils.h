@@ -24,6 +24,7 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_FLASHATTN
 static std::pair<uint64_t, uint64_t> GenerateRNGState(
     const GPUContext& ctx,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
@@ -208,12 +209,6 @@ static void CheckFlashAttnStatus(const bool status) {
                         phi::dynload::flash_attn_error()));
 }
 
-static void RaiseNotSupportedError() {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("FlashAttention is unsupported, please check "
-                                 "the GPU compability and CUDA Version."));
-}
-
 template <typename T>
 __global__ void SimleScaleKernel(const T* input,
                                  int64_t numel,
@@ -258,6 +253,13 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
                    origin_dims[rank - 1]};
   }
   return mask_dim_4d;
+}
+#endif
+
+static void RaiseNotSupportedError() {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("FlashAttention is unsupported, please check "
+                                 "the GPU compability and CUDA Version."));
 }
 
 }  // namespace phi
