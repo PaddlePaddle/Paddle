@@ -44,7 +44,7 @@ class TestPropertySave(unittest.TestCase):
             self.a.get_float(1)
 
     def test_set(self):
-        """test propety set."""
+        """test property set."""
         try:
             a = paddle.framework.core.Property()
             a.set_float('float', 10.0)

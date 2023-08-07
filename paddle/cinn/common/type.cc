@@ -44,14 +44,24 @@ struct Type::Storage {
 
 Type::~Type() {}
 
+std::string Type::to_string() const {
+  std::string ret = "";
+  if (is_cpp_const()) ret += "const ";
+  ret += Type2Str(*this);
+
+  if (lanes() > 1) {
+    ret += "<";
+    ret += std::to_string(lanes());
+    ret += ">";
+  }
+  if (is_cpp_handle()) ret += "*";
+  if (is_cpp_handle2()) ret += "**";
+
+  return ret;
+}
+
 std::ostream &operator<<(std::ostream &os, const Type &t) {
-  if (t.is_cpp_const()) os << "const ";
-  os << Type2Str(t);
-
-  if (t.lanes() > 1) os << "<" << t.lanes() << ">";
-  if (t.is_cpp_handle()) os << "*";
-  if (t.is_cpp_handle2()) os << "**";
-
+  os << t.to_string();
   return os;
 }
 

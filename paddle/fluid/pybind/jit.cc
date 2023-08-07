@@ -254,7 +254,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     if (disable_eval_frame != Py_True) {
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
+      VLOG(7) << "Start eval new frame and code.";
       auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      Py_DECREF(result);
+      Py_DECREF(code);
       return out;
     } else {
       auto out = eval_custom_code(tstate, frame, code, throw_flag);
