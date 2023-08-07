@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
 #include <typeindex>
 
 namespace ir {
 namespace drr {
 
+class IrTensor;
 class IrShape;
 class IrDtype;
 
@@ -27,10 +29,11 @@ class ShapeInterface final {
   bool operator==(const ShapeInterface& other) const;
 
  private:
-  ShapeInterface(std::unique_ptr<IrShape> shape) : shape_(std::move(shape)) {}
+  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
 
-  friend class IrShape;
-  std::unique_ptr<IrShape> shape_;
+  friend class IrTensor;
+
+  const IrShape* shape_;
 };
 
 class DtypeInterface final {
@@ -38,13 +41,17 @@ class DtypeInterface final {
   bool operator==(const DtypeInterface& other) const;
 
  private:
-  std::unique_ptr<IrDtype> dtype_;
+  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
+
+  friend class IrTensor;
+
+  const IrDtype* dtype_;
 };
 
 class TensorInterface {
  public:
-  const ShapeInterface& Shape() const;
-  const DtypeInterface& Dtype() const;
+  virtual ShapeInterface Shape() const = 0;
+  virtual DtypeInterface Dtype() const = 0;
 
  private:
   explicit TensorInterface(const std::string& tensor_name)
