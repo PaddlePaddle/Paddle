@@ -85,6 +85,8 @@ class GraphCompiler final {
     // corresponding LoweredFuncs of above grouped nodes,
     // if it is empty then graph_compiler will generate for them
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    // stream
+    void* stream = nullptr;
 
     // apply results of auto-tune to compile
     void Apply(const auto_schedule::TuningResult& tuning_result);
