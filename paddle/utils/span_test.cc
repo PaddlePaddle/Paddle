@@ -13,7 +13,6 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 //    (See accompanying file ../../LICENSE_1_0.txt or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
-#include <array>
 #include <cassert>
 #include <deque>
 #include <initializer_list>
@@ -70,24 +69,24 @@ TEST(pointer_length_ctor, span) {
 
   // dynamic size
   {
-    std::array<int, 3> arr = {1, 2, 3};
-    span<int> s(arr.data(), 3);
+    int arr[] = {1, 2, 3};  // NOLINT
+    span<int> s(arr, 3);
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 
   // fixed size
   {
-    std::array<int, 3> arr = {1, 2, 3};
-    span<int, 3> s(arr.data(), 3);
+    int arr[] = {1, 2, 3};  // NOLINT
+    span<int, 3> s(arr, 3);
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 }
 
@@ -101,24 +100,24 @@ TEST(pointer_pointer_ctor, span) {
 
   // dynamic size
   {
-    std::array<int, 3> arr = {1, 2, 3};
-    span<int> s{arr.data(), arr.data() + 3};
+    int arr[] = {1, 2, 3};  // NOLINT
+    span<int> s{arr, arr + 3};
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 
   // fixed size
   {
-    std::array<int, 3> arr = {1, 2, 3};
-    span<int, 3> s{arr.data(), arr.data() + 3};
+    int arr[] = {1, 2, 3};  // NOLINT
+    span<int, 3> s{arr, arr + 3};
 
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 }
 
@@ -172,42 +171,42 @@ TEST(c_array_ctor, span) {
 
   // non-const, dynamic size
   {
-    std::array<int, 3> arr = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 
   // const, dynamic size
   {
-    std::array<int, 3> arr = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int const> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 
   // non-const, static size
   {
-    std::array<int, 3> arr = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 
   // const, dynamic size
   {
-    std::array<int, 3> arr = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int const, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.begin());
-    CHECK_EQ(s.end(), arr.end());
+    CHECK_EQ(s.data(), arr);
+    CHECK_EQ(s.begin(), std::begin(arr));
+    CHECK_EQ(s.end(), std::end(arr));
   }
 }
 
@@ -493,80 +492,80 @@ TEST(ctor_from_spans, span) {
 TEST(subview, span) {
   // first<N>
   {
-    std::array<int, 5> arr = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto f = s.first<3>();
 
     static_assert(std::is_same<decltype(f), span<int, 3>>::value, "");
     CHECK_EQ(f.size(), 3UL);
-    CHECK_EQ(f.data(), arr.data());
-    CHECK_EQ(f.begin(), arr.data());
-    CHECK_EQ(f.end(), arr.data() + 3);
+    CHECK_EQ(f.data(), arr);
+    CHECK_EQ(f.begin(), arr);
+    CHECK_EQ(f.end(), arr + 3);
   }
 
   // last<N>
   {
-    std::array<int, 5> arr = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto l = s.last<3>();
 
     static_assert(std::is_same<decltype(l), span<int, 3>>::value, "");
     CHECK_EQ(l.size(), 3UL);
-    CHECK_EQ(l.data(), arr.data() + 2);
-    CHECK_EQ(l.begin(), arr.data() + 2);
+    CHECK_EQ(l.data(), arr + 2);
+    CHECK_EQ(l.begin(), arr + 2);
     CHECK_EQ(l.end(), std::end(arr));
   }
 
   // subspan<N>
   {
-    std::array<int, 5> arr = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto ss = s.subspan<1, 2>();
 
     static_assert(std::is_same<decltype(ss), span<int, 2>>::value, "");
     CHECK_EQ(ss.size(), 2UL);
-    CHECK_EQ(ss.data(), arr.data() + 1);
-    CHECK_EQ(ss.begin(), arr.data() + 1);
-    CHECK_EQ(ss.end(), arr.data() + 1 + 2);
+    CHECK_EQ(ss.data(), arr + 1);
+    CHECK_EQ(ss.begin(), arr + 1);
+    CHECK_EQ(ss.end(), arr + 1 + 2);
   }
 
   // first(n)
   {
-    std::array<int, 5> arr = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto f = s.first(3);
 
     static_assert(std::is_same<decltype(f), span<int>>::value, "");
     CHECK_EQ(f.size(), 3UL);
-    CHECK_EQ(f.data(), arr.data());
-    CHECK_EQ(f.begin(), arr.data());
-    CHECK_EQ(f.end(), arr.data() + 3);
+    CHECK_EQ(f.data(), arr);
+    CHECK_EQ(f.begin(), arr);
+    CHECK_EQ(f.end(), arr + 3);
   }
 
   // last(n)
   {
-    std::array<int, 5> arr = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto l = s.last(3);
 
     static_assert(std::is_same<decltype(l), span<int>>::value, "");
     CHECK_EQ(l.size(), 3UL);
-    CHECK_EQ(l.data(), arr.data() + 2);
-    CHECK_EQ(l.begin(), arr.data() + 2);
+    CHECK_EQ(l.data(), arr + 2);
+    CHECK_EQ(l.begin(), arr + 2);
     CHECK_EQ(l.end(), std::end(arr));
   }
 
   // subspan(n)
   {
-    std::array<int, 5> arr = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto ss = s.subspan(1, 2);
 
     static_assert(std::is_same<decltype(ss), span<int>>::value, "");
     CHECK_EQ(ss.size(), 2UL);
-    CHECK_EQ(ss.data(), arr.data() + 1);
-    CHECK_EQ(ss.begin(), arr.data() + 1);
-    CHECK_EQ(ss.end(), arr.data() + 1 + 2);
+    CHECK_EQ(ss.data(), arr + 1);
+    CHECK_EQ(ss.begin(), arr + 1);
+    CHECK_EQ(ss.end(), arr + 1 + 2);
   }
 
   // TODO(tcbrindle): Test all the dynamic subspan possibilities
