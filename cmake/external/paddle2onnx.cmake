@@ -103,7 +103,7 @@ function(download_paddle2onnx)
     ${PADDLE2ONNX_DOWNLOAD_DIR}/${PADDLE2ONNX_CACHE_FILENAME}
     EXPECTED_MD5 ${PADDLE2ONNX_URL_MD5}
     STATUS ERR)
-  if(ERR STREQUAL 0)
+  if(ERR EQUAL 0)
     message(STATUS "Download ${PADDLE2ONNX_CACHE_FILENAME} success")
   else()
     message(
