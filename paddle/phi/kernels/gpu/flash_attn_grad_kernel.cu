@@ -21,8 +21,12 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+
+#ifdef PADDLE_WITH_FLASHATTN
+#include "paddle/phi/backends/dynload/flashattn.h"
+#include "paddle/phi/kernels/gpu/flash_attn_utils.h"
+#endif
 
 PD_DECLARE_bool(cudnn_deterministic);
 
