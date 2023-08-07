@@ -315,8 +315,6 @@ inline void RunProgramAPI(
   VLOG(2) << "RunProgramOp use interpretercore to execute program.";
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
-  int64_t scope_i = reinterpret_cast<std::uintptr_t>(global_inner_scope);
-  program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
@@ -361,7 +359,8 @@ inline void RunProgramAPI(
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
+  if (!interpretercore_info_cache.Has(
+          program_id, global_inner_scope, /*is_grad=*/false)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -377,7 +376,7 @@ inline void RunProgramAPI(
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
       auto ir_program = paddle::framework::ConstructFowardIrProgram(
-          forward_global_block, backward_global_block, output_names, x);
+          forward_global_block, backward_global_block, output_names, x, params);
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
               std::move(ir_program),
@@ -428,8 +427,8 @@ inline void RunProgramAPI(
         1);
     VLOG(2) << "Get interpretercore cahce by program:" << program_id;
     // Step 1. get cache interpretercore
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
+    auto &cached_value = interpretercore_info_cache.GetMutable(
+        program_id, global_inner_scope, /*is_grad=*/false);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScope(x, global_inner_scope);
@@ -501,8 +500,6 @@ inline void RunProgramGradAPI(
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
   int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
-  int64_t scope_i = reinterpret_cast<std::uintptr_t>(global_inner_scope);
-  program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
 
   auto place = egr::Controller::Instance().GetExpectedPlace();
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
@@ -520,7 +517,8 @@ inline void RunProgramGradAPI(
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
+  if (!interpretercore_info_cache.Has(
+          program_id, global_inner_scope, /*is_grad=*/true)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -529,8 +527,12 @@ inline void RunProgramGradAPI(
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
     if (FLAGS_enable_new_ir_in_executor) {
-      auto res = paddle::framework::ConstructBackwardIrProgram(
-          backward_global_block, out_grad, x_grad, params_grad);
+      auto res =
+          paddle::framework::ConstructBackwardIrProgram(backward_global_block,
+                                                        out_grad,
+                                                        x_grad,
+                                                        params_grad,
+                                                        global_inner_scope);
 
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
@@ -552,9 +554,10 @@ inline void RunProgramGradAPI(
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly
     // after the related fwd_interpreter_core.
-    if (interpretercore_info_cache.Has(program_id, false)) {
+    if (interpretercore_info_cache.Has(program_id, global_inner_scope, false)) {
       auto fwd_interpreter_core =
-          interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false)
+          interpretercore_info_cache
+              .GetMutable(program_id, global_inner_scope, /*is_grad=*/false)
               .core_;
       interpreter_core->ShareWorkQueueFrom(fwd_interpreter_core);
       VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get() << " to "
@@ -586,8 +589,8 @@ inline void RunProgramGradAPI(
         paddle::platform::TracerEventType::UserDefined,
         1);
     VLOG(2) << "Get interpretercore cahce by program:" << program_id;
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/true);
+    auto &cached_value = interpretercore_info_cache.GetMutable(
+        program_id, global_inner_scope, /*is_grad=*/true);
     interpreter_core = cached_value.core_;
 
     // update scope

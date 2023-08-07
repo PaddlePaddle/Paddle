@@ -187,13 +187,18 @@ class InterpreterCoreInfoCache {
  public:
   static InterpreterCoreInfoCache& Instance();
 
-  bool Has(int64_t program_id, bool is_grad) {
+  bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
+    int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
+    program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
     return info_map_.find(program_id) != info_map_.end() &&
            info_map_[program_id].IsAvailable(is_grad);
   }
 
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
+                                              const framework::Scope* scope,
                                               bool is_grad) {
+    int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
+    program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
     return info_map_[program_id].GetMutable(is_grad);
   }
 
@@ -241,13 +246,15 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<std::string> output_names,
-    const std::vector<paddle::Tensor>& x);
+    const std::vector<paddle::Tensor>& x,
+    const std::vector<paddle::Tensor>& params);
 
 std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,
-    const std::vector<paddle::Tensor*>& params_grad);
+    const std::vector<paddle::Tensor*>& params_grad,
+    const paddle::framework::Scope* scope);
 
 }  // namespace framework
 }  // namespace paddle
