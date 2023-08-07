@@ -69,25 +69,27 @@ def attention_naive_with_mask(q, k, v, attn_bias):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
-is_sm75 = (
-    core.is_compiled_with_cuda()
-    and paddle.device.cuda.get_device_capability()[0] == 7
-    and paddle.device.cuda.get_device_capability()[1] == 5
-)
 is_sm8x = (
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
-is_sm_supported = is_sm75 or is_sm8x
+
+is_sm90 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 9
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
+is_sm_supported = is_sm8x or is_sm90
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
+    or get_cuda_version() < 11040
     or not is_sm_supported,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
-    "and device's compute capability must be 7.5 or 8.x",
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
 )
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
@@ -308,7 +310,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
+    or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
     "and device's compute capability must be 7.5 or 8.x",
@@ -322,15 +324,6 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         self.causal = False
 
     def test_dot_scale_product(self):
-        if (
-            not core.is_compiled_with_cuda()
-            or get_cuda_version() < 11030
-            or not is_sm_supported
-        ):
-            pass
-        print(
-            f"Test flash attn mask case shape {self.shape} dtype {self.dtype} causal {self.causal}"
-        )
         # test dynamic
         paddle.disable_static()
 

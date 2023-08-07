@@ -47,8 +47,8 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
     return true;
   }
 
-  for (size_t i = 0; i < reduce_dims.size(); ++i) {
-    if (reduce_dims[i] < 0) reduce_dims[i] = ndims + reduce_dims[i];
+  for (auto& reduce_dim : reduce_dims) {
+    if (reduce_dim < 0) reduce_dim = ndims + reduce_dim;
   }
   sort(reduce_dims.begin(), reduce_dims.end());
   for (size_t i = 0; i < reduce_dims.size(); ++i) {

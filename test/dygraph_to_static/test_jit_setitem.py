@@ -39,13 +39,13 @@ class TestSetItemBase(unittest.TestCase):
 
     def test_case(self):
         func = self.init_func()
-        dy_res = self.run_dygrah(func)
+        dy_res = self.run_dygraph(func)
         st_res = self.run_to_static(func)
 
         for dy_out, st_out in zip(dy_res, st_res):
             np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
-    def run_dygrah(self, func):
+    def run_dygraph(self, func):
         x = self.init_data()
         y = func(x)
         x_grad = paddle.grad(y, x)[0]
@@ -53,7 +53,7 @@ class TestSetItemBase(unittest.TestCase):
 
     def run_to_static(self, func):
         func = paddle.jit.to_static(func)
-        return self.run_dygrah(func)
+        return self.run_dygraph(func)
 
 
 class TestCase1(TestSetItemBase):
@@ -169,9 +169,28 @@ class TestCase11(TestSetItemBase):
 
         return foo
 
-    def run_dygrah(self, func):
+    def run_dygraph(self, func):
         x = self.init_data()
         value = paddle.ones((16, 32))
+        value.stop_gradient = False
+        y = func(x, value)
+        x_grad, value_grad = paddle.grad(y, [x, value])
+        return y, x_grad, value_grad
+
+
+class TestCase12(TestSetItemBase):
+    # Test combind-indexing
+    def init_func(self):
+        def foo(x, value):
+            y = x + 1
+            y[[0, 1], 1, :2] = value
+            return y
+
+        return foo
+
+    def run_dygraph(self, func):
+        x = self.init_data()
+        value = paddle.ones((32,))
         value.stop_gradient = False
         y = func(x, value)
         x_grad, value_grad = paddle.grad(y, [x, value])
