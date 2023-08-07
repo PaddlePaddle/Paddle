@@ -92,7 +92,6 @@ def create_test_data(shape=None, dtype=None, seed=None):
         return create_float_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "bfloat16":
         return create_bfloat16_test_data(shape=shape, seed=seed)
-        # since numpy does not support bfloat16 yet, use `paddle_bfloat` to replace
         # return create_float_test_data(shape=shape, dtype=bfloat16, seed=seed)
     elif dtype == "bool":
         return create_bool_test_data(shape=shape, seed=seed)
