@@ -695,7 +695,9 @@ class SymbolicStaticFunction(StaticFunction):
             from sot import symbolic_translate
         except:
             import os
+            import sys
 
+            del sys.modules['sot']
             os.system(
                 "pip install git+https://github.com/PaddlePaddle/PaddleSOT@develop"
             )
