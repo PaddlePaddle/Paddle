@@ -21,7 +21,6 @@
 #include <math.h>
 #include <vector>
 
-#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/primitive/primitive/primitive.h"
