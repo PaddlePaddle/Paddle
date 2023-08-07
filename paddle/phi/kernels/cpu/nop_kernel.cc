@@ -12,24 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/nop_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_utils.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void ShadowFeedKernel(const Context& ctx,
-                      const DenseTensor& x,
-                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  if (x.place() == out->place()) {
-    out->ShareDataWith(x);
-    out->set_lod(x.lod());
-  } else {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
-  }
-}
-
-}  // namespace phi
+PD_REGISTER_KERNEL(nop, CPU, ALL_LAYOUT, phi::NopKernel, float) {}

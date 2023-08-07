@@ -12,22 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/feed_with_place_kernel.h"
-
+#include "paddle/phi/kernels/nop_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
 
-PD_REGISTER_KERNEL(shadow_feed,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ShadowFeedKernel,
-                   bool,
-                   float,
-                   int32_t,
-                   int64_t,
-                   double,
-                   phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(nop, GPU, ALL_LAYOUT, phi::NopKernel, float) {}
+#endif

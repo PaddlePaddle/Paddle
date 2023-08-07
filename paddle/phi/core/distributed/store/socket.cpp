@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/distributed/store/socket.h"
+#include <array>
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -42,21 +43,21 @@ static int _get_sockname(int sock, char *out, int out_len) {
     return -1;
   }
 
-  char ip[128];
+  std::array<char, 128> ip;
   int port = 0;
 
   // deal with both IPv4 and IPv6:
   if (addr.sin_family == AF_INET) {
     struct sockaddr_in *s = (struct sockaddr_in *)&addr;
     port = ntohs(s->sin_port);
-    ::inet_ntop(AF_INET, &s->sin_addr, ip, sizeof(ip));
+    ::inet_ntop(AF_INET, &s->sin_addr, ip.data(), sizeof(ip));
   } else {  // AF_INET6
     struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
     port = ntohs(s->sin6_port);
-    ::inet_ntop(AF_INET6, &s->sin6_addr, ip, sizeof(ip));
+    ::inet_ntop(AF_INET6, &s->sin6_addr, ip.data(), sizeof(ip));
   }
 
-  ::snprintf(out, out_len, "%s:%d", ip, port);
+  ::snprintf(out, out_len, "%s:%d", ip.data(), port);
   return 0;
 }
 #endif
@@ -70,9 +71,9 @@ int GetSockName(int sock, char* out, int out_len) {
 }
 
 std::string GetSockName(int fd) {
-  char out[256];
-  GetSockName(fd, out, sizeof(out));
-  return std::string(out);
+  std::array<char, 256> out;
+  GetSockName(fd, out.data(), sizeof(out));
+  return std::string(out.data());
 }
 
 }  // namespace distributed

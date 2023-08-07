@@ -63,7 +63,7 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
 
 template <typename T>
 struct NonzeroFunctor {
-  HOSTDEVICE explicit inline NonzeroFunctor() {}
+  HOSTDEVICE explicit inline NonzeroFunctor() = default;
   HOSTDEVICE inline T operator()(const T x) const {
     return static_cast<T>(static_cast<double>(x) != 0);
   }
@@ -71,7 +71,7 @@ struct NonzeroFunctor {
 
 template <typename T>
 struct AbsFunctor {
-  HOSTDEVICE explicit inline AbsFunctor() {}
+  HOSTDEVICE explicit inline AbsFunctor() = default;
   HOSTDEVICE inline T operator()(const T x) const {
     return static_cast<T>(inline_abs(x));
   }
