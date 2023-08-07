@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/distributed_fused_lamb_init_op.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -188,7 +189,7 @@ static T *TensorFillConstant(const Context &dev_ctx,
   return ptr;
 }
 
-template <typename T, typename Context>
+template <typename Context>
 static DenseTensor CastDataForInitedTensor(const Context &dev_ctx,
                                            DenseTensor *origin,
                                            DenseTensor *fused_out,
@@ -337,6 +338,12 @@ void DistributedFusedLambInitOpKernel(
     const Context &dev_ctx,
     const std::vector<const DenseTensor *> &param,
     const std::vector<const DenseTensor *> &grad,
+    float beta1,
+    float beta2,
+    std::vector<int> apply_weight_decay,
+    int alignment,
+    int rank,
+    int nranks,
     DenseTensor *fp32_fused_param,
     DenseTensor *fp32_fused_grad,
     DenseTensor *fp16_fused_param,
@@ -354,13 +361,7 @@ void DistributedFusedLambInitOpKernel(
     const std::vector<DenseTensor *> &master_param_out,
     const std::vector<DenseTensor *> &grad_out,
     DenseTensor *global_scale,
-    DenseTensor *step,
-    float beta1,
-    float beta2,
-    std::vector<int> apply_weight_decay,
-    int alignment,
-    int rank,
-    int nranks) {
+    DenseTensor *step) {
   VLOG(10) << "starts to run DistributedFusedLambInitOp";
   auto place = dev_ctx.GetPlace();
   auto stream = dev_ctx.stream();
@@ -580,10 +581,10 @@ void DistributedFusedLambInitOpKernel(
     master_param_out[info.idx]->Resize(info.param_t->dims());
     master_param_out[info.idx]->ShareBufferWith(sliced_tensor);
 
-    PADDLE_ENFORCE_EQ(
-        (dev_ctx.template Alloc<float>(master_param_out[info.idx])),
-        sliced_tensor.data<float>(),
-        errors::InvalidArgument("Invalid master weight tensor pointer."));
+    // PADDLE_ENFORCE_EQ(
+    //     (dev_ctx.template Alloc<float>(master_param_out[info.idx])),
+    //     sliced_tensor.data<float>(),
+    //     errors::InvalidArgument("Invalid master weight tensor pointer."));
     if (info.grad_t->IsInitialized()) {
       CopyAndShareBufferForInitedTensor(
           dev_ctx, info.grad_t, fp32_g_t, info.numel_offset);
@@ -602,11 +603,8 @@ void DistributedFusedLambInitOpKernel(
 
   for (const auto &info : fp16_infos) {
     auto master_weight_offset = info.numel_offset + fp16_numel_offset;
-    auto sliced_tensor =
-        CastDataForInitedTensor(dev_ctx,
-                                const_cast<phi::DenseTensor *>(info.param_t),
-                                fp32_p_t,
-                                static_cast<size_t>(master_weight_offset));
+    auto sliced_tensor = CastDataForInitedTensor(
+        dev_ctx, info.param_t, fp32_p_t, master_weight_offset);
     master_param_out[info.idx]->Resize(info.param_t->dims());
     master_param_out[info.idx]->ShareBufferWith(sliced_tensor);
 

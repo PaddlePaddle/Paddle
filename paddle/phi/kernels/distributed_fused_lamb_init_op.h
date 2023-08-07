@@ -24,6 +24,12 @@ void DistributedFusedLambInitOpKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& param,
     const std::vector<const DenseTensor*>& grad,
+    float beta1,
+    float beta2,
+    std::vector<int> apply_weight_decay,
+    int alignment,
+    int rank,
+    int nranks,
     DenseTensor* fp32_fused_param,
     DenseTensor* fp32_fused_grad,
     DenseTensor* fp16_fused_param,
@@ -41,12 +47,6 @@ void DistributedFusedLambInitOpKernel(
     const std::vector<DenseTensor*>& master_param_out,
     const std::vector<DenseTensor*>& grad_out,
     DenseTensor* global_scale,
-    DenseTensor* step,
-    float beta1,
-    float beta2,
-    std::vector<int> apply_weight_decay,
-    int alignment,
-    int rank,
-    int nranks);
+    DenseTensor* step);
 
 }  // namespace phi
