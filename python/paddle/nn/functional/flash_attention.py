@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
@@ -21,6 +23,10 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 g_enable_math = None
 g_enable_flash = None
 g_enable_mem_efficient = None
+
+g_use_flash_attn_v1 = (
+    os.getenv('FLAGS_flash_attn_version', 'v2').strip().lower() == 'v1'
+)
 
 
 @signature_safe_contextmanager
@@ -222,21 +228,32 @@ def flash_attention(
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_mode():
-            (
-                result_attention,
-                result_softmax,
-            ) = _C_ops.flash_attn(
-                query,
-                key,
-                value,
-                fixed_seed_offset,
-                None,
-                dropout,
-                causal,
-                return_softmax,
-                not training,
-                rng_name,
-            )
+            if g_use_flash_attn_v1:
+                (result_attention, result_softmax, _, _) = _C_ops.flash_attn_v1(
+                    query,
+                    key,
+                    value,
+                    dropout,
+                    causal,
+                    return_softmax,
+                    not training,
+                )
+            else:
+                (
+                    result_attention,
+                    result_softmax,
+                ) = _C_ops.flash_attn(
+                    query,
+                    key,
+                    value,
+                    fixed_seed_offset,
+                    None,
+                    dropout,
+                    causal,
+                    return_softmax,
+                    not training,
+                    rng_name,
+                )
             return result_attention, result_softmax if return_softmax else None
 
         helper = LayerHelper('flash_attn', **locals())
@@ -377,26 +394,45 @@ def flash_attn_unpadded(
 
     """
     if in_dynamic_mode():
-        (
-            result_attention,
-            result_softmax,
-        ) = _C_ops.flash_attn_unpadded(
-            query,
-            key,
-            value,
-            cu_seqlens_q,
-            cu_seqlens_k,
-            fixed_seed_offset,
-            None,
-            max_seqlen_q,
-            max_seqlen_k,
-            scale,
-            dropout,
-            causal,
-            return_softmax,
-            not training,
-            rng_name,
-        )
+        if g_use_flash_attn_v1:
+            (
+                result_attention,
+                result_softmax,
+            ) = _C_ops.flash_attn_unpadded(
+                query,
+                key,
+                value,
+                cu_seqlens_q,
+                cu_seqlens_k,
+                max_seqlen_q,
+                max_seqlen_k,
+                scale,
+                dropout,
+                causal,
+                return_softmax,
+                not training,
+            )
+        else:
+            (
+                result_attention,
+                result_softmax,
+            ) = _C_ops.flash_attn_unpadded(
+                query,
+                key,
+                value,
+                cu_seqlens_q,
+                cu_seqlens_k,
+                fixed_seed_offset,
+                None,
+                max_seqlen_q,
+                max_seqlen_k,
+                scale,
+                dropout,
+                causal,
+                return_softmax,
+                not training,
+                rng_name,
+            )
         return result_attention, result_softmax if return_softmax else None
 
     helper = LayerHelper('flash_attn_unpadded', **locals())
