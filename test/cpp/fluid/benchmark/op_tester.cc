@@ -379,8 +379,8 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     VLOG(3) << "Set lod for tensor " << var_name;
     std::vector<std::vector<size_t>> &lod_vec = item.second.lod;
     framework::LoD lod;
-    for (size_t i = 0; i < lod_vec.size(); ++i) {
-      lod.push_back(lod_vec[i]);
+    for (auto &item : lod_vec) {
+      lod.push_back(item);
     }
     tensor->set_lod(lod);
   }
@@ -528,9 +528,9 @@ TEST(op_tester, base) {
       tester.Init(op_configs[FLAGS_specified_config_id]);
       tester.Run();
     } else {
-      for (size_t i = 0; i < op_configs.size(); ++i) {
+      for (auto &op_config : op_configs) {
         OpTester tester;
-        tester.Init(op_configs[i]);
+        tester.Init(op_config);
         tester.Run();
       }
     }

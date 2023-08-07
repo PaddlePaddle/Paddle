@@ -33,7 +33,7 @@ def bow_net(
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, is_sparse=True, size=[dict_dim, emb_dim]
     )
     bow = paddle.static.nn.sequence_lod.sequence_pool(
