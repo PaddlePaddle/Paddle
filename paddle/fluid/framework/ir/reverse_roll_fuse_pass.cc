@@ -37,7 +37,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 class Node;
-ReverseRollFusePass::ReverseRollFusePass() {
+ReverseRollFusePass::ReverseRollFusePass() {  // NOLINT
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()

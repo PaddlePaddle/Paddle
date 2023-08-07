@@ -53,7 +53,7 @@ using IntArray = experimental::IntArray;
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
-  virtual ~AbstractAutogradMeta() {}
+  virtual ~AbstractAutogradMeta() = default;
 };
 
 /**
@@ -176,6 +176,13 @@ class PADDLE_API Tensor final {
    * @return std::vector<int64_t>
    */
   std::vector<int64_t> shape() const;
+
+  /**
+   * @brief Return the strides (dimensions) of Tensor.
+   *
+   * @return phi::DDim
+   */
+  const phi::DDim& strides() const;
 
   /**
    * @brief Reset the shape of the tensor.

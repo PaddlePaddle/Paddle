@@ -95,7 +95,7 @@ struct OneDNNContext::Impl {
     p_mutex_.reset(new std::mutex());
   }
 
-  ~Impl() {}
+  ~Impl() = default;
 
   void ResetBlobMap(void* ptr) {
     VLOG(4) << OneDNNContext::tls().get_curr_exec() << " " << ptr;

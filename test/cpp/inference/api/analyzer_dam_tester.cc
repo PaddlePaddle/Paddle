@@ -35,7 +35,7 @@ struct DataRecord {
   size_t batch_size{1};
   size_t num_samples;  // total number of samples
 
-  DataRecord() {
+  DataRecord() {  // NOLINT
     turns = new std::vector<std::vector<
         int64_t>>[FLAGS_max_turn_num];  // turns data : FLAGS_max_turn_num
     turns_mask = new std::vector<std::vector<
@@ -48,7 +48,7 @@ struct DataRecord {
     Load(path);
   }
 
-  ~DataRecord() {
+  ~DataRecord() {  // NOLINT
     delete[] turns;
     delete[] turns_mask;
   }
@@ -159,11 +159,11 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   TensorAssignData<float>(&response_mask_tensor, one_batch.response_mask);
 
   // Set inputs.
-  for (int i = 0; i < FLAGS_max_turn_num; ++i) {
-    input_slots->push_back(std::move(turns_tensor[i]));
+  for (auto &item : turns_tensor) {
+    input_slots->push_back(std::move(item));
   }
-  for (int i = 0; i < FLAGS_max_turn_num; ++i) {
-    input_slots->push_back(std::move(turns_mask_tensor[i]));
+  for (auto &item : turns_mask_tensor) {
+    input_slots->push_back(std::move(item));
   }
   input_slots->push_back(std::move(response_tensor));
   input_slots->push_back(std::move(response_mask_tensor));

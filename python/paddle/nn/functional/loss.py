@@ -1610,7 +1610,10 @@ def kl_div(input, label, reduction='mean', name=None):
             import paddle.nn.functional as F
 
             shape = (5, 20)
-            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+
+            # input(x) should be a distribution in the log space
+            x = F.log_softmax(paddle.randn(shape), axis=1).astype('float32')
+
             target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [], who is 0-D Tensor

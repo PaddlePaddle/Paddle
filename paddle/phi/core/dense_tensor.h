@@ -89,6 +89,14 @@ class DenseTensor : public TensorBase,
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override { return meta_.dims; }
 
+  /// \brief Returns the stride of the tensor.
+  /// \return The stride of the tensor.
+  const DDim& strides() const noexcept { return meta_.strides; }
+
+  /// \brief Sets the stride of the tensor.
+  /// \param meta The stride of the tensor.
+  void set_strides(const DDim& strides) { meta_.strides = strides; }
+
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
   const LoD& lod() const noexcept { return meta_.lod; }
@@ -181,6 +189,11 @@ class DenseTensor : public TensorBase,
   /// \param storage_properties The storage_properties of the tensor.
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
+
+  void clear() {
+    holder_.reset();
+    meta_.offset = 0;
+  }
 
  private:
   friend class DenseTensorUtils;

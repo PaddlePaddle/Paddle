@@ -21,7 +21,7 @@ namespace tensorrt {
 
 class ElementwiseTensorOpConverter : public OpConverter {
  public:
-  ElementwiseTensorOpConverter() {}
+  ElementwiseTensorOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
@@ -325,7 +325,7 @@ class ElementwiseTensorModOpConverter : public ElementwiseTensorOpConverter {
 // https://github.com/PaddlePaddle/Paddle/blob/release/2.4/python/paddle/tensor/math.py#L420
 class PowOpConverter : public OpConverter {
  public:
-  PowOpConverter() {}
+  PowOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
