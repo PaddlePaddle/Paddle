@@ -28,11 +28,19 @@ template <typename T, typename Context>
 void LogicalNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
-  auto* out_ptr = dev_ctx.template Alloc<bool>(out);
   funcs::LogicalNotFunctor<T> unary_func;
 
   phi::Transform<Context> trans;
-  trans(dev_ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func);
+  if (!out->IsSharedWith(x)) {
+    auto* out_ptr = dev_ctx.template Alloc<bool>(out);
+    trans(dev_ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func);
+  } else {
+    trans(dev_ctx,
+          x.data<T>(),
+          x.data<T>() + x.numel(),
+          reinterpret_cast<T*>(out->data()),
+          unary_func);
+  }
 }
 
 template <typename T, typename Context>
