@@ -195,7 +195,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -223,6 +222,7 @@ namespace pybind {
 PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
+PyTypeObject *g_data_type_pytype = nullptr;
 
 bool IsCompiledWithAVX() {
 #ifndef PADDLE_WITH_AVX
@@ -778,12 +778,24 @@ PYBIND11_MODULE(libpaddle, m) {
           }
         });
 
-  py::class_<egr::GradNodeBase>(m, "GradNodeBase")
-      .def("name", &egr::GradNodeBase::name)
-      .def_property_readonly("next_functions",
-                             &egr::GradNodeBase::NextFunctions)
-      .def("input_meta", &egr::GradNodeBase::InputMeta)
-      .def("output_meta", &egr::GradNodeBase::OutputMeta);
+  py::class_<egr::GradNodeBase, std::shared_ptr<egr::GradNodeBase>>(
+      m, "GradNodeBase")
+      .def("name",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->name();
+           })
+      .def_property_readonly(
+          "next_functions",
+          [](const std::shared_ptr<egr::GradNodeBase> &self) {
+            return self->NextFunctions();
+          })
+      .def("input_meta",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->InputMeta();
+           })
+      .def("output_meta", [](const std::shared_ptr<egr::GradNodeBase> &self) {
+        return self->OutputMeta();
+      });
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
@@ -2673,9 +2685,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_low_precision_op_list", [] {
     py::dict op_list;
     auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
+    for (auto &op_item : list_op) {
+      auto op_name = (op_item.first).c_str();
+      auto counts = op_item.second;
       op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
                          std::to_string(counts.bf16_called_) + "," +
                          std::to_string(counts.fp32_called_) + "," +
@@ -2736,12 +2748,31 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-  m.def("translate_newirprogram", &paddle::TranslateLegacyProgramToProgram);
   BindFleetWrapper(&m);
   BindIO(&m);
   BindParallelExecutor(m);
   BindPlace(m);
   BindTensor(m);
+
+  py::enum_<phi::DataType> data_type(m, "DataType");
+  g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT
+  data_type.value("UNDEFINED", phi::DataType::UNDEFINED)
+      .value("BOOL", phi::DataType::BOOL)
+      .value("UINT8", phi::DataType::UINT8)
+      .value("INT8", phi::DataType::INT8)
+      .value("UINT16", phi::DataType::UINT16)
+      .value("INT16", phi::DataType::INT16)
+      .value("UINT32", phi::DataType::UINT32)
+      .value("INT32", phi::DataType::INT32)
+      .value("UINT64", phi::DataType::UINT64)
+      .value("INT64", phi::DataType::INT64)
+      .value("FLOAT32", phi::DataType::FLOAT32)
+      .value("FLOAT64", phi::DataType::FLOAT64)
+      .value("COMPLEX64", phi::DataType::COMPLEX64)
+      .value("COMPLEX128", phi::DataType::COMPLEX128)
+      .value("FLOAT16", phi::DataType::FLOAT16)
+      .value("BFLOAT16", phi::DataType::BFLOAT16)
+      .export_values();
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);

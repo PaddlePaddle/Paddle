@@ -61,17 +61,17 @@ OpSupportedInfos(const std::string& place,
 
   std::unordered_set<std::string> all_ops;
   const auto& op_info = framework::OpInfoMap::Instance().map();
-  for (auto it = op_info.begin(); it != op_info.end(); it++) {
-    all_ops.emplace(it->first);
+  for (const auto& item : op_info) {
+    all_ops.emplace(item.first);
   }
 
   std::unordered_set<std::string> supported_ops;
   auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
-  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
-    for (auto& kernel_type : it->second) {
+  for (auto& all_kernel : all_kernels) {
+    for (auto& kernel_type : all_kernel.second) {
       if (is_target_place[query_place](kernel_type.first.place_) &&
           kernel_type.first.data_type_ == dtype) {
-        supported_ops.emplace(it->first);
+        supported_ops.emplace(all_kernel.first);
       }
     }
   }
@@ -131,7 +131,9 @@ AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
   }
 }
 
-AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
+AutoCastGuard::~AutoCastGuard() {  // NOLINT
+  tracer_->SetAmpLevel(pre_amp_level_);
+}
 
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
@@ -163,7 +165,7 @@ AmpOperators::AmpOperators()
           << unsupported_bf16_ops_->size();
 }
 
-AmpOperators::~AmpOperators() {}
+AmpOperators::~AmpOperators() = default;
 
 AmpOperators& AmpOperators::Instance() {
   static AmpOperators instance;

@@ -1259,7 +1259,6 @@ void BindDistributed(py::module *m) {
       .def_static("create",
                   distributed::ProcessGroupNCCL::CreateProcessGroupNCCL,
                   py::arg("store"),
-                  py::arg("device_id"),
                   py::arg("rank"),
                   py::arg("world_size"),
                   py::arg("group_id") = 0,

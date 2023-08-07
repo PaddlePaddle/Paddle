@@ -162,7 +162,6 @@ if(WITH_XPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
 
 
@@ -176,7 +175,6 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
-cc_library(tensor_formatter SRCS tensor_formatter.cc DEPS ${OP_HEADER_DEPS})
 if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
