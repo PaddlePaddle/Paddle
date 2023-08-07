@@ -45,7 +45,7 @@ def fused_rotary_position_embedding(q, k=None, v=None, sin=None, cos=None):
             v = paddle.randn([1, 1, 4, 10], dtype='float16')
             out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
 
-            x = paddle.randn([1, 1, 1, 10], dtype='float16')o
+            x = paddle.randn([1, 1, 1, 10], dtype='float16')
             y = paddle.randn([1, 1, 1, 10], dtype='float16')
             sin = paddle.sin(x)
             cos = paddle.cos(y)
