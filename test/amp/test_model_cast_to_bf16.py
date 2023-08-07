@@ -212,7 +212,7 @@ class TestProgramBF16(AmpTestBase):
         self.assertEqual(
             actual_num_mp,
             expected_num_mp,
-            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
+            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but received {actual_num_mp}.",
         )
 
     def test_amp_bf16_o1(self):
@@ -302,7 +302,7 @@ class TestStaticBF16(AmpTestBase):
         self.assertEqual(
             losses_o1,
             losses_o2,
-            f"loss of o1 and o2 should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2}",
+            f"loss of o1 and o2 should be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2}",
         )
 
 

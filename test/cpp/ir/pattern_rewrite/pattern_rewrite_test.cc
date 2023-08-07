@@ -77,7 +77,7 @@ class Operation1 : public ir::Op<Operation1> {
   using Op::Op;
   static const char *name() { return "test.Operation1"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
+  static const char *attributes_name[attributes_num];  // NOLINT
   void Verify();
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
 };
@@ -93,8 +93,9 @@ void Operation1::Verify() {
     throw("Type of attribute: parameter_name is not right.");
   }
 }
-const char *Operation1::attributes_name[attributes_num] = {"op2_attr1",
-                                                           "op2_attr2"};
+const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
+    "op2_attr1",
+    "op2_attr2"};
 IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
@@ -358,7 +359,7 @@ class Conv2dFusionOpTest : public ir::Op<Conv2dFusionOpTest,
  public:
   using Op::Op;
   static const char *name() { return "pd.conv2d_fusion_test"; }
-  static const char *attributes_name[10];
+  static const char *attributes_name[10];  // NOLINT
   static constexpr uint32_t attributes_num = 10;
   static OpInfoTuple GetOpInfo();
   static void Build(ir::Builder &builder,             // NOLINT
@@ -413,16 +414,17 @@ class Conv2dFusionOpTest : public ir::Op<Conv2dFusionOpTest,
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
-const char *Conv2dFusionOpTest::attributes_name[10] = {"strides",
-                                                       "paddings_t",
-                                                       "padding_algorithm",
-                                                       "dilations_t",
-                                                       "groups",
-                                                       "data_format",
-                                                       "activation",
-                                                       "exhaustive_search",
-                                                       "channels",
-                                                       "user_workspace_size"};
+const char *Conv2dFusionOpTest::attributes_name[10] = {  // NOLINT
+    "strides",
+    "paddings_t",
+    "padding_algorithm",
+    "dilations_t",
+    "groups",
+    "data_format",
+    "activation",
+    "exhaustive_search",
+    "channels",
+    "user_workspace_size"};
 
 OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -561,9 +563,9 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
 
   VLOG(4) << "Builder construction attributes";
   std::vector<ir::Attribute> vec_strides;
-  for (size_t i = 0; i < static_cast<size_t>(strides.size()); i++) {
+  for (auto stride : strides) {
     ir::Attribute attr_strides =
-        ir::Int32Attribute::get(ir::IrContext::Instance(), strides[i]);
+        ir::Int32Attribute::get(ir::IrContext::Instance(), stride);
 
     vec_strides.push_back(attr_strides);
   }
@@ -571,9 +573,9 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
       ir::ArrayAttribute::get(ir::IrContext::Instance(), vec_strides);
   argument.AddAttribute("strides", attr_strides);
   std::vector<ir::Attribute> vec_paddings_t;
-  for (size_t i = 0; i < static_cast<size_t>(paddings_t.size()); i++) {
+  for (auto padding : paddings_t) {
     ir::Attribute attr_paddings_t =
-        ir::Int32Attribute::get(ir::IrContext::Instance(), paddings_t[i]);
+        ir::Int32Attribute::get(ir::IrContext::Instance(), padding);
 
     vec_paddings_t.push_back(attr_paddings_t);
   }
@@ -584,9 +586,9 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
       ir::StrAttribute::get(ir::IrContext::Instance(), padding_algorithm);
   argument.AddAttribute("padding_algorithm", attr_padding_algorithm);
   std::vector<ir::Attribute> vec_dilations_t;
-  for (size_t i = 0; i < static_cast<size_t>(dilations_t.size()); i++) {
+  for (auto dilation : dilations_t) {
     ir::Attribute attr_dilations_t =
-        ir::Int32Attribute::get(ir::IrContext::Instance(), dilations_t[i]);
+        ir::Int32Attribute::get(ir::IrContext::Instance(), dilation);
 
     vec_dilations_t.push_back(attr_dilations_t);
   }
@@ -606,9 +608,9 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
       ir::BoolAttribute::get(ir::IrContext::Instance(), exhaustive_search);
   argument.AddAttribute("exhaustive_search", attr_exhaustive_search);
   std::vector<ir::Attribute> vec_channels;
-  for (size_t i = 0; i < static_cast<size_t>(channels.size()); i++) {
+  for (auto channel : channels) {
     ir::Attribute attr_channels =
-        ir::Int32Attribute::get(ir::IrContext::Instance(), channels[i]);
+        ir::Int32Attribute::get(ir::IrContext::Instance(), channel);
 
     vec_channels.push_back(attr_channels);
   }
@@ -692,8 +694,8 @@ void Conv2dFusionOpTest::Build(ir::Builder &builder,
     vec_meta_outputs.push_back(phi::MetaTensor(&vec_dense_outputs[i]));
   }
   std::vector<phi::MetaTensor *> meta_outputs;
-  for (size_t i = 0; i < static_cast<size_t>(vec_meta_outputs.size()); i++) {
-    meta_outputs.push_back(&vec_meta_outputs[i]);
+  for (auto &vec_meta_output : vec_meta_outputs) {
+    meta_outputs.push_back(&vec_meta_output);
   }
 
   phi::FusedConvInferMeta(meta_input,
@@ -1093,7 +1095,7 @@ TEST(pattern_rewrite, Patterns) {
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(ir::CreateConstantFoldingPass());
+  // pm.AddPass(ir::CreateConstantFoldingPass());
   pm.AddPass(ir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();

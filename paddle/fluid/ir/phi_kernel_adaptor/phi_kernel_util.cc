@@ -56,9 +56,11 @@ void AddNewData(ir::Value value,
                 std::vector<paddle::framework::Variable*>* variable_list) {
   value_2_var_name->emplace(value, name);
   variable_2_var_name->emplace(var, name);
-  auto id = var_name_2_id->size();
-  var_name_2_id->emplace(name, id);
-  variable_list->push_back(var);
+  if (var_name_2_id->count(name) == 0) {
+    auto id = var_name_2_id->size();
+    var_name_2_id->emplace(name, id);
+    variable_list->push_back(var);
+  }
   PADDLE_ENFORCE_EQ(
       variable_list->size(),
       var_name_2_id->size(),
@@ -104,11 +106,8 @@ paddle::framework::Variable* CreateVar(
     std::vector<paddle::framework::Variable*>* variable_list) {
   Operation* def_op = value.GetDefiningOp();
   bool is_persisable = false;
-  if (def_op->attributes().count("is_persisable")) {
-    is_persisable = def_op->attributes()
-                        .at("is_persisable")
-                        .dyn_cast<ir::BoolAttribute>()
-                        .data();
+  if (def_op->name() == "builtin.set_parameter") {
+    is_persisable = true;
   }
 
   paddle::framework::Variable* var = nullptr;
@@ -227,13 +226,21 @@ void HandleForSpecialOp(
 
   if (op_name == "pd.fetch") {
     // fetch is a very special op, with no output
-    auto var = const_cast<paddle::framework::Scope*>(inner_scope->root())
-                   ->Var("fetch");
-    VLOG(6) << "Create var: fetch in scope " << inner_scope->root();
-    auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-    int index =
-        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
-    fetch_list->resize(index + 1);
+    auto fetch_src_name =
+        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+
+    auto fetch_var_name = fetch_src_name + "@fetch";
+    auto* var = const_cast<paddle::framework::Scope*>(inner_scope->root())
+                    ->Var(fetch_var_name);
+    var->GetMutable<phi::DenseTensor>();
+    auto value = op->result(0);
+    AddNewData(value,
+               fetch_var_name,
+               var,
+               value_2_var_name,
+               variable_2_var_name,
+               var_name_2_id,
+               variable_list);
   }
 
   if (op_name == "pd.feed") {
@@ -256,12 +263,13 @@ void HandleForSpecialOp(
                variable_list);
   }
 
-  if (op_name == "pd.feed_with_place") {
-    VLOG(6) << "Handle for pd.feed_with_place";
+  if (op_name == "pd.data") {
+    VLOG(6) << "Handle for pd.data";
     auto var_name =
         op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
 
     auto value = op->result(0);
+
     paddle::framework::Variable* var = inner_scope->FindVar(var_name);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
@@ -319,10 +327,19 @@ void HandleForSpecialOp(
     // change opreand name to param_name
     auto orig_name = value_2_var_name->at(value);
 
+    PADDLE_ENFORCE_NE(
+        param_name,
+        orig_name,
+        phi::errors::PreconditionNotMet(
+            "SetParamer param name should not equal with var name"));
+
     if (inner_scope->root()->FindVar(param_name) == nullptr) {
       const_cast<paddle::framework::Scope*>(inner_scope->root())
           ->Rename(orig_name, param_name);
+      VLOG(6) << "set_parameter rename var: " << orig_name << " -> "
+              << param_name;
     }
+
     RenameData(value,
                param_name,
                orig_name,
@@ -359,6 +376,7 @@ void HandleForSpecialOp(
                           .dyn_cast<ir::StrAttribute>()
                           .AsString();
     auto value = op->result(0);
+
     paddle::framework::Variable* var = inner_scope->FindVar(param_name);
     AddNewData(value,
                param_name,
@@ -431,6 +449,14 @@ void HandleForInplaceOp(
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << var_name << ")";
       value_2_var_name->emplace(value, var_name);
+    } else if (yaml_parser.HasView(value_name)) {
+      std::string view_name = yaml_parser.ViewName(value_name);
+      ir::Value view_value =
+          op->operand_source(yaml_parser.InputName2Id().at(view_name));
+      std::string var_name = value_2_var_name->at(view_value);
+      VLOG(4) << "view: " << value_name << " -> " << view_name
+              << " (var: " << var_name << ")";
+      value_2_var_name->emplace(value, var_name);
     } else {
       BuildValue(value,
                  inner_scope,
@@ -458,9 +484,7 @@ void BuildScope(const ir::Block& block,
           << paddle::framework::GenScopeTreeDebugInfo(
                  const_cast<paddle::framework::Scope*>(inner_scope->root()));
 
-  for (auto it = block.begin(); it != block.end(); ++it) {
-    ir::Operation* op = *it;
-
+  for (auto op : block) {
     std::string op_name = op->name();
     if (op->attributes().count("op_name")) {
       op_name = op->attributes()
@@ -473,7 +497,7 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
+        op_name == "pd.data" || op_name == "pd.shadow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,
