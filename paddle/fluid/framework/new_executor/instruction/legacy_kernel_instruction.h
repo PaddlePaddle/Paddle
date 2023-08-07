@@ -18,12 +18,12 @@
 
 namespace ir {
 class Operation;
+class Value;
 }  // namespace ir
 
 namespace paddle {
 namespace framework {
 class Scope;
-class Value;
 
 class LegacyKernelInstruction : public InstructionBase {
  public:
