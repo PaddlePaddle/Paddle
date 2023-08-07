@@ -1465,10 +1465,9 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
     auto *nccl_ctxs = member_->nccl_ctxs_->GetSyncBatchNormCtx(
         global_scope, member_->places_);
     auto &pool = platform::DeviceContextPool::Instance();
-    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto *dev_ctx =
-          static_cast<phi::GPUContext *>(pool.Get(member_->places_[dev_id]));
-      auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
+    for (auto &place : member_->places_) {
+      auto *dev_ctx = static_cast<phi::GPUContext *>(pool.Get(place));
+      auto &nccl_ctx = nccl_ctxs->at(place);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
 #else

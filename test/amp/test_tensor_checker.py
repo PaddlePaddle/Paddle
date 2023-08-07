@@ -96,7 +96,7 @@ class TestTensorChecker(unittest.TestCase):
                     self.assertEqual(
                         1,
                         num_nan,
-                        f"Expected num_nan to be 1, but recieved {num_nan}, place={place}.",
+                        f"Expected num_nan to be 1, but received {num_nan}, place={place}.",
                     )
                 else:
                     self.assertEqual(
@@ -111,7 +111,7 @@ class TestTensorChecker(unittest.TestCase):
                     self.assertEqual(
                         0,
                         num_nan,
-                        f"Expected num_nan to be 1, but recieved {num_nan}, place={place}.",
+                        f"Expected num_nan to be 1, but received {num_nan}, place={place}.",
                     )
 
                 paddle.amp.debugging.disable_tensor_checker()

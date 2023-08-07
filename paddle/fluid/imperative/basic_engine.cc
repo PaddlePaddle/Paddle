@@ -286,9 +286,9 @@ void BasicEngine::PrepareDeps() {
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
 
-  for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    q.push(init_nodes_[i].get());
-    visited.insert(init_nodes_[i].get());
+  for (auto& init_node : init_nodes_) {
+    q.push(init_node.get());
+    visited.insert(init_node.get());
   }
 
   while (!q.empty()) {
@@ -413,9 +413,9 @@ void BasicEngine::Execute() {
   PrepareDeps();
   // Start execute Computation graph
   std::queue<std::shared_ptr<GradOpNode>> q;
-  for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    if (node_deps_[init_nodes_[i].get()] == 0) {
-      q.push(std::move(init_nodes_[i]));
+  for (auto& init_node : init_nodes_) {
+    if (node_deps_[init_node.get()] == 0) {
+      q.push(std::move(init_node));
     }
   }
 

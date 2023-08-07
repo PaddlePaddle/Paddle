@@ -27,7 +27,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-PassRegistry::PassRegistry() {
+PassRegistry::PassRegistry() {  // NOLINT
   // Register manually to avoid the trivial `USE_OP` like macro for easier use
   // and link.
   passes_.emplace("ir_analysis_pass", std::make_unique<IrAnalysisPass>());

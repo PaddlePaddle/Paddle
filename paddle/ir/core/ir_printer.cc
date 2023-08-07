@@ -30,7 +30,7 @@
 namespace ir {
 
 namespace {
-constexpr char newline[] = "\n";
+constexpr char newline[] = "\n";  // NOLINT
 }  // namespace
 
 void BasicIrPrinter::PrintType(Type type) {
@@ -165,16 +165,15 @@ void IrPrinter::PrintFullOperation(const Operation* op) {
 }
 
 void IrPrinter::PrintRegion(const Region& region) {
-  for (auto it = region.begin(); it != region.end(); ++it) {
-    auto* block = *it;
+  for (auto block : region) {
     PrintBlock(block);
   }
 }
 
 void IrPrinter::PrintBlock(const Block* block) {
   os << "{\n";
-  for (auto it = block->begin(); it != block->end(); ++it) {
-    PrintOperation(*it);
+  for (auto item : *block) {
+    PrintOperation(item);
     os << newline;
   }
   os << "}\n";
@@ -239,7 +238,7 @@ void IrPrinter::PrintOpOperands(const Operation* op) {
   std::vector<Value> op_operands;
   op_operands.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    op_operands.push_back(op->operand(idx));
+    op_operands.push_back(op->operand_source(idx));
   }
   PrintInterleave(
       op_operands.begin(),
@@ -254,11 +253,11 @@ void IrPrinter::PrintOperandsType(const Operation* op) {
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    auto op_operand = op->op_operand(idx);
+    auto op_operand = op->operand(idx);
     if (op_operand) {
       op_operand_types.push_back(op_operand.type());
     } else {
-      op_operand_types.push_back(Type());
+      op_operand_types.emplace_back();
     }
   }
   os << " (";
@@ -279,7 +278,7 @@ void IrPrinter::PrintOpReturnType(const Operation* op) {
     if (op_result) {
       op_result_types.push_back(op_result.type());
     } else {
-      op_result_types.push_back(Type(nullptr));
+      op_result_types.emplace_back(nullptr);
     }
   }
   PrintInterleave(

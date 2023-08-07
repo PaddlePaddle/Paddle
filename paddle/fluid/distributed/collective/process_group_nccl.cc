@@ -47,7 +47,7 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
       comm_event_(place),
       task_place_(place) {}
 
-ProcessGroupNCCL::NCCLTask::~NCCLTask() {}
+ProcessGroupNCCL::NCCLTask::~NCCLTask() = default;
 
 bool ProcessGroupNCCL::NCCLTask::IsCompleted() { return comm_event_.Query(); }
 
@@ -496,6 +496,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
           << ", place: " << place_key;
+
+  phi::distributed::CommContextManager::CreateNCCLCommContext(
+      store_, std::to_string(gid_), rank_, size_);
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
@@ -980,12 +983,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
 
 std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     const std::shared_ptr<phi::distributed::Store>& store,
-    int device_id,
     int rank,
     int size,
     int gid) {
-  phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store, device_id, gid, rank, size);
   auto process_group =
       std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
@@ -996,7 +996,7 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext() {
   const auto& comm_context_manager =
       phi::distributed::CommContextManager::GetInstance();
   auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-      comm_context_manager.Get(this->gid_));
+      comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
                     phi::errors::Unavailable("NCCLCommContext is nullptr"));

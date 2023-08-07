@@ -336,15 +336,29 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         x->outputs.size() <= 1) {
       params_not_shared.push_back(x->Name());
     }
-    // When TRT Engine's input is INT64, we need do some extra work.
-    // So we reserved a name for later use when casting INT64 -> INT32.
-    // We must check whether scope has had the same name var!
+    // When TRT Engine's input is INT64 or FP64, we need do some extra work.
+    // So we reserved a name for later use when casting INT64 -> INT32 or
+    // FP64->FP32. We must check whether scope has had the same name var!
     if (x->Var()->GetDataType() == framework::proto::VarType::INT64) {
       std::string tmp_name = x->Name() + "_cast_to_INT32";
       LOG(WARNING)
           << "tensorrt_subgraph's input named " << x->Name()
           << " having int64 dtype in pdmodel description, we will cast them to "
              "int32 dtype to feed them into paddle-trt.";
+      /*
+            PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
+                              nullptr,
+                              platform::errors::InvalidArgument(
+                                  "The  var name %s has exists in scope.",
+         tmp_name));
+      */
+      scope->Var(tmp_name);
+    } else if (x->Var()->GetDataType() == framework::proto::VarType::FP64) {
+      std::string tmp_name = x->Name() + "_cast_to_FP32";
+      LOG(WARNING) << "tensorrt_subgraph's input named " << x->Name()
+                   << " having float64 dtype in pdmodel description, we will "
+                      "cast them to "
+                      "float32 dtype to feed them into paddle-trt.";
       /*
             PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
                               nullptr,
@@ -489,9 +503,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     renamed_output_rank.push_back(origin_name_output_rank[name]);
     origin_outputs_dtype.push_back(map_origin_outputs_dtype[name]);
 
-    // When TRT Engine's output is INT64, we need do some extra work.
-    // So we reserved a name for later use when casting INT32 -> INT64.
-    // We must check whether scope has had the same name var!
+    // When TRT Engine's output is INT64 or FP64, we need do some extra work.
+    // So we reserved a name for later use when casting INT32 -> INT64 or FP32
+    // -> FP64. We must check whether scope has had the same name var!
     if (static_cast<framework::proto::VarType_Type>(
             map_origin_outputs_dtype[name]) ==
         framework::proto::VarType::INT64) {
@@ -501,6 +515,21 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                       "it is int32 "
                       "dtype after executing this tensorrt_subgraph, so we "
                       "need cast them into int64.";
+      PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
+                        nullptr,
+                        platform::errors::InvalidArgument(
+                            "The  var name %s has exists in scope.", tmp_name));
+      scope->Var(tmp_name);
+    } else if (static_cast<framework::proto::VarType_Type>(
+                   map_origin_outputs_dtype[name]) ==
+               framework::proto::VarType::FP64) {
+      std::string tmp_name = name + "_cast_to_FP64";
+      LOG(WARNING)
+          << "tensorrt_subgraph's output named " << name
+          << " having float64 dtype in pdmodel description, but in fact "
+             "it is float32 "
+             "dtype after executing this tensorrt_subgraph, so we "
+             "need cast them into float64.";
       PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
                         nullptr,
                         platform::errors::InvalidArgument(
