@@ -39,6 +39,8 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::XPU;
     case AllocationType::IPU:
       return Backend::IPU;
+    case AllocationType::UNDEFINED:
+      return Backend::UNDEFINED;
     case AllocationType::CUSTOM:
       return static_cast<Backend>(
           static_cast<size_t>(Backend::NUM_BACKENDS) +
@@ -57,6 +59,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   switch (backend) {
     case phi::Backend::CPU:
       return phi::CPUPlace();
+    case phi::Backend::UNDEFINED:
+      return phi::Place();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case phi::Backend::GPU:
       return phi::GPUPlace(

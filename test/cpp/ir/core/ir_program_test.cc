@@ -174,9 +174,9 @@ TEST(program_test, program) {
   // (8) Def SetParameterOp(c, "c")
   auto op4 = builder.Build<ir::SetParameterOp>(op3->result(0), "c");
 
-  EXPECT_EQ(op4->op_operand(0).type().dialect().id(), paddle_dialect->id());
+  EXPECT_EQ(op4->operand(0).type().dialect().id(), paddle_dialect->id());
   Interface *c_interface =
-      op4->op_operand(0).type().dialect().GetRegisteredInterface<Interface>();
+      op4->operand(0).type().dialect().GetRegisteredInterface<Interface>();
   //   ir::Parameter *parameter_c =
   //       c_interface->VariableToParameter(variable_c.get());
   std::unique_ptr<ir::Parameter> parameter_c =
@@ -234,6 +234,8 @@ TEST(program_test, slice_combine_test) {
       ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
   ir::Operation *combine_op = ir::Operation::Create(
       {op1->result(0), op2->result(0)}, {}, {output_type}, combine_op_info);
+  ir::CombineOp combine_op_type = combine_op->dyn_cast<ir::CombineOp>();
+  EXPECT_TRUE(combine_op_type.out());
   program.block()->push_back(combine_op);
 
   // (7) Def slice_op = SliceOp(combine_op, 0)

@@ -391,7 +391,7 @@ class ReshapeKernel {
     auto *shape_tensor =
         ctx.HasInput("Shape") ? ctx.Input<phi::DenseTensor>("Shape") : nullptr;
     phi::IntArray pt_scalar_shape;
-    if (list_new_shape_tensor.size() > 0) {
+    if (!list_new_shape_tensor.empty()) {
       // have shape tensor
       std::vector<phi::DenseTensor> pt_vec_shape;
       for (auto &tensor : list_new_shape_tensor) {

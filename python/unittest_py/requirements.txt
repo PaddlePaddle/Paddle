@@ -17,3 +17,4 @@ librosa==0.8.1
 parameterized
 wandb>=0.13
 xlsxwriter==3.0.9
+xdoctest

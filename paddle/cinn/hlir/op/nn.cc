@@ -28,8 +28,6 @@
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/poly/stage.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace hlir {
 namespace op {
@@ -55,12 +53,9 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
             << "at least one input tensor for relu compute\n";
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
-        std::string tensor_name = UniqName("Relu_output");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
@@ -78,8 +73,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
 std::vector<framework::shape_t> InferShapeForRelu(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty())
-      << "The input's shape is empty! Please check again.";
+  CHECK(!inputs_shape.empty()) << "The inputs is empty! Please check again.";
   std::vector<framework::shape_t> res{inputs_shape[0]};
   return res;
 }
@@ -107,12 +101,9 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
             << "at least one input tensor for relu6 compute\n";
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
-        std::string tensor_name = UniqName("Relu6_output");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
@@ -197,12 +188,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                 << utils::Join(A.as_tensor_ref()->shape, ", ");
         VLOG(3) << "weight shape: "
                 << utils::Join(B.as_tensor_ref()->shape, ", ");
-        std::string tensor_name = UniqName("Conv2d_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_GE(pack_args.size(), 3);
-          CHECK(pack_args[2].is_string());
-          tensor_name = pack_args[2].operator std::string();
-        }
+        CHECK_GE(pack_args.size(), 3);
+        CHECK(pack_args[2].is_string());
+        std::string tensor_name = pack_args[2].operator std::string();
         if (data_format == "NCHW") {
           // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
@@ -300,222 +288,51 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
 
   framework::CINNSchedule conv2d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input argument of conv2d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        }
+    CHECK(!args.empty())
+        << "The input argument of conv2d schedule is empty! Please check.\n";
+    CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      if (target.arch == Target::Arch::NVGPU) {
+    }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDNN
-        // If conv_type is backward_filter or backward_data, we built a fake op.
-        // As runtime use cudnn to compute conv2d, this fake op is not to be
-        // called. When cinn support backward_filter/backward_data code gen,
-        // this code is to be removed.
-        if (conv_type != "forward") {
-          CHECK_EQ(vec_ast.size(), 1);
-          pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-          return;
-        }
+      // If conv_type is backward_filter or backward_data, we built a fake op.
+      // As runtime use cudnn to compute conv2d, this fake op is not to be
+      // called. When cinn support backward_filter/backward_data code gen,
+      // this code is to be removed.
+      if (conv_type != "forward") {
+        CHECK_EQ(vec_ast.size(), 1);
+        pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+        std::vector<CINNValue> res{
+            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+        *ret = CINNValuePack{res};
+        return;
+      }
 #endif
-        int expr_size = vec_ast.size();
-        if (expr_size == 2) {
-          pe::IRCudaScheduleConv(ir_sch, target);
-          VLOG(3) << "After IRCudaScheduleConv, arg_pack[0] is : "
-                  << ir_sch.GetModule().GetExprs().at(0);
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-          return;
-        } else {
-          CINN_NOT_IMPLEMENTED
-        }
-      } else if (target.arch == Target::Arch::X86) {
+      int expr_size = vec_ast.size();
+      if (expr_size == 2) {
+        pe::IRCudaScheduleConv(ir_sch, target);
+        VLOG(3) << "After IRCudaScheduleConv, arg_pack[0] is : "
+                << ir_sch.GetModule().GetExprs().at(0);
+        std::vector<CINNValue> res{
+            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+        *ret = CINNValuePack{res};
+        return;
+      } else {
         CINN_NOT_IMPLEMENTED
       }
-      LOG(FATAL) << "This target [" << target << "] is not supported yet.";
-    } else {
-      CHECK(!args.empty())
-          << "The input argument of conv2d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      CHECK(arg_pack.size() == 4UL || arg_pack.size() == 3UL ||
-            arg_pack.size() == 6UL || arg_pack.size() == 13UL);
-      poly::StageMap stages = arg_pack.back();
-      if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDNN
-        // If conv_type is backward_filter or backward_data, we built a fake op.
-        // As runtime use cudnn to compute conv2d, this fake op is not to be
-        // called. When cinn support backward_filter/backward_data code gen,
-        // this code is to be removed.
-        if (conv_type != "forward") {
-          Expr out = arg_pack[0];
-          pe::CudaScheduleInjective(
-              stages[out.as_tensor_ref()], output_shapes.front(), target);
-          *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
-          return;
-        }
-#endif
-        if (arg_pack.size() == 4UL) {
-          Expr Out = arg_pack[0];
-          Expr input_pad = arg_pack[1];
-          Expr weights = arg_pack[2];
-          ir::Tensor out_t = Out.as_tensor_ref();
-          ir::Tensor input_t = input_pad.as_tensor_ref();
-          ir::Tensor weights_t = weights.as_tensor_ref();
-          CHECK(Out.as_tensor());
-          pe::CudaScheduleConv(stages, input_t, weights_t, out_t, target);
-          arg_pack[0] = Expr(out_t);
-          arg_pack[1] = Expr(input_t);
-          arg_pack[2] = Expr(weights_t);
-          *ret = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
-          return;
-        } else if (arg_pack.size() == 13UL) {
-          Expr wino_weights_dilation = arg_pack[0];
-          Expr wino_input_pad = arg_pack[1];
-          Expr wino_A = arg_pack[2];
-          Expr wino_B = arg_pack[3];
-          Expr wino_G = arg_pack[4];
-          Expr kernel_pack = arg_pack[5];
-          Expr input_tile = arg_pack[6];
-          Expr data_pack = arg_pack[7];
-          Expr bgemm = arg_pack[8];
-          Expr inverse = arg_pack[9];
-          Expr wino_conv = arg_pack[10];
-          ir::Tensor wino_weights_dilation_t =
-              wino_weights_dilation.as_tensor_ref();
-          ir::Tensor wino_input_pad_t = wino_input_pad.as_tensor_ref();
-          ir::Tensor wino_A_t = wino_A.as_tensor_ref();
-          ir::Tensor wino_B_t = wino_B.as_tensor_ref();
-          ir::Tensor wino_G_t = wino_G.as_tensor_ref();
-          ir::Tensor kernel_pack_t = kernel_pack.as_tensor_ref();
-          ir::Tensor input_tile_t = input_tile.as_tensor_ref();
-          ir::Tensor data_pack_t = data_pack.as_tensor_ref();
-          ir::Tensor bgemm_t = bgemm.as_tensor_ref();
-          ir::Tensor inverse_t = inverse.as_tensor_ref();
-          ir::Tensor wino_conv_t = wino_conv.as_tensor_ref();
-          std::vector<ir::Tensor> all_tensors = {wino_weights_dilation_t,
-                                                 wino_input_pad_t,
-                                                 wino_A_t,
-                                                 wino_B_t,
-                                                 wino_G_t,
-                                                 kernel_pack_t,
-                                                 input_tile_t,
-                                                 data_pack_t,
-                                                 bgemm_t,
-                                                 inverse_t,
-                                                 wino_conv_t};
-          hlir::pe::CudaScheduleWinogradConv(stages, all_tensors, target);
-          arg_pack[0] = Expr(all_tensors[0]);
-          arg_pack[1] = Expr(all_tensors[1]);
-          arg_pack[2] = Expr(all_tensors[2]);
-          arg_pack[3] = Expr(all_tensors[3]);
-          arg_pack[4] = Expr(all_tensors[4]);
-          arg_pack[5] = Expr(all_tensors[5]);
-          arg_pack[6] = Expr(all_tensors[6]);
-          arg_pack[7] = Expr(all_tensors[7]);
-          arg_pack[8] = Expr(all_tensors[8]);
-          arg_pack[9] = Expr(all_tensors[9]);
-          arg_pack[10] = Expr(all_tensors[10]);
-          *ret = CINNValuePack{{arg_pack[10],
-                                arg_pack[5],
-                                arg_pack[7],
-                                arg_pack[8],
-                                CINNValue(stages)}};
-          return;
-        }
-      } else if (target.arch == Target::Arch::X86) {
-        if (arg_pack.size() == 6UL) {
-          Expr res = arg_pack[0];
-          Expr packed_out = arg_pack[1];
-          Expr weights_dilation = arg_pack[2];
-          Expr input_pad = arg_pack[3];
-          Expr data = arg_pack[4];
-          CHECK(res.as_tensor());
-          CHECK(packed_out.as_tensor());
-          CHECK(input_pad.as_tensor());
-          CHECK(weights_dilation.as_tensor());
-          CHECK(data.as_tensor());
-          std::vector<Expr> kernel_shape =
-              weights_dilation.as_tensor_ref()->shape;
-          // kernel_h == 1 && kernel_w == 1
-          CHECK_EQ(kernel_shape.size(), 6U)
-              << "kernel_dialtion shape size should be 6";
-          bool is_1x1 =
-              (is_zero(kernel_shape[2] - 1)) && (is_zero(kernel_shape[3] - 1));
-          ir::Tensor packed_out_tensor = packed_out.as_tensor_ref();
-          bool do_padding = (padding[0] == 0 && padding[1] == 0) ? false : true;
-
-          if (groups == 1) {
-            if (is_1x1) {
-              pe::Conv2d_NCHWc_1X1_Schedule_CPU(
-                  stages,
-                  res.as_tensor_ref(),
-                  packed_out_tensor,
-                  input_pad.as_tensor_ref(),
-                  weights_dilation.as_tensor_ref(),
-                  data.as_tensor_ref(),
-                  target,
-                  key,
-                  do_padding);
-            } else {
-              pe::Conv2d_NCHWc_Schedule_CPU(stages,
-                                            res.as_tensor_ref(),
-                                            packed_out_tensor,
-                                            input_pad.as_tensor_ref(),
-                                            weights_dilation.as_tensor_ref(),
-                                            data.as_tensor_ref(),
-                                            target,
-                                            key,
-                                            do_padding);
-            }
-            if (do_padding) {
-              *ret = CINNValuePack{{CINNValue(res),
-                                    CINNValue(packed_out_tensor),
-                                    arg_pack[2],
-                                    arg_pack[3],
-                                    CINNValue(stages)}};
-            } else {
-              *ret = CINNValuePack{{CINNValue(res),
-                                    CINNValue(packed_out_tensor),
-                                    arg_pack[2],
-                                    CINNValue(stages)}};
-            }
-            return;
-          } else {
-            // todo: opt group_conv schedule
-            VLOG(3) << "use simple group convolution schedule";
-            stages[input_pad.as_tensor_ref()]->ComputeInline();
-            stages[weights_dilation.as_tensor_ref()]->ComputeInline();
-            stages[data.as_tensor_ref()]->ComputeInline();
-            *ret = CINNValuePack{
-                {arg_pack[0], CINNValue(packed_out_tensor), CINNValue(stages)}};
-          }
-          return;
-        } else if (arg_pack.size() == 4UL) {
-          Expr input_pad = arg_pack[1];
-          CHECK(input_pad.as_tensor());
-          stages[input_pad.as_tensor_ref()]->ComputeInline();
-          Expr weights_dilation = arg_pack[2];
-          CHECK(weights_dilation.as_tensor());
-          stages[weights_dilation.as_tensor_ref()]->ComputeInline();
-          *ret = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
-          return;
-        }
-      }
-      *ret = arg_pack;
+    } else if (target.arch == Target::Arch::X86) {
+      CINN_NOT_IMPLEMENTED
     }
+    LOG(FATAL) << "This target [" << target << "] is not supported yet.";
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1007,12 +824,9 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     CHECK(data_format == "NCHW" || data_format == "NHWC")
         << "only support NCHW/NHWC data_format.\n";
     std::vector<ir::Tensor> out;
-    std::string tensor_name = UniqName("Depthwise_Conv2d_out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_GE(pack_args.size(), 3);
-      CHECK(pack_args[2].is_string());
-      tensor_name = pack_args[2].operator std::string();
-    }
+    CHECK_GE(pack_args.size(), 3);
+    CHECK(pack_args[2].is_string());
+    std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
       if (target.arch == Target::Arch::X86) {
         out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
@@ -1060,96 +874,35 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule depthwise_conv2d_schedule([=](lang::Args args,
-                                                        lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                              "empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      std::vector<Expr> vec_tensor;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        } else if (arg_pack[i].is_tensor()) {
-          Expr temp = arg_pack[i];
-          vec_tensor.emplace_back(temp);
-        }
-      }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      if (target.arch == Target::Arch::NVGPU) {
-        pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
-      } else {
-        CINN_NOT_IMPLEMENTED
-      }
-      std::vector<common::CINNValue> res{
-          common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = common::CINNValuePack{res};
-    } else {
-      CHECK(!args.empty()) << "The input argument of depthwise_conv schedule "
-                              "is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      CHECK(arg_pack.size() == 2UL || arg_pack.size() == 3UL ||
-            arg_pack.size() == 6UL);
-      poly::StageMap stages = arg_pack[arg_pack.size() - 1];
-      Expr Out = arg_pack[0];
-      CHECK(Out.as_tensor());
-      if (arg_pack.size() == 3UL) {
-        Expr input_pad = arg_pack[1];
-        CHECK(input_pad.as_tensor());
-        stages[input_pad.as_tensor_ref()]->ComputeInline();
-      }
-      if (target.arch == Target::Arch::NVGPU) {
-        ir::Tensor output = Out.as_tensor_ref();
-        CHECK(Out.as_tensor());
-        pe::CudaScheduleDepthwiseConv(stages, output, target);
-        arg_pack[0] = Expr(output);
-      } else if (target.arch == Target::Arch::X86) {
-        if (arg_pack.size() == 6UL) {
-          Expr res = arg_pack[0];
-          Expr packed_out = arg_pack[1];
-          Expr weights_dilation = arg_pack[2];
-          Expr input_pad = arg_pack[3];
-          Expr data = arg_pack[4];
-          CHECK(res.as_tensor());
-          CHECK(packed_out.as_tensor());
-          CHECK(input_pad.as_tensor());
-          CHECK(weights_dilation.as_tensor());
-          CHECK(data.as_tensor());
-          ir::Tensor packed_out_tensor = packed_out.as_tensor_ref();
-          bool do_padding = (padding[0] == 0 && padding[1] == 0) ? false : true;
-          pe::Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
-              stages,
-              res.as_tensor_ref(),
-              packed_out_tensor,
-              input_pad.as_tensor_ref(),
-              weights_dilation.as_tensor_ref(),
-              data.as_tensor_ref(),
-              target,
-              do_padding);
-          if (do_padding) {
-            *ret = CINNValuePack{{CINNValue(res),
-                                  CINNValue(packed_out_tensor),
-                                  arg_pack[2],
-                                  arg_pack[3],
-                                  CINNValue(stages)}};
-          } else {
-            *ret = CINNValuePack{{CINNValue(res),
-                                  CINNValue(packed_out_tensor),
-                                  arg_pack[2],
-                                  CINNValue(stages)}};
+  framework::CINNSchedule depthwise_conv2d_schedule(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
+                                "empty! Please check.\n";
+        common::CINNValuePack arg_pack = args[0];
+        std::vector<Expr> vec_ast;
+        std::vector<Expr> vec_tensor;
+        for (int i = 0; i < arg_pack.size(); i++) {
+          if (arg_pack[i].is_expr()) {
+            Expr temp = arg_pack[i];
+            vec_ast.emplace_back(temp);
+          } else if (arg_pack[i].is_tensor()) {
+            Expr temp = arg_pack[i];
+            vec_tensor.emplace_back(temp);
           }
-          return;
         }
-      }
-
-      *ret = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
-    }
-  });
+        CHECK(!vec_ast.empty());
+        ir::ModuleExpr mod_expr(vec_ast);
+        ir::IRSchedule ir_sch(mod_expr);
+        ir_sch.MergeExprs();
+        if (target.arch == Target::Arch::NVGPU) {
+          pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
+        } else {
+          CINN_NOT_IMPLEMENTED
+        }
+        std::vector<common::CINNValue> res{
+            common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+        *ret = common::CINNValuePack{res};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   CHECK(out_type.size())
@@ -1259,13 +1012,9 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
     Expr Bias = arg_pack[2];
     Expr Mean = arg_pack[3];
     Expr Variance = arg_pack[4];
-    std::string out_name = UniqName("BatchNorm_output");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(arg_pack.size(), 6U);
-      CHECK(arg_pack[5].is_string());
-      std::string str = arg_pack[5];
-      out_name = str;
-    }
+    CHECK_EQ(arg_pack.size(), 6U);
+    CHECK(arg_pack[5].is_string());
+    std::string out_name = arg_pack[5];
     CHECK(A.as_tensor());
     CHECK(Scale.as_tensor());
     CHECK(Bias.as_tensor());
@@ -1401,12 +1150,9 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
         CHECK(pool_type == "max" || pool_type == "avg")
             << "pool_type for pool1d should be max or avg.\n";
 
-        std::string tensor_name = UniqName("Pool1d_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
 
         auto out = pe::Pool1d(A.as_tensor_ref(),
                               kernel_size,
@@ -1433,66 +1179,43 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
 
   framework::CINNSchedule pool1d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input argument of pool1d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      std::vector<Expr> vec_tensor;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        } else if (arg_pack[i].is_tensor()) {
-          Expr temp = arg_pack[i];
-          vec_tensor.emplace_back(temp);
-        }
+    CHECK(!args.empty())
+        << "The input argument of pool1d schedule is empty! Please check.\n";
+    CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      if (arg_pack.size() == 3UL) {
-        CHECK_EQ(vec_tensor.size(), 2);
-        Expr input_pad = vec_tensor[1];
-        CHECK(input_pad.as_tensor());
-        auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
-        ir_sch.ComputeInline(block_input_pad);
-      }
-      if (target.arch == Target::Arch::NVGPU) {
-        CHECK(!vec_tensor.empty());
-        Expr Out = vec_tensor[0];
-        CHECK(Out.as_tensor());
-        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-        ir_sch.Split(loops[1], {-1, 2});
-        loops = ir_sch.GetLoops(Out.as_tensor()->name);
-        ir_sch.Bind(loops[0], "blockIdx.x");
-        ir_sch.Bind(loops[1], "threadIdx.x");
-      }
-      std::vector<CINNValue> res{
-          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = CINNValuePack{res};
-    } else {
-      CHECK(!args.empty())
-          << "The input argument of pool1d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      CHECK(arg_pack.size() == 2UL || arg_pack.size() == 3UL);
-      Expr Out = arg_pack[0];
-      poly::StageMap stages = arg_pack[arg_pack.size() - 1];
-      if (arg_pack.size() == 3UL) {
-        Expr input_pad = arg_pack[1];
-        CHECK(input_pad.as_tensor());
-        stages[input_pad.as_tensor_ref()]->ComputeInline();
-      }
-
-      if (target.arch == Target::Arch::NVGPU) {
-        CHECK(Out.as_tensor());
-        stages[Out.as_tensor_ref()]->Split(1, 2);
-        stages[Out.as_tensor_ref()]->Bind(0, "blockIdx.x");
-        stages[Out.as_tensor_ref()]->Bind(1, "threadIdx.x");
-      }
-      *ret = CINNValuePack{{CINNValue(Out), CINNValue(stages)}};
     }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    if (arg_pack.size() == 3UL) {
+      CHECK_EQ(vec_tensor.size(), 2);
+      Expr input_pad = vec_tensor[1];
+      CHECK(input_pad.as_tensor());
+      auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
+      ir_sch.ComputeInline(block_input_pad);
+    }
+    if (target.arch == Target::Arch::NVGPU) {
+      CHECK(!vec_tensor.empty());
+      Expr Out = vec_tensor[0];
+      CHECK(Out.as_tensor());
+      auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+      ir_sch.Split(loops[1], {-1, 2});
+      loops = ir_sch.GetLoops(Out.as_tensor()->name);
+      ir_sch.Bind(loops[0], "blockIdx.x");
+      ir_sch.Bind(loops[1], "threadIdx.x");
+    }
+    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1668,12 +1391,9 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         CHECK(A.as_tensor());
         ir::Tensor A_tensor = A.as_tensor_ref();
 
-        std::string tensor_name = UniqName("GlobalPool2d_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
 
         auto out = pe::GlobalPool2d(A_tensor, pool_type, tensor_name);
         CHECK(out.size() == 2U)
@@ -1687,44 +1407,31 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                                                      lang::RetValue *ret) {
     CHECK(!args.empty())
         << "The input argument of pool2d schedule is empty! Please check.\n";
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input argument of pool1d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      std::vector<Expr> vec_tensor;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        } else if (arg_pack[i].is_tensor()) {
-          Expr temp = arg_pack[i];
-          vec_tensor.emplace_back(temp);
-        }
+    CHECK(!args.empty())
+        << "The input argument of pool1d schedule is empty! Please check.\n";
+    CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      if (target.arch == Target::Arch::NVGPU) {
-        pe::IRGlobalPoolScheduleGPU(ir_sch, target);
-      } else {
-        CINN_NOT_IMPLEMENTED
-      }
-      std::vector<CINNValue> res{
-          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = CINNValuePack{res};
-    } else {
-      CINNValuePack arg_pack = args[0];
-      CHECK_EQ(arg_pack.size(), 3UL);
-      Expr out = arg_pack[0];
-      Expr reduce = arg_pack[1];
-      CHECK(out.as_tensor() && reduce.as_tensor());
-      poly::StageMap stages = arg_pack[arg_pack.size() - 1];
-      pe::GlobalPoolScheduleGPU(
-          stages, {out.as_tensor_ref(), reduce.as_tensor_ref()}, target);
-      *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
     }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    if (target.arch == Target::Arch::NVGPU) {
+      pe::IRGlobalPoolScheduleGPU(ir_sch, target);
+    } else {
+      CINN_NOT_IMPLEMENTED
+    }
+    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = CINNValuePack{res};
   });
 
   framework::CINNCompute pool2d_compute(
@@ -1736,12 +1443,9 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         CHECK(A.as_tensor());
         ir::Tensor A_tensor = A.as_tensor_ref();
 
-        std::string tensor_name = UniqName("Pool2d_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
 
         auto out = pe::Pool2d(A_tensor,
                               kernel_size,
@@ -1770,63 +1474,41 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
 
   framework::CINNSchedule pool2d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input argument of pool2d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      std::vector<Expr> vec_tensor;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        } else if (arg_pack[i].is_tensor()) {
-          Expr temp = arg_pack[i];
-          vec_tensor.emplace_back(temp);
-        }
+    CHECK(!args.empty())
+        << "The input argument of pool2d schedule is empty! Please check.\n";
+    CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      int arg_pack_size = arg_pack.size();
-      // arg_pack_size == 3 case: input, input_pad, output
-      // arg_pack_size == 4 case: input, input_pad, output, stage
-      if (arg_pack_size == 3UL || arg_pack_size == 4UL) {
-        CHECK_EQ(vec_tensor.size(), 2);
-        Expr input_pad = vec_tensor[1];
-        CHECK(input_pad.as_tensor());
-        const std::string &input_pad_name = input_pad.as_tensor()->name;
-        VLOG(6) << "ComputeInline on " << input_pad_name;
-        auto block_input_pad = ir_sch.GetBlock(input_pad_name);
-        ir_sch.ComputeInline(block_input_pad);
-      }
-      if (target.arch == Target::Arch::NVGPU) {
-        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
-      }
-      std::vector<CINNValue> res{
-          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = CINNValuePack{res};
-    } else {
-      CHECK(!args.empty())
-          << "The input argument of pool2d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      CHECK(arg_pack.size() == 2UL || arg_pack.size() == 3UL);
-      Expr Out = arg_pack[0];
-      CHECK(Out.as_tensor());
-      poly::StageMap stages = arg_pack[arg_pack.size() - 1];
-      if (arg_pack.size() == 3UL) {
-        Expr input_pad = arg_pack[1];
-        CHECK(input_pad.as_tensor());
-        stages[input_pad.as_tensor_ref()]->ComputeInline();
-      }
-      ir::Tensor temp_out = Out.as_tensor_ref();
-      if (target.arch == Target::Arch::NVGPU) {
-        pe::PoolScheduleGPU(stages, temp_out, target);
-        arg_pack[arg_pack.size() - 2] = Expr(temp_out);
-      }
-      *ret = CINNValuePack{{CINNValue(Out), CINNValue(stages)}};
     }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    int arg_pack_size = arg_pack.size();
+    // arg_pack_size == 3 case: input, input_pad, output
+    // arg_pack_size == 4 case: input, input_pad, output, stage
+    if (arg_pack_size == 3UL || arg_pack_size == 4UL) {
+      CHECK_EQ(vec_tensor.size(), 2);
+      Expr input_pad = vec_tensor[1];
+      CHECK(input_pad.as_tensor());
+      const std::string &input_pad_name = input_pad.as_tensor()->name;
+      VLOG(6) << "ComputeInline on " << input_pad_name;
+      auto block_input_pad = ir_sch.GetBlock(input_pad_name);
+      ir_sch.ComputeInline(block_input_pad);
+    }
+    if (target.arch == Target::Arch::NVGPU) {
+      pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
+    }
+    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1997,12 +1679,9 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         CHECK(pool_type == "max" || pool_type == "avg")
             << "pool_type for pool3d should be max or avg.\n";
 
-        std::string tensor_name = UniqName("Pool3d_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
 
         auto out = pe::Pool3d(A.as_tensor_ref(),
                               kernel_size,
@@ -2030,66 +1709,43 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
 
   framework::CINNSchedule pool3d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input argument of pool3d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      std::vector<Expr> vec_tensor;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        } else if (arg_pack[i].is_tensor()) {
-          Expr temp = arg_pack[i];
-          vec_tensor.emplace_back(temp);
-        }
+    CHECK(!args.empty())
+        << "The input argument of pool3d schedule is empty! Please check.\n";
+    CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      if (arg_pack.size() == 3UL) {
-        CHECK_EQ(vec_tensor.size(), 2);
-        Expr input_pad = vec_tensor[1];
-        CHECK(input_pad.as_tensor());
-        auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
-        ir_sch.ComputeInline(block_input_pad);
-      }
-      if (target.arch == Target::Arch::NVGPU) {
-        CHECK(!vec_tensor.empty());
-        Expr Out = vec_tensor[0];
-        CHECK(Out.as_tensor());
-        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-        ir_sch.Split(loops[1], {-1, 2});
-        loops = ir_sch.GetLoops(Out.as_tensor()->name);
-        ir_sch.Bind(loops[0], "blockIdx.x");
-        ir_sch.Bind(loops[1], "threadIdx.x");
-      }
-      std::vector<CINNValue> res{
-          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = CINNValuePack{res};
-    } else {
-      CHECK(!args.empty())
-          << "The input argument of pool3d schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      CHECK(arg_pack.size() == 2UL || arg_pack.size() == 3UL);
-      Expr Out = arg_pack[0];
-      poly::StageMap stages = arg_pack[arg_pack.size() - 1];
-      if (arg_pack.size() == 3UL) {
-        Expr input_pad = arg_pack[1];
-        CHECK(input_pad.as_tensor());
-        stages[input_pad.as_tensor_ref()]->ComputeInline();
-      }
-
-      if (target.arch == Target::Arch::NVGPU) {
-        CHECK(Out.as_tensor());
-        stages[Out.as_tensor_ref()]->Split(1, 2);
-        stages[Out.as_tensor_ref()]->Bind(0, "blockIdx.x");
-        stages[Out.as_tensor_ref()]->Bind(1, "threadIdx.x");
-      }
-      *ret = CINNValuePack{{CINNValue(Out), CINNValue(stages)}};
     }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    if (arg_pack.size() == 3UL) {
+      CHECK_EQ(vec_tensor.size(), 2);
+      Expr input_pad = vec_tensor[1];
+      CHECK(input_pad.as_tensor());
+      auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
+      ir_sch.ComputeInline(block_input_pad);
+    }
+    if (target.arch == Target::Arch::NVGPU) {
+      CHECK(!vec_tensor.empty());
+      Expr Out = vec_tensor[0];
+      CHECK(Out.as_tensor());
+      auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+      ir_sch.Split(loops[1], {-1, 2});
+      loops = ir_sch.GetLoops(Out.as_tensor()->name);
+      ir_sch.Bind(loops[0], "blockIdx.x");
+      ir_sch.Bind(loops[1], "threadIdx.x");
+    }
+    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -2236,12 +1892,10 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         }
         std::vector<ir::Tensor> out;
 
-        std::string tensor_name = UniqName("Softmax_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_GE(pack_args.size(), 2);
-          CHECK(pack_args[pack_args.size() - 1].is_string());
-          tensor_name = pack_args[pack_args.size() - 1].operator std::string();
-        }
+        CHECK_GE(pack_args.size(), 2);
+        CHECK(pack_args[pack_args.size() - 1].is_string());
+        std::string tensor_name =
+            pack_args[pack_args.size() - 1].operator std::string();
 
 #ifdef CINN_WITH_MKLDNN
         if (use_mkldnn) {
@@ -2267,78 +1921,50 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
 
   framework::CINNSchedule softmax_schedule([=](lang::Args args,
                                                lang::RetValue *ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty())
-          << "The input arguments of softmax schedule is empty! Please check.";
-      CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        }
+    CHECK(!args.empty())
+        << "The input arguments of softmax schedule is empty! Please check.";
+    CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      if (target.arch == Target::Arch::NVGPU) {
-        if (output_shapes[0].size() > 1) {
-          auto all_blocks = ir_sch.GetAllBlocks();
-          CHECK_EQ(all_blocks.size(), 3);
-          auto loops = ir_sch.GetLoops(all_blocks[2]);
-          ir_sch.ComputeAt(all_blocks[1], loops.back());
+    }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    if (target.arch == Target::Arch::NVGPU) {
+      if (output_shapes[0].size() > 1) {
+        auto all_blocks = ir_sch.GetAllBlocks();
+        CHECK_EQ(all_blocks.size(), 3);
+        auto loops = ir_sch.GetLoops(all_blocks[2]);
+        ir_sch.ComputeAt(all_blocks[1], loops.back());
 
-          if (output_shapes[0][0] != 1) {
-            ir_sch.SimpleComputeAt(all_blocks[0], loops[0]);
-          }
-
-          loops = ir_sch.GetLoops(all_blocks[2]);
-          int loop_index = 1;
-          if (output_shapes[0][0] == 1) loop_index--;
-          CHECK_GE(loops.size(), loop_index + 1);
-          auto splited_loops = ir_sch.Split(loops[loop_index], {-1, 5});
-
-          all_blocks = ir_sch.GetAllBlocks();
-          loops = ir_sch.GetLoops(all_blocks[2]);
-          ir_sch.Bind(loops[0], "blockIdx.x");
-          ir_sch.Bind(loops[1], "threadIdx.x");
+        if (output_shapes[0][0] != 1) {
+          ir_sch.SimpleComputeAt(all_blocks[0], loops[0]);
         }
-        std::vector<CINNValue> res{
-            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = CINNValuePack{res};
-      } else if (target.arch == Target::Arch::X86) {
-        pe::IRSoftmaxScheduleCPU(ir_sch, axis);
-        std::vector<CINNValue> res{
-            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = CINNValuePack{res};
+
+        loops = ir_sch.GetLoops(all_blocks[2]);
+        int loop_index = 1;
+        if (output_shapes[0][0] == 1) loop_index--;
+        CHECK_GE(loops.size(), loop_index + 1);
+        auto splited_loops = ir_sch.Split(loops[loop_index], {-1, 5});
+
+        all_blocks = ir_sch.GetAllBlocks();
+        loops = ir_sch.GetLoops(all_blocks[2]);
+        ir_sch.Bind(loops[0], "blockIdx.x");
+        ir_sch.Bind(loops[1], "threadIdx.x");
       }
-    } else {
-      CHECK(!args.empty())
-          << "The input arguments of softmax schedule is empty! Please check.";
-      CINNValuePack arg_pack = args[0];
-      CHECK_EQ(arg_pack.size(), 3UL)
-          << "The input tensor's size of softmax schedule is "
-          << arg_pack.size() << "and it should be equal to 3! Please check.";
-      Expr out1 = arg_pack[0];
-      Expr out2 = arg_pack[1];
-      poly::StageMap stages = arg_pack[2];
-      CHECK(out1.as_tensor());
-      CHECK(out2.as_tensor());
-      ir::Tensor tensor_a = out1.as_tensor_ref();
-      ir::Tensor tensor_b = out2.as_tensor_ref();
-      if (target.arch == Target::Arch::NVGPU) {
-        if (tensor_a->shape.size() > 1) {
-          stages[tensor_a]->Split(1, 5);
-          stages[tensor_a]->Bind(0, "blockIdx.x");
-          stages[tensor_a]->Bind(1, "threadIdx.x");
-          int shape_size = tensor_a->shape.size();
-          stages[tensor_b]->ComputeAt(stages[tensor_a], shape_size);
-        }
-      } else if (target.arch == Target::Arch::X86) {
-        pe::SoftmaxScheduleCPU(stages, tensor_a, tensor_b, axis);
-      }
-      *ret = arg_pack;
+      std::vector<CINNValue> res{
+          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      *ret = CINNValuePack{res};
+    } else if (target.arch == Target::Arch::X86) {
+      pe::IRSoftmaxScheduleCPU(ir_sch, axis);
+      std::vector<CINNValue> res{
+          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      *ret = CINNValuePack{res};
     }
   });
 
@@ -2352,8 +1978,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
 std::vector<std::vector<int>> InferShapeForSoftmax(
     const std::vector<std::vector<int>> &inputs_shape,
     const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty() && !inputs_shape[0].empty())
-      << "The input's shape size is 0! Please check again.";
+  CHECK(!inputs_shape.empty()) << "The inputs is empty! Please check again.";
   std::vector<std::vector<int>> res{inputs_shape[0]};
   return res;
 }
@@ -2408,12 +2033,9 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
     CHECK(A_expr.as_tensor());
     ir::Tensor A = A_expr.as_tensor_ref();
 
-    std::string tensor_name = UniqName("dropout_infer_out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 2);
-      CHECK(pack_args[1].is_string());
-      tensor_name = pack_args[1].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 2);
+    CHECK(pack_args[1].is_string());
+    std::string tensor_name = pack_args[1].operator std::string();
 
     auto out =
         pe::DropoutInfer(A, dropout_prob, dropout_implementation, tensor_name);
@@ -2433,8 +2055,7 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
 std::vector<std::vector<int>> InferShapeForDropoutInfer(
     const std::vector<std::vector<int>> &inputs_shape,
     const framework::AttrMapType &attrs) {
-  CHECK(!inputs_shape.empty())
-      << "The input's shape size is 0! Please check again.";
+  CHECK(!inputs_shape.empty()) << "The inputs is empty! Please check again.";
   float dropout_prob = 0;
   std::string dropout_implementation = "downgrade_in_infer";
   for (auto &iter : attrs) {
@@ -2479,12 +2100,9 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
         CHECK(true_value.as_tensor());
         CHECK(false_value.as_tensor());
 
-        std::string tensor_name = UniqName("Select_output");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 4U);
-          CHECK(pack_args[3].is_string());
-          tensor_name = pack_args[3].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 4U);
+        CHECK(pack_args[3].is_string());
+        std::string tensor_name = pack_args[3].operator std::string();
 
         auto out = pe::Select(condition.as_tensor_ref(),
                               true_value.as_tensor_ref(),

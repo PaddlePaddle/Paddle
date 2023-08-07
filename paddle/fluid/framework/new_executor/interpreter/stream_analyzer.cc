@@ -17,6 +17,7 @@
 #include <future>
 #include <unordered_set>
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -28,42 +29,6 @@ namespace interpreter {
 using DeviceContext = platform::DeviceContext;
 using DeviceEvent = platform::DeviceEvent;
 
-class ContextManager {
- public:
-  using DeviceContextMap =
-      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>;
-
-  static ContextManager& Instance() {
-    static ContextManager* ctx_manager = new ContextManager;
-    return *ctx_manager;
-  }
-
-  std::shared_future<std::unique_ptr<DeviceContext>> Get(
-      const std::string& type,
-      const platform::Place& place,
-      int stream_priority) {
-    std::lock_guard<std::mutex> lk(ctx_mtx_);
-    VLOG(6) << "Get dev_ctx for " << type << " - " << place;
-
-    DeviceContextMap& ctxs = ctx_pool_[type];
-    if (ctxs.find(place) == ctxs.end()) {
-      platform::EmplaceDeviceContexts(
-          &ctxs,
-          {place},
-          /*disable_setting_default_stream_for_allocator=*/true,
-          stream_priority);
-    }
-    return ctxs[place];
-  }
-
- private:
-  ContextManager() {}
-  DISABLE_COPY_AND_ASSIGN(ContextManager);
-
-  std::mutex ctx_mtx_;
-  std::unordered_map<std::string, DeviceContextMap> ctx_pool_;
-};
-
 inline std::string RunTypeToString(DownstreamRunType run_type) {
   if (run_type == DownstreamRunType::kDirectRun) {
     return "DirectRun";
@@ -72,36 +37,41 @@ inline std::string RunTypeToString(DownstreamRunType run_type) {
   }
 }
 
-void StreamAnalyzer::ConstructEvents(
-    std::vector<Instruction>* instructions) const {
-  std::vector<Instruction> cross_step_merged_instructions = *instructions;
-  for (const Instruction& instr : *instructions) {
-    cross_step_merged_instructions.emplace_back(instr);
+void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
+  if (!is_event_info_build_) {
+    std::vector<Instruction> cross_step_merged_instructions = *instructions;
+    for (const Instruction& instr : *instructions) {
+      cross_step_merged_instructions.emplace_back(instr);
+    }
+
+    std::vector<Instruction*> cross_step_merged_instructions_ptr;
+    for (Instruction& instr : cross_step_merged_instructions) {
+      cross_step_merged_instructions_ptr.emplace_back(&instr);
+    }
+
+    DependencyBuilder dependency_builder;
+    dependency_builder.Build(cross_step_merged_instructions);
+
+    const std::map<size_t, std::set<size_t>>& downstream_map =
+        dependency_builder.OpDownstreamMap();
+    const size_t instr_num = cross_step_merged_instructions.size();
+    std::vector<std::vector<std::vector<size_t>>> run_type_info(
+        instr_num,
+        std::vector<std::vector<size_t>>(
+            /*number_of_run_type = */ 2));  // instr_id -> run_type ->
+                                            // next_instr_id
+    AnalyseAllRunType(
+        cross_step_merged_instructions_ptr, downstream_map, &run_type_info);
+
+    AnalyseAllEventInfo(
+        cross_step_merged_instructions_ptr, run_type_info, event_info_.get());
+    ShrinkEventInfo(dependency_builder, event_info_.get());
+    is_event_info_build_ = true;
   }
-
-  DependencyBuilder dependency_builder;
-  dependency_builder.Build(cross_step_merged_instructions);
-
-  const std::map<size_t, std::set<size_t>>& downstream_map =
-      dependency_builder.OpDownstreamMap();
-  const size_t instr_num = cross_step_merged_instructions.size();
-  std::vector<std::vector<std::vector<size_t>>> run_type_info(
-      instr_num,
-      std::vector<std::vector<size_t>>(
-          /*number_of_run_type = */ 2));  // instr_id -> run_type ->
-                                          // next_instr_id
-  AnalyseAllRunType(
-      cross_step_merged_instructions, downstream_map, &run_type_info);
-
-  std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>
-      event_info;  // DeviceContext -> waiter_instr_id -> recorder_instr_ids
-  AnalyseAllEventInfo(
-      cross_step_merged_instructions, run_type_info, &event_info);
-  ShrinkEventInfo(dependency_builder, &event_info);
 
   // Construct events
   std::map<size_t, std::shared_ptr<DeviceEvent>> instr2event;
-  for (auto& context_item : event_info) {
+  for (auto& context_item : *event_info_) {
     for (auto& waiter_item : context_item.second) {
       size_t waiter_instr_id = waiter_item.first;
       std::set<size_t>& recorder_instr_ids = waiter_item.second;
@@ -210,38 +180,41 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   return op_func_node.dev_ctx_;
 }
 
-bool StreamAnalyzer::HasDataDependency(const Instruction& cur_instr,
-                                       const Instruction& next_instr) const {
-  auto no_need_buffer_ins =
-      [](const Instruction& instr) -> const std::unordered_set<std::string> {
-    auto* op = instr.OpBase();
-    auto& inferer = op->Info().NoNeedBufferVarsInferer();
-    if (inferer) {
-      return inferer(op->Inputs(), op->Outputs(), op->Attrs());
-    }
-    return std::unordered_set<std::string>();
-  };
+const std::unordered_set<std::string> no_need_buffer_ins(Instruction* instr) {
+  auto* op = instr->OpBase();
+  auto& inferer = op->Info().NoNeedBufferVarsInferer();
+  if (inferer) {
+    return inferer(op->Inputs(), op->Outputs(), op->Attrs());
+  }
+  return std::unordered_set<std::string>();
+}
 
+const std::unordered_set<ir::Value> no_need_buffer_ins(
+    const paddle::framework::InstructionBase* instr) {
+  return instr->NoNeedBuffer();
+}
+
+template <typename T1, typename T2>
+bool has_data_dependency(T1* cur_instr, T1* next_instr) {
   // cur_instr->var->next_instr
   std::unordered_set<size_t> cur_var_ids;
-  for (auto& item : cur_instr.Outputs()) {
+  for (auto& item : cur_instr->Outputs()) {
     cur_var_ids.insert(item.second.begin(), item.second.end());
   }
 
-  const std::unordered_set<std::string> next_instr_no_need_buffer_ins =
+  const std::unordered_set<T2> next_instr_no_need_buffer_ins =
       no_need_buffer_ins(next_instr);
 
-  for (auto& item : next_instr.Inputs()) {
+  for (auto& item : next_instr->Inputs()) {
     if (next_instr_no_need_buffer_ins.find(item.first) !=
         next_instr_no_need_buffer_ins.end()) {
       continue;
     }
     for (auto next_var_id : item.second) {
       if (cur_var_ids.find(next_var_id) != cur_var_ids.end()) {
-        VLOG(6) << "Found data dependency from " << cur_instr.OpBase()->Type()
-                << "(" << cur_instr.Id() << ") to "
-                << next_instr.OpBase()->Type() << "(" << next_instr.Id()
-                << ") at variable " << item.first << "(" << next_var_id << ")";
+        VLOG(6) << "Found data dependency from "
+                << "cur_instr(" << cur_instr->Id() << ") to "
+                << "next_instr(" << next_instr->Id() << ")";
         return true;
       }
     }
@@ -249,22 +222,21 @@ bool StreamAnalyzer::HasDataDependency(const Instruction& cur_instr,
 
   // cur_instr->var && next_instr->var
   // var->cur_instr && next_instr->var
-  const std::unordered_set<std::string> cur_instr_no_need_buffer_ins =
+  const std::unordered_set<T2> cur_instr_no_need_buffer_ins =
       no_need_buffer_ins(cur_instr);
-  for (auto& item : cur_instr.Inputs()) {
+  for (auto& item : cur_instr->Inputs()) {
     if (cur_instr_no_need_buffer_ins.find(item.first) ==
         cur_instr_no_need_buffer_ins.end()) {
       cur_var_ids.insert(item.second.begin(), item.second.end());
     }
   }
 
-  for (auto& item : next_instr.Outputs()) {
+  for (auto& item : next_instr->Outputs()) {
     for (auto next_var_id : item.second) {
       if (cur_var_ids.find(next_var_id) != cur_var_ids.end()) {
-        VLOG(6) << "Found data dependency from " << cur_instr.OpBase()->Type()
-                << "(" << cur_instr.Id() << ") to "
-                << next_instr.OpBase()->Type() << "(" << next_instr.Id()
-                << ") at variable " << item.first << "(" << next_var_id << ")";
+        VLOG(6) << "Found data dependency from "
+                << "cur_instr(" << cur_instr->Id() << ") to "
+                << "next_instr(" << next_instr->Id() << ")";
         return true;
       }
     }
@@ -273,64 +245,80 @@ bool StreamAnalyzer::HasDataDependency(const Instruction& cur_instr,
   return false;
 }
 
-void StreamAnalyzer::AnalyseAllEventInfo(
-    const std::vector<Instruction>& instructions,
-    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
-    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
-        event_info) const {
-  for (size_t cur_instr_id = 0; cur_instr_id < instructions.size();
-       ++cur_instr_id) {
-    const std::vector<size_t>& next_instr_ids =
-        run_type_info[cur_instr_id][DownstreamRunType::kEventRun];
-    std::set<size_t> waiter_instr_ids;
-    std::set<size_t> visited_next_instr_id;
+template <typename T>
+DownstreamRunType analyse_run_type_for_two_instructions(T* cur_instr,
+                                                        T* next_instr,
+                                                        const Place& place) {
+  // xpu&ipu memcpy kerenl is synchronous.
+  if (platform::is_ipu_place(place) || platform::is_xpu_place(place)) {
+    return DownstreamRunType::kDirectRun;
+  }
 
-    for (size_t next_instr_id : next_instr_ids) {
-      AnalyseEventInfoForTwoInstructions(instructions,
-                                         run_type_info,
-                                         cur_instr_id,
-                                         next_instr_id,
-                                         &waiter_instr_ids,
-                                         &visited_next_instr_id);
+  // npu d2h kernel is asynchronous.
+  if (platform::is_custom_place(place)) {
+    if (platform::is_cpu_place(cur_instr->DeviceContext().GetPlace()) ||
+        interpreter::IsMemcpyH2D(next_instr)) {
+      return DownstreamRunType::kDirectRun;
     }
+  }
 
-    for (size_t waiter_instr_id : waiter_instr_ids) {
-      (*event_info)[&(instructions[cur_instr_id].DeviceContext())]
-                   [waiter_instr_id]
-                       .insert(cur_instr_id);
+  if (cur_instr->KernelType() == OpFuncType::kGpuAsync &&
+      (&cur_instr->DeviceContext() != &next_instr->DeviceContext())) {
+    return DownstreamRunType::kEventRun;
+  }
+
+  return DownstreamRunType::kDirectRun;
+}
+
+template <typename T>
+void analyse_all_run_type(
+    const std::vector<T*>& instructions,
+    const std::map<size_t, std::set<size_t>>& downstream_map,
+    const Place& place,
+    std::vector<std::vector<std::vector<size_t>>>* run_type_info) {
+  for (auto& item : downstream_map) {
+    size_t cur_instr_id = item.first;
+    T* cur_instr = instructions[item.first];
+    for (size_t next_instr_id : item.second) {
+      T* next_instr = instructions[next_instr_id];
+      DownstreamRunType run_type = analyse_run_type_for_two_instructions<T>(
+          cur_instr, next_instr, place);
+
+      (*run_type_info)[cur_instr_id][run_type].push_back(next_instr_id);
+
+      VLOG(6) << RunTypeToString(run_type) << ": "
+              << "cur_instr_id(" << cur_instr_id << ") -> "
+              << "next_instr_id(" << next_instr_id << ")";
     }
   }
 }
 
 void StreamAnalyzer::AnalyseAllRunType(
-    const std::vector<Instruction>& instructions,
+    const std::vector<Instruction*>& instructions,
     const std::map<size_t, std::set<size_t>>& downstream_map,
     std::vector<std::vector<std::vector<size_t>>>* run_type_info) const {
-  for (auto& item : downstream_map) {
-    size_t cur_instr_id = item.first;
-    const Instruction& cur_instr = instructions[item.first];
-    for (size_t next_instr_id : item.second) {
-      const Instruction& next_instr = instructions[next_instr_id];
-      DownstreamRunType run_type =
-          AnalyseRunTypeForTwoInstructions(cur_instr, next_instr);
-
-      (*run_type_info)[cur_instr_id][run_type].push_back(next_instr_id);
-
-      VLOG(6) << RunTypeToString(run_type) << ": " << cur_instr.OpBase()->Type()
-              << "(" << cur_instr_id << ") -> " << next_instr.OpBase()->Type()
-              << "(" << next_instr_id << ")";
-    }
-  }
+  analyse_all_run_type<Instruction>(
+      instructions, downstream_map, place_, run_type_info);
 }
 
 // The caller should guarantee cur_instr and next_instr is kEventRun
-void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
-    const std::vector<Instruction>& instructions,
+template <typename T>
+void analyse_event_info_for_two_instructions(
+    const std::vector<T*>& instructions,
     const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
     const size_t cur_instr_id,
     const size_t next_instr_id,
     std::set<size_t>* waiter_instr_ids,
-    std::set<size_t>* visited_next_instr_id) const {
+    std::set<size_t>* visited_next_instr_id);
+
+template <>
+void analyse_event_info_for_two_instructions<Instruction>(
+    const std::vector<Instruction*>& instructions,
+    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
+    const size_t cur_instr_id,
+    const size_t next_instr_id,
+    std::set<size_t>* waiter_instr_ids,
+    std::set<size_t>* visited_next_instr_id) {
   if (visited_next_instr_id->find(next_instr_id) !=
       visited_next_instr_id->end()) {
     return;
@@ -355,10 +343,11 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
   // There is actually a data dependency between op1 and op2 that var0 and
   // fused_var share the same tensor. However, as the dependency is implicit, we
   // can only add event for it with the help of depend_op.
-  if (HasDataDependency(instructions[cur_instr_id],
-                        instructions[next_instr_id]) ||
+
+  if (has_data_dependency<Instruction, std::string>(
+          instructions[cur_instr_id], instructions[next_instr_id]) ||
       !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
-      instructions[next_instr_id].OpBase()->Type() == "depend") {
+      instructions[next_instr_id]->OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
   }
@@ -372,19 +361,119 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
   // between cur_instr and next_instr.
   for (size_t instr_id :
        run_type_info[next_instr_id][DownstreamRunType::kDirectRun]) {
-    AnalyseEventInfoForTwoInstructions(instructions,
-                                       run_type_info,
-                                       cur_instr_id,
-                                       instr_id,
-                                       waiter_instr_ids,
-                                       visited_next_instr_id);
+    analyse_event_info_for_two_instructions<Instruction>(instructions,
+                                                         run_type_info,
+                                                         cur_instr_id,
+                                                         instr_id,
+                                                         waiter_instr_ids,
+                                                         visited_next_instr_id);
   }
 }
 
-void StreamAnalyzer::ShrinkEventInfo(
-    const DependencyBuilder& dependency_builder,
+template <>
+void analyse_event_info_for_two_instructions<
+    paddle::framework::InstructionBase>(
+    const std::vector<paddle::framework::InstructionBase*>& instructions,
+    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
+    const size_t cur_instr_id,
+    const size_t next_instr_id,
+    std::set<size_t>* waiter_instr_ids,
+    std::set<size_t>* visited_next_instr_id) {
+  if (visited_next_instr_id->find(next_instr_id) !=
+      visited_next_instr_id->end()) {
+    return;
+  }
+  visited_next_instr_id->insert(next_instr_id);
+
+  // NOTE(Ruibiao): Though depend_op as next_instr is no_need_buffer, we should
+  // also wait event for it. Because depend_op is used to build dependencies for
+  // fused vars in some scenarios. In those cases, we do not know which vars may
+  // lead a implicit data dependency. For example,
+  // ###
+  // ### fused_var = fuse_op(var0, ...)
+  // ### var1 = op1(fused_var)
+  // ### var0 = depend_op(var0, fused_var)
+  // ### var2 = op2(var0)
+  // ###
+  // If op1 are cross-stream with depend_op and op2, then we have:
+  // ###
+  // ### event_run : op1 -> depend_op
+  // ### direct_run : depend_op -> op2
+  // ###
+  // There is actually a data dependency between op1 and op2 that var0 and
+  // fused_var share the same tensor. However, as the dependency is implicit, we
+  // can only add event for it with the help of depend_op.
+
+  if (has_data_dependency<paddle::framework::InstructionBase, ir::Value>(
+          instructions[cur_instr_id], instructions[next_instr_id]) ||
+      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
+      instructions[next_instr_id]->Name() == "pd.depend") {
+    waiter_instr_ids->insert(next_instr_id);
+    return;
+  }
+
+  // NOTE(Ruibiao): If no data dependency from cur_instr to next_instr, and
+  // simultaneously next_instr has no event_run downstream instr, we try to
+  // recursively add events between cur_instr and next_instr's
+  // direct-run-instrs. This can delay the event wait and achieve better
+  // scheduling performance in some scenarios. However, when next_instr has too
+  // many direct-run-instrs, it may perform worse than add event directly
+  // between cur_instr and next_instr.
+  for (size_t instr_id :
+       run_type_info[next_instr_id][DownstreamRunType::kDirectRun]) {
+    analyse_event_info_for_two_instructions<paddle::framework::InstructionBase>(
+        instructions,
+        run_type_info,
+        cur_instr_id,
+        instr_id,
+        waiter_instr_ids,
+        visited_next_instr_id);
+  }
+}
+
+template <typename T>
+void analyse_all_event_info(
+    const std::vector<T*>& instructions,
+    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+        event_info) {
+  for (size_t cur_instr_id = 0; cur_instr_id < instructions.size();
+       ++cur_instr_id) {
+    const std::vector<size_t>& next_instr_ids =
+        run_type_info[cur_instr_id][DownstreamRunType::kEventRun];
+    std::set<size_t> waiter_instr_ids;
+    std::set<size_t> visited_next_instr_id;
+
+    for (size_t next_instr_id : next_instr_ids) {
+      analyse_event_info_for_two_instructions(instructions,
+                                              run_type_info,
+                                              cur_instr_id,
+                                              next_instr_id,
+                                              &waiter_instr_ids,
+                                              &visited_next_instr_id);
+    }
+
+    for (size_t waiter_instr_id : waiter_instr_ids) {
+      (*event_info)[&(instructions[cur_instr_id]->DeviceContext())]
+                   [waiter_instr_id]
+                       .insert(cur_instr_id);
+    }
+  }
+}
+
+void StreamAnalyzer::AnalyseAllEventInfo(
+    const std::vector<Instruction*>& instructions,
+    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
         event_info) const {
+  analyse_all_event_info<Instruction>(instructions, run_type_info, event_info);
+}
+
+template <typename T>
+void shrink_event_info(
+    const T& dependency_builder,
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+        event_info) {
   for (auto& item : *event_info) {
     // shrink redundant recorders, waiter instrs should only wait for the last
     // recorder instrs in each stream
@@ -444,6 +533,13 @@ void StreamAnalyzer::ShrinkEventInfo(
   }
 }
 
+void StreamAnalyzer::ShrinkEventInfo(
+    const DependencyBuilder& dependency_builder,
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+        event_info) const {
+  shrink_event_info<DependencyBuilder>(dependency_builder, event_info);
+}
+
 platform::DeviceType StreamAnalyzer::GetWaiterType(
     const Instruction& instr) const {
   if (instr.KernelType() == OpFuncType::kCpuSync) {
@@ -458,27 +554,145 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(
   }
 }
 
-DownstreamRunType StreamAnalyzer::AnalyseRunTypeForTwoInstructions(
-    const Instruction& cur_instr, const Instruction& next_instr) const {
-  // xpu&ipu memcpy kerenl is synchronous.
-  if (platform::is_ipu_place(place_) || platform::is_xpu_place(place_)) {
-    return DownstreamRunType::kDirectRun;
+std::shared_ptr<
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+StreamAnalyzer::GetEventInfo() const {
+  return event_info_;
+}
+
+void StreamAnalyzer::ShareEventInfoFrom(const StreamAnalyzer& src) {
+  event_info_ = src.GetEventInfo();
+  is_event_info_build_ = true;
+}
+
+/// ======================== ///
+///        For new ir        ///
+/// ======================== ///
+void NewIrStreamAnalyzer::ConstructEvents(
+    const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
+        instructions) {
+  if (!is_event_info_build_) {
+    std::vector<paddle::framework::InstructionBase*>
+        cross_step_merged_instructions_ptr;
+    for (auto& instr : instructions) {
+      cross_step_merged_instructions_ptr.emplace_back(instr.get());
+    }
+    for (auto& instr : instructions) {
+      cross_step_merged_instructions_ptr.emplace_back(instr.get());
+    }
+
+    NewIrDependencyBuilder dependency_builder;
+    dependency_builder.Build(cross_step_merged_instructions_ptr);
+    const std::map<size_t, std::set<size_t>>& downstream_map =
+        dependency_builder.OpDownstreamMap();
+
+    const size_t instr_num = cross_step_merged_instructions_ptr.size();
+    std::vector<std::vector<std::vector<size_t>>> run_type_info(
+        instr_num,
+        std::vector<std::vector<size_t>>(
+            /*number_of_run_type = */ 2));  // instr_id -> run_type ->
+                                            // next_instr_id
+    AnalyseAllRunType(
+        cross_step_merged_instructions_ptr, downstream_map, &run_type_info);
+
+    AnalyseAllEventInfo(
+        cross_step_merged_instructions_ptr, run_type_info, event_info_.get());
+
+    ShrinkEventInfo(dependency_builder, event_info_.get());
+
+    is_event_info_build_ = true;
   }
 
-  // npu d2h kernel is asynchronous.
-  if (platform::is_custom_place(place_)) {
-    if (interpreter::IsCpuOp(cur_instr) ||
-        interpreter::IsMemcpyH2D(next_instr)) {
-      return DownstreamRunType::kDirectRun;
+  // Construct events
+  std::map<size_t, std::shared_ptr<DeviceEvent>> instr2event;
+  for (auto& context_item : *event_info_) {
+    for (auto& waiter_item : context_item.second) {
+      size_t waiter_instr_id = waiter_item.first;
+      std::set<size_t>& recorder_instr_ids = waiter_item.second;
+
+      if (waiter_instr_id >= instructions.size()) {
+        waiter_instr_id -= instructions.size();
+      }
+
+      for (size_t recorder_instr_id : recorder_instr_ids) {
+        // Redundant record
+        if (recorder_instr_id >= instructions.size()) {
+          continue;
+        }
+
+        paddle::framework::InstructionBase* recorder_instr =
+            instructions.at(recorder_instr_id).get();
+        paddle::framework::InstructionBase* waiter_instr =
+            instructions.at(waiter_instr_id).get();
+        platform::DeviceType waiter_type = GetWaiterType(waiter_instr);
+
+        if (instr2event.find(recorder_instr_id) == instr2event.end()) {
+          std::shared_ptr<DeviceEvent> device_event =
+              std::make_shared<DeviceEvent>(
+                  recorder_instr->DeviceContext().GetPlace(),
+                  platform::GenerateDeviceEventFlag());
+          recorder_instr->AddEventToRecord(device_event,
+                                           platform::kCUDA /*unused*/);
+          instr2event.emplace(recorder_instr_id, device_event);
+        }
+
+        waiter_instr->AddEventToWait(
+            recorder_instr_id, instr2event.at(recorder_instr_id), waiter_type);
+        VLOG(6) << "Add event: " << recorder_instr->Name() << "("
+                << recorder_instr_id << ") -> " << waiter_instr->Name() << "("
+                << waiter_instr_id << "), waiter type = " << waiter_type;
+      }
     }
   }
+}
 
-  if (cur_instr.KernelType() == OpFuncType::kGpuAsync &&
-      (&cur_instr.DeviceContext() != &next_instr.DeviceContext())) {
-    return DownstreamRunType::kEventRun;
+void NewIrStreamAnalyzer::AnalyseAllRunType(
+    const std::vector<paddle::framework::InstructionBase*>& instructions,
+    const std::map<size_t, std::set<size_t>>& downstream_map,
+    std::vector<std::vector<std::vector<size_t>>>* run_type_info) const {
+  analyse_all_run_type<paddle::framework::InstructionBase>(
+      instructions, downstream_map, place_, run_type_info);
+}
+
+void NewIrStreamAnalyzer::AnalyseAllEventInfo(
+    const std::vector<paddle::framework::InstructionBase*>& instructions,
+    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+        event_info) const {
+  analyse_all_event_info<paddle::framework::InstructionBase>(
+      instructions, run_type_info, event_info);
+}
+
+void NewIrStreamAnalyzer::ShrinkEventInfo(
+    const NewIrDependencyBuilder& dependency_builder,
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+        event_info_map) const {
+  shrink_event_info<NewIrDependencyBuilder>(dependency_builder, event_info_map);
+}
+
+platform::DeviceType NewIrStreamAnalyzer::GetWaiterType(
+    const paddle::framework::InstructionBase* instr) const {
+  if (instr->KernelType() == OpFuncType::kCpuSync) {
+    return platform::kCPU;
+  } else {
+    if (platform::is_xpu_place(place_)) {
+      return platform::kXPU;
+    } else if (platform::is_custom_place(place_)) {
+      return platform::kCUSTOM_DEVICE;
+    }
+    return platform::kCUDA;
   }
+}
 
-  return DownstreamRunType::kDirectRun;
+void NewIrStreamAnalyzer::ShareEventInfoFrom(const StreamAnalyzer& src) {
+  event_info_ = src.GetEventInfo();
+  is_event_info_build_ = true;
+}
+
+std::shared_ptr<
+    std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
+NewIrStreamAnalyzer::GetEventInfo() const {
+  return event_info_;
 }
 
 }  // namespace interpreter

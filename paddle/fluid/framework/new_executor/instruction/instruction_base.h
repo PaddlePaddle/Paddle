@@ -22,6 +22,10 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/event.h"
 
+namespace ir {
+class Value;
+}  // namespace ir
+
 namespace paddle {
 namespace framework {
 
@@ -41,9 +45,9 @@ class InstructionBase {
   OpFuncType KernelType() const;
   void SetKernelType(OpFuncType type) { type_ = type; }
 
-  int GetStreamPriority() const { return scheduling_priority_; }
-  void SetStreamPriority(SchedulingPriority scheduling_priority) {
-    scheduling_priority_ = scheduling_priority;
+  int GetStreamPriority() const { return stream_priority_; }
+  void SetStreamPriority(int stream_priority) {
+    stream_priority_ = stream_priority;
   }
 
   SchedulingPriority GetSchedulingPriority() const {
@@ -103,23 +107,35 @@ class InstructionBase {
   std::map<int, int>& GetMutableInplaceBackMap() { return inplace_back_map_; }
   const std::map<int, int>& GetInplaceBackMap() { return inplace_back_map_; }
 
-  const std::map<std::string, std::vector<int>>& Inputs() const {
+  const std::unordered_map<::ir::Value, std::vector<int>>& Inputs() const {
     return input_index_;
   }
-  std::map<std::string, std::vector<int>>& GetMutableInputs() {
+  std::unordered_map<::ir::Value, std::vector<int>>& GetMutableInputs() {
     return input_index_;
   }
-  void SetInputs(const std::map<std::string, std::vector<int>>& inputs);
+  void SetInputs(
+      const std::unordered_map<::ir::Value, std::vector<int>>& inputs);
 
-  const std::map<std::string, std::vector<int>>& Outputs() const {
+  const std::unordered_map<::ir::Value, std::vector<int>>& Outputs() const {
     return output_index_;
   }
-  std::map<std::string, std::vector<int>>& GetMutableOutputs() {
+  std::unordered_map<::ir::Value, std::vector<int>>& GetMutableOutputs() {
     return output_index_;
   }
-  void SetOutputs(const std::map<std::string, std::vector<int>>& outputs);
+  void SetOutputs(
+      const std::unordered_map<::ir::Value, std::vector<int>>& outputs);
+
+  const std::unordered_set<::ir::Value>& NoNeedBuffer() const {
+    return no_need_buffer_values_;
+  }
+  void SetNoNeedBuffer(
+      const std::unordered_set<::ir::Value>& no_need_buffer_values) {
+    no_need_buffer_values_ = no_need_buffer_values;
+  }
 
   virtual void Run() = 0;
+
+  virtual const std::string& Name() const = 0;
 
  private:
   size_t id_;
@@ -130,25 +146,33 @@ class InstructionBase {
 
   // dist attrs：lower value, higher priority
   int stream_priority_{0};
+
   SchedulingPriority scheduling_priority_{0};
+
   std::string execution_stream_{kDefaultStream};
 
   platform::DeviceContext* dev_ctx_;  // not owned
 
   std::vector<size_t> next_instrs_in_different_thread_;
+
   std::vector<size_t> next_instrs_in_same_thread_;
 
   std::shared_ptr<EventInter> event_to_record_;
+
   std::vector<EventInter> events_to_wait_;
 
   std::vector<size_t> gc_check_vars_;
 
   std::vector<std::pair<Variable*, Variable*>>
       vec_inplace_in_to_out_;  // If not use share data, need this ?
+
   std::map<int, int> inplace_back_map_;
 
-  std::map<std::string, std::vector<int>> input_index_;
-  std::map<std::string, std::vector<int>> output_index_;
+  std::unordered_map<::ir::Value, std::vector<int>> input_index_;
+
+  std::unordered_map<::ir::Value, std::vector<int>> output_index_;
+
+  std::unordered_set<::ir::Value> no_need_buffer_values_;
 };
 
 }  // namespace framework

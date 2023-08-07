@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from . import amp  # noqa: F401
 from . import nn  # noqa: F401
 
@@ -37,6 +39,7 @@ from .io import set_program_state  # noqa: F401
 from ..fluid import Scope  # noqa: F401
 from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
+from .input import setitem  # noqa: F401
 
 from ..tensor.creation import create_parameter  # noqa: F401
 from ..tensor.creation import create_global_var  # noqa: F401
@@ -54,9 +57,8 @@ from ..fluid.compiler import ExecutionStrategy  # noqa: F401
 from ..fluid.framework import default_main_program  # noqa: F401
 from ..fluid.framework import default_startup_program  # noqa: F401
 from ..fluid.framework import device_guard  # noqa: F401
-from ..fluid.framework import Program  # noqa: F401
+
 from ..fluid.framework import name_scope  # noqa: F401
-from ..fluid.framework import program_guard  # noqa: F401
 from ..fluid.framework import cpu_places  # noqa: F401
 from ..fluid.framework import cuda_places  # noqa: F401
 from ..fluid.framework import xpu_places  # noqa: F401
@@ -77,6 +79,15 @@ from ..fluid.layers import learning_rate_scheduler  # noqa: F401
 from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401
 from .nn.metric import ctr_metric_bundle  # noqa: F401
+
+import paddle
+
+if paddle.ir.core._use_new_ir_api():
+    from ..ir import Program  # noqa: F401
+    from ..ir import program_guard  # noqa: F401
+else:
+    from ..fluid.framework import program_guard  # noqa: F401
+    from ..fluid.framework import Program  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
