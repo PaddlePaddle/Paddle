@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .decomposition import decompose  # noqa: F401
-from . import decomposition_rules  # noqa: F401
+from .decomp import decompose  # noqa: F401
+from . import rules  # noqa: F401

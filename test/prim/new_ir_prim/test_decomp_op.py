@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
-from paddle.primitive import decompose
+from paddle.decomposition import decompose
 
 paddle.enable_static()
 

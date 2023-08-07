@@ -19,11 +19,10 @@ from paddle import ir
 from paddle.fluid.libpaddle.ir import Block, Program
 from paddle.framework import core
 
-from .decomp_utils import get_decomp_rule
+from .register import get_decomp_rule
 
 
-def _as_tensors(xs):
-    """To format a tuple."""
+def _build_tensor_tuple(xs):
     if isinstance(xs, ir.OpResult):
         return (xs,)
     elif isinstance(xs, typing.Sequence):
@@ -144,7 +143,6 @@ def _decompose_subgraph(block, op_filter):
     """The operators in block wich satisfy the filter conditon will be decomposed into primitives."""
 
     if isinstance(block, Block):
-        change = None
         ops_list = block.get_ops()
         for op in ops_list:
             op_name = op.name()
@@ -152,23 +150,17 @@ def _decompose_subgraph(block, op_filter):
             lower = decom_rule and op_filter(op)
 
             if lower:
-                change = True
                 core.prim_config["composite_ops_record"].add(op_name)
                 input_args = _prepare_python_api_arguments(op)
                 ir.set_insertion_point(op)
                 orig_outs = op.results()
-                new_outs = _as_tensors(decom_rule(*input_args))
+                new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
                 # Todo: To cover such case: some outputs are no longer needed after decomposition.
                 _check_op_results(op_name, orig_outs, new_outs)
 
                 op.replace_all_uses_with(new_outs)
                 block.remove_op(op)
-
-        # composite ops may contain other composite ops, thus, call _lower_composite again.
-        # Todo: recursive call can be done inside composite rule.
-        if change:
-            _decompose_subgraph(block, op_filter)
         return
 
     elif isinstance(block, typing.Sequence):

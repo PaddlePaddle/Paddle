@@ -23,6 +23,7 @@ class Registry:
         self.rules = {}
 
     def register(self, op_type, rule):
+        assert isinstance(op_type, str)
         assert (
             op_type not in self.rules
         ), f'name "{op_type}" should not be registered before.'
