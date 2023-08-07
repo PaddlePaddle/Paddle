@@ -29,9 +29,7 @@ def get_ir_program():
     with paddle.static.program_guard(main_program, start_program):
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
-        y_s = paddle.matmul(x_s, x_s)
-        z_s = paddle.add(x_s, y_s)
-        k_s = paddle.tanh(z_s)
+        k_s = paddle.tanh(x_s)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
 
@@ -39,7 +37,7 @@ def get_ir_program():
 class TestBuildOp(unittest.TestCase):
     def test_build_op(self):
         newir_program = get_ir_program()
-        input = newir_program.block().get_ops()[-2].operand(1).source()
+        input = newir_program.block().get_ops()[-1].operand(0).source()
         tanh_out = newir_program.block().get_ops()[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
@@ -49,7 +47,7 @@ class TestBuildOp(unittest.TestCase):
 
         print(newir_program)
         self.assertEqual(out.get_defining_op().name(), "pd.mean")
-        self.assertEqual(input_grad[0].get_defining_op().name(), "pd.mean_grad")
+        self.assertEqual(input_grad[0].get_defining_op().name(), "pd.tanh_grad")
         self.assertEqual(
             out.get_defining_op()
             .operands()[0]

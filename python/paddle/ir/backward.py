@@ -16,10 +16,9 @@ import collections
 from collections.abc import Sequence
 
 import paddle.ir
+from paddle.fluid.core import call_vjp, has_vjp
 from paddle.fluid.libpaddle.ir import get_op_result_dtype, get_op_result_shape
 from paddle.ir.backward_utils import State
-
-from . import core
 
 """
     grad only: for templete test, will combine in paddle.grad .
@@ -102,12 +101,11 @@ def prepare_grad_outputs(
             fillop = op_list[len(op_list) - 1]
 
             update_all_structure(
-                block,
                 backward_ops,
                 op_to_opgrad[output.get_defining_op()],
                 fillop,
             )
-            value_to_valuegrad[output] = [fillop.result(0)]
+            value_to_valuegrad[output] = [[fillop.result(0)]]
         else:
             if get_op_result_shape(output) != get_op_result_shape(grad):
                 raise ValueError(
@@ -123,14 +121,13 @@ def prepare_grad_outputs(
             update_all_structure(
                 backward_ops, op_to_opgrad[output.get_defining_op()], feedop
             )
-            value_to_valuegrad[output] = [grad]
+            value_to_valuegrad[output] = [[grad]]
 
     # add input for bwd first op
     complete_outputs = outputs
     complete_gradoutputs = grad_outputs
 
     visited_output = set()
-    print("outputs len ", len(outputs))
     for output in outputs:
         if output in visited_output:
             continue
@@ -168,14 +165,14 @@ def some_in_set(value_list, value_set):
     for item in value_set:
         if isinstance(item, paddle.ir.OpOperand):
             value_set_.add(item.source())
-        elif isinstance(item, paddle.ir.OpResult):
+        else:
             value_set_.add(item)
 
     for item in value_list:
         if isinstance(item, paddle.ir.OpOperand):
             if item.source() in value_set_:
                 return True
-        elif isinstance(item, paddle.ir.OpResult):
+        else:
             if item in value_set_:
                 return True
     return False
@@ -192,12 +189,16 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     relevant_op_flags = [True] * len(total_ops)
 
     # from input to output
-    if inputs_set != []:
+    if inputs_set != set():
         for i, op in enumerate(total_ops):
+            if some_in_set(op.results(), inputs_set):
+                continue
+
             if some_in_set(op.operands_source(), inputs_set):
                 for value in op.results():
                     if value not in no_grad_set:
                         inputs_set.add(value)
+
             else:
                 relevant_op_flags[i] = False
 
@@ -310,11 +311,10 @@ def append_backward_ops(
     add grad_op in order of topological sort
     '''
     for op in effective_forward_op:
-        if op.has_vjp():
+        if has_vjp(op):
             # prepare output_grad
             output_grad_list = []  # (opresult)
             zero_flag = [False] * op.num_results()
-
             for i, value in enumerate(op.results()):
                 if (
                     value not in state.value_to_valuegrad.keys()
@@ -336,9 +336,9 @@ def append_backward_ops(
                     fillop = block.ops[len(block.ops) - 1]
 
                     update_all_structure(
-                        block, backward_ops, state.op_to_opgrad[op], fillop
+                        backward_ops, state.op_to_opgrad[op], fillop
                     )
-                    state.value_to_valuegrad[value] = [fillop.result(0)]
+                    state.value_to_valuegrad[value] = [[fillop.result(0)]]
                     zero_flag[i] = True
 
                 if len(state.value_to_valuegrad[value]) > 1:
@@ -349,15 +349,15 @@ def append_backward_ops(
                     paddle.add_n(list(state.value_to_valuegrad[value]))
                     sumop = block.ops[len(block.ops) - 1]
                     update_all_structure(
-                        block, backward_ops, state.op_to_opgrad[op], sumop
+                        backward_ops, state.op_to_opgrad[op], sumop
                     )
-                    state.value_to_valuegrad[value] = [sumop.result(0)]
+                    state.value_to_valuegrad[value] = [[sumop.result(0)]]
                     state.value_to_sumvaluegrad[
                         value
                     ] = state.value_to_valuegrad[value]
 
-                output_grad = state.value_to_valuegrad[value]
-                output_grad_list.append(output_grad)
+                output_grad = state.value_to_valuegrad[value][0]
+            output_grad_list.append(output_grad)
 
             # all(zero_flag) support this op has no contribution for grad
             # should be delete (prune sub_graph)
@@ -368,21 +368,21 @@ def append_backward_ops(
             input_grad_stopgradient_list = []
             for input in op.operands_source():
                 if input in no_grad_set:
-                    input_grad_stopgradient_list.append(1)
+                    input_grad_stopgradient_list.append([1])
                 else:
-                    input_grad_stopgradient_list.append(0)
+                    input_grad_stopgradient_list.append([0])
 
-            before_ops_num = len(block.ops)
+            before_ops_num = len(block.get_ops())
             # prim should be a globel flag, it will make create_grad_op choose diffrient func
-            input_grad_list = core.call_vjp(
+            input_grad_list = call_vjp(
                 op, output_grad_list, input_grad_stopgradient_list
             )
-            after_ops_num = len(block.ops)
+            after_ops_num = len(block.get_ops())
 
             # find new gradop_list
             gradop_list = []
             for i in range(before_ops_num, after_ops_num):
-                gradop_list.append(block.ops[i])
+                gradop_list.append(block.get_ops()[i])
 
             for i, input in enumerate(op.operands()):
                 input_grad = input_grad_list[i]
@@ -391,7 +391,7 @@ def append_backward_ops(
             # add grad_op
             for gradop in gradop_list:
                 update_all_structure(
-                    block, backward_ops, state.op_to_opgrad[op], gradop
+                    backward_ops, state.op_to_opgrad[op], gradop
                 )
 
         else:
@@ -402,9 +402,9 @@ def append_backward_ops(
                         paddle.add_n(list(state.value_to_valuegrad[value]))
                         sumop = block.ops[len(block.ops) - 1]
                         update_all_structure(
-                            block, backward_ops, state.op_to_opgrad[op], sumop
+                            backward_ops, state.op_to_opgrad[op], sumop
                         )
-                        state.value_to_valuegrad[value] = [sumop.result(0)]
+                        state.value_to_valuegrad[value] = [[sumop.result(0)]]
                         state.value_to_sumvaluegrad[
                             value
                         ] = state.value_to_valuegrad[value]
@@ -412,6 +412,30 @@ def append_backward_ops(
                         state.op_to_opgrad[op] = []
                 else:
                     state.op_to_opgrad[op] = []
+
+
+def create_backward_purne_set(inputs, outputs, no_grad_set, state):
+    outputs_set = set()
+    for input in inputs:
+        if state.value_to_valuegrad[input] != []:
+            outputs_set.add(state.value_to_valuegrad[input][0][0])
+
+    inputs_set = set()
+    for output in outputs:
+        if state.value_to_valuegrad[output] != []:
+            inputs_set.add(state.value_to_valuegrad[output][0][0])
+
+    no_gradvar_set = set()  # no_grad_set 中前向对应的反向变量
+    for key in state.value_to_valuegrad:
+        if key in no_grad_set:
+            no_gradvar_set.add(state.value_to_valuegrad[key][0][0])
+
+    for key in state.value_to_sumvaluegrad:
+        if key in no_grad_set:
+            for item in state.value_to_valuegrad[key][0]:
+                no_gradvar_set.add(item)
+
+    return outputs_set, inputs_set, no_gradvar_set
 
 
 def remove_op(block, op, state):
@@ -453,26 +477,15 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     )
 
     sorted_effective_forward_op = inverse_sort_op(effective_forward_op)
+
     append_backward_ops(
         block, sorted_effective_forward_op, no_grad_set, backward_ops, state
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
 
-    no_gradvar_set = set()  # no_grad_set 中前向对应的反向变量
-    for key in state.value_to_valuegrad:
-        if key in no_grad_set:
-            no_gradvar_set.add(state.value_to_valuegrad[key][0])
-
-    for key in state.value_to_sumvaluegrad:
-        if key in no_grad_set:
-            for item in state.value_to_valuegrad[key]:
-                no_gradvar_set.add(item)
-
-    outputs_set = [state.value_to_valuegrad[input] for input in inputs]
-    inputs_set = [
-        state.value_to_valuegrad[output] for output in complete_outputs
-    ]
-
+    outputs_set, inputs_set, no_gradvar_set = create_backward_purne_set(
+        inputs, complete_outputs, no_grad_set, state
+    )
     _, remove_ops = prune_ops(
         backward_ops, inputs_set, outputs_set, no_gradvar_set
     )
@@ -520,8 +533,7 @@ def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
 
     inputgrad = []
     for input in inputs:
-        inputgrad.append(input_to_inputgrad_map[input])
-        print("input_to_inputgrad_map[input]", input_to_inputgrad_map)
+        inputgrad.append(input_to_inputgrad_map[input][0][0])
     return inputgrad
 
 
@@ -587,26 +599,26 @@ def grad(
         outputs,
         'outputs',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
-        'paddle.static.gradients',
+        'paddle.ir.grad',
     )
     check_type(
         inputs,
         'inputs',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
-        'paddle.static.gradients',
+        'paddle.ir.grad',
     )
     check_type(
         grad_outputs,
         'grad_outputs',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, type(None)),
-        'paddle.static.gradients',
+        'paddle.ir.grad',
     )
 
     check_type(
         no_grad_vars,
         'no_grad_vars',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, set, type(None)),
-        'paddle.static.gradients',
+        'paddle.ir.grad',
     )
     outputs = _as_list(outputs)
     inputs = _as_list(inputs)

@@ -24,20 +24,27 @@ class State:
 
     def __init__(self, program):
         self.program = program
+        # opresult -> list(list(opresult))
         self.value_to_valuegrad = collections.defaultdict(list)
         self.value_to_sumvaluegrad = collections.defaultdict(list)
+        # operation -> list(operation)
         self.op_to_opgrad = collections.defaultdict(list)
+
+        # opresult -> list(opresult)
         self.valuegrad_to_value = collections.defaultdict(list)
         self.sumvaluegrad_to_value = collections.defaultdict(list)
+        # operation -> list(operation)
         self.opgrad_to_op = collections.defaultdict(list)
 
     def turn_map(self) -> None:
         for k, v in self.value_to_valuegrad.items():
-            for value in v:
-                self.valuegrad_to_value[value] = k
+            if v != []:
+                for value in v[0]:
+                    self.valuegrad_to_value[value] = [k]
         for k, v in self.value_to_sumvaluegrad.items():
-            for value in v:
-                self.sumvaluegrad_to_value[value] = k
+            if v != []:
+                for value in v[0]:
+                    self.sumvaluegrad_to_value[value] = [k]
         for k, v in self.op_to_opgrad.items():
-            for value in v:
-                self.opgrad_to_op[value] = k
+            if v != []:
+                self.opgrad_to_op[v[0]] = [k]
