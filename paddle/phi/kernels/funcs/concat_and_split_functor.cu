@@ -65,7 +65,7 @@ struct PointerWrapper {
   const void* ins_addr[Size];
   __device__ inline const void* operator[](int i) const { return ins_addr[i]; }
 
-  PointerWrapper() {}
+  PointerWrapper() = default;
   PointerWrapper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
                  const T** pre_alloced_host_ptr) {
@@ -84,7 +84,7 @@ template <typename T, int Size>
 struct PADDLE_ALIGN(256) AlignedPointerWrapper
     : public PointerWrapper<T, Size> {
  public:
-  AlignedPointerWrapper() {}
+  AlignedPointerWrapper() = default;
   AlignedPointerWrapper(const phi::GPUContext& ctx,
                         const std::vector<phi::DenseTensor>& ins,
                         const T** pre_alloced_host_ptr) {
@@ -98,7 +98,7 @@ struct PointerToPointer {
   void** ins_addr{nullptr};
   __device__ inline const void* operator[](int i) const { return ins_addr[i]; }
 
-  PointerToPointer() {}
+  PointerToPointer() = default;
   PointerToPointer(const phi::GPUContext& ctx,
                    const std::vector<phi::DenseTensor>& ins,
                    const T** pre_alloced_host_ptr,
@@ -186,9 +186,7 @@ struct PointerToPointerAndCol {
 
 template <int MovSize>
 struct alignas(MovSize) Packed {
-  __device__ Packed() {
-    // do nothing
-  }
+  __device__ Packed() = default;
   union {
     char buf[MovSize];
   };
@@ -621,7 +619,7 @@ struct PointerAndColArray
  public:
   funcs::ValueArray<IndexT, Size> val_array;
 
-  PointerAndColArray() {}
+  PointerAndColArray() = default;
   PointerAndColArray(const phi::GPUContext& ctx,
                      const int out_col_num,
                      IndexT* out_cols,
