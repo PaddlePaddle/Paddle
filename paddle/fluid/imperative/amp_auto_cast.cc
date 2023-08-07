@@ -131,7 +131,9 @@ AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
   }
 }
 
-AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
+AutoCastGuard::~AutoCastGuard() {  // NOLINT
+  tracer_->SetAmpLevel(pre_amp_level_);
+}
 
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
@@ -163,7 +165,7 @@ AmpOperators::AmpOperators()
           << unsupported_bf16_ops_->size();
 }
 
-AmpOperators::~AmpOperators() {}
+AmpOperators::~AmpOperators() = default;
 
 AmpOperators& AmpOperators::Instance() {
   static AmpOperators instance;

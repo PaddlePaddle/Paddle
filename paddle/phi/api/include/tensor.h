@@ -53,7 +53,7 @@ using IntArray = experimental::IntArray;
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
-  virtual ~AbstractAutogradMeta() {}
+  virtual ~AbstractAutogradMeta() = default;
 };
 
 /**

@@ -133,10 +133,6 @@ inline std::vector<utils::DotAttr> GetGroupAttrs(size_t group_size) {
 
 bool MakeDirectory(const std::string& dirname, mode_t mode);
 
-std::string GetFilePathForGroup(const std::vector<std::vector<Node*>>& groups,
-                                const int group_id,
-                                const std::string& viz_path);
-
 std::string GenNodeDataLabel(
     const NodeData* node,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,

@@ -34,6 +34,7 @@ from .proto import framework_pb2, data_feed_pb2
 
 from . import core
 from . import unique_name
+from .. import ir
 import paddle.version as fluid_version
 import warnings
 import functools
@@ -1005,7 +1006,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
             string.
 
     Returns:
-        core.VarDesc.VarType: The data type in Paddle.
+        core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
     # Convert the data type string to numpy data type.
@@ -1014,34 +1015,64 @@ def convert_np_dtype_to_dtype_(np_dtype):
     else:
         dtype = np.dtype(np_dtype)
 
-    if dtype == np.float32:
-        return core.VarDesc.VarType.FP32
-    elif dtype == np.float64:
-        return core.VarDesc.VarType.FP64
-    elif dtype == np.float16:
-        return core.VarDesc.VarType.FP16
-    elif dtype == np.int32:
-        return core.VarDesc.VarType.INT32
-    elif dtype == np.int16:
-        return core.VarDesc.VarType.INT16
-    elif dtype == np.int64:
-        return core.VarDesc.VarType.INT64
-    elif dtype == np.bool_:
-        return core.VarDesc.VarType.BOOL
-    elif dtype == np.uint16:
-        # since there is still no support for bfloat16 in NumPy,
-        # uint16 is used for casting bfloat16
-        return core.VarDesc.VarType.BF16
-    elif dtype == np.uint8:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == np.int8:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.complex64:
-        return core.VarDesc.VarType.COMPLEX64
-    elif dtype == np.complex128:
-        return core.VarDesc.VarType.COMPLEX128
+    if ir.core._use_new_ir_api():
+        if dtype == np.float32:
+            return core.DataType.FLOAT32
+        elif dtype == np.float64:
+            return core.DataType.FLOAT64
+        elif dtype == np.float16:
+            return core.DataType.FLOAT16
+        elif dtype == np.int32:
+            return core.DataType.INT32
+        elif dtype == np.int16:
+            return core.DataType.INT16
+        elif dtype == np.int64:
+            return core.DataType.INT64
+        elif dtype == np.bool_:
+            return core.DataType.BOOL
+        elif dtype == np.uint16:
+            # since there is still no support for bfloat16 in NumPy,
+            # uint16 is used for casting bfloat16
+            return core.DataType.UINT16
+        elif dtype == np.uint8:
+            return core.DataType.UINT8
+        elif dtype == np.int8:
+            return core.DataType.INT8
+        elif dtype == np.complex64:
+            return core.DataType.COMPLEX64
+        elif dtype == np.complex128:
+            return core.DataType.COMPLEX128
+        else:
+            raise ValueError("Not supported numpy dtype %s" % dtype)
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        if dtype == np.float32:
+            return core.VarDesc.VarType.FP32
+        elif dtype == np.float64:
+            return core.VarDesc.VarType.FP64
+        elif dtype == np.float16:
+            return core.VarDesc.VarType.FP16
+        elif dtype == np.int32:
+            return core.VarDesc.VarType.INT32
+        elif dtype == np.int16:
+            return core.VarDesc.VarType.INT16
+        elif dtype == np.int64:
+            return core.VarDesc.VarType.INT64
+        elif dtype == np.bool_:
+            return core.VarDesc.VarType.BOOL
+        elif dtype == np.uint16:
+            # since there is still no support for bfloat16 in NumPy,
+            # uint16 is used for casting bfloat16
+            return core.VarDesc.VarType.BF16
+        elif dtype == np.uint8:
+            return core.VarDesc.VarType.UINT8
+        elif dtype == np.int8:
+            return core.VarDesc.VarType.INT8
+        elif dtype == np.complex64:
+            return core.VarDesc.VarType.COMPLEX64
+        elif dtype == np.complex128:
+            return core.VarDesc.VarType.COMPLEX128
+        else:
+            raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):

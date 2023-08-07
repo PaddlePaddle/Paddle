@@ -51,6 +51,7 @@ extern PyTypeObject* p_string_tensor_type;
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
@@ -638,6 +639,24 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
         "argument (position %d) must be "
         "one of core.VarDesc.VarType, "
         "but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return dtype;
+}
+
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos) {
+  paddle::DataType dtype;
+  if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
+    dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s: argument (position %d) must be "
+        "one of core.VarDesc.VarType, "
+        "but got %s",
+        op_type,
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }

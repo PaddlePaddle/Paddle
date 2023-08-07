@@ -33,6 +33,7 @@ DEFINE_bool(cinn_cudnn_deterministic,
 #endif
 
 using ::GFLAGS_NAMESPACE::BoolFromEnv;
+using ::GFLAGS_NAMESPACE::DoubleFromEnv;
 using ::GFLAGS_NAMESPACE::Int32FromEnv;
 using ::GFLAGS_NAMESPACE::Int64FromEnv;
 using ::GFLAGS_NAMESPACE::StringFromEnv;
@@ -44,13 +45,8 @@ DEFINE_string(cinn_nvcc_cmd_path,
               StringFromEnv("FLAGS_cinn_nvcc_cmd_path", "/usr/local/cuda/bin"),
               "Setting nvcc default path!");
 
-DEFINE_int32(cinn_parallel_compile_size,
-             Int32FromEnv("FLAGS_cinn_parallel_compile_size", 16),
-             "When use parallel compile, set the number of group compiled by "
-             "each thread.");
-
 DEFINE_int32(cinn_parallel_compile_thread,
-             Int32FromEnv("FLAGS_cinn_parallel_compile_thread", -1),
+             Int32FromEnv("FLAGS_cinn_parallel_compile_thread", 16),
              "How much thread the parallel compile used.");
 
 DEFINE_bool(cinn_use_op_fusion,
@@ -131,6 +127,26 @@ DEFINE_string(cinn_source_code_save_path,
               "Specify the directory path of generated source code, which is "
               "used for debug.");
 
+DEFINE_string(cinn_dump_group_lowered_func,
+              StringFromEnv("FLAGS_cinn_dump_group_lowered_func", ""),
+              "Specify the path for dump lowered functions by group, which is "
+              "used for debug.");
+
+DEFINE_string(
+    cinn_dump_group_source_code,
+    StringFromEnv("FLAGS_cinn_dump_group_source_code", ""),
+    "Specify the path for dump source code by group, which is used for debug.");
+
+DEFINE_string(
+    cinn_dump_group_ptx,
+    StringFromEnv("FLAGS_cinn_dump_group_ptx", ""),
+    "Specify the path for dump ptx by group, which is used for debug.");
+
+DEFINE_string(
+    cinn_dump_group_instruction,
+    StringFromEnv("FLAGS_cinn_dump_group_instruction", ""),
+    "Specify the path for dump instruction by group, which is used for debug.");
+
 DEFINE_string(cinn_pass_visualize_dir,
               StringFromEnv("FLAGS_cinn_pass_visualize_dir", ""),
               "Specify the directory path of pass visualize file of graph, "
@@ -164,6 +180,11 @@ DEFINE_int32(cinn_error_message_level,
              Int32FromEnv("FLAGS_cinn_error_message_level", 0),
              "Specify the level of printing error message in the schedule."
              "0 means short, 1 means detailed.");
+
+DEFINE_double(cinn_infer_model_version,
+              DoubleFromEnv("FLAGS_cinn_infer_model_version", 2.0),
+              "Paddle has different model format in inference model. We use "
+              "a flag to load different versions.");
 
 namespace cinn {
 namespace runtime {

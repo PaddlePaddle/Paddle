@@ -36,7 +36,7 @@ StackPluginDynamic::StackPluginDynamic(void const* serial_data,
   DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 }
 
-StackPluginDynamic::~StackPluginDynamic() {}
+StackPluginDynamic::~StackPluginDynamic() = default;
 
 nvinfer1::IPluginV2DynamicExt* StackPluginDynamic::clone() const TRT_NOEXCEPT {
   return new StackPluginDynamic(axis_, num_stack_, with_fp16_);
@@ -230,7 +230,7 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   return cudaGetLastError() != cudaSuccess;
 }
 
-StackPluginDynamicCreator::StackPluginDynamicCreator() {}
+StackPluginDynamicCreator::StackPluginDynamicCreator() = default;
 
 const char* StackPluginDynamicCreator::getPluginName() const TRT_NOEXCEPT {
   return "stack_plugin";
