@@ -522,6 +522,11 @@ if(WITH_GPU
       endif()
     endforeach()
   endif()
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.2)
+    include(external/flashattn_v1)
+    list(APPEND third_party_deps extern_flashattn_v1)
+    set(WITH_FLASHATTN ON)
+  endif()
 endif()
 
 if(WITH_CUDNN_FRONTEND)
