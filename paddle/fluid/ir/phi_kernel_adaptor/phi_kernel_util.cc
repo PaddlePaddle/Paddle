@@ -217,8 +217,7 @@ void HandleForSpecialOp(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list,
-    std::vector<::ir::Value>* parameter_values) {
+    std::vector<paddle::framework::Variable*>* variable_list) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -348,10 +347,6 @@ void HandleForSpecialOp(
                value_2_var_name,
                variable_2_var_name,
                var_name_2_id);
-
-    if (parameter_values) {
-      parameter_values->push_back(value);
-    }
   }
 
   if (op_name == "pd.shadow_output") {
@@ -391,10 +386,6 @@ void HandleForSpecialOp(
                variable_2_var_name,
                var_name_2_id,
                variable_list);
-
-    if (parameter_values) {
-      parameter_values->push_back(value);
-    }
   }
 
   if (op_name == "builtin.slice") {
@@ -459,6 +450,14 @@ void HandleForInplaceOp(
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << var_name << ")";
       value_2_var_name->emplace(value, var_name);
+    } else if (yaml_parser.HasView(value_name)) {
+      std::string view_name = yaml_parser.ViewName(value_name);
+      ir::Value view_value =
+          op->operand_source(yaml_parser.InputName2Id().at(view_name));
+      std::string var_name = value_2_var_name->at(view_value);
+      VLOG(4) << "view: " << value_name << " -> " << view_name
+              << " (var: " << var_name << ")";
+      value_2_var_name->emplace(value, var_name);
     } else {
       BuildValue(value,
                  inner_scope,
@@ -480,8 +479,7 @@ void BuildScope(const ir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list,
-                std::vector<::ir::Value>* parameter_values) {
+                std::vector<paddle::framework::Variable*>* variable_list) {
   VLOG(4) << "***** [before build] scope"
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
@@ -507,8 +505,7 @@ void BuildScope(const ir::Block& block,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
-                         variable_list,
-                         parameter_values);
+                         variable_list);
       continue;
     }
 
