@@ -1145,9 +1145,16 @@ class ParametersMap:
         params = self.params_dict.get(self._program_hash(program))
         if params is None:
             return None
-        if id in params.keys():
-            return params[id]
-        return None
+        if id not in params:
+            return None
+        root_var = params[id]
+        saved = []
+        while root_var.desc.id() in params.keys():
+            saved.append(root_var)
+            root_var = params[root_var.desc.id()]
+        for var in saved:
+            params[var.desc.id()] = root_var
+        return root_var
 
     def _program_hash(self, program):
         """

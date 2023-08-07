@@ -830,7 +830,9 @@ def _setitem_impl_(var, item, value):
         output = var
     else:
         helper = paddle.fluid.layer_helper.LayerHelper('set_value', **locals())
-        output = helper.create_variable_for_type_inference(dtype=var.dtype)
+        output = helper.create_global_variable_for_type_inference(
+            dtype=var.dtype
+        )
 
     cur_block = default_main_program().current_block()
     cur_block.append_op(
