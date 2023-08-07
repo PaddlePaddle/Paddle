@@ -200,7 +200,6 @@ PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::SGDDenseParamSparseGradKernel,
-                   phi::dtype::float16,
                    float,
                    double) {}
 
@@ -208,6 +207,5 @@ PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::SGDSparseParamSparseGradKernel,
-                   phi::dtype::float16,
                    float,
                    double) {}
