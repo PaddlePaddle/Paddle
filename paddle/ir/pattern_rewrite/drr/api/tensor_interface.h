@@ -19,33 +19,37 @@
 namespace ir {
 namespace drr {
 
-class ShapeInterface;
-class DtypeInterface;
+class IrShape;
+class IrDtype;
+
+class ShapeInterface final {
+ public:
+  bool operator==(const ShapeInterface& other) const;
+
+ private:
+  ShapeInterface(std::unique_ptr<IrShape> shape) : shape_(std::move(shape)) {}
+
+  friend class IrShape;
+  std::unique_ptr<IrShape> shape_;
+};
+
+class DtypeInterface final {
+ public:
+  bool operator==(const DtypeInterface& other) const;
+
+ private:
+  std::unique_ptr<IrDtype> dtype_;
+};
 
 class TensorInterface {
  public:
-  explicit TensorInterface(const std::string& tensor_name)
-      : tensor_name_(tensor_name) {}
-
   const ShapeInterface& Shape() const;
   const DtypeInterface& Dtype() const;
 
  private:
+  explicit TensorInterface(const std::string& tensor_name)
+      : tensor_name_(tensor_name) {}
   std::string tensor_name_;
-};
-
-class ShapeInterface {
- public:
-  bool operator==(const ShapeInterface& other) const;
-
- protected:
-};
-
-class DtypeInterface {
- public:
-  bool operator==(const DtypeInterface& other) const;
-
- protected:
 };
 
 }  // namespace drr
