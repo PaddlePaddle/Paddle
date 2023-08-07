@@ -457,6 +457,25 @@ HOSTDEVICE inline complex<T> tan(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> sinh(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::sinh(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::sinh(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> cosh(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::cosh(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::cosh(std::complex<T>(a)));
+#endif
+}
+template <typename T>
 HOSTDEVICE inline complex<T> tanh(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))

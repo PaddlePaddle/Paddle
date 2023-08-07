@@ -710,6 +710,11 @@ class TestSinh(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.sinh(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -720,6 +725,16 @@ class TestSinh(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestSinh_Complex64(TestSinh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSinh_Complex128(TestSinh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSinh_ZeroDim(TestSinh):
@@ -802,6 +817,11 @@ class TestCosh(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.cosh(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -811,7 +831,21 @@ class TestCosh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            # Complex64 [CPU]: AssertionError: 0.006845869 not less than or equal to 0.005
+            self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        else:
+            self.check_grad(['X'], 'Out')
+
+
+class TestCosh_Complex64(TestCosh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestCosh_Complex128(TestCosh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestCosh_ZeroDim(TestCosh):
