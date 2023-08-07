@@ -977,10 +977,7 @@ void BuildOpFuncList(
         attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
+    if (GetSpecialOpNames().count(op_name)) {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -1169,6 +1166,18 @@ void SetDeviceCommContext(::ir::Operation* op,
               << ", ring_id: " << ring_id << ", get comm_context failed!";
     }
   }
+}
+
+std::unordered_set<std::string> GetSpecialOpNames() {
+  return {
+      "builtin.combine",
+      "builtin.slice",
+      "pd.feed",
+      "builtin.set_parameter",
+      "builtin.get_parameter",
+      "pd.data",
+      "pd.shadow_output",
+  };
 }
 
 }  // namespace interpreter

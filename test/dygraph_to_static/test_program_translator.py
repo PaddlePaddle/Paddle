@@ -263,7 +263,7 @@ class SwitchModeNet(paddle.nn.Layer):
 
 
 @paddle.jit.to_static
-def switch_mode_funciton():
+def switch_mode_function():
     return True
 
 
@@ -271,16 +271,16 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
     @ast_only_test
     def test_switch_mode(self):
         paddle.disable_static()
-        switch_mode_funciton.eval()
-        switch_mode_funciton()
-        self.assertEqual(switch_mode_funciton._training, False)
-        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        switch_mode_function.eval()
+        switch_mode_function()
+        self.assertEqual(switch_mode_function._training, False)
+        _, partial_layer = switch_mode_function.program_cache.last()[-1]
         self.assertEqual(partial_layer.training, False)
 
-        switch_mode_funciton.train()
-        switch_mode_funciton()
-        self.assertEqual(switch_mode_funciton._training, True)
-        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        switch_mode_function.train()
+        switch_mode_function()
+        self.assertEqual(switch_mode_function._training, True)
+        _, partial_layer = switch_mode_function.program_cache.last()[-1]
         self.assertEqual(partial_layer.training, True)
 
     def test_raise_error(self):

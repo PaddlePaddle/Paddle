@@ -27,7 +27,7 @@ from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else2,
     dyfunc_with_if_else3,
-    dyfunc_with_if_else_with_list_geneator,
+    dyfunc_with_if_else_with_list_generator,
     fluid,
     if_tensor_case,
     if_with_and_or,
@@ -119,7 +119,7 @@ class TestDygraphIfElse4(TestDygraphIfElse):
 class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
-        self.dyfunc = dyfunc_with_if_else_with_list_geneator
+        self.dyfunc = dyfunc_with_if_else_with_list_generator
 
 
 class TestDygraphNestedIfElse(TestDygraphIfElse):
