@@ -49,9 +49,11 @@ add_custom_command(
 # All source files of pd_dialect, except for the source file of op, which is generated in the compilation directory.
 file(GLOB PD_DIALECT_SRCS "*.cc")
 
+file(GLOB VJP_SRCS "${PADDLE_SOURCE_DIR}/paddle/primitive/rule/vjp/vjp.cc"
+     "${PADDLE_SOURCE_DIR}/paddle/primitive/backend/static_backend.cc")
 cc_library(
   pd_dialect
-  SRCS ${PD_DIALECT_SRCS} ${op_source_file}
+  SRCS ${PD_DIALECT_SRCS} ${op_source_file} ${VJP_SRCS}
   DEPS framework_proto
        phi
        phi_utils
@@ -59,5 +61,6 @@ cc_library(
        pd_trait
        ir
        primitive_vjp_experimental
-       type_info)
+       type_info
+       static_utils)
 target_include_directories(pd_dialect PRIVATE ${PD_DIALECT_BINARY_DIR})
