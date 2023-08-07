@@ -134,8 +134,11 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
 
 void SaveOptimizedModelPass::RunImpl(Argument* argument) {
   // TODO(inference): Support trt.
-  if (argument->use_xpu() ||
-      (argument->use_gpu() && !argument->use_tensorrt())) {
+  if (argument->use_xpu() || (argument->use_gpu() && !argument->use_tensorrt())
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      || argument->use_custom_device()
+#endif
+  ) {
     SaveOptimizedModel(argument);
   }
 }
