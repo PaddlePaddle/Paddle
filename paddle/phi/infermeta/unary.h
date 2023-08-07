@@ -436,10 +436,10 @@ void QrInferMeta(const MetaTensor& x,
                  MetaTensor* q,
                  MetaTensor* r);
 
-void QuantForCompressInferMeta(const MetaTensor& x,
-                               const std::string& layout,
-                               MetaTensor* out,
-                               MetaTensor* scale);
+void QuantForInferInferMeta(const MetaTensor& x,
+                            const std::string& layout,
+                            MetaTensor* out,
+                            MetaTensor* scale);
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 

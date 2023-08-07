@@ -128,11 +128,11 @@ __inline__ __device__ float tanh_opt(float x) {
 #endif
 }
 
-template <typename T, bool Enable>
+template <typename T, bool EnableFastGelu>
 struct GeluActivation {
   using return_type = T;
   static __device__ __forceinline__ T apply(const T& val) {
-    if (!Enable) return val;
+    if (!EnableFastGelu) return val;
     const float cdf =
         0.5f * (1.0f + tanh_opt((0.7978845608028654f *
                                  (val + 0.044715f * val * val * val))));
@@ -389,12 +389,8 @@ void GemvWeightonlyInt8Kernel(const Context& dev_ctx,
   const float* weight_scale_data = weight_scale.data<float>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  int64_t m = 1;
-  int64_t n = 1;
-  int64_t k = 1;
-
-  k = x.dims()[1];
-  n = weight.dims()[0];
+  int k = x.dims()[1];
+  int n = weight.dims()[0];
   GemvWeightonlyInt8Wrapper<T, Context>(dev_ctx,
                                         x_data,
                                         weight_data,

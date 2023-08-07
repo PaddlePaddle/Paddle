@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/llm_int8_matmul_kernel.h"
+#include "paddle/phi/kernels/llm_int8_linear_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
 #include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"
-PHI_DECLARE_double(custom_llm_int8_threshold);
 #endif
 
 namespace phi {
@@ -31,6 +30,7 @@ void llm_int8_compute(const Context& dev_ctx,
                       const DenseTensor& weight,
                       const paddle::optional<DenseTensor>& bias,
                       const DenseTensor& weight_scale,
+                      const float threshold,
                       DenseTensor* out) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
   DenseTensor cublaslt_workspace;
@@ -46,7 +46,7 @@ void llm_int8_compute(const Context& dev_ctx,
                        &weight,
                        &x,
                        &weight_scale,
-                       FLAGS_custom_llm_int8_threshold,
+                       threshold,
                        out,
                        &cublaslt_workspace,
                        "llm_int8_mat_mul",
@@ -61,25 +61,27 @@ void llm_int8_compute(const Context& dev_ctx,
   }
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
-      "llm_int8_matmul op needs paddle with cuda and cuda version >= 11.2"));
+      "llm_int8_linear op needs paddle with cuda and cuda version >= 11.2"));
 #endif
 }
 
 template <typename T, typename Context>
-void LLMInt8MatmulKernel(const Context& dev_ctx,
+void LLMInt8LinearKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& weight,
                          const paddle::optional<DenseTensor>& bias,
                          const DenseTensor& weight_scale,
+                         const float threshold,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  llm_int8_compute<T, Context>(dev_ctx, x, weight, bias, weight_scale, out);
+  llm_int8_compute<T, Context>(
+      dev_ctx, x, weight, bias, weight_scale, threshold, out);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(llm_int8_matmul,
+PD_REGISTER_KERNEL(llm_int8_linear,
                    GPU,
                    ALL_LAYOUT,
-                   phi::LLMInt8MatmulKernel,
+                   phi::LLMInt8LinearKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

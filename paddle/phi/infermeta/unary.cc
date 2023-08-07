@@ -3103,10 +3103,10 @@ void QrInferMeta(const MetaTensor& x,
   r->set_dtype(x.dtype());
 }
 
-void QuantForCompressInferMeta(const MetaTensor& x,
-                               const std::string& layout,
-                               MetaTensor* out,
-                               MetaTensor* scale) {
+void QuantForInferInferMeta(const MetaTensor& x,
+                            const std::string& layout,
+                            MetaTensor* out,
+                            MetaTensor* scale) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),

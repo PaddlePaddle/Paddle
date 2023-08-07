@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_COMPRESS_KERNEL_IMPL_H_
-#define PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_COMPRESS_KERNEL_IMPL_H_
+#ifndef PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_INFER_KERNEL_IMPL_H_
+#define PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_INFER_KERNEL_IMPL_H_
 #include <iostream>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/float16.h"
@@ -345,4 +345,4 @@ void interleave_column_major_tensor(int8_t* interleaved_quantized_tensor,
   }
 }
 }  // namespace phi
-#endif  // PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_COMPRESS_KERNEL_IMPL_H_
+#endif  // PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_INFER_KERNEL_IMPL_H_

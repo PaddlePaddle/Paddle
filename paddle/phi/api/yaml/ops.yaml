@@ -219,16 +219,6 @@
     func : atanh
   backward : atanh_grad
 
-- op : attn_matmul
-  args : (Tensor x, Tensor weight, Tensor bias, bool transpose_weight = true)
-  output : Tensor(out)
-  infer_meta :
-    func : AttnMatmulInferMeta
-  kernel :
-    func : attn_matmul
-    data_type : x
-  optional : bias
-
 - op : auc
   args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve = "ROC", int num_thresholds = (2 << 12) - 1, int slide_steps = 1)
   output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
@@ -1387,13 +1377,13 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
-- op : llm_int8_matmul
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale)
+- op : llm_int8_linear
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, float threshold=6.0)
   output : Tensor(out)
   infer_meta :
-    func : LLMInt8MatmulInferMeta
+    func : LLMInt8LinearInferMeta
   kernel :
-    func : llm_int8_matmul
+    func : llm_int8_linear
     data_type : x
   optional: bias
 
@@ -1946,13 +1936,13 @@
     func : qr
   backward : qr_grad
 
-- op : quant_for_compress
+- op : quant_for_infer
   args : (Tensor x, str layout = "weight_only_int8")
   output : Tensor(out), Tensor(scale)
   infer_meta :
-    func : QuantForCompressInferMeta
+    func : quantForInferInferMeta
   kernel :
-    func : quant_for_compress
+    func : quant_for_infer
     data_type: x
 
 - op : real
@@ -2632,13 +2622,13 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
-- op : weight_only_matmul
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str quant_method)
+- op : weight_only_linear
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype)
   output : Tensor(out)
   infer_meta :
-    func : WeightOnlyMatmulInferMeta
+    func : WeightOnlyLinearInferMeta
   kernel :
-    func : weight_only_matmul
+    func : weight_only_linear
     data_type : x
   optional: bias
 

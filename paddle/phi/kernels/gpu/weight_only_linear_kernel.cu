@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/phi/kernels/weight_only_matmul_kernel.h"
+#include "paddle/phi/kernels/weight_only_linear_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,12 +23,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void WeightOnlyMatmulKernel(const Context& dev_ctx,
+void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& weight,
                             const paddle::optional<DenseTensor>& bias,
                             const DenseTensor& weight_scale,
-                            const std::string& quant_method,
+                            const std::string& weight_dtype,
                             DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   const T* x_data = x.data<T>();
@@ -43,9 +43,9 @@ void WeightOnlyMatmulKernel(const Context& dev_ctx,
   int m = x.numel() / k;
 
   // m > 1: run gemm
-  if (m > 1 || quant_method == "weight_only_int4") {
+  if (m > 1 || weight_dtype == "int4") {
 #if defined(PADDLE_WITH_CUTLASS)
-    if (quant_method == "weight_only_int8") {
+    if (weight_dtype == "int8") {
       auto mixed_gemm_runner =
           CutlassFpAIntBGemmRunner<typename PDDataTypeTraits<T>::DataType,
                                    uint8_t>();
@@ -136,7 +136,7 @@ void WeightOnlyMatmulKernel(const Context& dev_ctx,
     LOG(ERROR) << "Please compile with cutlass to EnableUseCutlass()";
 #endif
   } else {  // m == 1: gemv
-    if (quant_method == "weight_only_int8") {
+    if (weight_dtype == "int8") {
       GemvWeightonlyInt8Wrapper<T, Context>(dev_ctx,
                                             x_data,
                                             weight_data,
@@ -146,14 +146,14 @@ void WeightOnlyMatmulKernel(const Context& dev_ctx,
                                             k,
                                             "None",
                                             out->data<T>());
-    }  // TODO(lizhenyun) support weight_only_gemv_int4.
+    }  // TODO(lizhenyun) support weight_only_gemv for int4.
   }
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(weight_only_matmul,
+PD_REGISTER_KERNEL(weight_only_linear,
                    GPU,
                    ALL_LAYOUT,
-                   phi::WeightOnlyMatmulKernel,
+                   phi::WeightOnlyLinearKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

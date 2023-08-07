@@ -16,9 +16,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void QuantForCompressKernel(const Context& dev_ctx,
+void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const std::string& layout,
-                            DenseTensor* out,
-                            DenseTensor* scale);
+                            const DenseTensor& weight,
+                            const paddle::optional<DenseTensor>& bias,
+                            const DenseTensor& weight_scale,
+                            const std::string& weight_dtype,
+                            DenseTensor* out);
 }  // namespace phi

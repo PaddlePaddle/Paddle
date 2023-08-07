@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/quant_for_compress_kernel.h"
+#include "paddle/phi/kernels/quant_for_infer_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/impl/quant_for_compress_kernel_impl.h"
+#include "paddle/phi/kernels/impl/quant_for_infer_kernel_impl.h"
 
 namespace phi {
 
@@ -75,11 +75,11 @@ void quant_compute(const DeviceContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void QuantForCompressKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const std::string& layout,
-                            DenseTensor* out,
-                            DenseTensor* scale) {
+void QuantForInferKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const std::string& layout,
+                         DenseTensor* out,
+                         DenseTensor* scale) {
   dev_ctx.template Alloc<int8_t>(out);
   dev_ctx.template Alloc<float>(scale);
   if (layout == "weight_only_int8" || layout == "llm.int8") {
@@ -98,9 +98,9 @@ void QuantForCompressKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(quant_for_compress,
+PD_REGISTER_KERNEL(quant_for_infer,
                    CPU,
                    ALL_LAYOUT,
-                   phi::QuantForCompressKernel,
+                   phi::QuantForInferKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
