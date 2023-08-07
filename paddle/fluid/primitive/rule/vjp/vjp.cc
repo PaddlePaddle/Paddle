@@ -16,10 +16,10 @@
 #include <vector>
 
 #include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/primitive/backend/static_backend.h"
+#include "paddle/fluid/primitive/rule/vjp/vjp.h"
+#include "paddle/fluid/primitive/type/desc_tensor.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/primitive/backend/static_backend.h"
-#include "paddle/primitive/rule/vjp/vjp.h"
-#include "paddle/primitive/type/desc_tensor.h"
 // TODO(wanghao107):
 //  op's vjp will be auto generated.
 

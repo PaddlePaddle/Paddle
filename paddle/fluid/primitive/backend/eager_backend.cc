@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/primitive/backend/eager_backend.h"
+#include "paddle/fluid/primitive/backend/eager_backend.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/primitive/primitive/primitive.h"
+#include "paddle/fluid/primitive/primitive/primitive.h"
 
 namespace paddle {
 namespace primitive {

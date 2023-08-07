@@ -8,7 +8,6 @@ add_subdirectory(scripts)
 add_subdirectory(testing)
 add_subdirectory(phi)
 add_subdirectory(fluid)
-add_subdirectory(primitive)
 
 # NOTE(zhiqiu): The changes of cc tests
 # Before, (1) the source file of cc tests are distributed in different sub-directories,

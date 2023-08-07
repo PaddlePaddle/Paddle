@@ -12,3 +12,4 @@ add_subdirectory(ir)
 add_subdirectory(ir_adaptor)
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)
+add_subdirectory(primitive)

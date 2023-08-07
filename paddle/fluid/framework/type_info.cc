@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
-#include "paddle/primitive/type/desc_tensor.h"
+#include "paddle/fluid/primitive/type/desc_tensor.h"
 
 namespace phi {
 

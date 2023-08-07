@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/primitive/backend/eager_backend.h"
-#include "paddle/primitive/backend/static_backend.h"
+#include "paddle/fluid/primitive/backend/eager_backend.h"
+#include "paddle/fluid/primitive/backend/static_backend.h"
 
 namespace paddle {
 namespace primitive {
