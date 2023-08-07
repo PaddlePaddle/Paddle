@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -81,11 +82,11 @@
   } /* NOLINT */                                                \
   using fL##shorttype::FLAGS_##name
 
-#define PHI_DEFINE_bool(name, val, txt)                              \
-  namespace fLB {                                                    \
-  typedef ::fLB::CompileAssert FLAG_##name##_value_is_not_a_bool     \
-      [(sizeof(::fLB::IsBoolFlag(val)) != sizeof(double)) ? 1 : -1]; \
-  }                                                                  \
+#define PHI_DEFINE_bool(name, val, txt)                                       \
+  namespace fLB {                                                             \
+  typedef ::fLB::CompileAssert FLAG_##name##_value_is_not_a_bool /* NOLINT */ \
+      [(sizeof(::fLB::IsBoolFlag(val)) != sizeof(double)) ? 1 : -1];          \
+  }                                                                           \
   PHI_DEFINE_VARIABLE(bool, B, name, val, txt)
 
 #define PHI_DEFINE_int32(name, val, txt) \
@@ -103,27 +104,28 @@
 #define PHI_DEFINE_double(name, val, txt) \
   PHI_DEFINE_VARIABLE(double, D, name, val, txt)
 
-#define PHI_DEFINE_string(name, val, txt)                             \
-  namespace fLS {                                                     \
-  using ::fLS::clstring;                                              \
-  using ::fLS::StringFlagDestructor;                                  \
-  static union {                                                      \
-    void* align;                                                      \
-    char s[sizeof(clstring)];                                         \
-  } s_##name[2];                                                      \
-  clstring* const FLAGS_no##name =                                    \
-      ::fLS::dont_pass0toDEFINE_string(s_##name[0].s, val);           \
-  static GFLAGS_NAMESPACE::FlagRegisterer o_##name(                   \
-      #name,                                                          \
-      MAYBE_STRIPPED_HELP(txt),                                       \
-      __FILE__,                                                       \
-      FLAGS_no##name,                                                 \
-      new (s_##name[1].s) clstring(*FLAGS_no##name));                 \
-  static StringFlagDestructor d_##name(s_##name[0].s, s_##name[1].s); \
-  extern PHI_EXPORT_FLAG clstring& FLAGS_##name;                      \
-  using fLS::FLAGS_##name;                                            \
-  clstring& FLAGS_##name = *FLAGS_no##name;                           \
-  } /* NOLINT */                                                      \
+#define PHI_DEFINE_string(name, val, txt)                          \
+  namespace fLS {                                                  \
+  using ::fLS::clstring;                                           \
+  using ::fLS::StringFlagDestructor;                               \
+  static union { /* NOLINT */                                      \
+    void* align;                                                   \
+    std::array<char, sizeof(clstring)> s;                          \
+  } s_##name[2]; /* NOLINT */                                      \
+  clstring* const FLAGS_no##name =                                 \
+      ::fLS::dont_pass0toDEFINE_string(s_##name[0].s.data(), val); \
+  static GFLAGS_NAMESPACE::FlagRegisterer o_##name(                \
+      #name,                                                       \
+      MAYBE_STRIPPED_HELP(txt),                                    \
+      __FILE__,                                                    \
+      FLAGS_no##name,                                              \
+      new (s_##name[1].s.data()) clstring(*FLAGS_no##name));       \
+  static StringFlagDestructor d_##name(s_##name[0].s.data(),       \
+                                       s_##name[1].s.data());      \
+  extern PHI_EXPORT_FLAG clstring& FLAGS_##name;                   \
+  using fLS::FLAGS_##name;                                         \
+  clstring& FLAGS_##name = *FLAGS_no##name;                        \
+  } /* NOLINT */                                                   \
   using fLS::FLAGS_##name
 
 namespace phi {

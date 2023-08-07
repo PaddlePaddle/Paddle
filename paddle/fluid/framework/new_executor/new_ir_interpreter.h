@@ -35,6 +35,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
  public:
   NewIRInterpreter(const platform::Place& place,
+                   const std::vector<std::string>& fetch_var_names,
                    std::unique_ptr<::ir::Program> ir_prog,
                    Scope* scope,
                    const ExecutionConfig& execution_config = ExecutionConfig());
@@ -214,11 +215,14 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void BuildInstructionDependences();
 
-  void NewIrLoopRunImpl();
+  void LoopRunImpl();
 
-  void BetaRunImpl();
+  void TraceRunImpl();
 
-  void TraceInstructionList(
+  void TraceRunInstructionList(
+      const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
+
+  void LoopRunInstructionList(
       const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
 
   void RunInstructionBase(InstructionBase* instr_node);
@@ -230,6 +234,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void CheckGC(InstructionBase* instr);
 
   void RecordStreamForGC(InstructionBase* instr);
+
+  void SolvePersisableVarNames();
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
@@ -251,6 +257,12 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   interpreter::NewIrDependencyBuilder ir_dependency_builder_;
 
   interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
+
+  std::vector<std::string> fetch_var_names_;
+
+  // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
+  // belongs to a parameter and cannot GC.
+  std::unordered_set<std::string> parameter_var_names_;
 };
 
 }  // namespace framework

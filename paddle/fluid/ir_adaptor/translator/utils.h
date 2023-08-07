@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,22 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include <string>
+
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
-namespace operators {
+namespace translator {
 
-template <typename T, typename DeviceContext>
-class PruneGateByCapacityCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "prune_gate_by_capacity is not supported on CPU."));
-  }
-};
+ir::Operation* InsertSliceOperationForTarget(
+    ir::IrContext* ctx,
+    TranslationContext* param_map,
+    ir::Program* program,
+    const VariableDefiningInfo& defining_info,
+    const std::string& arg_name);
 
-}  // namespace operators
+}  // namespace translator
 }  // namespace paddle

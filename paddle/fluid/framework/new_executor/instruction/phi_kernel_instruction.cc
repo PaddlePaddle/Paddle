@@ -111,6 +111,15 @@ OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
+  auto kernel_key = op->attributes()
+                        .at("kernel_key")
+                        .dyn_cast<dialect::KernelAttribute>()
+                        .data();
+  if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
+      phi::AllocationType::CPU) {
+    return OpFuncType::kCpuSync;
+  }
+
   PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
                     true,
                     phi::errors::Fatal("Unsupported current place %s", place));
@@ -266,7 +275,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
   std::unordered_set<::ir::Value> no_need_buffer_values;
   for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-    no_need_buffer_values.insert(op->operand(no_need_buffer_ids[id]));
+    no_need_buffer_values.insert(op->operand_source(no_need_buffer_ids[id]));
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
@@ -286,8 +295,8 @@ std::vector<int> GetValueIds(
   auto var = inner_scope->FindVar(var_name);
   if (var->IsType<paddle::framework::VariableRefArray>()) {
     auto& var_array = var->Get<paddle::framework::VariableRefArray>();
-    for (size_t i = 0; i < var_array.size(); ++i) {
-      ids.push_back(var_name_2_id.at(variable_2_var_name.at(var_array[i])));
+    for (auto item : var_array) {
+      ids.push_back(var_name_2_id.at(variable_2_var_name.at(item)));
     }
   }
   return ids;
@@ -302,7 +311,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
         variable_2_var_name) {
   std::unordered_map<ir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
-    ir::Value value = op->operand(i);
+    ir::Value value = op->operand_source(i);
     if (value) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
@@ -324,7 +333,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
   std::unordered_map<ir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < op->num_results(); i++) {
     ir::Value value = op->result(i);
-    if (value) {
+    if (value && value.type()) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
           value_2_var_name.end(),
