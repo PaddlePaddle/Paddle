@@ -38,7 +38,7 @@ def _prepare_python_api_arguments(op):
     op_attrs_name = op.get_attr_names()
     op_attrs = [op_attrs_dict[x] for x in op_attrs_name]
     api_arguments = op_inputs + op_attrs
-    return api_arguments
+    return tuple(api_arguments)
 
 
 def _check_op_results(op_name, orig_outs, new_outs):
