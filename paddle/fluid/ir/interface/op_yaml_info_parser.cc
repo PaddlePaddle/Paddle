@@ -118,6 +118,28 @@ const std::string& OpYamlInfoParser::InplaceName(
       "Can not find inplace input of [%s].", out_name));
 }
 
+bool OpYamlInfoParser::HasView(const std::string& out_name) const {
+  auto& view_info = std::get<3>(op_info_tuple_).view;
+  for (size_t i = 0; i < view_info.size(); i++) {
+    if (out_name == view_info[i].first) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const std::string& OpYamlInfoParser::ViewName(
+    const std::string& out_name) const {
+  auto& view_info = std::get<3>(op_info_tuple_).view;
+  for (size_t i = 0; i < view_info.size(); i++) {
+    if (out_name == view_info[i].first) {
+      return view_info[i].second;
+    }
+  }
+  PADDLE_THROW(phi::errors::PreconditionNotMet(
+      "Can not find inplace input of [%s].", out_name));
+}
+
 void OpYamlInfoParser::parse() {
   auto input_info = std::get<0>(op_info_tuple_);
 
