@@ -35,23 +35,18 @@ class ParallelCompiler {
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   };
 
- public:
-  explicit ParallelCompiler(std::shared_ptr<Scope>& scope,  // NOLINT
-                            std::shared_ptr<Graph>& graph,  // NOLINT
-                            const CompileOptions& option,
-                            const common::Target& target)
-      : scope_(scope), graph_(graph), option_(option), target_(target) {}
-  ~ParallelCompiler() {}
-  std::vector<std::unique_ptr<Instruction>> operator()();
+  struct CompilationResult {
+    // Lower result
+    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    // Host/CUDA codegen result
+    std::vector<std::string> source_codes;
+    // CUDA ptx result
+    std::vector<std::string> source_ptxs;
+    // Instruction result
+    std::vector<std::unique_ptr<Instruction>> instructions;
+  };
 
- private:
-  void SplitTask();
-  void LaunchTask();
-  std::vector<std::unique_ptr<Instruction>> MergeResult();
-
- public:
   struct Task {
-   public:
     Task(ParallelCompiler* p,
          std::shared_ptr<Scope>& s,  // NOLINT
          std::shared_ptr<Graph>& g,  // NOLINT
@@ -62,30 +57,40 @@ class ParallelCompiler {
     void CodegenAndJit();
     void BuildInstruction();
 
-   public:
     const Target target;
     ParallelCompiler* compiler;
     std::shared_ptr<Scope> scope;
     std::shared_ptr<Graph> graph;
     const CompileOptions& options;
 
-    std::vector<int> gidx;
+    int start_gidx;
+    int stop_gidx;
     std::vector<std::unique_ptr<Instruction>> instructions;
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    std::vector<std::string> source_codes;
+    std::vector<std::string> source_ptxs;
 
-   public:
     std::unique_ptr<backends::ExecutionEngine> engine;
 #ifdef CINN_WITH_CUDA
     std::unique_ptr<runtime::cuda::CUDAModule> cumodule;
 #endif
   };
-  std::vector<Task> tasks_;
-  int GetGroupIdx();
+
+  explicit ParallelCompiler(std::shared_ptr<Scope>& scope,  // NOLINT
+                            std::shared_ptr<Graph>& graph,  // NOLINT
+                            const CompileOptions& option,
+                            const common::Target& target)
+      : scope_(scope), graph_(graph), option_(option), target_(target) {}
+  ~ParallelCompiler() {}
+  CompilationResult operator()();
 
  private:
-  int index{0};
-  std::mutex mtx_;
+  void SplitTask();
+  void LaunchTask();
+  void RunTask(Task* task);
+  CompilationResult MergeResult();
 
+  std::vector<Task> tasks_;
   const common::Target target_;
   const CompileOptions& option_;
   std::shared_ptr<Scope> scope_;
