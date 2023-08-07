@@ -23,12 +23,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-const char kFeedOpType[] = "feed";
-const char kFetchOpType[] = "fetch";
+const char kFeedOpType[] = "feed";    // NOLINT
+const char kFetchOpType[] = "fetch";  // NOLINT
 
-const char kRecurrent[] = "recurrent";
-const char kStates[] = "states";
-const char kExStates[] = "ex_states";
+const char kRecurrent[] = "recurrent";  // NOLINT
+const char kStates[] = "states";        // NOLINT
+const char kExStates[] = "ex_states";   // NOLINT
 
 bool HasDependentInputVar(
     const proto::OpDesc& op_desc,
@@ -420,8 +420,7 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
 
   // Step 1. Mark backward, optimize and lrsched ops in the block
   auto* ops = origin->mutable_ops();
-  for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
-    auto& op_desc = *op_iter;
+  for (auto& op_desc : *ops) {
     auto op_role = GetOpRole(op_desc);
     if (op_role & static_cast<int>(OpRole::kOptimize) ||
         op_role & static_cast<int>(OpRole::kBackward) ||
@@ -436,12 +435,12 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
   //       to remove op and var
   auto* op_field = pruned->mutable_ops();
   op_field->Clear();
-  for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
-    if (!HasFalseTarget(*op_iter)) {
+  for (auto& op_desc : *ops) {
+    if (!HasFalseTarget(op_desc)) {
       auto* op = op_field->Add();
-      AppendOpInputVarNames(*op_iter, &op_input_vars);
-      AppendOpOutputVarNames(*op_iter, &op_output_vars);
-      *op = *op_iter;
+      AppendOpInputVarNames(op_desc, &op_input_vars);
+      AppendOpOutputVarNames(op_desc, &op_output_vars);
+      *op = op_desc;
     }
   }
 
@@ -540,8 +539,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   for (int i = 0; i < pruned_desc.blocks_size(); i++) {
     auto* pruned = pruned_desc.mutable_blocks(i);
     auto* ops = pruned->mutable_ops();
-    for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
-      auto& op_desc = *op_iter;
+    for (auto& op_desc : *ops) {
       if (HasSubBlock(op_desc)) {
         int origin_sub_idx = GetSubBlockIndex(op_desc);
         auto sub_idx =

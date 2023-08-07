@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 
+#include <array>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -277,14 +278,14 @@ bool CUDAGraph::IsValidCapturing() {
 static std::string ConcatPath(const std::string &dirname,
                               const std::string &filename) {
 #ifdef _WIN32
-  const char kFileSep[] = "\\";
+  const std::array<char, 3> kFileSep = {"\\"};
 #else
-  const char kFileSep[] = "/";
+  const std::array<char, 2> kFileSep = {"/"};
 #endif
   if (!dirname.empty() && dirname.back() == kFileSep[0]) {
     return dirname + filename;
   } else {
-    return dirname + kFileSep + filename;
+    return dirname + kFileSep.data() + filename;
   }
 }
 

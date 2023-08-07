@@ -25,10 +25,8 @@
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {

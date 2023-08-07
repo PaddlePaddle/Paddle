@@ -116,8 +116,8 @@ class TestOriginInfo(unittest.TestCase):
 
         for i in range(self.line_num):
             static_lineno = self.static_abs_lineno_list[i]
-            staic_loc = Location(static_filepath, static_lineno)
-            self.assertIn(staic_loc.line_location, origin_info_map)
+            static_loc = Location(static_filepath, static_lineno)
+            self.assertIn(static_loc.line_location, origin_info_map)
 
             dy_lineno = dygraph_abs_lineno_list[i]
             dy_col_offset = self.dy_abs_col_offset[i]
@@ -129,7 +129,7 @@ class TestOriginInfo(unittest.TestCase):
                 code,
             )
             self.assertEqual(
-                str(origin_info_map[staic_loc.line_location]), str(origin_info)
+                str(origin_info_map[static_loc.line_location]), str(origin_info)
             )
 
     def test_attach_origin_info(self):

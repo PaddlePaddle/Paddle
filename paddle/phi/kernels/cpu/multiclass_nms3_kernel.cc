@@ -27,7 +27,7 @@ template <class T>
 class Point_ {
  public:
   // default constructor
-  Point_() {}
+  Point_() = default;
   Point_(T _x, T _y) {}
   Point_(const Point_& pt UNUSED) {}
 
@@ -298,9 +298,8 @@ void NMSFast(const DenseTensor& bbox,
   while (!sorted_indices.empty()) {
     const int idx = sorted_indices.front().second;
     bool keep = true;
-    for (size_t k = 0; k < selected_indices->size(); ++k) {
+    for (const auto kept_idx : *selected_indices) {
       if (keep) {
-        const int kept_idx = (*selected_indices)[k];
         T overlap = T(0.);
         // 4: [xmin ymin xmax ymax]
         if (box_size == 4) {
@@ -393,8 +392,7 @@ void MultiClassNMS(const Context& ctx,
         sdata = score_slice.data<T>();
       }
       const std::vector<int>& label_indices = it.second;
-      for (size_t j = 0; j < label_indices.size(); ++j) {
-        int idx = label_indices[j];
+      for (auto idx : label_indices) {
         score_index_pairs.push_back(
             std::make_pair(sdata[idx], std::make_pair(label, idx)));
       }
@@ -407,9 +405,9 @@ void MultiClassNMS(const Context& ctx,
 
     // Store the new indices.
     std::map<int, std::vector<int>> new_indices;
-    for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-      int label = score_index_pairs[j].second.first;
-      int idx = score_index_pairs[j].second.second;
+    for (auto& score_index_pair : score_index_pairs) {
+      int label = score_index_pair.second.first;
+      int idx = score_index_pair.second.second;
       new_indices[label].push_back(idx);
     }
     if (scores_size == 2) {
@@ -455,8 +453,7 @@ void MultiClassOutput(const Context& ctx,
       sdata = scores_data + label * predict_dim;
     }
 
-    for (size_t j = 0; j < indices.size(); ++j) {
-      int idx = indices[j];
+    for (auto idx : indices) {
       odata[count * out_dim] = label;  // label
       const T* bdata;
       if (scores_size == 3) {

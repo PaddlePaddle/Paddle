@@ -122,6 +122,15 @@ detail::OpResultImpl *OpResult::impl() const {
   return reinterpret_cast<detail::OpResultImpl *>(impl_);
 }
 
+bool OpResult::operator==(const OpResult &other) const {
+  return impl_ == other.impl_;
+}
+
+detail::ValueImpl *OpResult::value_impl() const {
+  IR_ENFORCE(impl_, "Can't use value_impl() interface while value is null.");
+  return impl_;
+}
+
 uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
   uint32_t max_inline_index =
       ir::detail::OpResultImpl::GetMaxInlineResultIndex();

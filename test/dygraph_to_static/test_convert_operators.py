@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 
@@ -23,6 +24,11 @@ class CallNotExist(paddle.nn.Layer):
     def __call__(self):
         # call a non-exist API to trigger exception
         return paddle.nn.not_exist_api
+
+
+class CallableList(list):
+    def __call__(self, x):
+        return x
 
 
 class ForwardNotExist(paddle.nn.Layer):
@@ -35,6 +41,8 @@ net.forward = "A string so that convert forward will fail"
 
 
 class TestConvertCall(unittest.TestCase):
+    # fallback mode will raise a InnerError, it's ok.
+    @ast_only_test
     def test_class_exception(self):
         @paddle.jit.to_static
         def call_not_exist():
@@ -50,6 +58,14 @@ class TestConvertCall(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             forward_not_exist()
+
+    def test_callable_list(self):
+        @paddle.jit.to_static
+        def callable_list(x, y):
+            callable_list = CallableList()
+            return callable_list(x) + y
+
+        self.assertEqual(callable_list(1, 2), 3)
 
 
 class TestConvertShapeCompare(unittest.TestCase):

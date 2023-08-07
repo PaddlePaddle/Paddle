@@ -93,6 +93,21 @@ class LazyGuard:
     LazyGuard is a wrapper interface for nn.Layer, it forwards the construct
     process of user defined Layer. Meanwhile, it provides necessary API to
     trigger EagerParamBase Lazy Initialization and get startup Program.
+
+    Examples:
+
+        .. code-block:: python
+
+            from paddle import LazyGuard
+            from paddle.nn import Linear
+
+            with LazyGuard():
+                # w and b are initialized lazily and have no memory.
+                net = Linear(10, 10)
+
+            for param in net.parameters():
+                # Initialize param and allocate memory explicitly.
+                param.initialize()
     """
 
     def __enter__(self):

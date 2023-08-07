@@ -28,7 +28,7 @@
 #include "paddle/cinn/auto_schedule/task/tune_task.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "test/cpp/cinn/program_builder.h"
 
 namespace cinn {

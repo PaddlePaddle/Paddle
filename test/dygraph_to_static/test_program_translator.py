@@ -18,6 +18,7 @@ import unittest
 
 import astor
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -216,6 +217,7 @@ class TestEnableDeclarative(unittest.TestCase):
         self.x = np.random.randn(30, 10, 32).astype('float32')
         self.weight = np.random.randn(32, 64).astype('float32')
 
+    @ast_only_test
     def test_raise_error(self):
         with fluid.dygraph.guard():
             paddle.jit.enable_to_static(True)
@@ -261,23 +263,24 @@ class SwitchModeNet(paddle.nn.Layer):
 
 
 @paddle.jit.to_static
-def switch_mode_funciton():
+def switch_mode_function():
     return True
 
 
 class TestFunctionTrainEvalMode(unittest.TestCase):
+    @ast_only_test
     def test_switch_mode(self):
         paddle.disable_static()
-        switch_mode_funciton.eval()
-        switch_mode_funciton()
-        self.assertEqual(switch_mode_funciton._training, False)
-        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        switch_mode_function.eval()
+        switch_mode_function()
+        self.assertEqual(switch_mode_function._training, False)
+        _, partial_layer = switch_mode_function.program_cache.last()[-1]
         self.assertEqual(partial_layer.training, False)
 
-        switch_mode_funciton.train()
-        switch_mode_funciton()
-        self.assertEqual(switch_mode_funciton._training, True)
-        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        switch_mode_function.train()
+        switch_mode_function()
+        self.assertEqual(switch_mode_function._training, True)
+        _, partial_layer = switch_mode_function.program_cache.last()[-1]
         self.assertEqual(partial_layer.training, True)
 
     def test_raise_error(self):
