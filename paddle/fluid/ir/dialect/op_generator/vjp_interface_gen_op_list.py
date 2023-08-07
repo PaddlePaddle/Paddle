@@ -15,10 +15,4 @@
 # =====================================
 # VjpInterface gen op list
 # =====================================
-# we don't support vjp function code
-# gen now, so we use a whitelist to
-# control the generation of Vjp methods.
-# TODO(wanghao107)
-# remove this file and support Vjp methods
-# code gen.
 vjp_interface_gen_op_list = ["tanh", "mean"]
