@@ -203,15 +203,17 @@ class InterpreterCoreInfoCache {
   }
 
   void UpdateSkipEagerDeleteVars(int64_t program_id,
+                                 const framework::Scope* scope,
                                  bool is_grad,
                                  const std::set<std::string>& skip_vars) {
-    auto& cached_value = GetMutable(program_id, is_grad);
+    auto& cached_value = GetMutable(program_id, scope, is_grad);
     cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
   }
 
   std::set<std::string>& GetSkipEagerDeleteVars(int64_t program_id,
+                                                const framework::Scope* scope,
                                                 bool is_grad) {
-    auto& cached_value = GetMutable(program_id, is_grad);
+    auto& cached_value = GetMutable(program_id, scope, is_grad);
     return cached_value.skip_eager_delete_vars_;
   }
 

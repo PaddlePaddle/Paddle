@@ -419,7 +419,7 @@ inline void RunProgramAPI(
     }
 
     interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id, false, skip_eager_delete_vars);
+        program_id, global_inner_scope, false, skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
@@ -580,7 +580,10 @@ inline void RunProgramGradAPI(
                                                        &skip_eager_delete_vars);
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
     interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id, /*is_grad=*/true, skip_eager_delete_vars);
+        program_id,
+        global_inner_scope,
+        /*is_grad=*/true,
+        skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
