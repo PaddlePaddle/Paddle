@@ -26,7 +26,7 @@ void DistributedFusedLambInitOpKernel(
     const std::vector<const DenseTensor*>& grad,
     float beta1,
     float beta2,
-    std::vector<int> apply_weight_decay,
+    const std::vector<int>& apply_weight_decay,
     int alignment,
     int rank,
     int nranks,
