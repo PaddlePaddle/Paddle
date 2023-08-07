@@ -23,6 +23,8 @@ from paddle import fluid
 from paddle.jit.dy2static import error
 from paddle.jit.dy2static.origin_info import unwrap
 
+os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
+
 
 def inner_func():
     paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")
@@ -255,11 +257,11 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 35, in func_error_in_compile_time'.format(
+            'File "{}", line 37, in func_error_in_compile_time'.format(
                 self.filepath
             ),
             'inner_func()',
-            f'File "{self.filepath}", line 28, in inner_func',
+            f'File "{self.filepath}", line 30, in inner_func',
             'def inner_func():',
             'paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
@@ -286,7 +288,7 @@ class TestErrorStaticLayerCallInCompiletime_2(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 46, in func_error_in_compile_time_2'.format(
+            'File "{}", line 48, in func_error_in_compile_time_2'.format(
                 self.filepath
             ),
             'def func_error_in_compile_time_2(x):',
@@ -312,7 +314,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 91, in forward',
+            f'File "{self.filepath}", line 93, in forward',
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -336,7 +338,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 54, in func_error_in_runtime'.format(
+            'File "{}", line 56, in func_error_in_runtime'.format(
                 self.filepath
             ),
             'x = fluid.dygraph.to_variable(x)',
@@ -353,7 +355,7 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 106, in func_error_in_runtime_with_empty_line'.format(
+            'File "{}", line 108, in func_error_in_runtime_with_empty_line'.format(
                 self.filepath
             ),
             'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
@@ -376,7 +378,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 80, in forward',
+            f'File "{self.filepath}", line 82, in forward',
             'def forward(self, x):',
             'y = self._linear(x)',
             'z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
