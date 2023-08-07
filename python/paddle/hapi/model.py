@@ -866,6 +866,7 @@ class DynamicGraphAdapter:
             if len(metrics) > 0
             else [to_numpy(l) for l in losses]
         )
+
     def eval_batch(self, inputs, labels=None):
         self.model.network.eval()
         self.mode = 'eval'
@@ -892,9 +893,8 @@ class DynamicGraphAdapter:
             outputs = [_all_gather(o) for o in to_list(outputs)]
             labels = [_all_gather(l) for l in labels]
 
-            if (
-                self.model._test_dataloader is not None
-                and isinstance(self.model._test_dataloader, DataLoader)
+            if self.model._test_dataloader is not None and isinstance(
+                self.model._test_dataloader, DataLoader
             ):
                 total_size = len(self.model._test_dataloader.dataset)
                 samples = outputs[0].shape[0]
