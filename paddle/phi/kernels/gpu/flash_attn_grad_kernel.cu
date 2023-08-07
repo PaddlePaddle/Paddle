@@ -23,6 +23,10 @@
 
 PD_DECLARE_bool(cudnn_deterministic);
 
+#ifdef PADDLE_WITH_FLASHATTN
+#include "paddle/phi/backends/dynload/flashattn.h"
+#endif
+
 namespace phi {
 
 int get_num_split() {
