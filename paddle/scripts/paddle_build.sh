@@ -3554,11 +3554,7 @@ EOF
         if [ "$SYSTEM" == "Darwin" ]; then
             python setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
         else
-            rm -rf /workspace/Paddle/build/third_party/
-            python setup.py $2
-            cat /workspace/Paddle/build/third_party/absl/src/external_absl-stamp/external_absl-configure-err.log
-            sleep 10h
-            # python setup.py $2;build_error=$?
+            python setup.py $2;build_error=$?
         fi
     fi
 
