@@ -111,6 +111,8 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -E copy ${FLASHATTN_V1_OLD_LIBRARIES}
           ${FLASHATTN_V1_LIBRARIES})
 
+add_dependencies(extern_flashattn_v1 extern_flashattn_v1_move_lib)
+
 message(STATUS "flash-attn v1 library: ${FLASHATTN_V1_LIBRARIES}")
 get_filename_component(FLASHATTN_V1_LIBRARY_PATH ${FLASHATTN_V1_LIBRARIES}
                        DIRECTORY)
