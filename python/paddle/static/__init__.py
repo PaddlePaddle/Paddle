@@ -84,7 +84,7 @@ import paddle
 
 if paddle.ir.core._use_new_ir_api():
     from ..ir import Program  # noqa: F401
-    from ..ir import program_guard  # noqa: F401
+    from ..ir.core import program_guard  # noqa: F401
 else:
     from ..fluid.framework import program_guard  # noqa: F401
     from ..fluid.framework import Program  # noqa: F401

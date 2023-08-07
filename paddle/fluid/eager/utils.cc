@@ -101,8 +101,8 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   ret.reserve(targets->size());
 
   // for autograd_meta we can tolerent it has nullptr.
-  for (size_t i = 0; i < targets->size(); i++) {
-    auto* p_autograd_meta = autograd_meta(&((*targets)[i]));
+  for (auto& target : *targets) {
+    auto* p_autograd_meta = autograd_meta(&target);
     ret.emplace_back(p_autograd_meta);
   }
   return ret;
@@ -114,8 +114,8 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   ret.reserve(targets->size());
 
   // for autograd_meta we can tolerent it has nullptr.
-  for (size_t i = 0; i < targets->size(); i++) {
-    auto* p_autograd_meta = autograd_meta((*targets)[i]);
+  for (auto& target : *targets) {
+    auto* p_autograd_meta = autograd_meta(target);
     ret.emplace_back(p_autograd_meta);
   }
   return ret;
@@ -364,8 +364,8 @@ void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
 void EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs,
     std::vector<paddle::Tensor>* result) {
-  for (size_t i = 0; i < outs.size(); i++) {
-    result->emplace_back(outs[i]->GetTensorBase());
+  for (const auto& out : outs) {
+    result->emplace_back(out->GetTensorBase());
   }
 }
 
@@ -404,8 +404,8 @@ void EagerUtils::GetOutputs(const std::shared_ptr<EagerVariable>& out,
 void EagerUtils::Output2Result(const std::vector<paddle::Tensor*>& out_var,
                                std::vector<paddle::Tensor>* result) {
   result->reserve(out_var.size());
-  for (size_t i = 0; i < out_var.size(); i++) {
-    result->emplace_back(*out_var[i]);
+  for (auto* item : out_var) {
+    result->emplace_back(*item);
   }
 }
 

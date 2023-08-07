@@ -45,9 +45,7 @@ class TestFleetBase(unittest.TestCase):
         )
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        emb = paddle.fluid.layers.embedding(
-            input=input_slot, size=[10, 9], is_sparse=True
-        )
+        emb = paddle.static.nn.sparse_embedding(input=input_slot, size=[10, 9])
         input_x = paddle.concat(x=[input_x, emb], axis=1)
         fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
         fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
