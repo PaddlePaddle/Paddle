@@ -38,6 +38,7 @@ class LegacyKernelInstruction : public InstructionBase {
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
           variable_2_var_name);
 
+  ~LegacyKernelInstruction();
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
   const phi::InferMetaContext& InferMetaContext() const {
@@ -60,9 +61,9 @@ class LegacyKernelInstruction : public InstructionBase {
 
   phi::InferMetaContext infer_meta_context_;
 
+  paddle::framework::ExecutionContext* kernel_context_{nullptr};
   std::shared_ptr<framework::RuntimeContext> runtime_context_;
   std::shared_ptr<paddle::framework::OperatorBase> operator_base_;
-  paddle::framework::ExecutionContext* kernel_context_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
 };

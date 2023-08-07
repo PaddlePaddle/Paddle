@@ -165,6 +165,12 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
+LegacyKernelInstruction::~LegacyKernelInstruction() {
+  if (kernel_context_ != nullptr) {
+    delete kernel_context_;
+  }
+}
+
 void LegacyKernelInstruction::Run() {
   infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";

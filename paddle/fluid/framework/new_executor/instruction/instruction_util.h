@@ -44,5 +44,6 @@ platform::DeviceContext* ParseDeviceContext(
     const int stream_priority);
 
 OpFuncType AnalyseOpFuncType(::ir::Operation* op, const platform::Place& place);
+
 }  // namespace framework
 }  // namespace paddle
