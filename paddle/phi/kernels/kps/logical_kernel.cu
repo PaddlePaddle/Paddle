@@ -25,17 +25,24 @@
 
 namespace phi {
 
-#define DEFINE_LOGICAL_BINARY_KERNEL(type)                          \
-  template <typename T, typename Context>                           \
-  void Logical##type##Kernel(const Context& dev_ctx,                \
-                             const DenseTensor& x,                  \
-                             const DenseTensor& y,                  \
-                             DenseTensor* out) {                    \
-    dev_ctx.template Alloc<bool>(out);                              \
-    funcs::Logical##type##Functor<T> binary_func;                   \
-    std::vector<const DenseTensor*> ins = {&x, &y};                 \
-    std::vector<DenseTensor*> outs = {out};                         \
-    funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func); \
+#define DEFINE_LOGICAL_BINARY_KERNEL(type)                            \
+  template <typename T, typename Context>                             \
+  void Logical##type##Kernel(const Context& dev_ctx,                  \
+                             const DenseTensor& x,                    \
+                             const DenseTensor& y,                    \
+                             DenseTensor* out) {                      \
+    if (!out->IsSharedWith(x)) {                                      \
+      dev_ctx.template Alloc<bool>(out);                              \
+    }                                                                 \
+                                                                      \
+    funcs::Logical##type##Functor<T> binary_func;                     \
+    std::vector<const DenseTensor*> ins = {&x, &y};                   \
+    std::vector<DenseTensor*> outs = {out};                           \
+    if (!out->IsSharedWith(x)) {                                      \
+      funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func); \
+    } else {                                                          \
+      funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, binary_func);    \
+    }                                                                 \
   }
 
 DEFINE_LOGICAL_BINARY_KERNEL(And)
@@ -47,11 +54,17 @@ template <typename T, typename Context>
 void LogicalNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
-  dev_ctx.template Alloc<bool>(out);
+  if (!out->IsSharedWith(x)) {
+    dev_ctx.template Alloc<bool>(out);
+  }
   funcs::LogicalNotFunctor<T> unary_func;
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
+  if (!out->IsSharedWith(x)) {
+    funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
+  } else {
+    funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, unary_func);
+  }
 }
 
 }  // namespace phi
@@ -84,9 +97,7 @@ PD_REGISTER_KERNEL(logical_xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {
                      int64_t,                                \
                      int,                                    \
                      int8_t,                                 \
-                     int16_t) {                              \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);    \
-  }
+                     int16_t) {}
 
 REGISTER_LOGICAL_CUDA_KERNEL(logical_and, And)
 REGISTER_LOGICAL_CUDA_KERNEL(logical_or, Or)

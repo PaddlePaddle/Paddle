@@ -86,6 +86,8 @@ class MetaTensor {
   //  and it will be deleted in the future.
   virtual bool is_tensor_array() const;
 
+  virtual TensorBase* tensor() const;
+
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;
   }
@@ -99,7 +101,6 @@ class MetaTensor {
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
-  TensorBase* tensor() const;
 
   TensorBase* tensor_ = nullptr;
   bool strided_kernel_used_ = false;
