@@ -15,6 +15,8 @@
 import unittest
 import warnings
 
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
+
 import paddle
 from paddle.static.nn import cond
 
@@ -37,12 +39,14 @@ def false_fn():
     return [paddle.to_tensor(3), [None, paddle.to_tensor(4)]]
 
 
+@dy2static_unittest
 class TestReturnNoneInIfelse(unittest.TestCase):
+    @ast_only_test
     def test_dy2static_warning(self):
         paddle.disable_static()
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            fun1()
+            paddle.jit.to_static(fun1)()
             flag = False
             for warn in w:
                 if (
