@@ -62,11 +62,6 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
   int64_t total_k = k.dims()[0];
   int64_t batch_size = cu_seqlens_q.numel() - 1;
 
-  int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-  if (FLAGS_cudnn_deterministic) {
-    num_splits = 1;
-  }
-
   PADDLE_ENFORCE_NE(causal,
                     true,
                     phi::errors::InvalidArgument(
@@ -91,6 +86,7 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
   const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
   std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
 
+  int fa_num_splits = 0;
   bool fa_is_bf16 = q.dtype() == DataType::BFLOAT16;
   float fa_with_mask_scale = 1.0f;
   bool fa_zero_tensors = false;
@@ -118,7 +114,7 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       fa_with_mask_scale,
       fa_zero_tensors,
       fa_is_bf16,
-      num_splits,
+      fa_num_splits,
       static_cast<const void*>(softmax_lse.data()),
       static_cast<void*>(dsoftmax.data()),
       nullptr,
@@ -161,7 +157,7 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       fa_with_mask_scale,
       fa_zero_tensors,
       fa_is_bf16,
-      num_splits,
+      fa_num_splits,
       static_cast<const void*>(softmax_lse.data()),
       static_cast<void*>(dsoftmax.data()),
       nullptr,
@@ -232,12 +228,12 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                           dv);
   } else {
     const int64_t total_q = dims[0];
-    const int batch_size = cu_seqlens_q.numel() - 1;
-    const int num_heads = dims[1];
-    const int head_size_og = dout.dims()[2];
-    const int head_size = dims[2];
-    const int total_k = k.dims()[0];
-    const int num_heads_k = k.dims()[1];
+    const int64_t batch_size = cu_seqlens_q.numel() - 1;
+    const int64_t num_heads = dims[1];
+    const int64_t head_size_og = dout.dims()[2];
+    const int64_t head_size = dims[2];
+    const int64_t total_k = k.dims()[0];
+    const int64_t num_heads_k = k.dims()[1];
 
     // TODO(umiswing): add deterministic in fa2.
     // int num_splits = 0;  // 0 for an internal heuristic, which is optimal
@@ -266,8 +262,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                              q.dtype(),
                              seed_offset.data<int64_t>());
 
-    VLOG(4) << "FlashAttn bwd seed: " << params.seed
-            << ", offset: " << params.offset;
+    VLOG(10) << "FlashAttn bwd seed: " << params.seed
+             << ", offset: " << params.offset;
 
     bool succ =
         phi::dynload::flash_attn_varlen_bwd(dout.data(),
@@ -344,8 +340,8 @@ void FlashAttnGradKernel(const Context& ctx,
       phi::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
 
-  VLOG(4) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
-          << "], v[" << v.dims() << "]";
+  VLOG(10) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
+           << "], v[" << v.dims() << "]";
 
   const float scale = 1.0f / std::sqrt(head_size);
   if (attn_mask.get_ptr()) {
@@ -401,8 +397,8 @@ void FlashAttnGradKernel(const Context& ctx,
 
     cudaStream_t stream = ctx.stream();
 
-    VLOG(4) << "FlashAttn bwd seed: " << params.seed
-            << ", offset: " << params.offset;
+    VLOG(10) << "FlashAttn bwd seed: " << params.seed
+             << ", offset: " << params.offset;
 
     bool succ = phi::dynload::flash_attn_bwd(dout.data(),
                                              q.data(),

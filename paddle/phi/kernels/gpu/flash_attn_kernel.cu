@@ -64,10 +64,6 @@ void FlashAttnWithMaskUnpaddedImpl(
   int64_t total_k = k.dims()[0];
   int64_t batch_size = cu_seqlens_q.numel() - 1;
 
-  int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-  if (FLAGS_cudnn_deterministic) {
-    num_splits = 1;
-  }
   PADDLE_ENFORCE_NE(causal,
                     true,
                     phi::errors::InvalidArgument(
@@ -86,8 +82,7 @@ void FlashAttnWithMaskUnpaddedImpl(
   uint64_t seed = seed_offset_pair.first;
   uint64_t offset = seed_offset_pair.second;
 
-  VLOG(4) << "FlashAttn fwd seed: " << seed << ", offset: " << offset
-          << ", num_splits:" << num_splits;
+  VLOG(10) << "FlashAttn fwd seed: " << seed << ", offset: " << offset;
 
   seed_offset->Resize({2});
   int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
@@ -122,6 +117,7 @@ void FlashAttnWithMaskUnpaddedImpl(
   const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
   std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
 
+  int fa_num_splits = 0;
   bool fa_is_bf16 = q.dtype() == DataType::BFLOAT16;
   float fa_with_mask_scale = 1.0f;
   bool fa_zero_tensors = false;
@@ -145,7 +141,7 @@ void FlashAttnWithMaskUnpaddedImpl(
       fa_with_mask_scale,
       fa_zero_tensors,
       fa_is_bf16,
-      num_splits,
+      fa_num_splits,
       softmax_lse->data(),
       nullptr,
       &workspace_size,
@@ -181,7 +177,7 @@ void FlashAttnWithMaskUnpaddedImpl(
       fa_with_mask_scale,
       fa_zero_tensors,
       fa_is_bf16,
-      num_splits,
+      fa_num_splits,
       softmax_lse->data(),
       workspace_size > 0 ? workspace.data() : nullptr,
       &workspace_size,
@@ -287,8 +283,8 @@ void FlashAttnUnpaddedKernel(
                                                              softmax_lse,
                                                              seed_offset);
 
-    VLOG(4) << "FlashAttn fwd seed: " << params.seed
-            << ", offset: " << params.offset;
+    VLOG(10) << "FlashAttn fwd seed: " << params.seed
+             << ", offset: " << params.offset;
 
     bool succ = phi::dynload::flash_attn_varlen_fwd(
         q.data(),
