@@ -12,11 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/backends/dynload/musa_driver.h"
+
 namespace phi {
 namespace dynload {
 
+std::once_flag musa_dso_flag;
+void* musa_dso_handle = nullptr;
+
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
+
+MUSA_ROUTINE_EACH(DEFINE_WRAP);
+
 bool HasCUDADriver() {
-  return false;
+  std::call_once(musa_dso_flag, []() { musa_dso_handle = GetCUDADsoHandle(); });
+  return musa_dso_handle != nullptr;
 }
 
 }  // namespace dynload

@@ -23,6 +23,10 @@ if(WITH_ROCM)
   list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
 endif()
 
+if(WITH_MUSA)
+  list(APPEND MUSA_SRCS mublas.cc murand.cc musparse.cc)
+endif()
+
 # There is no macOS version of NCCL.
 # Disable nvrtc and cuda_driver api on MacOS, and only do a early test on Linux and Windows.
 if(NOT APPLE)
@@ -41,6 +45,9 @@ if(NOT APPLE)
   endif()
   if(WITH_MUSA)
     list(APPEND MUSA_SRCS musa_driver.cc musartc.cc)
+    if(WITH_MCCL)
+      list(APPEND MUSA_SRCS mccl.cc)
+    endif()
   endif()
 endif()
 
