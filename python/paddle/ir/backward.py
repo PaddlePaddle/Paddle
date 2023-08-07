@@ -55,7 +55,7 @@ def update_no_grad_set_stopgradient(block, no_grad_set):
     for op in block.get_ops():
         for opresult_idx in range(op.num_results()):
             value = op.result(opresult_idx)
-            if value.get_stop_gradient() and value not in no_grad_set:
+            if value.stop_gradient and value not in no_grad_set:
                 no_grad_set.add(value)
 
 

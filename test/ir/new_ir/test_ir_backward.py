@@ -20,7 +20,7 @@ from paddle import ir
 paddle.enable_static()
 
 
-def get_ir_program():
+def get_ir_program_0():
     x = paddle.randn([4, 4])
     main_program, start_program = (
         paddle.static.Program(),
@@ -34,9 +34,27 @@ def get_ir_program():
     return newir_program
 
 
+def get_ir_program_1():
+    x = paddle.randn([4, 4])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        y_s = paddle.static.data('y', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        z_x = paddle.tanh(y_s)
+        k_s = paddle.tanh(x_s)
+        out = paddle.add(z_x, k_s)
+    newir_program = ir.translate_to_new_ir(main_program.desc)
+    return newir_program
+
+
 class TestBuildOp(unittest.TestCase):
-    def test_build_op(self):
-        newir_program = get_ir_program()
+    '''
+    def test_1(self):
+        newir_program = get_ir_program_0()
         input = newir_program.block().get_ops()[-1].operand(0).source()
         tanh_out = newir_program.block().get_ops()[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
@@ -56,24 +74,33 @@ class TestBuildOp(unittest.TestCase):
             .name(),
             "pd.tanh",
         )
+    '''
 
-    # def test_insertion_point(self):
-    #     newir_program = get_ir_program()
+    def test_2(self):
+        # test create output_grad in backward use full op
+        newir_program = get_ir_program_0()
+        input = newir_program.block().get_ops()[-1].operand(0).source()
+        tanh_out = newir_program.block().get_ops()[-1].result(0)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            out = paddle.mean(tanh_out)
+            input_grad = paddle.ir.grad(out, input)
+
+        print(newir_program)
+        self.assertEqual(newir_program.block().get_ops()[-3].name(), "pd.full")
+
+    # def test_3(self):
+    #     # test add_n op
+    #     newir_program = get_ir_program_1()
+    #     input = newir_program.block().get_ops()[-1].operand(0).source()
+    #     tanh_out = newir_program.block().get_ops()[-1].result(0)
     #     paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-    #     add_op = newir_program.block().get_ops()[-2]
-    #     tanh_op = newir_program.block().get_ops()[-1]
-    #     add_out = add_op.result(0)
-    #     tanh_operand = tanh_op.operands()[0]
-
     #     with paddle.ir.core.program_guard(newir_program):
-    #         ir.set_insertion_point(tanh_op)
-    #         out = paddle.mean(add_out)
-    #         tanh_operand.set_source(out)
+    #         out = paddle.mean(tanh_out)
+    #         input_grad = paddle.ir.grad(out, input)
 
     #     print(newir_program)
-    #     self.assertEqual(
-    #         tanh_operand.source().get_defining_op().name(), "pd.mean"
-    #     )
+    #     self.assertEqual(newir_program.block().get_ops()[-1].name(), "pd.add_n")
 
 
 if __name__ == "__main__":
