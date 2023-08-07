@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import nn
-from .nn import *
 from . import io
 from .io import *
 from . import math_op_patch
@@ -22,5 +20,4 @@ from ..layer_helper import LayerHelper
 
 
 __all__ = []
-__all__ += nn.__all__
 __all__ += io.__all__
