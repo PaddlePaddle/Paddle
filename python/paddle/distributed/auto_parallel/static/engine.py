@@ -837,7 +837,13 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
+                paddle.framework.set_flags(
+                    {'FLAGS_enable_new_ir_in_executor': False}
+                )
                 self._executor.run(prune_startup_prog)
+                paddle.framework.set_flags(
+                    {'FLAGS_enable_new_ir_in_executor': True}
+                )
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
