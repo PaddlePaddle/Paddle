@@ -313,7 +313,7 @@ void Graph::VisualizeGroupedGraph(
             << FLAGS_cinn_fusion_groups_graphviz_dir;
   const auto& groups = RemoveAccCheckGroups(origin_groups);
   const auto& group_dots = VisualizeGroups(groups, fetch_var_ids);
-  for (int idx = 0; idx < groups.size(); idx++) {
+  for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
     auto group_path =
         utils::StringFormat("%s/fusion_group_%d",

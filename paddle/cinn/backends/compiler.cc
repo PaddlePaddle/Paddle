@@ -41,110 +41,77 @@ using ir::Module;
 
 static constexpr int DebugLogMaxLen = 30000;
 
-void DumpCompilationInfo::DumpLoweredFunc() {
+void CompilationInfoDumper::DumpLoweredFunc() {
   if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.lowered_funcs.size(); idx++) {
-    auto dump_path = utils::StringFormat(
-        "%s/fusion_group_%d", FLAGS_cinn_dump_group_lowered_func.c_str(), idx);
-    if (!hlir::framework::MakeDirectory(
-            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
-      LOG(WARNING) << "Failed to make directory: \"" << dump_path
-                   << "\", the lowered functions for this group will not dump.";
-    } else {
-      auto dump_file = utils::StringFormat(
-          "%s/%s", dump_path.c_str(), "lowered_function.txt");
-      VLOG(7) << "Dump lower functions to: " << dump_file;
-      std::ofstream of(dump_file, std::ios_base::out);
-      if (of.is_open()) {
-        of << info_.lowered_funcs[idx].front();
-      } else {
-        LOG(WARNING) << "Failed to open file: " << dump_file
-                     << ", please check your path.";
-      }
-      of.close();
-    }
+  for (int idx = 0; idx < info_.lowered_funcs.size(); ++idx) {
+    std::stringstream content;
+    content << info_.lowered_funcs[idx].front();
+    Dump(FLAGS_cinn_dump_group_lowered_func,
+         idx,
+         "lowered_function.txt",
+         content.str());
   }
 }
 
-void DumpCompilationInfo::DumpSourceCode() {
+void CompilationInfoDumper::DumpSourceCode() {
   if (FLAGS_cinn_dump_group_source_code.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_codes.size(); idx++) {
-    auto dump_path = utils::StringFormat(
-        "%s/fusion_group_%d", FLAGS_cinn_dump_group_source_code.c_str(), idx);
-    if (!hlir::framework::MakeDirectory(
-            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
-      LOG(WARNING) << "Failed to make directory: \"" << dump_path
-                   << "\", the source code for this group will not dump.";
-    } else {
-      auto dump_file =
-          utils::StringFormat("%s/%s", dump_path.c_str(), "source_code.cu");
-      VLOG(7) << "Dump source code to: " << dump_file;
-      std::ofstream of(dump_file, std::ios_base::out);
-      if (of.is_open()) {
-        of << info_.source_codes[idx];
-      } else {
-        LOG(WARNING) << "Failed to open file: " << dump_file
-                     << ", please check your path.";
-      }
-      of.close();
-    }
+  for (int idx = 0; idx < info_.source_codes.size(); ++idx) {
+    Dump(FLAGS_cinn_dump_group_source_code,
+         idx,
+         "source_code.cu",
+         info_.source_codes[idx]);
   }
 }
 
-void DumpCompilationInfo::DumpPtxCode() {
+void CompilationInfoDumper::DumpPtxCode() {
   if (FLAGS_cinn_dump_group_ptx.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_ptxs.size(); idx++) {
-    auto dump_path = utils::StringFormat(
-        "%s/fusion_group_%d", FLAGS_cinn_dump_group_ptx.c_str(), idx);
-    if (!hlir::framework::MakeDirectory(
-            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
-      LOG(WARNING) << "Failed to make directory: \"" << dump_path
-                   << "\", the source ptx for this group will not dump.";
-    } else {
-      auto dump_file =
-          utils::StringFormat("%s/%s", dump_path.c_str(), "source_ptx.ptx");
-      VLOG(7) << "Dump source ptx to: " << dump_file;
-      std::ofstream of(dump_file, std::ios_base::out);
-      if (of.is_open()) {
-        of << info_.source_ptxs[idx];
-      } else {
-        LOG(WARNING) << "Failed to open file: " << dump_file
-                     << ", please check your path.";
-      }
-      of.close();
-    }
+  for (int idx = 0; idx < info_.source_ptxs.size(); ++idx) {
+    Dump(FLAGS_cinn_dump_group_ptx,
+         idx,
+         "source_ptx.ptx",
+         info_.source_ptxs[idx]);
   }
 }
 
-void DumpCompilationInfo::DumpInstruction() {
+void CompilationInfoDumper::DumpInstruction() {
   if (FLAGS_cinn_dump_group_instruction.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.instructions.size(); idx++) {
-    auto dump_path = utils::StringFormat(
-        "%s/fusion_group_%d", FLAGS_cinn_dump_group_instruction.c_str(), idx);
-    if (!hlir::framework::MakeDirectory(
-            dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
-      LOG(WARNING) << "Failed to make directory: \"" << dump_path
-                   << "\", the instruction for this group will not dump.";
-    } else {
-      auto dump_file =
-          utils::StringFormat("%s/%s", dump_path.c_str(), "instruction.txt");
-      VLOG(7) << "Dump instruction to: " << dump_file;
-      std::ofstream of(dump_file, std::ios_base::out);
-      if (of.is_open()) {
-        of << info_.instructions[idx]->DumpInstruction();
-      } else {
-        LOG(WARNING) << "Failed to open file: " << dump_file
-                     << ", please check your path.";
-      }
+  for (int idx = 0; idx < info_.instructions.size(); ++idx) {
+    Dump(FLAGS_cinn_dump_group_instruction,
+         idx,
+         "instruction.txt",
+         info_.instructions[idx]->DumpInstruction());
+  }
+}
+
+void CompilationInfoDumper::Dump(const std::string& base_path,
+                                 const int idx,
+                                 const std::string& file_name,
+                                 const std::string& content) {
+  auto dump_path =
+      utils::StringFormat("%s/fusion_group_%d", base_path.c_str(), idx);
+  if (!hlir::framework::MakeDirectory(
+          dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+    LOG(WARNING) << "Failed to make directory: \"" << dump_path
+                 << "\", the instruction for this group will not dump.";
+  } else {
+    auto dump_file =
+        utils::StringFormat("%s/%s", dump_path.c_str(), file_name.c_str());
+    VLOG(7) << "Dump instruction to: " << dump_file;
+    std::ofstream of(dump_file, std::ios_base::out);
+    if (of.is_open()) {
+      of << content;
       of.close();
+    } else {
+      LOG(WARNING) << "Failed to open file: " << dump_file
+                   << ", please check your path.";
     }
   }
 }

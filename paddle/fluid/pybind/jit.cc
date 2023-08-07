@@ -120,7 +120,7 @@ static Py_tss_t eval_frame_callback_key = {0, 0};
 
 inline static PyObject *eval_frame_callback_get() {
   void *result = PyThread_tss_get(&eval_frame_callback_key);
-  if (unlikely(result == NULL)) {
+  if (unlikely(result == nullptr)) {
     Py_RETURN_NONE;
   } else {
     return reinterpret_cast<PyObject *>(result);
@@ -136,7 +136,7 @@ inline static PyObject *eval_frame_default(PyThreadState *tstate,
                                            FrameObject *frame,
                                            int throw_flag) {
 #if PY_VERSION_HEX >= 0x03090000
-  if (tstate == NULL) {
+  if (tstate == nullptr) {
     tstate = PyThreadState_GET();
   }
   return _PyEval_EvalFrameDefault(tstate, frame, throw_flag);
@@ -164,9 +164,9 @@ inline static PyObject *eval_custom_code(PyThreadState *tstate,
   nfrees = PyTuple_GET_SIZE(code->co_freevars);
 #endif
 
-  PyFrameObject *shadow = PyFrame_New(tstate, code, frame->f_globals, NULL);
-  if (shadow == NULL) {
-    return NULL;
+  PyFrameObject *shadow = PyFrame_New(tstate, code, frame->f_globals, nullptr);
+  if (shadow == nullptr) {
+    return nullptr;
   }
 
 #if PY_VERSION_HEX >= 0x030b0000
@@ -210,7 +210,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
-    return NULL;
+    return nullptr;
   }
 
   // NOTE:(xiongkun): Handle GeneratorExit exception: (Spend a day)
@@ -241,10 +241,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   Py_DECREF(args);
   VLOG(7) << "After call eval_frame_function and decrease frame.";
   // result: GuardedCode
-  if (result == NULL) {
+  if (result == nullptr) {
     // internal exception
     VLOG(7) << "Error happened.";
-    return NULL;
+    return nullptr;
   } else if (result != Py_None) {
     //  NOTE: Cache is not supported now
     PyCodeObject *code = reinterpret_cast<PyCodeObject *>(
@@ -354,7 +354,7 @@ PyMODINIT_FUNC PyInit__eval_frame() {
   Py_INCREF(Py_None);
   eval_frame_callback_set(Py_None);
 
-  return NULL;
+  return nullptr;
 }
 
 PyTypeObject *g_jit_function_pytype = nullptr;
