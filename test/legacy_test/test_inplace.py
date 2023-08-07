@@ -876,6 +876,9 @@ class TestDygraphInplaceLogicAnd(TestDygraphInplace):
     def test_backward_success_2(self):
         pass
 
+    def test_leaf_inplace_var_error(self):
+        pass
+
 
 class TestDygraphInplaceLogicOr(TestDygraphInplaceLogicAnd):
     def inplace_api_processing(self, var):
@@ -983,6 +986,9 @@ class TestDygraphInplaceFloorDivide(TestDygraphInplace):
     def test_backward_success_2(self):
         pass
 
+    def test_leaf_inplace_var_error(self):
+        pass
+
 
 class TestDygraphInplaceLdExp(TestDygraphInplaceWithContinuous):
     def init_data(self):
@@ -995,6 +1001,20 @@ class TestDygraphInplaceLdExp(TestDygraphInplaceWithContinuous):
 
     def non_inplace_api_processing(self, var):
         return paddle.ldexp(var, self.y)
+
+    def test_forward_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 2)
+
+            inplace_var[0] = 2.0
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 5)
 
 
 if __name__ == '__main__':

@@ -136,15 +136,23 @@ from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
+from .tensor.logic import equal_  # noqa: F401
 from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
+from .tensor.logic import greater_equal_  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
+from .tensor.logic import greater_than_  # noqa: F401
 from .tensor.logic import is_empty  # noqa: F401
 from .tensor.logic import less_equal  # noqa: F401
+from .tensor.logic import less_equal_  # noqa: F401
 from .tensor.logic import less_than  # noqa: F401
+from .tensor.logic import less_than_  # noqa: F401
 from .tensor.logic import logical_and  # noqa: F401
+from .tensor.logic import logical_and_  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
+from .tensor.logic import logical_not_  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
+from .tensor.logic import logical_or_  # noqa: F401
 from .tensor.logic import logical_xor  # noqa: F401
 from .tensor.logic import logical_xor_  # noqa: F401
 from .tensor.logic import bitwise_and  # noqa: F401
@@ -162,6 +170,7 @@ from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
+from .tensor.manipulation import cast_  # noqa: F401
 from .tensor.manipulation import concat  # noqa: F401
 from .tensor.manipulation import broadcast_tensors  # noqa: F401
 from .tensor.manipulation import expand  # noqa: F401
@@ -295,6 +304,7 @@ from .tensor.math import mod_  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import floor_mod_  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
+from .tensor.math import multiply_  # noqa: F401
 from .tensor.math import renorm  # noqa: F401
 from .tensor.math import renorm_  # noqa: F401
 from .tensor.math import add  # noqa: F401
@@ -513,6 +523,7 @@ __all__ = [  # noqa
     'sign',
     'is_empty',
     'equal',
+    'equal_',
     'equal_all',
     'is_tensor',
     'is_complex',
@@ -547,8 +558,10 @@ __all__ = [  # noqa
     'split',
     'vsplit',
     'logical_and',
+    'logical_and_',
     'full_like',
     'less_than',
+    'less_than_',
     'kron',
     'clip',
     'Tensor',
@@ -579,10 +592,15 @@ __all__ = [  # noqa
     'max',
     'amax',
     'logical_or',
+    'logical_or_',
     'bitwise_and',
+    'bitwise_and_',
     'bitwise_or',
+    'bitwise_or_',
     'bitwise_xor',
+    'bitwise_xor_',
     'bitwise_not',
+    'bitwise_not_',
     'mm',
     'flip',
     'rot90',
@@ -599,6 +617,7 @@ __all__ = [  # noqa
     'reciprocal',
     'rand',
     'less_equal',
+    'less_equal_',
     'triu',
     'triu_',
     'sin',
@@ -675,6 +694,7 @@ __all__ = [  # noqa
     'ones_like',
     'index_sample',
     'cast',
+    'cast_',
     'grad',
     'all',
     'ones',
@@ -685,6 +705,7 @@ __all__ = [  # noqa
     'count_nonzero',
     'tile',
     'greater_equal',
+    'greater_equal_',
     'isfinite',
     'create_parameter',
     'dot',
@@ -696,6 +717,7 @@ __all__ = [  # noqa
     'tolist',
     'tensordot',
     'greater_than',
+    'greater_than_',
     'shard_index',
     'argsort',
     'tanh',
@@ -712,6 +734,7 @@ __all__ = [  # noqa
     'flatten',
     'asin',
     'multiply',
+    'multiply_',
     'disable_static',
     'masked_select',
     'var',
@@ -732,6 +755,7 @@ __all__ = [  # noqa
     'nonzero',
     'CUDAPinnedPlace',
     'logical_not',
+    'logical_not_',
     'add_n',
     'minimum',
     'scatter',

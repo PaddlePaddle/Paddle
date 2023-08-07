@@ -52,10 +52,16 @@ inline void CompareKernelImpl(const Context& ctx,
                               const DenseTensor& y,
                               int axis,
                               DenseTensor* out) {
-  ctx.template Alloc<bool>(out);
+  if (!out->IsSharedWith(x)) {
+    ctx.template Alloc<bool>(out);
+  }
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{out};
-  funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
+  if (!out->IsSharedWith(x)) {
+    funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
+  } else {
+    funcs::BroadcastKernel<T>(ctx, ins, &outs, Functor(), axis);
+  }
 }
 
 #ifndef PADDLE_WITH_XPU_KP
@@ -128,7 +134,7 @@ PD_REGISTER_KERNEL(equal_all,
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
+#define PD_REGISTER_COMPARE_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name,                                \
                      KPS,                                 \
                      ALL_LAYOUT,                          \
@@ -139,9 +145,7 @@ PD_REGISTER_KERNEL(equal_all,
                      int64_t,                             \
                      float,                               \
                      double,                              \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16) {              \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
+                     phi::dtype::float16,      \
   }
 
 PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)

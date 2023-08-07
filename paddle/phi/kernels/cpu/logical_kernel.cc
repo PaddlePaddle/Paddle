@@ -24,22 +24,6 @@
 
 namespace phi {
 
-#define DEFINE_LOGICAL_BINARY_KERNEL(type)                                \
-  template <typename T, typename Context>                                 \
-  void Logical##type##Kernel(const Context& dev_ctx,                      \
-                             const DenseTensor& x,                        \
-                             const DenseTensor& y,                        \
-                             DenseTensor* out) {                          \
-    funcs::Logical##type##Functor<T> binary_func;                         \
-    funcs::ElementwiseCompute<funcs::Logical##type##Functor<T>, T, bool>( \
-        dev_ctx, x, y, binary_func, out);                                 \
-  }
-
-DEFINE_LOGICAL_BINARY_KERNEL(And)
-DEFINE_LOGICAL_BINARY_KERNEL(Or)
-DEFINE_LOGICAL_BINARY_KERNEL(Xor)
-#undef DEFINE_LOGICAL_BINARY_KERNEL
-
 template <typename T, typename Context>
 void LogicalNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -49,6 +33,51 @@ void LogicalNotKernel(const Context& dev_ctx,
 
   phi::Transform<Context> trans;
   trans(dev_ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func);
+}
+
+template <typename T, typename Context>
+void LogicalAndKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      DenseTensor* out) {
+  funcs::LogicalAndFunctor<T> binary_func;
+  if (out->IsSharedWith(x)) {
+    funcs::ElementwiseCompute<funcs::LogicalAndFunctor<T>, T, T>(
+        dev_ctx, x, y, binary_func, out);
+  } else {
+    funcs::ElementwiseCompute<funcs::LogicalAndFunctor<T>, T, bool>(
+        dev_ctx, x, y, binary_func, out);
+  }
+}
+
+template <typename T, typename Context>
+void LogicalOrKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  funcs::LogicalOrFunctor<T> binary_func;
+  if (out->IsSharedWith(x)) {
+    funcs::ElementwiseCompute<funcs::LogicalOrFunctor<T>, T, T>(
+        dev_ctx, x, y, binary_func, out);
+  } else {
+    funcs::ElementwiseCompute<funcs::LogicalOrFunctor<T>, T, bool>(
+        dev_ctx, x, y, binary_func, out);
+  }
+}
+
+template <typename T, typename Context>
+void LogicalXorKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      DenseTensor* out) {
+  funcs::LogicalXorFunctor<T> binary_func;
+  if (out->IsSharedWith(x)) {
+    funcs::ElementwiseCompute<funcs::LogicalXorFunctor<T>, T, T>(
+        dev_ctx, x, y, binary_func, out);
+  } else {
+    funcs::ElementwiseCompute<funcs::LogicalXorFunctor<T>, T, bool>(
+        dev_ctx, x, y, binary_func, out);
+  }
 }
 
 }  // namespace phi
@@ -64,9 +93,7 @@ void LogicalNotKernel(const Context& dev_ctx,
                      int64_t,                               \
                      int,                                   \
                      int8_t,                                \
-                     int16_t) {                             \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);   \
-  }
+                     int16_t) {}
 
 REGISTER_LOGICAL_CPU_KERNEL(logical_and, And)
 REGISTER_LOGICAL_CPU_KERNEL(logical_or, Or)
