@@ -58,5 +58,6 @@ cc_library(
        pd_interface
        pd_trait
        ir
-       primitive_vjp_experimental)
+       primitive_vjp_experimental
+       type_info)
 target_include_directories(pd_dialect PRIVATE ${PD_DIALECT_BINARY_DIR})
