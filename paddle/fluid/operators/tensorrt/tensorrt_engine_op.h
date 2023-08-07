@@ -594,6 +594,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
+
+      // This must be a zero dimension tensor.
+      // At present, we convert it to a 1D tensor to feed them into Trt.
+      if (t_shape.size() == 0) {
+        PADDLE_ENFORCE_EQ(
+            t.numel(),
+            1UL,
+            platform::errors::PreconditionNotMet(
+                "This tensor must have one element, but got %ld.", t.numel()));
+        t_shape.push_back(1);
+      }
+
       // Get index of profile 0 first, then plus binding offset
       const int bind_index =
           engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
@@ -690,6 +702,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       if (t.dtype() == phi::DataType::FLOAT32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
+      } else if (t.dtype() == phi::DataType::FLOAT64) {
+        auto fp32_tensor =
+            scope.FindVar(x + "_cast_to_FP32")->GetMutable<phi::DenseTensor>();
+        *fp32_tensor = phi::Cast<double>(
+            reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+            t,
+            phi::DataType::FLOAT32);
+        buffers[bind_index] = static_cast<void *>(fp32_tensor->data<float>());
       } else if (t.dtype() == phi::DataType::INT64) {
         auto int32_tensor =
             scope.FindVar(x + "_cast_to_INT32")->GetMutable<phi::DenseTensor>();
@@ -710,7 +730,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
         PADDLE_THROW(platform::errors::Fatal(
             "The TRT Engine OP only support "
-            "float/int32_t/int64_t/float16/bool input."));
+            "float/double/int32_t/int64_t/float16/bool input."));
       }
     }
 
@@ -816,6 +836,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             *int32_tensor,
             phi::DataType::INT64);
+      } else if (type == framework::proto::VarType::FP64) {
+        auto y = Outputs("Ys")[i];
+        auto *fluid_v = scope.FindVar(y);
+        auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+        auto fp32_tensor =
+            scope.FindVar(y + "_cast_to_FP64")->GetMutable<phi::DenseTensor>();
+        fp32_tensor->Resize(fluid_t->dims());
+        dev_ctx.Alloc<float>(fp32_tensor);
+        framework::TensorCopy(*fluid_t, dev_place, dev_ctx, fp32_tensor);
+        *fluid_t =
+            phi::Cast<float>(reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                             *fp32_tensor,
+                             phi::DataType::FLOAT64);
       }
     }
   }

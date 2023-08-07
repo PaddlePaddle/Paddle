@@ -38,7 +38,11 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/capi/include/c_infer_meta_context.h"
+#include "paddle/phi/capi/include/c_kernel_registry.h"
+#include "paddle/phi/capi/include/c_meta_tensor.h"
 #endif
 
 #include "paddle/phi/api/include/operants_manager.h"
@@ -306,6 +310,7 @@ static void RunKernelFunc(
       true_out_meta->dtype = calc_out->dtype();
       true_out_meta->layout = calc_out->layout();
       true_out_meta->offset = calc_out->offset();
+      true_out_meta->strides = true_out_meta->calc_strides(true_out_meta->dims);
       // lod no need to be reset
       // reset holder if needed
       if (true_out->Holder() != calc_out->Holder()) {
@@ -529,8 +534,7 @@ static void RunInferShapeFunc(
       << inplace_map.size()
       << ", output_shapes.size() = " << output_shapes.size();
   size_t output_shape_idx = 0;
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    auto out_name = outputs[i];
+  for (auto out_name : outputs) {
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
@@ -737,8 +741,7 @@ static void RunInferDtypeFunc(
       << inplace_map.size()
       << ", output_dtypes.size() = " << output_dtypes.size();
   size_t output_dtype_idx = 0;
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    auto out_name = outputs[i];
+  for (auto out_name : outputs) {
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
@@ -1226,3 +1229,112 @@ LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
 
 }  // namespace framework
 }  // namespace paddle
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void PD_RegisterOperator(const char* kernel_name_cstr,
+                         size_t in_nargs,
+                         PD_KernelArgumentType* in_args_type,
+                         size_t attr_nargs,
+                         PD_KernelArgumentType* attr_args_type,
+                         size_t out_nargs,
+                         PD_KernelArgumentType* out_args_type,
+                         void (*infer_shape_fn)(PD_InferMetaContext*)) {
+  std::string kernel_name(kernel_name_cstr);
+  if (infer_shape_fn &&
+      !paddle::framework::OpInfoMap::Instance().Has(kernel_name)) {
+    VLOG(8) << "Registering a new operator: " << kernel_name;
+
+    std::vector<std::string> op_inputs, op_outputs, op_attrs;
+
+    for (size_t i = 0; i < in_nargs; ++i) {
+      if (in_args_type[i] == PD_KernelArgumentType::PD_ARG_TYPE_TENSOR) {
+        op_inputs.push_back("Input_" + std::to_string(i));
+      } else if (in_args_type[i] ==
+                 PD_KernelArgumentType::PD_ARG_TYPE_LIST_TENSOR) {
+        op_inputs.push_back("Input_" + std::to_string(i) +
+                            paddle::kTensorVectorSuffix);
+      } else if (in_args_type[i] ==
+                 PD_KernelArgumentType::PD_ARG_TYPE_OPTIONAL_TENSOR) {
+        op_inputs.push_back("Input_" + std::to_string(i) +
+                            paddle::kOptionalSuffix);
+      } else {
+        op_inputs.push_back("Input_unknown");
+      }
+    }
+    for (size_t i = 0; i < out_nargs; ++i) {
+      if (out_args_type[i] == PD_KernelArgumentType::PD_ARG_TYPE_TENSOR) {
+        op_outputs.push_back("Output_" + std::to_string(i));
+      } else if (out_args_type[i] ==
+                 PD_KernelArgumentType::PD_ARG_TYPE_LIST_TENSOR) {
+        op_outputs.push_back("Output_" + std::to_string(i) +
+                             paddle::kTensorVectorSuffix);
+      } else {
+        op_outputs.push_back("Output_unknown");
+      }
+    }
+    for (size_t i = 0; i < attr_nargs; ++i) {
+      auto attr_type = attr_args_type[i];
+      if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_BOOL) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":bool");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_INT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":int");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_FLOAT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":float");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_INT64) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":int64_t");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_STRING) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":std::string");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_INT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":std::vector<int>");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_FLOAT32) {
+        op_attrs.push_back("Attr_" + std::to_string(i) + ":std::vector<float>");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_INT64) {
+        op_attrs.push_back("Attr_" + std::to_string(i) +
+                           ":std::vector<int64_t>");
+      } else if (attr_type == PD_KernelArgumentType::PD_ARG_TYPE_LIST_STRING) {
+        op_attrs.push_back("Attr_" + std::to_string(i) +
+                           ":std::vector<std::string>");
+      } else {
+        op_attrs.push_back("Attr_unknown");
+      }
+    }
+
+    paddle::framework::OpInfo info;
+    // Op
+    info.creator_ = [](const std::string& op_name,
+                       const paddle::framework::VariableNameMap& inputs,
+                       const paddle::framework::VariableNameMap& outputs,
+                       const paddle::framework::AttributeMap& attrs) {
+      return new paddle::framework::OperatorWithKernel(
+          op_name, inputs, outputs, attrs);
+    };
+
+    // OpMaker
+    info.proto_ = new paddle::framework::proto::OpProto;
+    info.proto_->set_type(kernel_name);
+
+    info.checker_ = new paddle::framework::OpAttrChecker();
+
+    paddle::framework::CustomOpMaker custom_maker(
+        op_inputs, op_outputs, op_attrs);
+    custom_maker(info.proto_, info.checker_);
+    PADDLE_ENFORCE_EQ(
+        info.proto_->IsInitialized(),
+        true,
+        phi::errors::PreconditionNotMet(
+            "Fail to initialize %s's OpProto, because %s is not initialized.",
+            kernel_name,
+            info.proto_->InitializationErrorString()));
+
+    info.infer_shape_ = [infer_shape_fn, kernel_name](
+                            paddle::framework::InferShapeContext* ctx) {
+      auto infer_meta_context =
+          paddle::framework::BuildInferMetaContext(ctx, kernel_name);
+      infer_shape_fn(
+          reinterpret_cast<PD_InferMetaContext*>(&infer_meta_context));
+    };
+
+    paddle::framework::OpInfoMap::Instance().Insert(kernel_name, info);
+  }
+}
+#endif

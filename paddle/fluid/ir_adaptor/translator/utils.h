@@ -15,28 +15,21 @@
 #pragma once
 
 #include <string>
-#include <string_view>
+
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
 namespace translator {
 
-static std::string UnderscoreToCamelCase(std::string str) {
-  std::string camel_case;
-  bool next_upper = true;
-  for (char c : str) {
-    if (c == '_') {
-      next_upper = true;
-    } else {
-      if (next_upper) {
-        camel_case += toupper(c);
-        next_upper = false;
-      } else {
-        camel_case += c;
-      }
-    }
-  }
-  return camel_case;
-}
+ir::Operation* InsertSliceOperationForTarget(
+    ir::IrContext* ctx,
+    TranslationContext* param_map,
+    ir::Program* program,
+    const VariableDefiningInfo& defining_info,
+    const std::string& arg_name);
 
 }  // namespace translator
 }  // namespace paddle

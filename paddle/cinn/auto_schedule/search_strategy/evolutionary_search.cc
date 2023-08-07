@@ -31,7 +31,7 @@
 #include "paddle/cinn/auto_schedule/task/task_registry.h"
 #include "paddle/cinn/auto_schedule/task/tune_task.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/cinn/utils/sized_multi_set.h"
 #include "paddle/cinn/utils/string.h"
