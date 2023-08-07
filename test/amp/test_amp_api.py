@@ -20,9 +20,15 @@ from amp_base_models import AmpTestBase
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.fluid import core
 from paddle.static import amp
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestAutoCast(AmpTestBase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(
@@ -56,6 +62,11 @@ class SimpleConvNet(nn.Layer):
         return out3
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestStaticDecorate(AmpTestBase):
     def check_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls
@@ -127,6 +138,11 @@ class TestStaticDecorate(AmpTestBase):
         paddle.disable_static()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestGradScaler(AmpTestBase):
     def test_amp_grad_scaler(self):
         model = paddle.nn.Conv2D(3, 2, 3)
@@ -154,6 +170,11 @@ class TestGradScaler(AmpTestBase):
         self.assertTrue('check_finite_and_unscale' not in op_list)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestFp16Guard(AmpTestBase):
     def test_fp16_gurad(self):
         paddle.enable_static()

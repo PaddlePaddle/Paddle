@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import pickle
-import sys
 
 import test_collective_api_base as test_base
 
@@ -148,7 +146,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         out = exe.run(
             train_prog, feed={'tindata': indata}, fetch_list=fetch_list
         )
-        sys.stdout.buffer.write(pickle.dumps(out))
+        test_base.dump_output(out)
 
 
 if __name__ == "__main__":

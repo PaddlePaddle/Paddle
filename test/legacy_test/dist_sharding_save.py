@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import pickle
-import sys
 
 from dist_mnist import cnn_model  # noqa: F401
 
@@ -29,7 +27,11 @@ fluid.default_main_program().random_seed = 1
 
 
 def runtime_main():
+    from test_dist_base import dump_output
+
     from paddle.distributed import fleet
+
+    paddle.enable_static()
 
     # model definition
     train_prog = paddle.fluid.Program()
@@ -83,7 +85,7 @@ def runtime_main():
     )
 
     out_losses = []
-    sys.stdout.buffer.write(pickle.dumps(out_losses))
+    dump_output(out_losses)
 
 
 if __name__ == "__main__":

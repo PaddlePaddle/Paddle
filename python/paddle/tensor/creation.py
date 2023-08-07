@@ -394,15 +394,15 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
     Args:
         start(int|float|Tensor): The input :attr:`start` is exponent of first entry in \
-            the sequence. It is a scalar, or a Tensor of shape [1] with input data \
+            the sequence. It is a scalar, or a 0-D Tensor of shape [] with input data \
             type int32, int64, float32 or float64.
         stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the \
-            sequence. It is a scalar, or a Tensor of shape [1] with input data \
+            sequence. It is a scalar, or a 0-D Tensor of shape [] with input data \
             type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given number of items in the sequence. \
-            It is an int scalar, or a Tensor of shape [1] with data type int32.
+            It is an int scalar, or a 0-D Tensor of shape [] with data type int32.
         base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. \
-            It is a scalar, or a Tensor of shape [1] with input data type int32, int64, \
+            It is a scalar, or a 0-D Tensor of shape [] with input data type int32, int64, \
             float32 or float64.
         dtype(np.dtype|str, optional): The data type of output tensor, it could be \
             int32, int64, float32 or float64. Default: if None, the data type is float32. \

@@ -62,6 +62,7 @@ option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
+option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -111,7 +112,7 @@ endif()
 
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
-
+  message("Build static library of PHI")
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
 
@@ -268,7 +269,7 @@ option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
-option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
+option(WITH_NVTX "Paddle with nvtx for profiler" OFF)
 option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
 option(WITH_DGC "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(
@@ -620,6 +621,10 @@ if(WITH_MIPS)
       OFF
       CACHE STRING "Disable XBYAK when compiling WITH_MIPS=ON" FORCE)
   add_definitions(-DPADDLE_WITH_MIPS)
+endif()
+
+if(WITH_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_NVTX)
 endif()
 
 if(WITH_LOONGARCH)

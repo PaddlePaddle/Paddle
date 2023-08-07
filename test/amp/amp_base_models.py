@@ -182,7 +182,7 @@ def build_conv_model(
         model = SimpleConvNet()
         optimizer = _build_optimizer(use_amp=False, model=model)
         if use_amp and amp_dtype == "float16":
-            scaler = paddle.amp.GradScaler()
+            scaler = paddle.amp.GradScaler(init_loss_scaling=32768.0)
         else:
             scaler = None
         if use_amp and amp_level == "O2":

@@ -1369,7 +1369,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser
                          PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 480)
   endif()
 
   if(WITH_MKLDNN)

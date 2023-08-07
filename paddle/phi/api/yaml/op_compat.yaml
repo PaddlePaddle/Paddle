@@ -1935,7 +1935,7 @@
     pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false, bool use_cudnn = false]
+              str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : pool3d
   backward : pool3d_grad
@@ -1949,7 +1949,7 @@
     pool3d : GetPoolExpectedKernelType
     pool3d_grad : GetPoolExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : pow
   backward : pow_grad, pow_double_grad, pow_triple_grad
