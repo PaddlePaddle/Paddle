@@ -14,7 +14,6 @@
 
 import logging
 
-# import paddle
 from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
@@ -88,7 +87,11 @@ class RecomOffloadPass(PassBase):
         var_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
             self._main_block.var(new_var_name)
         )
-        assert op_dist_attr is not None, "Reset op {}'s dist_attr, but its dist_attr is None".format(op.desc.type())
+        assert (
+            op_dist_attr is not None
+        ), "Reset op {}'s dist_attr, but its dist_attr is None".format(
+            op.desc.type()
+        )
         if is_input:
             op_dist_attr.set_input_dist_attr(new_var_name, var_dist_attr)
         if not is_input:
@@ -183,10 +186,18 @@ class RecomOffloadPass(PassBase):
             for input_varname in input_varnames:
                 if input_varname in self.need_offload_checkpoint_names:
                     if input_varname in self.unoffload_checkpoint_names:
-                        insert_idx = current_idx - 1 if current_idx - 1 >= self.bw_start_op_idx else self.bw_start_op_idx
-                        self._record_op_to_insert(insert_idx, input_varname, "fetch")
+                        insert_idx = (
+                            current_idx - 1
+                            if current_idx - 1 >= self.bw_start_op_idx
+                            else self.bw_start_op_idx
+                        )
+                        self._record_op_to_insert(
+                            insert_idx, input_varname, "fetch"
+                        )
                     else:
-                        logging.debug(f"The var {input_varname} has already been fetched and is reused by op {op.desc.type()}") 
+                        logging.debug(
+                            f"The var {input_varname} has already been fetched and is reused by op {op.desc.type()}"
+                        )
                     # deal origin ops inputs
                     self._reset_op_dist_attr(
                         self._main_block.ops[current_idx],
@@ -347,34 +358,39 @@ class RecomOffloadPass(PassBase):
         ), "BW start op must be behind th FW start op"
 
         has_pop_last_outputs = False
-        for op in reversed(self._main_block.ops[self.fw_start_op_idx : self.bw_start_op_idx]):
+        for op in reversed(
+            self._main_block.ops[self.fw_start_op_idx : self.bw_start_op_idx]
+        ):
             output_var_names = op.desc.output_arg_names()
             output_count = len(output_var_names)
             pop_output_count = 0
             for output_var_name in output_var_names:
-                if (pop_output_count != 0):
-                    assert (output_var_name in self._offload_points), "The operator {} has more than one outputs, but not all the outputs are checkpoints, such as {}".format(op.desc.type(), output_var_name)
+                if pop_output_count != 0:
+                    assert (
+                        output_var_name in self._offload_points
+                    ), "The operator {} has more than one outputs, but not all the outputs are checkpoints, such as {}".format(
+                        op.desc.type(), output_var_name
+                    )
                 if output_var_name in self._offload_points:
                     self._offload_points.remove(output_var_name)
                     pop_output_count += 1
-                    if (pop_output_count == output_count):
+                    if pop_output_count == output_count:
                         has_pop_last_outputs = True
-                if (has_pop_last_outputs):
+                if has_pop_last_outputs:
                     break
-            if (has_pop_last_outputs):
+            if has_pop_last_outputs:
                 break
 
         assert len(self._offload_points) > 0, " points must not empty"
-        logging.debug(f"The checkpints without the last op's checkpoints is {self._offload_points}")
+        logging.debug(
+            f"The checkpints without the last op's checkpoints is {self._offload_points}"
+        )
         self._varnames2pinned_names = {}
         self._varnames2fetch_names = {}
 
         # ctreat auxiliary vars
         for _, op in enumerate(self._main_block.ops):
-            if (
-                len(self._varnames2fetch_names)
-                == len(self._offload_points)
-            ):
+            if len(self._varnames2fetch_names) == len(self._offload_points):
                 break
             output_vars = op.desc.output_arg_names()
             for output_var in output_vars:
