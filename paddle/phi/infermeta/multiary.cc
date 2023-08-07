@@ -1342,8 +1342,6 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            const MetaTensor& smooth,
                            const std::string& act_method,
                            const std::string& compute_dtype,
-                           int rows,
-                           int cols,
                            float quant_scale,
                            int quant_round_type,
                            float quant_max_bound,
@@ -1358,10 +1356,14 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   auto dim = x_dims[1];
 
   PADDLE_ENFORCE_GT(
-      rows, 0, phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
+      x_dims[0],
+      0,
+      phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
 
   PADDLE_ENFORCE_GT(
-      cols, 0, phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+      x_dims[1],
+      0,
+      phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
 
   if (act_method == "geglu" || act_method == "swiglu") {
     PADDLE_ENFORCE_EQ(
