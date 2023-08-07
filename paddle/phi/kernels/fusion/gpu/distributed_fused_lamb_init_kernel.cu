@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/distributed_fused_lamb_init_op.h"
+#include "paddle/phi/kernels/distributed_fused_lamb_init_kernel.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -357,9 +357,9 @@ void DistributedFusedLambInitOpKernel(
     DenseTensor *fp16_shard_fused_param_offsets,
     DenseTensor *param_info,
     DenseTensor *param_order,
-    const std::vector<DenseTensor *> &param_out,
-    const std::vector<DenseTensor *> &master_param_out,
-    const std::vector<DenseTensor *> &grad_out,
+    std::vector<DenseTensor *> param_out,
+    std::vector<DenseTensor *> master_param_out,
+    std::vector<DenseTensor *> grad_out,
     DenseTensor *global_scale,
     DenseTensor *step) {
   VLOG(10) << "starts to run DistributedFusedLambInitOp";
@@ -378,12 +378,12 @@ void DistributedFusedLambInitOpKernel(
 
     PADDLE_ENFORCE_EQ(
         param.size(),
-        param_out.size(),
+        param_out->size(),
         errors::InvalidArgument("Input(Param) and Output(ParamOut) "
                                 "should have the same number."));
     PADDLE_ENFORCE_EQ(
         grad.size(),
-        grad_out.size(),
+        grad_out->size(),
         errors::InvalidArgument(
             "Input(Grad) and Output(GradOut) should have the same number."));
     size_t n = param.size();
@@ -771,7 +771,7 @@ void DistributedFusedLambInitOpKernel(
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(distributed_fused_lamb_init_op,
+PD_REGISTER_KERNEL(distributed_fused_lamb_init,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::DistributedFusedLambInitOpKernel,

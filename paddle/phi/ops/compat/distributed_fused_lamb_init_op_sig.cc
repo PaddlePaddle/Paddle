@@ -44,5 +44,5 @@ KernelSignature DistributedFusedLambInitOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(distributed_fused_lamb_init_op,
+PD_REGISTER_ARG_MAPPING_FN(distributed_fused_lamb_init,
                            phi::DistributedFusedLambInitOpArgumentMapping);

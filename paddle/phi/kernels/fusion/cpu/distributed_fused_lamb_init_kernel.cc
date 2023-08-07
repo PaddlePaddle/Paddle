@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/distributed_fused_lamb_init_kernel.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
 void DistributedFusedLambInitOpKernel(
@@ -43,10 +43,19 @@ void DistributedFusedLambInitOpKernel(
     DenseTensor* fp16_shard_fused_param_offsets,
     DenseTensor* param_info,
     DenseTensor* param_order,
-    const std::vector<DenseTensor*>& param_out,
-    const std::vector<DenseTensor*>& master_param_out,
-    const std::vector<DenseTensor*>& grad_out,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> master_param_out,
+    std::vector<DenseTensor*> grad_out,
     DenseTensor* global_scale,
-    DenseTensor* step);
-
+    DenseTensor* step) {
+  PADDLE_THROW(phi::errors::Unavailable(
+      "Do not support expert count op for cpu kernel now."));
+}
+}  // namespace fusion
 }  // namespace phi
+
+PD_REGISTER_KERNEL(distributed_fused_lamb_init,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::fusion::DistributedFusedLambInitOpKernel,
+                   float) {}
