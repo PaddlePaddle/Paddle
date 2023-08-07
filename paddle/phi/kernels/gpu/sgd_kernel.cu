@@ -203,7 +203,6 @@ PD_REGISTER_KERNEL(sgd,
                    ALL_LAYOUT,
                    phi::SGDDenseKernel,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    float,
                    double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
