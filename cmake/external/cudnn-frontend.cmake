@@ -28,24 +28,24 @@ endif()
 
 if((NOT DEFINED CUDNN_FRONTEND_NAME) OR (NOT DEFINED CUDNN_FRONTEND_URL))
   set(CUDNN_FRONTEND_VER
-      "1.23.2"
+      "v0.9.1"
       CACHE STRING "" FORCE)
   set(CUDNN_FRONTEND_NAME
       "cudnn-frontend"
       CACHE STRING "" FORCE)
   set(CUDNN_FRONTEND_URL
-      "https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/v0.7.1.tar.gz"
+      "https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/${CUDNN_FRONTEND_VER}.tar.gz"
       CACHE STRING "" FORCE)
-  set(CUDNN_FRONTEND_CACHE_FILENAME "v0.7.1.tar.gz")
 endif()
-set(CUDNN_FRONTEND_URL_MD5 "d8f911df571f8b0d40226efa9c0150c8")
+set(CUDNN_FRONTEND_CACHE_FILENAME "${CUDNN_FRONTEND_VER}.tar.gz")
+set(CUDNN_FRONTEND_URL_MD5 "da7cbad1305427f687dd4fd737178f80")
 
 message(
   STATUS
     "CUDNN_FRONTEND_NAME: ${CUDNN_FRONTEND_NAME}, CUDNN_FRONTEND_URL: ${CUDNN_FRONTEND_URL}"
 )
-set(DIRENT_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/cudnn-frontend")
-# Version: v0.7.1
+set(CUDNN_FRONTEND_DOWNLOAD_DIR
+    "${PADDLE_SOURCE_DIR}/third_party/cudnn-frontend")
 set(CUDNN_FRONTEND_PREFIX_DIR ${THIRD_PARTY_PATH}/cudnn-frontend)
 set(CUDNN_FRONTEND_SOURCE_DIR
     ${THIRD_PARTY_PATH}/cudnn-frontend/src/extern_cudnn_frontend/include)
@@ -55,7 +55,7 @@ include_directories(${CUDNN_FRONTEND_INCLUDE_DIR})
 
 message(
   STATUS
-    "Adding cudnn-frontend. Version: ${CUDNN_FRONTEND_VER}. Directory: ${DIRENT_DOWNLOAD_DIR}"
+    "Adding cudnn-frontend. Version: ${CUDNN_FRONTEND_VER}. Directory: ${CUDNN_FRONTEND_DOWNLOAD_DIR}"
 )
 
 function(download_cudnn_frontend)
@@ -99,9 +99,7 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${CUDNN_FRONTEND_DOWNLOAD_DIR}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
-  PATCH_COMMAND
-    patch -d ${CUDNN_FRONTEND_SOURCE_DIR} -p2 <
-    ${PADDLE_SOURCE_DIR}/patches/cudnn-frontend/0001-patch-for-paddle.patch
+  PATCH_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""

@@ -17,16 +17,12 @@
 import sys
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime
-from cinn.common import *
-from cinn.framework import *
-from cinn.frontend import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
+from cinn.frontend import Computation, NetBuilder
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid, static
 
 assert len(sys.argv) == 3
 enable_gpu = sys.argv.pop()
@@ -92,7 +88,7 @@ class TestNetBuilder(unittest.TestCase):
 
         edata_paddle = self.get_paddle_result([A_data, B_data, D_data])
 
-        self.assertTrue(np.allclose(edata_cinn, edata_paddle, atol=1e-5))
+        np.testing.assert_allclose(edata_cinn, edata_paddle, atol=1e-5)
 
 
 class TestCompilePaddleModel(unittest.TestCase):
@@ -125,7 +121,7 @@ class TestCompilePaddleModel(unittest.TestCase):
         paddle_out = paddle_predictor.run([data])
         res_paddle = paddle_out[0].as_ndarray()
 
-        self.assertTrue(np.allclose(res_cinn, res_paddle, atol=1e-5))
+        np.testing.assert_allclose(res_cinn, res_paddle, atol=1e-5)
 
 
 if __name__ == "__main__":

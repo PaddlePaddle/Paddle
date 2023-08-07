@@ -14,16 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import cinn
-import numpy as np
-from cinn.common import *
-from cinn.frontend import *
-from op_test import OpTest, OpTestTool
-
-import paddle
-from paddle.vision.transforms import functional as F
 
 # paddle resize is based on cv2 module
 # This test requires cv2 module (pip3.6 install opencv_python==3.2.0.7)

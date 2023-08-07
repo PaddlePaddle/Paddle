@@ -39,11 +39,11 @@ void ComputePropagateScalesMkldnnPass::GetQuantInfo(
   std::unordered_map<std::string, std::vector<float>> info_map{};
   GetInfoFromTheTmpOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 
-  for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
+  for (auto& item : info_map) {
     phi::DenseTensor tensor;
-    GetTensorFromVector(iter->second, &tensor);
+    GetTensorFromVector(item.second, &tensor);
     auto pair = std::make_pair(false, tensor);
-    var_quant_scales->insert(std::make_pair(iter->first, pair));
+    var_quant_scales->insert(std::make_pair(item.first, pair));
   }
 }
 
@@ -476,7 +476,7 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
   auto waiting_for_scale =
       UpdateScales(graph, var_quant_scales, scale_immutable_ops);
   std::unordered_set<std::string> waiting_for_scale_prev{};
-  while (waiting_for_scale.size() != 0 &&
+  while (!waiting_for_scale.empty() &&
          waiting_for_scale != waiting_for_scale_prev) {
     waiting_for_scale_prev.clear();
     waiting_for_scale_prev.insert(waiting_for_scale.begin(),

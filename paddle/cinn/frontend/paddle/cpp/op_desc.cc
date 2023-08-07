@@ -40,7 +40,7 @@ inline std::string AttrTypeToString(
     EXPAND_SWITCH_CASE(SCALAR)
     EXPAND_SWITCH_CASE(SCALARS)
 #undef EXPAND_SWITCH_CASE
-  };
+  }
   return "Invlid AttrType";
 }
 

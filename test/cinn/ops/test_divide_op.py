@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
@@ -45,7 +45,7 @@ class TestDivOp(OpTest):
         )
 
         # paddle.divide does not support zero division
-        if self.case["y_dtype"] is "int32" or self.case["y_dtype"] is "int64":
+        if self.case["y_dtype"] == "int32" or self.case["y_dtype"] == "int64":
             self.y_np[self.y_np == 0] = 1
 
     def build_paddle_program(self, target):

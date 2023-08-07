@@ -18,7 +18,7 @@ set -ex
 workspace=$(cd $(dirname ${BASH_SOURCE[0]})/../..; pwd)
 build_dir_name=${cinn_build:-build_cinn}
 build_dir=$workspace/${build_dir_name}
-py_version=${py_version:-3.8}
+py_version=${py_version:-3.10}
 cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 
 
@@ -43,17 +43,6 @@ function gpu_on {
   cinn_whl_path=python/dist/cinn_gpu-0.0.0-py3-none-any.whl
   cuda_config=ON
   cudnn_config=ON
-}
-
-function test_doc {
-    mkdir -p $build_dir
-    cd $build_dir
-    export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
-
-    prepare_ci
-    cmake_
-    build
-    make_doc
 }
 
 function cudnn_off {
@@ -93,25 +82,7 @@ function prepare_ci {
     return
   fi
 
-  # NVIDIA update GPG key on 04/29/2022. Fetch the public key for CI machine
-  # Reference: https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
-  set +x
-  apt-key adv --keyserver-options http-proxy=$http_proxy --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
-  set -x
-
-  apt update
   echo "the current user EUID=$EUID: $(whoami)"
-  if ! command -v doxygen &> /dev/null; then
-    apt install -y doxygen
-  fi
-
-  if ! command -v python${py_version}-config &> /dev/null; then
-    apt install -y python${py_version}-dev
-  fi
-
-  if ! command -v virtualenv  &> /dev/null; then
-    apt install -y virtualenv
-  fi
 
   if [[ ! -e $build_dir/ci-env/bin/activate ]]; then
     virtualenv ${build_dir}/ci-env -p python${py_version}
@@ -119,11 +90,9 @@ function prepare_ci {
 
   source $build_dir/ci-env/bin/activate
   python${py_version} -m pip install -U --no-cache-dir pip
-  python${py_version} -m pip install pre-commit
-  python${py_version} -m pip install clang-format==13.0.0
   python${py_version} -m pip install wheel
   python${py_version} -m pip install sphinx==3.3.1 sphinx_gallery==0.8.1 recommonmark==0.6.0 exhale scipy breathe==4.24.0 matplotlib sphinx_rtd_theme
-  python${py_version} -m pip install paddlepaddle-gpu==0.0.0.post112 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
+  python${py_version} -m pip install paddlepaddle-gpu==0.0.0.post118 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
 }
 
 
@@ -220,14 +189,11 @@ function CI {
     export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
 
     prepare_ci
-#    codestyle_check
-
     cmake_
     build
     run_demo
     prepare_model
     run_test
-    # make_doc
 }
 
 function CINNRT {
@@ -236,7 +202,6 @@ function CINNRT {
     export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
 
     prepare_ci
-    # codestyle_check
 
     proxy_off
     mkdir -p $build_dir

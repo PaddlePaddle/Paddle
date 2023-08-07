@@ -34,7 +34,8 @@ namespace frontend {
 // clang-format off
 
 // ******************************************* //
-// Elementwise compute each element in `input` variable, and return the result Variable.
+// Elementwise compute each element in `input` variable,
+// and return the result Variable.
 // Variable UNARY_OP(const Variable& x);
 #define NETBUILDER_UNARY_OP_FOREACH(macro__) \
   macro__(Sqrt) \
@@ -112,7 +113,10 @@ namespace frontend {
 
 // ******************************************* //
 // Reduce array elements over the given dims.
-// Variable REDUCE_OP(const Variable& x, const cinn::utils::ShapeType& dim = {}, bool keep_dim = false);
+// Variable REDUCE_OP(
+//     const Variable& x,
+//     const cinn::utils::ShapeType& dim = {},
+//     bool keep_dim = false);
 #define NETBUILDER_REDUCE_OP_FOREACH(macro__) \
   macro__(ReduceSum) \
   macro__(ReduceProd) \

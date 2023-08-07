@@ -127,7 +127,7 @@ def bow_net(
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = paddle.static.nn.sequence_lod.sequence_pool(
@@ -203,9 +203,9 @@ class TestRegularizer(unittest.TestCase):
 
             avg_cost = model(data, label, self.word_len)
 
-            optimizer = fluid.optimizer.Adagrad(
+            optimizer = paddle.optimizer.Adagrad(
                 learning_rate=0.1,
-                regularization=paddle.regularizer.L2Decay(1.0),
+                weight_decay=paddle.regularizer.L2Decay(1.0),
             )
             optimizer.minimize(avg_cost)
             param_sum = self.run_program(place, [data, label])
@@ -236,7 +236,7 @@ class TestRegularizer(unittest.TestCase):
                 para_sum.append(paddle.sum(para_mul))
             avg_cost_l2 += paddle.add_n(para_sum) * 0.5
 
-            optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
+            optimizer = paddle.optimizer.Adagrad(learning_rate=0.1)
             optimizer.minimize(avg_cost_l2)
             param_sum = self.run_program(place, [data, label])
         return param_sum

@@ -177,7 +177,7 @@ bool IsBetween(const common::GraphNode* x,
   return false;
 }
 
-std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {
+std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
   // collect indegree.
   absl::flat_hash_map<Group*, int> group_indegree;
   std::vector<Group*> start_groups;

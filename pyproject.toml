@@ -97,38 +97,3 @@ ignore = [
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
-# Temporarily ignore CINN files, it will fix later
-"python/cinn/**" = [
-    "F401",
-    "F403",
-    "UP004",
-]
-"test/cinn/**" = [
-    "F401",
-    "F403",
-    "F632",
-    "F811",
-    "F821",
-    "F901",
-    "C408",
-    "C417",
-    "UP004",
-    "UP008",
-    "UP027",
-    "UP032",
-    "UP034",
-    "PLR0402",
-    "PLC0414",
-    "PLE1205",
-]
-"paddle/cinn/**" = [
-    "UP032",
-]
-"tools/cinn/**" = [
-    "F401",
-    "C416",
-    "UP004",
-    "UP031",
-    "UP032",
-    "PLR0402",
-]

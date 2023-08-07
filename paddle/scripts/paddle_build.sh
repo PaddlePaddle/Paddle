@@ -227,7 +227,6 @@ function cmake_base() {
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
         -DWITH_CINN=${WITH_CINN:-OFF}
-        -DCINN_GIT_TAG=${CINN_GIT_TAG:-develop}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -278,7 +277,6 @@ EOF
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
         -DWITH_CINN=${WITH_CINN:-OFF} \
-        -DCINN_GIT_TAG=${CINN_GIT_TAG:-develop} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -626,6 +624,8 @@ EOF
 
 
 function run_mac_test() {
+    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_CI_PIPELINE=mac
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
@@ -771,6 +771,8 @@ EOF
 }
 
 function run_linux_cpu_test() {
+    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_CI_PIPELINE=py3
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
@@ -2191,30 +2193,10 @@ function parallel_test_base_gpups() {
     ========================================
 EOF
         ut_startTime_s=`date +%s`
-
-        protobuf_version=`pip list | grep "protobuf" | awk '{print $2}'`
-        if [[ "$protobuf_version" == 3.* ]]; then
-            echo "Your current protobuf version is $protobuf_version"
-            ctest -L "RUN_TYPE=GPUPS" --timeout 120
-        else
-            echo "Your current protobuf version is $protobuf_version"
-            #get all unittests need to be run by protobuf 3
-            python ${PADDLE_ROOT}/tools/test_run_by_protobuf_3.py > all_ut_run_by_protobuf3
-            # get all unittets need to be run in gpups ci
-            ctest -N -V -L "RUN_TYPE=GPUPS"| grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > ut_gpups
-            #get the intersection of ut_run_by_protobuf3 and ut_gpups
-            grep -F  -f all_ut_run_by_protobuf3 ut_gpups > ut_run_by_protobuf3_in_gpups
-            #get the difference set of ut_gpups and ut_run_by_protobuf3_in_gpups
-            grep -F -x -v -f ut_run_by_protobuf3_in_gpups ut_gpups > ut_run_in_gpups
-
-            ctest -R ${ut_run_in_gpups} --timeout 120
-            pip install protobuf==3.20.2
-            ctest -R ${ut_run_by_protobuf3_in_gpups} --timeout 120
-            ut_endTime_s=`date +%s`
-            echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-            pip install protobuf==$protobuf_version
-        fi
-
+        set +e
+        bash ${PADDLE_ROOT}/tools/gpups_test.sh
+        EXIT_CODE=$?
+        set -e
         ut_endTime_s=`date +%s`
         echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
 
@@ -3506,7 +3488,6 @@ EOF
     export WITH_TENSORRT=${WITH_TENSORRT:-ON}
     export WITH_ROCM=${WITH_ROCM:-OFF}
     export WITH_CINN=${WITH_CINN:-OFF}
-    export CINN_GIT_TAG=${CINN_GIT_TAG:-develop}
     export WITH_DISTRIBUTE=${distibuted_flag}
     export WITH_MKL=${WITH_MKL:-ON}
     export WITH_AVX=${WITH_AVX:-OFF}
@@ -3775,7 +3756,6 @@ EOF
     export WITH_TENSORRT=${WITH_TENSORRT:-ON}
     export WITH_ROCM=${WITH_ROCM:-OFF}
     export WITH_CINN=${WITH_CINN:-OFF}
-    export CINN_GIT_TAG=${CINN_GIT_TAG:-develop}
     export WITH_DISTRIBUTE=${distibuted_flag}
     export WITH_MKL=${WITH_MKL:-ON}
     export WITH_AVX=${WITH_AVX:-OFF}
@@ -3982,6 +3962,7 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
+        export FLAGS_NEW_IR_DY2ST_TEST=True
         parallel_test
         check_coverage
         ;;

@@ -33,7 +33,7 @@
 namespace cinn {
 namespace frontend {
 
-int GetSize(std::vector<int>& shape) {
+int GetSize(const std::vector<int>& shape) {
   return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
 }
 

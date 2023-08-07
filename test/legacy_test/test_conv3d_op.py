@@ -244,7 +244,7 @@ def create_test_cudnn_bf16_class(parent):
 
             self.check_grad_with_place(
                 place,
-                {'Input', 'Filter'},
+                ['Input', 'Filter'],
                 'Output',
                 user_defined_grads=[numeric_input_grads, numeric_fliter_grads],
                 check_dygraph=(not self.use_mkldnn),

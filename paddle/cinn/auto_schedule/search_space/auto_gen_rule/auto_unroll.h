@@ -19,7 +19,7 @@
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -31,7 +31,7 @@ namespace auto_schedule {
 // based on actual situation.
 class AutoUnroll : public AutoGenRule {
  public:
-  AutoUnroll(const common::Target& target) : AutoGenRule(target) {}
+  explicit AutoUnroll(const common::Target& target) : AutoGenRule(target) {}
   ~AutoUnroll() = default;
 
   RuleApplyType Init(ir::IRSchedule* init_schedule) override;

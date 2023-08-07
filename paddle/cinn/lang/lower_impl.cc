@@ -23,8 +23,8 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
@@ -49,7 +49,7 @@ void CheckNoIslCallRemains(Expr* expr) {
   }
 }
 
-void BindBuffer(StageMap& stages) {
+void BindBuffer(StageMap& stages) {  // NOLINT
   absl::flat_hash_map<std::string, ir::_Tensor_*> tensor_map;
   for (auto& stage : stages) {
     tensor_map[stage.second->tensor()->name] = stage.second->tensor();
@@ -71,13 +71,13 @@ void BindBuffer(StageMap& stages) {
   }
 }
 
-Expr LowerGroup(
-    const poly::ScheduleGroup& group,
-    const std::map<std::string, Expr>& tuple_to_expr,
-    std::map<std::string, ir::Tensor>* global_tensor_map,
-    std::unordered_map<std::string, std::vector<Expr>>& resized_buffer_cache,
-    StageMap stage_map,
-    ir::CudaAxisInfo* cuda_axis_info) {
+Expr LowerGroup(const poly::ScheduleGroup& group,
+                const std::map<std::string, Expr>& tuple_to_expr,
+                std::map<std::string, ir::Tensor>* global_tensor_map,
+                std::unordered_map<std::string, std::vector<Expr>>&
+                    resized_buffer_cache,  // NOLINT
+                StageMap stage_map,
+                ir::CudaAxisInfo* cuda_axis_info) {
   BindBuffer(stage_map);
   std::vector<poly::Stage*> stages;
   for (auto& node : group.nodes) {
@@ -741,14 +741,15 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
                 << "'s shape is : " << utils::Join(tensor->shape, ",");
         for (auto& expr : tensor->shape) {
           CHECK(expr.is_constant());
-          int_shape.push_back((int)expr.get_constant());
+          int_shape.push_back(static_cast<int>(expr.get_constant()));
         }
         for (auto& var : tensor->reduce_axis) {
           CHECK(var->lower_bound.defined());
           CHECK(var->upper_bound.defined());
           CHECK(common::is_zero(var->lower_bound));
           CHECK(var->upper_bound.is_constant());
-          int_shape.push_back((int)var->upper_bound.get_constant());
+          int_shape.push_back(
+              static_cast<int>(var->upper_bound.get_constant()));
         }
         // create block itervars, i0,i1...
         std::vector<Var> block_vars;
@@ -832,19 +833,9 @@ LowerImpl::LowerImpl(const std::string& fn_name,
       temp_tensor_args_(temp_tensor_args),
       target_(target),
       support_ir_schedule_(support_ir_schedule) {
-  {  // Initialize the graph
-    std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
-    tensors.insert(
-        std::end(tensors), temp_tensor_args.begin(), temp_tensor_args.end());
-
-    compu_graph_ = CreateCompGraph(tensors, stages, false /*inline_hide*/);
-
-    VLOG(1) << "compute_graph:\n" << compu_graph_->Visualize();
-  }
-
   // Todo: Here insert auto syncthreads() @haoze
 
-  {  // update schedule.
+  {  // Update schedule
     std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
     tensors.insert(
         std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());

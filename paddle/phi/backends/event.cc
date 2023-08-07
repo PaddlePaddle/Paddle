@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <list>
+
 #include "paddle/phi/backends/event.h"
 
 #include "glog/logging.h"
@@ -21,6 +23,14 @@
 
 namespace phi {
 namespace event {
+
+std::list<Event*> g_events;
+
+void Event::ReleaseAll() {
+  for (auto* event : g_events) {
+    event->Destroy();
+  }
+}
 
 event_t Event::raw_event() const { return event_; }
 
@@ -32,7 +42,10 @@ Event::Event(const Place& place, event_t event)
       event_(event),
       own_data_(false) {}
 
-Event::~Event() { Destroy(); }
+Event::~Event() {
+  g_events.remove(this);
+  Destroy();
+}
 
 bool Event::Init(const Place& place, Flag flags) {
   place_ = place;
@@ -45,14 +58,19 @@ bool Event::Init(const Place& place, Flag flags) {
   VLOG(3) << "Init Event: " << event_ << ", place: " << place_
           << ", flag:" << static_cast<int>(flags);
   own_data_ = true;
+  g_events.push_back(this);
   return true;
 }
 
 void Event::Destroy() {
-  if (own_data_) {
-    phi::DeviceManager::SetDevice(place_);
-    device_->DestroyEvent(this);
+  if (device_) {
+    if (own_data_) {
+      phi::DeviceManager::SetDevice(place_);
+      device_->DestroyEvent(this);
+    }
     own_data_ = false;
+    event_ = nullptr;
+    device_ = nullptr;
   }
 }
 

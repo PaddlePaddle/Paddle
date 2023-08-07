@@ -36,7 +36,7 @@ class OpTranslator {
   using BlockDesc = paddle::framework::BlockDesc;
   using VarDesc = paddle::framework::VarDesc;
   using OpTranslateFn = std::function<ir::Operation*(
-      ir::IrContext*, TranslationContext*, ir::Program*, const OpDesc&)>;
+      ir::IrContext*, TranslationContext*, const OpDesc&, ir::Program*)>;
 
  private:
   OpTranslator();  // Disallow instantiation outside of the class.

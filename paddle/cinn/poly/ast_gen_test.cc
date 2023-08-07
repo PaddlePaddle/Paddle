@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -32,8 +32,7 @@
 namespace cinn {
 namespace poly {
 
-using namespace cinn::ir;
-using namespace cinn::lang;
+using namespace cinn::ir;  // NOLINT
 
 TEST(TransIdentityExtentToContextId, basic) {
   isl_ctx* ctx = isl_ctx_alloc();
@@ -72,7 +71,7 @@ TEST(AstGen_Build, not_delete_length1_loop) {
       }
       LOG(INFO) << "index_length1 hint = " << index_length1[0]
                 << index_length1[1] << index_length1[2] << index_length1[3];
-      Placeholder<float> A("A", len1_shape);
+      lang::Placeholder<float> A("A", len1_shape);
       Tensor B = lang::Compute(
           len1_shape,
           [&](const std::vector<Expr>& indice) {

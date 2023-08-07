@@ -14,16 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 
-import cinn
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
+from op_test_helper import TestCaseHelper
 
 import paddle
-import paddle.nn.functional as F
 
 
 @OpTestTool.skip_if(
@@ -31,96 +29,143 @@ import paddle.nn.functional as F
 )
 class TestArgSortOp(OpTest):
     def setUp(self):
-        self.init_case()
+        self.prepare_inputs()
 
-    def init_case(self):
-        self.inputs = {
-            "x1": np.random.random(
-                [
-                    2,
-                    4,
-                ]
-            ).astype("float32")
-        }
-        self.axis = 1
-        self.descending = False
+    def prepare_inputs(self):
+        self.x_np = self.random(self.case["shape"], self.case["dtype"])
+        self.axis = self.case["axis"]
+        self.descending = self.case["descending"]
 
     def build_paddle_program(self, target):
-        x1 = paddle.to_tensor(self.inputs["x1"], stop_gradient=True)
+        x1 = paddle.to_tensor(self.x_np, stop_gradient=True)
         out = paddle.argsort(x1, self.axis, self.descending)
-
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("argsort")
-        x1 = builder.create_input(Float(32), self.inputs["x1"].shape, "x1")
+        x1 = builder.create_input(
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x1"
+        )
         out = builder.argsort(x1, self.axis, not self.descending)
         prog = builder.build()
-        forward_res = self.get_cinn_output(
-            prog, target, [x1], [self.inputs["x1"]], out
-        )
-
+        forward_res = self.get_cinn_output(prog, target, [x1], [self.x_np], out)
         self.cinn_outputs = np.array([forward_res[0]]).astype("int64")
 
     def test_check_results(self):
         self.check_outputs_and_grads()
 
 
-class TestArgSortCase1(TestArgSortOp):
-    def init_case(self):
-        self.inputs = {
-            "x1": np.random.random(
-                [
-                    2,
-                    4,
-                ]
-            ).astype("float32")
-        }
-        self.axis = 0
-        self.descending = False
+class TestArgSortOpShapeTest(TestCaseHelper):
+    def init_attrs(self):
+        self.class_name = "ArgSortOpShapeTest"
+        self.cls = TestArgSortOp
+        self.inputs = [
+            {
+                "shape": [512],
+            },
+            {
+                "shape": [1024],
+            },
+            {
+                "shape": [1200],
+            },
+            {
+                "shape": [64, 16],
+            },
+            {
+                "shape": [4, 32, 8],
+            },
+            {
+                "shape": [16, 8, 4, 2],
+            },
+            {
+                "shape": [2, 8, 4, 2, 5],
+            },
+            {
+                "shape": [4, 8, 1, 2, 16],
+            },
+            {
+                "shape": [1],
+            },
+            {
+                "shape": [1, 1, 1, 1],
+            },
+            {
+                "shape": [1, 1, 1, 1, 1],
+            },
+        ]
+        self.dtypes = [{"dtype": "float32"}]
+        self.attrs = [{"axis": 0, "descending": False}]
 
 
-class TestArgSortCase2(TestArgSortOp):
-    def init_case(self):
-        self.inputs = {
-            "x1": np.random.random(
-                [
-                    2,
-                    4,
-                ]
-            ).astype("float32")
-        }
-        self.axis = 0
-        self.descending = True
+class TestArgSortOpDtypeTest(TestCaseHelper):
+    def init_attrs(self):
+        self.class_name = "ArgSortOpDtypeTest"
+        self.cls = TestArgSortOp
+        self.inputs = [
+            {
+                "shape": [1024],
+            },
+        ]
+        self.dtypes = [
+            {
+                "dtype": "float32",
+            },
+            {
+                "dtype": "float64",
+            },
+            # Throw dtype not support error in paddle
+            # {
+            #     "dtype": "uint8",
+            # },
+            {
+                "dtype": "int32",
+            },
+            {
+                "dtype": "int64",
+            },
+        ]
+        self.attrs = [{"axis": 0, "descending": False}]
 
 
-class TestArgSortCase3(TestArgSortOp):
-    def init_case(self):
-        self.inputs = {
-            "x1": np.random.random(
-                [
-                    2,
-                    4,
-                ]
-            ).astype("float32")
-        }
-        self.axis = 1
-        self.descending = True
+class TestArgSortOpAxisTest(TestCaseHelper):
+    def init_attrs(self):
+        self.class_name = "ArgSortOpAxisTest"
+        self.cls = TestArgSortOp
+        self.inputs = [
+            {
+                "shape": [16, 8, 4, 2],
+            },
+        ]
+        self.dtypes = [{"dtype": "float32"}]
+        self.attrs = [
+            {"axis": 0, "descending": False},
+            {"axis": 1, "descending": False},
+            {"axis": 2, "descending": False},
+            {"axis": 3, "descending": False},
+        ]
 
 
-class TestArgSortCase4(TestArgSortOp):
-    def init_case(self):
-        self.inputs = {
-            "x1": np.random.random(
-                [
-                    2,
-                    4,
-                ]
-            ).astype("float32")
-        }
-        self.axis = -1
-        self.descending = True
+class TestArgSortOpDescedingTest(TestCaseHelper):
+    def init_attrs(self):
+        self.class_name = "ArgSortOpDescedingTest"
+        self.cls = TestArgSortOp
+        self.inputs = [
+            {
+                "shape": [16, 8, 4, 2],
+            },
+        ]
+        self.dtypes = [{"dtype": "float32"}]
+        self.attrs = [
+            {"axis": 0, "descending": True},
+            {"axis": 1, "descending": True},
+            {"axis": 2, "descending": True},
+            {"axis": 3, "descending": True},
+        ]
 
 
 if __name__ == "__main__":
-    unittest.main()
+    TestArgSortOpShapeTest().run()
+    TestArgSortOpDtypeTest().run()
+    TestArgSortOpAxisTest().run()
+    TestArgSortOpDescedingTest().run()

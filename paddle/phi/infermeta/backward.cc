@@ -364,11 +364,11 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
   // only ensure that fft axes' size greater than zero at runtime
   // they might be -1 to indicate unknown size ar compile time
   if (config.is_runtime) {
-    for (size_t i = 0; i < axes.size(); i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+    for (auto axis : axes) {
+      PADDLE_ENFORCE_GT(x_dim[axis],
                         0,
                         phi::errors::InvalidArgument(
-                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+                            "Invalid fft n-point (%d).", x_dim[axis]));
     }
   }
 
@@ -728,7 +728,7 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   value_grad->set_dtype(value.dtype());
   value_grad->set_layout(value.layout());
 
-  if (bias) {
+  if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
     const int64_t bias_seq_length = bias.dims()[1];
     const int64_t bias_num_head = bias.dims()[2];
@@ -968,10 +968,10 @@ void RnnGradInferMeta(const MetaTensor& x,
   if (x_grad) {
     UnchangedInferMeta(x, x_grad);
   }
-  if (pre_state_grad.size()) {
+  if (!pre_state_grad.empty()) {
     UnchangedMultiInferMeta(pre_state, pre_state_grad);
   }
-  if (weight_grad_list.size()) {
+  if (!weight_grad_list.empty()) {
     UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }
@@ -1061,10 +1061,10 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   auto vec = phi::vectorize<int>(dy_dim);
   vec.erase(vec.begin() + axis);
 
-  for (size_t i = 0; i < x_grad.size(); ++i) {
-    if (x_grad[i]) {
-      x_grad[i]->set_dims(phi::make_ddim(vec));
-      x_grad[i]->set_dtype(out_grad.dtype());
+  for (auto& grad : x_grad) {
+    if (grad) {
+      grad->set_dims(phi::make_ddim(vec));
+      grad->set_dtype(out_grad.dtype());
     }
   }
 }
@@ -1202,19 +1202,37 @@ void IndexAddGradInferMeta(const MetaTensor& index,
   }
 }
 
-void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+void IndexPutGradInferMeta(const MetaTensor& x,
+                           const std::vector<const MetaTensor*>& indices,
+                           const MetaTensor& value,
+                           const MetaTensor& out_grad,
+                           bool accumulate,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (value_grad) {
+    value_grad->share_meta(value);
+  }
+}
+
+void FusedRopeGradInferMeta(const MetaTensor& sin,
+                            const MetaTensor& cos,
+                            const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv) {
   auto input_dims = dout_q.dims();
-  PADDLE_ENFORCE_EQ(input_dims.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "Input should be a 4-D tensor of format [N, C, H, W] "
-                        "or [N, H, W, C], but got %u.",
-                        input_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input should be a 4-D tensor of format "
+                                   "[batch_size, seq_len, num_heads, head_dim],"
+                                   "but got %u.",
+                                   input_dims.size()));
   if (dout_q) {
     dq->set_dims(dout_q.dims());
     dq->set_dtype(dout_q.dtype());

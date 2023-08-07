@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <gtest/gtest.h>  // NOLINT
 
+#include <memory>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
@@ -28,7 +30,10 @@ TEST(OpConverter, ConvertBlock) {
 
   // init trt engine
   std::unique_ptr<TensorRTEngine> engine_;
-  engine_.reset(new TensorRTEngine(5, 1 << 15));
+  TensorRTEngine::ConstructionParams params;
+  params.max_batch_size = 5;
+  params.max_workspace_size = 1 << 15;
+  engine_ = std::make_unique<TensorRTEngine>(params);
   engine_->InitNetwork();
 
   engine_->DeclareInput(

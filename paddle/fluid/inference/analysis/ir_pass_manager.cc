@@ -90,9 +90,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
-    bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
-                               argument->min_input_shape().size() > 0 &&
-                               argument->optim_input_shape().size() > 0) ||
+    bool with_dynamic_shape = (!argument->max_input_shape().empty() &&
+                               !argument->min_input_shape().empty() &&
+                               !argument->optim_input_shape().empty()) ||
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 

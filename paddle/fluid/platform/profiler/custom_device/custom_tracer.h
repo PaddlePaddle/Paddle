@@ -26,12 +26,16 @@ namespace platform {
 
 class CustomTracer : public TracerBase {
  public:
+  static std::unordered_map<std::string, std::unique_ptr<CustomTracer>>&
+  GetMap();
+
+  static void Release();
+
   static CustomTracer& GetInstance(const std::string& device_type) {
-    static std::unordered_map<std::string, std::shared_ptr<CustomTracer>>
-        instance;
+    auto& instance = GetMap();
     if (instance.find(device_type) == instance.cend()) {
       instance.insert(
-          {device_type, std::make_shared<CustomTracer>(device_type)});
+          {device_type, std::make_unique<CustomTracer>(device_type)});
     }
     return *instance[device_type];
   }

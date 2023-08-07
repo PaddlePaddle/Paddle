@@ -100,7 +100,7 @@ __global__ void cast_fp16_to_fp32_cuda_kernel(const float16* input,
                                               float* out) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < num) {
-    out[idx] = float(input[idx]);
+    out[idx] = static_cast<float>(input[idx]);
   }
 }
 
@@ -131,7 +131,7 @@ __global__ void cast_bf16_to_fp32_cuda_kernel(const bfloat16* input,
                                               float* out) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < num) {
-    out[idx] = float(input[idx]);
+    out[idx] = static_cast<float>(input[idx]);
   }
 }
 

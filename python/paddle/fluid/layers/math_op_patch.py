@@ -323,6 +323,48 @@ def monkey_patch_variable():
         """
         return len(self.shape)
 
+    def ndimension(self):
+        """
+        Returns the dimension of current Variable
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # print the dimension of the Variable
+                print(x.ndimension)
+        """
+        return len(self.shape)
+
+    def dim(self):
+        """
+        Returns the dimension of current Variable
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # print the dimension of the Variable
+                print(x.dim)
+        """
+        return len(self.shape)
+
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)
 
@@ -509,8 +551,8 @@ def monkey_patch_variable():
         ('append', append),
         ('item', _item),
         ('pop', pop),
-        ('dim', lambda x: len(x.shape)),
-        ('ndimension', lambda x: len(x.shape)),
+        ('dim', dim),
+        ('ndimension', ndimension),
         ('ndim', _ndim_),
         (
             '__add__',

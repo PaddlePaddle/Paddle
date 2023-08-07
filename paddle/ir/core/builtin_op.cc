@@ -20,7 +20,7 @@
 
 namespace ir {
 
-const char *ModuleOp::attributes_name[attributes_num] = {"program"};
+const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
 
 Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
@@ -52,7 +52,7 @@ void ModuleOp::Destroy() {
   }
 }
 
-void ModuleOp::Verify() {
+void ModuleOp::Verify() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
@@ -67,7 +67,7 @@ void ModuleOp::Verify() {
   IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
 }
 
-const char *GetParameterOp::attributes_name[attributes_num] = {
+const char *GetParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
 void GetParameterOp::Build(Builder &builder,
@@ -79,7 +79,7 @@ void GetParameterOp::Build(Builder &builder,
   argument.output_types.emplace_back(type);
 }
 
-void GetParameterOp::Verify() {
+void GetParameterOp::Verify() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
@@ -94,7 +94,7 @@ void GetParameterOp::Verify() {
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 }
 
-const char *SetParameterOp::attributes_name[attributes_num] = {
+const char *SetParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
 void SetParameterOp::Build(Builder &builder,             // NOLINT
@@ -105,7 +105,7 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
   argument.AddAttribute(attributes_name[0],
                         ir::StrAttribute::get(builder.ir_context(), name));
 }
-void SetParameterOp::Verify() {
+void SetParameterOp::Verify() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
@@ -132,7 +132,7 @@ void CombineOp::Build(Builder &builder,
       ir::VectorType::get(builder.ir_context(), inputs_type));
 }
 
-void CombineOp::Verify() {
+void CombineOp::Verify() const {
   // outputs.size() == 1
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 
@@ -161,8 +161,8 @@ void CombineOp::Verify() {
   }
 }
 
-const char *SliceOp::attributes_name[attributes_num] = {"index"};
-void SliceOp::Verify() {
+const char *SliceOp::attributes_name[attributes_num] = {"index"};  // NOLINT
+void SliceOp::Verify() const {
   // inputs.size() == 1
   auto input_size = num_operands();
   IR_ENFORCE(
@@ -207,7 +207,7 @@ void SliceOp::Verify() {
       output_type);
 }
 
-const char *ConstantOp::attributes_name[attributes_num] = {"value"};
+const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT
 
 void ConstantOp::Build(Builder &builder,
                        OperationArgument &argument,
@@ -217,13 +217,13 @@ void ConstantOp::Build(Builder &builder,
   argument.output_types.push_back(output_type);
 }
 
-void ConstantOp::Verify() {
+void ConstantOp::Verify() const {
   IR_ENFORCE(num_operands() == 0, "The size of inputs must be equal to 0.");
   IR_ENFORCE(num_results() == 1, "The size of outputs must be equal to 1.");
   IR_ENFORCE(attributes().count("value") > 0, "must has value attribute");
 }
 
-Attribute ConstantOp::value() { return attributes().at("value"); }
+Attribute ConstantOp::value() const { return attributes().at("value"); }
 
 }  // namespace ir
 

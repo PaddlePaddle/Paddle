@@ -18,11 +18,9 @@
  */
 #pragma once
 
-// clang-format off
 #include "paddle/cinn/ir/ir.h"
 
 #include <ginac/ginac.h>
-// clang-format on
 
 #include <limits>
 #include <map>

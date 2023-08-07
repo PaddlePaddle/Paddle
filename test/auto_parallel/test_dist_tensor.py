@@ -17,20 +17,22 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 
 
 class TestDistTensor(unittest.TestCase):
     def test_dist_tensor_creation(self):
         shape = [10, 5]
-        dist_attr = paddle.fluid.core.TensorDistAttr()
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
 
         # create dist tensor using numpy
-        dist_tensor_with_numpy = paddle.Tensor(
+        dist_tensor_with_numpy = dist.shard_tensor(
             np.ones(shape, dtype=np.float32), dist_attr=dist_attr
         )
 
         # create dist tensor using tensor
-        dist_tensor_with_tensor = paddle.Tensor(
+        dist_tensor_with_tensor = dist.shard_tensor(
             paddle.ones(shape), dist_attr=dist_attr
         )
 

@@ -223,7 +223,7 @@ bool RuntimeInferShapeContext::HasInput(const std::string& name) const {
     return false;
   }
   const auto& in = it->second;
-  if (in.size() == 0) return false;
+  if (in.empty()) return false;
   PADDLE_ENFORCE_EQ(
       in.size(),
       1UL,
@@ -240,7 +240,7 @@ bool RuntimeInferShapeContext::HasOutput(const std::string& name) const {
     return false;
   }
   const auto& out = it->second;
-  if (out.size() == 0) {
+  if (out.empty()) {
     return false;
   }
   PADDLE_ENFORCE_EQ(
@@ -613,8 +613,7 @@ std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
   auto& out_var_list = out_it->second;
 
   std::vector<LoD> ret;
-  for (size_t i = 0; i < out_var_list.size(); ++i) {
-    Variable* out_var = out_var_list[i];
+  for (auto* out_var : out_var_list) {
     if (out_var != nullptr) {
       auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
       ret.push_back(out_tensor->lod());
@@ -710,12 +709,13 @@ std::vector<proto::VarType::Type> RuntimeInferShapeContext::GetVarTypes(
     const std::vector<Variable*>& vars) const {
   std::vector<proto::VarType::Type> retv;
   retv.resize(vars.size());
-  std::transform(vars.begin(),
-                 vars.end(),
-                 retv.begin(),
-                 std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),
-                           this,
-                           std::placeholders::_1));
+  std::transform(
+      vars.begin(),
+      vars.end(),
+      retv.begin(),
+      std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),  // NOLINT
+                this,
+                std::placeholders::_1));
   return retv;
 }
 
@@ -967,7 +967,7 @@ OperatorBase::OperatorBase(const std::string& type,
   // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
   // Inputs, outputs and attrs will be set to empty map
   // to improve the execution efficiency of dygraph.
-  if (inputs_.size() > 0 || outputs_.size() > 0) {
+  if (!inputs_.empty() || !outputs_.empty()) {
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
   }
@@ -1149,7 +1149,7 @@ ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const {
   LogVarUsageIfUnusedVarCheckEnabled(name);
 
   auto vars = MultiInputVar(name);
-  if (vars.size() == 0) {
+  if (vars.empty()) {
     return {};
   }
   std::vector<const phi::DenseTensor*> res;
@@ -1176,7 +1176,7 @@ std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
     const std::string& name) const {
   auto vars = MultiOutputVar(name);
 
-  if (vars.size() == 0) {
+  if (vars.empty()) {
     return {};
   }
   std::vector<phi::DenseTensor*> res;
@@ -1227,7 +1227,7 @@ bool OpSupportGPU(const std::string& op_type) {
 }
 
 struct OperatorWithKernel::CacheImpl {
-  static const char kNotAllowInferShapeCahce[];
+  static const char kNotAllowInferShapeCahce[];  // NOLINT
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
                      const std::vector<phi::DenseTensor*>& tensors,
@@ -1273,8 +1273,9 @@ struct OperatorWithKernel::CacheImpl {
   bool not_allow_infer_shape_cache_;
   std::vector<phi::DDim> last_ddims_;
 };
-const char OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
-    "@NOT_ALLOW_INFERSHAPE_CACHE@";
+const char  // NOLINT
+    OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
+        "@NOT_ALLOW_INFERSHAPE_CACHE@";
 
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
@@ -2621,7 +2622,9 @@ Scope* OperatorWithKernel::PrepareData(
           if (kernel_type_for_var.backend() == phi::Backend::GPU ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
               new_expected_kernel_key->backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
+              kernel_type_for_var.backend() == phi::Backend::XPU ||
+              new_expected_kernel_key->backend() == phi::Backend::XPU) {
             new_scope = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
@@ -2629,7 +2632,9 @@ Scope* OperatorWithKernel::PrepareData(
         } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
                    expected_kernel_key.backend() == phi::Backend::GPU ||
-                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN ||
+                   kernel_type_for_var.backend() == phi::Backend::XPU ||
+                   expected_kernel_key.backend() == phi::Backend::XPU) {
           new_scope = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;
@@ -2778,9 +2783,9 @@ void OperatorWithKernel::ParseInputDataType(
       return;
     } else if (var->IsType<LoDTensorArray>()) {
       auto t_arr = &var->Get<LoDTensorArray>();
-      for (size_t j = 0; j < t_arr->size(); j++) {
-        if (t_arr->at(j).IsInitialized()) {
-          t = &(t_arr->at(j));
+      for (const auto& item : *t_arr) {
+        if (item.IsInitialized()) {
+          t = &(item);
         }
       }
     }
@@ -2796,8 +2801,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  for (size_t i = 0; i < vars.size(); ++i) {
-    const Variable* var = vars[i];
+  for (auto* var : vars) {
     if (var != nullptr) {
       const phi::DenseTensor* t = nullptr;
       if (var->IsType<phi::DenseTensor>()) {
@@ -2829,9 +2833,9 @@ void OperatorWithKernel::ParseMultiInputDataType(
         *data_type = tmp;
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = &var->Get<LoDTensorArray>();
-        for (size_t j = 0; j < t_arr->size(); j++) {
-          if (t_arr->at(j).IsInitialized()) {
-            t = &(t_arr->at(j));
+        for (const auto& item : *t_arr) {
+          if (item.IsInitialized()) {
+            t = &(item);
           }
         }
       }
@@ -3124,7 +3128,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : phi_kernel_context->InputRangeAt(i - 1).second);
     // deal with optional here
-    if ((it == ctx.inputs.end() || it->second.size() == 0) &&
+    if ((it == ctx.inputs.end() || it->second.empty()) &&
         (input_defs[i].type_index ==
              std::type_index(typeid(paddle::optional<phi::DenseTensor>)) ||
          input_defs[i].type_index ==
@@ -3141,9 +3145,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
     auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
-    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+    for (auto* var : ins_vector) {
       const phi::TensorBase* tensor_in = nullptr;
-      auto* var = ins_vector[offset];
       if (var->IsType<phi::DenseTensor>()) {
         tensor_in = &(var->Get<phi::DenseTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
@@ -3194,9 +3197,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
     size_t end_idx = start_idx + outs_vector.size();
 
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+    for (auto* var : outs_vector) {
       phi::TensorBase* tensor_out = nullptr;
-      auto* var = outs_vector[offset];
       if (var) {
         if (var->template IsType<phi::DenseTensor>()) {
           tensor_out = var->template GetMutable<phi::DenseTensor>();
@@ -3549,7 +3551,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             Type());
     for (const auto& input_name : extra_input_names) {
       auto it = ctx.inputs.find(input_name);
-      if (it == ctx.inputs.end() || it->second.size() == 0) {
+      if (it == ctx.inputs.end() || it->second.empty()) {
         one_dnn_ctx->SetDnnInput(input_name, nullptr);
       } else {
         auto ins_vector = it->second;

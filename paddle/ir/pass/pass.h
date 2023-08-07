@@ -55,8 +55,8 @@ struct PassInfo {
   std::string name;
 
   // opt_level=0: the basic pass which framework need.
-  // opt_level=1: the fusion logical pass.
-  // opt_level=2: constant fold, cse, memory optimize, etc.
+  // opt_level=1: constant fold, cse, memory optimize, etc.
+  // opt_level=2: the fusion logical pass.
   // opt_level=3: layout, etc.
   uint8_t opt_level;
 

@@ -308,26 +308,26 @@ class Conv1D(_ConvNd):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Conv1D
+            >>> import paddle
+            >>> from paddle.nn import Conv1D
 
-            x = paddle.to_tensor([[[4, 8, 1, 9],
-                                    [7, 2, 0, 9],
-                                    [6, 9, 2, 6]]], dtype="float32")
-            w = paddle.to_tensor([[[9, 3, 4],
-                                    [0, 0, 7],
-                                    [2, 5, 6]],
-                                    [[0, 3, 4],
-                                    [2, 9, 7],
-                                    [5, 6, 8]]], dtype="float32")
+            >>> x = paddle.to_tensor([[[4, 8, 1, 9],
+            ... [7, 2, 0, 9],
+            ... [6, 9, 2, 6]]], dtype="float32")
+            >>> w = paddle.to_tensor([[[9, 3, 4],
+            ... [0, 0, 7],
+            ... [2, 5, 6]],
+            ... [[0, 3, 4],
+            ... [2, 9, 7],
+            ... [5, 6, 8]]], dtype="float32")
 
-            conv = Conv1D(3, 2, 3)
-            conv.weight.set_value(w)
-            y = conv(x)
-            print(y)
-            # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[[133., 238.],
-            #          [160., 211.]]])
+            >>> conv = Conv1D(3, 2, 3)
+            >>> conv.weight.set_value(w)
+            >>> y = conv(x)
+            >>> print(y)
+            Tensor(shape=[1, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[133., 238.],
+            [160., 211.]]])
     """
 
     def __init__(
@@ -494,22 +494,27 @@ class Conv1DTranspose(_ConvNd):
     Examples:
        .. code-block:: python
 
-            import paddle
-            from paddle.nn import Conv1DTranspose
+            >>> import paddle
+            >>> from paddle.nn import Conv1DTranspose
 
-            # shape: (1, 2, 4)
-            x = paddle.to_tensor([[[4, 0, 9, 7],
-                                [8, 0, 9, 2]]], dtype="float32")
-            # shape: (2, 1, 2)
-            w = paddle.to_tensor([[[7, 0]],
-                                [[4, 2]]], dtype="float32")
+            >>> # shape: (1, 2, 4)
+            >>> x = paddle.to_tensor([[[4, 0, 9, 7],
+            ... [8, 0, 9, 2]]], dtype="float32")
+            >>> print(x.shape)
+            [1, 2, 4]
 
-            conv = Conv1DTranspose(2, 1, 2)
-            conv.weight.set_value(w)
-            y = conv(x)
-            print(y)
-            # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[[60., 16., 99., 75., 4. ]]])
+            >>> # shape: (2, 1, 2)
+            >>> w = paddle.to_tensor([[[7, 0]],
+            ... [[4, 2]]], dtype="float32")
+            >>> print(w.shape)
+            [2, 1, 2]
+
+            >>> conv = Conv1DTranspose(2, 1, 2)
+            >>> conv.weight.set_value(w)
+            >>> y = conv(x)
+            >>> print(y)
+            Tensor(shape=[1, 1, 5], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[60., 16., 99., 75., 4. ]]])
     """
 
     def __init__(
@@ -655,17 +660,17 @@ class Conv2D(_ConvNd):
 
         .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv2D(4, 6, (3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 6, 6]
+            >>> conv = nn.Conv2D(4, 6, (3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 6, 6]
     """
 
     def __init__(
@@ -827,17 +832,17 @@ class Conv2DTranspose(_ConvNd):
 
        .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv2DTranspose(4, 6, (3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 10, 10]
+            >>> conv = nn.Conv2DTranspose(4, 6, (3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 10, 10]
     """
 
     def __init__(
@@ -984,17 +989,17 @@ class Conv3D(_ConvNd):
 
         .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv3D(4, 6, (3, 3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 6, 6, 6]
+            >>> conv = nn.Conv3D(4, 6, (3, 3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 6, 6, 6]
     """
 
     def __init__(
@@ -1163,17 +1168,17 @@ class Conv3DTranspose(_ConvNd):
 
        .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 10, 10, 10]
+            >>> conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 10, 10, 10]
     """
 
     def __init__(

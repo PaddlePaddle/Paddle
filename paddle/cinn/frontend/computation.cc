@@ -42,7 +42,7 @@ struct ComputationContext {
 
 std::shared_ptr<ComputationContext> CompileProgram(
     const Target &target,
-    Program &program,
+    Program &program,  // NOLINT
     const std::vector<Variable> &outputs,
     std::shared_ptr<hlir::framework::Scope> scope,
     const CinnComputation::CompileOptions &options,

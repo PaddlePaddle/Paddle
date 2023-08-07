@@ -27,7 +27,7 @@ class FunctionBase : public IrNode {
 class FunctionRef : public IrNodeRef {
  public:
   FunctionRef() = default;
-  FunctionRef(IrNode* n) : IrNodeRef(n) {}
+  explicit FunctionRef(IrNode* n) : IrNodeRef(n) {}
 };
 
 }  // namespace ir

@@ -72,7 +72,7 @@ struct DataRecord {
           lod.push_back(0);
         }
       }
-      if (one_batch.size() != 0) {
+      if (!one_batch.empty()) {
         batched_datas.push_back(one_batch);
         batched_lods.push_back(lod);
       }

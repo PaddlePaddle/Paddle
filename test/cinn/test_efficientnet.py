@@ -18,15 +18,11 @@ import sys
 import time
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime
-from cinn.common import *
-from cinn.framework import *
-from cinn.frontend import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
+from cinn.frontend import Interpreter
 
-import paddle as paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
@@ -105,7 +101,7 @@ class TestLoadEfficientNetModel(unittest.TestCase):
                     ". Diff is: ",
                     out[i] - target_result[i],
                 )
-        self.assertTrue(np.allclose(out, target_result, atol=1e-3))
+        np.testing.assert_allclose(out, target_result, atol=1e-3)
 
     def test_model(self):
         self.apply_test()

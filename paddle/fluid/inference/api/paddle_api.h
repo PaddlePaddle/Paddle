@@ -38,6 +38,7 @@ namespace paddle {
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
 using PaddleDataLayout = paddle_infer::DataLayout;
+using paddle_infer::InputTensorHookFunc;
 using paddle_infer::OutputTensorHookFunc;
 
 /// \brief Memory manager for PaddleTensor.
@@ -322,6 +323,9 @@ class PD_INFER_DECL PaddlePredictor {
   /// parameter is output tensor with the var name.
   ///
   virtual void RegisterOutputHook(const OutputTensorHookFunc& hookfunc) {}
+
+  /// \brief Same as RegisterOutputHook
+  virtual void RegisterInputHook(const InputTensorHookFunc& hookfunc) {}
 
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,

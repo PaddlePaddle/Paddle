@@ -27,13 +27,13 @@
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/buffer.h"
-#include "paddle/cinn/ir/collect_ir_nodes.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -153,7 +153,7 @@ void MultiLevelTiling::ApplyTiling(ir::IRSchedule* ir_schedule,
       idx = &r_indices_;
     } else {
       idx = &s_indices_;
-    }  // TODO: support more iterator variable types
+    }  // TODO(zhhsplendid): support more iterator variable types
 
     int extent = ir_for->extent.as_int32();  // maybe int64?
 

@@ -80,7 +80,9 @@ class ScheduleBlockRealize;
   macro__(Minus)                          \
   macro__(Not)                            \
 
-#define NODETY_OP_FOR_EACH(macro__) NODETY_BINARY_OP_FOR_EACH(macro__) NODETY_UNARY_OP_FOR_EACH(macro__)
+#define NODETY_OP_FOR_EACH(macro__)  \
+  NODETY_BINARY_OP_FOR_EACH(macro__) \
+  NODETY_UNARY_OP_FOR_EACH(macro__)
 
 #define NODETY_CONTROL_OP_FOR_EACH(macro__) \
   macro__(Cast)                             \

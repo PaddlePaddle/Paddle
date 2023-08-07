@@ -23,7 +23,7 @@
 #include "paddle/cinn/hlir/pe/broadcast.h"
 #include "paddle/cinn/hlir/pe/elementwise.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
@@ -380,7 +380,8 @@ std::vector<ir::Tensor> BlockReduceInternal(const ir::Tensor& A,
 
   // compute the reduce dimension stride.
   std::vector<Expr> last_reduce_stride(A->shape.size() - axes.front(), Expr(1));
-  for (int idx = A->shape.size(), index = int(last_reduce_stride.size()) - 2;
+  for (int idx = A->shape.size(),
+           index = static_cast<int>(last_reduce_stride.size()) - 2;
        index >= 0;
        --index) {
     last_reduce_stride[index] = last_reduce_stride[index + 1] * A->shape[--idx];
@@ -407,8 +408,8 @@ std::vector<ir::Tensor> BlockReduceInternal(const ir::Tensor& A,
   // compute output shape.
   std::vector<Expr> out_shape(A->shape.begin(),
                               A->shape.begin() + axes.front());
-  int tailf = keep_dim ? (int(A->shape.size()) - axes.front())
-                       : (int(A->shape.size()) - axes.back() - 1);
+  int tailf = keep_dim ? (static_cast<int>(A->shape.size()) - axes.front())
+                       : (static_cast<int>(A->shape.size()) - axes.back() - 1);
   for (int idx = 0; idx < tailf; ++idx) {
     out_shape.push_back(Expr(1));
   }
@@ -538,8 +539,8 @@ std::vector<ir::Tensor> BlockReduce(const ir::Tensor& A,
   // compute output tensor shape.
   std::vector<Expr> out_shape(A->shape.begin(),
                               A->shape.begin() + axes.front());
-  int tailf = keep_dim ? (int(A->shape.size()) - axes.front())
-                       : (int(A->shape.size()) - axes.back() - 1);
+  int tailf = keep_dim ? (static_cast<int>(A->shape.size()) - axes.front())
+                       : (static_cast<int>(A->shape.size()) - axes.back() - 1);
   for (int idx = 0; idx < tailf; ++idx) {
     out_shape.push_back(Expr(1));
   }
@@ -759,8 +760,9 @@ std::vector<ir::Tensor> ReduceInternal(const ir::Tensor& A,
           A, axes, keep_dim, output_name, Reduce##name, initial, reduce_type); \
       if (rs.size() == 0) {                                                    \
         return {Reduce##name(A, axes, keep_dim, output_name)};                 \
-      } else                                                                   \
+      } else {                                                                 \
         return rs;                                                             \
+      }                                                                        \
     }                                                                          \
   }
 
@@ -801,7 +803,7 @@ bool WithoutLastDimInReduce(const std::vector<ir::Expr>& inshape,
   } else {
     return false;
   }
-};
+}
 
 using BlockReduceFunc =
     std::function<std::vector<ir::Tensor>(const ir::Tensor&,
@@ -831,7 +833,8 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
   }
   int warp_reduce_need_sm_count =
       ceil((need_reduce_last_count * 32) /
-           float(common::DefaultNVGPUTarget().get_max_threads_per_sm()));
+           static_cast<float>(
+               common::DefaultNVGPUTarget().get_max_threads_per_sm()));
   // Set Num_max_threads to 32 is Warp Reduce
   if (common::DefaultNVGPUTarget().get_multi_processor_count() <
       warp_reduce_need_sm_count) {

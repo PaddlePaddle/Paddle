@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -134,7 +134,7 @@ class Feature {
  public:
   Feature();
 
-  Feature(const common::Target& target);
+  explicit Feature(const common::Target& target);
 
   // Convert the various-length loop block features to fixed-size vector
   std::vector<float> ToFixedSizeVector();

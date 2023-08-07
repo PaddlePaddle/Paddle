@@ -27,7 +27,7 @@ class BiasBnReLUBuilder : public ProgramBuilder {
   BiasBnReLUBuilder() : ProgramBuilder("bias_bn_relu_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK(inputs_varinfo.size() == 4);
+    CHECK_EQ(inputs_varinfo.size(), 4);
     auto conv_output = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto bias = builder_.CreateInput(
@@ -55,7 +55,7 @@ class ExpTwoConsumersOpBuilder : public ProgramBuilder {
   ExpTwoConsumersOpBuilder() : ProgramBuilder("exp_two_consumers_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK(inputs_varinfo.size() == 1);
+    CHECK_EQ(inputs_varinfo.size(), 1);
     auto x = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto exp_x = builder_.Exp(x);
@@ -76,7 +76,7 @@ class GatherAddSubBuilder : public ProgramBuilder {
   GatherAddSubBuilder() : ProgramBuilder("gather_add_sub_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK(inputs_varinfo.size() == 2);
+    CHECK_EQ(inputs_varinfo.size(), 2);
     auto x = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto y = builder_.CreateInput(
@@ -102,7 +102,7 @@ class FillConstantAddBuilder : public ProgramBuilder {
   FillConstantAddBuilder() : ProgramBuilder("fill_constant_add_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK(inputs_varinfo.size() == 1);
+    CHECK_EQ(inputs_varinfo.size(), 1);
     auto x = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto fill_constant =

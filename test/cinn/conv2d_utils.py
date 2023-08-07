@@ -17,7 +17,7 @@
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 
 def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
@@ -42,7 +42,7 @@ def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
             elif key == "data_format":
                 data_format = attrs.get_attr("data_format")
             else:
-                raise ValueError("attr_store {} is not supported".format(key))
+                raise ValueError(f"attr_store {key} is not supported")
 
         img = static.data(name='img', shape=input_shape[1:], dtype='float32')
         if is_depthwise:

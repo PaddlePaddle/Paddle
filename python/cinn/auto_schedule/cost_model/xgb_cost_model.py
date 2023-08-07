@@ -16,7 +16,7 @@ import numpy as np
 import xgboost as xgb
 
 
-class XgbCostModel(object):
+class XgbCostModel:
     """
     A cost model implemented by XgbCostModel
     """

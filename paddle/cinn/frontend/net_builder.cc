@@ -322,10 +322,12 @@ Variable NetBuilder::Concat(const std::vector<Variable>& input_vars, int axis) {
 Variable NetBuilder::BroadcastTo(const Variable& operand,
                                  const std::vector<int>& out_shape) {
   auto x_shape_size = operand->shape.size();
+  if (x_shape_size == 0) {
+    VLOG(4) << "0D-Tensor " << operand->id << " broadcast to shape ("
+            << cinn::utils::Join(out_shape, ",") << ")";
+    return BroadcastTo(operand, out_shape, {0});
+  }
   auto y_shape_size = out_shape.size();
-  CHECK_GT(x_shape_size, 0)
-      << "Cannot broadcast a empty operand " << operand->id << " to "
-      << cinn::utils::Join(out_shape, ",");
   CHECK_LE(x_shape_size, y_shape_size)
       << "The broadcast_p's input shape dimension should less than the "
          "output's, "
@@ -995,7 +997,6 @@ Variable NetBuilder::DropoutInfer(const Variable& a,
 
 Variable NetBuilder::Sum(const std::vector<Variable>& inputs) {
   return CustomInstr("sum", inputs, {}).front();
-  ;
 }
 
 Variable NetBuilder::Arange(const float start,
@@ -1030,7 +1031,6 @@ Variable NetBuilder::Matmul(const Variable& x,
              {x, y},
              {{"trans_a", trans_x}, {"trans_b", trans_y}, {"alpha", alpha}})
       .front();
-  ;
 }
 
 Variable NetBuilder::GaussianRandom(const std::vector<int>& shape,

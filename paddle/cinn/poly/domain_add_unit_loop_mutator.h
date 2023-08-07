@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <tuple>
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 
 namespace cinn {
 namespace poly {

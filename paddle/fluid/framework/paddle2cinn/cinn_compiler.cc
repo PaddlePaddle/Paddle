@@ -112,6 +112,7 @@ const CinnCompiledObject &CinnCompiler::Compile(
 
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
+
       std::unique_lock<std::mutex> guard(lock_);
       // double check cache_by_struct_
       if (!cache_by_struct_.count(cur_key_by_struct)) {

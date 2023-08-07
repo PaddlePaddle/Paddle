@@ -15,8 +15,8 @@
 # limitations under the License.
 
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
@@ -74,7 +74,7 @@ class TestScatterAssignOpBase(OpTest):
                                 l
                             ]
         else:
-            self.assertTrue(False, "Axis {} No Implement".format(self.axis))
+            self.assertTrue(False, f"Axis {self.axis} No Implement")
 
         pd_out = paddle.to_tensor(out, stop_gradient=True)
         self.paddle_outputs = [pd_out]

@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import Float, Int, is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper, run_test
 
@@ -79,7 +79,7 @@ class TestScatterAddOp(OpTest):
                                 [i, j, k, self.inputs["index"][l]]
                             )
         else:
-            self.assertTrue(False, "Axis {} No Implement".format(pos_axis))
+            self.assertTrue(False, f"Axis {pos_axis} No Implement")
 
         index = paddle.to_tensor(index_nd, stop_gradient=True)
         res = paddle.scatter_nd_add(x, index, y)

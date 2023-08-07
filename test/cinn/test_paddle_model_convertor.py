@@ -21,11 +21,10 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import DefaultNVGPUTarget, is_compiled_with_cuda
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
 from cinn.frontend import PaddleModelConvertor
 from cinn.runtime import seed as cinn_seed
 from op_mappers.op_mapper_test import OpMapperTest
-from ops.op_test import OpTestTool
 
 import paddle
 
@@ -124,7 +123,7 @@ class TestPaddleModel(OpMapperTest):
         return attr_map
 
     def init_case(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         for i in range(len(self.feed_names)):
             # check no repeat variable
             self.assertNotIn(
@@ -165,9 +164,9 @@ class TestPaddleModel(OpMapperTest):
             return_numpy=True,
         )
 
-        logger.debug(msg="Program:\n{}".format(self.inference_program))
-        logger.debug(msg="Param List: {}".format(self.param_vars.keys()))
-        logger.debug(msg="Feed List: {}".format(self.feed_names))
+        logger.debug(msg=f"Program:\n{self.inference_program}")
+        logger.debug(msg=f"Param List: {self.param_vars.keys()}")
+        logger.debug(msg=f"Feed List: {self.feed_names}")
         logger.debug(
             msg="Fetch List: {}".format(
                 [var.name for var in self.fetch_targets]
@@ -195,7 +194,7 @@ class TestPaddleModel(OpMapperTest):
             fetch_list=self.fetch_targets,
             return_numpy=True,
         )
-        logger.debug("Paddle Result:\n{}".format(self.paddle_outputs))
+        logger.debug(f"Paddle Result:\n{self.paddle_outputs}")
 
     def build_cinn_program(self, target):
         self.assertEqual(
@@ -204,7 +203,7 @@ class TestPaddleModel(OpMapperTest):
             msg="CINN only support single block now",
         )
 
-        feed_with_param = list()
+        feed_with_param = []
 
         convertor = PaddleModelConvertor(target)
         for i in range(len(self.feed_names)):
@@ -237,9 +236,7 @@ class TestPaddleModel(OpMapperTest):
 
         # get cinn input list
         inputs = prog.get_inputs()
-        logger.debug(
-            "CINN Input List: {}".format([var.name() for var in inputs])
-        )
+        logger.debug(f"CINN Input List: {[var.name() for var in inputs]}")
         self.assertEqual(
             len(feed_with_param),
             len(inputs),
@@ -284,7 +281,7 @@ class TestPaddleModel(OpMapperTest):
             prog, target, cinn_inputs, cinn_feed_datas, cinn_output, passes=[]
         )
 
-        logger.debug("CINN Result:\n{}".format(self.cinn_outputs))
+        logger.debug(f"CINN Result:\n{self.cinn_outputs}")
 
     def test_check_results(self):
         # TODO(6clc): There is a random accuracy problem,

@@ -14,19 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import math
 import unittest
 
-import cinn
 import conv2d_utils
 import numpy as np
 import pool_utils
-from cinn import common, framework, frontend, ir, lang, runtime
-from cinn.poly import create_stages
+from cinn import framework
 from test_utils import SingleOpTester
-
-import paddle as paddle
 
 
 class OpTest_relu(SingleOpTester):

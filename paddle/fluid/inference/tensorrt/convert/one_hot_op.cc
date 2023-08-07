@@ -61,7 +61,7 @@ class OneHotOpConverter : public OpConverter {
     }
 
     auto depth_name = op_desc.Input("depth_tensor");
-    if (depth_name.size() == 0) {
+    if (depth_name.empty()) {
       const int depth = PADDLE_GET_CONST(int, op_desc.GetAttr("depth"));
       depth_tensor = Add1DConstantLayer<int>(depth, "depth_tensor", true);
     } else {

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/cinn/ir/schedule_desc.h"
+#include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {

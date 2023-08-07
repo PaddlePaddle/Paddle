@@ -484,7 +484,7 @@ TEST(net_build, program_execute_cast) {
     for (int h = 0; h < H; ++h) {
       std::string line;
       int index = h + H * b;
-      float in_data = (float)input_data[index];
+      float in_data = static_cast<float>(input_data[index]);
       float out_data = output_data[index];
       line += (std::to_string(out_data) + ", ");
       EXPECT_EQ(in_data, out_data);
@@ -1339,7 +1339,8 @@ TEST(net_build, program_execute_repeat_axis_0) {
   std::vector<float> output_data = GetTensorData<float>(output_tensor, target);
   for (int m = 0; m < new_M; ++m) {
     for (int n = 0; n < new_N; ++n) {
-      int in_index = n + N * static_cast<int>(std::floor((float)m / repeats));
+      int in_index =
+          n + N * static_cast<int>(std::floor(static_cast<float>(m) / repeats));
       int out_index = n + new_N * m;
       float in_data = input_data[in_index];
       float out_data = output_data[out_index];
@@ -1393,7 +1394,8 @@ TEST(net_build, program_execute_repeat_axis_1) {
   std::vector<float> output_data = GetTensorData<float>(output_tensor, target);
   for (int m = 0; m < new_M; ++m) {
     for (int n = 0; n < new_N; ++n) {
-      int in_index = N * m + static_cast<int>(std::floor((float)n / repeats));
+      int in_index =
+          N * m + static_cast<int>(std::floor(static_cast<float>(n) / repeats));
       int out_index = n + new_N * m;
       float in_data = input_data[in_index];
       float out_data = output_data[out_index];

@@ -38,8 +38,8 @@ using dtype_dict_t = absl::flat_hash_map<std::string, common::Type>;
 using shape_dict_t = absl::flat_hash_map<std::string, framework::shape_t>;
 
 void InferShape(Node* node,
-                dtype_dict_t& dtype_dict,
-                shape_dict_t& shape_dict) {
+                dtype_dict_t& dtype_dict,    // NOLINT
+                shape_dict_t& shape_dict) {  // NOLINT
   VLOG(3) << "Begin InferShape of node " << node->id();
   auto op_infershape = Operator::GetAttrs<infershape_t>("infershape");
   auto op_inferdtype = Operator::GetAttrs<inferdtype_t>("inferdtype");

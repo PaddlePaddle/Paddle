@@ -143,7 +143,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     // with the kGrad. The gradients of kParamsAndDenseGrads is
     // collected during backward stage, but in optimization state, the
     // some gradient's name maybe changed.
-    if (new_grad_idx.size() == 0) {
+    if (new_grad_idx.empty()) {
       if (!result.Has(details::kFusedGrads)) {
         PADDLE_THROW(platform::errors::PreconditionNotMet(
             "The coalesce_grad_tensor_pass should "
@@ -287,7 +287,7 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
   auto &kernel_factory = phi::KernelFactory::Instance();
   auto kernel_key_map =
       kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
-  bool has_op_kernel = kernel_key_map.size() > 0 ? true : false;
+  bool has_op_kernel = !kernel_key_map.empty() ? true : false;
   for (auto &kernel : kernel_key_map) {
     if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
       support_gpu = true;

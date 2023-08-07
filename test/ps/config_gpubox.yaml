@@ -29,7 +29,7 @@ runner:
   sync_mode: "gpubox"
   thread_num: 30
   reader_type: "InmemoryDataset"  # DataLoader / QueueDataset / RecDataset / InmemoryDataset
-  pipe_command: "python3.7 dataset_generator_criteo.py"
+  pipe_command: "python dataset_generator_criteo.py"
   dataset_debug: False
   split_file_list: False
 

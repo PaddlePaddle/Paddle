@@ -25,10 +25,10 @@
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
-#include "paddle/cinn/ir/collect_ir_nodes.h"
-#include "paddle/cinn/ir/ir_operators.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/tensor_write_tell.h"
@@ -730,7 +730,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     if (forloop->is_vectorized()) {
       Context::info_rgt().Get<int>("vectorized_forloop_count")++;
 
-      CHECK(forloop->vectorize_info().factor > 0);
+      CHECK_GT(forloop->vectorize_info().factor, 0);
 
       CHECK(is_zero(forloop->min));
       Expr for_extent = common::AutoSimplify(forloop->extent);

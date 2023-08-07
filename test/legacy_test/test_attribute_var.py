@@ -173,7 +173,6 @@ class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
         self.support_tensor_attrs = {
             'dropout': ['dropout_prob'],
             'tile': ['repeat_times'],
-            'concat': ['axis'],
         }
         # Just add a op example to test not support tensor
         self.not_support_tensor_attrs = {'svd': ['full_matrices']}

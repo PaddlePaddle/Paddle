@@ -20,7 +20,10 @@ namespace py = pybind11;
 namespace cinn {
 namespace pybind {
 
-using namespace cinn::utils;
+using cinn::utils::EventType;
+using cinn::utils::HostEvent;
+using cinn::utils::HostEventRecorder;
+using cinn::utils::ProfilerHelper;
 
 void BindUtils(py::module *m) {
   py::enum_<EventType>(*m, "EventType")

@@ -54,7 +54,7 @@ def bow_net(
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = paddle.static.nn.sequence_lod.sequence_pool(
@@ -157,7 +157,7 @@ class TestWeightDecay(unittest.TestCase):
                 for var in main_prog.block(0).all_parameters()
             ]
 
-            optimizer = fluid.optimizer.Adagrad(
+            optimizer = paddle.optimizer.Adagrad(
                 learning_rate=self.learning_rate
             )
             optimizer.minimize(avg_cost)

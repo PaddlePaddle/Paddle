@@ -23,7 +23,7 @@
 namespace cinn {
 namespace common {
 
-const static std::vector<std::string> kAxises({
+static const std::vector<std::string> kAxises({
     "i",  // level 0
     "j",  // level 1
     "k",  // level 2

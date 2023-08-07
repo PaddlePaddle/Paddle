@@ -77,7 +77,7 @@ class OpDesc {
 
   bool HasOutput(const std::string &name) const;
 
-  bool HasInput(const std::string &name) const;
+  bool HasInput(const std::string &name, bool with_attr_var = false) const;
 
   std::vector<std::string> OutputArgumentNames() const;
 

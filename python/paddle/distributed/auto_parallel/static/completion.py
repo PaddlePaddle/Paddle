@@ -938,7 +938,7 @@ class Completer:
         """Complete annotation for the partial annotated serial_main_program.
         Arguments:
             serial_main_program: partial annotated serial_main_program.
-        Returns:e
+        Returns:
             serial_main_program: completed annotated serial_main_program.
         """
 
@@ -982,6 +982,9 @@ class Completer:
             op_dist_attr = dist_op.dist_attr
             op_dist_attr.process_mesh = process_mesh
             original_op_dist_attr = copy.deepcopy(op_dist_attr)
+
+            if serial_op.type == "create_py_reader":
+                continue
 
             for arg_name in serial_op.input_arg_names:
                 serial_tensor = dist_op.get_serial_input(arg_name)

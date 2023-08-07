@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
+#include <array>
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/assign_op.h"
@@ -29,11 +30,12 @@ PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
-const char ConditionalOp::kInputs[] = "Input";
-const char ConditionalOp::kOutputs[] = "Out";
-const char ConditionalOp::kCondition[] = "Cond";
-const char ConditionalOp::kScope[] = "Scope";
-const char ConditionalOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+const char ConditionalOp::kInputs[] = "Input";    // NOLINT
+const char ConditionalOp::kOutputs[] = "Out";     // NOLINT
+const char ConditionalOp::kCondition[] = "Cond";  // NOLINT
+const char ConditionalOp::kScope[] = "Scope";     // NOLINT
+const char ConditionalOp::kSkipEagerDeletionVars[] =
+    "skip_eager_deletion_vars";  // NOLINT
 
 using Executor = framework::Executor;
 using ExecutorPrepareContext = framework::ExecutorPrepareContext;
@@ -308,7 +310,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
         const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
         auto *outside_tensors =
             outside_var->GetMutable<framework::LoDTensorArray>();
-        if (outside_tensors->size() == 0U) {
+        if (outside_tensors->empty()) {
           outside_tensors->resize(input_tensors.size());
         }
         PADDLE_ENFORCE_EQ(input_tensors.size(),

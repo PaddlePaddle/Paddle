@@ -41,8 +41,8 @@ std::vector<ir::Tensor> winograd_transform_matrices(const int& tile_size,
 
 std::vector<int> GetFirstStepReduceShape(const std::vector<int>& shape,
                                          const std::vector<int>& axes,
-                                         bool& inbound,
-                                         int& tail);
+                                         bool& inbound,  // NOLINT
+                                         int& tail);     // NOLINT
 
 }  // namespace pe
 }  // namespace hlir

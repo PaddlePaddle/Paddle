@@ -33,7 +33,7 @@ class DecomposerContext {
       NetBuilder* builder, absl::flat_hash_map<std::string, Variable>* var_map)
       : builder_(builder), var_map_(var_map) {}
 
-  NetBuilder* builder() const { return builder_; };
+  NetBuilder* builder() const { return builder_; }
 
   // Map the new var to the original var.
   void MapOutToOrigin(const Variable& new_var, const Variable& ori_var) const {

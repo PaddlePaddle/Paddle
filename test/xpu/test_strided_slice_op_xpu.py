@@ -174,6 +174,24 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.strides = [1, 1, 1, 1, 1, 2]
             self.infer_flags = [1, 1, 1, 1, 1]
 
+    class XPUTestStrideSliceOp_eb_1(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (1, 4, 4096, 128)
+            self.axes = [0, 1, 2, 3]
+            self.starts = [0, 0, 0, 0]
+            self.ends = [1, 4, 4096, 128]
+            self.strides = [1, 1, 1, 2]
+            self.infer_flags = [1, 1, 1, 1]
+
+    class XPUTestStrideSliceOp_eb_2(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (1, 4, 4096, 128)
+            self.axes = [0, 1, 2, 3]
+            self.starts = [0, 0, 0, 1]
+            self.ends = [1, 4, 4096, 128]
+            self.strides = [1, 1, 1, 2]
+            self.infer_flags = [1, 1, 1, 1]
+
 
 support_types = get_xpu_op_support_types('strided_slice')
 for stype in support_types:

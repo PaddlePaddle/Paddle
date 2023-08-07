@@ -641,7 +641,7 @@ bool AnalysisPredictor::PrepareProgram(
 }
 
 bool AnalysisPredictor::CreateExecutor() {
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  executor_ = std::make_unique<paddle::framework::NaiveExecutor>(place_);
   return true;
 }
 
@@ -999,8 +999,8 @@ bool AnalysisPredictor::LoadConverterConfig(
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
   std::vector<std::vector<int>> inputs_shape;
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs_shape.emplace_back(inputs[i].shape);
+  for (const auto &input : inputs) {
+    inputs_shape.emplace_back(input.shape);
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1010,8 +1010,8 @@ void AnalysisPredictor::MkldnnPreSet(
     const std::vector<paddle::Tensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
   std::vector<std::vector<int>> inputs_shape;
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs_shape.emplace_back(phi::vectorize<int>(inputs[i].dims()));
+  for (const auto &input : inputs) {
+    inputs_shape.emplace_back(phi::vectorize<int>(input.dims()));
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1029,9 +1029,9 @@ void AnalysisPredictor::MkldnnPreSet(
         phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
-    for (size_t i = 0; i < inputs_shape.size(); ++i) {
-      for (size_t j = 0; j < inputs_shape[i].size(); ++j) {
-        ss << inputs_shape[i][j] << "-";
+    for (const auto &input_shape : inputs_shape) {
+      for (int item : input_shape) {
+        ss << item << "-";
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
@@ -1237,13 +1237,13 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                         "wrong feed input size, need %d but get %d.",
                         feeds_.size(),
                         inputs.size()));
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    PADDLE_ENFORCE_EQ(inputs[i].defined(),
+  for (const auto &input : inputs) {
+    PADDLE_ENFORCE_EQ(input.defined(),
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "The input Tensor expected to be defined."));
     PADDLE_ENFORCE_EQ(
-        inputs[i].is_dense_tensor(),
+        input.is_dense_tensor(),
         true,
         paddle::platform::errors::InvalidArgument(
             "The input Tensor expected to be type of dense tensor."));
@@ -1252,10 +1252,10 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
   if (std::all_of(inputs.cbegin(), inputs.cend(), [&](const paddle::Tensor &t) {
         return !t.name().empty() && feed_names_.count(t.name());
       })) {
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      auto &t = framework::GetVariableTensor(*scope, inputs[i].name());
+    for (const auto &input : inputs) {
+      auto &t = framework::GetVariableTensor(*scope, input.name());
       t.ShareDataWith(
-          *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+          *std::dynamic_pointer_cast<phi::DenseTensor>(input.impl()));
     }
   } else {
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -1341,7 +1341,7 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
 void AnalysisPredictor::PrepareArgument() {
   VLOG(3) << "AnalysisPredictor::PrepareArgument";
   // Init std::unique_ptr argument_.
-  argument_.reset(new Argument);
+  argument_ = std::make_unique<Argument>();
   argument_->SetUseGPU(config_.use_gpu());
   argument_->SetUseCutlass(config_.use_cutlass_);
   argument_->SetUseFcPadding(config_.use_fc_padding());
@@ -1379,6 +1379,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetOptimInputShape(config_.optim_input_shape_);
   argument_->SetTensorRtTunedDynamicShape(
       config_.tuned_tensorrt_dynamic_shape());
+  argument_->SetUseTensorRT(false);
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_->SetUseTensorRT(true);
@@ -1569,7 +1570,8 @@ void AnalysisPredictor::PrepareArgument() {
 
   if (!config_.ir_optim()) {
     argument_->SetEnableIrOptim(false);
-    if (config_.enable_gpu_mixed_) {
+    if (config_.enable_gpu_mixed_ &&
+        model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
@@ -1885,6 +1887,10 @@ AnalysisPredictor::GetInputTypes() {
       input_type[name] = paddle_infer::DataType::UINT8;
     } else if (dtype == paddle::framework::proto::VarType::INT8) {
       input_type[name] = paddle_infer::DataType::INT8;
+    } else if (dtype == paddle::framework::proto::VarType::FP64) {
+      input_type[name] = paddle_infer::DataType::FLOAT64;
+    } else if (dtype == paddle::framework::proto::VarType::BOOL) {
+      input_type[name] = paddle_infer::DataType::BOOL;
     } else {
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported data type `%s` when get input dtype ", dtype));
@@ -2075,8 +2081,8 @@ bool AnalysisPredictor::ZeroCopyRun() {
   if (config_.use_mkldnn_) {
     std::vector<std::vector<int>> shape_vector;
     auto names = GetInputNames();
-    for (size_t i = 0; i < names.size(); ++i) {
-      auto in_tensor = GetInputTensor(names[i]);
+    for (auto &name : names) {
+      auto in_tensor = GetInputTensor(name);
       shape_vector.emplace_back(in_tensor->shape());
     }
     MkldnnPreSet(shape_vector);
@@ -2092,6 +2098,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
 #ifdef PADDLE_WITH_XPU
   InferXPUContext *infer_xpu_ctx = nullptr;
   if (config_.use_xpu_ && !config_.use_lite_) {
@@ -2125,10 +2134,6 @@ bool AnalysisPredictor::ZeroCopyRun() {
     infer_xpu_ctx->L3CacheAutotune();
   }
 #endif
-
-  if (config_.shape_range_info_collected()) {
-    CollectShapeRangeInfo();
-  }
 
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -2193,72 +2198,53 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 }
 #endif
 
-bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
-#ifdef PADDLE_WITH_XPU
-  auto xpu_runtime_config =
-      reinterpret_cast<paddle_infer::experimental::XpuRuntimeConfig *>(config);
-
-  config_.xpu_config_.context = xpu_runtime_config->context;
-  auto *stream = xpu_runtime_config->stream;
-  if (stream != nullptr && stream != predictor_stream_) {
-    paddle::platform::XPUStreamSync(
-        static_cast<paddle::xpuStream>(predictor_stream_));
-    predictor_stream_ = stream;
-  }
-
-  auto l3_size = xpu_runtime_config->l3_size;
-  auto l3_autotune_size = xpu_runtime_config->l3_autotune_size;
-  PADDLE_ENFORCE_LE(
-      l3_autotune_size,
-      l3_size,
-      phi::errors::InvalidArgument(
-          "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
-          l3_autotune_size,
-          l3_size));
-  config_.xpu_config_.l3_size = l3_size;
-  config_.xpu_config_.l3_ptr = xpu_runtime_config->l3_ptr;
-  config_.xpu_config_.l3_autotune_size = l3_autotune_size;
-
-  return ZeroCopyRun();
-#endif
-  return false;
-}
-
-void AnalysisPredictor::CollectShapeRangeInfo() {
-  // if use gpu, sync first.
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
-  if (config_.use_gpu()) {
+void AnalysisPredictor::HookCollectShapeRangeInfo() {
+  auto hook = [&](const std::string &op_type,
+                  const std::string &input_name,
+                  const paddle::Tensor &var) -> void {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto *dev_ctx = pool.Get(place_);
-    auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+      auto *dev_ctx = pool.Get(place_);
+      auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(stream);
+      hipStreamSynchronize(stream);
 #else
-    cudaStreamSynchronize(stream);
+      cudaStreamSynchronize(stream);
 #endif
 #endif
-  }
-
-  std::vector<std::string> var_names = sub_scope_->LocalVarNames();
-  for (const auto &name : var_names) {
-    auto *var = sub_scope_->GetVar(name);
-    if (!var->IsType<phi::DenseTensor>()) {
-      continue;
     }
-    auto tensor = var->Get<phi::DenseTensor>();
-    if (!tensor.initialized()) continue;
+
+    auto *new_var = sub_scope_->GetVar(input_name);
+    if (!new_var) return;
+    if (!new_var->IsType<phi::DenseTensor>()) {
+      return;
+    }
+    auto tensor = new_var->Get<phi::DenseTensor>();
+    if (!tensor.initialized()) return;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
-    shape_info_[name].emplace_back(shape);
+    if (!shape.empty()) {
+      shape_info_[input_name].emplace_back(shape);
+    } else if (tensor.numel() > 0) {
+      // This must be a zero dimension tensor.
+      PADDLE_ENFORCE_EQ(tensor.numel(),
+                        1UL,
+                        platform::errors::PreconditionNotMet(
+                            "This tensor must have one element, but got %ld.",
+                            tensor.numel()));
+      std::vector<int32_t> zero_shape(1, 1);
+      shape_info_[input_name].emplace_back(zero_shape);
+    }
 
     // We need collect value range for shape tensor for Paddle-TRT's use.
     // To be noticed, this method to identify all shape tensors is based on
-    // assumption that all shape tensors in the model have numbers <= 7.
+    // assumption that all shape tensors in the model have numbers <= 8.
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
-    auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
+    auto is_shape_tensor = tensor.numel() <= 8 && tensor.numel() >= 1;
     if ((tensor.dtype() == phi::DataType::INT32 ||
          tensor.dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
@@ -2296,9 +2282,41 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
                              nullptr);
 #endif
       }
-      shape_tensor_value_[name].emplace_back(int32_host);
+      shape_tensor_value_[input_name].emplace_back(int32_host);
     }
+  };
+  RegisterInputHook(hook);
+}
+
+bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
+#ifdef PADDLE_WITH_XPU
+  auto xpu_runtime_config =
+      reinterpret_cast<paddle_infer::experimental::XpuRuntimeConfig *>(config);
+
+  config_.xpu_config_.context = xpu_runtime_config->context;
+  auto *stream = xpu_runtime_config->stream;
+  if (stream != nullptr && stream != predictor_stream_) {
+    paddle::platform::XPUStreamSync(
+        static_cast<paddle::xpuStream>(predictor_stream_));
+    predictor_stream_ = stream;
   }
+
+  auto l3_size = xpu_runtime_config->l3_size;
+  auto l3_autotune_size = xpu_runtime_config->l3_autotune_size;
+  PADDLE_ENFORCE_LE(
+      l3_autotune_size,
+      l3_size,
+      phi::errors::InvalidArgument(
+          "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
+          l3_autotune_size,
+          l3_size));
+  config_.xpu_config_.l3_size = l3_size;
+  config_.xpu_config_.l3_ptr = xpu_runtime_config->l3_ptr;
+  config_.xpu_config_.l3_autotune_size = l3_autotune_size;
+
+  return ZeroCopyRun();
+#endif
+  return false;
 }
 
 void AnalysisPredictor::StatisticShapeRangeInfo() {
@@ -2325,7 +2343,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
           auto ShapeMaxFreq =
               [](const std::map<int32_t, int32_t> &m) -> int32_t {
             std::vector<std::pair<int32_t, int32_t>> counter;
-            for (auto &it : m) counter.push_back(it);
+            for (auto &it : m) counter.emplace_back(it);
             std::sort(counter.begin(),
                       counter.end(),
                       [](std::pair<int32_t, int32_t> &a,
@@ -2337,10 +2355,10 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
 
           for (size_t d = 0; d < shapes[0].size(); ++d) {
             std::map<int32_t, int32_t> counter;
-            for (size_t i = 0; i < shapes.size(); ++i) {
-              counter[shapes[i][d]] += 1;
-              if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
-              if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+            for (auto &shape : shapes) {
+              counter[shape[d]] += 1;
+              if (shape[d] < min_shape[d]) min_shape[d] = shape[d];
+              if (shape[d] > max_shape[d]) max_shape[d] = shape[d];
             }
             opt_shape[d] = ShapeMaxFreq(counter);
           }
@@ -2564,9 +2582,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=
         framework::global_transfer_scope_key().end()) {
       auto scope_key_set = framework::global_transfer_scope_key()[sub_scope_];
-      for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
-           iter++) {
-        framework::global_transfer_data_cache().erase(*iter);
+      for (auto item : scope_key_set) {
+        framework::global_transfer_data_cache().erase(item);
       }
       framework::global_transfer_scope_key().erase(sub_scope_);
     }
@@ -2597,7 +2614,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.trt_engine_memory_sharing()) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .releaseContextMemory(predictor_id_);
+        .ReleaseContextMemory(predictor_id_);
   }
 #endif
 }
@@ -2677,10 +2694,33 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
+void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
+  static std::once_flag register_input_hook_flag;
+  std::call_once(register_input_hook_flag, [this] {
+    executor_->RegisterInputHook(
+        [this](framework::OperatorBase *op, framework::Scope *scope) {
+          for (auto &input : op->Inputs()) {
+            for (auto &var_name : input.second) {
+              auto *var = scope->FindVar(var_name);
+              if (!var || !var->IsType<phi::DenseTensor>()) continue;
+              auto dense_tensor = var->Get<phi::DenseTensor>();
+              if (!dense_tensor.initialized()) continue;
+              auto tensor = paddle::Tensor(
+                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+              for (auto &hookfunc : this->input_hookfuncs_) {
+                hookfunc(op->Type(), var_name, tensor);
+              }
+            }
+          }
+        });
+  });
+  input_hookfuncs_.push_back(hookfunc);
+}
+
 void AnalysisPredictor::RegisterOutputHook(
     const OutputTensorHookFunc &hookfunc) {
-  static std::once_flag register_hook_flag;
-  std::call_once(register_hook_flag, [this] {
+  static std::once_flag register_output_hook_flag;
+  std::call_once(register_output_hook_flag, [this] {
     executor_->RegisterOutputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &output : op->Outputs()) {
@@ -2691,14 +2731,14 @@ void AnalysisPredictor::RegisterOutputHook(
               if (!dense_tensor.initialized()) continue;
               auto tensor = paddle::Tensor(
                   std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
-              for (auto &hookfunc : this->hookfuncs_) {
+              for (auto &hookfunc : this->output_hookfuncs_) {
                 hookfunc(op->Type(), var_name, tensor);
               }
             }
           }
         });
   });
-  hookfuncs_.push_back(hookfunc);
+  output_hookfuncs_.push_back(hookfunc);
 }
 
 template <>
@@ -2880,6 +2920,9 @@ USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(cumsum)
+USE_TRT_CONVERTER(assign)
+USE_TRT_CONVERTER(unbind)
+USE_TRT_CONVERTER(flip)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
@@ -2986,6 +3029,9 @@ uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
 void Predictor::RegisterOutputHook(const OutputTensorHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
+}
+void Predictor::RegisterInputHook(const OutputTensorHookFunc &hookfunc) {
+  predictor_->RegisterInputHook(hookfunc);
 }
 
 void *Predictor::GetExecStream() const { return predictor_->GetExecStream(); }

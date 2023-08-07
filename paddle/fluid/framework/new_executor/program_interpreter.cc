@@ -53,6 +53,8 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
+  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
@@ -191,6 +193,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       RunImpl();
     }
     is_build_ = true;
+    is_shared_results_build_ = true;
   } else {
     RunImpl();
   }
@@ -217,6 +220,11 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   } else {
     return {};
   }
+}
+
+FetchList ProgramInterpreter::BetaRun(
+    const std::vector<std::string>& feed_names, bool need_fetch) {
+  return {};
 }
 
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -270,15 +278,30 @@ void ProgramInterpreter::reset_scope(Scope* new_scope) {
     refs_[i]->ResetVariable(var_list[i]);
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); i++) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 }
 
+const Scope* ProgramInterpreter::local_scope() const { return local_scope_; }
 void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
   async_work_queue_ =
       reinterpret_cast<ProgramInterpreter*>(src)->GetWorkQueue();
   VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << src
+          << ") to InterpreterCore(" << this << ")";
+}
+
+void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
+  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+    return;
+  }
+  // share op dependency
+  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
+  dependecy_count_ = src.GetDependencyCount();
+  // share event analysis
+  stream_analyzer_.ShareEventInfoFrom(src.GetStreamAnalyzer());
+  is_shared_results_build_ = true;
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
           << ") to InterpreterCore(" << this << ")";
 }
 
@@ -308,6 +331,25 @@ ProgramInterpreter::GetWorkQueue() {
         nullptr);
   }
   return async_work_queue_;
+}
+
+const interpreter::DependencyBuilder& ProgramInterpreter::GetDependencyBuilder()
+    const {
+  return dependency_builder_;
+}
+
+std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
+    const {
+  return dependecy_count_;
+}
+
+const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
+    const {
+  return stream_analyzer_;
+}
+
+bool ProgramInterpreter::IsSharedResultsBuild() const {
+  return is_shared_results_build_;
 }
 
 void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
@@ -383,8 +425,7 @@ void ProgramInterpreter::BuildInplace() {
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    auto& instr = vec_instruction_[i];
+  for (auto& instr : vec_instruction_) {
     auto* op_base = instr.OpBase();
     if (!op_base->Info().infer_inplace_) {
       continue;
@@ -504,7 +545,11 @@ void ProgramInterpreter::BuildOperatorDependences() {
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
-  dependecy_count_ = std::vector<size_t>(instr_num, 0);
+  dependecy_count_ = GetDependencyCount();
+  if (!is_shared_results_build_) {
+    dependecy_count_->assign(instr_num, 0);
+  }
+
   auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
@@ -540,8 +585,10 @@ void ProgramInterpreter::BuildOperatorDependences() {
       }
     }
 
-    for (size_t next_instr_id : next_instr_ids) {
-      ++dependecy_count_[next_instr_id];
+    if (!is_shared_results_build_) {
+      for (size_t next_instr_id : next_instr_ids) {
+        ++(*dependecy_count_)[next_instr_id];
+      }
     }
   }
 }
@@ -606,8 +653,8 @@ void ProgramInterpreter::Convert(
 
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       auto& inst = vec_instruction_[i];
       if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
           platform::is_gpu_place(place_)) {
@@ -729,8 +776,8 @@ void ProgramInterpreter::Convert(
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 
   bool inplaced = false;
@@ -746,7 +793,7 @@ void ProgramInterpreter::Convert(
     BuildInplace();
   }
 
-  for (auto& dep : dependecy_count_) {
+  for (auto& dep : *dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
   for (size_t i = 0; i < vec_meta_info.size(); ++i) {
@@ -763,7 +810,7 @@ void ProgramInterpreter::BuildSkipShareLoDInfo() {
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
         if (var->IsType<phi::DenseTensor>()) {
-          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
+          if (!var->Get<phi::DenseTensor>().lod().empty()) {
             can_skip_lod = false;
             break;
           }
@@ -994,8 +1041,8 @@ void ProgramInterpreter::ExecuteInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
       if (FLAGS_new_executor_serial_run) {
@@ -1135,7 +1182,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     return;
   }
 
-  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+  if (instr.DeviceContext().GetPlace().GetType() ==
+      phi::AllocationType::CUSTOM) {
     return;
   }
 
@@ -1302,6 +1350,7 @@ void ProgramInterpreter::Prepare(
     }
     BuildSkipShareLoDInfo();
     is_build_ = true;
+    is_shared_results_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
@@ -1349,15 +1398,14 @@ void ProgramInterpreter::TraceInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
     }
   }
 
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    auto instr_id = trace_execute_order_[idx];
+  for (auto instr_id : trace_execute_order_) {
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
@@ -1397,9 +1445,9 @@ void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
 
 void ProgramInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    if (vec_instruction_[i].KernelType() == OpFuncType::kCpuSync ||
-        vec_instruction_[i].KernelType() == OpFuncType::kGpuSync) {
+  for (auto& ins : vec_instruction_) {
+    if (ins.KernelType() == OpFuncType::kCpuSync ||
+        ins.KernelType() == OpFuncType::kGpuSync) {
       sync_op_num = sync_op_num + 1;
     }
   }
@@ -1428,8 +1476,8 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
   std::vector<size_t> trace_order;
   SchedulingQueue ready_ops(instruction_scheduling_priority_less);
 
-  for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
-    if (dependecy_count_[instr_id] == 0) {
+  for (size_t instr_id = 0; instr_id < dependecy_count_->size(); ++instr_id) {
+    if ((*dependecy_count_)[instr_id] == 0) {
       ready_ops.push(instr_id);
     }
   }
@@ -1450,11 +1498,23 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
 
   PADDLE_ENFORCE_EQ(
       trace_order.size(),
-      dependecy_count_.size(),
+      dependecy_count_->size(),
       platform::errors::PreconditionNotMet(
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+
+  std::stringstream ss;
+  ss << "trace order: ";
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    ss << vec_instruction_[trace_execute_order_[idx]]
+              .OpFunc()
+              ->operator_base_->Type()
+       << "[" << trace_execute_order_[idx] << "]"
+       << " -> ";
+  }
+  ss << "end\n";
+  VLOG(6) << ss.str();
 }
 
 }  // namespace framework

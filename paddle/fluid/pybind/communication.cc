@@ -28,6 +28,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
@@ -46,6 +47,9 @@ void BindCommContextManager(py::module *m) {
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
               py::call_guard<py::gil_scoped_release>())
+          .def_static("set_cuda_device_id",
+                      &phi::distributed::CommContextManager::SetCUDADeviceId,
+                      py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_GLOO)
           .def_static(
@@ -106,6 +110,9 @@ void BindTCPStore(py::module *m) {
            py::arg("world_size"),
            py::arg("timeout") = 900,
            py::call_guard<py::gil_scoped_release>());
+
+  m->def("create_or_get_global_tcp_store",
+         &phi::distributed::CreateOrGetGlobalTCPStore);
 }
 
 }  // namespace pybind

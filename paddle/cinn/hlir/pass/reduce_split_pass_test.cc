@@ -20,7 +20,7 @@ namespace cinn {
 namespace frontend {
 
 std::unordered_map<std::string, std::vector<float>> RunModelTest(
-    Program& program,
+    Program& program,  // NOLINT
     const std::vector<std::string>&& passes,
     const std::unordered_map<std::string, std::vector<float>>& input_data,
     const std::unordered_set<std::string>& fetch_ids) {

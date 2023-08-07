@@ -24,7 +24,7 @@ set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 include_directories(${PYBIND_INCLUDE_DIR})
 
 set(PYBIND_PATCH_COMMAND "")
-if(NOT WIN32 AND NOT CINN_ONLY)
+if(NOT WIN32)
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
        native_dst)
   # Note: [Why calling some `git` commands before `patch`?]

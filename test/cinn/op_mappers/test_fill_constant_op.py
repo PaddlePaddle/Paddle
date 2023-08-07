@@ -17,7 +17,7 @@
 import unittest
 
 import numpy as np
-from op_mapper_test import OpMapperTest, logger
+from op_mapper_test import OpMapperTest
 
 import paddle
 
@@ -53,7 +53,7 @@ class TestFillConstantOp(OpMapperTest):
 
 class TestFillConstantCase1(TestFillConstantOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [10, 10]
         self.value = np.random.default_rng(12345).integers(low=0, high=10000)
         self.str_value = ""
@@ -62,7 +62,7 @@ class TestFillConstantCase1(TestFillConstantOp):
 
 class TestFillConstantCase2(TestFillConstantOp):
     def init_input_data(self):
-        self.feed_data = dict()
+        self.feed_data = {}
         self.shape = [10, 10]
         self.value = 0
         self.str_value = "0.123456"

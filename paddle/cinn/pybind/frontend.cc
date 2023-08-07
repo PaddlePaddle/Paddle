@@ -227,7 +227,7 @@ void BindFrontend(pybind11::module *m) {
                                      in_tensor->shape().numel() * dtype.bytes(),
                                      cudaMemcpyHostToDevice));
 #else
-                 LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+     LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
 #endif
               } else if (target.arch == Target::Arch::X86) {
                 memcpy(data,
@@ -320,7 +320,7 @@ void BindFrontend(pybind11::module *m) {
                                      in_tensor->shape().numel() * sizeof(float),
                                      cudaMemcpyHostToDevice));
 #else
-                 LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+     LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
 #endif
               } else if (target.arch == Target::Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
@@ -369,7 +369,7 @@ void BindFrontend(pybind11::module *m) {
                                      in_tensor->shape().numel() * sizeof(float),
                                      cudaMemcpyHostToDevice));
 #else
-                 LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+     LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
 #endif
               } else if (target.arch == Target::Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
@@ -384,21 +384,7 @@ void BindFrontend(pybind11::module *m) {
             program->ExecuteTest(repeat_);
             auto out = scope->GetTensor(tensor_out->id);
             return out;
-          })
-      .def("test_generate_code",
-           [](Program &self,
-              const common::Target &target,
-              const std::vector<Variable> &tensor_inputs,
-              const std::vector<py::array> &input_data,
-              const Variable &tensor_out) {
-             std::shared_ptr<hlir::framework::Graph> g(
-                 new hlir::framework::Graph(self, target));
-             hlir::framework::ApplyPass(g.get(), "InferShape");
-             std::shared_ptr<hlir::framework::Scope> scope =
-                 hlir::framework::BuildScope(target, g);
-             hlir::framework::GraphCompiler gc(target, scope, g);
-             return gc.GenSourceCode();
-           });
+          });
 
   py::class_<frontend::Interpreter>(*m, "Interpreter")
       .def(py::init<const std::vector<std::string> &,
@@ -419,12 +405,13 @@ void BindFrontend(pybind11::module *m) {
   py::class_<NetBuilder, std::shared_ptr<NetBuilder>>(*m, "NetBuilder")
       .def(py::init<const std::string &>(), py::arg("name") = "")
   // clang-format off
-#define PY_REGISTER_CONSTANT_OP(TYPE__)                                              \
-     .def("constant",                                                                \
-          static_cast<Variable (NetBuilder::*)(const TYPE__&, const std::string &, const std::string &)>( \
-               &NetBuilder::template Constant<TYPE__>),                              \
-          py::arg("value"),                                                          \
-          py::arg("name") = "",                                                      \
+#define PY_REGISTER_CONSTANT_OP(TYPE__)                                   \
+     .def("constant",                                                     \
+          static_cast<Variable (NetBuilder::*)(                           \
+               const TYPE__&, const std::string &, const std::string &)>( \
+               &NetBuilder::template Constant<TYPE__>),                   \
+          py::arg("value"),                                               \
+          py::arg("name") = "",                                           \
           py::arg("dtype") = "")
      EXPAND_CINN_SUPPORT_TYPE(PY_REGISTER_CONSTANT_OP)
 #define EXPAND_ONE_VECTOR(TYPE) PY_REGISTER_CONSTANT_OP(std::vector<TYPE>)
@@ -446,23 +433,25 @@ void BindFrontend(pybind11::module *m) {
 #undef EXPAND_QUINTIC_VECTOR
 #undef EXPAND_SEXTIC_VECTOR
 #undef PY_REGISTER_CONSTANT_OP
-#define PY_REGISTER_FILLCONSTANT_OP(TYPE__)                                                        \
-     .def("fill_constant",                                                                         \
-           static_cast<Variable (NetBuilder::*)(                                                   \
-               const std::vector<int> &, TYPE__, const std::string &, const std::string &, bool)>( \
-               &NetBuilder::FillConstant<TYPE__>),                                                 \
-           py::arg("shape"),                                                                       \
-           py::arg("value"),                                                                       \
-           py::arg("name") = "",                                                                   \
-           py::arg("dtype"),                                                                       \
-           py::arg("force_cpu") = false)                                                           \
-     .def("fill_constant",                                                                         \
-          static_cast<Variable (NetBuilder::*)(                                                    \
-               const std::vector<int> &, TYPE__, const std::string &, bool)>(                      \
-               &NetBuilder::template FillConstant<TYPE__>),                                        \
-          py::arg("shape"),                                                                        \
-          py::arg("value"),                                                                        \
-          py::arg("name") = "",                                                                    \
+#define PY_REGISTER_FILLCONSTANT_OP(TYPE__)                                   \
+     .def("fill_constant",                                                    \
+           static_cast<Variable (NetBuilder::*)(                              \
+               const std::vector<int> &, TYPE__,                              \
+               const std::string &,                                           \
+               const std::string &, bool)>(                                   \
+               &NetBuilder::FillConstant<TYPE__>),                            \
+           py::arg("shape"),                                                  \
+           py::arg("value"),                                                  \
+           py::arg("name") = "",                                              \
+           py::arg("dtype"),                                                  \
+           py::arg("force_cpu") = false)                                      \
+     .def("fill_constant",                                                    \
+          static_cast<Variable (NetBuilder::*)(                               \
+               const std::vector<int> &, TYPE__, const std::string &, bool)>( \
+               &NetBuilder::template FillConstant<TYPE__>),                   \
+          py::arg("shape"),                                                   \
+          py::arg("value"),                                                   \
+          py::arg("name") = "",                                               \
           py::arg("force_cpu") = false)
           EXPAND_CINN_SUPPORT_TYPE(PY_REGISTER_FILLCONSTANT_OP)
 #undef PY_REGISTER_FILLCONSTANT_OP
@@ -471,7 +460,8 @@ void BindFrontend(pybind11::module *m) {
       NETBUILDER_UNARY_OP_FOREACH(PY_REGISTER_UNARY_FUNC)
 #undef PY_REGISTER_UNARY_FUNC
 #define PY_REGISTER_BINARY_FUNC(func_name__) \
-  .def(SnakeName(#func_name__), &NetBuilder::func_name__, py::arg("x"), py::arg("y"), py::arg("axis") = -1)
+  .def(SnakeName(#func_name__), &NetBuilder::func_name__, py::arg("x"), \
+       py::arg("y"), py::arg("axis") = -1)
       NETBUILDER_BINARY_OP_FOREACH(PY_REGISTER_BINARY_FUNC)
 #undef PY_REGISTER_BINARY_FUNC
 #define PY_REGISTER_REDUCE_FUNC(func_name__) \
@@ -935,7 +925,6 @@ void BindFrontend(pybind11::module *m) {
                  << " in CINN! Please check.";
              return self.var_model_to_program_map().at(paddle_name);
            });
-
 }  // namespace frontend
 
 #undef EXPAND_CINN_SUPPORT_TYPE

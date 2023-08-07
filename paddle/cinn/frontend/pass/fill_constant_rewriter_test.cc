@@ -42,7 +42,7 @@ TEST(FillConstantRewriter, remove_reshape_single) {
   std::vector<std::string> program_passes = {"FillConstantRewriter",
                                              "RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 2);
 }
 
@@ -68,7 +68,7 @@ TEST(FillConstantRewriter, remove_reshape_with_fill_constant) {
   std::vector<std::string> program_passes = {"FillConstantRewriter",
                                              "RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 2);
 }
 
@@ -93,7 +93,7 @@ TEST(FillConstantRewriter, remove_scale_single) {
   std::vector<std::string> program_passes = {"FillConstantRewriter",
                                              "RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 2);
 }
 
@@ -118,7 +118,7 @@ TEST(FillConstantRewriter, remove_scale_with_fill_constant) {
   std::vector<std::string> program_passes = {"FillConstantRewriter",
                                              "RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 2);
 }
 
@@ -150,7 +150,7 @@ TEST(FillConstantRewriter, remove_multi_scale_with_fill_constant) {
   std::vector<std::string> program_passes = {"FillConstantRewriter",
                                              "RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 4);
 }
 
@@ -167,7 +167,7 @@ TEST(FillConstantRewriter, two_fill_constant) {
   std::vector<std::string> program_passes = {"FillConstantRewriter",
                                              "RemoveIdentity"};
   int num_removed_ops =
-      tester.RunAndCheck(builder, program_passes, input_names, output_names);
+      tester.RunAndCheck(&builder, program_passes, input_names, output_names);
   ASSERT_EQ(num_removed_ops, 0);
 }
 

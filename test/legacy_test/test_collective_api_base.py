@@ -92,7 +92,6 @@ def create_test_data(shape=None, dtype=None, seed=None):
         return create_float_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "bfloat16":
         return create_bfloat16_test_data(shape=shape, seed=seed)
-        # since numpy does not support bfloat16 yet, use `paddle_bfloat` to replace
         # return create_float_test_data(shape=shape, dtype=bfloat16, seed=seed)
     elif dtype == "bool":
         return create_bool_test_data(shape=shape, seed=seed)
@@ -491,6 +490,15 @@ class TestDistBase(unittest.TestCase):
             np.random.seed(2020)
             weight = np.random.rand(1000, 16).astype(np.float32)
             need_result = np.matmul(input1, weight)
+            np.testing.assert_allclose(
+                result_data, need_result, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "dist_concat":
+            result_data = tr0_out[0]
+            need_result = np.concatenate((input1, input2), axis=1)
+            np.testing.assert_allclose(
+                result_data, need_result, rtol=1e-05, atol=1e-05
+            )
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )

@@ -28,7 +28,7 @@
 #include "paddle/cinn/auto_schedule/task/tune_task.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "test/cpp/cinn/program_builder.h"
 
 namespace cinn {
@@ -64,7 +64,8 @@ std::vector<TuneTask> CreateTasks(const frontend::Program& program,
  */
 class MockSearchSpace : public SearchSpace {
  public:
-  MockSearchSpace(const TuneTask& tune_task) : SearchSpace(tune_task) {}
+  explicit MockSearchSpace(const TuneTask& tune_task)
+      : SearchSpace(tune_task) {}
 
   int GetMinExprValue() const { return min_expr_value_; }
 

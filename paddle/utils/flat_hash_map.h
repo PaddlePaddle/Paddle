@@ -126,11 +126,6 @@ struct sherwood_v3_entry {
   sherwood_v3_entry(int8_t distance_from_desired)
       : distance_from_desired(distance_from_desired) {}
   ~sherwood_v3_entry() {}
-  static sherwood_v3_entry *empty_default_table() {
-    static sherwood_v3_entry result[min_lookups] = {
-        {}, {}, {}, {special_end_value}};
-    return result;
-  }
 
   bool has_value() const { return distance_from_desired >= 0; }
   bool is_empty() const { return distance_from_desired < 0; }
@@ -664,12 +659,23 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
   bool empty() const { return num_elements == 0; }
 
  private:
-  EntryPointer entries = Entry::empty_default_table();
+  EntryPointer entries = empty_default_table();
   size_t num_slots_minus_one = 0;
   typename HashPolicySelector<ArgumentHash>::type hash_policy;
   int8_t max_lookups = detailv3::min_lookups - 1;
   float _max_load_factor = 0.5f;
   size_t num_elements = 0;
+
+  EntryPointer empty_default_table() {
+    EntryPointer result =
+        AllocatorTraits::allocate(*this, detailv3::min_lookups);
+    EntryPointer special_end_item =
+        result + static_cast<ptrdiff_t>(detailv3::min_lookups - 1);
+    for (EntryPointer it = result; it != special_end_item; ++it)
+      it->distance_from_desired = -1;
+    special_end_item->distance_from_desired = Entry::special_end_value;
+    return result;
+  }
 
   static int8_t compute_max_lookups(size_t num_buckets) {
     int8_t desired = detailv3::log2(num_buckets);
@@ -743,15 +749,13 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
   void deallocate_data(EntryPointer begin,
                        size_t num_slots_minus_one,
                        int8_t max_lookups) {
-    if (begin != Entry::empty_default_table()) {
-      AllocatorTraits::deallocate(
-          *this, begin, num_slots_minus_one + max_lookups + 1);
-    }
+    AllocatorTraits::deallocate(
+        *this, begin, num_slots_minus_one + max_lookups + 1);
   }
 
   void reset_to_empty_state() {
     deallocate_data(entries, num_slots_minus_one, max_lookups);
-    entries = Entry::empty_default_table();
+    entries = empty_default_table();
     num_slots_minus_one = 0;
     hash_policy.reset();
     max_lookups = detailv3::min_lookups - 1;

@@ -26,7 +26,7 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -120,9 +120,12 @@ class MultiLevelTiling : public AutoGenRule {
   }
 
  private:
-  void ApplyTiling(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
-  void ApplyCacheRead(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
-  void ApplyCacheWrite(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);
+  void ApplyTiling(ir::IRSchedule* ir_schedule,
+                   ir::Expr& block_expr);  // NOLINT
+  void ApplyCacheRead(ir::IRSchedule* ir_schedule,
+                      ir::Expr& block_expr);  // NOLINT
+  void ApplyCacheWrite(ir::IRSchedule* ir_schedule,
+                       ir::Expr& block_expr);  // NOLINT
 
  private:
   std::vector<ir::Expr> all_block_realizes_;

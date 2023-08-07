@@ -34,18 +34,22 @@ class FillConstantOneDNNHandler
                                             dnnl::memory::format_tag::ab);
 
     dnnl::primitive_attr attrs;
-    attrs.set_scales(DNNL_ARG_SRC_0, /* mask = */ 0, {0.0f});
+    attrs.set_scales_mask(DNNL_ARG_SRC_0, /* mask = */ 0);
+
+    src1_md_ = dnnl::memory::desc({1, sizeof(T)},
+                                  OneDNNGetDataType<uint8_t>(),
+                                  dnnl::memory::format_tag::ab);
 
     this->AcquireForwardPrimitiveDescriptor(
-        attrs, dnnl::algorithm::binary_add, src0_md, src1_md, src0_md);
+        dnnl::algorithm::binary_add, src0_md, src1_md_, src0_md, attrs);
   }
 
-  static const dnnl::memory::desc src1_md;
+  const dnnl::memory::desc& get_src1_md() const { return src1_md_; }
+
+ private:
+  dnnl::memory::desc src1_md_;
 };
 
-template <typename T>
-const dnnl::memory::desc FillConstantOneDNNHandler<T>::src1_md(
-    {1, sizeof(T)}, OneDNNGetDataType<uint8_t>(), dnnl::memory::format_tag::ab);
 }  // namespace funcs
 
 template <typename T, typename Context>
@@ -63,7 +67,7 @@ void FullKernel(const Context& dev_ctx,
       out, onednn_engine, dev_ctx.GetPlace());
 
   dnnl::memory constant_value_memory =
-      dnnl::memory(funcs::FillConstantOneDNNHandler<T>::src1_md,
+      dnnl::memory(handler.get_src1_md(),
                    onednn_engine,
                    reinterpret_cast<uint8_t*>(&fill_value));
 
@@ -71,10 +75,19 @@ void FullKernel(const Context& dev_ctx,
   auto fill_constant_p = handler.AcquireForwardPrimitive();
 
   auto& astream = OneDNNContext::tls().get_stream();
-  fill_constant_p->execute(astream,
-                           {{DNNL_ARG_SRC_0, *src0_memory_p},
-                            {DNNL_ARG_SRC_1, constant_value_memory},
-                            {DNNL_ARG_DST, *src0_memory_p}});
+
+  std::vector<float> zero(1, 0);
+  auto scales_md = dnnl::memory::desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+  auto scales = dnnl::memory(scales_md, onednn_engine, zero.data());
+
+  std::unordered_map<int, dnnl::memory> args;
+  args.insert({DNNL_ARG_SRC_0, *src0_memory_p});
+  args.insert({DNNL_ARG_SRC_1, constant_value_memory});
+  args.insert({DNNL_ARG_DST, *src0_memory_p});
+  args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales});
+
+  fill_constant_p->execute(astream, args);
   astream.wait();
 
   // src0_memory_p's md was just to allow the usage of a binary

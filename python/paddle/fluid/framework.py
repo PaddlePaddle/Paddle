@@ -34,10 +34,11 @@ from .proto import framework_pb2, data_feed_pb2
 
 from . import core
 from . import unique_name
+from .. import ir
 import paddle.version as fluid_version
 import warnings
 import functools
-from .variable_index import _getitem_impl_, _setitem_impl_
+from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
 import threading
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
+    '_stride_in_no_check_dy2st_diff',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -111,7 +113,7 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
-
+_stride_in_no_check_dy2st_diff_mode = False
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
@@ -1004,7 +1006,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
             string.
 
     Returns:
-        core.VarDesc.VarType: The data type in Paddle.
+        core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
     # Convert the data type string to numpy data type.
@@ -1013,34 +1015,64 @@ def convert_np_dtype_to_dtype_(np_dtype):
     else:
         dtype = np.dtype(np_dtype)
 
-    if dtype == np.float32:
-        return core.VarDesc.VarType.FP32
-    elif dtype == np.float64:
-        return core.VarDesc.VarType.FP64
-    elif dtype == np.float16:
-        return core.VarDesc.VarType.FP16
-    elif dtype == np.int32:
-        return core.VarDesc.VarType.INT32
-    elif dtype == np.int16:
-        return core.VarDesc.VarType.INT16
-    elif dtype == np.int64:
-        return core.VarDesc.VarType.INT64
-    elif dtype == np.bool_:
-        return core.VarDesc.VarType.BOOL
-    elif dtype == np.uint16:
-        # since there is still no support for bfloat16 in NumPy,
-        # uint16 is used for casting bfloat16
-        return core.VarDesc.VarType.BF16
-    elif dtype == np.uint8:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == np.int8:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.complex64:
-        return core.VarDesc.VarType.COMPLEX64
-    elif dtype == np.complex128:
-        return core.VarDesc.VarType.COMPLEX128
+    if ir.core._use_new_ir_api():
+        if dtype == np.float32:
+            return core.DataType.FLOAT32
+        elif dtype == np.float64:
+            return core.DataType.FLOAT64
+        elif dtype == np.float16:
+            return core.DataType.FLOAT16
+        elif dtype == np.int32:
+            return core.DataType.INT32
+        elif dtype == np.int16:
+            return core.DataType.INT16
+        elif dtype == np.int64:
+            return core.DataType.INT64
+        elif dtype == np.bool_:
+            return core.DataType.BOOL
+        elif dtype == np.uint16:
+            # since there is still no support for bfloat16 in NumPy,
+            # uint16 is used for casting bfloat16
+            return core.DataType.UINT16
+        elif dtype == np.uint8:
+            return core.DataType.UINT8
+        elif dtype == np.int8:
+            return core.DataType.INT8
+        elif dtype == np.complex64:
+            return core.DataType.COMPLEX64
+        elif dtype == np.complex128:
+            return core.DataType.COMPLEX128
+        else:
+            raise ValueError("Not supported numpy dtype %s" % dtype)
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        if dtype == np.float32:
+            return core.VarDesc.VarType.FP32
+        elif dtype == np.float64:
+            return core.VarDesc.VarType.FP64
+        elif dtype == np.float16:
+            return core.VarDesc.VarType.FP16
+        elif dtype == np.int32:
+            return core.VarDesc.VarType.INT32
+        elif dtype == np.int16:
+            return core.VarDesc.VarType.INT16
+        elif dtype == np.int64:
+            return core.VarDesc.VarType.INT64
+        elif dtype == np.bool_:
+            return core.VarDesc.VarType.BOOL
+        elif dtype == np.uint16:
+            # since there is still no support for bfloat16 in NumPy,
+            # uint16 is used for casting bfloat16
+            return core.VarDesc.VarType.BF16
+        elif dtype == np.uint8:
+            return core.VarDesc.VarType.UINT8
+        elif dtype == np.int8:
+            return core.VarDesc.VarType.INT8
+        elif dtype == np.complex64:
+            return core.VarDesc.VarType.COMPLEX64
+        elif dtype == np.complex128:
+            return core.VarDesc.VarType.COMPLEX128
+        else:
+            raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
@@ -1260,6 +1292,7 @@ class Variable(metaclass=VariableMetaClass):
         In Static Graph Mode:
 
         .. code-block:: python
+            :name: code-example-1
 
             import paddle.fluid as fluid
             cur_program = fluid.Program()
@@ -1271,6 +1304,7 @@ class Variable(metaclass=VariableMetaClass):
         In Dygraph  Mode:
 
         .. code-block:: python
+            :name: code-example-2
 
             import paddle.fluid as fluid
             import numpy as np
@@ -1396,6 +1430,7 @@ class Variable(metaclass=VariableMetaClass):
         self.op = None
         self.stop_gradient = stop_gradient
         self.is_data = is_data
+        self.is_view_var = False
 
     def detach(self):
         """
@@ -2290,10 +2325,20 @@ class Variable(metaclass=VariableMetaClass):
             raise IndexError("Valid index accept int or slice or tuple")
 
     def __getitem__(self, item):
-        return _getitem_impl_(self, item)
+        return _getitem_static(self, item)
 
     def __setitem__(self, item, value):
-        return _setitem_impl_(self, item, value)
+        from .dygraph.base import in_declarative_mode
+
+        if in_declarative_mode():
+            if is_compiled_with_xpu():
+                # (NOTE): Currently, there is no index_put_xpu kernel.
+                return _setitem_impl_(self, item, value)
+            return _setitem_static(self, item, value)
+        else:
+            raise RuntimeError(
+                "In static mode, the __setitem__ (looks like: x[indices] = values) should not be used. Please use x = paddle.static.setitem(x, indices, values)"
+            )
 
     def get_value(self, scope=None):
         """
@@ -2454,6 +2499,12 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
+        elif p.is_custom_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.CustomPlace(
+                p.custom_device_type(), p.custom_device_id()
+            )
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -3535,6 +3586,224 @@ class Operator:
         self.desc.dist_attr = dist_attr
 
 
+@signature_safe_contextmanager
+def _stride_in_no_check_dy2st_diff():
+    global _stride_in_no_check_dy2st_diff_mode
+    _stride_in_no_check_dy2st_diff_mode = True
+    try:
+        yield
+    finally:
+        _stride_in_no_check_dy2st_diff_mode = False
+
+
+def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
+    if outputs is not None:
+        for k, v in outputs.items():
+            if isinstance(v, Variable):
+                if v.is_view_var and not (
+                    op_type == "set_value"
+                    and inplace_map.get("Input", None) == "Out"
+                ):
+                    raise ValueError(
+                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                        % (op_type, k)
+                    )
+            elif isinstance(v, list):
+                for var in v:
+                    if isinstance(var, Variable):
+                        if var.is_view_var and not (
+                            op_type == "set_value"
+                            and inplace_map.get("Input", None) == "Out"
+                        ):
+                            raise ValueError(
+                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                                % (op_type, k)
+                            )
+
+
+def record_is_view_var(op_type, inputs, outputs):
+    if op_type == "slice":
+        if inputs is not None and isinstance(inputs["Input"], list):
+            if hasattr(inputs["Input"][0], "is_view_var"):
+                inputs["Input"][0].is_view_var = True
+        else:
+            if hasattr(inputs["Input"], "is_view_var"):
+                inputs["Input"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "strided_slice":
+        if inputs is not None and isinstance(inputs["Input"], list):
+            if hasattr(inputs["Input"][0], "is_view_var"):
+                inputs["Input"][0].is_view_var = True
+        else:
+            if hasattr(inputs["Input"], "is_view_var"):
+                inputs["Input"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "index_select":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "split":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None:
+            for out in outputs["Out"]:
+                if hasattr(out, "is_view_var"):
+                    out.is_view_var = True
+    elif op_type == "unsqueeze" or op_type == "unsqueeze2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "squeeze" or op_type == "squeeze2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "transpose" or op_type == "transpose2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "unbind":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "diagonal":
+        if inputs is not None and isinstance(inputs["Input"], list):
+            if hasattr(inputs["Input"][0], "is_view_var"):
+                inputs["Input"][0].is_view_var = True
+        else:
+            if hasattr(inputs["Input"], "is_view_var"):
+                inputs["Input"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "flatten":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "imag":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "real":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "reshape" or op_type == "reshape2":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+    elif op_type == "as_real":
+        if inputs is not None and isinstance(inputs["X"], list):
+            if hasattr(inputs["X"][0], "is_view_var"):
+                inputs["X"][0].is_view_var = True
+        else:
+            if hasattr(inputs["X"], "is_view_var"):
+                inputs["X"].is_view_var = True
+        if outputs is not None and isinstance(outputs["Out"], list):
+            if hasattr(outputs["Out"][0], "is_view_var"):
+                outputs["Out"][0].is_view_var = True
+        else:
+            if hasattr(outputs["Out"], "is_view_var"):
+                outputs["Out"].is_view_var = True
+
+
 class Block:
     """
     In Fluid, a Program is consistence of multi-Block, and Block stores
@@ -3942,10 +4211,10 @@ class Block:
         Returns:
             Operator: the append Operator.
         """
+        inplace_map = kwargs.get("inplace_map", None)
         op_type = kwargs.get("type", None)
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
-            inplace_map = kwargs.get("inplace_map", None)
             warnings.warn(
                 "Op `%s` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
@@ -4006,6 +4275,15 @@ class Block:
                 'while',
                 'while_grad',
             }
+            from .dygraph.base import in_declarative_mode
+
+            if (
+                in_declarative_mode()
+                and not _stride_in_no_check_dy2st_diff_mode
+            ):
+                check_if_to_static_diff_with_dygraph(
+                    op_type, inplace_map, outputs
+                )
             if op_type not in ignore_ops:
                 pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
@@ -4019,6 +4297,8 @@ class Block:
                 )
 
             self.ops.append(op)
+            if in_declarative_mode():
+                record_is_view_var(op_type, inputs, outputs)
 
         return op
 
@@ -5743,21 +6023,22 @@ class Program:
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
-        For Example:
-          ::
+        Examples:
+            .. code-block:: python
+                :name: code-example-1
 
-            import paddle
-            import paddle.static as static
+                import paddle
+                import paddle.static as static
 
-            paddle.enable_static()
+                paddle.enable_static()
 
-            img = static.data(name='image', shape=[None, 784])
-            pred = static.nn.fc(x=img, size=10, actvation='relu')
-            loss = paddle.mean(pred)
-            # Here we use clone before Momentum
-            test_program = static.default_main_program().clone(for_test=True)
-            optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            optimizer.minimize(loss)
+                img = static.data(name='image', shape=[None, 784])
+                pred = static.nn.fc(x=img, size=10, actvation='relu')
+                loss = paddle.mean(pred)
+                # Here we use clone before Momentum
+                test_program = static.default_main_program().clone(for_test=True)
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+                optimizer.minimize(loss)
 
         Args:
 
@@ -5778,6 +6059,7 @@ class Program:
                 after :code:`clone`:
 
             .. code-block:: python
+                :name: code-example-2
 
                 import paddle
 
@@ -5795,6 +6077,7 @@ class Program:
 
             1. To clone a test program, the sample code is:
                 .. code-block:: python
+                    :name: code-example-3
 
                     import paddle
                     import paddle.static as static
@@ -5847,6 +6130,7 @@ class Program:
 
             2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
+                    :name: code-example-4
 
                     import paddle
                     import paddle.static as static
@@ -7235,30 +7519,32 @@ def program_guard(main_program, startup_program=None):
             Default: None.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
+            :name: code-example-1
 
-          import paddle
+            import paddle
 
-          paddle.enable_static()
-          main_program = paddle.static.Program()
-          startup_program = paddle.static.Program()
-          with paddle.static.program_guard(main_program, startup_program):
-              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-              hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
+            paddle.enable_static()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+                hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
+            :name: code-example-2
 
-          import paddle
+            import paddle
 
-          paddle.enable_static()
-          main_program = paddle.static.Program()
-          # does not care about startup program. Just pass a temporary value.
-          with paddle.static.program_guard(main_program, paddle.static.Program()):
-              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+            paddle.enable_static()
+            main_program = paddle.static.Program()
+            # does not care about startup program. Just pass a temporary value.
+            with paddle.static.program_guard(main_program, paddle.static.Program()):
+                data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
 
     """
     from .data_feeder import check_type
@@ -7615,8 +7901,15 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.IPUPlace(device_id)
 
+    place_info_list = place.split(':', 1)
+    device_type = place_info_list[0]
+    if device_type in core.get_all_custom_device_type():
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.CustomPlace(device_type, device_id)
+
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace and IPUPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 
