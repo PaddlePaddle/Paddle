@@ -33,6 +33,7 @@ DEFINE_bool(cinn_cudnn_deterministic,
 #endif
 
 using ::GFLAGS_NAMESPACE::BoolFromEnv;
+using ::GFLAGS_NAMESPACE::DoubleFromEnv;
 using ::GFLAGS_NAMESPACE::Int32FromEnv;
 using ::GFLAGS_NAMESPACE::Int64FromEnv;
 using ::GFLAGS_NAMESPACE::StringFromEnv;
@@ -179,6 +180,11 @@ DEFINE_int32(cinn_error_message_level,
              Int32FromEnv("FLAGS_cinn_error_message_level", 0),
              "Specify the level of printing error message in the schedule."
              "0 means short, 1 means detailed.");
+
+DEFINE_double(cinn_infer_model_version,
+              DoubleFromEnv("FLAGS_cinn_infer_model_version", 2.0),
+              "Paddle has different model format in inference model. We use "
+              "a flag to load different versions.");
 
 namespace cinn {
 namespace runtime {
