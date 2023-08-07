@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "paddle/ir/core/value.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace dialect {
@@ -24,6 +26,18 @@ namespace dialect {
 ir::OpResult mean(ir::OpResult x,
                   std::vector<int64_t> axis = {},
                   bool keepdim = false);
+
+ir::OpResult sum(ir::OpResult x,
+                 std::vector<int64_t> axis = {},
+                 phi::DataType dtype = phi::DataType::UNDEFINED,
+                 bool keepdim = false);
+
+ir::OpResult divide(ir::OpResult x, ir::OpResult y);
+
+ir::OpResult full(std::vector<int64_t> shape,
+                  float value,
+                  phi::DataType dtype = phi::DataType::FLOAT32,
+                  phi::Place place = phi::CPUPlace());
 
 }  // namespace dialect
 }  // namespace paddle

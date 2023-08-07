@@ -69,12 +69,10 @@ using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
                                                   ir::Program*)>;
 using AttributeHandlerFn = std::function<ir::Attribute(
     ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
-constexpr char kTargetDialectPrefix[] = "pd.";
-constexpr char kEmptyVarName[] = "@EMPTY@";
+constexpr char kTargetDialectPrefix[] = "pd.";  // NOLINT
+constexpr char kEmptyVarName[] = "@EMPTY@";     // NOLINT
 
-static const std::unordered_set<std::string> special_non_inplace_ops = {
-    "batch_norm",
-};
+static const std::unordered_set<std::string> special_non_inplace_ops = {};
 
 static const std::unordered_set<std::string> special_inplace_ops = {
     "adagrad",
