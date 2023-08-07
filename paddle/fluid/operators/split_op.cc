@@ -94,7 +94,7 @@ class SplitOp : public framework::OperatorWithKernel {
     } else {
       sections_final = std::move(phi::IntArray(sections));
     }
-    if (sections.size() > 0) {
+    if (!sections.empty()) {
       if (ctx->IsRuntime()) {
         phi::SplitInferMeta(
             x, sections_final, axis_final, out_ptr, {true, false});

@@ -49,7 +49,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         input_x = paddle.static.data(name="x", shape=[-1, 1], dtype='int64')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        emb = paddle.fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=input_x, size=[100, 10], is_sparse=True
         )
 

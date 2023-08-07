@@ -55,7 +55,7 @@ def conv_net(
     fc0_dim=96,
     class_dim=2,
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=input,
         size=[dict_dim, emb_dim],
         is_sparse=False,

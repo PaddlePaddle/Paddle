@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 
 os.environ["CPU_NUM"] = "1"
@@ -241,7 +240,7 @@ def lm_model(
         init_cell, shape=[num_layers, -1, hidden_size]
     )
 
-    x_emb = layers.embedding(
+    x_emb = paddle.static.nn.embedding(
         input=x,
         size=[vocab_size, hidden_size],
         dtype='float32',

@@ -294,7 +294,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
 
         data_list = [input_word, path_table, path_code, label]
 
-        emb = fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=input_word,
             is_sparse=is_sparse,
             size=[3, 3],

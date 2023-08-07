@@ -486,7 +486,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
         self.expected_slice_op_num = 0
 
 
-# 5. Test op num for negetive dim
+# 5. Test op num for negative dim
 class TestOpNumBasicWithTensorShape(unittest.TestCase):
     def setUp(self):
         self._set_input_spec()

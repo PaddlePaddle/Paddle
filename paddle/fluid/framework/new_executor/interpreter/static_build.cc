@@ -407,8 +407,8 @@ void FakeInitializeOutputsForFunctionKernel(
       continue;
     }
     auto& outs_vector = it->second;
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
+    for (auto out_var : outs_vector) {
+      phi::TensorBase* out_tensor = GetTensorFormVar(out_var);
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
 
@@ -424,6 +424,10 @@ void FakeInitializeOutputsForFunctionKernel(
             if (beta1_pow->place() == beta2_pow->place()) {
               backend = phi::TransToPhiBackend(beta1_pow->place());
             }
+          } else if (op_type == "reshape2") {
+            phi::TensorBase* x =
+                GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
+            backend = phi::TransToPhiBackend(x->place());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "Unsupported UNDEFINED backend for op: %s, parameter: %s",
