@@ -48,7 +48,7 @@ def register_decomp(op_type):
     Examples:
         .. code-block:: python
             @register_decomp('softmax')
-            def softmax_decomp(x, axis):
+            def softmax(x, axis):
                 molecular = exp(x)
                 denominator = broadcast_to(sum(molecular, axis=axis, keepdim=True), x.shape)
                 res = divide(molecular, denominator)
@@ -59,10 +59,8 @@ def register_decomp(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
-        def _decomp(*args):
-            return f(*args)
-
-        _decomposition_ops.register(op_type, _decomp)
+        _decomposition_ops.register(op_type, f)
+        return f
 
     return wrapper
 

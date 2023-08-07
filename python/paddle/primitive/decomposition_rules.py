@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .decomp_utils import register_decomp
 from .primitive_op import *  # noqa: F403
-from .utils import register_decomp
 
 
 @register_decomp('pd.mean')
-def mean_decomp(x, axis, keepdim):
+def mean(x, axis, keepdim):
     """define composite rule of op mean"""
     x_shape = x.shape
     axes = axis or list(range(0, len(x_shape)))

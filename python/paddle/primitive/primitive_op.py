@@ -44,7 +44,6 @@ from paddle.tensor import logcumsumexp  # noqa: F401
 from paddle.tensor import logit  # noqa: F401
 from paddle.tensor import logsumexp  # noqa: F401
 from paddle.tensor import max  # noqa: F401
-from paddle.tensor import mean  # noqa: F401
 from paddle.tensor import min  # noqa: F401
 from paddle.tensor import multiply  # noqa: F401
 from paddle.tensor import ones  # noqa: F401

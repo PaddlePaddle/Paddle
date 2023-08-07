@@ -19,7 +19,7 @@ from paddle import ir
 from paddle.fluid.libpaddle.ir import Block, Program
 from paddle.framework import core
 
-from .utils import get_decomp_rule
+from .decomp_utils import get_decomp_rule
 
 
 def _as_tensors(xs):
@@ -133,8 +133,11 @@ def decompose(
             block,
             op_filter,
         )
-    replace_ops = core.prim_config["composite_ops_record"]
-    logging.debug(f"Decompose composite forward ops finish: {replace_ops}")
+    logging.debug(
+        "Decompose composite forward ops finish: {}".format(
+            core.prim_config["composite_ops_record"]
+        )
+    )
 
 
 def _decompose_subgraph(block, op_filter):
@@ -172,4 +175,6 @@ def _decompose_subgraph(block, op_filter):
         for item in block:
             _decompose_subgraph(item, op_filter)
         return
-    raise TypeError
+    raise TypeError(
+        f"Expect type Block or Sequence of Block, but got type {type(block)}"
+    )
