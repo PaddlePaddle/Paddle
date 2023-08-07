@@ -74,7 +74,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.io import save_inference_model
+from paddle.static.io import save_inference_model
 from paddle.framework import in_dynamic_mode
 
 
@@ -1222,23 +1222,25 @@ def save(layer, path, input_spec=None, **configs):
         if 'forward' == attr_func or not isinstance(layer, Layer):
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
+            path_prefix = file_prefix
         else:
             model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
             params_filename = (
                 file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
             )
-
+            file_prefix = file_prefix + '.' + attr_func
+        file_prefix = os.path.join(model_path, file_prefix)
         with scope_guard(scope):
+            input_vars = []
+            for var in concrete_program.main_program.clone().list_vars():
+                if var.name in input_var_names:
+                    input_vars.append(var)
             save_inference_model(
-                dirname=model_path,
-                feeded_var_names=input_var_names,
-                target_vars=output_vars,
+                path_prefix=file_prefix,
+                feed_vars=input_vars,
+                fetch_vars=output_vars,
                 executor=Executor(_current_expected_place()),
-                main_program=concrete_program.main_program.clone(),
-                model_filename=model_filename,
-                params_filename=params_filename,
-                export_for_deployment=configs._export_for_deployment,
-                program_only=configs._program_only,
+                program=concrete_program.main_program.clone(),
                 clip_extra=configs.clip_extra,
             )
 
@@ -1893,24 +1895,24 @@ class TracedLayer:
         with scope_guard(self._scope):
             feeded_var_names = get_feed_fetch(self._feed_names, feed)
             target_var_names = get_feed_fetch(self._fetch_names, fetch)
+            feed_vars = []
+            for name in feeded_var_names:
+                feed_var = self._program.global_block().vars.get(name, None)
+                assert feed_var is not None, f"{name} cannot be found"
+                feed_vars.append(feed_var)
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
                 assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
-
-            model_filename = file_prefix + INFER_MODEL_SUFFIX
-            params_filename = file_prefix + INFER_PARAMS_SUFFIX
-
             legacy_format = kwargs.get('legacy_format', False)
+            file_prefix = os.path.join(dirname, file_prefix)
             save_inference_model(
-                dirname=dirname,
-                feeded_var_names=feeded_var_names,
-                target_vars=target_vars,
+                path_prefix=file_prefix,
+                feed_vars=feed_vars,
+                fetch_vars=target_vars,
                 executor=self._exe,
-                main_program=self._program.clone(),
-                model_filename=model_filename,
-                params_filename=params_filename,
+                program=self._program.clone(),
                 clip_extra=clip_extra,
                 legacy_format=legacy_format,
             )

@@ -150,11 +150,9 @@ class TestPaddleModel(OpMapperTest):
             self.inference_program,
             self.feed_names,
             self.fetch_targets,
-        ] = paddle.fluid.io.load_inference_model(
-            dirname=self.model_dir,
+        ] = paddle.static.io.load_inference_model(
+            path_prefix=self.model_dir,
             executor=self.exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename,
         )
 
         self.param_vars = paddle.load(
