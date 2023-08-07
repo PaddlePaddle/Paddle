@@ -38,7 +38,7 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-Communicator::Communicator() {}
+Communicator::Communicator() = default;
 
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;

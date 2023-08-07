@@ -15,11 +15,13 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from test_resnet import ResNetHelper
 
 import paddle
 
 
+@dy2static_unittest
 class TestResnetWithPass(unittest.TestCase):
     def setUp(self):
         self.build_strategy = paddle.static.BuildStrategy()
@@ -64,6 +66,7 @@ class TestResnetWithPass(unittest.TestCase):
             ),
         )
 
+    @ast_only_test
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -77,6 +80,7 @@ class TestResnetWithPass(unittest.TestCase):
         )
         self.verify_predict()
 
+    @ast_only_test
     def test_in_static_mode_mkldnn(self):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:

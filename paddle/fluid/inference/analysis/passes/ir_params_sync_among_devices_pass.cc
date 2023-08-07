@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-DEFINE_bool(
+DEFINE_bool(  // NOLINT
     custom_model_save_cpu,
     false,
     "Keep old mode for developers, the model is saved on cpu not device.");

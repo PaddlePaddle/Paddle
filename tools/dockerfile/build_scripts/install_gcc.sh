@@ -33,30 +33,16 @@ if [ "$1" == "gcc82" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/sanitizer_platform_limits_posix.cc.patch
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/sanitizer_platform_limits_posix.h.patch
+  patch -p0 libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc sanitizer_platform_limits_posix.cc.patch
+  patch -p0 libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.h sanitizer_platform_limits_posix.h.patch
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
   ./contrib/download_prerequisites && \
   cd .. && mkdir temp_gcc82 && cd temp_gcc82 && \
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc82 gcc-8.2.0 gcc-8.2.0.tar.xz
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} && 
-  ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_so_5} && \
-  ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
-  cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
-elif [ "$1" == "gcc54" ]; then
-  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-5.4.0.tar.gz
-  tar -xzf gcc-5.4.0.tar.gz && \
-  cd gcc-5.4.0 && \
-  unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
-  ./contrib/download_prerequisites && \
-  cd .. && mkdir temp_gcc54 && cd temp_gcc54 && \
-  ../gcc-5.4.0/configure --prefix=/usr/local/gcc-5.4 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
-  make -j8 && make install
-  cd .. && rm -rf temp_gcc54 gcc-5.4.0 gcc-5.4.0.tar.gz
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} && 
-  ln -s /usr/local/gcc-5.4/lib64/libgfortran.so.5 ${lib_so_5} && \
-  ln -s /usr/local/gcc-5.4/lib64/libstdc++.so.6 ${lib_so_6} && \
-  cp /usr/local/gcc-5.4/lib64/libstdc++.so.6.0.21 ${lib_path}
 elif [ "$1" == "gcc122" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-12.2.0.tar.gz
   tar -xzf gcc-12.2.0.tar.gz && \

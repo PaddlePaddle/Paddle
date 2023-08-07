@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <array>
 #include <cmath>
 
 #include "paddle/fluid/framework/tensor_util.h"
@@ -28,8 +29,8 @@ TEST(TensorCopy, Tensor) {
   int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
                                               platform::CPUPlace());
 
-  int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  memcpy(src_ptr, arr, 9 * sizeof(int));
+  std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  memcpy(src_ptr, arr.data(), 9 * sizeof(int));
   src_tensor.set_layout(DataLayout::kAnyLayout);
 
   auto cpu_place = new platform::CPUPlace();
@@ -467,7 +468,7 @@ TEST(TensorIsfinite, CPU) {
 
 TEST(Tensor, FromAndToStream) {
   phi::DenseTensor src_tensor;
-  int array[6] = {1, 2, 3, 4, 5, 6};
+  std::array<int, 6> array = {1, 2, 3, 4, 5, 6};
   src_tensor.Resize({2, 3});
   int* src_ptr = src_tensor.mutable_data<int>(platform::CPUPlace());
   for (int i = 0; i < 6; ++i) {
