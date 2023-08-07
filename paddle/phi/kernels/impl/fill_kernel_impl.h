@@ -28,7 +28,8 @@ void FillKernel(const Context& dev_ctx,
                 const Scalar& value,
                 DenseTensor* out) {
   T fill_var = value.to<T>();
-
+  std::cout<<"{function_name : fill, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, }";
+  std::cout<<", params: [ "<<"value: "<<fill_var<<"]}"<<std::endl;
   PADDLE_ENFORCE_EQ(std::isnan(static_cast<double>(fill_var)),
                     false,
                     phi::errors::InvalidArgument("fill value should not be NaN,"

@@ -28,6 +28,8 @@ void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
+  std::cout<<"{function_name : maximum, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"{ y, type: <class 'paddle.Tensor'>, shape: "<<y.dims()<<"}, }"<<", params: [ ]}"<<std::endl;
   int axis = -1;
   MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
@@ -64,6 +66,8 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
+  std::cout<<"{function_name : pow, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"{ y, type: <class 'paddle.Tensor'>, shape: "<<y.dims()<<"}, }"<<", params: [ ]}"<<std::endl;
   int axis = -1;
   ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
 }
@@ -81,6 +85,8 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  std::cout<<"{function_name : multiply, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"{ y, type: <class 'paddle.Tensor'>, shape: "<<y.dims()<<"}, }"<<", params: [ ]}"<<std::endl;
   MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -89,6 +95,8 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  std::cout<<"{function_name : add, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"{ y, type: <class 'paddle.Tensor'>, shape: "<<y.dims()<<"}, }"<<", params: [ ]}"<<std::endl;
   AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 

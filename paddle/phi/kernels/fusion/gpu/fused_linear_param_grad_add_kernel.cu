@@ -129,7 +129,18 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
+  DenseTensor da;
+  DenseTensor db;
+  if(dweight){
+    da = dweight.get();
+  }
+  if(dbias){
+    db = dbias.get();
+  }
+  std::cout<<"{function_name : fused_linear_param_grad_add, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"{ dout, type: <class 'paddle.Tensor'>, shape: "<<dout.dims()<<"}, ";
+  std::cout<<"{ dweight, type: <class 'paddle.Tensor'>, shape: "<<da.dims()<<"}, ";
+  std::cout<<"{ dbias, type: <class 'paddle.Tensor'>, shape: "<<db.dims()<<"}, }"<<", params: [ ]}"<<std::endl;
   bool use_addto = false;
   if (dweight_out) {
     if (dweight) {

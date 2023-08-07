@@ -948,7 +948,8 @@ def selu(
         )
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def silu(x, name=None):
     r"""
     silu activation

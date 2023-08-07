@@ -33,7 +33,8 @@ class EqualOpConverter : public OpConverter {
     auto* Y = engine_->GetITensor(op_desc.Input("Y").front());
     nvinfer1::Dims dims_x = X->getDimensions();
     nvinfer1::Dims dims_y = Y->getDimensions();
-
+    std::cout<<"{function_name : equal, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<dims_x<<" }, ";
+    std::cout<<"{ y, type: <class 'paddle.Tensor'>, shape: "<<dims_y<<"}, }"<<", params: [ ]}"<<std::endl;
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     if (axis < 0) {
       axis = std::abs(dims_x.nbDims - dims_y.nbDims);
