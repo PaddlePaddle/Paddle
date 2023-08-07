@@ -154,7 +154,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     VLOG(4) << "handle TrtSkipLayerNorm fuse";
 
     // x and y 's rank must be same
-    if (subgraph.at(x)->V1ar()->GetShape().size() !=
+    if (subgraph.at(x)->Var()->GetShape().size() !=
         subgraph.at(y)->Var()->GetShape().size()) {
       return;
     }
