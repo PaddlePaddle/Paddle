@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_bool(profile, false, "Turn on profiler for fluid");
+DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
 
 namespace paddle {
 namespace {

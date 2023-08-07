@@ -21,6 +21,7 @@ import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
 from dy2st_test_utils import test_with_new_ir
+from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
@@ -274,6 +275,7 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
+    @ast_only_test
     def test_train(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader

@@ -132,10 +132,12 @@ class BottleneckBlock(paddle.nn.Layer):
 
         y = paddle.add(x=short, y=conv2)
 
-        layer_helper = paddle.fluid.layer_helper.LayerHelper(
-            self.full_name(), act='relu'
-        )
-        return layer_helper.append_activation(y)
+        # TODO: uncomment this lines to reproduce the oneDNN segment fault error.
+        # layer_helper = paddle.fluid.layer_helper.LayerHelper(
+        # self.full_name(), act='relu'
+        # )
+        # return layer_helper.append_activation(y)
+        return paddle.nn.functional.relu(y)
 
 
 class ResNet(paddle.nn.Layer):

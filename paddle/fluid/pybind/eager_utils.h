@@ -306,6 +306,10 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos);
 
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos);
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 std::shared_ptr<phi::distributed::auto_parallel::TensorDistAttr>
 CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos);

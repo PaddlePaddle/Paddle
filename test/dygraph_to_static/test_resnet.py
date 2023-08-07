@@ -134,11 +134,7 @@ class BottleneckBlock(paddle.nn.Layer):
             short = self.short(inputs)
 
         y = paddle.add(x=short, y=conv2)
-
-        layer_helper = fluid.layer_helper.LayerHelper(
-            self.full_name(), act='relu'
-        )
-        return layer_helper.append_activation(y)
+        return paddle.nn.functional.relu(y)
 
 
 class ResNet(paddle.nn.Layer):
