@@ -378,12 +378,12 @@ void DistributedFusedLambInitOpKernel(
 
     PADDLE_ENFORCE_EQ(
         param.size(),
-        param_out->size(),
+        param_out.size(),
         errors::InvalidArgument("Input(Param) and Output(ParamOut) "
                                 "should have the same number."));
     PADDLE_ENFORCE_EQ(
         grad.size(),
-        grad_out->size(),
+        grad_out.size(),
         errors::InvalidArgument(
             "Input(Grad) and Output(GradOut) should have the same number."));
     size_t n = param.size();
