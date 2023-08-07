@@ -88,7 +88,7 @@ class RecomOffloadPass(PassBase):
         var_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
             self._main_block.var(new_var_name)
         )
-        assert op_dist_attr is not None
+        assert op_dist_attr is not None, "Reset op {}'s dist_attr, but its dist_attr is None".format(op.desc.type())
         if is_input:
             op_dist_attr.set_input_dist_attr(new_var_name, var_dist_attr)
         if not is_input:
@@ -110,13 +110,16 @@ class RecomOffloadPass(PassBase):
                 self.pos_insert_op_map[idx] = [("offload", checkpoint_name)]
             return checkpoint_name
         elif op_type == "fetch":
-            var_name = self.unoffload_checkpoint_names.pop(-1)
-            logging.debug(f"Record fetch {var_name}")
+            assert (
+                checkpoint_name in self.unoffload_checkpoint_names
+            ), "{} not in unoffload_checkpoint_names"
+            self.unoffload_checkpoint_names.remove(checkpoint_name)
+            logging.debug(f"Record fetch {checkpoint_name}")
             if idx in self.pos_insert_op_map:
-                self.pos_insert_op_map[idx].append(("fetch", var_name))
+                self.pos_insert_op_map[idx].append(("fetch", checkpoint_name))
             else:
-                self.pos_insert_op_map[idx] = [("fetch", var_name)]
-            return var_name
+                self.pos_insert_op_map[idx] = [("fetch", checkpoint_name)]
+            return checkpoint_name
         else:
             raise ValueError(
                 "Only support op_type 'offlad' and 'fetch', but reveivee {}".format(
@@ -127,38 +130,8 @@ class RecomOffloadPass(PassBase):
     def _get_offload_pos(self):
         # such as: "origin_idx : ["fetch", var_name, "fetch", var_name]"
         self.pos_insert_op_map = {}
-        self.unoffload_checkpoint_names = self._sorted_offload_points[:]
-        _ = self.unoffload_checkpoint_names.pop(-1)
+        self.unoffload_checkpoint_names = self._offload_points[:]
         self.need_offload_checkpoint_names = self.unoffload_checkpoint_names[:]
-        # find the first forward op idx and the first backward op idx
-        self.fw_start_op_idx = len(self._main_block.ops)
-        self.bw_start_op_idx = -1
-        for idx, op in enumerate(self._main_block.ops):
-            if int(
-                op.desc.attr('op_role')
-            ) == 0 and self.fw_start_op_idx == len(
-                self._main_block.ops
-            ):  # 0 means 'forward op'
-                self.fw_start_op_idx = idx
-            elif int(op.desc.attr('op_role')) == 1:  # 1 means 'backward op'
-                self.bw_start_op_idx = idx
-                break
-            else:
-                pass
-        logging.debug(
-            "fw_start_op_idx:{} and bw_first_op_idx: {}".format(
-                self.fw_start_op_idx, self.bw_start_op_idx
-            )
-        )
-        assert self.fw_start_op_idx < len(
-            self._main_block.ops
-        ), "FW op should exist"
-        assert self.bw_start_op_idx < len(
-            self._main_block.ops
-        ), "BW op should exist"
-        assert (
-            self.fw_start_op_idx < self.bw_start_op_idx
-        ), "BW start op must be behind th FW start op"
 
         # record the checkpoints after they are generated
         for idx, op in enumerate(
@@ -169,12 +142,6 @@ class RecomOffloadPass(PassBase):
             # record the ops which need be offloaded
             for output_var_name in output_var_names:
                 if output_var_name in self.need_offload_checkpoint_names:
-                    # TODO(lizhiyu): the op must only have one output var, it will support multiple outputs in the futrure
-                    assert (
-                        len(output_var_names) == 1
-                    ), "chekpoint should be the only Output of a certain op, but {} is from {}".format(
-                        output_var_names, op
-                    )
                     if output_var_name in self.unoffload_checkpoint_names:
                         self._record_op_to_insert(
                             idx + 1, output_var_name, "offload"
@@ -208,54 +175,27 @@ class RecomOffloadPass(PassBase):
             else:
                 pass
         assert self.bw_start_op_idx < all_ops_num, "BW op should exist"
-        # use for prefetch one checkpoint
-        checkpoint_usage_count = {}
-        for ckpt in self.need_offload_checkpoint_names:
-            checkpoint_usage_count[ckpt] = 0
 
-        # prefetch one checkpoint
-        fetched_checkpoint_varname = self._record_op_to_insert(
-            self.bw_start_op_idx, None, "fetch"
-        )
-        prev_fetched_checkpoint_varname = None
         for i, op in enumerate(self._main_block.ops[self.bw_start_op_idx :]):
             current_idx = self.bw_start_op_idx + i
             input_varnames = op.desc.input_arg_names()
             output_varnames = op.desc.output_arg_names()  # for nop op
             for input_varname in input_varnames:
                 if input_varname in self.need_offload_checkpoint_names:
-                    if input_varname not in self.unoffload_checkpoint_names:
-                        if checkpoint_usage_count[input_varname] == 0:  #
-                            prev_fetched_checkpoint_varname = (
-                                fetched_checkpoint_varname
-                            )
-                            # the first checkpoint has already been fetched
-                            if input_varname != self._sorted_offload_points[0]:
-                                fetched_checkpoint_varname = (
-                                    self._record_op_to_insert(
-                                        current_idx, None, "fetch"
-                                    )
-                                )
-                        assert (
-                            prev_fetched_checkpoint_varname == input_varname
-                        ), "Current recompute segment need use {}, but got {}".format(
-                            prev_fetched_checkpoint_varname, input_varname
-                        )
-                        # deal origin ops inputs
-                        self._reset_op_dist_attr(
-                            self._main_block.ops[current_idx],
-                            self._varnames2fetch_names[input_varname],
-                        )
-                        self._main_block.ops[current_idx]._rename_input(
-                            input_varname,
-                            self._varnames2fetch_names[input_varname],
-                        )
+                    if input_varname in self.unoffload_checkpoint_names:
+                        insert_idx = current_idx - 1 if current_idx - 1 >= self.bw_start_op_idx else self.bw_start_op_idx
+                        self._record_op_to_insert(insert_idx, input_varname, "fetch")
                     else:
-                        raise ValueError(
-                            "The input var {} has already been fetched".format(
-                                input_varname
-                            )
-                        )
+                        logging.debug(f"The var {input_varname} has already been fetched and is reused by op {op.desc.type()}") 
+                    # deal origin ops inputs
+                    self._reset_op_dist_attr(
+                        self._main_block.ops[current_idx],
+                        self._varnames2fetch_names[input_varname],
+                    )
+                    self._main_block.ops[current_idx]._rename_input(
+                        input_varname,
+                        self._varnames2fetch_names[input_varname],
+                    )
                 else:
                     pass
 
@@ -364,9 +304,68 @@ class RecomOffloadPass(PassBase):
         self._dist_context = self.get_attr("dist_context")
         self._main_block = main_program.global_block()
 
-        self._sorted_offload_points = self._offload_points[:]
-        assert len(self._sorted_offload_points) > 0, " points must not empty"
+        # We need to pop some tensors those shouldn't be offload
+        # 1.Pop the tensors those don't have memory such as Xshape of 'unsqueese2'.
+        ckpts_without_memory = []
+        for var_name in self._offload_points:
+            var = self._main_block.var(var_name)
+            if 0 in var.shape:
+                ckpts_without_memory.append(var_name)
+        logging.debug(f"Those vars {ckpts_without_memory} don't have memory.")
+        for var_name in ckpts_without_memory:
+            self._offload_points.remove(var_name)
 
+        # 2.Pop the checkpoints that are the last op in forward pass
+        # find the first forward op idx and the first backward op idx
+        self.fw_start_op_idx = len(self._main_block.ops)
+        self.bw_start_op_idx = -1
+        for idx, op in enumerate(self._main_block.ops):
+            if int(
+                op.desc.attr('op_role')
+            ) == 0 and self.fw_start_op_idx == len(
+                self._main_block.ops
+            ):  # 0 means 'forward op'
+                self.fw_start_op_idx = idx
+            elif int(op.desc.attr('op_role')) == 1:  # 1 means 'backward op'
+                self.bw_start_op_idx = idx
+                break
+            else:
+                pass
+        logging.debug(
+            "fw_start_op_idx:{} and bw_first_op_idx: {}".format(
+                self.fw_start_op_idx, self.bw_start_op_idx
+            )
+        )
+        assert self.fw_start_op_idx < len(
+            self._main_block.ops
+        ), "FW op should exist"
+        assert self.bw_start_op_idx < len(
+            self._main_block.ops
+        ), "BW op should exist"
+        assert (
+            self.fw_start_op_idx < self.bw_start_op_idx
+        ), "BW start op must be behind th FW start op"
+
+        has_pop_last_outputs = False
+        for op in reversed(self._main_block.ops[self.fw_start_op_idx : self.bw_start_op_idx]):
+            output_var_names = op.desc.output_arg_names()
+            output_count = len(output_var_names)
+            pop_output_count = 0
+            for output_var_name in output_var_names:
+                if (pop_output_count != 0):
+                    assert (output_var_name in self._offload_points), "The operator {} has more than one outputs, but not all the outputs are checkpoints, such as {}".format(op.desc.type(), output_var_name)
+                if output_var_name in self._offload_points:
+                    self._offload_points.remove(output_var_name)
+                    pop_output_count += 1
+                    if (pop_output_count == output_count):
+                        has_pop_last_outputs = True
+                if (has_pop_last_outputs):
+                    break
+            if (has_pop_last_outputs):
+                break
+
+        assert len(self._offload_points) > 0, " points must not empty"
+        logging.debug(f"The checkpints without the last op's checkpoints is {self._offload_points}")
         self._varnames2pinned_names = {}
         self._varnames2fetch_names = {}
 
@@ -374,12 +373,12 @@ class RecomOffloadPass(PassBase):
         for _, op in enumerate(self._main_block.ops):
             if (
                 len(self._varnames2fetch_names)
-                == len(self._sorted_offload_points) - 1
+                == len(self._offload_points)
             ):
                 break
             output_vars = op.desc.output_arg_names()
             for output_var in output_vars:
-                if output_var in self._sorted_offload_points:
+                if output_var in self._offload_points:
                     ref_op_dist_attr = (
                         self._dist_context.get_op_dist_attr_for_program(op)
                     )
@@ -403,4 +402,4 @@ class RecomOffloadPass(PassBase):
             self.bw_start_op_idx, len(self._main_block.ops)
         )
         # print("finished program = {}".format(main_program))
-        # paddle.save(main_program, "final_prog.pdmodel")
+        # paddle.save(main_program, "new_final_prog.pdmodel")

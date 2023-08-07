@@ -1980,7 +1980,6 @@ def set_recompute_segments(model, losses, strategy, program):
     rc_state = RecomputeState(block, block.ops)
     rc_state.build_stats()
     checkpoints = rc_state.sort_checkpoints(ckpts)
-    recompute.checkpoints = checkpoints
 
     segments = []
     start_idx = -1

@@ -322,7 +322,7 @@ class Parallelizer:
                 config["no_grad_set"] = None
                 config["loss"] = loss
                 config["offload_points"] = copy.deepcopy(
-                    recom_config["checkpoints"]
+                    auto_parallel_recompute_pass.get_vars_for_offload()
                 )
                 auto_parallel_recom_offload_pass = new_pass(
                     "auto_parallel_recom_offload", config
