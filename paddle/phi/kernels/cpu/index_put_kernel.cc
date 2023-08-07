@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_kernel.h"
+#include <array>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -75,7 +76,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
 
   int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  const int64_t* pd_indices[7];
+  std::array<const int64_t*, 7> pd_indices;
   for (size_t i = 0; i < indices.size(); ++i) {
     pd_indices[i] = indices[i]->data<int64_t>();
   }
@@ -83,7 +84,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
   index_put_kernel<T>(numel,
                       x_data,
                       val_data,
-                      pd_indices,
+                      pd_indices.data(),
                       x_stride,
                       x_dims,
                       is_single_val_tensor,
