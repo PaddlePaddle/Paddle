@@ -34,7 +34,6 @@ from paddle.fluid import (
 )
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import Parameter, dygraph_not_support, static_only
-from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
 from paddle.fluid.log_helper import get_logger
 from paddle.framework.io_utils import (
     _clone_var_in_block_,
@@ -135,6 +134,56 @@ def _clone_var_in_block(block, var):
             dtype=var.dtype,
             type=var.type,
             persistable=True,
+        )
+
+
+def prepend_feed_ops(
+    inference_program, feed_target_names, feed_holder_name='feed'
+):
+    if len(feed_target_names) == 0:
+        return
+
+    global_block = inference_program.global_block()
+    feed_var = global_block.create_var(
+        name=feed_holder_name,
+        type=core.VarDesc.VarType.FEED_MINIBATCH,
+        persistable=True,
+    )
+
+    for i, name in enumerate(feed_target_names):
+        if not global_block.has_var(name):
+            raise ValueError(
+                "The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
+                "Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
+                "if '{name}' is not involved in the target_vars calculation.".format(
+                    i=i, name=name
+                )
+            )
+        out = global_block.var(name)
+        global_block._prepend_op(
+            type='feed',
+            inputs={'X': [feed_var]},
+            outputs={'Out': [out]},
+            attrs={'col': i},
+        )
+
+
+def append_fetch_ops(
+    inference_program, fetch_target_names, fetch_holder_name='fetch'
+):
+    global_block = inference_program.global_block()
+    fetch_var = global_block.create_var(
+        name=fetch_holder_name,
+        type=core.VarDesc.VarType.FETCH_LIST,
+        persistable=True,
+    )
+
+    for i, name in enumerate(fetch_target_names):
+        global_block.append_op(
+            type='fetch',
+            inputs={'X': [name]},
+            outputs={'Out': [fetch_var]},
+            attrs={'col': i},
         )
 
 
