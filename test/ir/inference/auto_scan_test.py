@@ -787,8 +787,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     continue
                 
                 if explicit:
-                    pred_config.enable_tensorrt_explicit()
-                    self.assertTrue(pred_config.tensorrt_explicit_enabled())
+                    pred_config.enable_tensorrt_explicit_quantization()
+                    self.assertTrue(pred_config.tensorrt_explicit_quantization_enabled())
 
                 ignore_flag = False
                 for teller, reason, note in self.ignore_cases:

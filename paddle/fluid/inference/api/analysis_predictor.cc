@@ -1397,7 +1397,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_->SetTensorRtUseInspector(config_.trt_use_inspector_);
-    argument_->SetTensorRtUseExplicit(config_.trt_use_explicit_);
+    argument_->SetTensorRtUseExplicitQuantization(
+        config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
   }
 

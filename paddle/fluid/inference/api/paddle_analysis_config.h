@@ -851,8 +851,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to use TensorRT explicit quantization.
   ///
-  void EnableTensorRtExplicit();
-  bool tensorrt_explicit_enabled() { return trt_use_explicit_; }
+  void EnableTensorRtExplicitQuantization();
+  bool tensorrt_explicit_quantization_enabled() {
+    return trt_use_explicit_quantization_;
+  }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1231,7 +1233,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
-  bool trt_use_explicit_{false};
+  bool trt_use_explicit_quantization_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
