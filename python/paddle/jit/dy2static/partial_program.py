@@ -214,7 +214,9 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars, in_var_names = self._prepare(inputs)
+        in_vars, out_vars, in_var_names, resume_name_record = self._prepare(
+            inputs
+        )
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
         attrs.extend(["x_names", in_var_names])
@@ -232,6 +234,11 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs
         )
+
+        for var in in_vars:
+            if var.name in resume_name_record:
+                var.name = resume_name_record[var.name]
+
         self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
@@ -889,6 +896,7 @@ class PartialProgramLayer:
         # Convert variable into Tensor and feed in training data.
         input_vars = []
         input_var_names = []
+        resume_name_record = {}
         expected_place = framework._current_expected_place()
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
@@ -911,6 +919,8 @@ class PartialProgramLayer:
                     var.stop_gradient = True
                 else:
                     var = value
+                resume_name_record[self._inputs[i].desc.name()] = var.name
+                var.name = self._inputs[i].desc.name()
             else:
                 continue
             input_var_names.append(self._inputs[i].desc.name())
@@ -941,7 +951,7 @@ class PartialProgramLayer:
         # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))
 
-        return input_vars, out_vars, input_var_names
+        return input_vars, out_vars, input_var_names, resume_name_record
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         # Hold forward variables
