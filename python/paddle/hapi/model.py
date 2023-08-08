@@ -385,7 +385,7 @@ class StaticGraphAdapter:
 
         _save(optim, optim_path)
 
-    # TODO: upport save/load scaler state in static graph
+    # TODO: Support save/load scaler state in static graph
     def load(self, param_state_pairs, optim_state):
         if self._executor is None:
             executor = fluid.Executor(fluid.CPUPlace())._default_executor
