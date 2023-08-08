@@ -608,7 +608,7 @@ __global__ void masked_multiquery_attention_kernel(
     int offset = bhi_kv * params.max_seq_length * Dh +
                  co * params.max_seq_length * QK_ELTS_IN_16B +
                  act_time_step * QK_ELTS_IN_16B + ci;
-    if (blockIdx.x == 0 && (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
+    if (blockIdx.x < params.head_kv && (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
       *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
     }
 
