@@ -34,7 +34,7 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   for (auto &ev : events_) {
     if (ev.second) {
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
 #elif defined(PADDLE_WITH_MUSA)
       PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(ev.second));
