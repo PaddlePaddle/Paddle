@@ -30,6 +30,9 @@ endif()
 
 list(APPEND MUSA_MCC_FLAGS --cuda-gpu-arch=mp_21)
 list(APPEND MUSA_MCC_FLAGS -U__CUDA__)
+# MUSA has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
+list(APPEND MUSA_MCC_FLAGS -D__MUSA_NO_HALF_CONVERSIONS__)
+
 #set(MUSA_VERBOSE_BUILD ON)
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   list(APPEND MUSA_MCC_FLAGS -g2)

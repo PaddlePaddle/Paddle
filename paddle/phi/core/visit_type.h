@@ -281,9 +281,17 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT16, int16_t, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT32, int32_t, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT64, int64_t, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::BFLOAT16, phi::bfloat16, __VA_ARGS__)         \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::FLOAT16, phi::float16, __VA_ARGS__)           \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::FLOAT32, float, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT64, double, __VA_ARGS__)                 \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::COMPLEX64, phi::complex64, __VA_ARGS__)       \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::COMPLEX128, phi::complex128, __VA_ARGS__)     \
       default:                                                                 \
         PADDLE_THROW(phi::errors::InvalidArgument(                             \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \

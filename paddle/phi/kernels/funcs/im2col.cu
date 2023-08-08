@@ -472,8 +472,7 @@ __global__ void col2imOCF(const T* col_data,
 
         if (height_offset >= 0 && height_offset < im_height &&
             width_offset >= 0 && width_offset < im_width) {
-	  // TODO(@caizhi): compile CudaAtomicAdd
-          //phi::CudaAtomicAdd(im_data + im_offset, col_data[col_offset]);
+          phi::CudaAtomicAdd(im_data + im_offset, col_data[col_offset]);
         }
       }
     }

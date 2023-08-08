@@ -61,8 +61,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
         }
         if (j > 0) {
           if (last_segment_id == first_segment_id) {
-	    // TODO(@caizhi): enable compiling CudaAtomicAdd
-            //phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+            phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
           } else {
             *(summed_ids + last_segment_id) = sum;
           }
@@ -72,7 +71,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
       sum += T(1);
       last_segment_id = current_segment_id;
     }
-    //phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+    phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
   }
 }
 
@@ -113,9 +112,8 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
               last_segment_id * inner_dim_size + segment_offset;
 
           if (last_segment_id == first_segment_id) {
-	    // TODO(@caizhi): enable compiling CudaAtomicAdd
-            //phi::CudaAtomicAdd(output + output_index,
-            //                   sum / *(summed_ids + last_segment_id));
+            phi::CudaAtomicAdd(output + output_index,
+                               sum / *(summed_ids + last_segment_id));
           } else {
             *(output + output_index) = sum / *(summed_ids + last_segment_id);
           }
@@ -126,9 +124,8 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
       last_segment_id = current_segment_id;
     }
     Index output_index = last_segment_id * inner_dim_size + segment_offset;
-    // TODO(@caizhi): enable compiling CudaAtomicAdd
-    //phi::CudaAtomicAdd(output + output_index,
-    //                   sum / *(summed_ids + last_segment_id));
+    phi::CudaAtomicAdd(output + output_index,
+                       sum / *(summed_ids + last_segment_id));
   }
 }
 
@@ -219,9 +216,7 @@ class MaxPool {
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
-    // TODO(@caizhi): enable compiling CudaAtomicAdd
-    //return phi::CudaAtomicMax(address, val);
-    return val;
+    return phi::CudaAtomicMax(address, val);
   }
 };
 
@@ -231,9 +226,7 @@ class MinPool {
   DEVICE inline T initial() { return static_cast<T>(FLT_MAX); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y < x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
-    // TODO(@caizhi): enable compiling CudaAtomicAdd
-    //return phi::CudaAtomicMin(address, val);
-    return val;
+    return phi::CudaAtomicMin(address, val);
   }
 };
 
@@ -243,9 +236,7 @@ class SumPool {
   DEVICE inline T initial() { return static_cast<T>(0); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y + x; }
   DEVICE inline T atomic(T* address, const T val) {
-    // TODO(@caizhi): enable compiling CudaAtomicAdd
-    //return phi::CudaAtomicAdd(address, val);
-    return val;
+    return phi::CudaAtomicAdd(address, val);
   }
 };
 
