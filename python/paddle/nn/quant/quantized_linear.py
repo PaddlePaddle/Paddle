@@ -35,10 +35,10 @@ def quant_for_infer(x, layout="weight_only_int8"):
 
             # required: cpu
             import paddle
-            from paddle.incubate.nn.functional import quant_for_infer
+            from paddle.nn.quant import quant_for_infer
 
             x = paddle.randn([3, 4])
-            out, scale = quant_for_infer(x, 'weight_only_int8')
+            out, scale = quant_for_infer(x, layout='weight_only_int8')
             print(out.shape) # [4, 3]
             print(scale.shape) # [4]
     """

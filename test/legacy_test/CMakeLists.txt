@@ -113,6 +113,8 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
 
 if(WIN32)
+  list(REMOVE_ITEM TEST_OPS weight_only_linear)
+  list(REMOVE_ITEM TEST_OPS llm_int8_linear)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
