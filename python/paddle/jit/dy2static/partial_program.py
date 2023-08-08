@@ -910,10 +910,9 @@ class PartialProgramLayer:
                     var.stop_gradient = True
                 else:
                     var = value
-                var.name = self._inputs[i].desc.name()
             else:
                 continue
-            input_var_names.append(var.name)
+            input_var_names.append(self._inputs[i].desc.name())
             input_vars.append(var)
 
         # mapping from name(string) -> Tensor

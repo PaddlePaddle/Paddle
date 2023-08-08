@@ -332,7 +332,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                 input_var.stop_gradient = stop_gradient
 
             if isinstance(input_var, paddle.static.InputSpec):
-                input_var.name = name_prefix + "." + str(index)
+                input_var.name = "_jst." + name_prefix + "." + str(index)
                 index += 1
             args_with_spec.append(input_var)
     args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)
