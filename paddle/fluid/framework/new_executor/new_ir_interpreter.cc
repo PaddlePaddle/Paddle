@@ -45,7 +45,7 @@ PHI_DECLARE_bool(enable_new_ir_in_executor);
 
 PHI_DECLARE_bool(enable_new_ir_in_executor_beta_run);
 
-PHI_DECLARE_bool(enable_new_ir_in_executor_loop_run);
+PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
 
 namespace paddle {
 namespace framework {
@@ -135,26 +135,9 @@ void NewIRInterpreter::RunImpl() {
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
-  //   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn)
-  //   &&
-  //       (sync_op_num_ == 0)) {
   VLOG(4) << "Tracing Instruction List";
 
   TraceInstructionList(vec_instruction_);
-
-  //   } else {
-  //     VLOG(4) << "Non-tracing";
-  //     // For the program that only run once, it is no need to
-  //     // create work_queue, so the async_work_queue_ is created
-  //     // until the second step run.
-  //     async_work_queue_ = GetWorkQueue();
-  //     ExecuteInstructionList(vec_instruction_);
-  //   }
-  // #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  //   if (platform::is_custom_place(place_)) {
-  //     platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  //   }
-  // #endif
 }
 
 FetchList NewIRInterpreter::Run(
@@ -561,28 +544,6 @@ void NewIRInterpreter::PrepareForCUDAGraphCapture() {
                     platform::errors::InvalidArgument(
                         "FLAGS_sync_nccl_allreduce must be False to support "
                         "CUDA Graph capturing."));
-
-  // All output vars of coalesce_tensor op should be persistable.
-  // If fused output var of coalesce_tensor is gc, it will cause accuracy
-  // problem. The specific reasons need to be analyzed.
-//   for (auto& op_desc : block_.AllOps()) {
-//     if (op_desc->Type() == kCoalesceTensor) {
-//       for (auto& out_var_name : op_desc->OutputArgumentNames()) {
-//         // The fused var needs to be set to persistable, not just added to
-//         // skip_gc_vars.
-//         // In the case where the feed fetch var is changed,
-//         StandaloneExecutor
-//         // will be newly constructed. If the fused var is not persistable,
-//         // these vars will be recreated and initialized, resulting in
-//         // precision problems.
-//         auto* out_var = op_desc->Block()->FindVarRecursive(out_var_name);
-//         if (out_var) {
-//           out_var->SetPersistable(true);
-//           VLOG(4) << "Mark Var(" << out_var_name << ") as Persistable.";
-//         }
-//       }
-//     }
-//   }
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "CUDA Graph is only supported on NVIDIA GPU device."));
@@ -1949,22 +1910,22 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_loop_run) {
-      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
-                              "with for_loop version.";
-      LoopRunImpl();
-    } else {
+    if (FLAGS_enable_new_ir_in_executor_trace_run) {
       LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
                               "with trace version.";
       TraceRunImpl();
+    } else {
+      LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
+                              "with multi thread version.";
+      MultiThreadRunImpl();
     }
 
     is_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_loop_run) {
-      LoopRunImpl();
-    } else {
+    if (FLAGS_enable_new_ir_in_executor_trace_run) {
       TraceRunImpl();
+    } else {
+      MultiThreadRunImpl();
     }
   }
 
@@ -2006,19 +1967,6 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   }
 }
 
-void NewIRInterpreter::LoopRunImpl() {
-  // lazy initialization of gc, do not create gc is the program only run once
-  if (!gc_) {
-    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
-  }
-
-  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
-  VLOG(4) << "Loop Instruction List";
-
-  LoopRunInstructionList(vec_instruction_base_);
-  VLOG(4) << "Done LoopRunImpl";
-}
-
 void NewIRInterpreter::TraceRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
@@ -2029,49 +1977,21 @@ void NewIRInterpreter::TraceRunImpl() {
   VLOG(4) << "Tracing Instruction List";
 
   TraceRunInstructionList(vec_instruction_base_);
-  VLOG(4) << "Done TraceRunImpl";
+  VLOG(4) << "Done TraceRunInstructionList";
 }
 
-void NewIRInterpreter::LoopRunInstructionList(
-    const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
-  unfinished_op_number_ = vec_instr.size();
-  if (unfinished_op_number_ == 0) {
-    VLOG(4) << "No op to run, return";
-    return;
+void NewIRInterpreter::MultiThreadRunImpl() {
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
   }
 
-  exception_holder_.Clear();
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+  VLOG(4) << "Multi Thread Run Instruction List";
 
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
-      // NOTE(zhiqiu): hot fix for jit input var
-      RecordMemcpyD2H(vec_instr.at(i).get());
-    }
-  }
-
-  for (size_t idx = 0; idx < vec_instr.size(); idx++) {
-    InstructionBase* instr_node = vec_instr[idx].get();
-
-    VLOG(6) << "Run InstructionBase " << idx;
-    RunInstructionBase(instr_node);
-
-    if (UNLIKELY(exception_holder_.IsCaught())) {
-      VLOG(4) << "Exception caught";
-      break;
-    }
-  }
-
-  if (UNLIKELY(exception_holder_.IsCaught())) {
-    VLOG(1) << "Exception caught " << exception_holder_.Type();
-    PADDLE_ENFORCE_EQ(
-        main_thread_blocker_.Clear(),
-        0,
-        platform::errors::PreconditionNotMet(
-            "main_thread_blocker_.Clear() return -1, clear failed"));
-    VLOG(4) << "clear ok";
-    exception_holder_.ReThrow();
-  }
-  VLOG(4) << "Done LoopRunInstructionList";
+  async_work_queue_ = GetWorkQueue();
+  MultiThreadRunInstructionList(vec_instruction_base_);
+  VLOG(4) << "Done MultiThreadRunInstructionList";
 }
 
 void NewIRInterpreter::TraceRunInstructionList(
@@ -2116,6 +2036,147 @@ void NewIRInterpreter::TraceRunInstructionList(
     exception_holder_.ReThrow();
   }
   VLOG(4) << "Done TraceRunInstructionList";
+}
+
+void NewIRInterpreter::MultiThreadRunInstructionList(
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i).get());
+      if (FLAGS_new_executor_serial_run) {
+        RunInstructionBaseAsync(i);
+      } else {
+        async_work_queue_->AddTask(vec_instr.at(i)->KernelType(),
+                                   [this, i] { RunInstructionBaseAsync(i); });
+      }
+    }
+  }
+
+  // For debug hang in main_thread_blocker_.WaitEvent(),
+  // launch async task to log deps every
+  // FLAGS_executor_log_deps_every_microseconds, then cancel the std::async when
+  // main_thread_blocker_.WaitEvent() executed. Why not use std::async instead
+  // of workqueue? To make sure that the logging thread itself will not affect
+  // the workqueue
+  //  used in interpretercore.
+
+  std::future<int> logged_times;
+  std::atomic_bool cancel_log = ATOMIC_VAR_INIT(false);
+  if (FLAGS_executor_log_deps_every_microseconds) {
+    logged_times = std::async(
+        std::launch::async,
+        [this](const std::atomic_bool& cancel) {
+          int times = 0;
+          while (!cancel) {
+            std::this_thread::sleep_for(std::chrono::microseconds(
+                FLAGS_executor_log_deps_every_microseconds));
+            // check again, since cancel may be changed during sleep
+            if (cancel) {
+              break;
+            }
+            VLOG(0) << "deps:\n" << GetDepsString();
+            times++;
+          }
+          return times;
+        },
+        std::ref(cancel_log));
+  }
+
+  auto event_name = main_thread_blocker_.WaitEvent();
+  VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
+          << ") got event_name: " << event_name;
+
+  cancel_log = true;
+  if (logged_times.valid()) {
+    VLOG(1) << "Logged deps for " << logged_times.get() << " times";
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    // Graceful exit when the executor encountered a fatal error.
+    // EOF is not a fatal error.
+    if (exception_holder_.Type() != "EOF") {
+      async_work_queue_->Cancel();
+      async_work_queue_.reset();
+    }
+    VLOG(4) << "Cancel ok";
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+}
+
+void NewIRInterpreter::RunInstructionBaseAsync(size_t instr_id) {
+  // NOTE(Ruibiao): Due to the uncertain order in multi-threading asynchronous
+  // scheduling, the priority order involved cross-thread scheduling is not
+  // guaranteed. Only Ops scheduled by the same AddTask call have the guarantee
+  // of priority order.
+  SchedulingQueue ready_ops(ir_instruction_scheduling_priority_less);
+  ready_ops.push(instr_id);
+  while (!ready_ops.empty()) {
+    instr_id = ready_ops.top();
+    ready_ops.pop();
+    auto* instr_node = vec_instruction_base_.at(instr_id).get();
+
+    RunInstructionBase(instr_node);
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      if (exception_notifier_ != nullptr) {
+        exception_notifier_->NotifyEvent();
+      }
+      return;
+    }
+
+    VLOG(4) << "unfinished_op_number_: " << unfinished_op_number_;
+    if (UNLIKELY(unfinished_op_number_.fetch_sub(
+                     1, std::memory_order_relaxed) == 1)) {
+      if (completion_notifier_ != nullptr) {
+        completion_notifier_->NotifyEvent();
+      }
+    }
+
+    RunNextInstructions(instr_node, &ready_ops);
+  }
+}
+
+void NewIRInterpreter::RunNextInstructions(InstructionBase* instr,
+                                           SchedulingQueue* reserved_next_ops) {
+  platform::RecordEvent record(
+      "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
+
+  auto IsReady = [this](size_t next_id) {
+    VLOG(4) << "op_id: " << next_id
+            << ", remain deps: " << deps_[next_id]->DynamicDep();
+    return deps_[next_id]->CheckAndDecrease();
+  };
+
+  for (size_t next_instr_id : instr->NextInstrsInDifferenceThread()) {
+    if (IsReady(next_instr_id)) {
+      async_work_queue_->AddTask(
+          vec_instruction_[next_instr_id]->KernelType(),
+          [this, next_instr_id]() { RunInstructionBaseAsync(next_instr_id); });
+    }
+  }
+
+  for (size_t next_instr_id : instr->NextInstrsInSameThread()) {
+    if (IsReady(next_instr_id)) {
+      reserved_next_ops->push(next_instr_id);
+    }
+  }
 }
 
 void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {

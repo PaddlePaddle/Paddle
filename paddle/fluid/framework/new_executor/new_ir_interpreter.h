@@ -215,15 +215,20 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void BuildInstructionDependences();
 
-  void LoopRunImpl();
-
   void TraceRunImpl();
 
   void TraceRunInstructionList(
       const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
 
-  void LoopRunInstructionList(
+  void MultiThreadRunImpl();
+
+  void MultiThreadRunInstructionList(
       const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
+
+  void RunInstructionBaseAsync(size_t instr_id);
+
+  void RunNextInstructions(InstructionBase* instr,
+                           SchedulingQueue* reserved_next_ops);
 
   void RunInstructionBase(InstructionBase* instr_node);
 
