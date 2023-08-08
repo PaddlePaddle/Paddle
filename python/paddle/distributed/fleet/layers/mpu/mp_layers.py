@@ -339,10 +339,20 @@ class ColumnParallelLinear(paddle.nn.Layer):
                     op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
                     paddle.fluid.core.nvprof_nvtx_push("dx all_reduce")
                     task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(dx, op_type)
+                    tmp = paddle.ones([16, 512])
+                    # task = self.model_parallel_group.process_group.all_reduce_on_calc_stream(dx, op_type)
                     paddle.fluid.core.nvprof_nvtx_pop()
                     paddle.fluid.core.nvprof_nvtx_push("dw compute")
-                    dw = paddle.matmul(ctx.input, dy, transpose_x=True)
+
+                    dw = paddle.matmul(ctx.input.reshape([-1, ctx.input.shape[-1]]), dy.reshape([-1, dy.shape[-1]]), transpose_x=True)
                     paddle.fluid.core.nvprof_nvtx_pop()
+
+                    # print("dy shape: ", dy.shape)
+                    # print("dw shape: ", dw.shape)
+                    # print("dx shape: ", dx.shape)
+                    # print("ctx.weight shape: ", ctx.weight.shape)
+                    # print("ctx.input shape: ", ctx.input.shape)
+                    # print("****" * 20)
 
                     if not ctx.has_bias:
                         task.wait()

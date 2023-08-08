@@ -896,7 +896,7 @@ void BindDistributed(py::module *m) {
                 return self.AllReduce(out_dense,
                                       in_dense,
                                       opts,
-                                      /*sync_op*/ true,
+                                      /*sync_op*/ false,
                                       /*use_calc_stream*/ false);
               },
               py::arg("tensor"),
