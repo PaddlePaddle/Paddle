@@ -70,8 +70,8 @@ class TestChannelShuffleOp(OpTest):
     def init_data_format(self):
         self.format = "NCHW"
 
-    # def test_check_output(self):
-    #     self.check_output()
+    def test_check_output(self):
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
