@@ -274,8 +274,8 @@ class TestlayernormStaticOp(unittest.TestCase):
     def check_layernorm(self, x_np, gamma_np, beta_np, dtype):
         paddle.disable_static()
         x = paddle.to_tensor(x_np.astype(dtype))
-        gamma = paddle.to_tensor(gamma_np.astype(dtype))
-        beta = paddle.to_tensor(beta_np.astype(dtype))
+        gamma = paddle.to_tensor(gamma_np.astype(np.float32))
+        beta = paddle.to_tensor(beta_np.astype(np.float32))
 
         paddle_naive_layernorm_out = naive_layer_norm(
             x, gamma, beta, self.epsilon
@@ -287,10 +287,10 @@ class TestlayernormStaticOp(unittest.TestCase):
                 name="x_static", shape=[self.batch, self.cols], dtype=dtype
             )
             gamma_static = paddle.static.data(
-                name="gamma_static", shape=[self.cols], dtype=dtype
+                name="gamma_static", shape=[self.cols], dtype=paddle.float32
             )
             beta_static = paddle.static.data(
-                name="beta_static", shape=[self.cols], dtype=dtype
+                name="beta_static", shape=[self.cols], dtype=paddle.float32
             )
             outs = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
@@ -303,8 +303,8 @@ class TestlayernormStaticOp(unittest.TestCase):
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
-                    "gamma_static": gamma_np.astype(dtype),
-                    "beta_static": beta_np.astype(dtype),
+                    "gamma_static": gamma_np.astype(np.float32),
+                    "beta_static": beta_np.astype(np.float32),
                 },
                 fetch_list=[outs],
             )
@@ -313,8 +313,8 @@ class TestlayernormStaticOp(unittest.TestCase):
     def check_layernorm_int8(self, x_np, gamma_np, beta_np, dtype):
         paddle.disable_static()
         x = paddle.to_tensor(x_np.astype(dtype))
-        gamma = paddle.to_tensor(gamma_np.astype(dtype))
-        beta = paddle.to_tensor(beta_np.astype(dtype))
+        gamma = paddle.to_tensor(gamma_np.astype(np.float32))
+        beta = paddle.to_tensor(beta_np.astype(np.float32))
 
         paddle_naive_layernorm_out = naive_layer_norm_int8(
             x,
@@ -333,10 +333,10 @@ class TestlayernormStaticOp(unittest.TestCase):
                 name="x_static", shape=[self.batch, self.cols], dtype=dtype
             )
             gamma_static = paddle.static.data(
-                name="gamma_static", shape=[self.cols], dtype=dtype
+                name="gamma_static", shape=[self.cols], dtype=paddle.float32
             )
             beta_static = paddle.static.data(
-                name="beta_static", shape=[self.cols], dtype=dtype
+                name="beta_static", shape=[self.cols], dtype=paddle.float32
             )
             outs = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
@@ -353,8 +353,8 @@ class TestlayernormStaticOp(unittest.TestCase):
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
-                    "gamma_static": gamma_np.astype(dtype),
-                    "beta_static": beta_np.astype(dtype),
+                    "gamma_static": gamma_np.astype(np.float32),
+                    "beta_static": beta_np.astype(np.float32),
                 },
                 fetch_list=[outs],
             )
@@ -365,13 +365,13 @@ class TestlayernormStaticOp(unittest.TestCase):
     ):
         paddle.disable_static()
         x = paddle.to_tensor(x_np.astype(dtype))
-        gamma = paddle.to_tensor(gamma_np.astype(dtype))
-        beta = paddle.to_tensor(beta_np.astype(dtype))
+        gamma = paddle.to_tensor(gamma_np.astype(np.float32))
+        beta = paddle.to_tensor(beta_np.astype(np.float32))
         residual = paddle.to_tensor(residual_np.astype(dtype))
         bias = paddle.to_tensor(bias_np.astype(dtype))
 
         paddle_naive_layernorm_out = naive_residual_biasadd_layer_norm(
-            x, residual, bias, gamma, beta, self.epsilon
+            x, residual, bias, gamma, beta, self.epsilon, self.residual_alpha
         )
         paddle.enable_static()
 
@@ -388,10 +388,10 @@ class TestlayernormStaticOp(unittest.TestCase):
                 name="bias_static", shape=[self.cols], dtype=dtype
             )
             gamma_static = paddle.static.data(
-                name="gamma_static", shape=[self.cols], dtype=dtype
+                name="gamma_static", shape=[self.cols], dtype=paddle.float32
             )
             beta_static = paddle.static.data(
-                name="beta_static", shape=[self.cols], dtype=dtype
+                name="beta_static", shape=[self.cols], dtype=paddle.float32
             )
             outs = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
@@ -399,6 +399,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 beta_static,
                 self.epsilon,
                 begin_norm_axis=1,
+                residual_alpha=self.residual_alpha,
                 bias=bias_static,
                 residual=residual_static,
             )
@@ -407,8 +408,8 @@ class TestlayernormStaticOp(unittest.TestCase):
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
-                    "gamma_static": gamma_np.astype(dtype),
-                    "beta_static": beta_np.astype(dtype),
+                    "gamma_static": gamma_np.astype(np.float32),
+                    "beta_static": beta_np.astype(np.float32),
                     "residual_static": residual_np.astype(dtype),
                     "bias_static": bias_np.astype(dtype),
                 },
@@ -421,8 +422,8 @@ class TestlayernormStaticOp(unittest.TestCase):
     ):
         paddle.disable_static()
         x = paddle.to_tensor(x_np.astype(dtype))
-        gamma = paddle.to_tensor(gamma_np.astype(dtype))
-        beta = paddle.to_tensor(beta_np.astype(dtype))
+        gamma = paddle.to_tensor(gamma_np.astype(np.float32))
+        beta = paddle.to_tensor(beta_np.astype(np.float32))
         residual = paddle.to_tensor(residual_np.astype(dtype))
         bias = paddle.to_tensor(bias_np.astype(dtype))
 
@@ -433,6 +434,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             gamma,
             beta,
             self.epsilon,
+            self.residual_alpha,
             self.quant_scale,
             self.quant_round_type,
             self.quant_max_bound,
@@ -453,10 +455,10 @@ class TestlayernormStaticOp(unittest.TestCase):
                 name="bias_static", shape=[self.cols], dtype=dtype
             )
             gamma_static = paddle.static.data(
-                name="gamma_static", shape=[self.cols], dtype=dtype
+                name="gamma_static", shape=[self.cols], dtype=paddle.float32
             )
             beta_static = paddle.static.data(
-                name="beta_static", shape=[self.cols], dtype=dtype
+                name="beta_static", shape=[self.cols], dtype=paddle.float32
             )
             outs = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
@@ -466,6 +468,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 begin_norm_axis=1,
                 bias=bias_static,
                 residual=residual_static,
+                residual_alpha=self.residual_alpha,
                 quant_scale=self.quant_scale,
                 quant_round_type=self.quant_round_type,
                 quant_max_bound=self.quant_max_bound,
@@ -476,8 +479,8 @@ class TestlayernormStaticOp(unittest.TestCase):
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
-                    "gamma_static": gamma_np.astype(dtype),
-                    "beta_static": beta_np.astype(dtype),
+                    "gamma_static": gamma_np.astype(np.float32),
+                    "beta_static": beta_np.astype(np.float32),
                     "residual_static": residual_np.astype(dtype),
                     "bias_static": bias_np.astype(dtype),
                 },
@@ -499,47 +502,62 @@ class TestlayernormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    def test_layernorm_int8(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        paddle_layernorm, paddle_naive_layernorm = self.check_layernorm_int8(
+            self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
+        )
+        np.testing.assert_allclose(
+            paddle_layernorm,
+            paddle_naive_layernorm.numpy(),
+            rtol=2,
+            atol=2,
+        )
 
-#     def test_layernorm_int8(self):
-#         if not paddle.is_compiled_with_cuda():
-#             return
-#         paddle_layernorm, paddle_naive_layernorm = self.check_layernorm_int8(
-#             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
-#         )
-#         np.testing.assert_allclose(
-#             paddle_layernorm,
-#             paddle_naive_layernorm.numpy(),
-#             rtol=2,
-#             atol=2,
-#         )
+    def test_residual_bias_add_layernorm_fp16(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        (
+            paddle_layernorm,
+            paddle_naive_layernorm,
+        ) = self.check_residual_bias_layernorm(
+            self.x_np,
+            self.norm_weight_np,
+            self.norm_bias_np,
+            self.residual_np,
+            self.bias_np,
+            'float16',
+        )
 
-#     def test_residual_bias_add_layernorm_fp16(self):
-#         if not paddle.is_compiled_with_cuda():
-#             return
-#         paddle_layernorm, paddle_naive_layernorm = self.check_residual_bias_layernorm(
-#             self.x_np, self.norm_weight_np, self.norm_bias_np, self.residual_np, self.bias_np, 'float16'
-#         )
+        np.testing.assert_allclose(
+            paddle_layernorm,
+            paddle_naive_layernorm.numpy(),
+            rtol=1e-3,
+            atol=1e-3,
+        )
 
-#         np.testing.assert_allclose(
-#             paddle_layernorm,
-#             paddle_naive_layernorm.numpy(),
-#             rtol=1e-3,
-#             atol=1e-3,
-#         )
+    def test_residual_bias_add_layernorm_int8(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        (
+            paddle_layernorm,
+            paddle_naive_layernorm,
+        ) = self.check_residual_bias_layernorm_int8(
+            self.x_np,
+            self.norm_weight_np,
+            self.norm_bias_np,
+            self.residual_np,
+            self.bias_np,
+            'float16',
+        )
 
-#     def test_residual_bias_add_layernorm_int8(self):
-#         if not paddle.is_compiled_with_cuda():
-#             return
-#         paddle_layernorm, paddle_naive_layernorm = self.check_residual_bias_layernorm_int8(
-#             self.x_np, self.norm_weight_np, self.norm_bias_np, self.residual_np, self.bias_np, 'float16'
-#         )
-
-#         np.testing.assert_allclose(
-#             paddle_layernorm,
-#             paddle_naive_layernorm.numpy(),
-#             rtol=2,
-#             atol=2,
-#         )
+        np.testing.assert_allclose(
+            paddle_layernorm,
+            paddle_naive_layernorm.numpy(),
+            rtol=2,
+            atol=2,
+        )
 
 
 if __name__ == "__main__":

@@ -948,17 +948,10 @@ void FusedLayerNormKernel(const Context& dev_ctx,
   LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
 #else
   using U = phi::funcs::LayerNormParamType<T>;
-  printf("sizeof u is: %d \n", static_cast<int32_t>(sizeof(U)));
-
   const T* x_data = x.data<T>();
-  printf("===951====\n");
-
   const U* norm_weight_data =
       norm_weight ? norm_weight.get().data<U>() : nullptr;
   const U* norm_bias_data = norm_bias ? norm_bias.get().data<U>() : nullptr;
-
-  printf("=======\n");
-
   int32_t rows = 1;
   int32_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
@@ -1041,7 +1034,6 @@ void FusedLayerNormKernel(const Context& dev_ctx,
     }
   } else {
     if (quant_scale <= 0.0f) {
-      printf("enter here==== \n");
       T* out_data = dev_ctx.template Alloc<T>(out);
       layernorm_helper.ComputeForward(x_data,
                                       norm_weight_data,
@@ -1050,8 +1042,6 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                                       mean_data,
                                       variance_data);
     } else {
-      printf("enter here 1040==== \n");
-
       // Quantize and output int8.
       int8_t* out_data = dev_ctx.template Alloc<int8_t>(out);
       DirectLoad<T, U> load(x_data, cols);
