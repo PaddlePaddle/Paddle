@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <array>
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/fluid/framework/io/shell.h"
 
@@ -150,14 +151,14 @@ static int shell_popen_fork_internal(const char* real_cmd,
 }
 
 static int read_from_pipe(FILE* fp, std::string* output) {
-  char buf[4096];
+  std::array<char, 4096> buf;
   while (1) {
-    int n = fread(buf, 1, 4096, fp);
+    int n = fread(buf.data(), 1, 4096, fp);
     if (n <= 0) {
       break;
     }
 
-    output->append(buf, n);
+    output->append(buf.data(), n);
   }
 
   if (!feof(fp)) {
@@ -249,8 +250,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 }
 
 static int shell_p2open_fork_internal(const char* real_cmd,
-                                      int pipein_fds[2],
-                                      int pipeout_fds[2]) {
+                                      int pipein_fds[2],     // NOLINT
+                                      int pipeout_fds[2]) {  // NOLINT
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   return 0;
 #else

@@ -44,7 +44,7 @@ class OperationTest
   using Op::Op;
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
+  static const char *attributes_name[attributes_num];  // NOLINT
   static void Verify() {}
   static void InferMeta(phi::InferMetaContext *infer_meta) {
     auto fn = PD_INFER_META(phi::CreateInferMeta);
@@ -54,8 +54,9 @@ class OperationTest
 IR_DECLARE_EXPLICIT_TYPE_ID(OperationTest)
 IR_DEFINE_EXPLICIT_TYPE_ID(OperationTest)
 
-const char *OperationTest::attributes_name[attributes_num] = {"op2_attr1",
-                                                              "op2_attr2"};
+const char *OperationTest::attributes_name[attributes_num] = {  // NOLINT
+    "op2_attr1",
+    "op2_attr2"};
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
 class TestDialect : public ir::Dialect {

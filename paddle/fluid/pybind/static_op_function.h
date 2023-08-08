@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,26 +14,20 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <Python.h>
+
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace pybind {
 
-class Graph;
-/*
- * compute quantization scales for biases and weights
- */
-class Int8ScaleCalculationMkldnnPass : public FusePassBase {
- public:
-  Int8ScaleCalculationMkldnnPass();
-  virtual ~Int8ScaleCalculationMkldnnPass() = default;
+PyObject *static_api_mean(PyObject *self, PyObject *args, PyObject *kwargs);
+PyObject *static_api_sum(PyObject *self, PyObject *args, PyObject *kwargs);
+PyObject *static_api_divide(PyObject *self, PyObject *args, PyObject *kwargs);
+PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs);
 
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-  void Int8ScaleImpl(ir::Graph* graph, const std::string& conv_type) const;
-};
-
-}  // namespace ir
-}  // namespace framework
+}  // namespace pybind
 }  // namespace paddle

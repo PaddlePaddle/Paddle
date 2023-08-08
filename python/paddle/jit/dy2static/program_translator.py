@@ -421,6 +421,13 @@ class StaticFunction:
             # Note(Aurelius84): To construct new instance of StaticFunction when we
             # first encouter the bound function of layer and cache it.
             new_static_layer = self._clone()
+            if (
+                self._dygraph_function.__name__
+                not in instance._original_funcs.keys()
+            ):
+                instance._original_funcs[
+                    self._dygraph_function.__name__
+                ] = self._dygraph_function
             new_static_layer._class_instance = instance
             self._descriptor_cache[instance] = new_static_layer
 
@@ -581,7 +588,7 @@ class StaticFunction:
         assert (
             func_name in self._class_instance._original_funcs
         ), "Not Found function '{}' in class '{}'.".format(
-            func_name, self._class_instance.__name__
+            func_name, self._class_instance.__class__
         )
         func = self._class_instance._original_funcs[func_name]
         setattr(
