@@ -630,6 +630,18 @@
     data_type : x
   backward : cumsum_grad
 
+- op : data
+  args : (int64_t index, DataType dtype, str name, Place place)
+  output : Tensor(out)
+  infer_meta :
+    func : FeedWithPlaceInferMeta
+    param : [index, dtype]
+  kernel:
+    func : data
+    param : [index, dtype]
+    data_type : dtype
+    backend : place
+
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -837,18 +849,6 @@
     func : expm1
   inplace: (x -> out)
   backward : expm1_grad
-
-- op : feed_with_place
-  args : (int64_t index, DataType dtype, str name, Place place)
-  output : Tensor(out)
-  infer_meta :
-    func : FeedWithPlaceInferMeta
-    param : [index, dtype]
-  kernel:
-    func : feed_with_place
-    param : [index, dtype]
-    data_type : dtype
-    backend : place
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
