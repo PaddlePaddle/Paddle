@@ -146,13 +146,15 @@ endfunction()
 
 function(cinn_nv_test TARGET_NAME)
   if(WITH_GPU AND WITH_TESTING)
-    set(options SERIAL)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS ARGS)
+    set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cinn_nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS} OPTIONS
-                        "-std=c++${CMAKE_CUDA_STANDARD}")
+    # Attention:
+    # 1. cuda_add_executable is deprecated after cmake v3.10, use cuda_add_executable for CUDA please.
+    # 2. cuda_add_executable does not support ccache.
+    # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
+    add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(
       ${TARGET_NAME}
@@ -165,22 +167,19 @@ function(cinn_nv_test TARGET_NAME)
       ${CUDA_LIBRARIES})
     add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} cinn_gtest_main gtest)
     common_link(${TARGET_NAME})
-    # add_test(${TARGET_NAME} ${TARGET_NAME})
-    add_test(
-      NAME ${TARGET_NAME}
-      COMMAND ${TARGET_NAME} "${cinn_nv_test_ARGS}"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(cinn_nv_test_SERIAL)
-      set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+    add_test(${TARGET_NAME} ${TARGET_NAME})
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
+                                              FLAGS_cpu_deterministic=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
+                                              FLAGS_init_allocated_mem=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
+                                              FLAGS_cudnn_deterministic=true)
+    if((CUDA_VERSION GREATER 9.2)
+       AND (CUDA_VERSION LESS 11.0)
+       AND (MSVC_VERSION LESS 1910))
+      set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS
+                                                      ${WIN_PROPS})
     endif()
-    target_link_libraries(
-      ${TARGET_NAME} Threads::Threads ${CUDA_NVRTC_LIB} ${CUDA_LIBRARIES}
-      ${CUDA_cudart_static_LIBRARY}
-      ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/libcuda.so)
-    if(NVTX_FOUND)
-      target_link_libraries(${TARGET_NAME} ${CUDA_NVTX_LIB})
-    endif()
-    remove_gflags(${TARGET_NAME})
   endif()
 endfunction()
 
