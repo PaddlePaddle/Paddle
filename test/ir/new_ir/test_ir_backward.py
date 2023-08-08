@@ -35,7 +35,7 @@ def get_ir_program_0():
 
 
 def get_ir_program_1():
-    x = paddle.randn([4, 4])
+    x = paddle.randn([2, 2])
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -51,8 +51,7 @@ def get_ir_program_1():
     return newir_program
 
 
-class TestBuildOp(unittest.TestCase):
-    '''
+class TesBackward(unittest.TestCase):
     def test_1(self):
         newir_program = get_ir_program_0()
         input = newir_program.block().ops[-1].operand(0).source()
@@ -74,7 +73,7 @@ class TestBuildOp(unittest.TestCase):
             .name(),
             "pd.tanh",
         )
-    '''
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_2(self):
         # test create output_grad in backward use full op
@@ -88,7 +87,9 @@ class TestBuildOp(unittest.TestCase):
 
         print(newir_program)
         self.assertEqual(newir_program.block().ops[-3].name(), "pd.full")
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
+    # TODO(Ruting) test add_n op when add_n api and add_grad finished
     # def test_3(self):
     #     # test add_n op
     #     newir_program = get_ir_program_1()

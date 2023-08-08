@@ -442,12 +442,14 @@ def remove_op(block, op, state):
     remove op from block
     '''
     block.remove_op(op)
-    fwd_op = state.opgrad_to_op[op]
-    state.op_to_opgrad[fwd_op].remove(op)
+    if state.opgrad_to_op[op] != []:
+        fwd_op = state.opgrad_to_op[op][0]
+        state.op_to_opgrad[fwd_op].remove(op)
+
     for valuegrad in op.results():
-        value = state.valuegrad_to_value[valuegrad]
-        state.value_to_valuegrad[value].remove(valuegrad)
-        if value in state.sumvaluegrad_to_value:
+        value = state.valuegrad_to_value[valuegrad][0]
+        state.value_to_valuegrad[value] = []
+        if value in state.sumvaluegrad_to_value.keys():
             raise ValueError('input_grad in [%s] is value which need to sum ')
 
 
@@ -532,7 +534,11 @@ def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
 
     inputgrad = []
     for input in inputs:
-        inputgrad.append(input_to_inputgrad_map[input][0][0])
+        inputgrad.append(
+            input_to_inputgrad_map[input][0][0]
+            if input_to_inputgrad_map[input] != []
+            else None
+        )
     return inputgrad
 
 

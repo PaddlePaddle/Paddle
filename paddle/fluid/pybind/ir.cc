@@ -122,15 +122,6 @@ void BindOperation(py::module *m) {
              }
              return attrs_dict;
            })
-      .def("attrs",
-           [](Operation &self) -> py::dict {
-             py::dict attrs_dict;
-             for (auto &pair : self.attributes()) {
-               attrs_dict[pair.first.c_str()] =
-                   paddle::dialect::GetAttributeData(pair.second);
-             }
-             return attrs_dict;
-           })
       .def("operands_source",
            [](Operation &self) -> py::list {
              py::list op_list;

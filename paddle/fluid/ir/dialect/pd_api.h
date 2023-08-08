@@ -46,6 +46,5 @@ ir::OpResult mean_grad(ir::OpResult x,
                        std::vector<int64_t> axis = {},
                        bool keepdim = false,
                        bool reduce_all = false);
-
 }  // namespace dialect
 }  // namespace paddle
