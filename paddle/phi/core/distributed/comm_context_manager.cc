@@ -62,68 +62,54 @@ void CommContextManager::CreateNCCLCommContext(
 
   std::string unique_key = "NCCLCommContext/" + unique_comm_key;
   if (rank == 0) {
-    VLOG(0) << "rank 0 store set begin";
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
         reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
     store->set(unique_key, nccl_id_wrapper);
-    VLOG(0) << "rank 0 store set end";
   } else {
-    VLOG(0) << "rank " << rank << " store get begin";
     const auto& nccl_id_wrapper = store->get(unique_key);
     std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
-    VLOG(0) << "rank " << rank << " store get end";
   }
 
-  VLOG(0) << "debug CreateNCCLCommContext";
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(-1, rank, size, nccl_id);
 
-  VLOG(0) << "debug CreateNCCLCommContext";
-  std::unique_ptr<phi::GPUContext> dev_ctx(
-      new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));
-  VLOG(0) << "debug CreateNCCLCommContext";
-  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(phi::GPUPlace(CommContextManager::device_id), dev_ctx->stream())
-                            .get());
-  VLOG(0) << "debug CreateNCCLCommContext";
-  dev_ctx->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(phi::CPUPlace())
-          .get());
-  VLOG(0) << "debug CreateNCCLCommContext";
-  dev_ctx->SetZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(phi::GPUPlace(CommContextManager::device_id))
-          .get());
-  VLOG(0) << "debug CreateNCCLCommContext";
-  dev_ctx->SetHostZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(phi::CPUPlace())
-          .get());
-  VLOG(0) << "debug CreateNCCLCommContext";
-  dev_ctx->SetPinnedAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(phi::GPUPinnedPlace())
-          .get());
-  VLOG(0) << "debug CreateNCCLCommContext";
-  dev_ctx->PartialInitWithAllocator();
-  VLOG(0) << "debug CreateNCCLCommContext";
+  if (CommContextManager::device_id != -1) {
+      std::unique_ptr<phi::GPUContext> dev_ctx(
+              new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));
+      dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+              .GetAllocator(phi::GPUPlace(CommContextManager::device_id), dev_ctx->stream())
+              .get());
+      dev_ctx->SetHostAllocator(
+              paddle::memory::allocation::AllocatorFacade::Instance()
+              .GetAllocator(phi::CPUPlace())
+              .get());
+      dev_ctx->SetZeroAllocator(
+              paddle::memory::allocation::AllocatorFacade::Instance()
+              .GetZeroAllocator(phi::GPUPlace(CommContextManager::device_id))
+              .get());
+      dev_ctx->SetHostZeroAllocator(
+              paddle::memory::allocation::AllocatorFacade::Instance()
+              .GetZeroAllocator(phi::CPUPlace())
+              .get());
+      dev_ctx->SetPinnedAllocator(
+              paddle::memory::allocation::AllocatorFacade::Instance()
+              .GetAllocator(phi::GPUPinnedPlace())
+              .get());
+      dev_ctx->PartialInitWithAllocator();
 
-  std::shared_ptr<paddle::platform::CudaEventObject> compute_event(
-      paddle::platform::CudaEventResourcePool::Instance().New(CommContextManager::device_id));
-  std::shared_ptr<paddle::platform::CudaEventObject> comm_event(
-      paddle::platform::CudaEventResourcePool::Instance().New(CommContextManager::device_id));
+      std::shared_ptr<paddle::platform::CudaEventObject> compute_event(
+              paddle::platform::CudaEventResourcePool::Instance().New(CommContextManager::device_id));
+      std::shared_ptr<paddle::platform::CudaEventObject> comm_event(
+              paddle::platform::CudaEventResourcePool::Instance().New(CommContextManager::device_id));
 
-  VLOG(0) << "debug CreateNCCLCommContext";
-  nccl_comm_context->SetDevContext(std::move(dev_ctx));
-  nccl_comm_context->SetComputeEvent(std::move(compute_event));
-  nccl_comm_context->SetCommEvent(std::move(comm_event));
+      nccl_comm_context->SetDevContext(std::move(dev_ctx));
+      nccl_comm_context->SetComputeEvent(std::move(compute_event));
+      nccl_comm_context->SetCommEvent(std::move(comm_event));
+  }
 
-  VLOG(0) << "debug CreateNCCLCommContext";
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(nccl_comm_context));
-  VLOG(0) << "debug CreateNCCLCommContext";
 }
 #endif
 
