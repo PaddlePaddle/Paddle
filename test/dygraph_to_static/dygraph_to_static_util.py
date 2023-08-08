@@ -93,7 +93,7 @@ def ast_only_test(func):
     """
 
     def impl(*args, **kwargs):
-        if os.environ.get("ENABLE_FALL_BACK", "True") == "False":
+        if os.environ.get("ENABLE_FALL_BACK", "False") == "False":
             func(*args, **kwargs)
 
     return impl
