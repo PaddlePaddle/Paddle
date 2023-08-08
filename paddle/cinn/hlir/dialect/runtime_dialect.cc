@@ -15,8 +15,6 @@
 #include "paddle/cinn/hlir/dialect/runtime_dialect.h"
 #include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
 
-#include "paddle/ir/core/builtin_attribute.h"
-
 namespace cinn {
 namespace dialect {
 
@@ -26,10 +24,7 @@ RuntimeDialect::RuntimeDialect(::ir::IrContext* context)
   this->initialize();
 }
 
-void RuntimeDialect::initialize() {
-  RegisterOps<cinn::dialect::JitKernelOp>();
-  RegisterAttributes<::ir::PointerAttribute>();
-}
+void RuntimeDialect::initialize() { RegisterOps<cinn::dialect::JitKernelOp>(); }
 
 }  // namespace dialect
 }  // namespace cinn
