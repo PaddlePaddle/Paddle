@@ -20,21 +20,24 @@ namespace dialect {
 class VjpInterface : public ir::OpInterfaceBase<VjpInterface> {
  public:
   struct Concept {
-    explicit Concept(std::vector<std::vector<ir::Value>> (*vjp)(
-        std::vector<std::vector<ir::Value>> out_grads,
+    explicit Concept(std::vector<std::vector<ir::OpResult>> (*vjp)(
+        ir::Operation* op,
+        const std::vector<std::vector<ir::OpResult>>& out_grads,
         const std::vector<std::vector<int>>& stop_gradients))
         : vjp_(vjp) {}
-    std::vector<std::vector<ir::Value>> (*vjp_)(
-        std::vector<std::vector<ir::Value>> out_grads,
+    std::vector<std::vector<ir::OpResult>> (*vjp_)(
+        ir::Operation* op,
+        const std::vector<std::vector<ir::OpResult>>& out_grads,
         const std::vector<std::vector<int>>& stop_gradients);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static std::vector<std::vector<ir::Value>> Vjp(
-        std::vector<std::vector<ir::Value>> out_grads,
+    static std::vector<std::vector<ir::OpResult>> Vjp(
+        ir::Operation* op,
+        const std::vector<std::vector<ir::OpResult>>& out_grads,
         const std::vector<std::vector<int>>& stop_gradients) {
-      return ConcreteOp::Vjp(out_grads, stop_gradients);
+      return ConcreteOp::Vjp(op, out_grads, stop_gradients);
     }
 
     Model() : Concept(Vjp) {}
@@ -43,10 +46,11 @@ class VjpInterface : public ir::OpInterfaceBase<VjpInterface> {
   VjpInterface(ir::Operation* op, Concept* impl)
       : ir::OpInterfaceBase<VjpInterface>(op), impl_(impl) {}
 
-  std::vector<std::vector<ir::Value>> Vjp(
-      std::vector<std::vector<ir::Value>> out_grads,
+  std::vector<std::vector<ir::OpResult>> Vjp(
+      ir::Operation* op,
+      const std::vector<std::vector<ir::OpResult>>& out_grads,
       const std::vector<std::vector<int>>& stop_gradients) {
-    return impl_->vjp_(out_grads, stop_gradients);
+    return impl_->vjp_(op, out_grads, stop_gradients);
   }
 
  private:
