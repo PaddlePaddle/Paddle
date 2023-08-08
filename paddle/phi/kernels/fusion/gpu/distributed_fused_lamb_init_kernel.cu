@@ -183,7 +183,7 @@ static T *TensorFillConstant(const Context &dev_ctx,
                              const DDim &dims,
                              T value) {
   tensor->Resize(dims);
-  auto *ptr = tensor->mutable_data<T>(dev_ctx.GetPlace());
+  auto *ptr = dev_ctx.template Alloc<T>(tensor);
   phi::funcs::SetConstant<Context, T> set_constant;
   set_constant(dev_ctx, tensor, value);
   return ptr;
