@@ -24,20 +24,20 @@ namespace paddle {
 namespace dialect {
 
 ir::OpResult mean(ir::OpResult x,
-                  std::vector<int64_t> axis = {},
+                  const std::vector<int64_t>& axis = {},
                   bool keepdim = false);
 
 ir::OpResult sum(ir::OpResult x,
-                 std::vector<int64_t> axis = {},
+                 const std::vector<int64_t>& axis = {},
                  phi::DataType dtype = phi::DataType::UNDEFINED,
                  bool keepdim = false);
 
 ir::OpResult divide(ir::OpResult x, ir::OpResult y);
 
-ir::OpResult full(std::vector<int64_t> shape,
+ir::OpResult full(const std::vector<int64_t>& shape,
                   float value,
                   phi::DataType dtype = phi::DataType::FLOAT32,
-                  phi::Place place = phi::CPUPlace());
+                  const phi::Place& place = phi::CPUPlace());
 
 }  // namespace dialect
 }  // namespace paddle

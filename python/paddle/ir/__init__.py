@@ -38,6 +38,5 @@ __all__ = [  # noqa
     'Value',
     'OpOperand',
     'OpResult',
-    'Type',
     'translate_to_new_ir',
 ]

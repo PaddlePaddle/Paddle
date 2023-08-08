@@ -19,35 +19,37 @@
 
 namespace paddle {
 namespace dialect {
-ir::OpResult mean(ir::OpResult x, std::vector<int64_t> axis, bool keepdim) {
-  paddle::dialect::MeanOp mean_op =
+ir::OpResult mean(ir::OpResult x,
+                  const std::vector<int64_t>& axis,
+                  bool keepdim) {
+  auto mean_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::MeanOp>(
           x, axis, keepdim);
   return mean_op.out();
 }
 
 ir::OpResult sum(ir::OpResult x,
-                 std::vector<int64_t> axis,
+                 const std::vector<int64_t>& axis,
                  phi::DataType dtype,
                  bool keepdim) {
-  paddle::dialect::SumOp sum_op =
+  auto sum_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SumOp>(
           x, axis, dtype, keepdim);
   return sum_op.out();
 }
 
 ir::OpResult divide(ir::OpResult x, ir::OpResult y) {
-  paddle::dialect::DivideOp divide_op =
+  auto divide_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::DivideOp>(x,
                                                                             y);
   return divide_op.out();
 }
 
-ir::OpResult full(std::vector<int64_t> shape,
+ir::OpResult full(const std::vector<int64_t>& shape,
                   float value,
                   phi::DataType dtype,
-                  phi::Place place) {
-  paddle::dialect::FullOp full_op =
+                  const phi::Place& place) {
+  auto full_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::FullOp>(
           shape, value, dtype, place);
   return full_op.out();
