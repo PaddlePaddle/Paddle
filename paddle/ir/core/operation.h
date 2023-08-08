@@ -142,6 +142,10 @@ class IR_API alignas(8) Operation final {
 
   void Verify();
 
+  std::vector<OpOperand> operands() const;
+
+  std::vector<OpResult> results() const;
+
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,

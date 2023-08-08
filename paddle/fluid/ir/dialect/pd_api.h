@@ -32,7 +32,6 @@ ir::OpResult sum(ir::OpResult x,
                  phi::DataType dtype = phi::DataType::UNDEFINED,
                  bool keepdim = false);
 
-ir::OpResult add_n(ir::OpResult x);
 ir::OpResult divide(ir::OpResult x, ir::OpResult y);
 
 ir::OpResult full(std::vector<int64_t> shape,

@@ -69,12 +69,12 @@ using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
                                                   ir::Program*)>;
 using AttributeHandlerFn = std::function<ir::Attribute(
     ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
-constexpr char kTargetDialectPrefix[] = "pd.";
-constexpr char kEmptyVarName[] = "@EMPTY@";
+constexpr char kTargetDialectPrefix[] = "pd.";  // NOLINT
+constexpr char kEmptyVarName[] = "@EMPTY@";     // NOLINT
 
-static const std::unordered_set<std::string> special_non_inplace_ops = {};
+static const std::unordered_set<std::string> SpecialNonInplaceOps = {};
 
-static const std::unordered_set<std::string> special_inplace_ops = {
+static const std::unordered_set<std::string> SpecialInplaceOps = {
     "adagrad",
     "adam",
     "adamax",
@@ -82,10 +82,10 @@ static const std::unordered_set<std::string> special_inplace_ops = {
 };
 
 inline bool IsInplace(const OpDesc& op_desc) {
-  if (special_non_inplace_ops.count(op_desc.Type())) {
+  if (SpecialNonInplaceOps.count(op_desc.Type())) {
     return false;
   }
-  if (special_inplace_ops.count(op_desc.Type())) {
+  if (SpecialInplaceOps.count(op_desc.Type())) {
     return true;
   }
   bool inplace = false;

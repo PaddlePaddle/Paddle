@@ -1999,7 +1999,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
 #endif
 }
 
-SlotRecordInMemoryDataFeed::~SlotRecordInMemoryDataFeed() {
+SlotRecordInMemoryDataFeed::~SlotRecordInMemoryDataFeed() {  // NOLINT
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   stop_token_.store(true);
   for (auto& thread : pack_threads_) {

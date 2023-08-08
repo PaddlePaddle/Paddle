@@ -20,6 +20,7 @@
 
 namespace phi {
 namespace distributed {
+using auto_parallel::str_split;
 
 bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping) {
   return std::any_of(dims_mapping.begin(),
@@ -31,15 +32,6 @@ bool IsDimsMappingReplicated(const std::vector<int64_t>& dims_mapping) {
   return std::all_of(dims_mapping.begin(),
                      dims_mapping.end(),
                      [](int64_t value) { return value == -1; });
-}
-
-int64_t GetCurGlobalRank() {
-  const char* cur_rank = std::getenv("PADDLE_TRAINER_ID");
-  PADDLE_ENFORCE_NOT_NULL(
-      cur_rank,
-      phi::errors::NotFound(
-          "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
-  return std::atoi(cur_rank);
 }
 
 std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
@@ -78,6 +70,67 @@ std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
     }
   }
   return split_axis_to_mesh_axis;
+}
+
+int64_t GetCurGlobalRank() {
+  const char* cur_rank = std::getenv("PADDLE_TRAINER_ID");
+  PADDLE_ENFORCE_NOT_NULL(
+      cur_rank,
+      phi::errors::NotFound(
+          "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
+  return std::atoi(cur_rank);
+}
+
+int64_t GetGlobalWorldSize() {
+  const char* world_size = std::getenv("PADDLE_TRAINERS_NUM");
+  PADDLE_ENFORCE_NOT_NULL(
+      world_size,
+      phi::errors::NotFound(
+          "The environment variable 'PADDLE_TRAINERS_NUM' cannot be found."));
+  return std::atoi(world_size);
+}
+
+namespace {
+std::string GetMasterEndpoint() {
+  const char* master_endpoint = std::getenv("PADDLE_MASTER");
+  if (!master_endpoint) {
+    const char* trainer_endpoints = std::getenv("PADDLE_TRAINER_ENDPOINTS");
+    PADDLE_ENFORCE_NOT_NULL(
+        trainer_endpoints,
+        phi::errors::NotFound("The environment variable "
+                              "'PADDLE_TRAINER_ENDPOINTS' cannot be found."));
+    return str_split(trainer_endpoints, ",")[0];
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(
+      master_endpoint,
+      phi::errors::NotFound(
+          "The environment variable 'PADDLE_MASTER' cannot be found."));
+  return master_endpoint;
+}
+
+}  // namespace
+
+std::string GetMasterAddr() {
+  std::string master_endpoint = GetMasterEndpoint();
+  return str_split(master_endpoint, ":")[0];
+}
+
+uint16_t GetMasterPort() {
+  std::string master_endpoint = GetMasterEndpoint();
+  return std::stoi(str_split(master_endpoint, ":")[1]);
+}
+
+std::shared_ptr<TCPStore> CreateOrGetGlobalTCPStore() {
+  std::string host = GetMasterAddr();
+  uint16_t port = GetMasterPort();
+  int64_t cur_rank = GetCurGlobalRank();
+  int64_t world_size = GetGlobalWorldSize();
+  bool is_master = (cur_rank == 0);
+
+  static std::shared_ptr<TCPStore> store =
+      std::make_shared<TCPStore>(host, port, is_master, world_size);
+  return store;
 }
 
 }  // namespace distributed
