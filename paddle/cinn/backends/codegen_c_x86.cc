@@ -37,13 +37,13 @@ void CodeGenCX86::Visit(const ir::Load *op) {
 
     int bits = op->type().bits() * op->type().lanes();
     if (SupportsAVX512() && bits == 512) {
-      os() << "cinn_avx512_load(";
+      str_ += "cinn_avx512_load(";
       PrintAbsAddr(op);
-      os() << ")";
+      str_ += ")";
     } else if (SupportsAVX256() && bits == 256) {
-      os() << "cinn_avx256_load(";
+      str_ += "cinn_avx256_load(";
       PrintAbsAddr(op);
-      os() << ")";
+      str_ += ")";
     } else {
       CodeGenC::Visit(op);
     }
@@ -57,13 +57,13 @@ void CodeGenCX86::Visit(const ir::Broadcast *op) {
   int bits = op->type().bits() * op->type().lanes();
 
   if (SupportsAVX512() && bits == 512) {
-    os() << "cinn_avx512_set1(";
+    str_ += "cinn_avx512_set1(";
     PrintCastExpr(op->value.type().ElementOf(), op->value);
-    os() << ")";
+    str_ += ")";
   } else if (SupportsAVX256() && bits == 256) {
-    os() << "cinn_avx256_set1(";
+    str_ += "cinn_avx256_set1(";
     PrintCastExpr(op->value.type().ElementOf(), op->value);
-    os() << ")";
+    str_ += ")";
   } else {
     CodeGenC::Visit(op);
   }
@@ -77,17 +77,17 @@ void CodeGenCX86::Visit(const ir::Store *op) {
 
   int bits = op->type().bits() * op->type().lanes();
   if (SupportsAVX512() && bits == 512) {
-    os() << "cinn_avx512_store(";
+    str_ += "cinn_avx512_store(";
     PrintAbsAddr(op);
-    os() << ", ";
-    Print(op->value);
-    os() << ")";
+    str_ += ", ";
+    IrPrinter::Visit(op->value);
+    str_ += ")";
   } else if (SupportsAVX256() && bits == 256) {
-    os() << "cinn_avx256_store(";
+    str_ += "cinn_avx256_store(";
     PrintAbsAddr(op);
-    os() << ", ";
-    Print(op->value);
-    os() << ")";
+    str_ += ", ";
+    IrPrinter::Visit(op->value);
+    str_ += ")";
   } else {
     CodeGenC::Visit(op);
   }
@@ -101,18 +101,18 @@ void CodeGenCX86::PrintVecInputArgument(const Expr *op) {
     Expr value = op->type().lanes() == 1 ? *op : broadcast_n->value;
 
     if (SupportsAVX512()) {
-      os() << "cinn_avx512_set1(";
-      Print(value);
-      os() << ")";
+      str_ += "cinn_avx512_set1(";
+      IrPrinter::Visit(value);
+      str_ += ")";
     } else if (SupportsAVX256()) {
-      os() << "cinn_avx256_set1(";
-      Print(value);
-      os() << ")";
+      str_ += "cinn_avx256_set1(";
+      IrPrinter::Visit(value);
+      str_ += ")";
     } else {
       CINN_NOT_IMPLEMENTED
     }
   } else {
-    Print(*op);
+    IrPrinter::Visit(*op);
   }
 }
 
@@ -123,35 +123,41 @@ void CodeGenCX86::Visit(const ir::intrinsics::BuiltinIntrin *op) {
   }
   int bits = op->type().bits() * op->type().lanes();
   if (SupportsAVX512() && bits == 512) {
-    os() << "cinn_avx512_" << op->name << "(";
+    str_ += "cinn_avx512_";
+    str_ += op->name;
+    str_ += "(";
     if (!op->args.empty()) {
       for (int i = 0; i < op->args.size() - 1; i++) {
         PrintVecInputArgument(&op->args[i]);
-        os() << ", ";
+        str_ += ", ";
       }
-      Print(op->args.back());
+      IrPrinter::Visit(op->args.back());
     }
-    os() << ")";
+    str_ += ")";
   } else if (SupportsAVX256() && bits == 256) {
-    os() << "cinn_avx256_" << op->name << "(";
+    str_ += "cinn_avx256_";
+    str_ += op->name;
+    str_ += "(";
     if (!op->args.empty()) {
       for (int i = 0; i < op->args.size() - 1; i++) {
         PrintVecInputArgument(&op->args[i]);
-        os() << ", ";
+        str_ += ", ";
       }
       PrintVecInputArgument(&op->args.back());
     }
-    os() << ")";
+    str_ += ")";
   } else if (bits == 128) {
-    os() << "cinn_avx128_" << op->name << "(";
+    str_ += "cinn_avx128_";
+    str_ += op->name;
+    str_ += "(";
     if (!op->args.empty()) {
       for (int i = 0; i < op->args.size() - 1; i++) {
         PrintVecInputArgument(&op->args[i]);
-        os() << ", ";
+        str_ += ", ";
       }
       PrintVecInputArgument(&op->args.back());
     }
-    os() << ")";
+    str_ += ")";
   } else {
     CodeGenC::Visit(op);
   }

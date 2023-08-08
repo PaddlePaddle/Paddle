@@ -16,10 +16,20 @@
 
 set -e
 
-XDNN_PATH=/opt/xdnn # <path_to_xdnn>
-XRE_PATH=/opt/xre # <path_to_xre>
+#XDNN_PATH=/opt/xdnn # <path_to_xdnn>
+#XRE_PATH=/opt/xre # <path_to_xre>
 
-:<<!
+if [[ "$XDNN_PATH" == "" ]] || [[ ! -d "$XDNN_PATH" ]]; then
+ echo "XDNN_PATH not set, or directory ${XDNN_PATH} not found, please export XDNN_PATH=<path_to_xdnn>."
+ exit -1
+fi
+
+if [[ "$XRE_PATH" == "" ]] || [[ ! -d "$XRE_PATH" ]]; then
+ echo "XRE_PATH not set, or directory ${XRE_PATH} not found, please export XRE_PATH=<path_to_xre>."
+ exit -1
+fi
+
+#:<<!
 export GLOG_v=0
 export XPU_VISIBLE_DEVICES=0;
 export XPUAPI_DEBUG=1;
@@ -27,9 +37,9 @@ export LD_LIBRARY_PATH=$XDNN_PATH/so:$XRE_PATH/so:$LD_LIBRARY_PATH
 
 chmod +x ./build/example
 ./build/example
-!
+#!
 
-#:<<!
+:<<!
 SSH_IP_ADDR=localhost
 SSH_PORT=9031
 SSH_USR_ID=root
@@ -46,4 +56,4 @@ sshpass -p $SSH_USR_PWD scp -v -r -o ConnectTimeout=60 -o StrictHostKeyChecking=
 sshpass -p $SSH_USR_PWD scp -v -r -o ConnectTimeout=60 -o StrictHostKeyChecking=no -P $SSH_PORT ../build/libxpuplugin.so $SSH_USR_ID@$SSH_IP_ADDR:$WORK_SPACE
 sshpass -p $SSH_USR_PWD scp -v -r -o ConnectTimeout=60 -o StrictHostKeyChecking=no -P $SSH_PORT build/example $SSH_USR_ID@$SSH_IP_ADDR:$WORK_SPACE
 sshpass -p $SSH_USR_PWD ssh -v -o ConnectTimeout=60 -o StrictHostKeyChecking=no -p $SSH_PORT $SSH_USR_ID@$SSH_IP_ADDR "cd $WORK_SPACE; ${EXPORT_ENVIRONMENT_VARIABLES} chmod +x ./example; ./example"
-#!
+!

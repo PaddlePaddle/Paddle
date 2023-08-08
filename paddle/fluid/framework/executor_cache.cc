@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
 
@@ -154,8 +156,7 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
   std::unordered_set<std::string> op_outputs;
   std::unordered_set<std::string> op_inputs;
   std::unordered_set<std::string> no_need_buffer_ins;
-  for (size_t i = 0; i < backward_ops.size(); ++i) {
-    framework::OpDesc *op = backward_ops[i];
+  for (auto op : backward_ops) {
     VLOG(4) << "parse op type: " << op->Type();
     if (op->Type() == "share_buffer") {
       VLOG(1) << "skip share_buffer op";
@@ -288,7 +289,7 @@ InterpreterCoreInfoCache &InterpreterCoreInfoCache::Instance() {
   return g_info_cache;
 }
 
-std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const ProgramDesc &program_desc,
     const platform::Place &place,
     bool is_grad,
@@ -304,12 +305,215 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
   execution_config.used_for_jit = true;
-  auto core = std::make_shared<InterpreterCore>(
-      place, program_desc.Block(0), scope, execution_config);
+
+  std::shared_ptr<InterpreterCore> core = nullptr;
+
+  core.reset(new InterpreterCore(
+      place, program_desc.Block(0), scope, execution_config));
+
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, is_grad);
   cached_value.core_ = core;
   return core;
+}
+
+std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+    std::unique_ptr<::ir::Program> ir_program,
+    const platform::Place &place,
+    bool is_grad,
+    int64_t program_id,
+    framework::Scope *scope) {
+  auto &interpretercore_info_cache =
+      framework::InterpreterCoreInfoCache::Instance();
+  if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
+    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
+               "all cache!";
+    interpretercore_info_cache.Finalize();
+  }
+  interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_jit = true;
+
+  std::shared_ptr<InterpreterCore> core = nullptr;
+
+  core.reset(new InterpreterCore(
+      place, {}, std::move(ir_program), scope, execution_config));
+
+  auto &cached_value =
+      interpretercore_info_cache.GetMutable(program_id, is_grad);
+  cached_value.core_ = core;
+  return core;
+}
+
+std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
+    const paddle::framework::BlockDesc *forward_global_block,
+    const paddle::framework::BlockDesc *backward_global_block,
+    const std::vector<std::string> output_names,
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params) {
+  auto ir_ctx = ::ir::IrContext::Instance();
+  auto program = std::make_unique<::ir::Program>(ir_ctx);
+
+  std::set<std::string> set_output_names;
+  auto local_program =
+      paddle::framework::ProgramDesc(*(forward_global_block->Program()));
+
+  for (auto op_desc : local_program.Block(0).AllOps()) {
+    for (const auto &n : op_desc->Outputs()) {
+      const auto &input_var_names = n.second;
+      for (const auto &var_name : input_var_names) {
+        set_output_names.insert(var_name);
+      }
+    }
+  }
+
+  // add fetch with place op to program
+  auto *block = local_program.MutableBlock(0);
+  for (auto &in_t : x) {
+    auto name = in_t.name();
+    if (block->FindVarRecursive(name) == nullptr) {
+      continue;
+    }
+    auto place = in_t.place().GetType();
+
+    auto op_desc = block->PrependOp();
+    op_desc->SetType("data");
+    op_desc->SetAttr("index", 0);
+    // TODO(phlrain) : using tensor dtype
+    op_desc->SetAttr("dtype", 0);
+    op_desc->SetAttr("place", static_cast<int>(place));
+    op_desc->SetAttr("name", name);
+    op_desc->SetOutput("out", {name});
+  }
+
+  std::set<std::string> input_param_names;
+  for (auto &param : params) {
+    auto &name = param.name();
+    auto place = param.place().GetType();
+
+    auto op_desc = local_program.MutableBlock(0)->PrependOp();
+    op_desc->SetType("data");
+    op_desc->SetAttr("index", 0);
+    // TODO(phlrain) : using tensor dtype
+    op_desc->SetAttr("dtype", 0);
+    op_desc->SetAttr("place", static_cast<int>(place));
+    op_desc->SetAttr("name", name);
+    op_desc->SetOutput("out", {name});
+
+    input_param_names.insert(name);
+  }
+
+  std::set<std::string> set_parameter_names;
+  for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
+    for (const auto &n : op_desc->Inputs()) {
+      const auto &input_var_names = n.second;
+      for (const auto &var_name : input_var_names) {
+        set_parameter_names.insert(var_name);
+      }
+    }
+  }
+
+  for (auto &t : output_names) {
+    set_parameter_names.insert(t);
+  }
+
+  for (auto &name : set_parameter_names) {
+    if (!set_output_names.count(name)) {
+      continue;
+    }
+
+    if (input_param_names.count(name)) {
+      continue;
+    }
+
+    auto op_desc = local_program.MutableBlock(0)->AppendOp();
+    op_desc->SetType("shadow_output");
+    op_desc->SetAttr("name", name);
+    op_desc->SetInput("x", {name});
+    op_desc->SetOutput("out", {"@EMPTY@"});
+  }
+
+  paddle::translator::ProgramTranslator program_translator(&local_program,
+                                                           program.get());
+
+  program_translator.Translate();
+
+  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+
+  return ir_res;
+}
+
+std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
+    const paddle::framework::BlockDesc *backward_global_block,
+    const std::vector<paddle::Tensor> &out_grad,
+    const std::vector<paddle::Tensor *> &x_grad,
+    const std::vector<paddle::Tensor *> &params_grad,
+    const paddle::framework::Scope *scope) {
+  auto ir_ctx = ::ir::IrContext::Instance();
+  auto program = std::make_unique<::ir::Program>(ir_ctx);
+
+  auto local_program =
+      paddle::framework::ProgramDesc(*(backward_global_block->Program()));
+
+  // get feed with data
+  std::set<std::string> set_parameter_names;
+  for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
+    for (const auto &n : op_desc->Inputs()) {
+      const auto &input_var_names = n.second;
+      for (const auto &var_name : input_var_names) {
+        set_parameter_names.insert(var_name);
+      }
+    }
+  }
+
+  for (auto &var_name : set_parameter_names) {
+    if (scope->FindVar(var_name)) {
+      auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
+      phi::AllocationType place(phi::AllocationType::UNDEFINED);
+      if (tensor.initialized()) {
+        place = tensor.place().GetType();
+      }
+
+      if (var_name == "@EMPTY@") {
+        continue;
+      }
+      auto op_desc = local_program.MutableBlock(0)->PrependOp();
+      op_desc->SetType("data");
+      op_desc->SetAttr("index", 0);
+      // TODO(phlrain) : using tensor dtype
+      op_desc->SetAttr("dtype", 0);
+      op_desc->SetAttr("place", static_cast<int>(place));
+      op_desc->SetAttr("name", var_name);
+      op_desc->SetOutput("out", {var_name});
+    }
+  }
+
+  std::vector<std::string> param_grad_names;
+  for (auto &p_g : params_grad) {
+    param_grad_names.push_back(p_g->name());
+  }
+
+  for (auto &t : x_grad) {
+    param_grad_names.push_back(t->name());
+  }
+  for (auto &name : param_grad_names) {
+    if (name == "@EMPTY@") {
+      continue;
+    }
+    auto op_desc = local_program.MutableBlock(0)->AppendOp();
+    op_desc->SetType("shadow_output");
+    op_desc->SetAttr("name", name);
+    op_desc->SetInput("x", {name});
+    op_desc->SetOutput("out", {"@EMPTY@"});
+  }
+
+  paddle::translator::ProgramTranslator program_translator(&local_program,
+                                                           program.get());
+  program_translator.Translate();
+
+  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+
+  return res;
 }
 
 }  // namespace framework

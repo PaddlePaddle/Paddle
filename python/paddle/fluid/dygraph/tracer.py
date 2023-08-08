@@ -324,23 +324,7 @@ class Tracer(core.Tracer):
                     type, inputs, outputs, attrs, stop_gradient, inplace_map
                 )
         else:
-            # this block is used to convert attrs according to the opproto
-            # since `trace` handles AttributeMap directly, without other
-            # modification to the passed attribute map, so we change it before
-            # `trace`
-            if framework.OpProtoHolder.instance().has_op_proto(type):
-                proto = framework.OpProtoHolder.instance().get_op_proto(type)
-                attrs = framework.canonicalize_attrs(attrs, proto)
-
-            self.trace(
-                type,
-                inputs,
-                outputs,
-                attrs,
-                framework._current_expected_place(),
-                self._has_grad and not stop_gradient,
-                inplace_map if inplace_map else {},
-            )
+            raise ValueError("trace_op only  work in dygraph mode")
 
     def train_mode(self):
         self._train_mode = True

@@ -152,6 +152,13 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     VLOG(4) << "handle TrtSkipLayerNorm fuse";
+
+    // x and y 's rank must be same
+    if (subgraph.at(x)->Var()->GetShape().size() !=
+        subgraph.at(y)->Var()->GetShape().size()) {
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);

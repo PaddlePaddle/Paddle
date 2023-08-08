@@ -73,6 +73,7 @@ import paddle.regularizer  # noqa: F401
 import paddle.incubate  # noqa: F401
 import paddle.autograd  # noqa: F401
 import paddle.device  # noqa: F401
+import paddle.decomposition  # noqa: F401
 
 import paddle.jit  # noqa: F401
 import paddle.amp  # noqa: F401
@@ -209,6 +210,10 @@ from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.manipulation import index_put  # noqa: F401
 from .tensor.manipulation import index_put_  # noqa: F401
 from .tensor.manipulation import unflatten  # noqa: F401
+from .tensor.manipulation import as_strided  # noqa: F401
+from .tensor.manipulation import view  # noqa: F401
+from .tensor.manipulation import view_as  # noqa: F401
+from .tensor.manipulation import unfold  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import abs_  # noqa: F401
 from .tensor.math import acos  # noqa: F401
@@ -776,6 +781,10 @@ __all__ = [  # noqa
     'polar',
     'vander',
     'unflatten',
+    'as_strided',
+    'view',
+    'view_as',
+    'unfold',
     'nextafter',
     'i0',
     'i0_',
