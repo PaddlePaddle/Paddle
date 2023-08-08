@@ -15,6 +15,9 @@
 import random
 import time
 import unittest
+from test.dygraph_to_static.dygraph_to_static_util import (
+    test_and_compare_with_new_ir,
+)
 
 import numpy as np
 from yolov3 import YOLOv3, cfg
@@ -166,6 +169,7 @@ def train(to_static):
 
 
 class TestYolov3(unittest.TestCase):
+    @test_and_compare_with_new_ir
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)

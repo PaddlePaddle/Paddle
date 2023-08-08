@@ -16,6 +16,7 @@ import unittest
 from time import time
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
@@ -32,6 +33,7 @@ class TestAMP(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @test_and_compare_with_new_ir
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()

@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -750,6 +750,21 @@ class TestTrain(unittest.TestCase):
                             )
                         break
             return np.array(loss_data)
+
+    @test_with_new_ir
+    def test_train_new_ir(self):
+        static_res = self.train_bmn(self.args, self.place, to_static=True)
+        dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph_res: {},\n static_res: {}'.format(
+                dygraph_res[~np.isclose(dygraph_res, static_res)],
+                static_res[~np.isclose(dygraph_res, static_res)],
+            ),
+            atol=1e-8,
+        )
 
     def test_train(self):
         static_res = self.train_bmn(self.args, self.place, to_static=True)
