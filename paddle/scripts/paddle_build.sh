@@ -3153,7 +3153,7 @@ function collect_ccache_hits() {
     ccache_version=$(ccache -V | grep "ccache version" | awk '{print $3}')
     echo "$ccache_version"
     if [[ $ccache_version == 4* ]] ; then
-        rate=$(ccache -s | grep "Hits" | awk '{print $5}' | cut -d '(' -f2 | cut -d ')' -f1)
+        rate=$(ccache -s | grep "Hits" | awk 'NR==1 {print $5}' | cut -d '(' -f2 | cut -d ')' -f1)
         echo "ccache hit rate: ${rate}%"
     else
         rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
