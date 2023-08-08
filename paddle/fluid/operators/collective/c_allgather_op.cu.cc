@@ -50,7 +50,6 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     PADDLE_ENFORCE_EQ(
         nranks,
         comm->nranks(),
@@ -62,20 +61,43 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     T* recv_buff = out->mutable_data<T>(place);
 
     gpuStream_t stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      // should ExecutionContext for calc stream.
-      stream = ctx.cuda_device_context().stream();
-    } else {
-      stream = comm->stream();
+    platform::NCCLComm* comm = nullptr;
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(std::to_string(rid))) {
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has rid " << rid;
+    } else {  // old comm_context
+      if (ctx.Attr<bool>("use_calc_stream")) {
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
+      } else {
+        comm = platform::NCCLCommContext::Instance().Get(rid, place);
+        stream = comm->stream();
+      }
+      VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclAllGather(send_buff,
-                                         recv_buff,
-                                         send_numel,
-                                         static_cast<ncclDataType_t>(dtype),
-                                         comm->comm(),
-                                         stream));
+    if (comm_ctx) {
+      comm_ctx->AllGather(out, *in, stream);
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclAllGather(send_buff,
+                                           recv_buff,
+                                           send_numel,
+                                           static_cast<ncclDataType_t>(dtype),
+                                           comm->comm(),
+                                           stream));
+    }
+
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

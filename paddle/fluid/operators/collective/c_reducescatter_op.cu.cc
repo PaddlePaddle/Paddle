@@ -32,9 +32,50 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    int nranks = comm->nranks();
 
+    gpuStream_t stream = nullptr;
+    platform::NCCLComm* comm = nullptr;
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(std::to_string(ring_id))) {
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      PADDLE_ENFORCE_EQ(out_dims[0] % comm_ctx->GetSize(),
+                        0,
+                        platform::errors::InvalidArgument(
+                            "The input tensor X's "
+                            "dim[0] (%d) should be divisible by nranks(%d)",
+                            out_dims[0],
+                            comm_ctx->GetSize()));
+
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has ring_id " << ring_id;
+    } else {  // old comm_context
+      comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      PADDLE_ENFORCE_EQ(out_dims[0] % comm->nranks(),
+                        0,
+                        platform::errors::InvalidArgument(
+                            "The input tensor X's "
+                            "dim[0] (%d) should be divisible by nranks(%d)",
+                            out_dims[0],
+                            comm->nranks()));
+
+      if (ctx.Attr<bool>("use_calc_stream")) {
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
+      } else {
+        stream = comm->stream();
+      }
+      VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
+    }
+
+    int nranks = comm_ctx ? comm_ctx->nranks() : comm->nranks();
     auto out_dims = in->dims();
     PADDLE_ENFORCE_EQ(out_dims[0] % nranks,
                       0,
@@ -52,22 +93,18 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
-    gpuStream_t stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      // should ExecutionContext for calc stream.
-      stream = ctx.cuda_device_context().stream();
+    if (comm_ctx) {
+      comm_ctx->Broadcast(out, *in, ncclSum, stream);
     } else {
-      stream = comm->stream();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
+          send_buff,
+          recv_buff,
+          recv_numel,
+          static_cast<ncclDataType_t>(dtype),
+          ncclSum,
+          comm->comm(),
+          stream));
     }
-
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclReduceScatter(send_buff,
-                                             recv_buff,
-                                             recv_numel,
-                                             static_cast<ncclDataType_t>(dtype),
-                                             ncclSum,
-                                             comm->comm(),
-                                             stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
