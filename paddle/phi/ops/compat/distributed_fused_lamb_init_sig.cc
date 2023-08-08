@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature DistributedFusedLambInitOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
-      "distributed_fused_lamb_init_op",
+      "distributed_fused_lamb_init",
       {"Param", "Grad"},
       {"beta1", "beta2", "apply_weight_decay", "alignment", "rank", "nranks"},
       {"FP32FusedParam",
