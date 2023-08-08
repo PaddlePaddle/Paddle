@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#define PADDLE_CUDA_FP16
 // NOTE(): support float16 to half in header file.
-#define PADDLE_MUSA_FP16
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -66,7 +66,7 @@ __forceinline__ __device__ phi::dtype::float16 CudaShuffleDownSync(
 template <>
 __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleDownSync(
     unsigned mask, phi::dtype::bfloat16 val, int delta, int width) {
-#if defined(PADDLE_MUSA_BF16)
+#if defined(PADDLE_MUSA_BF16) && defined(__MUSA_ARCH__) && __MUSA_ARCH__ >= 220
   return phi::dtype::bfloat16(__shfl_down_sync(
       mask, val.to_mt_bfloat16(), static_cast<unsigned>(delta), width));
 #else
