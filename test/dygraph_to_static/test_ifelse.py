@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from ifelse_simple_func import (
     NetWithControlFlowIf,
     add_fn,
@@ -26,7 +27,7 @@ from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else2,
     dyfunc_with_if_else3,
-    dyfunc_with_if_else_with_list_geneator,
+    dyfunc_with_if_else_with_list_generator,
     fluid,
     if_tensor_case,
     if_with_and_or,
@@ -54,12 +55,14 @@ else:
     place = fluid.CPUPlace()
 
 
+@dy2static_unittest
 class TestDy2staticException(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
         self.error = "Your if/else have different number of return value."
 
+    @ast_only_test
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
@@ -116,7 +119,7 @@ class TestDygraphIfElse4(TestDygraphIfElse):
 class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
-        self.dyfunc = dyfunc_with_if_else_with_list_geneator
+        self.dyfunc = dyfunc_with_if_else_with_list_generator
 
 
 class TestDygraphNestedIfElse(TestDygraphIfElse):
@@ -412,10 +415,11 @@ class TestNewVarCreateInOneBranch(unittest.TestCase):
         self.assertEqual(paddle.jit.to_static(case_func)(True), -2)
 
 
+@dy2static_unittest
 class TestDy2StIfElseRetInt1(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
-        self.dyfunc = dyfunc_ifelse_ret_int1
+        self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int1)
         self.out = self.get_dy2stat_out()
 
     def get_dy2stat_out(self):
@@ -425,7 +429,9 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
         paddle.jit.enable_to_static(False)
         return out
 
+    @ast_only_test
     def test_ast_to_func(self):
+        self.setUp()
         self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
         self.assertIsInstance(self.out[1], int)
 
@@ -437,21 +443,26 @@ class TestDy2StIfElseRetInt2(TestDy2staticException):
         self.dyfunc = dyfunc_ifelse_ret_int2
 
 
+@dy2static_unittest
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
-        self.dyfunc = dyfunc_ifelse_ret_int3
+        self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int3)
         self.out = self.get_dy2stat_out()
 
+    @ast_only_test
     def test_ast_to_func(self):
+        self.setUp()
         self.assertIsInstance(self.out, (paddle.Tensor, core.eager.Tensor))
 
 
+@dy2static_unittest
 class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
-        self.dyfunc = dyfunc_ifelse_ret_int4
+        self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int4)
 
+    @ast_only_test
     def test_ast_to_func(self):
         paddle.jit.enable_to_static(True)
         with self.assertRaises(Dygraph2StaticException):

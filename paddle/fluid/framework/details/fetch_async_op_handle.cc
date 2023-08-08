@@ -37,7 +37,7 @@ FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node,
       local_exec_scopes_(local_exec_scopes),
       return_merged_(return_merged) {}
 
-FetchAsyncOpHandle::~FetchAsyncOpHandle() {}
+FetchAsyncOpHandle::~FetchAsyncOpHandle() = default;
 
 void FetchAsyncOpHandle::RecordWaitEventOnCtx(
     platform::DeviceContext *waited_ctx) {

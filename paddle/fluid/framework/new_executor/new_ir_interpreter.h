@@ -235,6 +235,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void RecordStreamForGC(InstructionBase* instr);
 
+  void SolvePersisableVarNames();
+
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
   std::unique_ptr<::ir::Program> ir_program_{nullptr};
@@ -260,7 +262,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   // Note(zhangbo): set_parameter_op's input and get_parameter_op's output
   // belongs to a parameter and cannot GC.
-  std::vector<::ir::Value> parameter_values_;
+  std::unordered_set<std::string> parameter_var_names_;
 };
 
 }  // namespace framework
