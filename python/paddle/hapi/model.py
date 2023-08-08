@@ -1562,15 +1562,7 @@ class Model:
                 Tensor(shape=[784, 200], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[ 0.05713400,  0.00314646, -0.03754271, ..., -0.02529256,
                    0.04872842, -0.06670858],
-                 [ 0.07248214,  0.02163868,  0.01547344, ...,  0.07607791,
-                  -0.07630520,  0.02005786],
-                 [ 0.07713684,  0.05410782,  0.00986057, ...,  0.07514769,
-                  -0.02967467,  0.01362444],
                  ...,
-                 [ 0.07098989, -0.00887845,  0.07529563, ...,  0.01113024,
-                  -0.06679334,  0.01574872],
-                 [-0.07093438, -0.04612589, -0.01709396, ..., -0.02233285,
-                  -0.07673153, -0.00870886],
                  [ 0.06268418,  0.06550254, -0.02103353, ...,  0.06395906,
                    0.05509177, -0.06355451]]), Parameter containing:
                 Tensor(shape=[200], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -1578,15 +1570,7 @@ class Model:
                 Tensor(shape=[200, 10], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[ 0.12933084,  0.07726504,  0.05336720, ...,  0.10865459,
                    0.06605886,  0.13684085],
-                 [ 0.15416035, -0.08313736,  0.05091208, ...,  0.11347246,
-                  -0.08236878, -0.04588552],
-                 [ 0.02621420,  0.01724403, -0.01701055, ..., -0.14960501,
-                  -0.02784069,  0.12819007],
                  ...,
-                 [ 0.13263875, -0.02361323,  0.14984760, ...,  0.11644045,
-                  -0.09728029, -0.03071274],
-                 [ 0.04371881, -0.07778344,  0.04888061, ..., -0.05050980,
-                   0.04144518, -0.16000319],
                  [-0.10171061, -0.01649965, -0.13420501, ...,  0.11190581,
                   -0.12700224,  0.02916957]]), Parameter containing:
                 Tensor(shape=[10], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -2405,17 +2389,16 @@ class Model:
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
                 >>> import paddle
                 >>> from paddle.static import InputSpec
 
                 >>> input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
-
                 >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
                 >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> params_info = model.summary()
+                >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
                 >>> print(params_info)
                 ---------------------------------------------------------------------------
                 Layer (type)       Input Shape          Output Shape         Param #
@@ -2440,6 +2423,7 @@ class Model:
                 Estimated Total Size (MB): 0.35
                 ---------------------------------------------------------------------------
                 {'total_params': 61610, 'trainable_params': 61610}
+                >>> # doctest: -SKIP
 
         """
         assert (
