@@ -36,6 +36,8 @@ from paddle import fluid
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
+from dygraph_to_static_util import test_and_compare_with_new_ir
+
 import paddle
 from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import to_static
@@ -694,6 +696,7 @@ class TestCycleGANModel(unittest.TestCase):
         out = train(self.args, to_static)
         return out
 
+    @test_and_compare_with_new_ir(False)
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)

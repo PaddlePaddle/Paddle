@@ -19,6 +19,7 @@ import sys
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
@@ -382,6 +383,7 @@ def train(args, fake_data_reader, to_static):
 
 
 class TestTsm(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({"FLAGS_cudnn_deterministic": True})
