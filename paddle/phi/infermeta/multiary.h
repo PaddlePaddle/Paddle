@@ -299,6 +299,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dweight,
                                       const MetaTensor& dbias,
                                       bool multi_precision,
+                                      bool has_bias,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out);
 
@@ -717,6 +718,8 @@ void WeightOnlyMatmulInferMeta(const MetaTensor& x,
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
+                        const MetaTensor& sin,
+                        const MetaTensor& cos,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);

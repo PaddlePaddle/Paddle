@@ -54,7 +54,7 @@ namespace ir {
 class ReverseRollFusePass : public FusePassBase {
  public:
   ReverseRollFusePass();
-  virtual ~ReverseRollFusePass() {}
+  virtual ~ReverseRollFusePass() = default;
 
  protected:
   void ApplyImpl(ir::Graph *graph) const override;

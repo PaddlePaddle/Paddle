@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 
 project(xpuplugin LANGUAGES CXX)
 
@@ -62,14 +62,13 @@ message(STATUS "Build with XPU_CLANG=" ${XPU_CLANG})
 if(NOT DEFINED HOST_SYSROOT)
   set(HOST_SYSROOT $ENV{HOST_SYSROOT})
 endif()
-if(NOT HOST_SYSROOT)
-  set(HOST_SYSROOT /opt/compiler/gcc-8.2)
-endif()
-if(NOT IS_DIRECTORY ${HOST_SYSROOT})
-  message(
-    FATAL_ERROR
-      "Directory ${HOST_SYSROOT} not found, please export HOST_SYSROOT=<path_to_gcc>."
-  )
+if(HOST_SYSROOT)
+  if(NOT IS_DIRECTORY ${HOST_SYSROOT})
+    message(
+      FATAL_ERROR
+        "Directory ${HOST_SYSROOT} not found, please export HOST_SYSROOT=<path_to_gcc>."
+    )
+  endif()
 endif()
 
 if(NOT DEFINED HOST_ARCH)
@@ -89,13 +88,12 @@ endif()
 if(NOT DEFINED TOOLCHAIN_ARGS)
   set(TOOLCHAIN_ARGS $ENV{TOOLCHAIN_ARGS})
 endif()
-set(TOOLCHAIN_ARGS -isystem ${HOST_SYSROOT}/include/c++/8.2.0 -isystem
-                   /usr/include/ -isystem /usr/include/x86_64-linux-gnu)
 if(HOST_ARCH MATCHES "x86_64")
   if(TARGET_ARCH MATCHES "x86_64")
     if(EXISTS ${HOST_SYSROOT}/bin/g++)
       set(HOST_CXX ${HOST_SYSROOT}/bin/g++)
-      if(NOT EXISTS ${HOST_SYSROOT}/bin/ar)
+      set(HOST_AR ${HOST_SYSROOT}/bin/ar)
+      if(NOT EXISTS ${HOST_AR})
         # try gcc-ar
         set(HOST_AR ${HOST_SYSROOT}/bin/gcc-ar)
       endif()
@@ -105,7 +103,7 @@ if(HOST_ARCH MATCHES "x86_64")
     endif()
   endif()
   if(TARGET_ARCH MATCHES "aarch64")
-    set(TOOLCHAIN_ARGS --gcc-toolchain=${HOST_SYSROOT})
+    set(TOOLCHAIN_ARGS "${TOOLCHAIN_ARGS} --gcc-toolchain=${HOST_SYSROOT}")
     set(HOST_SYSROOT ${HOST_SYSROOT}/aarch64-linux-gnu/libc)
     set(HOST_CXX ${CMAKE_CXX_COMPILER})
     set(HOST_AR ${CMAKE_AR})
@@ -130,6 +128,7 @@ message(STATUS "Build with HOST_SYSROOT=" ${HOST_SYSROOT})
 message(STATUS "Build with HOST_CXX=" ${HOST_CXX})
 message(STATUS "Build with HOST_AR=" ${HOST_AR})
 
+separate_arguments(TOOLCHAIN_ARGS)
 # compile xpu kernel macro function
 macro(
   compile_kernel
@@ -154,7 +153,7 @@ macro(
       ${kernel_path} -D ${xpu_n_macro} --target=${TARGET_ARCH} ${HOST_XPU_FLAGS}
       --basename ${kernel_name} -fno-builtin --xpu-arch=${xpu_n} -fPIC
       -Wno-int-to-void-pointer-cast -Wno-int-to-pointer-cast -Werror -mllvm
-      --xpu-inline-cost -mllvm --xpu-inline-hot-call
+      --xpu-inline-cost -mllvm --xpu-inline-hot-call -I${XDNN_INC_DIR}
       -I${CMAKE_CURRENT_SOURCE_DIR}/include -I${CMAKE_CURRENT_SOURCE_DIR}/src
       -I${CMAKE_CURRENT_SOURCE_DIR}/src/kernel
       -I${CMAKE_CURRENT_SOURCE_DIR}/src/kernel/include ${arg_rule}
@@ -303,9 +302,9 @@ foreach(xpu_wrapper IN LISTS xpu_wrappers)
       ${xpu_wrapper} -I${XDNN_INC_DIR} -I${XRE_INC_DIR}
       -I${CMAKE_CURRENT_SOURCE_DIR}/include -I${CMAKE_CURRENT_SOURCE_DIR}/src
       -I${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper -D_GNU_SOURCE
-      -D__STDC_LIMIT_MACROS -DNDEBUG --sysroot=${HOST_SYSROOT} ${TOOLCHAIN_ARGS}
-      --target=${TARGET_ARCH} -fPIC -Werror -Wreorder -fvisibility=hidden
-      --xpu-host-only ${XPU_MF_FLAGS}
+      -D__STDC_LIMIT_MACROS -DNDEBUG ${TOOLCHAIN_ARGS} --target=${TARGET_ARCH}
+      -fPIC -Werror -Wreorder -fvisibility=hidden --xpu-host-only
+      ${XPU_MF_FLAGS}
     COMMAND
       ${CMAKE_COMMAND} -E cmake_depends "Unix Makefiles" ${CMAKE_SOURCE_DIR}
       ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}
@@ -325,9 +324,9 @@ foreach(xpu_wrapper IN LISTS xpu_wrappers)
       -I${XDNN_INC_DIR} -I${XRE_INC_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/include
       -I${CMAKE_CURRENT_SOURCE_DIR}/src
       -I${CMAKE_CURRENT_SOURCE_DIR}/src/wrapper -D_GNU_SOURCE
-      -D__STDC_LIMIT_MACROS -DNDEBUG --sysroot=${HOST_SYSROOT} ${TOOLCHAIN_ARGS}
-      --target=${TARGET_ARCH} -fPIC -Wunused-variable -Werror -Wreorder
-      -fvisibility=hidden --xpu-host-only ${HOST_XPU_FLAGS}
+      -D__STDC_LIMIT_MACROS -DNDEBUG ${TOOLCHAIN_ARGS} --target=${TARGET_ARCH}
+      -fPIC -Wunused-variable -Werror -Wreorder -fvisibility=hidden
+      --xpu-host-only ${HOST_XPU_FLAGS}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS wrapper_build/${wrapper_name}.wrapper.d
     COMMENT wrapper_build/${wrapper_name}.wrapper.o

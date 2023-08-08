@@ -18,7 +18,7 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
 
-from ..fluid.variable_index import _setitem_impl_
+from ..fluid.variable_index import _setitem_impl_, _setitem_static
 
 __all__ = []
 
@@ -367,5 +367,8 @@ def setitem(x, index, value):
        (1) a[Tensor([10,10])]=v -> setitem(a, (Tensor([10,10]),), v)
        (2) a[1] = v -> setitem(a, (1,), v)
     """
-
-    return _setitem_impl_(x, index, value)
+    if core.is_compiled_with_xpu():
+        # (NOTE): Currently, there is no index_put_xpu kernel.
+        return _setitem_impl_(x, index, value)
+    else:
+        return _setitem_static(x, index, value)

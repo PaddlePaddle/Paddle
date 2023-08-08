@@ -30,6 +30,23 @@ random.seed(0)
 np.random.seed(0)
 
 
+class TransedMnistDataSet(paddle.io.Dataset):
+    def __init__(self, mnist_data):
+        self.mnist_data = mnist_data
+
+    def __getitem__(self, idx):
+        img = (
+            np.array(self.mnist_data[idx][0])
+            .astype('float32')
+            .reshape(1, 28, 28)
+        )
+        batch = img / 127.5 - 1.0
+        return {"img": batch}
+
+    def __len__(self):
+        return len(self.mnist_data)
+
+
 class TestPostTrainingQuantization(unittest.TestCase):
     def setUp(self):
         self.root_path = tempfile.TemporaryDirectory()
@@ -217,14 +234,27 @@ class TestPostTrainingQuantization(unittest.TestCase):
     ):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        val_reader = paddle.dataset.mnist.train()
+
+        train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', transform=None
+        )
+        train_dataset = TransedMnistDataSet(train_dataset)
+        BatchSampler = paddle.io.BatchSampler(
+            train_dataset, batch_size=batch_size
+        )
+        val_data_generator = paddle.io.DataLoader(
+            train_dataset,
+            batch_sampler=BatchSampler,
+            places=paddle.static.cpu_places(),
+        )
 
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
             model_filename=model_filename,
             params_filename=params_filename,
-            sample_generator=val_reader,
+            sample_generator=None,
+            data_loader=val_data_generator,
             batch_size=batch_size,
             batch_nums=batch_nums,
             algo=algo,

@@ -33,7 +33,7 @@ class CosineOp : public OperatorBase {
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("input", "input of cosine op");
     AddOutput("output", "output of cosine op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -54,7 +54,7 @@ class MyTestOp : public OperatorBase {
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("input", "input of cosine op").AsDuplicable();
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
@@ -204,7 +204,7 @@ namespace framework {
 
 class OpKernelTestMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() { AddComment("NoGradOp, same input output. no Grad"); }
+  void Make() override { AddComment("NoGradOp, same input output. no Grad"); }
 };
 
 class OpWithKernelTest : public OperatorWithKernel {
@@ -224,7 +224,7 @@ class OpWithKernelTest : public OperatorWithKernel {
 template <typename DeviceContext, typename T>
 class OpKernelTest : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const {}
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace framework
@@ -293,7 +293,7 @@ class OpMultiKernelTest : public paddle::framework::OpKernel<T> {
 template <typename T>
 class OpMultiKernelTest<CPUContext, T> : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const {
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     ++op_test_value;
   }
 };
@@ -302,7 +302,7 @@ template <typename T>
 class OpMultiKernelTest<phi::GPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const {
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     --op_test_value;
   }
 };
@@ -317,7 +317,7 @@ template <typename T>
 class OpMultiKernelTest2<CPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const {
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     op_test_value += 10;
   }
 };
@@ -326,7 +326,7 @@ template <typename T>
 class OpMultiKernelTest2<phi::GPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const paddle::framework::ExecutionContext& ctx) const {
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     op_test_value -= 10;
   }
 };

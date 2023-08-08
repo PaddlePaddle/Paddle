@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
+#include <array>
 #include <list>
 
 #include "gtest/gtest.h"
@@ -286,7 +287,7 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
 }
 
 struct Dims {
-  size_t dims_[4];
+  std::array<size_t, 4> dims_;
 
   bool operator==(const Dims& o) const {
     for (size_t i = 0; i < 4; ++i) {

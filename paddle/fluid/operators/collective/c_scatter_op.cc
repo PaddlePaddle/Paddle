@@ -61,7 +61,7 @@ class CScatterOp : public framework::OperatorWithKernel {
 
 class CScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be broadcasted.");
     AddOutput("Out", "(Tensor) the result of broadcast.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")

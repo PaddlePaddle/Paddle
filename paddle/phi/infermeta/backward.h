@@ -184,7 +184,9 @@ void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   MetaTensor* x_grad,
                                   MetaTensor* y_grad);
 
-void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+void FusedRopeGradInferMeta(const MetaTensor& sin,
+                            const MetaTensor& cos,
+                            const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
                             MetaTensor* dq,
@@ -467,4 +469,11 @@ void IndexAddGradInferMeta(const MetaTensor& index,
                            MetaTensor* x_grad,
                            MetaTensor* add_tensor_grad);
 
+void IndexPutGradInferMeta(const MetaTensor& x,
+                           const std::vector<const MetaTensor*>& indices,
+                           const MetaTensor& value,
+                           const MetaTensor& out_grad,
+                           bool accumulate,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad);
 }  // namespace phi

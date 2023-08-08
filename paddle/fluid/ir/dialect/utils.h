@@ -16,13 +16,35 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 
 namespace paddle {
 namespace dialect {
+
+using VariantType = paddle::variant<bool,
+                                    int,
+                                    int64_t,
+                                    float,
+                                    double,
+                                    std::string,
+                                    std::vector<bool>,
+                                    std::vector<int>,
+                                    std::vector<int64_t>,
+                                    std::vector<float>,
+                                    std::vector<double>,
+                                    std::vector<std::string>,
+                                    phi::Scalar,
+                                    std::vector<phi::Scalar>,
+                                    phi::IntArray,
+                                    phi::DataType,
+                                    phi::DataLayout,
+                                    phi::Place>;
+
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
@@ -58,7 +80,7 @@ static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
 }
 
 static inline ir::Type TransToIrDataType(phi::DataType dtype,
-                                         ir::IrContext *ctx = nullptr) {
+                                         ir::IrContext* ctx = nullptr) {
   if (ctx == nullptr) {
     ctx = ir::IrContext::Instance();
   }
@@ -96,7 +118,7 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
 }
 
 static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
-                                               ir::IrContext *ctx = nullptr) {
+                                               ir::IrContext* ctx = nullptr) {
   if (ctx == nullptr) {
     ctx = ir::IrContext::Instance();
   }
@@ -117,6 +139,156 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
           "ir attribute.",
           scalar.dtype()));
   }
+}
+
+enum class AttrType {
+  UNDEFINED = 0,
+  BOOL,
+  INT32,
+  INT64,
+
+  FLOAT,
+  DOUBLE,
+
+  ARRAY,
+  INT_ARRAY,
+
+  SCALAR,
+  DATA_TYPE,
+  DATA_LAYOUT,
+  PLACE,
+
+  STRING,
+
+  NUM_ATTR_TYPES,
+};
+
+static inline AttrType GetAttributeType(const ir::Attribute& attr) {
+  if (attr.isa<ir::BoolAttribute>()) {
+    return AttrType::BOOL;
+  } else if (attr.isa<ir::FloatAttribute>()) {
+    return AttrType::FLOAT;
+  } else if (attr.isa<ir::DoubleAttribute>()) {
+    return AttrType::DOUBLE;
+  } else if (attr.isa<ir::Int32Attribute>()) {
+    return AttrType::INT32;
+  } else if (attr.isa<ir::Int64Attribute>()) {
+    return AttrType::INT64;
+  } else if (attr.isa<ir::ArrayAttribute>()) {
+    return AttrType::ARRAY;
+  } else if (attr.isa<ir::StrAttribute>()) {
+    return AttrType::STRING;
+  } else if (attr.isa<paddle::dialect::IntArrayAttribute>()) {
+    return AttrType::INT_ARRAY;
+  } else if (attr.isa<paddle::dialect::DataTypeAttribute>()) {
+    return AttrType::DATA_TYPE;
+  } else if (attr.isa<paddle::dialect::PlaceAttribute>()) {
+    return AttrType::PLACE;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported ir Attribute type when casting it into "
+        "AttrType."));
+  }
+}
+
+static std::unordered_map<AttrType,
+                          std::function<VariantType(const ir::Attribute& attr)>>
+    attr_cast_map = {
+        {AttrType::BOOL,
+         [](const ir::Attribute& attr) {
+           return VariantType{attr.dyn_cast<ir::BoolAttribute>().data()};
+         }},
+        {AttrType::FLOAT,
+         [](const ir::Attribute& attr) {
+           return VariantType{attr.dyn_cast<ir::FloatAttribute>().data()};
+         }},
+        {AttrType::DOUBLE,
+         [](const ir::Attribute& attr) {
+           return VariantType{attr.dyn_cast<ir::DoubleAttribute>().data()};
+         }},
+        {AttrType::INT32,
+         [](const ir::Attribute& attr) {
+           return VariantType{attr.dyn_cast<ir::Int32Attribute>().data()};
+         }},
+        {AttrType::INT64,
+         [](const ir::Attribute& attr) {
+           return VariantType{attr.dyn_cast<ir::Int64Attribute>().data()};
+         }},
+        {AttrType::INT_ARRAY,
+         [](const ir::Attribute& attr) {
+           return VariantType{
+               attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
+                   .data()
+                   .GetData()};
+         }},
+        {AttrType::STRING,
+         [](const ir::Attribute& attr) {
+           return VariantType{attr.dyn_cast<ir::StrAttribute>().AsString()};
+         }},
+        {AttrType::DATA_TYPE,
+         [](const ir::Attribute& attr) {
+           return VariantType{
+               attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data()};
+         }},
+        {AttrType::PLACE,
+         [](const ir::Attribute& attr) {
+           return VariantType{
+               attr.dyn_cast<paddle::dialect::PlaceAttribute>().data()};
+         }},
+        {AttrType::ARRAY,
+         [](const ir::Attribute& attr) {
+           auto attr_vec = attr.dyn_cast<ir::ArrayAttribute>().AsVector();
+           if (attr_vec.size() == 0) {
+             return VariantType{std::vector<int>()};
+           }
+           AttrType element_type = GetAttributeType(attr_vec[0]);
+
+           if (element_type == AttrType::BOOL) {
+             std::vector<bool> vec_bools;
+             for (auto vec_element : attr_vec) {
+               vec_bools.push_back(
+                   vec_element.dyn_cast<ir::BoolAttribute>().data());
+             }
+             return VariantType{vec_bools};
+           } else if (element_type == AttrType::INT32) {
+             std::vector<int> vec_int32;
+             for (auto vec_element : attr_vec) {
+               vec_int32.push_back(
+                   vec_element.dyn_cast<ir::Int32Attribute>().data());
+             }
+             return VariantType{vec_int32};
+           } else if (element_type == AttrType::INT64) {
+             std::vector<int64_t> vec_int64;
+             for (auto vec_element : attr_vec) {
+               vec_int64.push_back(
+                   vec_element.dyn_cast<ir::Int64Attribute>().data());
+             }
+             return VariantType{vec_int64};
+           } else if (element_type == AttrType::FLOAT) {
+             std::vector<float> vec_float;
+             for (auto vec_element : attr_vec) {
+               vec_float.push_back(
+                   vec_element.dyn_cast<ir::FloatAttribute>().data());
+             }
+             return VariantType{vec_float};
+           } else if (element_type == AttrType::DOUBLE) {
+             std::vector<double> vec_double;
+             for (auto vec_element : attr_vec) {
+               vec_double.push_back(
+                   vec_element.dyn_cast<ir::DoubleAttribute>().data());
+             }
+             return VariantType{vec_double};
+           } else {
+             PADDLE_THROW(phi::errors::Unimplemented(
+                 "Unsupported ir Attribute type when casting it into "
+                 "vector."));
+           }
+         }},
+};
+
+static inline VariantType GetAttributeData(const ir::Attribute& attr) {
+  AttrType attr_type = GetAttributeType(attr);
+  return attr_cast_map[attr_type](attr);
 }
 
 }  // namespace dialect
