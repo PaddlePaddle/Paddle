@@ -232,7 +232,6 @@ from .tensor.math import asin_  # noqa: F401
 from .tensor.math import atan  # noqa: F401
 from .tensor.math import atan_  # noqa: F401
 from .tensor.math import atan2  # noqa: F401
-from .tensor.math import atan2_  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import cos_  # noqa: F401
@@ -361,7 +360,6 @@ from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
 from .tensor.math import ldexp  # noqa: F401
-from .tensor.math import ldexp_  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
@@ -684,7 +682,6 @@ __all__ = [  # noqa
     'atan',
     'atan_',
     'atan2',
-    'atan2_',
     'rad2deg',
     'deg2rad',
     'gcd',
@@ -811,7 +808,6 @@ __all__ = [  # noqa
     'take',
     'frexp',
     'ldexp',
-    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',

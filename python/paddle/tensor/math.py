@@ -4697,23 +4697,6 @@ def atan2(x, y, name=None):
         return out
 
 
-@inplace_apis_in_dygraph_only
-def atan2_(x, y, name=None):
-    r"""
-    Inplace version of ``atan2`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_atan2`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
-        )
-    if in_dynamic_mode():
-        return _C_ops.atan2_(x, y)
-
-
 def logit(x, eps=None, name=None):
     r"""
     This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
@@ -6365,23 +6348,3 @@ def ldexp(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
-
-
-@inplace_apis_in_dygraph_only
-def ldexp_(x, y, name=None):
-    r"""
-    Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_polygamma`.
-    """
-    if not isinstance(x, (paddle.Tensor, Variable)):
-        raise TypeError(f"x must be tensor type, but got {type(x)}")
-    if not isinstance(y, (paddle.Tensor, Variable)):
-        raise TypeError(f"y must be tensor type, but got {type(y)}")
-    if x.dtype == paddle.float64 or y.dtype == paddle.float64:
-        out_dtype = paddle.float64
-    else:
-        out_dtype = paddle.get_default_dtype()
-    x = paddle.cast_(x, dtype=out_dtype)
-    y = paddle.cast(y, dtype=out_dtype)
-    two = paddle.to_tensor(2, dtype=out_dtype)
-    return paddle.multiply_(x, paddle.pow(two, y))

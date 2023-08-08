@@ -246,7 +246,6 @@ from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
-from .math import atan2_  # noqa: F401
 from .math import logsumexp  # noqa: F401
 from .math import logaddexp  # noqa: F401
 from .math import inverse  # noqa: F401
@@ -307,7 +306,6 @@ from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
 from .math import ldexp  # noqa: F401
-from .math import ldexp_  # noqa: F401
 from .math import trapezoid  # noqa: F401
 from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
@@ -644,7 +642,6 @@ tensor_method_func = [  # noqa
     'sgn',
     'frexp',
     'ldexp',
-    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
