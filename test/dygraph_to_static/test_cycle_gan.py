@@ -696,7 +696,7 @@ class TestCycleGANModel(unittest.TestCase):
         out = train(self.args, to_static)
         return out
 
-    @test_and_compare_with_new_ir
+    @test_and_compare_with_new_ir()
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)

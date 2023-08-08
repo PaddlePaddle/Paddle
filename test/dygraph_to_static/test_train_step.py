@@ -80,7 +80,7 @@ class TestTrainStepTinyModel(unittest.TestCase):
             losses.append(loss)
         return losses
 
-    @test_and_compare_with_new_ir
+    @test_and_compare_with_new_ir()
     def test_train_step(self):
         reset_seed()
         dygraph_losses = self.get_train_step_losses(
