@@ -145,8 +145,8 @@ PD_REGISTER_KERNEL(equal_all,
                      int64_t,                             \
                      float,                               \
                      double,                              \
-                     phi::dtype::float16,      \
-  }
+                     phi::dtype::float16,                 \
+{}
 
 PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)

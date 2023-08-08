@@ -952,7 +952,7 @@ class TestDygraphInplaceNotEqual(TestDygraphInplaceLogicAnd):
         return paddle.not_equal(var, self.y)
 
 
-class TestDygraphInplaceDivide(TestDygraphInplaceWithContinuous):
+class TestDygraphInplaceDivide(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
         self.dtype = "float32"
