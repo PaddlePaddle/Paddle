@@ -250,6 +250,7 @@ class TestNanmedianFP16Op(OpTest):
         self.python_api = paddle.nanmedian
         self.public_python_api = paddle.nanmedian
         self.dtype = np.float16
+        self.python_out_sig = ["Out"]
         X = np.random.random((2, 3)).astype('float16')
         Out = np.nanmedian(X)
         self.inputs = {'X': X}
@@ -273,6 +274,7 @@ class TestNanmedianBF16Op(OpTest):
         self.python_api = paddle.nanmedian
         self.public_python_api = paddle.nanmedian
         self.dtype = np.uint16
+        self.python_out_sig = ["Out"]
         X = np.random.random((2, 3)).astype('float32')
         Out = np.nanmedian(X)
         self.inputs = {'X': convert_float_to_uint16(X)}
