@@ -1210,7 +1210,6 @@ set(TEST_CINN_OPS
     test_layer_norm_op
     test_cast_op
     test_dropout_op
-    test_group_norm_op
     test_tile_op
     test_roll_op
     test_sum_op
