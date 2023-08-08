@@ -1465,6 +1465,72 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void FusedLayerNormInferMeta(const MetaTensor& x,
+                             const MetaTensor& bias,
+                             const MetaTensor& residual,
+                             const MetaTensor& norm_weight,
+                             const MetaTensor& norm_bias,
+                             const float epsilon,
+                             const float residual_alpha,
+                             const int begin_norm_axis,
+                             const float quant_scale,
+                             const int quant_round_type,
+                             const float quant_max_bound,
+                             const float quant_min_bound,
+                             MetaTensor* out,
+                             MetaTensor* residual_out,
+                             MetaTensor* mean,
+                             MetaTensor* variance) {
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  auto x_dims_size = x_dims_vec.size();
+
+  size_t normalized_dims = 1;
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
+    normalized_dims *= x_dims_vec[i];
+  }
+
+  int32_t rows = 1;
+  for (int i = 0; i < begin_norm_axis; i++) {
+    rows *= x.dims()[i];
+  }
+
+  PADDLE_ENFORCE_EQ(normalized_dims,
+                    norm_weight.dims()[0],
+                    phi::errors::InvalidArgument(
+                        "The normalized size of Input(X) must equal to be"
+                        "the size of Weight, but received"
+                        "normalized size of Input(X) is [%d], received size"
+                        "of Weight is [%d]",
+                        normalized_dims,
+                        norm_weight.dims()[0]));
+
+  auto out_dims = phi::make_ddim(x_dims_vec);
+
+  out->set_dims(out_dims);
+  if (quant_scale <= 0.0f) {
+    out->set_dtype(x.dtype());
+  } else {
+    out->set_dtype(phi::DataType::INT8);
+  }
+  out->set_layout(x.layout());
+  out->share_lod(x);
+
+  residual_out->set_dims(out_dims);
+  residual_out->set_dtype(x.dtype());
+  residual_out->set_layout(x.layout());
+  residual_out->share_lod(x);
+
+  mean->set_dims(phi::make_ddim({rows}));
+  mean->set_dtype(DataType::FLOAT32);
+  mean->set_layout(x.layout());
+  mean->share_lod(x);
+
+  variance->set_dims(phi::make_ddim({rows}));
+  variance->set_dtype(DataType::FLOAT32);
+  variance->set_layout(x.layout());
+  variance->share_lod(x);
+}
+
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
                                       const MetaTensor& dweight,

@@ -70,7 +70,7 @@ def fused_layer_norm(
     """
 
     if in_dygraph_mode():
-        return _C_ops.fused_layernorm(
+        return _C_ops.fused_layer_norm(
             x,
             bias,
             residual,
@@ -93,6 +93,12 @@ def fused_layer_norm(
         out = helper.create_variable_for_type_inference(dtype=paddle.int8)
     outputs_dict = {}
     outputs_dict['out'] = out
+    outputs_dict['mean'] = helper.create_variable_for_type_inference(
+        dtype=paddle.float32
+    )
+    outputs_dict['variance'] = helper.create_variable_for_type_inference(
+        dtype=paddle.float32
+    )
 
     residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
     outputs_dict['residual_out'] = residual_out
@@ -104,7 +110,7 @@ def fused_layer_norm(
         inputs['bias'] = bias
 
     helper.append_op(
-        type='fused_layernorm',
+        type='fused_layer_norm',
         inputs=inputs,
         attrs={
             "epsilon": epsilon,
