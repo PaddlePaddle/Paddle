@@ -159,20 +159,20 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
 
   void set_id(const id_type& id) { tensor_id_ = id; }
 
-  std::weak_ptr<OpCall> producer() const { return producer_; }
+  OpCall* producer() const { return producer_; }
 
-  void set_producer(std::weak_ptr<OpCall> producer) { producer_ = producer; }
+  void set_producer(OpCall* producer) { producer_ = producer; }
 
-  const std::vector<std::weak_ptr<const OpCall>>& consumers() const {
+  const std::vector<const OpCall*>& consumers() const {
     return consumers_;
   }
 
   void set_consumables(
-      const std::vector<std::weak_ptr<const OpCall>>& consumers) {
+      const std::vector<const OpCall*>& consumers) {
     consumers_ = consumers;
   }
 
-  void AddConsumer(std::weak_ptr<const OpCall> consumer) {
+  void AddConsumer(const OpCall* consumer) {
     consumers_.push_back(consumer);
   }
 
@@ -184,33 +184,33 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
       : tensor_id_(tensor_id), pattern_graph_(pattern_graph) {}
 
   id_type tensor_id_;
-  std::weak_ptr<OpCall> producer_;
-  std::vector<std::weak_ptr<const OpCall>> consumers_;
+  OpCall* producer_;
+  const OpCall* consumers_;
   PatternGraph* pattern_graph_;
 };
 
 class OpCall : public std::enable_shared_from_this<OpCall> {
  public:
-  OpCall(std::weak_ptr<const Op> op,
-         const std::vector<std::weak_ptr<const Tensor>>& inputs,
-         const std::vector<std::weak_ptr<const Tensor>>& outputs)
+  OpCall( OpCall const * op,
+         const std::vector<const Tensor *>& inputs,
+         const std::vector<const Tensor *>& outputs)
       : op_(op), inputs_(inputs), outputs_(outputs) {}
 
   const std::string& name() const { return op_.lock()->name(); }
 
-  const std::vector<std::weak_ptr<const Tensor>>& inputs() const {
+  const std::vector<const Tensor*>& inputs() const {
     return inputs_;
   }
 
-  const std::vector<std::weak_ptr<const Tensor>>& outputs() const {
+  const std::vector<const Tensor*>& outputs() const {
     return outputs_;
   }
 
  private:
   id_type op_call_id_;
-  std::weak_ptr<const Op> op_;
-  std::vector<std::weak_ptr<const Tensor>> inputs_;
-  std::vector<std::weak_ptr<const Tensor>> outputs_;
+  const Op* op_;
+  std::vector<const Tensor*> inputs_;
+  std::vector<const Tensor*> outputs_;
 };
 
 class ResultPattern {

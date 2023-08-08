@@ -118,7 +118,7 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
-std::weak_ptr<OpCall> SourcePatternGraph::AnchorNode() const {
+OpCall* SourcePatternGraph::AnchorNode() const {
   return id2owned_tensor_.at(*output_tensors_.begin())->producer();
 }
 
