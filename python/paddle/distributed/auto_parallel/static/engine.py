@@ -869,7 +869,7 @@ class Engine:
         callbacks=None,
         verbose=2,
         nvprof_range=[-1, -1],
-        enable_synchronized_IPS=True,
+        enable_synchronized_IPS=False,
     ):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
@@ -907,8 +907,12 @@ class Engine:
                 0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. Default: None. (Unused for now)
-            nvprof_range(list, optional): A list of integers indicating nvprof ranges in form of [start_step, end_step]. Note that if start_step >= end_step, the nvprof will not apply.
-
+            nvprof_range(list, optional): A list of integers indicating nvprof ranges in form of
+                [start_step, end_step]. Note that if start_step >= end_step, the nvprof will not apply.
+            enable_synchronized_IPS(bool, optional): Enable synchronization between CPU and GPU
+                when measuring IPS metric. Default: False.
+                NOTE: ONLY enable this for performance benchmarking during software development as
+                synchronization may cause performance drop!
         Returns:
             None
 
