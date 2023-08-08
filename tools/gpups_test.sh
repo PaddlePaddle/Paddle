@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Disable Test list: test_fused_linear_param_grad_add
+
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
 ^test_conv3d_op$"
