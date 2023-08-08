@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/scope.h"
@@ -22,21 +23,16 @@
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
-#include "paddle/fluid/platform/collective_helper.h"
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
-
-#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 namespace paddle {
 namespace framework {
 
-PhiKernelInstruction::PhiKernelInstruction(
+LegacyKernelInstruction::LegacyKernelInstruction(
     size_t id,
     const platform::Place& place,
     ir::Operation* op,
@@ -52,8 +48,8 @@ PhiKernelInstruction::PhiKernelInstruction(
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
 
-  phi_op_name_ = op_name;
-  VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
+  legacy_op_name_ = op_name;
+  VLOG(6) << "construct phi kernel instruction for: " << legacy_op_name_;
 
   // Todo: support paddle::dialect::DistAttribute
   //   if (op_attributes.count("dist_attr") != 0) {
@@ -96,25 +92,23 @@ PhiKernelInstruction::PhiKernelInstruction(
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
       phi::errors::PreconditionNotMet(
-          "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
+          "can not find OpYamlInfoInterface from [%s]", legacy_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_());
   VLOG(6) << "finish process yaml_info_parser";
 
-  if (infer_meta_interface_) {
-    ::ir::BuildPhiContext<
-        phi::InferMetaContext,
-        phi::MetaTensor,
-        phi::MetaTensor,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        false>(op,
-               value_2_var_name,
-               scope,
-               local_scope,
-               yaml_info_parser,
-               &infer_meta_context_);
-  }
+  ::ir::BuildPhiContext<
+      phi::InferMetaContext,
+      phi::MetaTensor,
+      phi::MetaTensor,
+      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+      false>(op,
+             value_2_var_name,
+             scope,
+             local_scope,
+             yaml_info_parser,
+             &infer_meta_context_);
   VLOG(6) << "finish process infer meta context";
 
   auto kernel_name =
@@ -129,21 +123,25 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
-  ::ir::BuildPhiContext<phi::KernelContext,
-                        const phi::TensorBase*,
-                        phi::TensorBase*,
-                        paddle::small_vector<const phi::TensorBase*>,
-                        paddle::small_vector<phi::TensorBase*>,
-                        true>(op,
-                              value_2_var_name,
-                              scope,
-                              local_scope,
-                              yaml_info_parser,
-                              &kernel_context_);
-  kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
-      phi::TransToPhiPlace(kernel_key.backend())));
-  VLOG(6) << "finish process kernel context";
+  operator_base_ =
+      ir::BuildOperatorBase(op, value_2_var_name, yaml_info_parser);
+  paddle::framework::VariableValueMap in_map;
+  paddle::framework::VariableValueMap out_map;
+  auto dev_ctx = phi::DeviceContextPool::Instance().Get(
+      phi::TransToPhiPlace(kernel_key.backend()));
 
+  runtime_context_ = std::make_shared<paddle::framework::RuntimeContext>(
+      paddle::framework::RuntimeContext(in_map, out_map));
+  ir::BuildRuntimeContext(op,
+                          value_2_var_name,
+                          scope,
+                          local_scope,
+                          yaml_info_parser,
+                          runtime_context_.get());
+  kernel_context_ = new paddle::framework::ExecutionContext(
+      *operator_base_, *local_scope, *dev_ctx, *(runtime_context_.get()));
+
+  VLOG(6) << "finish process kernel context";
   SetDeviceContext(
       ParseDeviceContext(op,
                          phi::DeviceContextPool::Instance().Get(
@@ -167,13 +165,17 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
-void PhiKernelInstruction::Run() {
-  if (infer_meta_interface_) {
-    infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+LegacyKernelInstruction::~LegacyKernelInstruction() {
+  if (kernel_context_ != nullptr) {
+    delete kernel_context_;
   }
-  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
-  (*(phi_kernel_))(&(kernel_context_));
-  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
+}
+
+void LegacyKernelInstruction::Run() {
+  infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
+  (*(phi_kernel_))((kernel_context_));
+  VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
 }
 
 }  // namespace framework
