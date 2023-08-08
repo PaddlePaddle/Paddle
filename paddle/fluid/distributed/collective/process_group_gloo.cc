@@ -105,8 +105,8 @@ std::vector<T*> get_multi_data(
     std::vector<phi::DenseTensor>& tensors) {  // NOLINT
   std::vector<T*> ret;
   ret.reserve(tensors.size());
-  for (size_t i = 0; i < tensors.size(); i++) {
-    ret.push_back(get_data<T>(tensors[i]));
+  for (auto& tensor : tensors) {
+    ret.push_back(get_data<T>(tensor));
   }
   return ret;
 }

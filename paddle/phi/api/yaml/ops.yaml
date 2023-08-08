@@ -630,6 +630,18 @@
     data_type : x
   backward : cumsum_grad
 
+- op : data
+  args : (int64_t index, DataType dtype, str name, Place place)
+  output : Tensor(out)
+  infer_meta :
+    func : FeedWithPlaceInferMeta
+    param : [index, dtype]
+  kernel:
+    func : data
+    param : [index, dtype]
+    data_type : dtype
+    backend : place
+
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -838,18 +850,6 @@
   inplace: (x -> out)
   backward : expm1_grad
 
-- op : feed_with_place
-  args : (int64_t index, DataType dtype, str name, Place place)
-  output : Tensor(out)
-  infer_meta :
-    func : FeedWithPlaceInferMeta
-    param : [index, dtype]
-  kernel:
-    func : feed_with_place
-    param : [index, dtype]
-    data_type : dtype
-    backend : place
-
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
@@ -910,9 +910,9 @@
   backward : fill_diagonal_tensor_grad
 
 - op : flash_attn
-  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
-  optional : fixed_seed_offset
+  optional : fixed_seed_offset, attn_mask
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
@@ -923,9 +923,9 @@
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
-  optional : fixed_seed_offset
+  optional :  fixed_seed_offset , attn_mask
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]

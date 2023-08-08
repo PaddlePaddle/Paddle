@@ -70,7 +70,7 @@ def train(to_static, build_strategy=None):
 
                 with paddle.amp.auto_cast():
                     pred = resnet(img)
-                    # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
+                    # FIXME(Aurelius84): The following cross_entropy seems to bring out a
                     # precision problem, need to figure out the underlying reason.
                     # If we remove it, the loss between dygraph and dy2stat is exactly same.
                     loss = paddle.nn.functional.cross_entropy(

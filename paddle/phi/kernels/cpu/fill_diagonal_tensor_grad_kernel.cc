@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fill_diagonal_tensor_grad_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -38,10 +39,17 @@ void FillDiagonalTensorGradKernel(const Context& ctx,
       }
     }
 
-    int64_t new_dims[2], strides[2];
+    std::array<int64_t, 2> new_dims;
+    std::array<int64_t, 2> strides;
     std::vector<int64_t> matdim;
     matdim.resize(matrows);
-    CalMatDims(dx_dims, dim1, dim2, &offset, new_dims, strides, matdim.data());
+    CalMatDims(dx_dims,
+               dim1,
+               dim2,
+               &offset,
+               new_dims.data(),
+               strides.data(),
+               matdim.data());
 
     auto size = x_grad->numel();
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);

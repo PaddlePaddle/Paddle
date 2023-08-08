@@ -969,18 +969,15 @@ void BuildOpFuncList(
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  for (auto it = block->begin(); it != block->end(); ++it) {
+  for (auto op : *block) {
     OpFuncNode op_func_node;
-    auto attr_map = (*it)->attributes();
+    auto attr_map = op->attributes();
 
     auto op_name =
         attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
+    if (GetSpecialOpNames().count(op_name)) {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -1002,7 +999,7 @@ void BuildOpFuncList(
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>((*it),
+          false>(op,
                  value_2_name_map,
                  scope,
                  local_scope,
@@ -1030,13 +1027,13 @@ void BuildOpFuncList(
         kernel_name == "fused_softmax_mask_upper_triangle_grad") {
       // builder operator
       op_func_node.operator_base_ =
-          ir::BuildOperatorBase((*it), value_2_name_map, op_yaml_info_parser);
+          ir::BuildOperatorBase(op, value_2_name_map, op_yaml_info_parser);
       paddle::framework::VariableValueMap in_map;
       paddle::framework::VariableValueMap out_map;
       op_func_node.runtime_ctx_ =
           std::make_shared<paddle::framework::RuntimeContext>(
               paddle::framework::RuntimeContext(in_map, out_map));
-      ir::BuildRuntimeContext((*it),
+      ir::BuildRuntimeContext(op,
                               value_2_name_map,
                               scope,
                               local_scope,
@@ -1049,7 +1046,7 @@ void BuildOpFuncList(
                             phi::TensorBase*,
                             paddle::small_vector<const phi::TensorBase*>,
                             paddle::small_vector<phi::TensorBase*>,
-                            true>((*it),
+                            true>(op,
                                   value_2_name_map,
                                   scope,
                                   local_scope,
@@ -1169,6 +1166,18 @@ void SetDeviceCommContext(::ir::Operation* op,
               << ", ring_id: " << ring_id << ", get comm_context failed!";
     }
   }
+}
+
+std::unordered_set<std::string> GetSpecialOpNames() {
+  return {
+      "builtin.combine",
+      "builtin.slice",
+      "pd.feed",
+      "builtin.set_parameter",
+      "builtin.get_parameter",
+      "pd.data",
+      "pd.shadow_output",
+  };
 }
 
 }  // namespace interpreter
