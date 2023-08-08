@@ -29,14 +29,11 @@ struct RemoveRedundentReshapeFunctor {
   void operator()(ir::drr::DrrPatternContext *ctx) {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
-    VLOG(1) << "###### reshape";
     const auto &reshape = pat.Op("reshape");
-    VLOG(1) << "###### reshape reshape";
     pat.Tensor("ret") = reshape(reshape(pat.Tensor("arg0")));
 
     // Result patterns：要替换为的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
-    VLOG(1) << "###### RES";
     res.Tensor("ret") = res.Op("reshape")(res.Tensor("arg0"));
   }
 };
@@ -48,6 +45,41 @@ class RemoveRedundentReshapePattern
   using ir::drr::DrrRewritePattern<
       paddle::dialect::ReshapeOp,
       RemoveRedundentReshapeFunctor>::DrrRewritePattern;
+};
+
+struct FoldBroadcastToConstantFunctor {
+  void operator()(ir::drr::DrrPatternContext *ctx) {
+    ir::drr::SourcePattern pat = ctx->SourcePattern();
+    // Source Pattern 中可匹配的类型包括 Op 和 Tensor
+    const auto &fill_constant = pat.Op(
+        "fill_constant",
+        {{"value", pat.Attr("value_1")}, {"dtype", pat.Attr("dtype_1")}});
+    const auto &broadcast_to =
+        pat.Op("expand", {{"shape", pat.Attr("shape_1")}});
+    // 匹配fill_constant+broadcast_to，同时对输出张量标记为ret，方便后面加约束
+    pat.Tensor("ret") = broadcast_to(fill_constant());
+    // Constrains：本Pass无额外的约束规则
+    // Result patterns：要替换为的子图
+    ir::drr::ResultPattern res = pat.ResultPattern();
+    // 使用 folded_fill_constant 替换
+    // broadcast_to(fill_constant())，注意shape属性已更新 所有 ret
+    // 参数均在Source Pattern中使用，对 ret 的赋值等同于对 ret 的 producer
+    // op的删除和重连接
+    const auto &folded_fill_constant = res.Op("fill_constant",
+                                              {{"shape", res.Attr("shape_1")},
+                                               {"value", res.Attr("value_1")},
+                                               {"dtype", res.Attr("dtype_1")}});
+    res.Tensor("ret") = folded_fill_constant();
+  }
+};
+
+class FoldBroadcastToConstantPattern
+    : public ir::drr::DrrRewritePattern<paddle::dialect::ExpandOp,
+                                        FoldBroadcastToConstantFunctor> {
+ public:
+  using ir::drr::DrrRewritePattern<
+      paddle::dialect::ExpandOp,
+      FoldBroadcastToConstantFunctor>::DrrRewritePattern;
 };
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT

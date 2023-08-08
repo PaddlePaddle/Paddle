@@ -60,6 +60,23 @@ std::vector<Constraint> DrrPatternContext::constraints() const {
   return constraints_;
 }
 
+// void DrrPatternContext::RequireEqual(const Attribute& first, const Attribute&
+// second) {
+//   auto constrain_fn = [&](const MatchContext& match_context) {
+//     return match_context.Attr(first.id()) == match_context.Attr(second.id());
+//   };
+//   constraints_.emplace_back(constrain_fn);
+// }
+
+void DrrPatternContext::RequireEqual(const TensorShape& first,
+                                     const TensorShape& second) {
+  auto constrain_fn = [&](const MatchContext& match_context) {
+    return match_context.Tensor(first.tensor_id()).Shape() ==
+           match_context.Tensor(second.tensor_id()).Shape();
+  };
+  constraints_.emplace_back(constrain_fn);
+}
+
 void Op::operator()(const Tensor& arg, const Tensor* out) const {
   std::vector<std::weak_ptr<const Tensor>> inputs{arg.shared_from_this()};
   std::vector<std::weak_ptr<const Tensor>> outputs{out->shared_from_this()};
