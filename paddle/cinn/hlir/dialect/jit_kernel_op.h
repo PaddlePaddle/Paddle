@@ -43,7 +43,7 @@ namespace dialect {
 class JitKernelOp : public ::ir::Op<JitKernelOp> {
  public:
   using Op::Op;
-  static const char* name() { return "cinn.instruction"; }
+  static const char* name() { return "cinn.jit_kernel"; }
   // TODO(Aurelius84): Think deeply what should contains
   static constexpr uint32_t attributes_num = 1;
   static constexpr char* kAttrName = "instruction";

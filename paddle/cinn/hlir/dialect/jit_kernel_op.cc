@@ -15,7 +15,7 @@
 #include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
 
 #include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/ir/core/enforce.h"
 
 namespace cinn {
 namespace dialect {
@@ -27,10 +27,9 @@ void JitKernelOp::Verify() {
 
   auto& attributes = this->attributes();
 
-  PADDLE_ENFORCE(attributes.count(kAttrName) > 0 &&
-                     attributes.at(kAttrName).isa<::ir::PointerAttribute>(),
-                 phi::errors::PreconditionNotMet(
-                     "Type of attribute: instruction is not right."));
+  IR_ENFORCE(attributes.count(kAttrName) > 0 &&
+                 attributes.at(kAttrName).isa<::ir::PointerAttribute>(),
+             "Type of attribute: instruction is not right.");
 }
 
 hlir::framework::Instruction* JitKernelOp::instruction() {

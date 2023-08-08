@@ -23,7 +23,7 @@ class RuntimeDialect : public ::ir::Dialect {
  public:
   explicit RuntimeDialect(::ir::IrContext* context);
 
-  static const char* name() { return "cinn.Instruction"; }
+  static const char* name() { return "cinn"; }
 
  private:
   void initialize();
