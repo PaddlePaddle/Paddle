@@ -23,7 +23,7 @@ namespace tensorrt {
 
 class ExprWrapper {
  public:
-  ExprWrapper() {}
+  ExprWrapper() = default;
   ExprWrapper(const nvinfer1::IDimensionExpr* expr,
               nvinfer1::IExprBuilder* expr_builder) {
     this->expr = expr;
@@ -122,7 +122,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
 ) {
   std::vector<ExprWrapper> x_dims_wrap;
   for (int i = 0; i < x_dims.nbDims; i++) {
-    x_dims_wrap.push_back(ExprWrapper(x_dims.d[i], &expr_builder));
+    x_dims_wrap.emplace_back(x_dims.d[i], &expr_builder);
   }
   return x_dims_wrap;
 }
@@ -490,7 +490,7 @@ nvinfer1::DimsExprs PNormInferMeta(
     for (int i = 0; i < x_dim.nbDims; ++i) {
       if (i != axis) reduce_dims.emplace_back(x_dim.d[i]);
     }
-    if (reduce_dims.size() == 0) {
+    if (reduce_dims.empty()) {
       reduce_dims.emplace_back(expr_builder.constant(1));
     }
   }
@@ -643,7 +643,7 @@ nvinfer1::DimsExprs Conv2dFusionInferMeta(
 
   std::vector<ExprWrapper> paddings_wrap;
   for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings_wrap.emplace_back(ExprWrapper(paddings[i], &expr_builder));
+    paddings_wrap.emplace_back(paddings[i], &expr_builder);
   }
 
   UpdatePaddingAndDilation(&paddings_wrap,
@@ -728,11 +728,11 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
 
   CHECK_EQ(padding_algorithm == "EXPLICIT", true);
   CHECK_EQ(data_format == "NCHW", true);
-  CHECK_EQ(output_size.size() == 0, true);
+  CHECK_EQ(output_size.empty(), true);
   CHECK_EQ(paddings.size() == 2, true);
   CHECK_EQ(x_dims.nbDims == 4, true);
   CHECK_EQ(x_dims.nbDims == filter_dims.nbDims, true);
-  CHECK_EQ(output_padding.size() == 0, true);
+  CHECK_EQ(output_padding.empty(), true);
 
   int stride_size = strides.size();
   for (int i = 0; i < stride_size; ++i) {
@@ -742,11 +742,11 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
   int in_sub_stride_size = x_dims.nbDims - stride_size;
   CHECK_EQ(in_sub_stride_size == 2, true);
 
-  if (output_size.size()) {
+  if (!output_size.empty()) {
     CHECK_EQ(output_size.size() == strides.size(), true);
   }
 
-  if (output_padding.size()) {
+  if (!output_padding.empty()) {
     CHECK_EQ(strides.size() == output_padding.size(), true);
   }
 

@@ -120,7 +120,7 @@ def append_input_output(
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
-            if is_calc_ref and dtype == np.float16:
+            if is_calc_ref and (dtype == np.float16 or dtype == np.uint16):
                 dtype = np.float32
         return block.create_var(
             dtype=dtype, shape=shape, lod_level=lod_level, name=name

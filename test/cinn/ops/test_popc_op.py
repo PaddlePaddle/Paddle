@@ -15,8 +15,8 @@
 # limitations under the License.
 
 import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
@@ -61,7 +61,7 @@ class TestPopcOp(OpTest):
         low = INT32_MIN if dtype == "int32" else INT64_MIN
         high = INT32_MAX if dtype == "int32" else INT64_MAX
         x = self.random(self.case["shape"], dtype, low=low, high=high)
-        y = list(map(lambda num: popcount(num, dtype), x.reshape(-1).tolist()))
+        y = [popcount(num, dtype) for num in x.reshape(-1).tolist()]
         self.inputs = {"x": x}
         self.outputs = {"y": np.array(y).reshape(x.shape).astype(dtype)}
 

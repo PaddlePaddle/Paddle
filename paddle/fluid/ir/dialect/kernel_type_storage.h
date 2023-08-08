@@ -88,5 +88,67 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
   dialect::DenseTensorType dense_tensor_type_;
 };
 
+///
+/// \brief Define Parametric TypeStorage for AllocatedSelectedRowsTypeStorage.
+///
+///
+struct AllocatedSelectedRowsTypeStorage : public ir::TypeStorage {
+  using Place = phi::Place;
+  ///
+  /// \brief Declare ParamKey according to parameter type.
+  ///
+  using ParamKey = std::tuple<phi::Place, dialect::SelectedRowsType>;
+
+  AllocatedSelectedRowsTypeStorage(const phi::Place& place,
+                                   const dialect::SelectedRowsType& type)
+      : place_(place), selected_rows_type_(type) {}
+
+  ///
+  /// \brief Each derived TypeStorage must define a Construct method, which
+  /// StorageManager uses to construct a derived TypeStorage.
+  ///
+  static AllocatedSelectedRowsTypeStorage* Construct(const ParamKey& key) {
+    return new AllocatedSelectedRowsTypeStorage(std::get<0>(key),
+                                                std::get<1>(key));
+  }
+
+  ///
+  /// \brief Each derived TypeStorage must provide a HashValue method.
+  ///
+  static std::size_t HashValue(const ParamKey& key) {
+    std::size_t hash_value = 791;
+    // hash place
+    hash_value = ir::hash_combine(hash_value, std::get<0>(key).HashValue());
+
+    // hash dtype
+    auto selected_rows_type = std::get<1>(key);
+    hash_value = ir::hash_combine(hash_value,
+                                  dialect::DenseTensorTypeStorage::HashValue(
+                                      dialect::DenseTensorTypeStorage::ParamKey(
+                                          selected_rows_type.dtype(),
+                                          selected_rows_type.dims(),
+                                          selected_rows_type.data_layout(),
+                                          selected_rows_type.lod(),
+                                          selected_rows_type.offset())));
+    return hash_value;
+  }
+
+  ///
+  /// \brief Each derived TypeStorage needs to overload operator==.
+  ///
+  bool operator==(const ParamKey& key) const {
+    return ParamKey(place_, selected_rows_type_) == key;
+  }
+
+  ParamKey GetAsKey() const { return ParamKey(place_, selected_rows_type_); }
+
+  ///
+  /// \brief AllocatedSelectedRowsTypeStorage include five parameters: place,
+  /// SelectedRowsType
+  ///
+  phi::Place place_;
+  dialect::SelectedRowsType selected_rows_type_;
+};
+
 }  // namespace dialect
 }  // namespace paddle

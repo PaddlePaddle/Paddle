@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.optim import ir_copy, simplify
+from .core_api.optim import ir_copy, simplify  # noqa: F401

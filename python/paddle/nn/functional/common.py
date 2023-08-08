@@ -404,6 +404,7 @@ def interpolate(
         )
 
     if isinstance(size, Variable):
+        size = size.cast("int32")  # static mode only support int32
         if size.ndim != 1:
             raise ValueError(
                 f"If size is a tensor, it's rank must be 1, but received {size.ndim}."
@@ -1859,6 +1860,86 @@ def linear(x, weight, bias=None, name=None):
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type='matmul_v2',
+            inputs=inputs,
+            outputs={'Out': tmp},
+            attrs=attrs,
+        )
+        if bias is not None:
+            res = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [tmp], 'Y': [bias]},
+                outputs={'Out': [res]},
+                attrs={'axis': -1},
+            )
+        else:
+            res = tmp
+        return res
+
+
+def quant_for_compress(x, bits=8, layout="weight_only"):
+    return _C_ops.quant_for_compress(x, bits, layout)
+
+
+def linear_compress(
+    x,
+    weight,
+    weight_scale,
+    bias=None,
+    bits=8,
+    algo="llm.int8",
+    name=None,
+    config=None,
+):
+    if in_dynamic_mode():
+        if algo == "llm.int8":
+            y = _C_ops.llm_int8_matmul(
+                x, weight, weight_scale, config['threshold']
+            )
+        elif algo == "weight_only":
+            y = _C_ops.weight_only_matmul(x, weight, weight_scale)
+        else:
+            raise ValueError(
+                "Unknown algo: '{}'. It can only be 'llm.int8' or 'weight_only'.".format(
+                    algo
+                )
+            )
+        if bias is not None:
+            y = paddle.add(y, bias)
+        return y
+    else:
+        helper = LayerHelper('linear_compress', **locals())
+        dtype = x.dtype
+
+        check_variable_and_dtype(x, 'x', ['float16'], 'linear_compress')
+        check_dtype(dtype, 'dtype', ['float16'], 'linear_compress')
+
+        if algo == "llm.int8":
+            type = "llm_int8_matmul"
+            inputs = {
+                'x': [x],
+                'weight': [weight],
+                'weight_scale': [weight_scale],
+            }
+            attrs = {'algo': algo, 'threshold': config['threshold']}
+        elif algo == "weight_only":
+            type = "weight_only_matmul"
+            inputs = {
+                'x': [x],
+                'weight': [weight],
+                'weight_scale': [weight_scale],
+            }
+            attrs = {}
+        else:
+            raise ValueError(
+                "Unknown algo: '{}'. It can only be 'llm.int8' or 'weight_only'.".format(
+                    algo
+                )
+            )
+        tmp = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=type,
             inputs=inputs,
             outputs={'Out': tmp},
             attrs=attrs,

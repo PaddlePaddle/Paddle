@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/lower.h"
 
 namespace cinn {
@@ -69,7 +69,7 @@ TEST(UnrollLoops, auto_unroll) {
   Expr M(100);
   Expr N(4);
   Expr O(5);
-  Expr const_value(float(2.11));
+  Expr const_value(2.11f);
 
   Placeholder<float> A("A", {M, N, O});
 

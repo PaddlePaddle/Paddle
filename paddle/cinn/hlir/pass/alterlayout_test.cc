@@ -210,7 +210,7 @@ TEST(conv_bn_conv, conv_bn_conv) {
   attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
-  attrs1["epsilon"] = (float)0.001;
+  attrs1["epsilon"] = 0.001f;
 
   auto c = program.conv2d(A, B, attrs);
   auto d = program.batchnorm(c, Scale, Bias, Mean, Variance, attrs1);
@@ -317,7 +317,7 @@ TEST(conv_softmax_conv, conv_softmax_conv) {
   attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
-  attrs1["axis"] = (int)-1;
+  attrs1["axis"] = static_cast<int>(-1);
 
   auto c = program.conv2d(A, B, attrs);
   auto d = program.softmax(c, attrs1);
@@ -417,7 +417,7 @@ TEST(conv_mul_conv, conv_mul_conv) {
   attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
-  attrs1["axis"] = (int)-1;
+  attrs1["axis"] = static_cast<int>(-1);
 
   auto c = program.conv2d(A, B, attrs);
   auto d = program.mul(c, C, 1, 1);

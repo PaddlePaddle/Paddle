@@ -293,8 +293,7 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   // traverse the graph
   int num_ops = op_queue.size();
   while (num_ops) {
-    for (auto it = op_queue.begin(); it != op_queue.end(); it++) {
-      auto *&cur_op = *it;
+    for (auto cur_op : op_queue) {
       if (!cur_op || in_degree[cur_op] > 0) continue;
       // visit this node
       // put all the output var of this op valid.
@@ -345,7 +344,7 @@ size_t GraphNum(const Graph &graph) {
       traverse_nodes(cur_node->outputs);
     } else {
       ++graph_count;
-      if (g_nodes.size()) {
+      if (!g_nodes.empty()) {
         graph_nodes.emplace_back(g_nodes);
       }
       g_nodes.clear();
@@ -359,11 +358,11 @@ size_t GraphNum(const Graph &graph) {
     }
   }
 
-  if (g_nodes.size()) {
+  if (!g_nodes.empty()) {
     graph_nodes.emplace_back(g_nodes);
   }
 
-  if (FLAGS_print_sub_graph_dir.size()) {
+  if (!FLAGS_print_sub_graph_dir.empty()) {
     if (graph_nodes.size() > 1) {
       std::stringstream out;
       for (auto &g_n : graph_nodes) {

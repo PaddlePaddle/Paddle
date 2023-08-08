@@ -93,7 +93,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
           "bwd_in_meta_ is designed to hold as same num as backward "
           "inputs."));
   auto& metas = bwd_in_meta_.at(slot_rank);
-  if (metas.size() == 0) {
+  if (metas.empty()) {
     metas.resize(1);
   }
 
@@ -218,7 +218,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
           "backward outputs."));
   auto& metas = bwd_out_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  if (metas.size() == 0) {
+  if (metas.empty()) {
     metas.resize(1);
   }
   auto& meta = metas[0];
@@ -281,7 +281,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
           "backward outputs."));
   auto& metas = bwd_out_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  if (metas.size() == 0) {
+  if (metas.empty()) {
     metas.resize(1);
   }
   auto& meta = metas[0];
@@ -557,6 +557,22 @@ void GradNodeBase::HandleComplexGradToRealGrad(
       }
     }
   }
+}
+
+std::vector<std::shared_ptr<GradNodeBase>> GradNodeBase::NextFunctions() {
+  std::vector<std::shared_ptr<GradNodeBase>> next_nodes;
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      metas = OutputMeta();
+
+  for (const auto& meta_list : metas) {
+    for (const GradSlotMeta& meta : meta_list) {
+      const auto& edge = meta.GetEdge();
+      std::shared_ptr<GradNodeBase> next_node = edge.GetMutableGradNode();
+      next_nodes.push_back(next_node);
+    }
+  }
+
+  return next_nodes;
 }
 
 }  // namespace egr

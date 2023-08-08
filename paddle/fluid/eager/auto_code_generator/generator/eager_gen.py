@@ -16,6 +16,7 @@ import argparse
 import os
 import re
 
+import yaml
 from codegen_utils import (
     AssertMessage,
     FindForwardName,
@@ -2552,14 +2553,17 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
 
 class DygraphForwardAndNodesGenerator(GeneratorBase):
-    def __init__(self, api_yaml_path, backward_yaml_path):
+    def __init__(
+        self, api_yaml_path, backward_yaml_path, fw_ops=None, bw_ops=None
+    ):
         # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
-        GeneratorBase.__init__(self, api_yaml_path)
+        GeneratorBase.__init__(self, api_yaml_path, fw_ops)
 
         self.backward_yaml_path = backward_yaml_path
+        self.bw_ops = bw_ops
         self.grad_api_dict = {}
 
         self.forward_declaration_str = ""
@@ -2580,7 +2584,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
 
         # string api is forward_only, no backward_yaml respectively
         if backward_yaml_path is not None:
-            self.grad_api_dict = ReadBwdFile(backward_yaml_path)
+            self.grad_api_dict = ReadBwdFile(backward_yaml_path, self.bw_ops)
 
     def GetBackwardAPIContents(self, forward_api_contents):
         grad_api_dict = self.grad_api_dict
@@ -2747,6 +2751,23 @@ if __name__ == "__main__":
     forward_declaration_str = ""
     forward_definition_str = ""
 
+    # merge legacy_ops.yaml and ops.yaml, legacy_backward.yaml and backward.yaml
+    all_ops = []
+    all_bw = []
+    for api_yaml_path in api_yaml_paths:
+        if api_yaml_path.endswith("legacy_ops.yaml") or api_yaml_path.endswith(
+            "/ops.yaml"
+        ):
+            with open(api_yaml_path, 'r') as f:
+                all_ops += yaml.safe_load(f)
+
+    for bw_yaml_path in backward_yaml_paths:
+        if bw_yaml_path.endswith(
+            "legacy_backward.yaml"
+        ) or bw_yaml_path.endswith("/backward.yaml"):
+            with open(bw_yaml_path, 'r') as f:
+                all_bw += yaml.safe_load(f)
+
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
@@ -2756,9 +2777,16 @@ if __name__ == "__main__":
         else:
             backward_yaml_path = None
 
-        generator = DygraphForwardAndNodesGenerator(
-            api_yaml_path, backward_yaml_path
-        )
+        if api_yaml_path.endswith('/legacy_ops.yaml'):
+            continue
+        if api_yaml_path.endswith('/ops.yaml'):
+            generator = DygraphForwardAndNodesGenerator(
+                api_yaml_path, backward_yaml_path, all_ops, all_bw
+            )
+        else:
+            generator = DygraphForwardAndNodesGenerator(
+                api_yaml_path, backward_yaml_path
+            )
         generator.run()
 
         node_declaration_str += generator.node_declaration_str + "\n"

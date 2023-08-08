@@ -51,14 +51,13 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
       y_dims_mapping.size(),
       phi::errors::InvalidArgument(
           "Mismatch of Y's tensor size: [%d] and Y's dims_mapping size [%d].",
-          x_ndim,
-          x_dims_mapping.size()));
+          y_ndim,
+          y_dims_mapping.size()));
 
   bool trans_x = ExtractAttr<bool>("trans_x", attrs);
   bool trans_y = ExtractAttr<bool>("trans_y", attrs);
 
-  // Step2.3.2  handle input tensor partial (TODO)
-  VLOG(4) << "MatmulSPMDRule InferForward Inputs: "
+  VLOG(6) << "MatmulSPMDRule InferForward Inputs: "
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
           << str_join(x_dims_mapping) << "]; Y shape: [" << str_join(y_shape)
           << "], y_dims_mapping: [" << str_join(y_dims_mapping)
@@ -117,9 +116,6 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
         y_ndim));
   }
 
-  VLOG(4) << "MatmulSPMDRule build Einsum notation: [" << x_axes << ","
-          << y_axes << " --> " << out_axes << "].";
-
   // step2: Sharding Propogation
   if (trans_x) {
     PADDLE_ENFORCE_GE(
@@ -164,9 +160,12 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   // Step2.3.1 Output Partial
   std::vector<int64_t> partial_on_dims =
       ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
+  output_dist_attr_dst.set_partial_status(partial_on_dims);
 
   // Step2.3.2  handle input tensor partial (TODO)
   VLOG(4) << "MatmulSPMDRule InferForward: "
+          << "Einsum notation: [" << x_axes << "," << y_axes << " --> "
+          << out_axes << "]. " << std::endl
           << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
           << str_join(x_dist_attr_src.dims_mapping())
           << "], dst_dims_mapping: ["

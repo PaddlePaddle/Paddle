@@ -686,6 +686,8 @@ __device__ inline int cinn_cuda_find_float_from(const float *buf, int size, floa
 
 CINN_NVGPU_LT_NUM(fp32, float)
 CINN_NVGPU_LT_NUM(fp64, double)
+CINN_NVGPU_LT_NUM(uint8, uint8_t)
+CINN_NVGPU_LT_NUM(int16, int16_t)
 CINN_NVGPU_LT_NUM(int32, int)
 CINN_NVGPU_LT_NUM(int64, long long int)
 #ifdef CINN_CUDA_FP16
@@ -706,6 +708,8 @@ CINN_NVGPU_LT_NUM(fp16, float16)
 
 CINN_NVGPU_GT_NUM(fp32, float)
 CINN_NVGPU_GT_NUM(fp64, double)
+CINN_NVGPU_GT_NUM(uint8, uint8_t)
+CINN_NVGPU_GT_NUM(int16, int16_t)
 CINN_NVGPU_GT_NUM(int32, int)
 CINN_NVGPU_GT_NUM(int64, long long int)
 #ifdef CINN_CUDA_FP16

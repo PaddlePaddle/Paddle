@@ -19,7 +19,7 @@
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -27,7 +27,7 @@ namespace auto_schedule {
 // Auto bind GPU index(BlockIdx, ThreadIdx) to the loops around the block
 class AutoBind : public AutoGenRule {
  public:
-  AutoBind(const common::Target& target) : AutoGenRule(target) {}
+  explicit AutoBind(const common::Target& target) : AutoGenRule(target) {}
   ~AutoBind() = default;
 
   RuleApplyType Init(ir::IRSchedule* init_schedule) override;

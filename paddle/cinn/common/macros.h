@@ -50,3 +50,27 @@
 #else
 #define CINN_NODISCARD
 #endif
+
+#define DISABLE_COPY_AND_ASSIGN(classname)         \
+ private:                                          \
+  classname(const classname&) = delete;            \
+  classname(classname&&) = delete;                 \
+  classname& operator=(const classname&) = delete; \
+  classname& operator=(classname&&) = delete
+
+/**
+ * check if MACRO is used in GLOBAL NAMESPACE.
+ */
+#define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
+  struct __test_global_namespace_##uniq_name##__ {};                          \
+  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
+                             __test_global_namespace_##uniq_name##__>::value, \
+                msg)
+
+#define USE_FUSION_PASS(pass_name)                               \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
+      __use_fusion_pass_##pass_name,                             \
+      "USE_OP_ITSELF must be called in global namespace");       \
+  extern int TouchFusionPassRegistrar_##pass_name();             \
+  [[maybe_unused]] static int __use_fusion_pass_##pass_name##_ = \
+      TouchFusionPassRegistrar_##pass_name()

@@ -42,7 +42,7 @@ TEST(Decomposer, sum) {
   std::vector<std::string> output_names = {out->id};
   std::vector<std::vector<int>> output_shapes = {{32, 16}};
   RunAndCheck<float>(
-      builder, input_names, output_names, output_shapes, sum_cpu);
+      &builder, input_names, output_names, output_shapes, sum_cpu);
 }
 
 }  // namespace cinn::frontend

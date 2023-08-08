@@ -20,9 +20,7 @@
 
 namespace paddle {
 namespace dialect {
-///
-/// \brief Define built-in parametric types.
-///
+
 class AllocatedDenseTensorType : public ir::Type {
  public:
   using Type::Type;
@@ -64,7 +62,49 @@ class AllocatedDenseTensorType : public ir::Type {
   const size_t &offset() const;
 };
 
+class AllocatedSelectedRowsType : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(AllocatedSelectedRowsType,
+                               AllocatedSelectedRowsTypeStorage);
+
+  static AllocatedSelectedRowsType get(ir::IrContext *ctx,
+                                       const phi::Place &place,
+                                       dialect::SelectedRowsType type) {
+    return ir::TypeManager::template get<AllocatedSelectedRowsType>(
+        ctx, place, type);
+  }
+
+  static AllocatedSelectedRowsType get(ir::IrContext *ctx,
+                                       const phi::Place &place,
+                                       const ir::Type &dtype,
+                                       const phi::DDim &dims,
+                                       const phi::DataLayout &layout,
+                                       const phi::LoD &lod,
+                                       size_t offset) {
+    dialect::SelectedRowsType type =
+        dialect::SelectedRowsType::get(ctx, dtype, dims, layout, lod, offset);
+
+    return ir::TypeManager::template get<AllocatedSelectedRowsType>(
+        ctx, place, type);
+  }
+
+  const phi::Place &place() const;
+
+  const ir::Type &dtype() const;
+
+  const phi::DDim &dims() const;
+
+  const phi::DataLayout &data_layout() const;
+
+  const phi::LoD &lod() const;
+
+  const size_t &offset() const;
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSelectedRowsType)

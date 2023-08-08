@@ -33,9 +33,9 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 
 namespace cinn {
@@ -45,7 +45,9 @@ using namespace ::cinn::ir;  // NOLINT
 
 FeatureExtractor::FeatureExtractor() {}
 
-void FeatureExtractor::Visit(const Expr *x) { IRVisitor::Visit(x); }
+void FeatureExtractor::Visit(const Expr *x) {
+  IRVisitorRequireReImpl::Visit(x);
+}
 
 Feature FeatureExtractor::Extract(const ir::ModuleExpr &mod_expr,
                                   const common::Target &target) {

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cinn
-from cinn.common import *
-from cinn.frontend import *
+from cinn.frontend import NetBuilder
 from op_test import OpTest
 from op_test_helper import TestCaseHelper
 

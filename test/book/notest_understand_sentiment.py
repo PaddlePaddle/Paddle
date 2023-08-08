@@ -31,7 +31,7 @@ from paddle import fluid
 def convolution_net(
     data, label, input_dim, class_dim=2, emb_dim=32, hid_dim=32
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
     conv_3 = nets.sequence_conv_pool(
@@ -84,7 +84,7 @@ def train(
     else:
         raise NotImplementedError()
 
-    adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
+    adagrad = paddle.optimizer.Adagrad(learning_rate=0.002)
     adagrad.minimize(cost)
 
     train_data = paddle.batch(

@@ -171,14 +171,14 @@ class LRSchedulerAuto(LRScheduler):
 
         if self.by_step and self.train_step % self.acc_step == 0:
             if (
-                self.model._optimizer
-                and hasattr(self.model._optimizer, '_learning_rate')
+                self.model.optimizer
+                and hasattr(self.model.optimizer, '_learning_rate')
                 and isinstance(
-                    self.model._optimizer._learning_rate,
+                    self.model.optimizer._learning_rate,
                     paddle.optimizer.lr.LRScheduler,
                 )
             ):
-                self.model._optimizer._learning_rate.step()
+                self.model.optimizer._learning_rate.step()
 
 
 class History(Callback):

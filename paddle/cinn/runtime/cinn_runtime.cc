@@ -122,7 +122,7 @@ cinn_buffer_t* cinn_buffer_new_default(int target,
       fprintf(stderr, "Not supported device type");
       abort();
   }
-  cinn_buffer_malloc((void*)(0), buf);
+  cinn_buffer_malloc(reinterpret_cast<void*>(0), buf);
   return buf;
 }
 

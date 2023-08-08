@@ -456,8 +456,8 @@ int GetTailSize(const std::vector<int>& inshape, const std::vector<int>& axes) {
 
 std::vector<int> GetFirstStepReduceShape(const std::vector<int>& shape,
                                          const std::vector<int>& axes,
-                                         bool& inbound,
-                                         int& tail) {
+                                         bool& inbound,  // NOLINT
+                                         int& tail) {    // NOLINT
   // post parallel size
   int post_parallel_size = GetPostParallelSize(shape, axes);
   // the size to unfold las reduce axis

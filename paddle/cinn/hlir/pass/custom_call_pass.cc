@@ -30,7 +30,7 @@ using framework::NodeData;
 
 class GraphAlterHelper {
  public:
-  GraphAlterHelper(Graph* graph) : graph_(graph) {
+  explicit GraphAlterHelper(Graph* graph) : graph_(graph) {
     if (!FLAGS_cinn_custom_call_deny_ops.empty()) {
       auto splited_names =
           cinn::utils::Split(FLAGS_cinn_custom_call_deny_ops, ";");

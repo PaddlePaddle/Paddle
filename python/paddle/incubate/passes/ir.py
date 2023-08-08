@@ -314,6 +314,36 @@ class PassDesc:
             return attr
 
     class OpHelper:
+        def _to_readable_code(self, skip_op_callstack=True):
+            assert isinstance(
+                skip_op_callstack, bool
+            ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
+                type(skip_op_callstack)
+            )
+            outputs_str = "{"
+            outputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._outputs.items()]
+            )
+            outputs_str += "}"
+
+            inputs_str = "{"
+            inputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._inputs.items()]
+            )
+            inputs_str += "}"
+
+            attrs_str = "{"
+            attrs_str += ", ".join([f"{k}={v}" for k, v in self._attrs.items()])
+            attrs_str += "}"
+
+            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".format(
+                outputs=outputs_str,
+                op_type=self._type,
+                inputs=inputs_str,
+                attrs=attrs_str,
+            )
+            return op_str
+
         def __init__(self, type=None):
             self._type = type
 

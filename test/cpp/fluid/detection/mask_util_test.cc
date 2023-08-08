@@ -29,12 +29,21 @@ void Compare(const T* a, const T* b, const int n) {
 }
 
 TEST(MaskUtil, Poly2MaskTest) {
-  float polys[] = {
-      1.97f, 1.88f, 5.81f, 1.88f, 1.69f, 6.53f, 5.94f, 6.38f, 1.97f, 1.88f};
+  float polys[] = {// NOLINT
+                   1.97f,
+                   1.88f,
+                   5.81f,
+                   1.88f,
+                   1.69f,
+                   6.53f,
+                   5.94f,
+                   6.38f,
+                   1.97f,
+                   1.88f};
   int h = 8, w = 8;
   int k = 5;  // length(polys) / 2
   // clang-format off
-  uint8_t expect_mask[] = {
+  uint8_t expect_mask[] = { // NOLINT
       0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 1, 1, 0, 0, 0,
@@ -67,7 +76,7 @@ TEST(MaskUtil, Poly2BoxesTest) {
       {{1.97f, 1.88f, 5.81f, 1.88f, 1.69f, 6.53f, 5.94f, 6.38f, 1.97f, 1.88f}},
       {{2.97f, 1.88f, 3.81f, 1.68f, 1.69f, 6.63f, 6.94f, 6.58f, 2.97f, 0.88f}}
   };
-  float expect_boxes[] = {
+  float expect_boxes[] = { // NOLINT
       1.69f, 1.88f, 5.94f, 6.53f,
       1.69f, 0.88f, 6.94f, 6.63f
   };
@@ -85,10 +94,10 @@ TEST(MaskUtil, Polys2MaskWrtBoxTest) {
   std::vector<std::vector<std::vector<float>>> polys = {{
       {1.97f, 1.88f, 5.81f, 1.88f, 1.69f, 6.53f, 5.94f, 6.38f, 1.97f, 1.88f},
       {2.97f, 1.88f, 3.81f, 1.68f, 1.69f, 6.63f, 6.94f, 6.58f, 2.97f, 0.88f}}};
-  float expect_boxes[] = {
+  float expect_boxes[] = { // NOLINT
       1.69f, 0.88f, 6.94f, 6.63f
   };
-  uint8_t expect_mask[] = {
+  uint8_t expect_mask[] = { // NOLINT
       0, 0, 0, 0, 0, 0, 0, 0,
       0, 1, 1, 1, 1, 1, 0, 0,
       0, 0, 1, 1, 1, 0, 0, 0,

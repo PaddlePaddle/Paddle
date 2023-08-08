@@ -22,7 +22,7 @@
 #include <numeric>
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "test/cpp/cinn/program_builder.h"
 
 namespace cinn {
@@ -68,8 +68,8 @@ class TestAutoBind : public TestAutoGenRuleBase {
     } else if (total_num <= kMaxBlocks * kMaxThreadsPerBlock) {
       ASSERT_EQ(all_loops.size(), 2);
       EXPECT_EQ(all_loops[0].As<ir::For>()->extent.as_int32(),
-                static_cast<int32_t>(
-                    std::ceil(double(total_num) / kMaxThreadsPerBlock)));
+                static_cast<int32_t>(std::ceil(static_cast<double>(total_num) /
+                                               kMaxThreadsPerBlock)));
       EXPECT_TRUE(all_loops[0].As<ir::For>()->is_gpu_block_binded());
       EXPECT_EQ(all_loops[1].As<ir::For>()->extent.as_int32(),
                 kMaxThreadsPerBlock);
@@ -81,9 +81,10 @@ class TestAutoBind : public TestAutoGenRuleBase {
       EXPECT_EQ(all_loops[1].As<ir::For>()->extent.as_int32(),
                 kMaxThreadsPerBlock);
       EXPECT_TRUE(all_loops[1].As<ir::For>()->is_gpu_thread_binded());
-      EXPECT_EQ(all_loops[2].As<ir::For>()->extent.as_int32(),
-                static_cast<int32_t>(std::ceil(
-                    double(total_num) / (kMaxBlocks * kMaxThreadsPerBlock))));
+      EXPECT_EQ(
+          all_loops[2].As<ir::For>()->extent.as_int32(),
+          static_cast<int32_t>(std::ceil(static_cast<double>(total_num) /
+                                         (kMaxBlocks * kMaxThreadsPerBlock))));
       EXPECT_FALSE(all_loops[2].As<ir::For>()->is_binded());
     }
 

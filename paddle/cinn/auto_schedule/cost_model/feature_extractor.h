@@ -31,13 +31,13 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 namespace cinn {
 namespace auto_schedule {
 
-class FeatureExtractor : public ir::IRVisitor {
+class FeatureExtractor : public ir::IRVisitorRequireReImpl<void> {
  public:
   FeatureExtractor();
   Feature Extract(const ir::ModuleExpr& mod_expr, const common::Target& target);

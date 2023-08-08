@@ -108,9 +108,12 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
     dev_ctx->SetAllocator(instance.GetAllocator(p).get());
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (p.GetType() == phi::AllocationType::CUSTOM) {
-    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    dev_ctx->SetAllocator(instance.GetAllocator(p, custom_ctx->stream()).get());
     dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());
+#endif
   } else {
     dev_ctx->SetAllocator(instance.GetAllocator(p).get());
     dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());

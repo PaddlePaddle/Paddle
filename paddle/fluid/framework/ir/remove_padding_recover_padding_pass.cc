@@ -168,7 +168,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-  if (use_varseqlen && pos_id != "" && mask_id != "" &&
+  if (use_varseqlen && !pos_id.empty() && !mask_id.empty() &&
       (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
        graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
       graph->Has(framework::ir::kMultiheadMatmulPass)) {

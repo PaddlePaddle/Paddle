@@ -12,5 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.lang import *
-from .core_api.lang import Buffer, compute, lower
+from .core_api.lang import (  # noqa: F401
+    Buffer,
+    Module,
+    Placeholder,
+    ReturnType,
+    call_extern,
+    call_lowered,
+    compute,
+    create_placeholder,
+    lower,
+    lower_vec,
+    reduce_all,
+    reduce_any,
+    reduce_max,
+    reduce_min,
+    reduce_mul,
+    reduce_sum,
+)

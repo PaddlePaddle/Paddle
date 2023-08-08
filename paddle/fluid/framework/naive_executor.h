@@ -76,6 +76,7 @@ class NaiveExecutor {
   void CloneLiteEnigne(int num, void* stream);
 
   void RegisterOutputHook(const HookFunc& hookfunc);
+  void RegisterInputHook(const HookFunc& hookfunc);
 
  private:
   void CreateOps(const ProgramDesc& desc,
@@ -88,7 +89,8 @@ class NaiveExecutor {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_{nullptr};
 
-  std::vector<HookFunc> hookfuncs_;
+  std::vector<HookFunc> output_hookfuncs_;
+  std::vector<HookFunc> input_hookfuncs_;
 
   // Record information that tensor_a should ShareBufferWith tensor_b.
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>

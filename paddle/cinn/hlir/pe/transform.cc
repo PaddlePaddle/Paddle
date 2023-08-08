@@ -90,7 +90,8 @@ std::vector<std::vector<int>> GetMatmulNewShapes(
                           : std::vector<int>{1, x_shape[0]};
     new_y_shape = trans_y ? std::vector<int>{1, y_shape[0]}
                           : std::vector<int>{y_shape[0], 1};
-    out_shape = {1};
+    // [m] * [m] -> [], which aligns with Paddle's matmul
+    out_shape = {};
   } else if (x_dim == 1) {
     // vector * matrix
     int y_K = trans_y ? y_shape[max_dim - 1] : y_shape[max_dim - 2];

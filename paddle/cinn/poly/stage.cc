@@ -22,14 +22,14 @@
 #include <utility>
 
 #include "paddle/cinn/common/axis.h"
-#include "paddle/cinn/ir/collect_ir_nodes.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -40,7 +40,7 @@
 
 namespace cinn {
 namespace poly {
-void RemoveDuplicate(std::vector<std::vector<Expr>> &indices) {
+void RemoveDuplicate(std::vector<std::vector<Expr>> &indices) {  // NOLINT
   std::set<std::string> temp;
   for (int i = 0; i < indices.size(); i++) {
     std::string index_str = "";
@@ -309,7 +309,7 @@ int Minus(const Expr &a, const Expr &b) {
 }
 
 // Return the range = max - min among all indices[i][axis](i = 0,1,2,...)
-int GetRange(std::vector<std::vector<Expr>> &indices, int axis) {
+int GetRange(std::vector<std::vector<Expr>> &indices, int axis) {  // NOLINT
   Expr max_expr = indices[0][axis];
   Expr min_expr = indices[0][axis];
   for (auto i = 1; i < indices.size(); i++) {
@@ -923,8 +923,8 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
       "%s = floor(%s / %d)",
       levels.front().id.c_str(),
       new_iter_name.c_str(),
-      (int)std::accumulate(
-          iterator_max_val.begin() + 1, iterator_max_val.end(), 1, my_prod)));
+      static_cast<int>(std::accumulate(
+          iterator_max_val.begin() + 1, iterator_max_val.end(), 1, my_prod))));
   conds.emplace_back(utils::StringFormat("%s = %s mod %d",
                                          levels.back().id.c_str(),
                                          new_iter_name.c_str(),
@@ -935,10 +935,10 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
         "%s = floor(%s / %d) mod %d",
         levels[i].id.c_str(),
         new_iter_name.c_str(),
-        (int)std::accumulate(iterator_max_val.begin() + i + 1,
-                             iterator_max_val.end(),
-                             1,
-                             my_prod),
+        static_cast<int>(std::accumulate(iterator_max_val.begin() + i + 1,
+                                         iterator_max_val.end(),
+                                         1,
+                                         my_prod)),
         iterator_max_val[i]));
   }
 
@@ -1420,7 +1420,7 @@ struct CacheReplaceMutator : public ir::IRMutator<> {
 };
 }  // namespace
 
-void CacheReadWriteReplace(std::vector<ir::Tensor> &readers,
+void CacheReadWriteReplace(const std::vector<ir::Tensor> &readers,
                            ir::Tensor cache_tensor,
                            std::string origin_tensor_name) {
   for (auto k : readers) {

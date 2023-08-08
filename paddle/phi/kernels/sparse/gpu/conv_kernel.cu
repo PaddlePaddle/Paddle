@@ -85,8 +85,14 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // if x.layout != NDHWC then transpose(x), transpose(weight)
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
-  int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  DDim out_dims = {1, 1, 1, 1, 1};
+  const bool is2D = x_dims.size() == 4 ? true : false;
+  int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1]
+                         : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+
+  int rank = is2D ? 4 : 5;
+  std::vector<int> out_dims_vec(rank, 1);
+  DDim out_dims = make_ddim(out_dims_vec);
+
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
@@ -102,8 +108,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
   phi::funcs::sparse::GetOutShape(
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
+  const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
+  const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
   DenseTensor h_counter, h_offsets;
   h_counter.Resize({kernel_size});
   h_offsets.Resize({kernel_size + 1});
@@ -118,7 +124,14 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
   DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
 
-  VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is " << key;
+  if (is2D) {
+    VLOG(6) << "call SubmConv2D or Conv2D " << subm << " and the key is "
+            << key;
+  } else {
+    VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is "
+            << key;
+  }
+
   int rulebook_len = 0;
   const IntT* rulebook_ptr = nullptr;
   bool need_product_rulebook = true;
@@ -313,7 +326,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                                                counter);
                                }));
 }
-
 }  // namespace sparse
 }  // namespace phi
 

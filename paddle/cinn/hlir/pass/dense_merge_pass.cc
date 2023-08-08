@@ -31,7 +31,8 @@ using framework::NodeAttr;
 
 class DenseMergePassHelper : public FusionHelperBase {
  public:
-  DenseMergePassHelper(Graph* graph) : FusionHelperBase(graph), graph_(graph) {}
+  explicit DenseMergePassHelper(Graph* graph)
+      : FusionHelperBase(graph), graph_(graph) {}
 
   void operator()() {
     auto nodes_inorder = std::get<0>(graph_->topological_order());

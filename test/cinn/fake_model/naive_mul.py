@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-
-import numpy
-import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import static
 
 size = 30
 paddle.enable_static()
@@ -43,5 +37,5 @@ loss = exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
-fluid.io.save_inference_model("./naive_mul_model", [a.name], [a1], exe)
+static.io.save_inference_model("./naive_mul_model", [a], [a1], exe)
 print('res is : ', a1.name)

@@ -35,7 +35,7 @@ using AlterFunction =
 //
 class ConstantFoldingPassHelper : public FusionHelperBase {
  public:
-  ConstantFoldingPassHelper(Graph* graph)
+  explicit ConstantFoldingPassHelper(Graph* graph)
       : FusionHelperBase(graph), graph_(graph) {
     RegisterAlterFunction();
   }

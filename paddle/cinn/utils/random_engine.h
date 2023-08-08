@@ -49,7 +49,7 @@ class LinearRandomEngine {
   static constexpr StateType modulus = 2147483647;
 
   // Construct a linear random engine with a random state pointer
-  LinearRandomEngine(StateType* state) : state_(state) {}
+  explicit LinearRandomEngine(StateType* state) : state_(state) {}
 
   // operator() is needed by std::xxx_distribution
   result_type operator()() { return Next(); }

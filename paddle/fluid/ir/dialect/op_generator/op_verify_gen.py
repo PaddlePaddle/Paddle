@@ -40,26 +40,26 @@ void {op_name}::Verify() {{}}
 """
 
 INPUT_TYPE_CHECK_TEMPLATE = """
-  PADDLE_ENFORCE((*this)->operand({index}).type().isa<{standard}>(),
+  PADDLE_ENFORCE((*this)->operand_source({index}).type().isa<{standard}>(),
                   phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));"""
 INPUT_VECTORTYPE_CHECK_TEMPLATE = """
-  if (auto vec_type = (*this)->operand({index}).type().dyn_cast<ir::VectorType>()) {{
+  if (auto vec_type = (*this)->operand_source({index}).type().dyn_cast<ir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
         PADDLE_ENFORCE(vec_type[i].isa<{standard}>(),
                        phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
       }}
   }}
   else {{
-    PADDLE_ENFORCE((*this)->operand({index}).type().isa<{standard}>(),
+    PADDLE_ENFORCE((*this)->operand_source({index}).type().isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
   }}"""
 INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """
-  if (auto val = (*this)->op_operand({index})) {{
+  if (auto val = (*this)->operand({index})) {{
     PADDLE_ENFORCE(val.type().isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
   }}"""
 INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
-  if (auto val =  (*this)->op_operand({index})) {{
+  if (auto val =  (*this)->operand({index})) {{
     if (auto vec_type = val.type().dyn_cast<ir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); i++) {{
         PADDLE_ENFORCE(vec_type[i].isa<{standard}>(),
@@ -78,7 +78,7 @@ ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """
   PADDLE_ENFORCE(attributes.count("{attribute_name}")>0 && attributes.at("{attribute_name}").isa<ir::ArrayAttribute>(),
                  phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().size(); i++) {{
-    PADDLE_ENFORCE(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>()[i].isa<{standard}>(),
+    PADDLE_ENFORCE(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().at(i).isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   }}"""
 OUTPUT_TYPE_CHECK_TEMPLATE = """
@@ -97,8 +97,8 @@ OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
   }}"""
 OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """
-  if (auto output_{index} = (*this)->result({index})) {{
-    PADDLE_ENFORCE(output_{index}.type().isa<{standard}>(),
+  if (auto output_{index}_type = (*this)->result({index}).type()) {{
+    PADDLE_ENFORCE(output_{index}_type.isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
   }}"""
 OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """

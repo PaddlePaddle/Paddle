@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
@@ -143,7 +145,7 @@ inline std::vector<float> RunProgram(
 
 struct OptimizeConfig {
   struct PassGroup;
-  OptimizeConfig(const PassGroup& program_passes)
+  explicit OptimizeConfig(const PassGroup& program_passes)
       : program_passes{program_passes} {
     if (FLAGS_cinn_use_op_fusion) {
       graph_passes = {{"OpFusionPass", "FusionMergePass"},

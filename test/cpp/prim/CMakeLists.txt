@@ -30,7 +30,6 @@ cc_test_old(
   operator
   elementwise_mul_op
   elementwise_sub_op
-  elementwise_pow_op
   fill_constant_op
   activation_op
   phi
@@ -61,4 +60,13 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     static_global_utils
     init_env_utils
     python)
+endif()
+
+# skip win32 since wget is not installed by default on windows machine.
+
+if(NOT WIN32)
+  cc_test(
+    test_vjp_new_ir
+    SRCS test_vjp.cc
+    DEPS phi_kernel_adaptor pd_dialect ir)
 endif()

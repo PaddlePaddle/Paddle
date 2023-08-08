@@ -38,7 +38,7 @@ using ConditionFunction =
 
 class DceHelper : public FusionHelperBase {
  public:
-  DceHelper(Graph* graph) : FusionHelperBase(graph), graph_(graph) {}
+  explicit DceHelper(Graph* graph) : FusionHelperBase(graph), graph_(graph) {}
 
   void operator()() {
     if (output_nodes_set_.empty()) {

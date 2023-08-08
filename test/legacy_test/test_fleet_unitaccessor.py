@@ -59,7 +59,7 @@ class TestFleet1(unittest.TestCase):
             show = paddle.static.data(
                 name="show", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=show,
                 size=[1, 1],
                 is_sparse=True,

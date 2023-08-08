@@ -13,15 +13,13 @@
 // limitations under the License.
 
 #pragma once
-
+#define IR_API
 #if defined(_WIN32)
-#ifndef IR_API
-#ifdef IR_DLL_EXPORT
+#ifndef STATIC_IR
+#ifdef IR_LIBRARY
 #define IR_API __declspec(dllexport)
 #else
 #define IR_API __declspec(dllimport)
-#endif  // IR_DLL_EXPORT
-#endif  // IR_API
-#else
-#define IR_API
+#endif  // IR_LIBRARY
+#endif  // STATIC_IR
 #endif  // _WIN32

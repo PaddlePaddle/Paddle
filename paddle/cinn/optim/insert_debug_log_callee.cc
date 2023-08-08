@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "paddle/cinn/common/common.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -32,7 +32,7 @@ namespace {
 
 struct StoreDebugInfoBuilder : public ir::IRVisitor {
   std::tuple<std::string, std::vector<Expr>> operator()(const Expr *e) {
-    ir::IRVisitor::Visit(e);
+    IRVisitor::Visit(e);
     return std::make_tuple(format_.str(), args_);
   }
 
@@ -40,9 +40,9 @@ struct StoreDebugInfoBuilder : public ir::IRVisitor {
 #define _BINARY_OP(Op__, repr__)           \
   void Visit(const ir::Op__ *x) override { \
     format_ << "(";                        \
-    ir::IRVisitor::Visit(&x->a());         \
+    IRVisitor::Visit(&x->a());             \
     format_ << " " << #repr__ << " ";      \
-    ir::IRVisitor::Visit(&x->b());         \
+    IRVisitor::Visit(&x->b());             \
     format_ << ")";                        \
   }
   _BINARY_OP(Add, +);

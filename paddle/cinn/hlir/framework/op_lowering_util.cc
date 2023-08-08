@@ -92,19 +92,19 @@ ir::Tensor GetTensor(
 
 std::vector<ir::Tensor> CollectInputTensor(
     const Node* node,
-    std::vector<ir::Tensor>& func_args,
-    std::unordered_map<std::string, ir::Tensor>& tensor_map,
     const absl::flat_hash_map<std::string, Type>& type_dict,
-    const absl::flat_hash_map<std::string, shape_t>& shape_dict) {
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    std::vector<ir::Tensor>* func_args,
+    std::unordered_map<std::string, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   // get all input nodes
   for (auto& node_data : GetInputNodeData(node)) {
     CHECK(node_data);
     auto tensor = GetTensor(node_data, type_dict, shape_dict);
-    if (!tensor_map.count(node_data->id())) {
-      tensor_map[node_data->id()] = tensor;
+    if (!tensor_map->count(node_data->id())) {
+      (*tensor_map)[node_data->id()] = tensor;
       // record func input args
-      func_args.push_back(tensor);
+      func_args->push_back(tensor);
     }
     tensors.push_back(tensor);
   }
@@ -543,7 +543,7 @@ bool WithoutLastDimInReduce(const std::vector<int>& shape,
   }
 }
 
-void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,
+void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
                            const std::string& block_name,
                            const std::vector<int>& axes,
                            const common::Target& target,
@@ -593,7 +593,7 @@ void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,
   }
 }
 
-void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,
+void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
                                  const std::string& block_name,
                                  const std::vector<int>& inshape,
                                  const std::vector<int>& axes,
@@ -707,7 +707,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,
   ir_sch.Reorder(block_name, new_order);
 }
 
-void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,
+void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
                               const std::string& block_name,
                               const std::vector<int>& inshape,
                               const std::vector<int>& axes,
@@ -722,8 +722,9 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,
       need_reduce_last_count *= inshape[i];
     }
   }
-  int warp_reduce_need_sm_count = ceil((need_reduce_last_count * 32) /
-                                       float(target.get_max_threads_per_sm()));
+  int warp_reduce_need_sm_count =
+      ceil((need_reduce_last_count * 32) /
+           static_cast<float>(target.get_max_threads_per_sm()));
   // Set Num_max_threads to 32 is Warp Reduce
   if (target.get_multi_processor_count() < warp_reduce_need_sm_count) {
     max_num_threads = 32;
@@ -805,7 +806,8 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target, true);
     // fuse axis before reduce to bind blockidx.
-    for (int idx = 0; idx < int(inshape.size() - axes.size()) - 1; ++idx) {
+    for (int idx = 0; idx < static_cast<int>(inshape.size() - axes.size()) - 1;
+         ++idx) {
       ir_sch.Fuse(block_name, {0, 1});
     }
   }
@@ -823,6 +825,7 @@ bool CanbeInline(Node* node,
   }
 
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
+
   for (auto consumer : consumers) {
     if (op_pattern_dict[consumer->op()] == framework::kReduction) {
       return false;
@@ -972,7 +975,7 @@ Node* GetMasterToComputeAt(
 }
 
 void LoopAssignReduce(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const Node* node,
     const Node* reducer,
     const Target& target,
@@ -1185,7 +1188,7 @@ void LoopAssignReduce(
 // The struct used to remove the original block in ComputeAt.
 class RemoveExpr : public ir::IRMutator<> {
  public:
-  RemoveExpr(const Expr& target) : target_(target) {}
+  explicit RemoveExpr(const Expr& target) : target_(target) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
@@ -1215,8 +1218,8 @@ class RemoveExpr : public ir::IRMutator<> {
 };
 
 void MergeLoops(ir::Expr root,
-                std::vector<ir::Expr>& src,
-                std::vector<ir::Expr>& dst,
+                std::vector<ir::Expr>& src,  // NOLINT
+                std::vector<ir::Expr>& dst,  // NOLINT
                 int index) {
   if (index < 0) {
     return;
@@ -1245,7 +1248,7 @@ void MergeLoops(ir::Expr root,
 }
 
 void InsertSyncThread(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const Node* node,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
@@ -1316,7 +1319,7 @@ class InsertExpr : public ir::IRMutator<> {
 };
 
 void MergeReduceToReduce(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const Node* node,
     const Node* master,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
@@ -1504,7 +1507,7 @@ void MergeReduceToReduce(
 }
 
 void MergeReduceLoop(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     Node* node,
     const Node* master,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
@@ -1609,7 +1612,7 @@ class FindExprInBlock : public ir::IRMutator<> {
 };
 
 void LoopComputeAt(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     Node* node,
     const Node* master,
     const GroupPtr& group,
@@ -1710,7 +1713,7 @@ std::unordered_set<Node*> GetMasters(
 }
 
 void SyncThreadWithShared(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const GroupPtr& group,
     const std::unordered_set<Node*>& nodes_inline,
     const std::unordered_set<Node*>& nodes_set,

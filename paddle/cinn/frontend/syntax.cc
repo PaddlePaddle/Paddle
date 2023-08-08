@@ -296,12 +296,12 @@ std::tuple<std::unique_ptr<Program>,
            absl::flat_hash_map<std::string, Variable>,
            absl::flat_hash_map<std::string, std::string>,
            absl::flat_hash_set<std::string>>
-LoadPaddleProgram(
-    const std::string& model_dir,
-    Scope* scope,
-    std::unordered_map<std::string, std::vector<int>>& input_shape_map,
-    bool is_combined,
-    const common::Target& target) {
+LoadPaddleProgram(const std::string& model_dir,
+                  Scope* scope,
+                  std::unordered_map<std::string, std::vector<int>>&
+                      input_shape_map,  // NOLINT
+                  bool is_combined,
+                  const common::Target& target) {
   VLOG(1) << "Loading Paddle model from " << model_dir;
   PaddleModelToProgram paddle_to_program(scope, input_shape_map, target);
   return std::make_tuple(paddle_to_program(model_dir, is_combined),

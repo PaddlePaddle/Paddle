@@ -2500,7 +2500,21 @@ def calc_gradient_helper(
         for op in reversed(block.ops):
             if op.type == "fill_any_like":
                 continue
+            # Some outputs of composite op are not needed and will be removed.
+            # Thus, those vars should not be added with another op.
+            keep_var_list = []
+            if op.type in core.ops_contain_none.keys():
+                values = core.ops_contain_none[op.type]
+                if isinstance(values, list):
+                    none_vars = values
+                else:
+                    none_vars = values(op)
+                for none_var_name in none_vars:
+                    keep_var_list.append(op.output(none_var_name)[0])
+
             for var_name in op.desc.output_arg_names():
+                if keep_var_list and (var_name in keep_var_list):
+                    continue
                 grad_var_name = _append_grad_suffix_(var_name)
                 if grad_var_name not in grad_name_set:
                     op_desc = _create_op_desc_(

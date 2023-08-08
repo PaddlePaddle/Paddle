@@ -60,7 +60,6 @@ class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -75,7 +74,6 @@ class TestElementwisePowOp_ZeroDim2(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -90,7 +88,6 @@ class TestElementwisePowOp_ZeroDim3(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {

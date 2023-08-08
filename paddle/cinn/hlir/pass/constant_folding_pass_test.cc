@@ -19,7 +19,7 @@
 namespace cinn {
 namespace frontend {
 
-int GetSize(std::vector<int>& shape) {
+int GetSize(const std::vector<int>& shape) {
   return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
 }
 
@@ -36,7 +36,7 @@ std::unordered_map<std::string, std::vector<float>> GetInputRandom(
 }
 
 std::unordered_map<std::string, std::vector<float>> RunModelTest(
-    Program& program,
+    Program& program,  // NOLINT
     const std::vector<std::string>&& passes,
     const std::unordered_map<std::string, std::vector<float>>& input_data,
     const std::unordered_set<std::string>& fetch_ids) {

@@ -63,7 +63,7 @@ class TestMamul(unittest.TestCase):
 
 
 def create_matmul_basic(target, m, n, k):
-    m, n, k = [ir.Expr(_) for _ in (m, n, k)]
+    m, n, k = (ir.Expr(_) for _ in (m, n, k))
 
     a = lang.Placeholder("float32", "A", [m, k])
     b = lang.Placeholder("float32", "B", [k, n])
@@ -90,7 +90,7 @@ def create_matmul_basic(target, m, n, k):
 
 
 def create_matmul_tile(target, m, n, k):
-    m, n, k = [ir.Expr(_) for _ in [m, n, k]]
+    m, n, k = (ir.Expr(_) for _ in [m, n, k])
     a = lang.Placeholder("float32", "A", [m, k])
     b = lang.Placeholder("float32", "B", [k, n])
 

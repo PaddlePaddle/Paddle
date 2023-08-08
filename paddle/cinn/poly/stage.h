@@ -270,7 +270,7 @@ class Stage : public Object {
    * @param readers the readers of the \p tensor
    */
   ir::Tensor CacheRead(const std::string& memory_type,
-                       std::vector<ir::Tensor>& readers,
+                       std::vector<ir::Tensor>& readers,  // NOLINT
                        poly::StageMap stages);
 
   /**
@@ -303,7 +303,8 @@ class Stage : public Object {
 
   void ShowISL() const;
 
-  void AddForLoopInTransform(std::vector<std::vector<Expr>>& indices);
+  void AddForLoopInTransform(
+      std::vector<std::vector<Expr>>& indices);  // NOLINT
   /**
    * Create a cache for write to the original tensor.
    * @param tensor the tensor to create the cache for.
@@ -312,7 +313,7 @@ class Stage : public Object {
    */
   ir::Tensor CacheWrite(const std::string& memory_type,
                         poly::StageMap stages,
-                        ir::Tensor& key_tensor);
+                        ir::Tensor& key_tensor);  // NOLINT
 
   /**
    * Generate the `syncthreads()` code to sync all threads on CUDA backends.

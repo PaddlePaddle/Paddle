@@ -12,4 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.frontend import *
+from .core_api.frontend import (  # noqa: F401
+    Computation,
+    Instruction,
+    Interpreter,
+    NetBuilder,
+    PaddleModelConvertor,
+    Placeholder,
+    Program,
+    Variable,
+    get_default_graph_pass,
+    get_default_opfusion_pass,
+    get_default_program_pass,
+)

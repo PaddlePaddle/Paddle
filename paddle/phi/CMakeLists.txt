@@ -86,6 +86,10 @@ endif()
 
 if(WITH_XPU)
   list(APPEND PHI_DEPS xpulib)
+  if(WITH_XPU_PLUGIN)
+    add_subdirectory(kernels/xpu/plugin)
+    list(APPEND PHI_DEPS xpuplugin)
+  endif()
 endif()
 
 set(PHI_SRCS

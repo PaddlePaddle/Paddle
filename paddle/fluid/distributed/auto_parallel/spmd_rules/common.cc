@@ -17,10 +17,13 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
+
+using phi::distributed::auto_parallel::str_join;
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 SPMDRuleBase::InferForward(const std::vector<DistTensorSpec>& input_specs,
@@ -39,8 +42,9 @@ SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& output_specs,
 }
 
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
-    const std::vector<std::pair<const std::string, const std::vector<int64_t>>>&
-        tensor_axes_to_dim_pairs) {
+    const std::vector<std::pair<std::string, std::vector<int64_t>>>&
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts) {
   std::unordered_map<std::string, int64_t> axis_to_dim_map;
   std::unordered_map<int64_t, std::string> dim_to_axis_map;
   int64_t merge_dim;
@@ -74,11 +78,18 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   // memory or communication or computation).
   for (auto& it : dim_to_axis_map) {
     if (it.second.size() > 1) {
-      VLOG(4) << "Sharding Conflict: Mesh_Dim [" << it.first
-              << "] are Sharding Multiple Tensor Axis: [" << it.second
-              << "]. The Axis: [" << it.second[0] << "] is Picked.";
-      for (size_t i = 1; i < it.second.size(); ++i) {
-        axis_to_dim_map[it.second.substr(i, 1)] = -1;
+      if (merge_conflicts) {
+        VLOG(4) << "Sharding Conflict: Mesh_Dim [" << it.first
+                << "] are Sharding Multiple Tensor Axis: [" << it.second
+                << "]. The Axis: [" << it.second[0] << "] is Picked.";
+        for (size_t i = 1; i < it.second.size(); ++i) {
+          axis_to_dim_map[it.second.substr(i, 1)] = -1;
+        }
+      } else {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "Multiple Tensor Axes [%s] is sharded by same mesh dimension [%d].",
+            str_join(it.second),
+            it.first));
       }
     }
   }
@@ -158,6 +169,63 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
     return std::string();
   }
   return alphabet.substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
+}
+
+TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr) {
+  TensorDistAttr replicated_dist_attr = src_dist_attr;
+  replicated_dist_attr.clear_annotated();
+  size_t tensor_ndim = replicated_dist_attr.dims_mapping().size();
+  replicated_dist_attr.set_dims_mapping(std::vector<int64_t>(tensor_ndim, -1));
+  return replicated_dist_attr;
+}
+
+void VerifySpecs(const std::vector<DistTensorSpec>& specs,
+                 const std::string& op_name) {
+  for (size_t i = 0, n = specs.size(); i < n; ++i) {
+    const std::vector<int64_t>& shape = specs[i].shape();
+    const std::vector<int64_t>& dims_mapping = specs[i].dims_mapping();
+    PADDLE_ENFORCE_EQ(shape.size(),
+                      dims_mapping.size(),
+                      phi::errors::InvalidArgument(
+                          "Mismatch in %s, spec[%d]'s tensor size: [%d] and "
+                          "spec[%d]'s dims_mapping size [%d].",
+                          op_name,
+                          i,
+                          shape.size(),
+                          i,
+                          dims_mapping.size()));
+  }
+}
+
+std::vector<std::pair<std::string, std::vector<int64_t>>>
+GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
+                       const std::vector<DistTensorSpec>& specs) {
+  std::vector<std::pair<std::string, std::vector<int64_t>>> res;
+  size_t ntensor = specs.size();
+  for (size_t i = 0; i < ntensor; ++i) {
+    res.emplace_back(tensor_axes[i], specs[i].dims_mapping());
+  }
+  return res;
+}
+
+std::vector<int64_t> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map) {
+  std::vector<int64_t> dims_mapping;
+  for (int64_t i = 0, n = axes.size(); i < n; i++) {
+    std::string axis = axes.substr(i, 1);
+    if (axis == "1") {
+      dims_mapping.emplace_back(-1);
+    } else {
+      auto iter = axis_to_dim_map.find(axis);
+      if (iter == axis_to_dim_map.end()) {
+        phi::errors::InvalidArgument(
+            "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+      }
+      dims_mapping.emplace_back(iter->second);
+    }
+  }
+  return dims_mapping;
 }
 
 // SPMDRuleMap

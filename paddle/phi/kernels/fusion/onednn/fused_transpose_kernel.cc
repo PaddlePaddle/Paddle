@@ -27,7 +27,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
     const dnnl::memory::desc& in_md) {
   const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
                                             fused_squeeze2_axes.end());
-  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  const std::vector<int64_t>& x_vec_dims = in_md.get_dims();
   std::vector<int64_t> squeezed_op_tz(
       x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
 
@@ -113,12 +113,12 @@ void FusedTransposeKernel(const Context& dev_ctx,
   const int32_t mask = 0;
 
   if (scale != 1.0f) {
-    attrs.set_output_scales(mask, {scale});
+    attrs.set_scales_mask(DNNL_ARG_SRC, mask);
   }
 
   if (shift != 0.0f) {
-    auto dst = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
-    attrs.set_zero_points(dst, mask, {static_cast<int32_t>(shift)});
+    auto arg = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
+    attrs.set_zero_points_mask(arg, mask);
   }
 
   DataType out_dtype;
@@ -149,8 +149,31 @@ void FusedTransposeKernel(const Context& dev_ctx,
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
+  std::unordered_map<int, dnnl::memory> args = {
+      {DNNL_ARG_SRC, *reorder_src_memory_p},
+      {DNNL_ARG_DST, *reorder_dst_memory_p},
+  };
+
+  if (scale != 1.0f) {
+    auto scales_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto scales = dnnl::memory(
+        scales_md, dev_ctx.GetEngine(), const_cast<float*>(&scale));
+    args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales});
+  }
+
+  if (shift != 0.0f) {
+    auto zps_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
+    auto zps = dnnl::memory(zps_md, dev_ctx.GetEngine());
+    *reinterpret_cast<int32_t*>(zps.get_data_handle()) =
+        static_cast<int32_t>(shift);
+    auto arg = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
+    args.insert({DNNL_ARG_ATTR_ZERO_POINTS | arg, zps});
+  }
+
   auto& astream = OneDNNContext::tls().get_stream();
-  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+  reorder_p->execute(astream, args);
   astream.wait();
 
   auto out_md = reorder_dst_memory_p->get_desc().permute_axes(
@@ -164,7 +187,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
         fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
     out->set_mem_desc(out_md);
-    out->Resize(make_ddim(out_md.dims()));
+    out->Resize(make_ddim(out_md.get_dims()));
   } else {
     out->set_mem_desc(out_md);
   }

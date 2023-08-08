@@ -50,7 +50,7 @@ using DtypeDict = absl::flat_hash_map<std::string, common::Type>;
 namespace utils {
 class AssertMsg {
  public:
-  AssertMsg(int group_id) : group_id_(group_id) {}
+  explicit AssertMsg(int group_id) : group_id_(group_id) {}
 
   void SetMsg(const std::string& title, const std::string& msg) {
     msg_info_[title] = msg;
@@ -80,7 +80,7 @@ class AssertMsg {
 
 class CheckFusionAccuracyPass {
  public:
-  CheckFusionAccuracyPass(Graph* graph)
+  explicit CheckFusionAccuracyPass(Graph* graph)
       : graph_(graph),
         shape_dict_(graph_->GetMutableAttrs<ShapeDict>("infershape")),
         dtype_dict_(graph_->GetMutableAttrs<DtypeDict>("inferdtype")) {}

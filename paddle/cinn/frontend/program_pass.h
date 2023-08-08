@@ -28,7 +28,7 @@ namespace frontend {
 
 class ProgramPass {
  public:
-  ProgramPass(const std::string& name) : name_(name) {}
+  explicit ProgramPass(const std::string& name) : name_(name) {}
 
   /**
    * \brief Apply a sequence of passes on a program.

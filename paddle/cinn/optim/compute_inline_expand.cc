@@ -18,8 +18,8 @@
 #include <string>
 
 #include "paddle/cinn/common/graph_utils.h"
-#include "paddle/cinn/ir/ir_mutator.h"
-#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -79,7 +79,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
 
   void Visit(const ir::For *op, Expr *expr) override {
     CHECK(op->extent.is_constant());
-    int cons_extent = (int)op->extent.get_constant();
+    int cons_extent = static_cast<int>(op->extent.get_constant());
     var_to_extent[op->loop_var->name] = op->extent;
     ir::IRMutator<>::Visit(op, expr);
   }

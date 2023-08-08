@@ -14,15 +14,10 @@
 """
 A fake model with multiple FC layers to test CINN on a more complex model.
 """
-import os
-import sys
 
-import numpy
-import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import static
 
 size = 64
 num_layers = 6
@@ -59,5 +54,5 @@ loss = exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
-fluid.io.save_inference_model("./multi_fc_model", [a.name], [fc_out], exe)
+static.io.save_inference_model("./multi_fc_model", [a], [fc_out], exe)
 print('res', fc_out.name)

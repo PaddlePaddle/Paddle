@@ -19,11 +19,11 @@
 namespace cinn {
 namespace frontend {
 
-int GetSize(std::vector<int>& shape) {
+int GetSize(const std::vector<int>& shape) {
   return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
 }
 
-void RunModelTest(Program& program,
+void RunModelTest(Program& program,  // NOLINT
                   const std::vector<Variable>&& inputs,
                   const std::unordered_set<std::string>& fetch_ids) {
   // init input data.

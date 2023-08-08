@@ -96,6 +96,7 @@ class Adam(Optimizer):
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             import paddle
 
@@ -110,6 +111,7 @@ class Adam(Optimizer):
             adam.clear_grad()
 
         .. code-block:: python
+            :name: code-example2
 
             # Adam with beta1/beta2 as Tensor and weight_decay as float
             import paddle

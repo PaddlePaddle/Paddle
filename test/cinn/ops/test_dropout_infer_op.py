@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 
-import cinn
-import numpy as np
-from cinn.common import *
-from cinn.frontend import *
+from cinn.common import is_compiled_with_cuda
+from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
@@ -40,9 +37,9 @@ class TestDropoutInferOp(OpTest):
         self.x_np = self.random(
             shape=self.case["x_shape"], dtype=self.case["x_dtype"]
         )
-        if self.case["mode"] is 'upscale_in_train':
+        if self.case["mode"] == 'upscale_in_train':
             self.case["cinn_mode"] = 'upscale_in_train'
-        elif self.case["mode"] is 'downscale_in_infer':
+        elif self.case["mode"] == 'downscale_in_infer':
             self.case["cinn_mode"] = 'downgrade_in_infer'
         else:
             raise f"Unknown mode for dropout_infer: {self.case['mode']}"

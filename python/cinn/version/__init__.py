@@ -13,6 +13,6 @@
 # limitations under the License.
 
 try:
-    from .info import *
+    from .info import *  # noqa: F403
 except:
     full_version = 'Unknown'

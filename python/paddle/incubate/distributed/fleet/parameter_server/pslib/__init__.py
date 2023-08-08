@@ -351,7 +351,7 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname, 0)
 
-    def print_table_stat(self, table_id):
+    def print_table_stat(self, table_id, pass_id, threshold):
         """
         print stat info of table_id,
         format: tableid, feasign size, mf size
@@ -363,7 +363,7 @@ class PSLib(Fleet):
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.print_table_stat(table_id)
+            self._fleet_ptr.print_table_stat(table_id, pass_id, threshold)
         self._role_maker._barrier_worker()
 
     def set_file_num_one_shard(self, table_id, file_num):
@@ -1124,7 +1124,7 @@ class fleet_embedding:
     Example:
         .. code-block:: python
           with fleet_embedding(click_name=label.name):
-              emb = fluid.layers.embedding(
+              emb = paddle.static.nn.embedding(
                   input=var,
                   size=[-1, 11],
                   is_sparse=True,
@@ -1134,7 +1134,6 @@ class fleet_embedding:
 
     def __init__(self, click_name, scale_sparse_grad=True):
         """Init."""
-        # self.origin_emb = fluid.layers.embedding
         self.origin_emb_v2 = paddle.static.nn.embedding
         # if user uses cvm layer after embedding, click_name can be None
         self.click_name = "" if click_name is None else click_name
@@ -1144,7 +1143,6 @@ class fleet_embedding:
 
     def __enter__(self):
         """Enter."""
-        # fluid.layers.embedding = _fleet_embedding
         paddle.static.nn.embedding = _fleet_embedding_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor
         FLEET_GLOBAL_DICT["click_name"] = self.click_name
@@ -1152,7 +1150,6 @@ class fleet_embedding:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit."""
-        # fluid.layers.embedding = self.origin_emb
         paddle.static.nn.embedding = self.origin_emb_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = ""
         FLEET_GLOBAL_DICT["click_name"] = ""

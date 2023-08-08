@@ -17,15 +17,11 @@
 import sys
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime
-from cinn.common import *
-from cinn.framework import *
-from cinn.frontend import *
+from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
+from cinn.frontend import Interpreter
 
-import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 assert len(sys.argv) == 1 + 2 + 1  # model and enable_gpu count
 enable_gpu = sys.argv.pop()

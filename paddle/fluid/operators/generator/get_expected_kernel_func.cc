@@ -47,8 +47,8 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
     return true;
   }
 
-  for (size_t i = 0; i < reduce_dims.size(); ++i) {
-    if (reduce_dims[i] < 0) reduce_dims[i] = ndims + reduce_dims[i];
+  for (auto& reduce_dim : reduce_dims) {
+    if (reduce_dim < 0) reduce_dim = ndims + reduce_dim;
   }
   sort(reduce_dims.begin(), reduce_dims.end());
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
@@ -79,10 +79,31 @@ phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto dtype = framework::proto::VarType::FP32;
-  if (ctx.MultiInputVar("X").size() >= 1) {
+  if (!ctx.MultiInputVar("X").empty()) {
     dtype = op_ptr->IndicateVarDataType(ctx, "X");
   }
   return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
+phi::KernelKey GetConcatExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)op_ptr;
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
+  auto input_data_type = framework::proto::VarType::Type(0);
+  bool flag = 0;
+  for (auto* input : inputs) {
+    if (input->IsInitialized()) {
+      input_data_type = framework::TransToProtoVarType(input->dtype());
+      flag = 1;
+      break;
+    }
+  }
+  if (flag == 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "All Inputs of Concat OP are Empty!"));
+  }
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
 phi::KernelKey GetReduceExpectedKernelType(
@@ -140,7 +161,7 @@ phi::KernelKey GetAssignExpectedKernelType(
     auto t_arr = var->Get<framework::LoDTensorArray>();
     // NOTE(liym27): Support an empty tensor array as Input.
     // And set the kernel type is float.
-    if (t_arr.size() == 0) {
+    if (t_arr.empty()) {
       return phi::KernelKey(framework::proto::VarType::FP32,
                             ctx.device_context().GetPlace());
     }
@@ -281,7 +302,7 @@ phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto dtype = framework::proto::VarType::FP32;
-  if (ctx.MultiInputVar("X").size() >= 1) {
+  if (!ctx.MultiInputVar("X").empty()) {
     dtype = op_ptr->IndicateVarDataType(ctx, "X");
   }
   return phi::KernelKey(dtype, ctx.GetPlace());
@@ -302,9 +323,7 @@ phi::KernelKey GetPad3dExpectedKernelType(
   // only constant mode and non-blocked layouts are supported for oneDNN
   if (op_ptr->CanMKLDNNBeUsed(ctx, input_data_type) &&
       ctx.Attr<std::string>("mode") == "constant" &&
-      ctx.Input<phi::DenseTensor>("X")
-              ->mem_desc()
-              .data.format_desc.blocking.inner_nblks == 0) {
+      ctx.Input<phi::DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
     return phi::KernelKey(phi::Backend::ONEDNN,
                           phi::DataLayout::ONEDNN,
                           phi::TransToPhiDataType(input_data_type));

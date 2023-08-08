@@ -14,19 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import math
 import os
 import unittest
 
-import cinn
-import numpy as np
-from cinn import common, framework, frontend, ir, lang, runtime
-from cinn.poly import create_stages
+from cinn import framework
 from test_utils import SingleOpTester
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 

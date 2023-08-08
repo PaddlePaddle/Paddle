@@ -20,8 +20,8 @@
 
 #include "paddle/cinn/auto_schedule/database/jsonfile_database.h"
 #include "paddle/cinn/auto_schedule/task/task_registry.h"
-#include "paddle/cinn/ir/ir_schedule.h"
-#include "paddle/cinn/ir/schedule_desc.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/schedule_desc.h"
 
 namespace cinn {
 namespace auto_schedule {

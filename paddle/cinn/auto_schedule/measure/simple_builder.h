@@ -24,7 +24,7 @@ namespace auto_schedule {
 // the input schedule as executable objects
 class SimpleBuilder : public ScheduleBuilder {
  public:
-  SimpleBuilder(hlir::framework::GraphCompiler* graph_compiler);
+  explicit SimpleBuilder(hlir::framework::GraphCompiler* graph_compiler);
 
   // Build and pack the result
   BuildResult Build(const MeasureInput& input) override;

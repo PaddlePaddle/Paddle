@@ -66,7 +66,8 @@ class RecordEvent {
   using CallBack = std::function<void()>;
 
  public:
-  RecordEvent(const std::string& name, EventType type = EventType::kOrdinary);
+  explicit RecordEvent(const std::string& name,
+                       EventType type = EventType::kOrdinary);
 
   void End();
 

@@ -299,8 +299,8 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->MutableDataTransferAddedVars().push_back(
-      std::make_pair(*new_var_name, var_type));
+  var_scope->MutableDataTransferAddedVars().emplace_back(*new_var_name,
+                                                         var_type);
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -347,8 +347,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->MutableDataTransferAddedVars().push_back(
-      std::make_pair(*new_var_name, var_type));
+  var_scope->MutableDataTransferAddedVars().emplace_back(*new_var_name,
+                                                         var_type);
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -398,8 +398,8 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->MutableDataTransferAddedVars().push_back(
-      std::make_pair(*new_var_name, var_type));
+  var_scope->MutableDataTransferAddedVars().emplace_back(*new_var_name,
+                                                         var_type);
   var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
@@ -513,7 +513,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               var->IsType<phi::SelectedRows>()) {
             tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
           } else if (var->IsType<LoDTensorArray>()) {
-            if (var->Get<LoDTensorArray>().size() == 0) {
+            if (var->Get<LoDTensorArray>().empty()) {
               continue;
             }
             tensor_in = static_cast<const phi::DenseTensor*>(

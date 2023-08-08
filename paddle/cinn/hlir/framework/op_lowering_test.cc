@@ -32,7 +32,7 @@ namespace framework {
 using frontend::NetBuilder;
 using frontend::RunDecomposer;
 
-void CodeGen(ir::LoweredFunc& func) {
+void CodeGen(const ir::LoweredFunc& func) {
 #ifdef CINN_WITH_CUDA
   auto target = common::DefaultNVGPUTarget();
   Module::Builder builder("module_builder", target);
@@ -56,7 +56,7 @@ void CodeGen(ir::LoweredFunc& func) {
 #endif
 }
 
-void Compile(NetBuilder& net_builder) {
+void Compile(NetBuilder& net_builder) {  // NOLINT
   auto program = net_builder.Build();
   auto target = common::DefaultTarget();
   RunDecomposer(&program, target);

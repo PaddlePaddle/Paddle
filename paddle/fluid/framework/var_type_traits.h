@@ -212,7 +212,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::vector<float>,
     std::vector<std::string>,
     RawTensor,
-    TensorRefArray>;
+    VariableRefArray>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");

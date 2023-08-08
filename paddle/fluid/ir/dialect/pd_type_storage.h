@@ -128,5 +128,86 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   size_t offset_;
 };
 
+struct SelectedRowsTypeStorage : public ir::TypeStorage {
+  using DataLayout = phi::DataLayout;
+  using Dim = phi::DDim;
+  using LoD = std::vector<std::vector<size_t>>;
+  ///
+  /// \brief Declare ParamKey according to parameter type.
+  ///
+  using ParamKey =
+      std::tuple<ir::Type, phi::DDim, phi::DataLayout, phi::LoD, size_t>;
+
+  SelectedRowsTypeStorage(const ir::Type& dtype,
+                          const phi::DDim& dims,
+                          const phi::DataLayout& layout,
+                          const phi::LoD& lod,
+                          size_t offset)
+      : dtype_(dtype),
+        dims_(dims),
+        layout_(layout),
+        lod_(lod),
+        offset_(offset) {}
+
+  ///
+  /// \brief Each derived TypeStorage must define a Construct method, which
+  /// StorageManager uses to construct a derived TypeStorage.
+  ///
+  static SelectedRowsTypeStorage* Construct(const ParamKey& key) {
+    return new SelectedRowsTypeStorage(std::get<0>(key),
+                                       std::get<1>(key),
+                                       std::get<2>(key),
+                                       std::get<3>(key),
+                                       std::get<4>(key));
+  }
+
+  ///
+  /// \brief Each derived TypeStorage must provide a HashValue method.
+  ///
+  static std::size_t HashValue(const ParamKey& key) {
+    std::size_t hash_value = 317;
+    // hash dtype
+    hash_value =
+        ir::hash_combine(hash_value, std::hash<ir::Type>()(std::get<0>(key)));
+    // hash dims
+    hash_value =
+        ir::hash_combine(hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
+    // hash layout
+    hash_value = ir::hash_combine(
+        hash_value,
+        std::hash<std::underlying_type<phi::DataLayout>::type>()(
+            static_cast<std::underlying_type<phi::DataLayout>::type>(
+                std::get<2>(key))));
+    // hash lod
+    hash_value =
+        ir::hash_combine(hash_value, std::hash<phi::LoD>()(std::get<3>(key)));
+    // hash offset
+    hash_value =
+        ir::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
+    return hash_value;
+  }
+
+  ///
+  /// \brief Each derived TypeStorage needs to overload operator==.
+  ///
+  bool operator==(const ParamKey& key) const {
+    return ParamKey(dtype_, dims_, layout_, lod_, offset_) == key;
+  }
+
+  ParamKey GetAsKey() const {
+    return ParamKey(dtype_, dims_, layout_, lod_, offset_);
+  }
+
+  ///
+  /// \brief DenseTensorTypeStorage include five parameters: dims, dtype,
+  /// layout, lod, offset.
+  ///
+  ir::Type dtype_;
+  phi::DDim dims_;
+  phi::DataLayout layout_;
+  phi::LoD lod_;
+  size_t offset_;
+};
+
 }  // namespace dialect
 }  // namespace paddle

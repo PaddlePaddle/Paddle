@@ -22,7 +22,7 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
                           std::vector<InterfaceValue> &&interface_map,
                           const std::vector<TypeId> &trait_set,
                           size_t attributes_num,
-                          const char *attributes_name[],
+                          const char *attributes_name[],  // NOLINT
                           VerifyPtr verify) {
   // (1) Malloc memory for interfaces, traits, opinfo_impl.
   size_t interfaces_num = interface_map.size();
@@ -49,7 +49,8 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
     base_ptr += traits_num * sizeof(TypeId);
   }
   // Construct OpInfoImpl.
-  VLOG(6) << "Construct OpInfoImpl at " << base_ptr << " ......";
+  VLOG(6) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
+          << " ......";
   OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(dialect,
                                                     op_id,
                                                     op_name,

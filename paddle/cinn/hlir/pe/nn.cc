@@ -28,10 +28,10 @@
 #include "paddle/cinn/hlir/pe/elementwise.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace hlir {
@@ -806,15 +806,15 @@ std::vector<Tensor> Depthwise_Conv2d_NCHW(const Tensor &input,
   CHECK(weight->shape[1].is_constant());
   CHECK(weight->shape[2].is_constant());
   CHECK(weight->shape[3].is_constant());
-  int B = (int)input->shape[0].get_constant();
-  int O = (int)weight->shape[1].get_constant() *
-          (int)input->shape[1].get_constant();
-  int H = ((int)input->shape[2].get_constant() -
-           (int)weight->shape[2].get_constant() + 2 * pad_h) /
+  int B = static_cast<int>(input->shape[0].get_constant());
+  int O = static_cast<int>(weight->shape[1].get_constant()) *
+          static_cast<int>(input->shape[1].get_constant());
+  int H = (static_cast<int>(input->shape[2].get_constant()) -
+           static_cast<int>(weight->shape[2].get_constant()) + 2 * pad_h) /
               stride_h +
           1;
-  int W = ((int)input->shape[3].get_constant() -
-           (int)weight->shape[3].get_constant() + 2 * pad_w) /
+  int W = (static_cast<int>(input->shape[3].get_constant()) -
+           static_cast<int>(weight->shape[3].get_constant()) + 2 * pad_w) /
               stride_w +
           1;
   output_shape = {

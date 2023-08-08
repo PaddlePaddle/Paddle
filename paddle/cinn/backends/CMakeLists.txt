@@ -59,7 +59,14 @@ if(WITH_CUDA)
   cinn_nv_test(test_codegen_debug SRCS codegen_debug_test.cc DEPS cinncore)
 
   if(WITH_TESTING)
-    cinn_nv_test(generated1_cuda SRCS generated1.cu DEPS cinncore)
+    if(CINN_ONLY)
+      cinn_nv_test(generated1_cuda SRCS generated1.cu DEPS cinncore)
+    else()
+      nv_test(
+        generated1_cuda
+        SRCS generated1.cu
+        DEPS cinncore)
+    endif()
     add_run_test_dependency(generated1_cuda test_codegen_cuda_generate)
   endif()
 

@@ -33,7 +33,7 @@ TEST(default_ctor, span) {
   // dynamic size
   {
     constexpr span<int> s{};
-    static_assert(s.size() == 0, "");
+    static_assert(s.empty(), "");
     static_assert(s.data() == nullptr, "");
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end(), "");
@@ -45,7 +45,7 @@ TEST(default_ctor, span) {
   // fixed size
   {
     constexpr span<int, 0> s{};
-    static_assert(s.size() == 0, "");
+    static_assert(s.empty(), "");
     static_assert(s.data() == nullptr, "");
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end(), "");
@@ -69,7 +69,7 @@ TEST(pointer_length_ctor, span) {
 
   // dynamic size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int> s(arr, 3);
 
     CHECK_EQ(s.size(), 3UL);
@@ -80,7 +80,7 @@ TEST(pointer_length_ctor, span) {
 
   // fixed size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s(arr, 3);
 
     CHECK_EQ(s.size(), 3UL);
@@ -100,7 +100,7 @@ TEST(pointer_pointer_ctor, span) {
 
   // dynamic size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int> s{arr, arr + 3};
 
     CHECK_EQ(s.size(), 3UL);
@@ -111,7 +111,7 @@ TEST(pointer_pointer_ctor, span) {
 
   // fixed size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s{arr, arr + 3};
 
     CHECK_EQ(s.size(), 3UL);
@@ -122,8 +122,8 @@ TEST(pointer_pointer_ctor, span) {
 }
 
 TEST(c_array_ctor, span) {
-  using int_array_t = int[3];
-  using float_array_t = float[3];
+  using int_array_t = int[3];      // NOLINT
+  using float_array_t = float[3];  // NOLINT
 
   static_assert(std::is_nothrow_constructible<span<int>, int_array_t&>::value,
                 "");
@@ -171,7 +171,7 @@ TEST(c_array_ctor, span) {
 
   // non-const, dynamic size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -181,7 +181,7 @@ TEST(c_array_ctor, span) {
 
   // const, dynamic size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int const> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -191,7 +191,7 @@ TEST(c_array_ctor, span) {
 
   // non-const, static size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -201,7 +201,7 @@ TEST(c_array_ctor, span) {
 
   // const, dynamic size
   {
-    int arr[] = {1, 2, 3};
+    int arr[] = {1, 2, 3};  // NOLINT
     span<int const, 3> s{arr};
     CHECK_EQ(s.size(), 3UL);
     CHECK_EQ(s.data(), arr);
@@ -480,7 +480,7 @@ TEST(ctor_from_spans, span) {
   constexpr zero_const_span s0{};
   constexpr dynamic_const_span d{s0};
 
-  static_assert(d.size() == 0, "");
+  static_assert(d.empty(), "");
   static_assert(d.data() == nullptr, "");
 #ifndef _MSC_VER
   static_assert(d.begin() == d.end(), "");
@@ -492,7 +492,7 @@ TEST(ctor_from_spans, span) {
 TEST(subview, span) {
   // first<N>
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto f = s.first<3>();
 
@@ -505,7 +505,7 @@ TEST(subview, span) {
 
   // last<N>
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto l = s.last<3>();
 
@@ -518,7 +518,7 @@ TEST(subview, span) {
 
   // subspan<N>
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto ss = s.subspan<1, 2>();
 
@@ -531,7 +531,7 @@ TEST(subview, span) {
 
   // first(n)
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto f = s.first(3);
 
@@ -544,7 +544,7 @@ TEST(subview, span) {
 
   // last(n)
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto l = s.last(3);
 
@@ -557,7 +557,7 @@ TEST(subview, span) {
 
   // subspan(n)
   {
-    int arr[] = {1, 2, 3, 4, 5};
+    int arr[] = {1, 2, 3, 4, 5};  // NOLINT
     span<int, 5> s{arr};
     auto ss = s.subspan(1, 2);
 
@@ -574,16 +574,16 @@ TEST(subview, span) {
 TEST(observers, span) {
   // We already use this everywhere, but whatever
   constexpr span<int, 0> empty{};
-  static_assert(empty.size() == 0, "");
+  static_assert(empty.size() == 0, "");  // NOLINT
   static_assert(empty.empty(), "");
 
-  constexpr int arr[] = {1, 2, 3};
+  constexpr int arr[] = {1, 2, 3};  // NOLINT
   static_assert(span<const int>{arr}.size() == 3, "");
   static_assert(!span<const int>{arr}.empty(), "");
 }
 
 TEST(element_access, span) {
-  constexpr int arr[] = {1, 2, 3};
+  constexpr int arr[] = {1, 2, 3};  // NOLINT
   span<const int> s{arr};
 
   CHECK_EQ(s[0], arr[0]);

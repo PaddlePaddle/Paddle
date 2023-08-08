@@ -47,7 +47,6 @@ endif()
 add_definitions(-w)
 
 include(cmake/cinn/version.cmake)
-# include the customized configures
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
   file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake
        DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
@@ -112,14 +111,8 @@ include_directories(${CMAKE_BINARY_DIR})
 include(cmake/generic.cmake)
 include(cmake/cinn/system.cmake)
 include(cmake/cinn/core.cmake)
-include(cmake/cinn/external/absl.cmake)
 include(cmake/cinn/nvrtc.cmake)
 include(cmake/cinn/nvtx.cmake)
-include(cmake/cinn/external/llvm.cmake)
-include(cmake/cinn/external/isl.cmake)
-include(cmake/cinn/external/ginac.cmake)
-include(cmake/cinn/external/openmp.cmake)
-include(cmake/cinn/external/jitify.cmake)
 
 if(CINN_ONLY)
   link_libraries(gflags)
@@ -174,6 +167,10 @@ cinn_cc_library(
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+if(NOT CINN_ONLY)
+  target_link_libraries(cinnapi phi)
+  add_dependencies(cinnapi phi)
+endif()
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 
@@ -181,8 +178,8 @@ if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
   if(WITH_MKLDNN)
-    target_link_libraries(cinnapi mkldnn)
-    add_dependencies(cinnapi mkldnn)
+    target_link_libraries(cinnapi ${MKLDNN_LIB})
+    add_dependencies(cinnapi ${MKLDNN_PROJECT})
   endif()
 endif()
 
@@ -223,6 +220,10 @@ function(gen_cinncore LINKTYPE)
     ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+  if(NOT CINN_ONLY)
+    target_link_libraries(${CINNCORE_TARGET} phi)
+    add_dependencies(${CINNCORE_TARGET} phi)
+  endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)
   target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
@@ -231,8 +232,8 @@ function(gen_cinncore LINKTYPE)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
     add_dependencies(${CINNCORE_TARGET} cinn_mklml)
     if(WITH_MKLDNN)
-      target_link_libraries(${CINNCORE_TARGET} mkldnn)
-      add_dependencies(${CINNCORE_TARGET} mkldnn)
+      target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
+      add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
     endif()
   endif()
 
@@ -309,7 +310,8 @@ if(PUBLISH_LIBS)
       ${CMAKE_BINARY_DIR}/paddle/cinn/auto_schedule/libauto_schedule_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libauto_schedule_proto.a
     COMMAND
-      cmake -E copy ${CMAKE_BINARY_DIR}/paddle/cinn/ir/libschedule_desc_proto.a
+      cmake -E copy
+      ${CMAKE_BINARY_DIR}/paddle/cinn/ir/schedule/libschedule_desc_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libschedule_desc_proto.a
     COMMENT "distribute libcinncore_static.a and related header files." DEPENDS
             cinncore_static)
