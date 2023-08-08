@@ -124,7 +124,7 @@ class MultiGRUHandler {
 
     // Create attributes for each oneDNN gru
     for (int i = 0; i < 2 * layers_; ++i) {
-      attrs_.push_back(dnnl::primitive_attr());
+      attrs_.emplace_back();
     }
 
     if (is_int8) {

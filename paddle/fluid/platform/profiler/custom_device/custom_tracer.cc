@@ -32,7 +32,7 @@ CustomTracer::CustomTracer(const std::string& dev_type) : dev_type_(dev_type) {
 #endif
 }
 
-CustomTracer::~CustomTracer() {
+CustomTracer::~CustomTracer() {  // NOLINT
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerFinalize(dev_type_, &collector_, context_);
 #endif

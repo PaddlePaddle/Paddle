@@ -531,8 +531,8 @@ void TensorToStream(std::ostream& os,
 #endif
     } else if (platform::is_custom_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
-      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
       auto& custom_device_context =
           static_cast<const platform::CustomDeviceContext&>(dev_ctx);
       platform::CPUPlace cpu;
@@ -598,7 +598,7 @@ void TensorFromStream(std::istream& is,
     // proto buffer
     int32_t size;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
-    std::unique_ptr<char[]> buf(new char[size]);
+    std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
         desc.ParseFromArray(buf.get(), size),
@@ -671,7 +671,7 @@ void TensorFromStream(std::istream& is,
                       0,
                       platform::errors::InvalidArgument(
                           "phi::DenseTensor desc size should >= 0"));
-    std::unique_ptr<char[]> buf(new char[size]);
+    std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
         desc.ParseFromArray(buf.get(), size),
