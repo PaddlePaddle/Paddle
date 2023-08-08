@@ -84,12 +84,14 @@ def dy2static_unittest(cls):
 def ast_only_test(func):
     """
     run this test function in ast only mode.
-    Usage:
 
-    class TestA (unittest.TestCase):
-        @ast_only_test
-        def test_ast_only(self):
-            pass
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ...     @ast_only_test
+        ...     def test_ast_only(self):
+        ...         pass
     """
 
     def impl(*args, **kwargs):
@@ -102,16 +104,18 @@ def ast_only_test(func):
 def sot_only_test(func):
     """
     run this test function in ast only mode.
-    Usage:
 
-    class TestA (unittest.TestCase):
-        @ast_only_test
-        def test_ast_only(self):
-            pass
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ... @sot_only_test
+        ... def test_sot_only(self):
+        ...     pass
     """
 
     def impl(*args, **kwargs):
-        if os.environ.get("ENABLE_FALL_BACK", "True") == "True":
+        if os.environ.get("ENABLE_FALL_BACK", "False") == "True":
             func(*args, **kwargs)
 
     return impl
