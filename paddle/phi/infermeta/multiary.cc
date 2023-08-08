@@ -3644,28 +3644,11 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* out,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out) {
-  auto x_dims = x.dims();
+  int bsz = x.dims()[0];
   auto x_dtype = x.dtype();
-  int bsz = x_dims[0];
-  int num_head = x_dims[2];
-  int dim_head = x_dims[3];
-
   auto cache_kv_dims = cache_kv.dims();
-
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      4,
-      errors::InvalidArgument("The dimensions of x must be 4"
-                              "(batch_size, 3, num_head, dim_head),"
-                              "but received dimensions of"
-                              "Input is [%d]",
-                              x_dims.size()));
-
-  PADDLE_ENFORCE_EQ(
-      x_dims[1],
-      3,
-      errors::InvalidArgument("The second dim of input x must be 3, but got %d",
-                              x_dims[1]));
+  int num_head = cache_kv.dims()[2];
+  int dim_head = cache_kv.dims()[4];
 
   PADDLE_ENFORCE_EQ(
       cache_kv_dims.size(),
@@ -3688,11 +3671,8 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
             rotary_tensor.dtype()));
   }
 
-  if (sequence_lengths) {
-    out->set_dims({bsz, num_head, dim_head});
-  } else {
-    out->set_dims({bsz, 1, num_head, dim_head});
-  }
+  out->set_dims({bsz, num_head * dim_head});
+
   if (out_linear_in_scale > 0) {
     out->set_dtype(DataType::INT8);
   } else {

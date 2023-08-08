@@ -202,6 +202,7 @@ class TestMMHAOp(unittest.TestCase):
         quant_round_type,
         quant_max_bound,
         quant_min_bound,
+        bsz,
     ):
         if qkv_out_scale is not None:
             x = x.cast(cache_kv_out.dtype) * qkv_out_scale
@@ -221,7 +222,9 @@ class TestMMHAOp(unittest.TestCase):
         )
         product = product + src_mask
         product = paddle.nn.functional.softmax(product)
-        out = paddle.matmul(product, v).transpose([0, 2, 1, 3])
+        out = (
+            paddle.matmul(product, v).transpose([0, 2, 1, 3]).reshape([bsz, -1])
+        )
 
         normalized_out = self.quant_helper(
             out,
@@ -229,7 +232,7 @@ class TestMMHAOp(unittest.TestCase):
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
-        )
+        ).reshape([bsz, -1])
         return out, normalized_out
 
     def check_main(
@@ -262,8 +265,10 @@ class TestMMHAOp(unittest.TestCase):
             self.quant_round_type,
             self.quant_max_bound,
             self.quant_min_bound,
+            self.bsz,
         )
 
+        x = x.reshape([self.bsz, -1])
         paddle_mmha_out = mmha_wrapper(
             x,
             cache_kv_mmha_out,
@@ -414,6 +419,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         quant_round_type,
         quant_max_bound,
         quant_min_bound,
+        bsz,
     ):
         if qkv_out_scale is not None:
             x = x.cast(cache_kv_out.dtype) * qkv_out_scale
@@ -431,7 +437,9 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         )
         product = product + src_mask
         product = paddle.nn.functional.softmax(product)
-        out = paddle.matmul(product, v).transpose([0, 2, 1, 3])
+        out = (
+            paddle.matmul(product, v).transpose([0, 2, 1, 3]).reshape([bsz, -1])
+        )
 
         return out
 
@@ -460,13 +468,14 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
             self.quant_round_type,
             self.quant_max_bound,
             self.quant_min_bound,
+            self.bsz,
         )
 
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x_static = paddle.static.data(
                 name="x_static",
-                shape=[self.bsz, 3, self.num_head, self.dim_head],
+                shape=[self.bsz, 3 * self.num_head * self.dim_head],
                 dtype=dtype,
             )
             src_mask_static = paddle.static.data(
@@ -508,7 +517,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
-                    "x_static": x.astype(dtype),
+                    "x_static": x.reshape(self.bsz, -1).astype(dtype),
                     "cache_kv_mmha_out_static": cache_kv_mmha_out.astype(dtype),
                     "src_mask_static": src_mask.astype(dtype),
                 },
