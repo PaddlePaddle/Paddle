@@ -15,6 +15,9 @@
 import math
 import random
 import unittest
+from test.dygraph_to_static.dygraph_to_static_util import (
+    test_and_compare_with_new_ir,
+)
 
 import numpy as np
 
@@ -320,6 +323,7 @@ def train(to_static):
 
 
 class TestWord2Vec(unittest.TestCase):
+    @test_and_compare_with_new_ir
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
