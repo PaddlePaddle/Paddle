@@ -24,6 +24,8 @@ from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
+from paddle.fluid import core
+
 __all__ = []
 
 
@@ -296,6 +298,55 @@ class Callback:
             logs (dict): The logs is a dict or None.
         """
 
+class SynchronizedIPSMetric(Callback):
+    """
+    Callback (event handler) for calculating IPS metric more accurately by regularly 
+    insering a sync request to CPU.
+    Args:
+        enabled (bool): whether the metric calculator is enabled or not. Default: True.
+        sync_every_n_iters (int): send a synchronize request to device every n iterations.
+            A larger value will result in more accurate IPS estimation. An IPS calculation 
+            event will be invoked every n iterations (batches). Default: 10. 
+        visualize_sync_time (bool): if enabled, synchronization will be visible from 
+            the timeline when using Nsight profiling tool, normally set this to OFF to avoid
+            extra overhead caused by profiling. For developers that need to see the actual
+            synchronization process set this to True. Default: False.
+    """
+    def __init__(self, 
+                 enabled: bool = True, 
+                 sync_every_n_steps: int = 10,
+                 visualize_sync_time: bool = False):
+        super().__init__()
+        self.enabled = enabled
+        self.sync_every_n_steps = sync_every_n_steps
+        self.visualize_sync_time = visualize_sync_time
+        self._iter_counter = sync_every_n_steps-1
+        print('IPS metric initialization...')
+        self.device = paddle.device.get_device() # device occupied by the current process
+        self.time_stamps = []
+    def _sync_and_record_time(self, note=''):
+        if self.visualize_sync_time:
+            core.nvprof_nvtx_push('sync_%s' % note)
+        paddle.device.synchronize(self.device)
+        self.time_stamps.append( (time.time(), note) )
+        if self.visualize_sync_time:
+            core.nvprof_nvtx_pop()
+    def on_train_batch_end(self, step, logs=None):
+        if self.enabled == False:
+            return
+        if self._iter_counter <= 0:
+            time_note = 'IPS_initial_tick' if len(self.time_stamps) == 0 else 'IPS_regular_tick'
+            time_note += ', batch_id=%d' % step
+            self._sync_and_record_time(note=time_note)
+            self._iter_counter = self.sync_every_n_steps-1 # reset counter
+            if len(self.time_stamps) >= 2:
+                dt = self.time_stamps[-1][0]-self.time_stamps[-2][0]
+                batch_id_start = int(self.time_stamps[-2][1].split(',')[1].split('=')[1])
+                batch_id_end   = int(self.time_stamps[-1][1].split(',')[1].split('=')[1])
+                num_steps = batch_id_end - batch_id_start
+                print('** IPS (w/ sync): %.4f samples/sec' % (num_steps/dt))
+        else:
+            self._iter_counter -= 1
 
 class ProgBarLogger(Callback):
     """
