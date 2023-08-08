@@ -92,7 +92,7 @@ def flash_attention(
     """
     if in_dynamic_mode():
         if g_use_flash_attn_v1:
-            (result_attention, result_softmax,) = _C_ops.flash_attn_v1(
+            (result_attention, result_softmax, _, _) = _C_ops.flash_attn_v1(
                 query,
                 key,
                 value,
@@ -101,8 +101,9 @@ def flash_attention(
                 return_softmax,
                 not training,
             )
+
         else:
-            (result_attention, result_softmax,) = _C_ops.flash_attn(
+            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
                 query,
                 key,
                 value,
