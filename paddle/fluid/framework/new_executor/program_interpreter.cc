@@ -1504,17 +1504,19 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
 
   trace_execute_order_ = trace_order;
 
-  std::stringstream ss;
-  ss << "trace order: ";
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    ss << vec_instruction_[trace_execute_order_[idx]]
-              .OpFunc()
-              ->operator_base_->Type()
-       << "[" << trace_execute_order_[idx] << "]"
-       << " -> ";
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ss << "trace order: ";
+    for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+      ss << vec_instruction_[trace_execute_order_[idx]]
+                .OpFunc()
+                ->operator_base_->Type()
+         << "[" << trace_execute_order_[idx] << "]"
+         << " -> ";
+    }
+    ss << "end\n";
+    VLOG(6) << ss.str();
   }
-  ss << "end\n";
-  VLOG(6) << ss.str();
 }
 
 }  // namespace framework
