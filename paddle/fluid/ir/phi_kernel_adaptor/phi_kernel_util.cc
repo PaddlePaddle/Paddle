@@ -442,7 +442,7 @@ void HandleForInplaceOp(
     }
     std::string value_name = yaml_parser.OutputNames()[i];
     if (yaml_parser.HasInplace(value_name)) {
-      std::string inplace_name = yaml_parser.InplaceName(value_name);
+      const std::string& inplace_name = yaml_parser.InplaceName(value_name);
       ir::Value inplace_value =
           op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
       std::string var_name = value_2_var_name->at(inplace_value);
@@ -450,10 +450,10 @@ void HandleForInplaceOp(
               << " (var: " << var_name << ")";
       value_2_var_name->emplace(value, var_name);
     } else if (yaml_parser.HasView(value_name)) {
-      std::string view_name = yaml_parser.ViewName(value_name);
+      const std::string& view_name = yaml_parser.ViewName(value_name);
       ir::Value view_value =
           op->operand_source(yaml_parser.InputName2Id().at(view_name));
-      std::string var_name = value_2_var_name->at(view_value);
+      const std::string& var_name = value_2_var_name->at(view_value);
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << var_name << ")";
       value_2_var_name->emplace(value, var_name);
