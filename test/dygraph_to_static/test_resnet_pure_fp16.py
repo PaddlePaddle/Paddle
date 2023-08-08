@@ -121,7 +121,7 @@ class TestResnet(unittest.TestCase):
         build_strategy.enable_inplace = False
         return train(to_static, build_strategy)
 
-    @test_and_compare_with_new_ir()
+    @test_and_compare_with_new_ir(False)
     def test_resnet(self):
         if fluid.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)

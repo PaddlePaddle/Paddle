@@ -32,7 +32,7 @@ class TestPureFP16(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_and_compare_with_new_ir()
+    @test_and_compare_with_new_ir(False)
     def test_mnist_to_static(self):
         if paddle.fluid.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()

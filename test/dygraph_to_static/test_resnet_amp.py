@@ -118,7 +118,7 @@ class TestResnet(unittest.TestCase):
         paddle.jit.enable_to_static(to_static)
         return train(to_static)
 
-    @test_and_compare_with_new_ir()
+    @test_and_compare_with_new_ir(False)
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

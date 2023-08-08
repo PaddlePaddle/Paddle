@@ -169,7 +169,7 @@ def train(to_static):
 
 
 class TestYolov3(unittest.TestCase):
-    @test_and_compare_with_new_ir()
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
