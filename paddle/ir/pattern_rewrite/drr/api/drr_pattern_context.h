@@ -58,16 +58,15 @@ class TensorShape {
 
 class Constraint {
  public:
-  Constraint(const std::function<bool(const MatchContext& match_context)>&
-                 constrain_fn)
+  explicit Constraint(
+      const std::function<bool(const MatchContext&)>& constrain_fn)
       : IsContextMatchConstraint_(constrain_fn) {}
   bool operator()(const MatchContext& match_context) const {
     return IsContextMatchConstraint_(match_context);
   }
 
  private:
-  std::function<bool(const MatchContext& match_context)>
-      IsContextMatchConstraint_;
+  std::function<bool(const MatchContext&)> IsContextMatchConstraint_;
 };
 
 class DrrPatternContext {

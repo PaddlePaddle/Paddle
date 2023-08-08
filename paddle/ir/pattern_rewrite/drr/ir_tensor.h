@@ -23,23 +23,6 @@
 namespace ir {
 namespace drr {
 
-class IrTensor : public TensorInterface {
- public:
-  explicit IrTensor(const Value* value)
-      : shape_(
-            &value->type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
-        dtype_(&value->type()
-                    .dyn_cast<paddle::dialect::DenseTensorType>()
-                    .dtype()) {}
-
-  ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
-  DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }
-
- private:
-  const IrShape shape_;
-  const IrDtype dtype_;
-};
-
 class IrShape {
  public:
   explicit IrShape(const phi::DDim* dims) : dims_(dims) {}
@@ -60,6 +43,23 @@ class IrDtype {
 
  private:
   const ir::Type* dtype_;
+};
+
+class IrTensor : public TensorInterface {
+ public:
+  explicit IrTensor(const Value* value)
+      : shape_(
+            &value->type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
+        dtype_(&value->type()
+                    .dyn_cast<paddle::dialect::DenseTensorType>()
+                    .dtype()) {}
+
+  ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
+  DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }
+
+ private:
+  const IrShape shape_;
+  const IrDtype dtype_;
 };
 
 class IrAttr;

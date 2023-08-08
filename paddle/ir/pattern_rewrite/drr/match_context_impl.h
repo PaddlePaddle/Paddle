@@ -34,10 +34,9 @@ struct CppTypeToIrAttribute;
   };
 
 PD_SPECIALIZE_CppTypeToIrAttribute(bool, BoolAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(int, Int32Attribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(int, Int64Attribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, Int32Attribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(double, DoubleAttribute);
 
 class MatchContextImpl final {
  public:
@@ -48,8 +47,10 @@ class MatchContextImpl final {
   }
 
   template <typename T>
-  const T& Attr(const std::string& attr_name) const {
-    return attr_map_.at(attr_name).dyn_cast<CppTypeToIrAttribute<T>>().data();
+  T Attr(const std::string& attr_name) const {
+    return attr_map_.at(attr_name)
+        .dyn_cast<typename CppTypeToIrAttribute<T>::type>()
+        .data();
   }
 
   void BindIrTensor(const std::string& tensor_name,

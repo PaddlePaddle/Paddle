@@ -18,20 +18,23 @@
 namespace ir {
 namespace drr {
 
+MatchContext::MatchContext(std::unique_ptr<const MatchContextImpl> impl)
+    : impl_(std::move(impl)) {}
+
 const TensorInterface& MatchContext::Tensor(
     const std::string& tensor_name) const {
   return impl_->Tensor(tensor_name);
 }
 
 template <typename T>
-const T& MatchContext::Attr(const std::string& attr_name) const {
-  return impl->Attr<T>(attr_name);
+T MatchContext::Attr(const std::string& attr_name) const {
+  return impl_->Attr<T>(attr_name);
 }
 
-template const bool& MatchContext::Attr<bool>(const std::string&) const;
-template const int32_t& MatchContext::Attr<int32_t>(const std::string&) const;
-template const int64_t& MatchContext::Attr<int64_t>(const std::string&) const;
-template const float& MatchContext::Attr<float>(const std::string&) const;
+template bool MatchContext::Attr<bool>(const std::string&) const;
+template int32_t MatchContext::Attr<int32_t>(const std::string&) const;
+template int64_t MatchContext::Attr<int64_t>(const std::string&) const;
+template float MatchContext::Attr<float>(const std::string&) const;
 
 }  // namespace drr
 }  // namespace ir

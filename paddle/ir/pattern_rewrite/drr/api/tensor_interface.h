@@ -52,11 +52,6 @@ class TensorInterface {
  public:
   virtual ShapeInterface Shape() const = 0;
   virtual DtypeInterface Dtype() const = 0;
-
- private:
-  explicit TensorInterface(const std::string& tensor_name)
-      : tensor_name_(tensor_name) {}
-  std::string tensor_name_;
 };
 
 }  // namespace drr

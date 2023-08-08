@@ -29,13 +29,11 @@ class MatchContextImpl;
 
 class MatchContext final {
  public:
-  MatchContext(std::unique_ptr<const MatchContextImpl> impl)
-      : impl_(std::move(impl)) {}
-
+  MatchContext(std::unique_ptr<const MatchContextImpl> impl);
   const TensorInterface& Tensor(const std::string& tensor_name) const;
 
   template <typename T>
-  const T& Attr(const std::string& attr_name) const;
+  T Attr(const std::string& attr_name) const;
 
  private:
   std::unique_ptr<const MatchContextImpl> impl_;
