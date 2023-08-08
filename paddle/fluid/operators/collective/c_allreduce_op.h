@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -301,11 +300,10 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
-    std::string use_new_comm = distributed::GetNewCommEnv();
+    gpuStream_t stream = nullptr;
     platform::NCCLComm* comm = nullptr;
     phi::distributed::NCCLCommContext* comm_ctx = nullptr;
 
-    gpuStream_t stream = nullptr;
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(rid)) {
@@ -318,9 +316,11 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
                     "NCCLCommContext is nullptr, collective op should "
                     "has ring_id attr."));
         stream = comm_ctx->GetStream();
+        VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {
         comm = platform::NCCLCommContext::Instance().Get(rid, place);
         stream = comm->stream();
+        VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should not use global ctx for calc stream.
