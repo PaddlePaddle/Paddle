@@ -306,28 +306,27 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     phi::distributed::NCCLCommContext* comm_ctx = nullptr;
 
     gpuStream_t stream = nullptr;
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(rid)) {
+        comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+                comm_context_manager.Get(std::to_string(rid)));
+        PADDLE_ENFORCE_NE(
+                comm_ctx,
+                nullptr,
+                platform::errors::Unavailable(
+                    "NCCLCommContext is nullptr, collective op should "
+                    "has ring_id attr."));
+        stream = comm_ctx->GetStream();
+    } else {
+        comm = platform::NCCLCommContext::Instance().Get(rid, place);
+        stream = comm->stream();
+    }
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should not use global ctx for calc stream.
       // auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       // stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
       stream = ctx.cuda_device_context().stream();
-    } else {
-      if (use_new_comm == "1") {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(std::to_string(rid)));
-        PADDLE_ENFORCE_NE(
-            comm_ctx,
-            nullptr,
-            platform::errors::Unavailable(
-                "NCCLCommContext is nullptr, collective op should "
-                "has ring_id attr."));
-        stream = comm_ctx->GetStream();
-      } else {
-        comm = platform::NCCLCommContext::Instance().Get(rid, place);
-        stream = comm->stream();
-      }
     }
     VLOG(10) << "all reduce buffer:" << sendbuff << ", numel:" << numel
              << ", redtype:" << static_cast<int>(red_type)
