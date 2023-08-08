@@ -21,7 +21,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
@@ -126,7 +125,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
     bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
-    VLOG(0) << "debug recv_v2 rid " << rid << ", dynamic_shape " << dynamic_shape;
     PADDLE_ENFORCE_GE(
         rid,
         0,
@@ -177,7 +175,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     const auto &comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(rid)) {
-        VLOG(0) << "debug recv_v2 not use_calc_stream use_new_comm";
         comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
                 comm_context_manager.Get(std::to_string(rid)));
         PADDLE_ENFORCE_NE(
@@ -187,8 +184,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                     "NCCLCommContext is nullptr, collective op should "
                     "has ring_id attr."));
         stream = comm_ctx->GetStream();
+        VLOG(3) << "new comm_context_manager has rid " << ring_d;
     } else {
-        VLOG(0) << "debug recv_v2 not use_calc_stream not use_new_comm";
         comm = platform::NCCLCommContext::Instance().Get(rid, place);
         PADDLE_ENFORCE_LT(peer,
                 comm->nranks(),
@@ -198,14 +195,12 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                     peer,
                     comm->nranks()));
         stream = comm->stream();
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 
     if (ctx.Attr<bool>("use_calc_stream")) {
-      VLOG(0) << "debug recv_v2 use_calc_stream ";
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
-    } else {
-      VLOG(0) << "debug recv_v2 not use_calc_stream ";
     }
     int data_type = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
@@ -270,8 +265,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                   comm->nranks()));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           out->data<T>(), numel, dtype, peer, comm->comm(), stream));
-      VLOG(0) << "debug recv_v2 finish rank " << comm->rank() << " recv "
-              << phi::product(out->dims()) << " from " << peer;
+      VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out->dims())
+              << " from " << peer;
     }
 #else
     PADDLE_THROW(platform::errors::Unavailable(

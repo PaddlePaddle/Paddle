@@ -23,7 +23,6 @@ class Scope;
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace paddle {
@@ -64,7 +63,7 @@ class CWaitComputeOp : public framework::OperatorBase {
           comm_context_manager.Get(std::to_string(ring_id)));
       comm_stream = comm_ctx->GetStream();
       event = comm_ctx->GetComputeEvent();
-
+      VLOG(3) << "new comm_context_manager has rid " << ring_d;
     } else {
       comm_stream =
           platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
@@ -72,6 +71,7 @@ class CWaitComputeOp : public framework::OperatorBase {
       event = platform::NCCLCommContext::Instance()
                   .Get(ring_id, place)
                   ->compute_event();
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 
 // compute_stream-->event-->comm_stream

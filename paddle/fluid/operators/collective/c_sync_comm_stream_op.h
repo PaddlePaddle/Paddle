@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -46,8 +45,10 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     if (comm_context_manager.Has(ring_d)) {
         auto comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(comm_context_manager.Get(std::to_string(ring_id)));
         stream = comm_ctx->GetStream();
+        VLOG(3) << "new comm_context_manager has rid " << ring_d;
     } else {
         stream = platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+        VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 
     platform::GpuStreamSync(stream);
