@@ -185,18 +185,18 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
 
   id_type tensor_id_;
   OpCall* producer_;
-  const OpCall* consumers_;
+  std::vector<const OpCall*> consumers_;
   PatternGraph* pattern_graph_;
 };
 
 class OpCall : public std::enable_shared_from_this<OpCall> {
  public:
-  OpCall( OpCall const * op,
+  OpCall( Op const * op,
          const std::vector<const Tensor *>& inputs,
          const std::vector<const Tensor *>& outputs)
       : op_(op), inputs_(inputs), outputs_(outputs) {}
 
-  const std::string& name() const { return op_.lock()->name(); }
+  const std::string& name() const { return op_->name(); }
 
   const std::vector<const Tensor*>& inputs() const {
     return inputs_;
