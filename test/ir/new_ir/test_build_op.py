@@ -53,6 +53,7 @@ class TestBuildOp(unittest.TestCase):
             .name(),
             "pd.tanh",
         )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_insertion_point(self):
         newir_program = get_ir_program()
@@ -64,13 +65,19 @@ class TestBuildOp(unittest.TestCase):
 
         with paddle.ir.core.program_guard(newir_program):
             ir.set_insertion_point(tanh_op)
-            out = paddle.mean(add_out)
+            full_out = paddle.tensor.fill_constant(
+                shape=[4, 4], dtype="float", value=2
+            )
+            divide_out = paddle.divide(full_out, full_out)
+            sum_out = paddle.sum(divide_out)
+            out = paddle.mean(sum_out)
             tanh_operand.set_source(out)
 
         print(newir_program)
         self.assertEqual(
             tanh_operand.source().get_defining_op().name(), "pd.mean"
         )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 if __name__ == "__main__":
