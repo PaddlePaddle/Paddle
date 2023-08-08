@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .primitives import *  # noqa: F403
-from .utils import register_decomp
+from .register import register_decomp
 
 
 @register_decomp('pd.mean')

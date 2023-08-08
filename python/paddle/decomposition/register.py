@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import inspect
 
 
 class Registry:
@@ -24,6 +25,7 @@ class Registry:
 
     def register(self, op_type, rule):
         assert isinstance(op_type, str)
+        assert inspect.isfunction(rule)
         assert (
             op_type not in self.rules
         ), f'name "{op_type}" should not be registered before.'

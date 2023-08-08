@@ -19,7 +19,7 @@ from paddle import ir
 from paddle.fluid.libpaddle.ir import Block, Program
 from paddle.framework import core
 
-from .register import get_decomp_rule
+from . import register
 
 
 def _build_tensor_tuple(xs):
@@ -31,7 +31,12 @@ def _build_tensor_tuple(xs):
 
 
 def _prepare_python_api_arguments(op):
-    """For standard api of operator, its inputs should keep consistent with organization of its inputs and attrs."""
+    """
+    For standard api of operator, its inputs should keep consistent with organization of its inputs and attrs.
+
+    Args:
+    op (Operator): The target operator.
+    """
     op_inputs = [x.source() for x in op.operands()]
     op_attrs_dict = op.attrs()
     op_attrs_name = op.get_attr_names()
@@ -41,7 +46,14 @@ def _prepare_python_api_arguments(op):
 
 
 def _check_op_results(op_name, orig_outs, new_outs):
-    """Check whether the replaced outputs are consistent with origin outputs."""
+    """
+    Check whether the replaced outputs are consistent with origin outputs.
+
+    Args:
+    op_name (str): The name of operator.
+    orig_outs (tuple): The outputs of original operator.
+    new_outs (tuple): The outputs of replaced operator.
+    """
     assert len(orig_outs) == len(new_outs), (
         f'when replace origin op {op_name} with composite rule, num of origin outs should be equal to new outs, '
         f'but len(orig_outs) = {len(orig_outs)} and len(new_outs) = {len(new_outs)}'
@@ -87,7 +99,8 @@ def decompose(
     blacklist=frozenset(),
     whitelist=frozenset(),
 ):
-    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
+    """
+    Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
     The operators in blacklist will be excluded from program when decomposed into primitives, and only the
     operators in whitelist will be decomposed. The priority of blacklist is higher than whitelist, it means
     an operator both in blacklist and whitelist will not be decomposed.
@@ -140,13 +153,19 @@ def decompose(
 
 
 def _decompose_subgraph(block, op_filter):
-    """The operators in block wich satisfy the filter conditon will be decomposed into primitives."""
+    """
+    The operators in block wich satisfy the filter conditon will be decomposed into primitives.
+
+    Args:
+        block (Block|Sequence[Block]): The blocks of program to be processed.
+        op_filter (function): The filter to specify which ops to be processed.
+    """
 
     if isinstance(block, Block):
         ops_list = block.get_ops()
         for op in ops_list:
             op_name = op.name()
-            decom_rule = get_decomp_rule(op_name)
+            decom_rule = register.get_decomp_rule(op_name)
             lower = decom_rule and op_filter(op)
 
             if lower:
