@@ -836,13 +836,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
 
     VLOG(10) << "[op assign_value] attribute translation done";
 
-    std::vector<int> src_shape =
-        paddle::get<std::vector<int>>(op_desc.GetAttr("shape"));
-    std::vector<int64_t> target_shape(src_shape.begin(), src_shape.end());
-
     std::vector<ir::OpResult> op_inputs = {};
-
-    VLOG(10) << "[op assign_value] insert a full op to get input";
 
     OpOutputMapping arg_to_idx;
     OpOutputTypeList op_output_types;
