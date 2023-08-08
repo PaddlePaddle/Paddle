@@ -22,8 +22,11 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
+
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/block.h"
@@ -107,21 +110,16 @@ void BindOperation(py::module *m) {
       .def("operand", &Operation::operand)
       .def("result", &Operation::result)
       .def("operand_source", &Operation::operand_source)
-      .def("operands",
-           [](Operation &self) -> py::list {
-             py::list op_list;
-             for (uint32_t i = 0; i < self.num_operands(); i++) {
-               op_list.append(self.operand(i));
+      .def("operands", &Operation::operands)
+      .def("results", &Operation::results)
+      .def("attrs",
+           [](Operation &self) -> py::dict {
+             py::dict attrs_dict;
+             for (auto &pair : self.attributes()) {
+               attrs_dict[pair.first.c_str()] =
+                   paddle::dialect::GetAttributeData(pair.second);
              }
-             return op_list;
-           })
-      .def("results",
-           [](Operation &self) -> py::list {
-             py::list op_list;
-             for (uint32_t i = 0; i < self.num_results(); i++) {
-               op_list.append(self.result(i));
-             }
-             return op_list;
+             return attrs_dict;
            })
       .def("operands_source",
            [](Operation &self) -> py::list {
@@ -176,7 +174,13 @@ void BindValue(py::module *m) {
       .def("get_defining_op",
            &Value::GetDefiningOp,
            return_value_policy::reference)
-      .def("__eq__", &Value::operator==);
+      .def("__eq__", &Value::operator==)
+      .def("__eq__",
+           [](Value &self, OpResult &other) {
+             return self.impl() == other.value_impl();
+           })
+      .def("__hash__",
+           [](const Value &self) { return std::hash<ir::Value>{}(self); });
 }
 
 void BindOpOperand(py::module *m) {
@@ -189,48 +193,92 @@ void BindOpOperand(py::module *m) {
       });
 }
 
+bool GetStopGradient(const OpResult &self) {
+  auto *defining_op = self.owner();
+  if (defining_op->HasAttribute(kAttrStopGradients)) {
+    auto stop_gradients = defining_op->attribute(kAttrStopGradients)
+                              .dyn_cast<ir::ArrayAttribute>()
+                              .AsVector();
+    return stop_gradients[self.GetResultIndex()]
+        .dyn_cast<ir::BoolAttribute>()
+        .data();
+  } else {
+    return false;
+  }
+}
+
+void SetStopGradient(const OpResult &self, bool stop_gradient) {
+  auto *defining_op = self.owner();
+  std::vector<ir::Attribute> stop_gradients;
+  if (defining_op->HasAttribute(kAttrStopGradients)) {
+    stop_gradients = defining_op->attribute(kAttrStopGradients)
+                         .dyn_cast<ir::ArrayAttribute>()
+                         .AsVector();
+  } else {
+    stop_gradients = std::vector<ir::Attribute>(
+        defining_op->num_results(),
+        ir::BoolAttribute::get(ir::IrContext::Instance(), false));
+  }
+  stop_gradients[self.GetResultIndex()] =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), stop_gradient);
+  defining_op->set_attribute(
+      kAttrStopGradients,
+      ir::ArrayAttribute::get(ir::IrContext::Instance(), stop_gradients));
+}
+
 void BindOpResult(py::module *m) {
   py::class_<OpResult> op_result(*m, "OpResult");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result
+  op_result.def("__eq__", &OpResult::operator==)
+      .def("__eq__",
+           [](OpResult &self, Value &other) {
+             return self.value_impl() == other.impl();
+           })
+      .def("__hash__",
+           [](OpResult &self) {
+             return std::hash<ir::Value>{}(self.dyn_cast<ir::Value>());
+           })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
-      .def("set_stop_gradient",
-           [](OpResult &self, bool stop_gradient) {
-             auto *defining_op = self.owner();
-             std::vector<ir::Attribute> stop_gradients;
-             if (defining_op->HasAttribute(kAttrStopGradients)) {
-               stop_gradients = defining_op->attribute(kAttrStopGradients)
-                                    .dyn_cast<ir::ArrayAttribute>()
-                                    .AsVector();
-             } else {
-               stop_gradients = std::vector<ir::Attribute>(
-                   defining_op->num_results(),
-                   ir::BoolAttribute::get(ir::IrContext::Instance(), false));
-             }
-             stop_gradients[self.GetResultIndex()] = ir::BoolAttribute::get(
-                 ir::IrContext::Instance(), stop_gradient);
-             defining_op->set_attribute(
-                 kAttrStopGradients,
-                 ir::ArrayAttribute::get(ir::IrContext::Instance(),
-                                         stop_gradients));
-           })
-      .def("get_stop_gradient", [](OpResult &self) {
-        auto *defining_op = self.owner();
-        if (defining_op->HasAttribute(kAttrStopGradients)) {
-          auto stop_gradients = defining_op->attribute(kAttrStopGradients)
-                                    .dyn_cast<ir::ArrayAttribute>()
-                                    .AsVector();
-          return stop_gradients[self.GetResultIndex()]
-              .dyn_cast<ir::BoolAttribute>()
-              .data();
-        } else {
-          return false;
-        }
-      });
+      .def_property(
+          "stop_gradient",
+          [](OpResult &self) { return GetStopGradient(self); },
+          [](OpResult &self, bool stop_gradient) {
+            SetStopGradient(self, stop_gradient);
+          })
+      .def_property(
+          "shape",
+          [](OpResult &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return phi::vectorize(
+                  self.type().dyn_cast<DenseTensorType>().dims());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get shape for dense tensor."));
+            }
+          },
+          [](OpResult &self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](OpResult &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return paddle::dialect::TransToPhiDataType(
+                  self.type().dyn_cast<DenseTensorType>().dtype());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get dtype for dense tensor."));
+            }
+          },
+          [](OpResult &self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          });
 }
 
 void BindType(py::module *m) {
@@ -244,25 +292,6 @@ void BindType(py::module *m) {
 }
 
 void BindUtils(pybind11::module *m) {
-  m->def("get_op_result_shape", [](const OpResult &op_result) {
-    if (op_result.type().isa<DenseTensorType>()) {
-      return phi::vectorize(
-          op_result.type().dyn_cast<DenseTensorType>().dims());
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "get_op_result_shape currently only support op_result that is a "
-          "DenseTensorType"));
-    }
-  });
-  m->def("get_op_result_dtype", [](const OpResult &op_result) {
-    if (op_result.type().isa<DenseTensorType>()) {
-      return op_result.type().dyn_cast<DenseTensorType>().dtype();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "get_op_result_dtype currently only support op_result that is a "
-          "DenseTensorType"));
-    }
-  });
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",

@@ -190,8 +190,8 @@ class MultiDeviceFeedReader {
     CheckNextStatus();
     ResultDictList result;
     result.reserve(ret_.size());
-    for (size_t i = 0; i < ret_.size(); ++i) {
-      if (ret_[i].empty()) {
+    for (auto &item : ret_) {
+      if (item.empty()) {
         if (!kKeepOrder) result.emplace_back();
         continue;
       }
@@ -199,7 +199,7 @@ class MultiDeviceFeedReader {
       result.emplace_back();
       auto &ret = result.back();
       PADDLE_ENFORCE_EQ(names_.size(),
-                        ret_[i].size(),
+                        item.size(),
                         platform::errors::InvalidArgument(
                             "The sample number of reader's input data and the "
                             "input number of feed list are not equal.\n"
@@ -208,7 +208,7 @@ class MultiDeviceFeedReader {
                             "and configured by `set_batch_generator`, but here "
                             "need to used `set_sample_list_generator`."));
       for (size_t j = 0; j < names_.size(); ++j) {
-        ret.emplace(names_[j], std::move(ret_[i][j]));
+        ret.emplace(names_[j], std::move(item[j]));
       }
     }
     ReadAsync();
@@ -219,9 +219,9 @@ class MultiDeviceFeedReader {
     CheckNextStatus();
     ResultList result;
     result.reserve(ret_.size());
-    for (size_t i = 0; i < ret_.size(); ++i) {
-      if (kKeepOrder && ret_[i].empty()) continue;
-      result.emplace_back(std::move(ret_[i]));
+    for (auto &item : ret_) {
+      if (kKeepOrder && item.empty()) continue;
+      result.emplace_back(std::move(item));
     }
     ReadAsync();
     return result;

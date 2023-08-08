@@ -52,5 +52,12 @@ file(GLOB PD_DIALECT_SRCS "*.cc")
 cc_library(
   pd_dialect
   SRCS ${PD_DIALECT_SRCS} ${op_source_file}
-  DEPS framework_proto phi phi_utils pd_interface pd_trait ir)
+  DEPS framework_proto
+       phi
+       phi_utils
+       pd_interface
+       pd_trait
+       ir
+       primitive_vjp_experimental
+       type_info)
 target_include_directories(pd_dialect PRIVATE ${PD_DIALECT_BINARY_DIR})

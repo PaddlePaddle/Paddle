@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/feed_with_place_kernel.h"
+#include "paddle/phi/kernels/data_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
+#include "paddle/phi/kernels/impl/data_impl.h"
 
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void FeedWithPlaceKernel(const Context& ctx,
-                         int64_t index,
-                         phi::DataType data_type,
-                         DenseTensor* out) {}
+void DataKernel(const Context& ctx,
+                int64_t index,
+                phi::DataType data_type,
+                DenseTensor* out) {}
 
 template <typename T, typename Context>
 void ShadowOutputKernel(const Context& ctx,
@@ -35,15 +35,17 @@ void ShadowOutputKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    feed_with_place, CPU, ALL_LAYOUT, phi::FeedWithPlaceKernel, float) {}
+PD_REGISTER_KERNEL(data, CPU, ALL_LAYOUT, phi::DataKernel, float) {}
 
 PD_REGISTER_KERNEL(shadow_feed,
                    CPU,
                    ALL_LAYOUT,
                    phi::ShadowFeedKernel,
                    bool,
+                   uint8_t,
                    float,
+                   int8_t,
+                   int16_t,
                    int32_t,
                    int64_t,
                    double,

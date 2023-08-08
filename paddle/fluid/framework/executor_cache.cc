@@ -156,8 +156,7 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
   std::unordered_set<std::string> op_outputs;
   std::unordered_set<std::string> op_inputs;
   std::unordered_set<std::string> no_need_buffer_ins;
-  for (size_t i = 0; i < backward_ops.size(); ++i) {
-    framework::OpDesc *op = backward_ops[i];
+  for (auto op : backward_ops) {
     VLOG(4) << "parse op type: " << op->Type();
     if (op->Type() == "share_buffer") {
       VLOG(1) << "skip share_buffer op";
@@ -378,7 +377,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     auto place = in_t.place().GetType();
 
     auto op_desc = block->PrependOp();
-    op_desc->SetType("feed_with_place");
+    op_desc->SetType("data");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
@@ -387,18 +386,21 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     op_desc->SetOutput("out", {name});
   }
 
+  std::set<std::string> input_param_names;
   for (auto &param : params) {
-    auto name = param.name();
+    auto &name = param.name();
     auto place = param.place().GetType();
 
     auto op_desc = local_program.MutableBlock(0)->PrependOp();
-    op_desc->SetType("feed_with_place");
+    op_desc->SetType("data");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(place));
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
+
+    input_param_names.insert(name);
   }
 
   std::set<std::string> set_parameter_names;
@@ -417,6 +419,10 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   for (auto &name : set_parameter_names) {
     if (!set_output_names.count(name)) {
+      continue;
+    }
+
+    if (input_param_names.count(name)) {
       continue;
     }
 
@@ -472,7 +478,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
         continue;
       }
       auto op_desc = local_program.MutableBlock(0)->PrependOp();
-      op_desc->SetType("feed_with_place");
+      op_desc->SetType("data");
       op_desc->SetAttr("index", 0);
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
