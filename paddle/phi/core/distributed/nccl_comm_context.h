@@ -31,7 +31,7 @@ namespace distributed {
 
 class NCCLCommContext final : public CommContext {
  public:
-  NCCLCommContext(int ring_id, int rank, int size, ncclUniqueId nccl_id);
+  NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
   ~NCCLCommContext() {}
 
   ncclComm_t GetNcclComm();

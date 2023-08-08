@@ -29,18 +29,23 @@ namespace distributed {
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
-NCCLCommContext::NCCLCommContext(int ring_id,
-                                 int rank,
+NCCLCommContext::NCCLCommContext(int rank,
                                  int size,
                                  ncclUniqueId nccl_id)
-    : CommContext(ring_id, rank, size) {
+    : CommContext(rank, size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
 }
 
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
 
-gpuStream_t NCCLCommContext::GetStream() { return dev_ctx_->stream(); }
+gpuStream_t NCCLCommContext::GetStream() { 
+    if (!dev_ctx_) {
+      VLOG(0) << "NCCLCommContext::GetStream dev_ctx nullptr";
+    } else {
+      VLOG(0) << "NCCLCommContext::GetStream dev_ctx not nullptr";
+    }
+    return dev_ctx_->stream(); }
 
 phi::GPUContext* NCCLCommContext::GetDevContext() { return dev_ctx_.get(); }
 

@@ -28,8 +28,7 @@ namespace distributed {
 
 class GlooCommContext final : public CommContext {
  public:
-  GlooCommContext(int ring_id,
-                  int rank,
+  GlooCommContext(int rank,
                   int size,
                   std::shared_ptr<gloo::rendezvous::Store> store,
                   std::shared_ptr<gloo::transport::Device> device);
