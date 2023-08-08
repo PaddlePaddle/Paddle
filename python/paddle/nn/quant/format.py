@@ -59,22 +59,22 @@ class LinearQuanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             return _C_ops.quantize_linear(
-                input,
-                self._scales.cast(input.dtype),
-                self._zero_point.cast(input.dtype),
+                input.cast('float32'),
+                self._scales,
+                self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
                 type='quantize_linear',
                 inputs={
                     'X': input,
-                    'Scale': self._scales.cast(input.dtype),
-                    'ZeroPoint': self._zero_point.cast(input.dtype),
+                    'Scale': self._scales,
+                    'ZeroPoint': self._zero_point,
                 },
                 outputs={'Y': out},
                 attrs={
@@ -109,22 +109,22 @@ class LinearDequanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             return _C_ops.dequantize_linear(
-                input,
-                self._scales.cast(input.dtype),
-                self._zero_point.cast(input.dtype),
+                input.cast('float32'),
+                self._scales,
+                self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
                 type='dequantize_linear',
                 inputs={
                     'X': input,
-                    'Scale': self._scales.cast(input.dtype),
-                    'ZeroPoint': self._zero_point.cast(input.dtype),
+                    'Scale': self._scales,
+                    'ZeroPoint': self._zero_point,
                 },
                 outputs={'Y': out},
                 attrs={
