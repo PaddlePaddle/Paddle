@@ -226,7 +226,6 @@
     func : Atan2InferMeta
   kernel :
     func : atan2
-  inplace: (x -> out)
   backward : atan2_grad
 
 - op : atanh
