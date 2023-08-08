@@ -43,8 +43,10 @@ def masked_multihead_attention(
     with the following pseudo code:
 
         .. code-block:: python
+            import paddle
 
-            x = paddle.transpose(x, [0, 2, 1, 3])  # [batch\_size, sequence_length, num\_head, dim\_head] --> [batch\_size, num\_head, sequence_length, dim\_head]
+            x = paddle.rand(shape=(2, 3, 32, 128), dtype="float32")
+            x = paddle.transpose(x, [0, 2, 1, 3])  # [batch\_size, sequence\_length, num\_head, dim\_head] --> [batch\_size, num\_head, sequence_length, dim\_head]
             q, k, v = paddle.split(x, 3, axis=2)
             cache_k, cache_v= paddle.split(cache_kv_out, 2, axis=0)
             k = paddle.concat([cache_k.squeeze(0), k], axis=2)
@@ -56,13 +58,13 @@ def masked_multihead_attention(
             out = paddle.matmul(product, v).transpose([0, 2, 1, 3])
 
     Args:
-        x (Tensor): The input tensor could be 4-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3, num\_head, dim\_head]`.
+        x (Tensor): The input tensor could be 2-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3 * num\_head * dim\_head]`.
         cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model, the shape is `[2, batch\_size, num\_head, max\_seq\_len, head\_dim]`.
         src_mask (Tensor): The src_mask tensor, the shape is `[batch\_size, 1, 1, sequence\_length]`.
         sequence_lengths (Tensor, optional): The sequence_lengths tensor, the shape is `[batch\_size, 1]`.
         rotary_tensor (Tensor, optional): The rotary_tensor tensor, the dtype must be float. the shape is `[batch\_size, 1, 1, sequence\_length, dim\_head]`.
         beam_cache_offset (Tensor, optional): The beam_cache_offset tensor, the shape is `[batch\_size, beam\_size, max\_seq\_len + max\_dec\_len]`.
-        qkv_out_scale (Tensor, optional): The qkv_out_scale tensor, the shape is `[3, num\_head, dim\_head]]`.
+        qkv_out_scale (Tensor, optional): The qkv_out_scale tensor, the shape is `[3, num\_head, dim\_head]`.
         out_linear_shift (Tensor, optional): The out_linear_shift tensor.
         out_linear_smooth (Tensor, optional): The out_linear_smooth tensor.
         beam_size (int, optional): The beam_size of beam search. Default 1.
@@ -86,8 +88,8 @@ def masked_multihead_attention(
             import paddle
             import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, 3, num_head, dim_head]
-            x = paddle.rand(shape=(2, 3, 32, 128), dtype="float32")
+            # input: [batch_size, 3 * num_head * dim_head]
+            x = paddle.rand(shape=(2, 3 * 32 * 128), dtype="float32")
 
             # src_mask: [batch_size, 1, 1, sequence_length]
             src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
