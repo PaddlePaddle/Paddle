@@ -60,8 +60,8 @@ class LinearQuanter(Layer):
         if in_dynamic_mode():
             return _C_ops.quantize_linear(
                 input,
-                self._scales,
-                self._zero_point,
+                self._scales.cast(input.dtype),
+                self._zero_point.cast(input.dtype),
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
@@ -73,8 +73,8 @@ class LinearQuanter(Layer):
                 type='quantize_linear',
                 inputs={
                     'X': input,
-                    'Scale': self._scales,
-                    'ZeroPoint': self._zero_point,
+                    'Scale': self._scales.cast(input.dtype),
+                    'ZeroPoint': self._zero_point.cast(input.dtype),
                 },
                 outputs={'Y': out},
                 attrs={
@@ -110,8 +110,8 @@ class LinearDequanter(Layer):
         if in_dynamic_mode():
             return _C_ops.dequantize_linear(
                 input,
-                self._scales,
-                self._zero_point,
+                self._scales.cast(input.dtype),
+                self._zero_point.cast(input.dtype),
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
@@ -123,8 +123,8 @@ class LinearDequanter(Layer):
                 type='dequantize_linear',
                 inputs={
                     'X': input,
-                    'Scale': self._scales,
-                    'ZeroPoint': self._zero_point,
+                    'Scale': self._scales.cast(input.dtype),
+                    'ZeroPoint': self._zero_point.cast(input.dtype),
                 },
                 outputs={'Y': out},
                 attrs={
