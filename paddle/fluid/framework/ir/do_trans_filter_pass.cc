@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/framework/ir/do_trans_filter_pass.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -64,16 +65,6 @@ Conv2dLargeDilationsPattern::Conv2dLargeDilationsPattern(
 
 }  // namespace patterns
 
-class DoTransFilterPass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  void conv2d_dilation_trans(ir::Graph* graph) const;
-
-  const std::string name_scope_{"do_trans_filter_pass"};
-};
-
 void DoTransFilterPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
@@ -97,6 +88,11 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
         conv2d->Op()->GetAttrIfExists<std::vector<int>>("dilations");
     auto* weights =
         scope->FindVar(weights_name)->GetMutable<phi::DenseTensor>();
+    if (weights->dtype() != phi::DataType::FLOAT32) {
+      VLOG(3) << "Transfilter only support float32 dtype of weights -- do "
+                 "nothing and break.";
+      return;  // Only support fp32 dtype
+    }
     auto weights_shape = weights->dims();
     auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
     auto kh = weights_shape[2];
@@ -104,17 +100,19 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
     auto new_kh = dilations[0] * (kh - 1) + 1;
     auto new_kw = dilations[1] * (kw - 1) + 1;
     // New weights
-    phi::DenseTensor new_weights;
-    new_weights.Resize({weights_shape[0], weights_shape[1], new_kh, new_kw});
+    auto new_weights_name = weights_name + "_dilation_trans";
+    auto* new_weights =
+        scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>();
+    new_weights->Resize({weights_shape[0], weights_shape[1], new_kh, new_kw});
     auto* new_weights_data =
-        new_weights.mutable_data<float>(platform::CPUPlace());
-    memset(new_weights_data, 0, new_weights.numel() * sizeof(float));
+        new_weights->mutable_data<float>(platform::CPUPlace());
+    memset(new_weights_data, 0, new_weights->numel() * sizeof(float));
     for (size_t n = 0; n < weights_shape[0]; n++) {
       for (size_t c = 0; c < weights_shape[1]; c++) {
-        for (size_t h = 0; h < new_kh; h++) {
-          auto h_offset = dilations[0] * h + 1;
-          for (size_t w = 0; w < new_kw; w++) {
-            auto w_offset = dilations[1] * w + 1;
+        for (size_t h = 0; h < kh; h++) {
+          auto h_offset = dilations[0] * h;
+          for (size_t w = 0; w < kw; w++) {
+            auto w_offset = dilations[1] * w;
             auto new_offset = n * weights_shape[1] * new_kh * new_kw +
                               c * new_kh * new_kw + h_offset * new_kw +
                               w_offset;
@@ -125,24 +123,17 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
         }
       }
     }
-    auto new_weights_name = weights_name + "_dilation_trans";
+
     VarDesc new_weights_desc(new_weights_name);
     new_weights_desc.SetPersistable(true);
-    new_weights_desc.SetShape(vectorize(new_weights.dims()));
+    new_weights_desc.SetShape(vectorize(new_weights->dims()));
     new_weights_desc.SetDataType(
-        framework::TransToProtoVarType(new_weights.dtype()));
+        framework::TransToProtoVarType(new_weights->dtype()));
     auto* new_weights_node = graph->CreateVarNode(&new_weights_desc);
     auto* block_new_weights_desc = block->Var(new_weights_name);
     block_new_weights_desc->SetPersistable(new_weights_desc.Persistable());
     block_new_weights_desc->SetShape(new_weights_desc.GetShape());
     block_new_weights_desc->SetDataType(new_weights_desc.GetDataType());
-    // Find new weights variable in scope
-    auto* new_weights_var = scope->FindVar(new_weights_name);
-    if (new_weights_var == nullptr) {
-      // Create new_weights variable/tensor
-      Assign(new_weights,
-             scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>());
-    }
     // Update conv2d node
     conv2d->Op()->SetAttr("dilations", std::vector<int>({1, 1}));
     conv2d->Op()->RenameInput(weights_name, new_weights_name);

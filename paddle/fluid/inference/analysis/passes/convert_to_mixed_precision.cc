@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 #include "paddle/fluid/framework/ir/constant_folding_pass.h"
+#include "paddle/fluid/framework/ir/do_trans_filter_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/backend.h"
@@ -89,6 +90,12 @@ void ConvertToMixedPrecisionPass::Run() {
 
   framework::ir::ConstantFoldingPass constant_folding_pass;
   constant_folding_pass.Apply(main_graph_.get());
+
+  if (backend_ == phi::Backend::XPU) {
+    framework::ir::DoTransFilterPass do_trans_filter_pass;
+    do_trans_filter_pass.Apply(main_graph_.get());
+  }
+
   framework::ir::AutoMixedPrecisionPass pass;
   pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
   if (backend_ == phi::Backend::GPU) {
