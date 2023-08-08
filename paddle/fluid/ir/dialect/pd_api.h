@@ -22,6 +22,7 @@
 
 namespace paddle {
 namespace dialect {
+ir::OpResult add_n(std::vector<ir::OpResult> x);
 
 ir::OpResult mean(ir::OpResult x,
                   std::vector<int64_t> axis = {},
