@@ -656,7 +656,6 @@ def greater_than(x, y, name=None):
         return out
 
 
-@inplace_apis_in_dygraph_only
 def greater_than_(x, y, name=None):
     r"""
     Inplace version of ``greater_than`` API, the output Tensor will be inplaced with input ``x``.
@@ -665,6 +664,10 @@ def greater_than_(x, y, name=None):
 
     if in_dynamic_mode():
         return _C_ops.greater_than_(x, y)
+    else:
+        raise NotImplementedError(
+            "Sorry about what\'s happend. In to_static mode, greater_than has no inpalce operation, please use greater_than instead"
+        )
 
 
 @templatedoc()
@@ -737,7 +740,6 @@ def less_equal(x, y, name=None):
         return out
 
 
-@inplace_apis_in_dygraph_only
 def less_equal_(x, y, name=None):
     r"""
     Inplace version of ``less_equal`` API, the output Tensor will be inplaced with input ``x``.
@@ -746,6 +748,10 @@ def less_equal_(x, y, name=None):
 
     if in_dynamic_mode():
         return _C_ops.less_equal_(x, y)
+    else:
+        raise NotImplementedError(
+            "Sorry about what\'s happend. In to_static mode, greater_than has no inpalce operation, please use greater_than instead"
+        )
 
 
 @templatedoc()

@@ -51,6 +51,7 @@ from .linalg import norm  # noqa: F401
 from .linalg import pca_lowrank  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
+from .linalg import transpose_  # noqa: F401
 from .linalg import lstsq  # noqa: F401
 from .linalg import dist  # noqa: F401
 from .linalg import t  # noqa: F401
@@ -291,6 +292,7 @@ from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
 from .math import ldexp  # noqa: F401
+from .math import ldexp_  # noqa: F401
 from .math import trapezoid  # noqa: F401
 from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
@@ -613,6 +615,7 @@ tensor_method_func = [  # noqa
     'sgn',
     'frexp',
     'ldexp',
+    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',

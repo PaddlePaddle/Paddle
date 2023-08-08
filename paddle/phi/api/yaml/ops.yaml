@@ -2758,11 +2758,12 @@
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : WhereInferMeta
   kernel :
     func : where
+  inplace: (x -> out)
   backward : where_grad
 
 - op : yolo_box
