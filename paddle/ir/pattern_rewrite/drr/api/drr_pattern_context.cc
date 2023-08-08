@@ -14,7 +14,6 @@
 
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
-#include <glog/logging.h>
 #include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 
 namespace ir {
@@ -78,17 +77,17 @@ void DrrPatternContext::RequireEqual(const TensorShape& first,
 }
 
 void Op::operator()(const Tensor& arg, const Tensor* out) const {
-  std::vector<const Tensor*> inputs{arg.shared_from_this()};
-  std::vector<const Tensor*> outputs{out->shared_from_this()};
+  std::vector<const Tensor*> inputs{&arg};
+  std::vector<const Tensor*> outputs{out};
   pattern_graph_->AddOpCall(
       std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
 }
 
 Tensor& Op::operator()(const Tensor& arg) const {
-  std::vector<const Tensor*> inputs{arg.shared_from_this()};
+  std::vector<const Tensor*> inputs{&arg};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
       "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
-  std::vector<const Tensor*> outputs{out.shared_from_this()};
+  std::vector<const Tensor*> outputs{&out};
   pattern_graph_->AddOpCall(
       std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
   return out;
@@ -98,7 +97,7 @@ Tensor& Op::operator()() const {
   std::vector<const Tensor*> inputs{};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
       "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
-  std::vector<const Tensor*> outputs{out.shared_from_this()};
+  std::vector<const Tensor*> outputs{&out};
   pattern_graph_->AddOpCall(
       std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
   return out;
