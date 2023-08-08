@@ -103,8 +103,8 @@ function(kernel_declare TARGET_LIST)
           set(first_registry "")
         endif()
       endif()
-      # some gpu kernel only can run on cuda, not support rocm, so we add this branch
-      if(WITH_ROCM)
+      # some gpu kernel only can run on cuda, not support rocm and musa, so we add this branch
+      if(WITH_ROCM OR WITH_MUSA)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
           set(first_registry "")
