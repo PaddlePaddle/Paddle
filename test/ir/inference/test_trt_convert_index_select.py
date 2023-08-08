@@ -187,7 +187,7 @@ class TrtConvertIndexSelectTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-3
 
     def test(self):
-        self.trt_param.workspace_size = 1 << 60
+        self.trt_param.workspace_size = 1 << 10
         self.run_test()
 
 
