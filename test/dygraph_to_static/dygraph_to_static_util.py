@@ -109,9 +109,9 @@ def sot_only_test(func):
 
         >>> @dy2static_unittest
         ... class TestA(unittest.TestCase):
-        ... @sot_only_test
-        ... def test_sot_only(self):
-        ...     pass
+        ...     @sot_only_test
+        ...     def test_sot_only(self):
+        ...         pass
     """
 
     def impl(*args, **kwargs):
