@@ -650,6 +650,7 @@ class GroupShardedStage3(nn.Layer):
         if convert2cpu:
             for param in trainable_params:
                 t_flow.full_param[param.name][0]._share_buffer_to(param)
+                del t_flow.full_param[param.name]
 
         #  a _allgather_buffer call should be matched with a _release_param call later,
         #  but the _allgather_buffer call here has no match.
@@ -929,11 +930,14 @@ class TaskFlow:
 
     def __init__(
         self,
+        full_param={},
+        full_grad={},
+        use_calc={},
         callback=None,
     ):
-        self.full_param = {}
-        self.full_grad = {}
-        self.use_calc = {}
+        self.full_param = full_param
+        self.full_grad = full_grad
+        self.use_calc = use_calc
         self.callback = callback
 
 

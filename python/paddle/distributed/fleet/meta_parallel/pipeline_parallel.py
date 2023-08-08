@@ -258,8 +258,10 @@ class PipelineParallel(MetaParallelBase):
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
 
-        if self._dp_comm_overlap:
+        if self._comm_overlap:
             self._comm_scheduler = FusedCommScheduler()
+
+        if self._dp_comm_overlap:
             self.register_allreduce_overlap_hook(
                 self._layers, self.dp_group, self.accumulate_steps, True
             )
@@ -575,7 +577,6 @@ class PipelineParallel(MetaParallelBase):
         self.lr_scheduler = lr_scheduler
 
         self._layers.train()
-
         if self._sharding_comm_overlap and len(self._comm_buffers) == 0:
             self.register_allreduce_overlap_hook(
                 self._layers, self.sharding_group, self.accumulate_steps, False
@@ -1109,7 +1110,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self.is_pipeline_last_stage():
                 output_tensor = None
 
-            if micro_step == (startup_steps - 1) and not forward_only:
+            if (
+                micro_step == (startup_steps - 1)
+                and (not forward_only)
+                and steady_steps
+            ):
                 input_tensor_grad = None
                 recv_next = True
                 if self.is_pipeline_last_stage(ignore_virtual=True):
@@ -1263,6 +1268,15 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # remaining backward steps
         if not forward_only:
+            # no steady steps, which only occurs when accumulate_steps == num_stage
+            if not steady_steps:
+                output_tensor_grad = p2p.recv_backward(
+                    self.is_pipeline_last_stage()
+                )
+                self.output_tensor_grads[self.num_model_chunks - 1].append(
+                    output_tensor_grad
+                )
+
             for micro_step in range(steady_steps, num_steps):
                 if static_scheduler:
                     virtual_pp_rank = self._get_virtual_pp_rank(
