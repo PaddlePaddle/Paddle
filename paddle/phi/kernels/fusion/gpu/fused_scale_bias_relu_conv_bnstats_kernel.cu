@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,8 +34,23 @@ using helper = phi::CudnnFrontendConvHelper;
 template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 
+/*
+ * Implements Scale + Bias + ReLU + Conv + BNStats fusion pattern.
+ * Same as the following (x and output are in NHWC format):
+ * ```
+ *   output = conv2d(relu(x * scale + bias), w)
+ *   sum_output, sqsum_output = bnstats(output)
+ * ```
+ * Here, bnstats generates per-channel statistics, same as:
+ * ```
+ *   sum_output = output.sum(axis=[0,1,2])
+ *   sqsum_output = (output ** 2).sum(axis=[0,1,2])
+ * ```
+ * More details:
+ * https://docs.nvidia.com/deeplearning/cudnn/developer-guide/index.html#genstats-runtime-fusion-engine
+ */
 template <typename T, typename Context>
-void _FusedScaleBiasReluConvBnstatsImpl(
+void FusedScaleBiasReluConvBnstatsImpl(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& w,
@@ -255,57 +270,46 @@ void _FusedScaleBiasReluConvBnstatsImpl(
                                     post_padding,
                                     fuse_prologue);
 
-  if (plan_cache.FindPlan(feature_vector, handle)) {
-    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
-    int64_t workspace_size = 0;
-    plan_cache.GetPlanAndWorkspaceSize(
-        feature_vector, &cached_plan, &workspace_size, handle);
-    helper::ExecutePlan(handle,
-                        &workspace_handle,
-                        &data_ptrs,
-                        &uids,
-                        cached_plan->get_raw_desc(),
-                        workspace_size);
-    return;
-  }
-
-  auto plans = helper::FindExecutionPlans(&op_graph,
-                                          exhaustive_search,
-                                          deterministic,
-                                          &data_ptrs,
-                                          &uids,
-                                          handle,
-                                          &workspace_handle);
-
-  helper::ExecutePlansAndCache(handle,
+  helper::QueryCacheAndExecute(handle,
                                &workspace_handle,
+                               &op_graph,
                                &data_ptrs,
                                &uids,
-                               &plans,
                                exhaustive_search,
+                               deterministic,
                                feature_vector,
                                &plan_cache);
 }
 
+/*
+ * Implements BNFinalize pattern. It works with aforementioned bnstats node:
+ * ```
+ *   y = bn_finalize(genstats(conv_out))
+ * ```
+ * is the same as:
+ * ```
+ *   y = batchnorm2d(conv_out)
+ * ```
+ */
 template <typename T, typename Context>
-void _BNFinalizeImpl(const Context& dev_ctx,
-                     const DenseTensor& sum_tensor,
-                     const DenseTensor& sqsum_tensor,
-                     const DenseTensor& bn_scale,
-                     const DenseTensor& bn_bias,
-                     const DenseTensor& input_running_mean,
-                     const DenseTensor& input_running_var,
-                     int64_t accumulation_count,
-                     float exp_decay,
-                     float epsilon,
-                     bool exhaustive_search,
-                     bool deterministic,
-                     DenseTensor* out_running_mean,
-                     DenseTensor* out_running_var,
-                     DenseTensor* saved_mean,
-                     DenseTensor* saved_var,
-                     DenseTensor* eq_scale,
-                     DenseTensor* eq_bias) {
+void BNFinalizeImpl(const Context& dev_ctx,
+                    const DenseTensor& sum_tensor,
+                    const DenseTensor& sqsum_tensor,
+                    const DenseTensor& bn_scale,
+                    const DenseTensor& bn_bias,
+                    const DenseTensor& input_running_mean,
+                    const DenseTensor& input_running_var,
+                    int64_t accumulation_count,
+                    float exp_decay,
+                    float epsilon,
+                    bool exhaustive_search,
+                    bool deterministic,
+                    DenseTensor* out_running_mean,
+                    DenseTensor* out_running_var,
+                    DenseTensor* saved_mean,
+                    DenseTensor* saved_var,
+                    DenseTensor* eq_scale,
+                    DenseTensor* eq_bias) {
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
       phi::autotune::AlgorithmType::kBNFinalize);
 
@@ -456,34 +460,13 @@ void _BNFinalizeImpl(const Context& dev_ctx,
   phi::autotune::BuildFeatureVector(
       &feature_vector, dim_input, accumulation_count, exp_decay, epsilon);
 
-  if (plan_cache.FindPlan(feature_vector, handle)) {
-    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
-    int64_t workspace_size = 0;
-    plan_cache.GetPlanAndWorkspaceSize(
-        feature_vector, &cached_plan, &workspace_size, handle);
-    helper::ExecutePlan(handle,
-                        &workspace_handle,
-                        &data_ptrs,
-                        &uids,
-                        cached_plan->get_raw_desc(),
-                        workspace_size);
-    return;
-  }
-
-  auto plans = helper::FindExecutionPlans(&op_graph,
-                                          exhaustive_search,
-                                          deterministic,
-                                          &data_ptrs,
-                                          &uids,
-                                          handle,
-                                          &workspace_handle);
-
-  helper::ExecutePlansAndCache(handle,
+  helper::QueryCacheAndExecute(handle,
                                &workspace_handle,
+                               &op_graph,
                                &data_ptrs,
                                &uids,
-                               &plans,
                                exhaustive_search,
+                               deterministic,
                                feature_vector,
                                &plan_cache);
 }
@@ -584,40 +567,40 @@ void FusedScaleBiasReluConvBnstatsKernel(
   sqsum_tensor.Resize(bn_dims);
   dev_ctx.template Alloc<float>(&sum_tensor);
   dev_ctx.template Alloc<float>(&sqsum_tensor);
-  _FusedScaleBiasReluConvBnstatsImpl<T, Context>(dev_ctx,
-                                                 x,
-                                                 w,
-                                                 scale,
-                                                 bias,
-                                                 paddings,
-                                                 dilations,
-                                                 strides,
-                                                 padding_algorithm,
-                                                 fuse_prologue,
-                                                 exhaustive_search,
-                                                 deterministic,
-                                                 out,
-                                                 &sum_tensor,
-                                                 &sqsum_tensor);
+  FusedScaleBiasReluConvBnstatsImpl<T, Context>(dev_ctx,
+                                                x,
+                                                w,
+                                                scale,
+                                                bias,
+                                                paddings,
+                                                dilations,
+                                                strides,
+                                                padding_algorithm,
+                                                fuse_prologue,
+                                                exhaustive_search,
+                                                deterministic,
+                                                out,
+                                                &sum_tensor,
+                                                &sqsum_tensor);
   // Step 2: BN Finalize
-  _BNFinalizeImpl<T, Context>(dev_ctx,
-                              sum_tensor,
-                              sqsum_tensor,
-                              bn_scale,
-                              bn_bias,
-                              input_running_mean,
-                              input_running_var,
-                              accumulation_count,
-                              exp_decay,
-                              epsilon,
-                              exhaustive_search,
-                              deterministic,
-                              out_running_mean,
-                              out_running_var,
-                              saved_mean,
-                              saved_var,
-                              eq_scale,
-                              eq_bias);
+  BNFinalizeImpl<T, Context>(dev_ctx,
+                             sum_tensor,
+                             sqsum_tensor,
+                             bn_scale,
+                             bn_bias,
+                             input_running_mean,
+                             input_running_var,
+                             accumulation_count,
+                             exp_decay,
+                             epsilon,
+                             exhaustive_search,
+                             deterministic,
+                             out_running_mean,
+                             out_running_var,
+                             saved_mean,
+                             saved_var,
+                             eq_scale,
+                             eq_bias);
 }
 
 }  // namespace fusion

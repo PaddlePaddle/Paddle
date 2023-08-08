@@ -367,6 +367,48 @@ class CudnnFrontendConvHelper {
                          plan_cache);
   }
 
+  static void QueryCacheAndExecute(
+      cudnnHandle_t handle,
+      phi::DnnWorkspaceHandle* workspace_handle,
+      cudnn_frontend::OperationGraph* op_graph_pointer,
+      std::vector<void*>* data_ptrs,
+      std::vector<int64_t>* uids,
+      bool exhaustive_search,
+      bool deterministic,
+      const cudnn_frontend::feature_vector_t& feature_vector,
+      phi::autotune::CudnnFrontendPlanCache* plan_cache) {
+    if (plan_cache->FindPlan(feature_vector, handle)) {
+      const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+      int64_t workspace_size = 0;
+      plan_cache->GetPlanAndWorkspaceSize(
+          feature_vector, &cached_plan, &workspace_size, handle);
+      ExecutePlan(handle,
+                  workspace_handle,
+                  data_ptrs,
+                  uids,
+                  cached_plan->get_raw_desc(),
+                  workspace_size);
+      return;
+    }
+
+    auto plans = FindExecutionPlans(op_graph_pointer,
+                                    exhaustive_search,
+                                    deterministic,
+                                    data_ptrs,
+                                    uids,
+                                    handle,
+                                    workspace_handle);
+
+    ExecutePlansAndCache(handle,
+                         workspace_handle,
+                         data_ptrs,
+                         uids,
+                         &plans,
+                         exhaustive_search,
+                         feature_vector,
+                         plan_cache);
+  }
+
   static cudnn_frontend::Operation MakePointwiseOp(
       cudnnPointwiseMode_t mode,
       cudnnDataType_t dtype,
