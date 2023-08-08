@@ -22,7 +22,7 @@ from paddle.hapi.callbacks import (
     LRScheduler,
     ModelCheckpoint,
     ProgBarLogger,
-    SynchronizedIPSMetric
+    SynchronizedIPSMetric,
 )
 
 from ..interface import CollectionNames, get_collection
@@ -41,7 +41,11 @@ def config_callbacks(
     metrics=None,
     acc_step=1,
     mode='train',
-    synchronized_IPS_configs={'enabled':False, 'sync_every_n_steps': 10, 'visualize_sync_time': False}
+    synchronized_IPS_configs={
+        'enabled': False,
+        'sync_every_n_steps': 10,
+        'visualize_sync_time': False,
+    },
 ):
     cbks = callbacks or []
     cbks = cbks if isinstance(cbks, (list, tuple)) else [cbks]
@@ -61,11 +65,20 @@ def config_callbacks(
     if not any(isinstance(k, History) for k in cbks):
         cbks = cbks + [History()]
 
-    if synchronized_IPS_configs['enabled'] and not any(isinstance(k, SynchronizedIPSMetric) for k in cbks):
-        cbks = cbks + [SynchronizedIPSMetric(
-                        enabled = synchronized_IPS_configs['enabled'],
-             sync_every_n_steps = synchronized_IPS_configs['sync_every_n_steps'],
-            visualize_sync_time = synchronized_IPS_configs['visualize_sync_time'])]
+    if synchronized_IPS_configs['enabled'] and not any(
+        isinstance(k, SynchronizedIPSMetric) for k in cbks
+    ):
+        cbks = cbks + [
+            SynchronizedIPSMetric(
+                enabled=synchronized_IPS_configs['enabled'],
+                sync_every_n_steps=synchronized_IPS_configs[
+                    'sync_every_n_steps'
+                ],
+                visualize_sync_time=synchronized_IPS_configs[
+                    'visualize_sync_time'
+                ],
+            )
+        ]
 
     for i, k in enumerate(cbks):
         if isinstance(k, ProgBarLogger):

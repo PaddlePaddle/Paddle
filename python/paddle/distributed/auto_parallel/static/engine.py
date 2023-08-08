@@ -869,7 +869,7 @@ class Engine:
         callbacks=None,
         verbose=2,
         nvprof_range=[-1, -1],
-        enable_synchronized_IPS=True
+        enable_synchronized_IPS=True,
     ):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
@@ -960,7 +960,11 @@ class Engine:
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
-        synchronized_IPS_configs = {'enabled': enable_synchronized_IPS, 'sync_every_n_steps': 10, 'visualize_sync_time': False}
+        synchronized_IPS_configs = {
+            'enabled': enable_synchronized_IPS,
+            'sync_every_n_steps': 10,
+            'visualize_sync_time': False,
+        }
         if nvprof_range[0] >= 0 or nvprof_range[1] >= 0:
             # if nv profiler is enabled, then visualize IPS sync time
             synchronized_IPS_configs["visualize_sync_time"] = True
@@ -977,7 +981,9 @@ class Engine:
             verbose=verbose,
             metrics=self._metrics_name(),
             synchronized_IPS_configs=synchronized_IPS_configs,
-            acc_step=1 if self._strategy.pipeline.enable else self._acc_steps,  # lr update once every local batch
+            acc_step=1
+            if self._strategy.pipeline.enable
+            else self._acc_steps,  # lr update once every local batch
         )
 
         cbks.on_begin('train')
