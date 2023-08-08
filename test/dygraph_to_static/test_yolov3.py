@@ -15,11 +15,9 @@
 import random
 import time
 import unittest
-from test.dygraph_to_static.dygraph_to_static_util import (
-    test_and_compare_with_new_ir,
-)
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from yolov3 import YOLOv3, cfg
 
 import paddle

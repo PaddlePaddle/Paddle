@@ -17,11 +17,9 @@ import os
 import random
 import sys
 import unittest
-from test.dygraph_to_static.dygraph_to_static_util import (
-    test_and_compare_with_new_ir,
-)
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle

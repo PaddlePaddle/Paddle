@@ -15,11 +15,9 @@
 import math
 import random
 import unittest
-from test.dygraph_to_static.dygraph_to_static_util import (
-    test_and_compare_with_new_ir,
-)
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import fluid
