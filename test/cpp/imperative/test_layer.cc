@@ -328,9 +328,9 @@ TEST(test_layer, test_varbase_basic) {
       new imperative::VarBase(true, "vin"));
   ASSERT_ANY_THROW(vin->MutableGradVar());
   ASSERT_NO_THROW(ASSERT_TRUE(dynamic_cast<framework::Variable*>(
-                                  vin_with_grad->MutableGradVar()) != 0));
-  ASSERT_TRUE(
-      dynamic_cast<framework::Variable*>(vin_with_grad->MutableGradVar()) != 0);
+                                  vin_with_grad->MutableGradVar()) != nullptr));
+  ASSERT_TRUE(dynamic_cast<framework::Variable*>(
+                  vin_with_grad->MutableGradVar()) != nullptr);
   vin_with_grad->SetOverridedStopGradient(false);
   ASSERT_FALSE(vin_with_grad->OverridedStopGradient());
   ASSERT_NO_FATAL_FAILURE(vin_with_grad->SetPersistable(true));

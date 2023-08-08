@@ -358,6 +358,15 @@ class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
         self.shape = (1, 100, 4, 4)
         self.dtype = np.float16
 
+    def test_check_output(self):
+        rtol = 2e-3
+        atol = 2e-3
+        inplace_atol = 2e-3
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place, rtol=rtol, atol=atol, inplace_atol=inplace_atol
+        )
+
 
 class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def setUp(self):
@@ -374,10 +383,20 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         }
         self.compare_between_place = False
         self.init_test_case()
-
-        input = np.random.random(self.shape).astype(np.float32)
-        scale = np.random.random([self.shape[3]]).astype(np.float32)
-        bias = np.random.random([self.shape[3]]).astype(np.float32)
+        input = (
+            np.sin(
+                np.arange(
+                    self.shape[0]
+                    * self.shape[1]
+                    * self.shape[2]
+                    * self.shape[3]
+                )
+            )
+            .reshape(self.shape)
+            .astype(np.float32)
+        )
+        scale = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        bias = np.sin(np.arange(self.shape[3])).astype(np.float32)
         output, mean, var = group_norm_naive(
             input,
             scale,
@@ -393,6 +412,11 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
             'Bias': convert_float_to_uint16(bias),
         }
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+
+    def test_check_output(self):
+        rtol = 2e-2
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, rtol=rtol)
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):

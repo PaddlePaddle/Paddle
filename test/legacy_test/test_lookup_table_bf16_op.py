@@ -236,7 +236,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
             x = paddle.static.data(
                 name='x', shape=self.ids_shape, dtype='int64'
             )
-            self.emb = fluid.layers.embedding(
+            self.emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
                 param_attr=fluid.ParamAttr(
@@ -256,7 +256,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         np.testing.assert_array_equal(self.w_fp32, result)
 
     def test_lookup_results(self):
-        lookup_result = convert_uint16_to_float(self.result[1])
+        lookup_result = convert_uint16_to_float(self.result[1].squeeze(-2))
         lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
         np.testing.assert_array_equal(lookup_result, lookup_ref)
 

@@ -295,8 +295,8 @@ std::vector<int> GetValueIds(
   auto var = inner_scope->FindVar(var_name);
   if (var->IsType<paddle::framework::VariableRefArray>()) {
     auto& var_array = var->Get<paddle::framework::VariableRefArray>();
-    for (size_t i = 0; i < var_array.size(); ++i) {
-      ids.push_back(var_name_2_id.at(variable_2_var_name.at(var_array[i])));
+    for (auto item : var_array) {
+      ids.push_back(var_name_2_id.at(variable_2_var_name.at(item)));
     }
   }
   return ids;
@@ -333,7 +333,7 @@ void PhiKernelInstruction::InitInputsOutputsIds(
   std::unordered_map<ir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < op->num_results(); i++) {
     ir::Value value = op->result(i);
-    if (value) {
+    if (value && value.type()) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
           value_2_var_name.end(),
