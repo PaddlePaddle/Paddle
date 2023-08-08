@@ -1511,7 +1511,7 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(const std::string& op_type,
                 ->tp_name));  // NOLINT
       }
     }
-  } else if PyObject_TypeCheck (obj, g_ir_opresult_pytype) {
+  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return {::pybind11::handle(obj).cast<ir::OpResult>()};
   } else if (obj == Py_None) {
     return {};
