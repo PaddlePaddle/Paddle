@@ -23,12 +23,13 @@ def quant_for_infer(x, layout="weight_only_int8"):
     Quantization function for weight_only and llm.int8's weight.
 
     Args:
-        x (Tensor): the input Tensor to be quantized .
-        layout (str|None): the layout of Tensor is quantized, must be one of 'weight_only_int8', 'weight_only_int4' and 'llm.int8'.
+        x (Tensor): The input Tensor to be quantized .
+        layout (str|None): The layout of Tensor is quantized, must be one of 'weight_only_int8',
+            'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
 
     Returns:
-        out (Tensor): the Tensor which is the quantitative results.
-        scale (Tensor): the scale Tensor which is the scale of pre-channel.
+        out (Tensor): The Tensor which is the quantitative results.
+        scale (Tensor): The scale Tensor which is the scale of pre-channel.
     Examples:
         .. code-block:: python
 
@@ -71,13 +72,12 @@ def weight_only_linear(
     This method requires CUDA version >= 11.2.
 
     Args:
-        x (Tensor): the first input Tensor to be multiplied.
-        weight (Tensor): the second input Tensor to be multiplied. Its rank must be 2.
-        bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
-            be performed. Otherwise, the bias is added to the matrix multiplication result.
-        weight_scale (Tensor|None): the input scale Tensor Provided to weight for dequantization. Its rank must be 1.
-        quant_method(str): Method for doing quantized matrix multiplication, must be one of 'weight_only_int8', 'weight_only_int4', 'llm.int8', 'int8_matmul', default: 'weight_only_int8'.
-
+        x (Tensor): The first input Tensor to be multiplied.
+        weight (Tensor): The second input Tensor to be multiplied. Its rank must be 2.
+        bias (Tensor|None): The input bias Tensor. If it is None, no bias addition would
+            be performed. Otherwise, The bias is added to the matrix multiplication result.
+        weight_scale (Tensor|None): The input scale Tensor Provided to weight for dequantization. Its rank must be 1.
+        weight_dtype(str): The dtype of  weight Tensor, must be one of 'int8', 'int4', Defaulted to 'int8'.
     Returns:
         Tensor: the output Tensor.
 
@@ -86,13 +86,13 @@ def weight_only_linear(
 
             # required: gpu
             import paddle
-            from paddle.incubate.nn.functional import quantized_matmul
+            from paddle.nn.quant import quant_for_infer, weight_only_linear
 
             x = paddle.randn([3, 4], dtype='float16')
             y = paddle.randn([5, 4], dtype='float16')
-            weihgt, scale = quantized_matmul(x, y, layout='weight_only_int8')
+            weihgt, scale = quant_for_infer(x, y, layout='weight_only_int8')
             bias = paddle.randn([5])
-            out = quantized_matmul(x, weihgt, bias=bias, weight_scale=scale, quant_method='weight_only_int8')
+            out = weight_only_linear(x, weihgt, bias=bias, weight_scale=scale, weight_dtype='int8')
             print(out.shape) # [3, 5]
     """
     if in_dynamic_mode():
@@ -143,7 +143,7 @@ def llm_int8_linear(
         bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
             be performed. Otherwise, the bias is added to the matrix multiplication result.
         weight_scale (Tensor|None): the input scale Tensor Provided to weight for dequantization. Its rank must be 1.
-        quant_method(str): Method for doing quantized matrix multiplication, must be one of 'weight_only_int8', 'weight_only_int4', 'llm.int8', 'int8_matmul', default: 'weight_only_int8'.
+        threshold(float): The min value of outlier in activation, outlier's channel will be apply multiply with x.dtype.
 
     Returns:
         Tensor: the output Tensor.
@@ -153,13 +153,13 @@ def llm_int8_linear(
 
             # required: gpu
             import paddle
-            from paddle.incubate.nn.functional import quantized_matmul
+            from paddle.nn.quant import quant_for_infer, llm_int8_linear
 
             x = paddle.randn([3, 4], dtype='float16')
             y = paddle.randn([5, 4], dtype='float16')
-            weihgt, scale = quantized_matmul(x, y, layout='weight_only_int8')
+            weihgt, scale = quant_for_infer(x, y, layout='llm.int8')
             bias = paddle.randn([5])
-            out = quantized_matmul(x, weihgt, bias=bias, weight_scale=scale, quant_method='weight_only_int8')
+            out = llm_int8_linear(x, weihgt, bias=bias, weight_scale=scale, threshold=6.0)
             print(out.shape) # [3, 5]
     """
     if in_dynamic_mode():

@@ -1996,7 +1996,7 @@
   args : (Tensor x, str layout = "weight_only_int8")
   output : Tensor(out), Tensor(scale)
   infer_meta :
-    func : quantForInferInferMeta
+    func : QuantForInferInferMeta
   kernel :
     func : quant_for_infer
     data_type: x
