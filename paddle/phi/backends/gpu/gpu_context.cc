@@ -66,7 +66,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
     Eigen::initializeDeviceProp();
   }
-  ~EigenGpuStreamDevice() override {}
+  ~EigenGpuStreamDevice() override = default;
 
   void Reinitialize(gpuStream_t cuda_stream,
                     Allocator* allocator,
@@ -1048,11 +1048,11 @@ void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 GPUPinnedContext::GPUPinnedContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
+  eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
 }
 
 GPUPinnedContext::GPUPinnedContext(GPUPinnedPlace place) : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
+  eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
 }
 
 Eigen::DefaultDevice* GPUPinnedContext::eigen_device() const {

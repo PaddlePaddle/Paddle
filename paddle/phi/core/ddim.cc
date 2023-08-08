@@ -42,8 +42,14 @@ struct DDimEqualityVisitor {
 };
 
 bool DDim::operator==(const DDim& d) const {
-  return size() == d.size() &&
-         this->apply_visitor(DDimEqualityVisitor(d.Get()));
+  if (size() == -1 && d.size() == -1) {
+    return true;
+  } else if (size() == -1 || d.size() == -1) {
+    return false;
+  } else {
+    return size() == d.size() &&
+           this->apply_visitor(DDimEqualityVisitor(d.Get()));
+  }
 }
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
@@ -66,6 +72,9 @@ struct ProductVisitor {
 };
 
 int64_t product(const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return 0;
+  }
   return ddim.apply_visitor(ProductVisitor());
 }
 
@@ -105,6 +114,9 @@ struct DDimPrinter {
 };
 
 std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return os;
+  }
   ddim.apply_visitor(DDimPrinter(os));
   return os;
 }

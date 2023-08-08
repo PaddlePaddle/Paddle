@@ -33,7 +33,7 @@ class IntArrayAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
-  phi::IntArray data() const;
+  const phi::IntArray &data() const;
 };
 
 class ScalarAttribute : public ir::Attribute {
@@ -45,7 +45,8 @@ class ScalarAttribute : public ir::Attribute {
            (val.type_id() == ir::FloatAttribute::type_id()) ||
            (val.type_id() == ir::DoubleAttribute::type_id()) ||
            (val.type_id() == ir::Int32Attribute::type_id()) ||
-           (val.type_id() == ir::Int64Attribute::type_id());
+           (val.type_id() == ir::Int64Attribute::type_id()) ||
+           (val.type_id() == ir::StrAttribute::type_id());
   }
 
   phi::Scalar data();

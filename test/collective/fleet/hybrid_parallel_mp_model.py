@@ -180,7 +180,7 @@ class SimpleDPNet(paddle.nn.Layer):
         return x
 
 
-class TestDistMPSyncTraning(unittest.TestCase):
+class TestDistMPSyncTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -348,7 +348,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
         )
 
 
-class TestDistMPSyncModelTraning(TestDistMPSyncTraning):
+class TestDistMPSyncModelTraining(TestDistMPSyncTraining):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -368,7 +368,7 @@ class TestDistMPSyncModelTraning(TestDistMPSyncTraning):
         fleet.init(is_collective=True, strategy=strategy)
 
 
-class TestDistMPTraning(unittest.TestCase):
+class TestDistMPTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2

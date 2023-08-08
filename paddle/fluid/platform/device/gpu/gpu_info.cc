@@ -135,7 +135,7 @@ class RecordedGpuMallocHelper {
   explicit RecordedGpuMallocHelper(int dev_id, uint64_t limit_size = 0)
       : dev_id_(dev_id), limit_size_(limit_size) {
     if (NeedRecord()) {
-      mtx_.reset(new std::mutex());
+      mtx_ = std::make_unique<std::mutex>();
     }
 
     if (FLAGS_enable_gpu_memory_usage_log) {
@@ -427,7 +427,7 @@ bool IsGpuMallocRecorded(int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->NeedRecord();
 }
 
-void EmptyCache(void) {
+void EmptyCache() {
   std::vector<int> devices = GetSelectedDevices();
   for (auto device : devices) {
     memory::Release(CUDAPlace(device));

@@ -1321,6 +1321,33 @@ class TestReshapeOp1DTo0D(TestReshapeOp):
 @OpTestTool.skip_if(
     not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
 )
+class TestFillConstantOp(OpTest):
+    def setUp(self):
+        np.random.seed(2023)
+        self.target_shape = ()
+
+    def build_paddle_program(self, target):
+        out = paddle.full([], 123.456, "float32")
+
+        self.paddle_outputs = [out]
+
+    def build_cinn_program(self, target):
+        builder = NetBuilder("fill_constant_op")
+        out = builder.fill_constant([], 123.456, "out", "float32")
+
+        prog = builder.build()
+        res = self.get_cinn_output(prog, target, [], [], [out])
+
+        self.cinn_outputs = res
+        self.assertEqual(res[0].shape, self.target_shape)
+
+    def test_check_results(self):
+        self.check_outputs_and_grads()
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSqueezeOp(OpTest):
     def setUp(self):
         np.random.seed(2023)

@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 
@@ -25,7 +26,6 @@ class GradLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
     def forward(self, x):
         x.stop_gradient = False
         y = x * x
@@ -38,7 +38,6 @@ class GradLinearLayer(paddle.nn.Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
-    @paddle.jit.to_static
     def forward(self, x):
         x.stop_gradient = False
         tmp = x + x
@@ -56,7 +55,6 @@ class NoGradLinearLayer(paddle.nn.Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
-    @paddle.jit.to_static
     def forward(self, x):
         x.stop_gradient = False
 
@@ -69,7 +67,7 @@ class NoGradLinearLayer(paddle.nn.Layer):
 
 class TestGrad(unittest.TestCase):
     def setUp(self):
-        self.func = GradLayer()
+        self.func = paddle.jit.to_static(GradLayer())
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
@@ -85,9 +83,10 @@ class TestGrad(unittest.TestCase):
         np.testing.assert_allclose(static_res, dygraph_res, rtol=1e-05)
 
 
+@dy2static_unittest
 class TestGradLinear(TestGrad):
     def setUp(self):
-        self.func = GradLinearLayer()
+        self.func = paddle.jit.to_static(GradLinearLayer())
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
@@ -103,6 +102,7 @@ class TestGradLinear(TestGrad):
         self.temp_dir.cleanup()
 
     def test_save_infer_program(self):
+        self.setUp()  # make self.func change to ast mode
         input_spec = [
             paddle.static.InputSpec(shape=[10, 2, 5], dtype='float32')
         ]
@@ -114,6 +114,7 @@ class TestGradLinear(TestGrad):
         np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
 
     def test_save_train_program(self):
+        self.setUp()  # make self.func change to ast mode
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.01,
@@ -138,7 +139,7 @@ class TestGradLinear(TestGrad):
 
 class TestNoGradLinear(TestGradLinear):
     def setUp(self):
-        self.func = NoGradLinearLayer()
+        self.func = paddle.jit.to_static(NoGradLinearLayer())
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 

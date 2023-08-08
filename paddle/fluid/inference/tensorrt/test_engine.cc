@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <memory>
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
@@ -48,15 +49,11 @@ class TensorRTEngineTest : public ::testing::Test {
             .get());
     ctx_->PartialInitWithAllocator();
 
-    engine_ = new TensorRTEngine(10, 1 << 10);
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = 10;
+    params.max_workspace_size = 1 << 10;
+    engine_ = std::make_unique<TensorRTEngine>(params);
     engine_->InitNetwork();
-  }
-
-  void TearDown() override {
-    if (engine_) {
-      delete engine_;
-      engine_ = nullptr;
-    }
   }
 
   void PrepareInputOutput(const std::vector<float> &input,
@@ -72,7 +69,7 @@ class TensorRTEngineTest : public ::testing::Test {
  protected:
   phi::DenseTensor input_;
   phi::DenseTensor output_;
-  TensorRTEngine *engine_;
+  std::unique_ptr<TensorRTEngine> engine_;
   phi::GPUContext *ctx_;
 };
 
@@ -111,15 +108,6 @@ TEST_F(TensorRTEngineTest, add_layer) {
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
-  LOG(INFO) << "Set attr";
-  engine_->Set("test_attr", new std::string("test_attr"));
-  if (engine_->Has("test_attr")) {
-    auto attr_val = engine_->Get<std::string>("test_attr");
-    engine_->Erase("test_attr");
-  }
-  std::string *attr_key = new std::string("attr_key");
-  engine_->SetNotOwned("attr1", attr_key);
-
   LOG(INFO) << "to execute";
   engine_->Execute(1, &buffers, ctx_->stream());
 
@@ -128,8 +116,6 @@ TEST_F(TensorRTEngineTest, add_layer) {
 
   LOG(INFO) << "to checkout output";
   ASSERT_EQ(y_cpu[0], x_v[0] * 2 + 3);
-
-  delete attr_key;
 }
 
 TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
