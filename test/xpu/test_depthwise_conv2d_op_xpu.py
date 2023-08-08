@@ -31,6 +31,8 @@ class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'depthwise_conv2d'
         self.use_dynamic_create_class = False
+        # temporal hack, should be removed later
+        self.place = paddle.CPUPlace()
 
     class TestDepthwiseConv(XPUTestConv2DOp.TestConv2DOp):
         def init_test_case(self):
