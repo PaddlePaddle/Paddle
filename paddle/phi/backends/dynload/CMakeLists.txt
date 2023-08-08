@@ -81,7 +81,7 @@ if(WITH_XPU)
 endif()
 
 if(WITH_FLASHATTN)
-  list(APPEND DYNLOAD_COMMON_SRCS flashattn.cc)
+  list(APPEND DYNLOAD_COMMON_SRCS flashattn.cc flashattn_v1.cc)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)

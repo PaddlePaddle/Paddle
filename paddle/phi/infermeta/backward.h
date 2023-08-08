@@ -179,6 +179,13 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
                             MetaTensor* dk,
                             MetaTensor* dv);
 
+void FlashAttnV1GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv);
+
 void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
