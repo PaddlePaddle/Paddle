@@ -195,6 +195,7 @@ class TestLUAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            np.random.seed(1024)
             a = np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]

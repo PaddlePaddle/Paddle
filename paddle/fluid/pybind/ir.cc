@@ -110,22 +110,8 @@ void BindOperation(py::module *m) {
       .def("operand", &Operation::operand)
       .def("result", &Operation::result)
       .def("operand_source", &Operation::operand_source)
-      .def("operands",
-           [](Operation &self) -> py::list {
-             py::list op_list;
-             for (uint32_t i = 0; i < self.num_operands(); i++) {
-               op_list.append(self.operand(i));
-             }
-             return op_list;
-           })
-      .def("results",
-           [](Operation &self) -> py::list {
-             py::list op_list;
-             for (uint32_t i = 0; i < self.num_results(); i++) {
-               op_list.append(self.result(i));
-             }
-             return op_list;
-           })
+      .def("operands", &Operation::operands)
+      .def("results", &Operation::results)
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
