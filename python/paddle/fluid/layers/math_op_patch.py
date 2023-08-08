@@ -136,10 +136,12 @@ def monkey_patch_variable():
     @static_only
     def cpu(self):
         """
-        in dy2static, Variable also needs cpu() and cuda() interface.
+        In dy2static, Variable also needs cpu() and cuda() interface.
         But, the underneath operator has only forward op but not backward one.
+
         Returns:
-          the tensor which has copied to cpu place
+            The tensor which has copied to cpu place.
+
         Examples:
             In Static Graph Mode:
 
