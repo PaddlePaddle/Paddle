@@ -55,8 +55,8 @@ class TestBuildOp(unittest.TestCase):
     '''
     def test_1(self):
         newir_program = get_ir_program_0()
-        input = newir_program.block().get_ops()[-1].operand(0).source()
-        tanh_out = newir_program.block().get_ops()[-1].result(0)
+        input = newir_program.block().ops[-1].operand(0).source()
+        tanh_out = newir_program.block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
@@ -79,28 +79,28 @@ class TestBuildOp(unittest.TestCase):
     def test_2(self):
         # test create output_grad in backward use full op
         newir_program = get_ir_program_0()
-        input = newir_program.block().get_ops()[-1].operand(0).source()
-        tanh_out = newir_program.block().get_ops()[-1].result(0)
+        input = newir_program.block().ops[-1].operand(0).source()
+        tanh_out = newir_program.block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
             input_grad = paddle.ir.grad(out, input)
 
         print(newir_program)
-        self.assertEqual(newir_program.block().get_ops()[-3].name(), "pd.full")
+        self.assertEqual(newir_program.block().ops[-3].name(), "pd.full")
 
     # def test_3(self):
     #     # test add_n op
     #     newir_program = get_ir_program_1()
-    #     input = newir_program.block().get_ops()[-1].operand(0).source()
-    #     tanh_out = newir_program.block().get_ops()[-1].result(0)
+    #     input = newir_program.block().ops[-1].operand(0).source()
+    #     tanh_out = newir_program.block().ops[-1].result(0)
     #     paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
     #     with paddle.ir.core.program_guard(newir_program):
     #         out = paddle.mean(tanh_out)
     #         input_grad = paddle.ir.grad(out, input)
 
     #     print(newir_program)
-    #     self.assertEqual(newir_program.block().get_ops()[-1].name(), "pd.add_n")
+    #     self.assertEqual(newir_program.block().ops[-1].name(), "pd.add_n")
 
 
 if __name__ == "__main__":

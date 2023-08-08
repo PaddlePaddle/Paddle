@@ -52,7 +52,7 @@ def check_all_puts(block, inputs, outputs):
 
 
 def update_no_grad_set_stopgradient(block, no_grad_set):
-    for op in block.get_ops():
+    for op in block.ops:
         for opresult_idx in range(op.num_results()):
             value = op.result(opresult_idx)
             if value.stop_gradient and value not in no_grad_set:
@@ -96,7 +96,7 @@ def prepare_grad_outputs(
                 1.0,
                 dtype=output.dtype,
             )
-            op_list = block.get_ops()
+            op_list = block.ops
             fillop = op_list[len(op_list) - 1]
 
             update_all_structure(
@@ -141,7 +141,7 @@ def prepare_grad_outputs(
                     0.0,
                     opresult.dtype,
                 )
-                fillop = block.get_ops()[len(block.get_ops()) - 1]
+                fillop = block.ops[len(block.ops) - 1]
                 grad_value = fillop.result(0)
 
                 update_all_structure(
@@ -234,7 +234,7 @@ def update_no_grad_set_after_purne(
     '''
     inputs_set = set(inputs)
     if inputs_set != []:
-        for op in block.get_ops():
+        for op in block.ops:
             if some_in_set(op.operands_source(), inputs_set):
                 for value in op.results():
                     if value not in no_grad_set:
@@ -371,17 +371,17 @@ def append_backward_ops(
                 else:
                     input_grad_stopgradient_list.append([0])
 
-            before_ops_num = len(block.get_ops())
+            before_ops_num = len(block.ops)
             # prim should be a globel flag, it will make create_grad_op choose diffrient func
             input_grad_list = call_vjp(
                 op, output_grad_list, input_grad_stopgradient_list
             )
-            after_ops_num = len(block.get_ops())
+            after_ops_num = len(block.ops)
 
             # find new gradop_list
             gradop_list = []
             for i in range(before_ops_num, after_ops_num):
-                gradop_list.append(block.get_ops()[i])
+                gradop_list.append(block.ops[i])
 
             for i, input in enumerate(op.operands()):
                 input_grad = input_grad_list[i]
@@ -469,7 +469,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     inputs_set = set(inputs)
     outputs_set = set(complete_outputs)
     effective_forward_op, _ = prune_ops(
-        block.get_ops(), inputs_set, outputs_set, no_grad_set
+        block.ops, inputs_set, outputs_set, no_grad_set
     )
     update_no_grad_set_after_purne(
         block, effective_forward_op, no_grad_set, inputs, complete_outputs
