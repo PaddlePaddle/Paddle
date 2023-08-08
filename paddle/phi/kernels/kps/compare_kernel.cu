@@ -135,18 +135,17 @@ PD_REGISTER_KERNEL(equal_all,
 }
 
 #define PD_REGISTER_COMPARE_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(name,                                \
-                     KPS,                                 \
-                     ALL_LAYOUT,                          \
-                     phi::func##Kernel,                   \
-                     bool,                                \
-                     int16_t,                             \
-                     int,                                 \
-                     int64_t,                             \
-                     float,                               \
-                     double,                              \
-                     phi::dtype::float16,                 \
-{}
+  PD_REGISTER_KERNEL(name,                     \
+                     KPS,                      \
+                     ALL_LAYOUT,               \
+                     phi::func##Kernel,        \
+                     bool,                     \
+                     int16_t,                  \
+                     int,                      \
+                     int64_t,                  \
+                     float,                    \
+                     double,                   \
+                     phi::dtype::float16) {}
 
 PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
