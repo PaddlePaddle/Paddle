@@ -860,8 +860,8 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
   if (config.is_runtime) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int64_t numel = 0;
-    for (size_t i = 0; i < input.size(); ++i) {
-      const auto& dim = input[i]->dims();
+    for (auto item : input) {
+      const auto& dim = item->dims();
       auto size = phi::product(dim);
       auto len = use_align
                      ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
@@ -892,8 +892,8 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
     if (use_align && align_size > 0) {
       int64_t numel = 0;
 
-      for (size_t i = 0; i < input.size(); ++i) {
-        const auto& dim = input[i]->dims();
+      for (auto item : input) {
+        const auto& dim = item->dims();
         auto size = phi::product(dim);
         auto len = use_align
                        ? alignment(static_cast<size_t>(size) * size_of_dtype,
@@ -919,10 +919,10 @@ void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
     return;
   }
   int64_t numel = 0;
-  for (size_t i = 0; i < input.size(); ++i) {
-    const auto& dim = input[i]->dims();
+  for (auto item : input) {
+    const auto& dim = item->dims();
     auto size = phi::product(dim);
-    auto len = size * phi::SizeOf(input[i]->dtype());
+    auto len = size * phi::SizeOf(item->dtype());
     numel += len;
   }
   output->set_dims(phi::make_ddim({numel}));
@@ -1342,8 +1342,6 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            const MetaTensor& smooth,
                            const std::string& act_method,
                            const std::string& compute_dtype,
-                           int rows,
-                           int cols,
                            float quant_scale,
                            int quant_round_type,
                            float quant_max_bound,
@@ -1358,10 +1356,14 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   auto dim = x_dims[1];
 
   PADDLE_ENFORCE_GT(
-      rows, 0, phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
+      x_dims[0],
+      0,
+      phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
 
   PADDLE_ENFORCE_GT(
-      cols, 0, phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+      x_dims[1],
+      0,
+      phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
 
   if (act_method == "geglu" || act_method == "swiglu") {
     PADDLE_ENFORCE_EQ(
@@ -1470,6 +1472,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dweight,
                                       const MetaTensor& dbias,
                                       bool multi_precision,
+                                      bool has_bias,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out) {
   const auto dtype = dout.dtype();
@@ -1513,7 +1516,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
           ? DataType::FLOAT32
           : dtype;
 
-  if (dbias_out) {
+  if (has_bias && dbias_out) {
     dbias_out->set_dims({weight_dims[1]});
     dbias_out->set_dtype(multi_precision ? mp_dtype : dtype);
   }
@@ -2542,9 +2545,9 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
     }
   }
   auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i]->set_dims(out_dims);
-    outputs[i]->set_dtype(inputs[0]->dtype());
+  for (auto& output : outputs) {
+    output->set_dims(out_dims);
+    output->set_dtype(inputs[0]->dtype());
   }
 }
 
@@ -3487,14 +3490,14 @@ void YoloLossInferMeta(const MetaTensor& x,
                         "Attr(anchors) length should be even integer."
                         "But received anchors length(%s)",
                         anchors.size()));
-  for (size_t i = 0; i < anchor_mask.size(); i++) {
+  for (auto& item : anchor_mask) {
     PADDLE_ENFORCE_LT(
-        anchor_mask[i],
+        item,
         anchor_num,
         phi::errors::InvalidArgument(
             "Attr(anchor_mask) should not crossover Attr(anchors)."
             "But received anchor_mask[i](%s) > anchor_num(%s)",
-            anchor_mask[i],
+            item,
             anchor_num));
   }
   PADDLE_ENFORCE_GT(class_num,
@@ -3617,6 +3620,8 @@ void FusedConvInferMeta(const MetaTensor& input,
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
+                        const MetaTensor& sin,
+                        const MetaTensor& cos,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {

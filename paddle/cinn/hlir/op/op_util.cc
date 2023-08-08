@@ -19,9 +19,7 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
-#include "paddle/cinn/ir/ir_schedule.h"
-
-DECLARE_bool(cinn_ir_schedule);
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace hlir {
@@ -31,10 +29,16 @@ CINNSchedule GetElementwiseScheduleFunc(
     const Target& target,
     bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
-                              "empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
+    CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
+                            "empty! Please check.\n";
+    common::CINNValuePack arg_pack = args[0];
+    CHECK_GT(arg_pack.size(), 0U)
+        << "arg_pack.size() must contains at least one element.";
+    // TODO(Aurelius84): For NewIrCompiler, the outputs of Compute are
+    // tensor_ref and not Expr.
+    bool is_tensor_stages = arg_pack.size() == 2U && arg_pack[0].is_tensor() &&
+                            arg_pack[1].is_stagemap();
+    if (!is_tensor_stages) {
       std::vector<Expr> vec_ast;
       for (int i = 0; i < arg_pack.size(); i++) {
         if (arg_pack[i].is_expr()) {
@@ -77,50 +81,30 @@ CINNSchedule GetInjectiveScheduleFunc(
     const Target& target,
     bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                              "empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
-      std::vector<Expr> vec_ast;
-      for (int i = 0; i < arg_pack.size(); i++) {
-        if (arg_pack[i].is_expr()) {
-          Expr temp = arg_pack[i];
-          vec_ast.emplace_back(temp);
-        }
+    CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
+                            "empty! Please check.\n";
+    common::CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
       }
-      CHECK(!vec_ast.empty());
-      ir::ModuleExpr mod_expr(vec_ast);
-      ir::IRSchedule ir_sch(mod_expr);
-      ir_sch.MergeExprs();
-      pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
-      /*if (target.arch == Target::Arch::NVGPU) {
-        pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
-      } else if (target.arch == Target::Arch::X86) {
-        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target,
-      vectorizable);
-      }*/
-      std::vector<common::CINNValue> res{
-          common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = common::CINNValuePack{res};
-    } else {
-      CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                              "empty! Please check.\n";
-      common::CINNValuePack arg_pack = args[0];
-      Expr out = arg_pack[0];
-      poly::StageMap stages = arg_pack[1];
-      CHECK(out.as_tensor());
-      CHECK_EQ(arg_pack.size(), 2UL);
-      if (target.arch == Target::Arch::NVGPU) {
-        pe::CudaScheduleInjective(
-            stages[out.as_tensor_ref()], output_shapes.front(), target);
-      } else if (target.arch == Target::Arch::X86) {
-        pe::ScheduleInjectiveCPU(stages[out.as_tensor_ref()],
-                                 output_shapes.front(),
-                                 target,
-                                 vectorizable);
-      }
-      *ret = arg_pack;
     }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
+    /*if (target.arch == Target::Arch::NVGPU) {
+      pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
+    } else if (target.arch == Target::Arch::X86) {
+      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target,
+    vectorizable);
+    }*/
+    std::vector<common::CINNValue> res{
+        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = common::CINNValuePack{res};
   });
 }
 

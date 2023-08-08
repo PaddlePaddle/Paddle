@@ -9,6 +9,7 @@
   data_transform: null
   inplace: null
   backward: null
+
 - name: fetch
   inputs:
   - typename: Tensor
@@ -29,6 +30,54 @@
   kernel:
     func: [fetch]
     param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
+  backward: null
+
+- name: save_combine
+  inputs:
+  - typename: Tensor[]
+    name: X
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: str, name: file_path}
+  - {typename: bool, name: overwrite}
+  - {typename: bool, name: save_as_fp16}
+  - {typename: bool, name: save_to_memory}
+  outputs:
+    - {typename: Tensor, name: out, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  kernel:
+    func: [save_combine_tensor]
+    param: [X, file_path, overwrite, save_as_fp16, save_to_memory]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
+  backward: null
+
+- name: load_combine
+  inputs: []
+  attrs:
+  - {typename: str, name: file_path}
+  - {typename: bool, name: load_as_fp16}
+  - {typename: bool, name: model_from_memory}
+  outputs:
+    - {typename: 'Tensor[]', name: out, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  kernel:
+    func: [load_combine]
+    param: [file_path, load_as_fp16, model_from_memory]
     backend: null
     layout: null
     data_type: null
@@ -90,7 +139,7 @@
   - {typename: 'bool', name: print_tensor_shape, default_value: 'true'}
   - {typename: 'bool', name: print_tensor_layout, default_value: 'true'}
   - {typename: 'bool', name: print_tensor_lod, default_value: 'true'}
-  - {typename: 'str', name: print_phase, default_value: 'BOTH'}
+  - {typename: 'str', name: print_phase, default_value: '"BOTH"'}
   - {typename: 'bool', name: is_forward, default_value: 'true'}
   outputs:
     - typename: Tensor
@@ -98,6 +147,17 @@
       optional: false
       no_need_buffer: false
       data_transform: {}
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [in]
+  kernel:
+    func: [print_kernel]
+    param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward ]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {print: null}
+    force_backend: null
   no_need_buffer: null
   data_transform: null
   inplace: null
@@ -115,7 +175,42 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-  invoke: {func: add_n_impl, args: inputs}
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  backward: add_n_grad
+
+- name: add_n_with_kernel
+  inputs:
+  - typename: Tensor[]
+    name: inputs
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: [add_n]
+    param: [inputs]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
   backward: add_n_grad
 
 - name: write_to_array
@@ -145,18 +240,6 @@
     no_need_buffer: false
     data_transform: {}
   attrs: []
-  outputs:
-  - {typename: 'Tensor', name: out, optional: false, intermediate: false}
-  no_need_buffer: null
-  data_transform: null
-
-- name: py_func_
-  inputs:
-  -  {typename: 'Tensor', name: x, optional: false, no_need_buffer: false, data_transform: {}}
-  attrs:
-  - {typename: 'int', name: forward_callable_id, default_value: '0'}
-  - {typename: 'int', name: backward_callable_id, default_value: '-1'}
-  - {typename: 'str[]', name: backward_skip_vars, default_value: '{}'}
   outputs:
   - {typename: 'Tensor', name: out, optional: false, intermediate: false}
   no_need_buffer: null
@@ -202,4 +285,31 @@
     force_backend: null
   inplace: null
   view: null
+  backward: null
+
+
+- name: shadow_feed
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+    - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [shadow_feed]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
+  inplace: null
   backward: null

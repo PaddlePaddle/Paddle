@@ -39,7 +39,7 @@ def argsort(x, axis=-1, descending=False, name=None):
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x (Tensor): An input N-D Tensor with type bfloat16, float16, float32, float64, int16,
             int32, int64, uint8.
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way

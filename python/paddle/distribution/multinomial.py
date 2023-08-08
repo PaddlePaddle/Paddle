@@ -53,18 +53,17 @@ class Multinomial(distribution.Distribution):
 
     .. code-block:: python
 
-        import paddle
-
-        multinomial = paddle.distribution.Multinomial(10, paddle.to_tensor([0.2, 0.3, 0.5]))
-        print(multinomial.sample((2, 3)))
-        # Tensor(shape=[2, 3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-        #        [[[1., 4., 5.],
-        #          [0., 2., 8.],
-        #          [2., 4., 4.]],
-
-        #         [[1., 6., 3.],
-        #          [3., 3., 4.],
-        #          [3., 4., 3.]]])
+        >>> import paddle
+        >>> paddle.seed(2023)
+        >>> multinomial = paddle.distribution.Multinomial(10, paddle.to_tensor([0.2, 0.3, 0.5]))
+        >>> print(multinomial.sample((2, 3)))
+        Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 5., 4.],
+              [0., 4., 6.],
+              [1., 3., 6.]],
+            [[2., 2., 6.],
+              [0., 6., 4.],
+              [3., 3., 4.]]])
     """
 
     def __init__(self, total_count, probs):
@@ -130,7 +129,12 @@ class Multinomial(distribution.Distribution):
         logits, value = paddle.broadcast_tensors(
             [paddle.log(self.probs), value]
         )
-        logits[(value == 0) & (paddle.isinf(logits))] = 0
+        if paddle.in_dynamic_mode():
+            logits[(value == 0) & (paddle.isinf(logits))] = 0
+        else:
+            logits = paddle.static.setitem(
+                logits, (value == 0) & (paddle.isinf(logits)), 0
+            )
 
         return (
             paddle.lgamma(value.sum(-1) + 1)

@@ -46,7 +46,7 @@ class TestStaticMasterGradProgramFP16(AmpTestBase):
         self.assertEqual(
             actual_num_mp,
             expected_num_mp,
-            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
+            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but received {actual_num_mp}.",
         )
 
     def amp_fp16_o2(self, use_master_grad):
@@ -189,13 +189,13 @@ class TestMasterGradAccuracy(AmpTestBase):
             self.assertNotEqual(
                 losses_o1,
                 losses_o2_no_master_grad,
-                f"dtype: {dtype}, loss of o1 and o2-wo-master_grad should not be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
+                f"dtype: {dtype}, loss of o1 and o2-wo-master_grad should not be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
             )
 
             self.assertEqual(
                 losses_o1,
                 losses_o2_master_grad,
-                f"dtype: {dtype}, loss of o1 and o2-w-master_grad should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_master_grad}",
+                f"dtype: {dtype}, loss of o1 and o2-w-master_grad should be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2_master_grad}",
             )
 
 

@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 struct DebugTools {
-  DebugTools() {}
+  DebugTools() = default;
   std::string path = "";
   int stack_limit = 1;
 };

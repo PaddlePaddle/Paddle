@@ -208,7 +208,7 @@ def step_check(path1, path2):
     m1 = paddle.load(path1)
     m2 = paddle.load(path2)
     for v1, v2 in zip(m1, m2):
-        assert np.allclose(v1.numpy(), v2.numpy())
+        np.testing.assert_allclose(v1.numpy(), v2.numpy())
         print(f"value same: {v1.name}")
 
 

@@ -631,13 +631,13 @@ class TestSliceAPI(unittest.TestCase):
                 fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
             )
 
-            assert np.array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
-            assert np.array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
-            assert np.array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
-            assert np.array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
-            assert np.array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
-            assert np.array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
-            assert np.array_equal(res_7, input[-1, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
 
 class TestSliceApiWithTensor(unittest.TestCase):
@@ -850,12 +850,13 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
 
 class TestInferShape(unittest.TestCase):
     def test(self):
-        x = paddle.ones(shape=[3, 4, 5])
-        x.desc.set_shape([3, -1, 5])
-        self.assertEqual(x.shape, (3, -1, 5))
+        with paddle_static_guard():
+            x = paddle.ones(shape=[3, 4, 5])
+            x.desc.set_shape([3, -1, 5])
+            self.assertEqual(x.shape, (3, -1, 5))
 
-        out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-        self.assertEqual(out0.shape, (3, -1, 5))
+            out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
+            self.assertEqual(out0.shape, (3, -1, 5))
 
     def test_axis_less_than_zero(self):
         # Using paddle.disable_static will make other unittests fail.

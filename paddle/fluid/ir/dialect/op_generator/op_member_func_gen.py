@@ -14,21 +14,9 @@
 
 # generator op member function
 
-OP_GET_INPUT_TEMPLATE = """  ir::Value {input_name}() {{ return operand({input_index}); }}
+OP_GET_INPUT_TEMPLATE = """  ir::Value {input_name}() {{ return operand_source({input_index}); }}
 """
 OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return result({output_index}); }}
-"""
-OP_GET_ATTRIBUTE_TEMPLATE = """  ir::Attribute attribute(const std::string &name) {
-    PADDLE_ENFORCE(attributes().count(name) > 0,
-                   phi::errors::PreconditionNotMet("Attribute is not exist."));
-    return attributes().at(name);
-  }
-  template <typename T>
-  T attribute(const std::string &name) {
-    PADDLE_ENFORCE(attributes().count(name) > 0 && attributes().at(name).isa<T>(),
-                   phi::errors::PreconditionNotMet("Attribute is not right."));
-    return attributes().at(name).dyn_cast<T>();
-  }
 """
 
 
@@ -51,5 +39,4 @@ def gen_op_get_inputs_outputs_str(
             output_name=op_output_name_list[idx],
             output_index=idx,
         )
-    op_get_inputs_outputs_str += OP_GET_ATTRIBUTE_TEMPLATE
     return op_get_inputs_outputs_str

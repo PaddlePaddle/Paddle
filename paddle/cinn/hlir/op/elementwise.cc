@@ -24,10 +24,8 @@
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/functional.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {
@@ -67,12 +65,9 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
         CINNValuePack pack_args = args[0];
         CHECK_GE(pack_args.size(), 1U)
             << "1 input tensor for " << op_name << " compute";
-        std::string tensor_name = UniqName(op_name + "_Out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2U);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2U);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
         Expr A_expr = pack_args[0];
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
@@ -158,12 +153,9 @@ std::shared_ptr<OpStrategy> StrategyForScale(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
         ir::Tensor out;
-        std::string tensor_name = UniqName("Scale_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2);
-          CHECK(pack_args[1].is_string());
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
 
         if (bias_after_scale) {
           out = Compute(
@@ -242,12 +234,9 @@ std::shared_ptr<OpStrategy> StrategyForConstScalar(
     auto scalar = GetScalarExpr(attrs.attr_store.at("value"));
     auto scalar_type = out_type.at(0);
     CINNValuePack pack_args = args[0];
-    std::string tensor_name = UniqName("const_scalar_Out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 1U);
-      CHECK(pack_args[0].is_string());
-      tensor_name = pack_args[0].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 1U);
+    CHECK(pack_args[0].is_string());
+    std::string tensor_name = pack_args[0].operator std::string();
 
     auto out = lang::Compute(
         {Expr(1)},
@@ -371,12 +360,9 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         }
 
         CINNValuePack arg_pack = args[0];
-        std::string tensor_name = UniqName("fill_constant_Out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(arg_pack.size(), 1U);
-          CHECK(arg_pack[0].is_string());
-          tensor_name = arg_pack[0].operator std::string();
-        }
+        CHECK_EQ(arg_pack.size(), 1U);
+        CHECK(arg_pack[0].is_string());
+        std::string tensor_name = arg_pack[0].operator std::string();
         CHECK(!shape.empty()) << "shape attr is empty!";
         auto shape_exprs = ToCinnExprs(shape);
         auto out = lang::Compute(
@@ -405,7 +391,6 @@ std::vector<shape_t> InferShapeForFillConstant(
     const framework::AttrMapType &attrs) {
   CHECK(attrs.count("shape"));
   auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  CHECK(!shape.empty()) << "shape attr is empty!";
   return {shape};
 }
 
@@ -458,12 +443,9 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
     const auto &value = attrs.attr_store.at("values");
 
     CINNValuePack arg_pack = args[0];
-    std::string tensor_name = UniqName("T_assign_value_out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(arg_pack.size(), 1U);
-      CHECK(arg_pack[0].is_string());
-      tensor_name = arg_pack[0].operator std::string();
-    }
+    CHECK_EQ(arg_pack.size(), 1U);
+    CHECK(arg_pack[0].is_string());
+    std::string tensor_name = arg_pack[0].operator std::string();
 
     absl::optional<ir::Tensor> out;
 #define EXPAND_VALUE_TO_TENSOR(TYPE)                                          \
@@ -649,11 +631,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    std::string tensor_name = UniqName("Squeeze_out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 2U);
-      tensor_name = pack_args[1].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 2U);
+    std::string tensor_name = pack_args[1].operator std::string();
 
     ir::Tensor out = pe::Squeeze(tensor_A, axes, tensor_name);
     std::vector<CINNValue> res;
@@ -729,12 +708,9 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
     Expr x = input_args[0];
     CHECK(x.as_tensor());
 
-    std::string tensor_name = UniqName("expand_dims_output");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(input_args.size(), 2U);
-      CHECK(input_args[1].is_string());
-      tensor_name = input_args[1].operator std::string();
-    }
+    CHECK_EQ(input_args.size(), 2U);
+    CHECK(input_args[1].is_string());
+    std::string tensor_name = input_args[1].operator std::string();
 
     auto out =
         pe::ExpandDims(x.as_tensor_ref(), axes, output_shapes[0], tensor_name);
@@ -809,12 +785,9 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    std::string tensor_name = UniqName("Reshape_out");
-    if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 2);
-      CHECK(pack_args[1].is_string());
-      tensor_name = pack_args[1].operator std::string();
-    }
+    CHECK_EQ(pack_args.size(), 2);
+    CHECK(pack_args[1].is_string());
+    std::string tensor_name = pack_args[1].operator std::string();
 
     ir::Tensor out = pe::Reshape(tensor_A, output_shapes[0], tensor_name);
     std::vector<CINNValue> res;
@@ -901,11 +874,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
         auto stages = CreateStages({tensor_A});
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        std::string tensor_name = UniqName("Cast_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 2U);
-          tensor_name = pack_args[1].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 2U);
+        std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
@@ -953,11 +923,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
             << "The input argument of arange compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
 
-        std::string tensor_name = common::UniqName("T_Arange_out");
-        if (FLAGS_cinn_ir_schedule) {
-          CHECK_EQ(pack_args.size(), 1U);
-          tensor_name = pack_args[0].operator std::string();
-        }
+        CHECK_EQ(pack_args.size(), 1U);
+        std::string tensor_name = pack_args[0].operator std::string();
 
         auto out = pe::Arange(start, stop, step, dtype, tensor_name);
         std::vector<common::CINNValue> res;

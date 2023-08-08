@@ -243,6 +243,7 @@ class Engine:
         self.history = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+        paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -757,7 +758,7 @@ class Engine:
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
-        # For now, the completer has to be passed to the planner,
+        # For now, the completer has to be passed to the Parallelizer,
         # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
@@ -970,7 +971,9 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=self._acc_steps,
+            acc_step=1
+            if self._strategy.pipeline.enable
+            else self._acc_steps,  # lr update once every local batch
         )
 
         cbks.on_begin('train')
@@ -1253,6 +1256,7 @@ class Engine:
         steps_per_epoch=None,
         sample_split=1,
         mode=None,
+        places=None,
     ):
         if mode is not None:
             self.to_mode(mode)
@@ -1279,6 +1283,7 @@ class Engine:
             worker_init_fn=worker_init_fn,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
+            places=places,
         )
         return dataloader
 
@@ -1416,6 +1421,7 @@ class Engine:
         worker_init_fn=None,
         epochs=1,
         steps_per_epoch=None,
+        places=None,
     ):
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
@@ -1438,7 +1444,6 @@ class Engine:
                 feed_list.append(copy_var)
 
         # insert read op at the end of program
-        places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = DistributedDataLoader(
                 dataset,
