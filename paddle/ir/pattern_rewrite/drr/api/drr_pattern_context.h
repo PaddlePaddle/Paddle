@@ -185,7 +185,7 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
 
   id_type tensor_id_;
   OpCall* producer_;
-  const OpCall* consumers_;
+  std::vector<const OpCall*> consumers_;
   PatternGraph* pattern_graph_;
 };
 
