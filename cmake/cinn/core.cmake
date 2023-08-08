@@ -168,12 +168,6 @@ function(cinn_nv_test TARGET_NAME)
     add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} cinn_gtest_main gtest)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cudnn_deterministic=true)
     if((CUDA_VERSION GREATER 9.2)
        AND (CUDA_VERSION LESS 11.0)
        AND (MSVC_VERSION LESS 1910))
