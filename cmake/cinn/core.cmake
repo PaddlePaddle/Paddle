@@ -174,6 +174,7 @@ function(cinn_nv_test TARGET_NAME)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS
                                                       ${WIN_PROPS})
     endif()
+    remove_gflags(${TARGET_NAME})
   endif()
 endfunction()
 
