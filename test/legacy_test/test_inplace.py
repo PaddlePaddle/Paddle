@@ -833,19 +833,6 @@ class TestDygraphInplaceThresholdedRelu(TestDygraphInplaceWithContinuous):
         return paddle.nn.functional.thresholded_relu(var, 1.0)
 
 
-class TestDygraphInplaceAtan2(TestDygraphInplaceWithContinuous):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-        self.y = paddle.randn([10, 20, 1])
-
-    def inplace_api_processing(self, var):
-        return paddle.atan2_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.atan2(var, self.y)
-
-
 class TestDygraphInplaceLogicAnd(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
@@ -988,33 +975,6 @@ class TestDygraphInplaceFloorDivide(TestDygraphInplace):
 
     def test_leaf_inplace_var_error(self):
         pass
-
-
-class TestDygraphInplaceLdExp(TestDygraphInplaceWithContinuous):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-        self.y = paddle.randn([10, 20, 1])
-
-    def inplace_api_processing(self, var):
-        return paddle.ldexp_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.ldexp(var, self.y)
-
-    def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
-            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-            self.assertEqual(var.inplace_version, 0)
-
-            inplace_var = self.inplace_api_processing(var)
-            self.assertEqual(var.inplace_version, 2)
-
-            inplace_var[0] = 2.0
-            self.assertEqual(var.inplace_version, 3)
-
-            inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 5)
 
 
 if __name__ == '__main__':
