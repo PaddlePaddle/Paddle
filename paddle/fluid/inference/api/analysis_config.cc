@@ -459,6 +459,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
+  CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
   CP_MEMBER(trt_dla_core_);
@@ -757,6 +759,12 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
 #endif
 }
 
+void AnalysisConfig::MarkTrtEngineOutputs(
+    const std::vector<std::string> &output_tensor_names) {
+  trt_mark_output_ = true;
+  trt_output_tensor_names_ = output_tensor_names;
+}
+
 void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
                                                int sharing_identifier) {
   PADDLE_ENFORCE_EQ(
@@ -1050,6 +1058,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
+  ss << trt_mark_output_;
 
   ss << use_dlnne_;
   ss << dlnne_min_subgraph_size_;
@@ -1331,6 +1340,7 @@ std::string AnalysisConfig::Summary() {
       }
       os.InsertRow({"trt_engine_memory_sharing",
                     trt_engine_memory_sharing_ ? "true" : "false"});
+      os.InsertRow({"trt_mark_output", trt_mark_output_ ? "true" : "false"});
 #endif
     }
   }
