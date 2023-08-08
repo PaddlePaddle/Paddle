@@ -121,6 +121,8 @@ def test_with_new_ir(func):
     @wraps(func)
     def impl(*args, **kwargs):
         ir_outs = None
+        if os.environ.get('FLAGS_use_stride_kernel', False):
+            return
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
                 try:

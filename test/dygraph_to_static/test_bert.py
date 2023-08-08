@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -262,6 +262,17 @@ class TestBert(unittest.TestCase):
         )
         out = output()
         return out
+
+    @test_with_new_ir
+    def test_train_new_ir(self):
+        static_loss, static_ppl = self.train_static(
+            self.bert_config, self.data_reader
+        )
+        dygraph_loss, dygraph_ppl = self.train_dygraph(
+            self.bert_config, self.data_reader
+        )
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
     @ast_only_test
     def test_train(self):
