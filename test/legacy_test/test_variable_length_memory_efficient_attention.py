@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,10 +20,11 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle.framework import core
 from paddle.incubate.nn.functional import (
     variable_length_memory_efficient_attention,
 )
+from paddle.static import Program, program_guard
 
 paddle.seed(2023)
 
@@ -131,7 +132,13 @@ class TestMemEffAttentionVariableAPI(unittest.TestCase):
             self.scale,
         )
 
-        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+        for i in range(self.batch_size):
+            np.testing.assert_allclose(
+                out.numpy()[i, :, : self.seq_lens[i], :],
+                out_[i, :, : self.seq_lens[i], :],
+                rtol=5e-03,
+                atol=1e-03,
+            )
 
 
 class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
@@ -171,15 +178,15 @@ class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
     def setUp(self):
         self.name = "MemEffAPIVariable_bf16"
         self.place = paddle.CUDAPlace(0)
-        self.batch_size = 1
+        self.batch_size = 2
         self.num_head = 8
         self.seq_len = 32
         self.dim_head = 128
         self.seq_lens = paddle.to_tensor(
             [
+                self.seq_len // 2,
                 self.seq_len,
-            ]
-            * self.batch_size,
+            ],
             "int32",
         )
         self.shape = (

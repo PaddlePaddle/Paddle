@@ -22,8 +22,7 @@
 import math
 
 from paddle import _C_ops
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def variable_length_memory_efficient_attention(
@@ -41,14 +40,14 @@ def variable_length_memory_efficient_attention(
     This method requires SM_ARCH in sm70, sm75, sm80.
 
     Args:
-        query (Tensor): the Query Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        key (Tensor): the Key Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        value (Tensor): the Value Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        seq_lens (Tensor): the Q's SequenceLengths Tensor. Its shape is [batchsize, 1].
-        kv_seq_lens (Tensor): the KV's SequenceLengths Tensor. Its shape is [batchsize, 1].
-        mask (Tensor): the Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
-        scale (Float): the attention matrix's scale. Default is sqrt(1.0 / head_size).
-        causal (Bool): whether causal masking is used or not. Default is False.
+        query (Tensor): The Query Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
+        key (Tensor): The Key Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
+        value (Tensor): The Value Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
+        seq_lens (Tensor): The cumulative sequence lengths of the sequences in the batch, used to index query. Its shape is [batchsize, 1].
+        kv_seq_lens (Tensor): The cumulative sequence lengths of the sequences in the batch, used to index key and value. Its shape is [batchsize, 1].
+        mask (Tensor): The Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
+        scale (Float): The attention matrix's scale. Default is sqrt(1.0 / head_size).
+        causal (Bool): Whether causal masking is used or not. Default is False.
     Returns:
         Tensor: the output Tensor.
 

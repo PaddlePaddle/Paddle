@@ -2572,11 +2572,12 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
   const int64_t value_seq_length = value.dims()[2];
   const int64_t value_head_size = value.dims()[3];
 
-  PADDLE_ENFORCE_EQ(((query_batch_size == key_batch_size) &&
-                     (key_batch_size == value_batch_size)),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The batchsize of Query, Key, Value should be equal."));
+  PADDLE_ENFORCE_EQ(
+      ((query_batch_size == key_batch_size) &&
+       (key_batch_size == value_batch_size)),
+      true,
+      phi::errors::InvalidArgument(
+          "The batch size of Query, Key, Value should be equal."));
 
   PADDLE_ENFORCE_EQ(
       ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
@@ -2598,7 +2599,6 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
       {query_batch_size, query_num_head, query_seq_length, value_head_size});
 
   out->set_dims(phi::make_ddim(out_dims));
-  out->share_lod(query);
   out->set_dtype(query.dtype());
   out->set_layout(query.layout());
 }
