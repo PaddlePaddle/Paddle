@@ -19,12 +19,13 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
-def fused_rms_norm(
+def fused_layer_norm(
     x,
     norm_weight,
     norm_bias,
     epsilon,
-    begin_norm_axis,
+    residual_alpha=1.0,
+    begin_norm_axis=1,
     bias=None,
     residual=None,
     quant_scale=-1,
@@ -33,14 +34,17 @@ def fused_rms_norm(
     quant_min_bound=0,
 ):
     r"""
-    Apply Fused RMSNorm kernel. Also support RMSNorm(bias + residual + x) fused pattern.
+    Apply Fused LayerNorm kernel. Also support LayerNorm(bias + residual_alpha * residual + x) fused pattern.
+
+    when norm_weight and norm_bias is None, it return fused (bias + residual_alpha * residual + x)
 
     Args:
         x (Tensor): the input Tensor..
         norm_weight (Tensor): the weight Tensor to affine output.
         norm_bias (Tensor): the bias Tensor to affine output.
         epsilon (float): a small float number to avoid divide 0.
-        begin_norm_axis (int): the begin axis to normalize.
+        residual_alpha (float): a scale factor for residual. default is 1.
+        begin_norm_axis (int): the begin axis to normalize. default is 1.
         bias (optional|Tensor): the previous layers's bias to fused.
         residual (optional|Tensor): the residual input to fused.
         quant_scale (float): the quant scale.
@@ -62,16 +66,18 @@ def fused_rms_norm(
             paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
             paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
             epsilon = 1e-6
-            paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
+            paddle_layernorm = paddle.incubate.nn.functional.fused_layer_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
+
     if in_dygraph_mode():
-        return _C_ops.rms_norm(
+        return _C_ops.fused_layernorm(
             x,
             bias,
             residual,
             norm_weight,
             norm_bias,
             epsilon,
+            residual_alpha,
             begin_norm_axis,
             quant_scale,
             quant_round_type,
@@ -79,7 +85,7 @@ def fused_rms_norm(
             quant_min_bound,
         )
 
-    helper = LayerHelper('rms_norm', **locals())
+    helper = LayerHelper('fused_layernorm', **locals())
     out = None
     if quant_scale <= 0:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -91,19 +97,18 @@ def fused_rms_norm(
     residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
     outputs_dict['residual_out'] = residual_out
 
-    inputs = {'x': x, 'norm_weight': norm_weight}
-    if norm_bias:
-        inputs['norm_bias'] = norm_bias
+    inputs = {'x': x, 'norm_weight': norm_weight, 'bias': norm_bias}
     if residual is not None:
         inputs['residual'] = residual
     if bias is not None:
         inputs['bias'] = bias
 
     helper.append_op(
-        type='rms_norm',
+        type='fused_layernorm',
         inputs=inputs,
         attrs={
             "epsilon": epsilon,
+            "residual_alpha": residual_alpha,
             "begin_norm_axis": begin_norm_axis,
             "quant_scale": quant_scale,
             "quant_round_type": quant_round_type,
@@ -112,4 +117,4 @@ def fused_rms_norm(
         },
         outputs=outputs_dict,
     )
-    return (out, residual_out) if residual is not None else out
+    return out

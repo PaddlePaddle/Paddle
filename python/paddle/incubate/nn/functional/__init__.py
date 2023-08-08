@@ -26,6 +26,7 @@ from .fused_dropout_add import fused_dropout_add
 from .fused_gate_attention import fused_gate_attention
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
 from .fused_rms_norm import fused_rms_norm
+from .fused_layer_norm import fused_layer_norm
 
 __all__ = [
     'fused_multi_head_attention',
@@ -39,4 +40,5 @@ __all__ = [
     'fused_dropout_add',
     'fused_rotary_position_embedding',
     "fused_rms_norm",
+    "fused_layer_norm",
 ]

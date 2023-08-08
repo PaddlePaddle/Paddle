@@ -958,7 +958,7 @@ void RmsNormKernel(const Context& dev_ctx,
 
   const T* x_data = x.data<T>();
   const T* norm_weight_data = norm_weight.data<T>();
-  const T* norm_bias_data = bias ? norm_bias.get().data<T>() : nullptr;
+  const T* norm_bias_data = norm_bias ? norm_bias.get().data<T>() : nullptr;
 
   int32_t rows = 1;
   int32_t cols = 1;
