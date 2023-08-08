@@ -3151,13 +3151,16 @@ function exec_samplecode_test() {
 function collect_ccache_hits() {
     ccache -s
     ccache_version=$(ccache -V | grep "ccache version" | awk '{print $3}')
-    if [ ${ccache_version} != "4.8.2" ] ; then
-        rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+    echo "$ccache_version"
+    if [[ $ccache_version == 4* ]] ; then
+        
+        rate=$(ccache -s | grep "Hits" | awk '{print $5}' | cut -d '(' -f2 | cut -d ')' -f1)
         echo "ccache hit rate: ${rate}%"
     else
-        rate=$(ccache -s | grep "Hits" | awk '{print $5}' | cut -d '(' -f2 | cut -d ')' -f1)
+        rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
         echo "ccache hit rate: ${rate}"
     fi
+
     echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
