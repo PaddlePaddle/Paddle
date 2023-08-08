@@ -165,7 +165,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(rid)) {
+    if (comm_context_manager.Has(std::to_string(rid))) {
         comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
                 comm_context_manager.Get(std::to_string(rid)));
         PADDLE_ENFORCE_NE(
@@ -175,7 +175,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
                     "NCCLCommContext is nullptr, collective op should "
                     "has ring_id attr."));
         stream = comm_ctx->GetStream();
-        VLOG(3) << "new comm_context_manager has rid " << ring_d;
+        VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {
         comm = platform::NCCLCommContext::Instance().Get(rid, place);
         PADDLE_ENFORCE_LT(peer,
@@ -186,7 +186,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
                     peer,
                     comm->nranks()));
         stream = comm->stream();
-      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
+      VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
 
     if (ctx.Attr<bool>("use_calc_stream")) {

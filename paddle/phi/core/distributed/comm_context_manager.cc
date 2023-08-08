@@ -72,7 +72,7 @@ void CommContextManager::CreateNCCLCommContext(
   }
 
   auto nccl_comm_context =
-      std::make_unique<NCCLCommContext>(-1, rank, size, nccl_id);
+      std::make_unique<NCCLCommContext>(rank, size, nccl_id);
 
   if (CommContextManager::device_id != -1) {
       std::unique_ptr<phi::GPUContext> dev_ctx(
@@ -106,6 +106,7 @@ void CommContextManager::CreateNCCLCommContext(
       nccl_comm_context->SetDevContext(std::move(dev_ctx));
       nccl_comm_context->SetComputeEvent(std::move(compute_event));
       nccl_comm_context->SetCommEvent(std::move(comm_event));
+  } else {
   }
 
   comm_context_manager.SetStore(store);
@@ -126,7 +127,7 @@ void CommContextManager::CreateGlooCommContext(
   auto gloo_device = CreateGlooDevice();
 
   auto gloo_comm_context =
-      std::make_unique<GlooCommContext>(-1, rank, size, gloo_store, gloo_device);
+      std::make_unique<GlooCommContext>(rank, size, gloo_store, gloo_device);
   auto& comm_context_manager = CommContextManager::GetInstance();
   // set actual store to manager
   comm_context_manager.SetStore(store);

@@ -166,8 +166,8 @@ class ProcessGroup:
                 place = core.CUDAPlace(genv.device_id)
                 use_new_comm = os.getenv("FLAGS_dynamic_static_unified_comm", "0")
                 logger.info(f"debug use_new_comm is {use_new_comm}, {type(use_new_comm)}")
-                if use_new_comm == "1":
-                    logger.info("debug use new comm")
+                if use_new_comm in ["1", "True", "true"]:
+                    logger.info("use new comm library")
                     store = paddle.distributed.collective.StaticTCPStore()
                     core.CommContextManager.set_cuda_device_id(genv.device_id)
                     core.CommContextManager.create_nccl_comm_context(
@@ -177,7 +177,7 @@ class ProcessGroup:
                         strategy.nranks,
                     )
                 else:
-                    logger.info(f"debug use old comm, ring_id: {ring_id}")
+                    logger.info(f"use old comm library")
                     core.NCCLParallelContext(strategy, place).init_with_ring_id(
                         ring_id
                     )

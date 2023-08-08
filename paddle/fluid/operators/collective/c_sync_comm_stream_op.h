@@ -42,10 +42,10 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(ring_d)) {
+    if (comm_context_manager.Has(std::to_string(ring_id))) {
         auto comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(comm_context_manager.Get(std::to_string(ring_id)));
         stream = comm_ctx->GetStream();
-        VLOG(3) << "new comm_context_manager has rid " << ring_d;
+        VLOG(3) << "new comm_context_manager has rid " << ring_id;
     } else {
         stream = platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
         VLOG(3) << "old NCCLCommContext has rid " << ring_id;
