@@ -43,7 +43,7 @@ class TestBuildOp(unittest.TestCase):
         newir_program = get_ir_program()
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         decompose(newir_program)
-        op_name_list = [op.name() for op in newir_program.block().get_ops()]
+        op_name_list = [op.name() for op in newir_program.block().ops]
         self.assertEqual(
             op_name_list,
             [
