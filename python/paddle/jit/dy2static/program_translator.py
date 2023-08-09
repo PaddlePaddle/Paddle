@@ -943,12 +943,9 @@ class ASTStaticFunction(StaticFunction):
         if is_prim_infer and cached_program_len != 0:
             # if is_prim_infer, we want to save the origin program, not the prim one
             # If more than one programs have been cached, return the recent converted program by default.
-            if cached_program_len > 1:
-                logging_utils.warn(
-                    "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
-                        self._function_spec, cached_program_len
-                    )
-                )
+            logging_utils.warn(
+                "is_prim_infer is True, save with _recent_cache_key."
+            )
             cache_key = self._program_cache._recent_cache_key
             concrete_program, _ = self.get_concrete_program_with_cache_key(
                 cache_key
