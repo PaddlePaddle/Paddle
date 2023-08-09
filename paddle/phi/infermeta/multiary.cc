@@ -2386,6 +2386,18 @@ void LLMInt8LinearInferMeta(const MetaTensor& x,
           x_dims[x_dims.size() - 1],
           w_dims[1]));
   PADDLE_ENFORCE_EQ(
+      w_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 16, but got[%d]",
+          w_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The second dimension of input must be divisible by 16, but got[%d]",
+          w_dims[1]));
+  PADDLE_ENFORCE_EQ(
       weight_scale.dims()[0],
       w_dims[0],
       errors::InvalidArgument(
@@ -3418,7 +3430,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
   auto n = weight_scale.dims()[0];
   PADDLE_ENFORCE(
       weight_dtype == "int8" || weight_dtype == "int4",
-      errors::InvalidArgument("quant_method must be 'int8' or 'int4'. "));
+      errors::InvalidArgument("quant_method must be 'int8' or 'int4'."));
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2UL,
@@ -3427,6 +3439,18 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
       weight_scale.dims().size(),
       1UL,
       errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      w_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 16, but got[%d]",
+          w_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The second dimension of input must be divisible by 16, but got[%d]",
+          w_dims[1]));
   PADDLE_ENFORCE_EQ(
       x_dims[x_dims.size() - 1],
       w_dims[1],

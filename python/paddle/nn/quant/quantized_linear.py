@@ -37,10 +37,10 @@ def quant_for_infer(x, layout="weight_only_int8"):
             import paddle
             from paddle.nn.quant import quant_for_infer
 
-            x = paddle.randn([3, 4])
+            x = paddle.cast(paddle.randn(shape=[32, 64]), dtype=paddle.float16).cpu()
             out, scale = quant_for_infer(x, layout='weight_only_int8')
-            print(out.shape) # [4, 3]
-            print(scale.shape) # [4]
+            print(out.shape) # [64, 32]
+            print(scale.shape) # [64]
     """
 
     if in_dynamic_mode():
@@ -86,14 +86,14 @@ def weight_only_linear(
 
             # required: gpu
             import paddle
-            from paddle.nn.quant import quant_for_infer, weight_only_linear
+            from paddle.nn.quant import weight_only_linear
 
-            x = paddle.randn([3, 4], dtype='float16')
-            y = paddle.randn([5, 4], dtype='float16')
-            weihgt, scale = quant_for_infer(x, y, layout='weight_only_int8')
-            bias = paddle.randn([5])
-            out = weight_only_linear(x, weihgt, bias=bias, weight_scale=scale, weight_dtype='int8')
-            print(out.shape) # [3, 5]
+            x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
+            weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
+            scale = paddle.randn([32], dtype='float32')
+            bias = paddle.cast(paddle.randn([32]), dtype='float16')
+            out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
+            print(out.shape) # [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
@@ -153,14 +153,14 @@ def llm_int8_linear(
 
             # required: gpu
             import paddle
-            from paddle.nn.quant import quant_for_infer, llm_int8_linear
+            from paddle.nn.quant import llm_int8_linear
 
-            x = paddle.randn([3, 4], dtype='float16')
-            y = paddle.randn([5, 4], dtype='float16')
-            weihgt, scale = quant_for_infer(x, y, layout='llm.int8')
-            bias = paddle.randn([5])
+            x = paddle.cast(paddle.randn([1, 2, 64]), dtype='float16')
+            weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
+            scale = paddle.randn([32], dtype='float32')
+            bias = paddle.cast(paddle.randn([32]), dtype='float16')
             out = llm_int8_linear(x, weihgt, bias=bias, weight_scale=scale, threshold=6.0)
-            print(out.shape) # [3, 5]
+            print(out.shape) # [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.llm_int8_linear(x, weight, bias, weight_scale, threshold)
