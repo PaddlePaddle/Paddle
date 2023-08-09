@@ -97,18 +97,20 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       yaml_interface->get_op_info_());
   VLOG(6) << "finish process yaml_info_parser";
 
-  ::ir::BuildPhiContext<
-      phi::InferMetaContext,
-      phi::MetaTensor,
-      phi::MetaTensor,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      false>(op,
-             value_2_var_name,
-             scope,
-             local_scope,
-             yaml_info_parser,
-             &infer_meta_context_);
+  if (infer_meta_interface_) {
+    ::ir::BuildPhiContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>(op,
+               value_2_var_name,
+               scope,
+               local_scope,
+               yaml_info_parser,
+               &infer_meta_context_);
+  }
   VLOG(6) << "finish process infer meta context";
 
   auto kernel_name =
@@ -172,7 +174,9 @@ LegacyKernelInstruction::~LegacyKernelInstruction() {
 }
 
 void LegacyKernelInstruction::Run() {
-  infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  if (infer_meta_interface_) {
+    infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  }
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   (*(phi_kernel_))((kernel_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";

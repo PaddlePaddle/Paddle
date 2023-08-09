@@ -32,6 +32,7 @@ template <typename T, typename DeviceContext>
 class LoadCombineOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    std::cerr << "compute " << std::endl;
     auto place = ctx.GetPlace();
     auto filename = ctx.Attr<std::string>("file_path");
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
