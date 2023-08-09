@@ -18,8 +18,8 @@
 namespace ir {
 namespace drr {
 
-MatchContext::MatchContext(std::unique_ptr<const MatchContextImpl> impl)
-    : impl_(std::move(impl)) {}
+MatchContext::MatchContext(std::shared_ptr<const MatchContextImpl> impl)
+    : impl_(impl) {}
 
 const TensorInterface& MatchContext::Tensor(
     const std::string& tensor_name) const {

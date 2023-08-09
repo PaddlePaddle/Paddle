@@ -26,7 +26,7 @@ const drr::OpCall &
 PatternGraph::AddOpCall(const std::shared_ptr<drr::OpCall> &op_call) {
   owned_op_call_.push_back(op_call);
   for (const auto &input : op_call->inputs()) {
-    const auto &tensor_id = input->id();
+    const auto &tensor_id = input->name();
     CHECK(id2owned_tensor_.count(tensor_id));
     id2owned_tensor_.at(tensor_id)->AddConsumer(op_call.get());
 
@@ -38,28 +38,28 @@ PatternGraph::AddOpCall(const std::shared_ptr<drr::OpCall> &op_call) {
     }
   }
   for (auto &output : op_call->outputs()) {
-    const auto &out_tensor_id = output->id();
+    const auto &out_tensor_id = output->name();
     CHECK(id2owned_tensor_.count(out_tensor_id));
-    id2owned_tensor_[output->id()]->set_producer(op_call.get());
+    id2owned_tensor_[output->name()]->set_producer(op_call.get());
   }
   return *owned_op_call_.back();
 }
 
 const drr::Tensor &
 PatternGraph::AddTensor(const std::shared_ptr<drr::Tensor> &tensor) {
-  if (id2owned_tensor_.find(tensor->id()) == id2owned_tensor_.end()) {
-    id2owned_tensor_[tensor->id()] = tensor;
-    output_tensors_.insert(tensor->id());
+  if (id2owned_tensor_.find(tensor->name()) == id2owned_tensor_.end()) {
+    id2owned_tensor_[tensor->name()] = tensor;
+    output_tensors_.insert(tensor->name());
   }
-  return *id2owned_tensor_[tensor->id()];
+  return *id2owned_tensor_[tensor->name()];
 }
 
 drr::Tensor &
 PatternGraph::AddTmpTensor(const std::shared_ptr<drr::Tensor> &tensor) {
-  CHECK(id2owned_tensor_.find(tensor->id()) == id2owned_tensor_.end());
-  id2owned_tensor_[tensor->id()] = tensor;
-  output_tensors_.insert(tensor->id());
-  return *id2owned_tensor_[tensor->id()];
+  CHECK(id2owned_tensor_.find(tensor->name()) == id2owned_tensor_.end());
+  id2owned_tensor_[tensor->name()] = tensor;
+  output_tensors_.insert(tensor->name());
+  return *id2owned_tensor_[tensor->name()];
 }
 
 void PatternGraph::UpdateTmpTensor(const id_type &tmp_tensor_id,
@@ -77,7 +77,7 @@ void PatternGraph::UpdateTmpTensor(const id_type &tmp_tensor_id,
 
   auto tmp_tensor = id2owned_tensor_[tmp_tensor_id];
   id2owned_tensor_.erase(tmp_tensor_id);
-  tmp_tensor->set_id(new_tensor_id);
+  tmp_tensor->SetName(new_tensor_id);
   id2owned_tensor_[new_tensor_id] = tmp_tensor;
 }
 
@@ -107,13 +107,13 @@ void PatternGraph::Print() const {
     std::cout << "  " << op_call->name() << " : ";
     std::cout << "inputs[ ";
     for (const auto &input : op_call->inputs()) {
-      std::cout << input->id() << " ";
+      std::cout << input->name() << " ";
     }
     std::cout << "], ";
 
     std::cout << "outputs[ ";
     for (const auto &output : op_call->outputs()) {
-      std::cout << output->id() << " ";
+      std::cout << output->name() << " ";
     }
     std::cout << "]" << std::endl;
   }

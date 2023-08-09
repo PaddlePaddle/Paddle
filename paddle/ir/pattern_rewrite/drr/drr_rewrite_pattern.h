@@ -23,6 +23,7 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 #include "paddle/ir/pattern_rewrite/drr/api/match_context.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 #include "paddle/ir/pattern_rewrite/drr/match_context_impl.h"
 #include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
@@ -61,6 +62,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     ir_q.push(op);
     drr_visited.insert(anchor.get());
     ir_visited.insert(op);
+    match_context_impl_->BindIrOperation(op->name(),
+                                         std::make_shared<IrOperation>(op));
     bool Matched = true;
     size_t step = 0;
     while (!drr_q.empty()) {
@@ -93,6 +96,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
         // check brother ops
         auto drr_brother_ops = drr_input_tensors[i]->consumers();
         auto ir_input_value = ir_node->operand(i);
+        match_context_impl_->BindIrValue(drr_input_tensors[i]->name(),
+                                         ir_input_value);
         if (drr_brother_ops.size() != ir_input_value.use_count()) {
           Matched = false;
           break;
@@ -117,6 +122,9 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
               ir_q.push(found.second);
               drr_visited.insert(drr_brother_op);
               ir_visited.insert(found.second);
+              match_context_impl_->BindIrOperation(
+                  found.second->name(),
+                  std::make_shared<IrOperation>(found.second));
             } else {
               Matched = false;
               break;
@@ -135,6 +143,9 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
           ir_q.push(ir_ancestor_op);
           drr_visited.insert(drr_ancestor_op);
           ir_visited.insert(ir_ancestor_op);
+          match_context_impl_->BindIrOperation(
+              ir_ancestor_op->name(),
+              std::make_shared<IrOperation>(ir_ancestor_op));
         }
       }
 
@@ -152,6 +163,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
         // check child ops
         auto drr_child_ops = drr_output_tensors[i]->consumers();
         auto ir_output_value = ir_node->result(i);
+        match_context_impl_->BindIrValue(drr_output_tensors[i]->name(),
+                                         ir_output_value);
         if (drr_child_ops.size() != ir_output_value.use_count()) {
           Matched = false;
           break;
@@ -176,6 +189,9 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
               ir_q.push(found.second);
               drr_visited.insert(drr_child_op);
               ir_visited.insert(found.second);
+              match_context_impl_->BindIrOperation(
+                  found.second->name(),
+                  std::make_shared<IrOperation>(found.second));
             } else {
               Matched = false;
               break;
@@ -193,7 +209,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     // Matched = Matched && step == source_pattern_graph_->CountOfOpCalls();
 
     // Constraints
-    MatchContext match_context{std::move(match_context_impl_)};
+    MatchContext match_context{match_context_impl_};
     for (const auto& constraint : constraints_) {
       Matched = constraint(match_context);
       if (!Matched) break;
@@ -208,7 +224,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
   }
 
  private:
-  std::unique_ptr<MatchContextImpl> match_context_impl_;
+  std::shared_ptr<MatchContextImpl> match_context_impl_;
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   std::vector<Constraint> constraints_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;

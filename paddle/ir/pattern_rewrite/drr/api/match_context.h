@@ -28,7 +28,7 @@ class MatchContextImpl;
 
 class MatchContext final {
  public:
-  MatchContext(std::unique_ptr<const MatchContextImpl> impl);
+  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
 
   const TensorInterface& Tensor(const std::string& tensor_name) const;
 
@@ -38,7 +38,7 @@ class MatchContext final {
   T Attr(const std::string& attr_name) const;
 
  private:
-  std::unique_ptr<const MatchContextImpl> impl_;
+  std::shared_ptr<const MatchContextImpl> impl_;
 };
 
 }  // namespace drr

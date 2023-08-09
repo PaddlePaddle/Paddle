@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_tensor.h"
 
 namespace ir {
 namespace drr {

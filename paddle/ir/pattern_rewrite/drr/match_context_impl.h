@@ -60,9 +60,9 @@ class MatchContextImpl final {
         .data();
   }
 
-  void BindIrTensor(const std::string& tensor_name,
-                    const std::shared_ptr<IrTensor>& tensor) {
-    tensor_map_.emplace(tensor_name, tensor);
+  void BindIrValue(const std::string& value_name,
+                   const std::shared_ptr<IrValue>& value) {
+    tensor_map_.emplace(value_name, value);
   }
 
   void BindIrOperation(const std::string& op_name,
@@ -75,7 +75,7 @@ class MatchContextImpl final {
   }
 
  private:
-  std::unordered_map<std::string, std::shared_ptr<IrTensor>> tensor_map_;
+  std::unordered_map<std::string, std::shared_ptr<IrValue>> tensor_map_;
   std::unordered_map<std::string, std::shared_ptr<IrOperation>> operation_map_;
   std::unordered_map<std::string, ir::Attribute> attr_map_;
 };

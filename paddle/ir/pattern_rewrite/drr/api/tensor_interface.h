@@ -18,7 +18,7 @@
 namespace ir {
 namespace drr {
 
-class IrTensor;
+class IrValue;
 class IrShape;
 class IrDtype;
 
@@ -29,7 +29,7 @@ class ShapeInterface final {
  private:
   explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
 
-  friend class IrTensor;
+  friend class IrValue;
 
   const IrShape* shape_;
 };
@@ -41,7 +41,7 @@ class DtypeInterface final {
  private:
   explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
 
-  friend class IrTensor;
+  friend class IrValue;
 
   const IrDtype* dtype_;
 };
