@@ -34,7 +34,7 @@ DistTensorSpec::DistTensorSpec(const DistTensorSpec& spec) {
   dist_attr_.copy_from(spec.dist_attr());
 }
 
-DistTensorSpec::~DistTensorSpec() {}
+DistTensorSpec::~DistTensorSpec() = default;
 
 DistTensorSpec::DistTensorSpec(const Tensor& tensor) {
   shape_ = tensor.shape();

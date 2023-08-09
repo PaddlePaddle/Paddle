@@ -100,6 +100,27 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
   }
 }
 
+PyDoc_STRVAR(tensor_method_numpy__doc__, R"DOC(numpy($self, /)
+--
+
+Returns a numpy array shows the value of current Tensor.
+
+Returns:
+    ndarray, The numpy value of current Tensor, dtype is
+    same as current Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
+        linear = paddle.nn.Linear(32, 64)
+        data = paddle.to_tensor(data)
+        x = linear(data)
+        print(x.numpy())
+)DOC");
+
 static PyObject* tensor_method_numpy(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -434,7 +455,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
         longest_pstring->data(), longest_pstring->size());
     max_unicode_length = (max_unicode_length == 0) ? 1 : max_unicode_length;
     VLOG(6) << "The max unicode length is " << max_unicode_length;
-    auto sp = std::make_unique<uint32_t[]>(max_unicode_length * numel);
+    auto sp =
+        std::make_unique<uint32_t[]>(max_unicode_length * numel);  // NOLINT
     auto py_array_data = sp.get();
     memset(py_array_data, 0, max_unicode_length * numel * sizeof(uint32_t));
     for (int64_t i = 0; i < numel; ++i) {
@@ -519,23 +541,6 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_cpu(TensorObject* self,
-                                   PyObject* args,
-                                   PyObject* kwargs) {
-  EAGER_TRY
-  paddle::Tensor cp_tensor;
-  {
-    eager_gil_scoped_release guard;
-    cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
-    egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
-    egr::EagerUtils::autograd_meta(&cp_tensor)
-        ->SetPersistable(
-            egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
-  }
-  return ToPyObject(cp_tensor);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
@@ -589,6 +594,41 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_clone__doc__, R"DOC(clone($self, /)
+--
+
+Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
+It will always have a Tensor copy.
+Tn addition, the cloned Tensor provides gradient propagation.
+
+Returns:
+    Tensor, The cloned Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.0, stop_gradient=False)
+        clone_x = x.clone()
+        y = clone_x**2
+        y.backward()
+        print(clone_x.stop_gradient) # False
+        print(clone_x.grad)          # [2.0], support gradient propagation
+        print(x.stop_gradient)       # False
+        print(x.grad)                # [2.0], clone_x support gradient propagation for x
+
+        x = paddle.to_tensor(1.0)
+        clone_x = x.clone()
+        clone_x.stop_gradient = False
+        z = clone_x**3
+        z.backward()
+        print(clone_x.stop_gradient) # False
+        print(clone_x.grad)          # [3.0], support gradient propagation
+        print(x.stop_gradient) # True
+        print(x.grad)          # None
+)DOC");
+
 static PyObject* tensor_method_clone(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -629,6 +669,36 @@ static PyObject* tensor_retain_grads(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_clear_gradient__doc__,
+             R"DOC(clear_gradient($self, set_to_zero=True, /)
+--
+
+Only for Tensor that has gradient, normally we use this for Parameters since
+other temporary Tensor doesen't has gradient.
+
+The Gradient of current Tensor will be set to ``0`` elementwise or ``None``.
+
+Args:
+    set_to_zero (bool, optional): If set to ``True``, the gradient will be set
+        to ``0`` elementwise, otherwise the gradient will be set to ``None``.
+        Default: ``True``.
+
+Returns:
+    None.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+        input = paddle.uniform([10, 2])
+        linear = paddle.nn.Linear(2, 3)
+        out = linear(input)
+        out.backward()
+        print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+        linear.weight.clear_gradient()
+        print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+)DOC");
+
 static PyObject* tensor_clear_gradient(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
@@ -647,7 +717,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
-                       "Detected NULL grad"
+                       "Detected nullptr grad"
                        "Please check if you have manually cleared"
                        "the grad inside autograd_meta"));
   } else {
@@ -704,7 +774,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
-                       "Detected NULL grad"
+                       "Detected nullptr grad"
                        "Please check if you have manually cleared"
                        "the grad inside autograd_meta"));
     if (grad->initialized()) {
@@ -821,6 +891,46 @@ static PyObject* tensor__is_shared_underline_tensor_with(TensorObject* self,
   return ToPyObject(res);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_detach__doc__, R"DOC(detach($self, /)
+--
+
+Returns a new Tensor, detached from the current graph.
+It will share data with origin Tensor and always doesn't have a Tensor copy.
+In addition, the detached Tensor doesn't provide gradient propagation.
+
+Returns:
+    Tensor, The detached Tensor.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1.0], stop_gradient=False)
+      detach_x = x.detach()
+      detach_x[0] = 10.0
+      print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False,
+                  #        [10.])
+      y = x**2
+      y.backward()
+      print(x.grad)         # [20.0]
+      print(detach_x.grad)  # None, 'stop_gradient=True' by default
+
+      detach_x.stop_gradient = False # Set stop_gradient to be False, supported auto-grad
+      z = detach_x**3
+      z.backward()
+
+      print(x.grad)         # [20.0], detach_x is detached from x's graph, not affect each other
+      print(detach_x.grad)  # [300.0], detach_x has its own graph
+
+      # Due to sharing of data with origin Tensor, There are some unsafe operations:
+      # y = 2 * x
+      # detach_x[:] = 5.0
+      # y.backward()
+      # It will raise Error:
+      #   one of the variables needed for gradient computation has been modified by an inplace operation.
+)DOC");
 
 static PyObject* tensor_method_detach(TensorObject* self,
                                       PyObject* args,
@@ -1011,6 +1121,9 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       eager_gil_scoped_release guard;
       out = strided_slice_ad_func(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
+      if (!decrease_axis_tmp.empty()) {
+        out = squeeze_ad_func(out, decrease_axis_tmp);
+      }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Slice is only support slice and strided_slice, but we got %s which "
@@ -1458,7 +1571,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
 
     if (autograd_meta && !autograd_meta->StopGradient()) {
       if (!autograd_meta->GetMutableGradNode()) {
-        VLOG(6) << "Detected NULL grad_node, Leaf tensor should have had "
+        VLOG(6) << "Detected nullptr grad_node, Leaf tensor should have had "
                    "grad_node with type: GradNodeAccumulation.";
         autograd_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
@@ -1510,6 +1623,30 @@ static PyObject* tensor_remove_grad_hook(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method__register_reduce_hook__doc__,
+             R"DOC(_register_backward_hook($self, hook, /)
+--
+
+Registers a backward hook for current Tensor.
+
+This hook will be called every time the gradient of current Tensor has been fully calculated.
+
+There are two differences with `_register_grad_hook`:
+1. This backward hook will be executed after the gradient accumulation completed across batches,
+  but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
+  completed in current batch.
+2. This backward hook function should have the following signature:
+
+    hook() -> None
+
+  It requires no input and no return value.
+
+Args:
+    hook(function): A backward hook to be registered for Tensor.gradient
+
+Returns:
+    None
+)DOC");
 static PyObject* tensor_register_reduce_hook(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
@@ -1530,7 +1667,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
           "gradient."));
   PADDLE_ENFORCE(
       grad_node.get() != nullptr,
-      paddle::platform::errors::Fatal("Detected NULL grad_node,"
+      paddle::platform::errors::Fatal("Detected nullptr grad_node,"
                                       "Leaf tensor should have had grad_node "
                                       "with type: GradNodeAccumulation."));
   PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
@@ -1875,6 +2012,35 @@ static PyObject* tensor__inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_element_size__doc__, R"DOC(element_size($self, /)
+--
+
+Returns the size in bytes of an element in the Tensor.
+
+Returns:
+    int, The size in bytes of an element in the Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1, dtype='bool')
+        x.element_size() # 1
+
+        x = paddle.to_tensor(1, dtype='float16')
+        x.element_size() # 2
+
+        x = paddle.to_tensor(1, dtype='float32')
+        x.element_size() # 4
+
+        x = paddle.to_tensor(1, dtype='float64')
+        x.element_size() # 8
+
+        x = paddle.to_tensor(1, dtype='complex128')
+        x.element_size() # 16
+)DOC");
+
 static PyObject* tensor_method_element_size(TensorObject* self,
                                             PyObject* args,
                                             PyObject* kwargs) {
@@ -1885,6 +2051,15 @@ static PyObject* tensor_method_element_size(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method__bump_inplace_version__doc__,
+             R"DOC(_bump_inplace_version($self, /)
+--
+
+**Notes**:
+    **This API is ONLY available in Dygraph mode.**
+    **This is a very low level API. Users should not use it directly. **
+  Bump the version whenever the Tensor is modified through an inplace operation.
+)DOC");
 static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* args,
                                               PyObject* kwargs) {
@@ -1997,11 +2172,12 @@ static PyObject* tensor__grad_name(TensorObject* self,
                                    PyObject* kwargs) {
   EAGER_TRY
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-  PADDLE_ENFORCE_EQ(grad != nullptr,
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Detected NULL grad. Please check if you have manually "
-                        "cleared the grad inside autograd_meta"));
+  PADDLE_ENFORCE_EQ(
+      grad != nullptr,
+      true,
+      platform::errors::InvalidArgument(
+          "Detected nullptr grad. Please check if you have manually "
+          "cleared the grad inside autograd_meta"));
   return ToPyObject(grad->name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -2011,11 +2187,12 @@ static PyObject* tensor__grad_value(TensorObject* self,
                                     PyObject* kwargs) {
   EAGER_TRY
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-  PADDLE_ENFORCE_EQ(grad != nullptr,
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Detected NULL grad. Please check if you have manually "
-                        "cleared the grad inside autograd_meta"));
+  PADDLE_ENFORCE_EQ(
+      grad != nullptr,
+      true,
+      platform::errors::InvalidArgument(
+          "Detected nullptr grad. Please check if you have manually "
+          "cleared the grad inside autograd_meta"));
 
   if (!grad->defined()) {
     RETURN_PY_NONE
@@ -2036,11 +2213,12 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
                                           PyObject* kwargs) {
   EAGER_TRY
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-  PADDLE_ENFORCE_EQ(grad != nullptr,
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Detected NULL grad. Please check if you have manually "
-                        "cleared the grad inside autograd_meta"));
+  PADDLE_ENFORCE_EQ(
+      grad != nullptr,
+      true,
+      platform::errors::InvalidArgument(
+          "Detected nullptr grad. Please check if you have manually "
+          "cleared the grad inside autograd_meta"));
 
   bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
@@ -2179,276 +2357,276 @@ PyMethodDef variable_methods[] = {
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_numpy__doc__},
     {"_is_initialized",
      (PyCFunction)(void (*)())tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_is_dense_tensor_hold_allocation",
      (PyCFunction)(void (*)(
          void))tensor_method__is_dense_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_copy_to",
      (PyCFunction)(void (*)())tensor_method__copy_to,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"copy_",
      (PyCFunction)(void (*)())tensor_method_copy_,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"clone",
      (PyCFunction)(void (*)())tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_clone__doc__},
     {"reconstruct_from_",
      (PyCFunction)(void (*)())tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"retain_grads",
      (PyCFunction)(void (*)())tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"clear_gradient",
      (PyCFunction)(void (*)())tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_clear_gradient__doc__},
     {"is_dense",
      (PyCFunction)(void (*)())tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"is_dist",
      (PyCFunction)(void (*)())tensor_method_is_dist,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_zero_grads",
      (PyCFunction)(void (*)())tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_share_buffer_to",
      (PyCFunction)(void (*)())tensor__share_buffer_to,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_is_shared_buffer_with",
      (PyCFunction)(void (*)())tensor__is_shared_buffer_with,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_share_underline_tensor_to",
      (PyCFunction)(void (*)())tensor__share_underline_tensor_to,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_is_shared_underline_tensor_with",
      (PyCFunction)(void (*)())tensor__is_shared_underline_tensor_with,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"detach",
      (PyCFunction)(void (*)())tensor_method_detach,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_detach__doc__},
     {"detach_",
      (PyCFunction)(void (*)(void))tensor_method_detach_,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_tensor",
      (PyCFunction)(void (*)())tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_selected_rows",
      (PyCFunction)(void (*)())tensor_method_get_underline_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_get_tensor_from_selected_rows",
      (PyCFunction)(void (*)())tensor_method__get_tensor_from_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_getitem_index_not_tensor",
      (PyCFunction)(void (*)())tensor__getitem_index_not_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_getitem_from_offset",
      (PyCFunction)(void (*)())tensor__getitem_from_offset,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__setitem_eager_tensor__",
      (PyCFunction)(void (*)())tensor_method__setitem_eager_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_register_grad_hook",
      (PyCFunction)(void (*)())tensor_register_grad_hook,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_remove_grad_hook",
      (PyCFunction)(void (*)())tensor_remove_grad_hook,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_register_backward_hook",
      (PyCFunction)(void (*)())tensor_register_reduce_hook,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method__register_reduce_hook__doc__},
     {"_set_grad_type",
      (PyCFunction)(void (*)())tensor__set_grad_type,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_clear",
      (PyCFunction)(void (*)())tensor__clear,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_clear_dataptr",
      (PyCFunction)(void (*)())tensor__clear_dataptr,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_copy_gradient_from",
      (PyCFunction)(void (*)())tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_tensor_use_gpudnn",
      (PyCFunction)(void (*)())tensor__use_gpudnn,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     /** the methods to adapt old dygraph, will be removed in the future **/
     {"set_string_list",
      (PyCFunction)(void (*)())tensor_method_set_string_list,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"set_vocab",
      (PyCFunction)(void (*)())tensor_method_set_vocab,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_map_tensor",
      (PyCFunction)(void (*)())tensor_method_get_map_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     /***the method of sparse tensor****/
     {"nnz",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_nums,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"indices",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_indices,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"values",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_elements,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"crows",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_crows,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"cols",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_cols,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"is_sparse",
      (PyCFunction)(void (*)())tensor_method_is_sparse,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"is_sparse_coo",
      (PyCFunction)(void (*)())tensor_method_is_sparse_coo,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"is_sparse_csr",
      (PyCFunction)(void (*)())tensor_method_is_sparse_csr,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"is_same_shape",
      (PyCFunction)(void (*)())tensor_method_is_same_shape,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"to_sparse_csr",
      (PyCFunction)(void (*)())tensor_method_to_sparse_csr,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"element_size",
      (PyCFunction)(void (*)())tensor_method_element_size,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method_element_size__doc__},
     /***the method of sparse tensor****/
     {"_inplace_version",
      (PyCFunction)(void (*)())tensor__inplace_version,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_bump_inplace_version",
      (PyCFunction)(void (*)())tensor__bump_inplace_version,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     tensor_method__bump_inplace_version__doc__},
     {"is_selected_rows",
      (PyCFunction)(void (*)())tensor_method_is_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"rows",
      (PyCFunction)(void (*)())tensor_method_get_rows,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)())tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_share_memory",
      (PyCFunction)(void (*)())tensor_method__share_memory,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_offset",
      (PyCFunction)(void (*)())tensor__offset,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_grad_name",
      (PyCFunction)(void (*)())tensor__grad_name,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_grad_value",
      (PyCFunction)(void (*)())tensor__grad_value,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_unset_fake_empty",
      (PyCFunction)(void (*)())tensor__unset_fake_empty,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"data_ptr",
      (PyCFunction)(void (*)())tensor_data_ptr,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_grad_ivar",
      (PyCFunction)(void (*)())tensor__grad_ivar,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"contiguous",
      (PyCFunction)(void (*)(void))tensor_contiguous,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"is_contiguous",
      (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_strides",
      (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
 #endif
-    {NULL, NULL, 0, NULL}};
+    {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
 PyMethodDef string_tensor_variable_methods[] = {
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_is_initialized",
      (PyCFunction)(void (*)())tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_is_string_tensor_hold_allocation",
      (PyCFunction)(void (*)(
          void))tensor_method__is_string_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
-    {NULL, NULL, 0, NULL}};
+    {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
 }  // namespace paddle

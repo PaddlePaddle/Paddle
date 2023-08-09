@@ -98,8 +98,8 @@ const std::vector<int>& OpYamlInfoParser::NoNeedBufferIds() const {
 
 bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
   auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
-  for (size_t i = 0; i < inplace_info.size(); i++) {
-    if (out_name == inplace_info[i].first) {
+  for (const auto& info : inplace_info) {
+    if (out_name == info.first) {
       return true;
     }
   }
@@ -109,9 +109,31 @@ bool OpYamlInfoParser::HasInplace(const std::string& out_name) const {
 const std::string& OpYamlInfoParser::InplaceName(
     const std::string& out_name) const {
   auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
-  for (size_t i = 0; i < inplace_info.size(); i++) {
-    if (out_name == inplace_info[i].first) {
-      return inplace_info[i].second;
+  for (const auto& info : inplace_info) {
+    if (out_name == info.first) {
+      return info.second;
+    }
+  }
+  PADDLE_THROW(phi::errors::PreconditionNotMet(
+      "Can not find inplace input of [%s].", out_name));
+}
+
+bool OpYamlInfoParser::HasView(const std::string& out_name) const {
+  auto& view_info = std::get<3>(op_info_tuple_).view;
+  for (size_t i = 0; i < view_info.size(); i++) {
+    if (out_name == view_info[i].first) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const std::string& OpYamlInfoParser::ViewName(
+    const std::string& out_name) const {
+  auto& view_info = std::get<3>(op_info_tuple_).view;
+  for (size_t i = 0; i < view_info.size(); i++) {
+    if (out_name == view_info[i].first) {
+      return view_info[i].second;
     }
   }
   PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -134,9 +156,9 @@ void OpYamlInfoParser::parse() {
   }
 
   auto attribute_info = std::get<1>(op_info_tuple_);
-  for (size_t i = 0; i < attribute_info.size(); ++i) {
-    attribute_name_list_.push_back(attribute_info[i].name);
-    attr_info_[attribute_info[i].name] = attribute_info[i];
+  for (auto& info : attribute_info) {
+    attribute_name_list_.push_back(info.name);
+    attr_info_[info.name] = info;
   }
 
   auto output_info = std::get<2>(op_info_tuple_);

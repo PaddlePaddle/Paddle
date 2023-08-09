@@ -130,7 +130,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var") {
+    if (name == paddle::framework::kFakeVarName) {
       continue;
     }
     auto *var = scope->Var(name);
@@ -159,8 +159,8 @@ static void ShareTensorsFromScope(
     // because we can't find them in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     auto &name = tensors[i]->name();
-    if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
-        !global_block.HasVar(name)) {
+    if (name == paddle::framework::kEmptyVarName ||
+        name == paddle::framework::kFakeVarName || !global_block.HasVar(name)) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
@@ -197,7 +197,8 @@ static void ShareTensorsFromScopeWithPartialBlock(
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
-    if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
+    if (name == paddle::framework::kEmptyVarName ||
+        name == paddle::framework::kFakeVarName ||
         (!forward_global_block.HasVar(name) &&
          !backward_global_block.HasVar(name))) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
@@ -300,7 +301,7 @@ inline void RunProgramAPI(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
-  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -359,7 +360,8 @@ inline void RunProgramAPI(
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
+  if (!interpretercore_info_cache.Has(
+          program_id, global_inner_scope, /*is_grad=*/false)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -375,7 +377,7 @@ inline void RunProgramAPI(
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
       auto ir_program = paddle::framework::ConstructFowardIrProgram(
-          forward_global_block, backward_global_block, output_names, x);
+          forward_global_block, backward_global_block, output_names, x, params);
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
               std::move(ir_program),
@@ -417,7 +419,7 @@ inline void RunProgramAPI(
     }
 
     interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id, false, skip_eager_delete_vars);
+        program_id, global_inner_scope, false, skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
@@ -426,8 +428,8 @@ inline void RunProgramAPI(
         1);
     VLOG(2) << "Get interpretercore cahce by program:" << program_id;
     // Step 1. get cache interpretercore
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false);
+    auto &cached_value = interpretercore_info_cache.GetMutable(
+        program_id, global_inner_scope, /*is_grad=*/false);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScope(x, global_inner_scope);
@@ -480,8 +482,6 @@ inline void RunProgramAPI(
 }
 
 inline void RunProgramGradAPI(
-    const std::vector<paddle::Tensor> &x UNUSED,
-    const std::vector<paddle::Tensor> &params UNUSED,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
@@ -490,20 +490,19 @@ inline void RunProgramGradAPI(
 ) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
-
-  auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
-
   auto *out_scope_vec = &step_scope;
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
       1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
+  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+
+  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
 
   auto place = egr::Controller::Instance().GetExpectedPlace();
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
-  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto *forward_global_block = PADDLE_GET_CONST(
@@ -517,7 +516,8 @@ inline void RunProgramGradAPI(
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
+  if (!interpretercore_info_cache.Has(
+          program_id, global_inner_scope, /*is_grad=*/true)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -526,8 +526,12 @@ inline void RunProgramGradAPI(
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
     if (FLAGS_enable_new_ir_in_executor) {
-      auto res = paddle::framework::ConstructBackwardIrProgram(
-          backward_global_block, out_grad, x_grad, params_grad);
+      auto res =
+          paddle::framework::ConstructBackwardIrProgram(backward_global_block,
+                                                        out_grad,
+                                                        x_grad,
+                                                        params_grad,
+                                                        global_inner_scope);
 
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
@@ -549,9 +553,10 @@ inline void RunProgramGradAPI(
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly
     // after the related fwd_interpreter_core.
-    if (interpretercore_info_cache.Has(program_id, false)) {
+    if (interpretercore_info_cache.Has(program_id, global_inner_scope, false)) {
       auto fwd_interpreter_core =
-          interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false)
+          interpretercore_info_cache
+              .GetMutable(program_id, global_inner_scope, /*is_grad=*/false)
               .core_;
       interpreter_core->ShareWorkQueueFrom(fwd_interpreter_core);
       VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get() << " to "
@@ -575,7 +580,10 @@ inline void RunProgramGradAPI(
                                                        &skip_eager_delete_vars);
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
     interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id, /*is_grad=*/true, skip_eager_delete_vars);
+        program_id,
+        global_inner_scope,
+        /*is_grad=*/true,
+        skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
@@ -583,8 +591,8 @@ inline void RunProgramGradAPI(
         paddle::platform::TracerEventType::UserDefined,
         1);
     VLOG(2) << "Get interpretercore cahce by program:" << program_id;
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/true);
+    auto &cached_value = interpretercore_info_cache.GetMutable(
+        program_id, global_inner_scope, /*is_grad=*/true);
     interpreter_core = cached_value.core_;
 
     // update scope
@@ -694,20 +702,19 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     for (size_t i = 0; i < out_grad_names.size(); ++i) {
       hooked_grads[0][i].set_name(out_grad_names[i]);
     }
-    RunProgramGradAPI(x_,
-                      params_,
-                      hooked_grads[0],
-                      step_scope_,
-                      attrs_,
-                      x_grad_ptr,
-                      params_grad_ptr);
+    RunProgramGradAPI(
+        hooked_grads[0], step_scope_, attrs_, x_grad_ptr, params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 
     executed_ = true;
     return {x_grad, params_grad};
   }
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  void ClearTensorWrappers() override {
+    x_.clear();
+    params_.clear();
+    SetIsTensorWrappersCleared(true);
+  }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {

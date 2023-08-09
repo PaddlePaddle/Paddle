@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
-
 #include <Python.h>
+#include "paddle/ir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -49,7 +49,9 @@ extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
+extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
@@ -643,6 +645,24 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
   return dtype;
 }
 
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos) {
+  paddle::DataType dtype;
+  if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
+    dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s: argument (position %d) must be "
+        "one of core.VarDesc.VarType, "
+        "but got %s",
+        op_type,
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return dtype;
+}
+
 paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
     paddle::framework::Vocab vocab;
@@ -854,6 +874,12 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
 
 PyObject* ToPyObject(const phi::DenseTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const ir::OpResult& value) {
+  auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
 }
@@ -1425,6 +1451,21 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
         op_type,
         arg_pos + 1,
         type_name));  // NOLINT
+  }
+}
+
+ir::OpResult CastPyArg2OpResult(const std::string& op_type,
+                                PyObject* obj,
+                                size_t arg_pos) {
+  if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return ::pybind11::handle(obj).cast<ir::OpResult>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "OpResult, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 }
 

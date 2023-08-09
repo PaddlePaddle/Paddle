@@ -303,6 +303,90 @@ class InputField:
             )
 
 
+class TransedWMT16TrainDataSet(paddle.io.Dataset):
+    def __init__(self, data_reader, length):
+        self.src_word = []
+        self.src_pos = []
+        self.src_slf_attn_bias = []
+        self.trg_word = []
+        self.trg_pos = []
+        self.trg_slf_attn_bias = []
+        self.trg_src_attn_bias = []
+        self.lbl_word = []
+        self.lbl_weight = []
+
+        self.reader = data_reader()
+        self._generate(length)
+
+    def _generate(self, length):
+        for i, data in enumerate(self.reader):
+            if i >= length:
+                break
+            self.src_word.append(data[0])
+            self.src_pos.append(data[1])
+            self.src_slf_attn_bias.append(data[2])
+            self.trg_word.append(data[3])
+            self.trg_pos.append(data[4])
+            self.trg_slf_attn_bias.append(data[5])
+            self.trg_src_attn_bias.append(data[6])
+            self.lbl_word.append(data[7])
+            self.lbl_weight.append(data[8])
+
+    def __getitem__(self, idx):
+        return (
+            self.src_word[idx],
+            self.src_pos[idx],
+            self.src_slf_attn_bias[idx],
+            self.trg_word[idx],
+            self.trg_pos[idx],
+            self.trg_slf_attn_bias[idx],
+            self.trg_src_attn_bias[idx],
+            self.lbl_word[idx],
+            self.lbl_weight[idx],
+        )
+
+    def __len__(self):
+        return len(self.src_word)
+
+
+class TransedWMT16TestDataSet(paddle.io.Dataset):
+    def __init__(self, data_reader, length):
+        self.src_word = []
+        self.src_pos = []
+        self.src_slf_attn_bias = []
+        self.trg_word = []
+        self.trg_pos = []
+        self.trg_slf_attn_bias = []
+        self.trg_src_attn_bias = []
+        self.lbl_word = []
+        self.lbl_weight = []
+
+        self.reader = data_reader()
+        self._generate(length)
+
+    def _generate(self, length):
+        for i, data in enumerate(self.reader):
+            if i >= length:
+                break
+            self.src_word.append(data[0])
+            self.src_pos.append(data[1])
+            self.src_slf_attn_bias.append(data[2])
+            self.trg_word.append(data[3])
+            self.trg_slf_attn_bias.append(data[4])
+
+    def __getitem__(self, idx):
+        return (
+            self.src_word[idx],
+            self.src_pos[idx],
+            self.src_slf_attn_bias[idx],
+            self.trg_word[idx],
+            self.trg_slf_attn_bias[idx],
+        )
+
+    def __len__(self):
+        return len(self.src_word)
+
+
 def load(program, model_path, executor=None, var_list=None):
     """
     To load python2 saved models in python3.

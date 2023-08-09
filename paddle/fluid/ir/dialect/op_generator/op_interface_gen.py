@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # generator interfaces
+from vjp_interface_gen_op_list import vjp_interface_gen_op_list
 
 OP_INFER_SHAPE_TEMPLATE = """
 void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
@@ -38,4 +39,6 @@ def gen_exclusive_interface_str(op_info):
         exclusive_interface_str += (
             "  static void InferMeta( phi::InferMetaContext *infer_meta );"
         )
+    if op_info.op_phi_name[0] in vjp_interface_gen_op_list:
+        exclusive_interface_str += "\n  static std::vector<std::vector<ir::OpResult>> Vjp(ir::Operation* op, const std::vector<std::vector<ir::OpResult>>& out_grads, const std::vector<std::vector<int>>& stop_gradients);"
     return exclusive_interface_str

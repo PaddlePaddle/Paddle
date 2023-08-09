@@ -36,7 +36,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             name='x1', shape=[-1, 1], dtype='int64', lod_level=1
         )
 
-        emb = fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=x1,
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
@@ -47,7 +47,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         )
 
         pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=emb, pool_type="sum"
+            input=emb.squeeze(-2), pool_type="sum"
         )
         z = paddle.concat([x, pool], axis=1)
 

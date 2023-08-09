@@ -10,5 +10,6 @@ add_subdirectory(prim)
 add_subdirectory(jit)
 add_subdirectory(ir)
 add_subdirectory(ir_adaptor)
+add_subdirectory(primitive)
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)

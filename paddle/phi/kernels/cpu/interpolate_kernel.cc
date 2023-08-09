@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -24,8 +25,8 @@ namespace phi {
 
 template <typename T>
 static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
-  T coeffs[4];
-  funcs::get_cubic_upsample_coefficients<T>(coeffs, t);
+  std::array<T, 4> coeffs;
+  funcs::get_cubic_upsample_coefficients<T>(coeffs.data(), t);
 
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
@@ -274,7 +275,7 @@ static void BicubicInterpolation(const DenseTensor& input,
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
-          MT coefficients[4];
+          std::array<MT, 4> coefficients;
           // interp 4 times in x direction
           for (int ii = 0; ii < 4; ii++) {
             int access_y = std::max(std::min(input_y - 1 + ii, in_h - 1),

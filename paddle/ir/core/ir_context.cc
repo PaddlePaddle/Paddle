@@ -29,7 +29,7 @@ namespace ir {
 // AbstractType, TypeStorage, AbstractAttribute, AttributeStorage, Dialect.
 class IrContextImpl {
  public:
-  IrContextImpl() {}
+  IrContextImpl() = default;
 
   ~IrContextImpl() {
     std::lock_guard<ir::SpinLock> guard(destructor_lock_);

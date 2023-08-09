@@ -19,6 +19,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -133,11 +134,7 @@ class BottleneckBlock(paddle.nn.Layer):
             short = self.short(inputs)
 
         y = paddle.add(x=short, y=conv2)
-
-        layer_helper = fluid.layer_helper.LayerHelper(
-            self.full_name(), act='relu'
-        )
-        return layer_helper.append_activation(y)
+        return paddle.nn.functional.relu(y)
 
 
 class ResNet(paddle.nn.Layer):
@@ -220,6 +217,27 @@ def reader_decorator(reader):
     return __reader__
 
 
+class TransedFlowerDataSet(paddle.io.Dataset):
+    def __init__(self, flower_data, length):
+        self.img = []
+        self.label = []
+        self.flower_data = flower_data()
+        self._generate(length)
+
+    def _generate(self, length):
+        for i, data in enumerate(self.flower_data):
+            if i >= length:
+                break
+            self.img.append(data[0])
+            self.label.append(data[1])
+
+    def __getitem__(self, idx):
+        return self.img[idx], self.label[idx]
+
+    def __len__(self):
+        return len(self.img)
+
+
 class ResNetHelper:
     def __init__(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -243,15 +261,13 @@ class ResNetHelper:
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
 
-            train_reader = paddle.batch(
+            dataset = TransedFlowerDataSet(
                 reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
-                batch_size=batch_size,
-                drop_last=True,
+                batch_size * (10 + 1),
             )
-            data_loader = fluid.io.DataLoader.from_generator(
-                capacity=5, iterable=True
+            data_loader = paddle.io.DataLoader(
+                dataset, batch_size=batch_size, drop_last=True
             )
-            data_loader.set_sample_list_generator(train_reader)
 
             resnet = ResNet()
             if to_static:
@@ -315,8 +331,6 @@ class ResNetHelper:
                                 resnet.state_dict(),
                                 self.dy_state_dict_save_path + '.pdparams',
                             )
-                        # avoid dataloader throw abort signaal
-                        data_loader._reset()
                         break
 
         return total_loss.numpy()
@@ -410,6 +424,19 @@ class TestResnet(unittest.TestCase):
             rtol=1e-05,
             err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
                 predictor_pre, st_pre
+            ),
+        )
+
+    @test_with_new_ir
+    def test_resnet_new_ir(self):
+        static_loss = self.train(to_static=True)
+        dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
             ),
         )
 
