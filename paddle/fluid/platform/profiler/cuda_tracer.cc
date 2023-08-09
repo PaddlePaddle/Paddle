@@ -47,7 +47,7 @@ std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
 }
 }  // namespace details
 
-CudaTracer::CudaTracer() {}
+CudaTracer::CudaTracer() = default;
 
 void CudaTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(

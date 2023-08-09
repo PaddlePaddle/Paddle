@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 from paddle.jit.dy2static.program_translator import StaticFunction
@@ -88,6 +89,7 @@ class TestRollBackNet(unittest.TestCase):
     def setUp(self):
         paddle.set_device("cpu")
 
+    @ast_only_test
     def test_net(self):
         net = paddle.jit.to_static(Net())
         x = paddle.randn([3, 4])
@@ -119,6 +121,27 @@ class TestRollBackNet(unittest.TestCase):
         np.testing.assert_array_equal(
             st_infer_out.numpy(), dy_infer_out.numpy()
         )
+
+
+class FuncRollback(paddle.nn.Layer):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        return x + 1
+
+    @paddle.jit.to_static
+    def func(self, x):
+        return x + 2
+
+
+class TestRollBackNotForward(unittest.TestCase):
+    def test_rollback(self):
+        x = paddle.zeros([2, 2])
+        net = FuncRollback()
+        out = net.func(x)
+        net.func.rollback()
+        self.assertTrue(not isinstance(net.func, StaticFunction))
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from test_fetch_feed import Linear
 
 import paddle
@@ -112,6 +113,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
         )
 
+    @ast_only_test
     def test_save_load_prim(self):
         with fluid.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -152,6 +154,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             self.assertIn("pool2d", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
+    @ast_only_test
     def test_save_load_prim_with_hook(self):
         with fluid.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")

@@ -19,6 +19,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -730,6 +731,13 @@ class TestMobileNet(unittest.TestCase):
                 predictor_pre, st_pre
             ),
         )
+
+    @test_with_new_ir
+    def test_mobile_net_new_ir(self):
+        # MobileNet-V1
+        self.assert_same_loss("MobileNetV1")
+        # MobileNet-V2
+        self.assert_same_loss("MobileNetV2")
 
     def test_mobile_net(self):
         # MobileNet-V1

@@ -13,7 +13,6 @@
 # limitations under the License.
 import abc
 
-import paddle
 from paddle import fluid
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.executor import Executor
@@ -290,10 +289,8 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, optimizer, strategy=None):
-        if (
-            not isinstance(optimizer, SGD.__bases__)
-            and not isinstance(optimizer, paddle.optimizer.Optimizer)
-            and not isinstance(optimizer, OptimizerWithMixedPrecision)
+        if not isinstance(optimizer, SGD.__bases__) and not isinstance(
+            optimizer, OptimizerWithMixedPrecision
         ):
             raise TypeError("optimizer must be an instance of Optimizer")
 

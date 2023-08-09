@@ -77,6 +77,11 @@ void ProgramTranslator::Translate() {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     SetStopGradientAttributeForAllValue(block);
   }
+
+  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
+    const BlockDesc& block = legacy_program_->Block(block_idx);
+    SetIsPersisableAttributeForAllValue(block);
+  }
 }
 
 inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
@@ -265,6 +270,45 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
         ir::BoolAttribute::get(ctx_, var->StopGradient());
     defining_op->set_attribute(kAttrStopGradients,
                                ir::ArrayAttribute::get(ctx_, stop_gradients));
+  }
+}
+
+void ProgramTranslator::SetIsPersisableAttributeForAllValue(
+    const BlockDesc& block) {
+  // Currently we set is persisable for operation that generated a value
+  // connected with VarDesc
+  for (const auto& [var_name, value_info] : param_map_) {
+    if (no_cast_var_names.count(var_name) != 0) continue;
+    VLOG(10) << "[op translated][is persisable]" << var_name;
+    VarDesc* var = block.FindVarRecursive(var_name);
+    if (var == nullptr) {
+      continue;
+    }
+    ir::OpResult value = value_info.value;
+    if (!value) {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "Value of [%s] can not ber None", var_name));
+    }
+    auto* defining_op = value.owner();
+    PADDLE_ENFORCE_NOT_NULL(
+        defining_op,
+        phi::errors::PreconditionNotMet(
+            "Defining operator of [%s] can not be nullptr", var_name));
+    VLOG(8) << "[op translated][is persisable]" << var_name
+            << " from: " << defining_op->name();
+    std::vector<ir::Attribute> is_persisable;
+    if (defining_op->HasAttribute(kAttrIsPersisable)) {
+      is_persisable = defining_op->attribute(kAttrIsPersisable)
+                          .dyn_cast<ir::ArrayAttribute>()
+                          .AsVector();
+    } else {
+      is_persisable = std::vector<ir::Attribute>(
+          defining_op->num_results(), ir::BoolAttribute::get(ctx_, false));
+    }
+    is_persisable[value.GetResultIndex()] =
+        ir::BoolAttribute::get(ctx_, var->Persistable());
+    defining_op->set_attribute(kAttrIsPersisable,
+                               ir::ArrayAttribute::get(ctx_, is_persisable));
   }
 }
 
