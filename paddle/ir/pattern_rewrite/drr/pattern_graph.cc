@@ -28,9 +28,9 @@ PatternGraph::AddOpCall(const std::shared_ptr<drr::OpCall> &op_call) {
   for (const auto &input : op_call->inputs()) {
     const auto &tensor_id = input->id();
     CHECK(id2owned_tensor_.count(tensor_id));
-    id2owned_tensor_.at(tensor_id)->AddConsumer(op_call).get();
+    id2owned_tensor_.at(tensor_id)->AddConsumer(op_call.get());
 
-    if (input->producer().use_count() == 0) {
+    if (input->producer() == nullptr) {
       input_tensors_.insert(tensor_id);
     }
     if (output_tensors_.find(tensor_id) != output_tensors_.end()) {
@@ -40,7 +40,7 @@ PatternGraph::AddOpCall(const std::shared_ptr<drr::OpCall> &op_call) {
   for (auto &output : op_call->outputs()) {
     const auto &out_tensor_id = output->id();
     CHECK(id2owned_tensor_.count(out_tensor_id));
-    id2owned_tensor_[output->id()]->set_producer(op_call);
+    id2owned_tensor_[output->id()]->set_producer(op_call.get());
   }
   return *owned_op_call_.back();
 }
@@ -105,13 +105,13 @@ void PatternGraph::Print() const {
     std::cout << "  " << op_call->name() << " : ";
     std::cout << "inputs[ ";
     for (const auto &input : op_call->inputs()) {
-      std::cout << input.lock()->id() << " ";
+      std::cout << input->id() << " ";
     }
     std::cout << "], ";
 
     std::cout << "outputs[ ";
     for (const auto &output : op_call->outputs()) {
-      std::cout << output.lock()->id() << " ";
+      std::cout << output->id() << " ";
     }
     std::cout << "]" << std::endl;
   }
@@ -119,7 +119,7 @@ void PatternGraph::Print() const {
 }
 
 const OpCall *SourcePatternGraph::AnchorNode() const {
-  return id2owned_tensor_.at(*output_tensors_.begin())->producer().get();
+  return id2owned_tensor_.at(*output_tensors_.begin())->producer();
 }
 
 } // namespace drr
