@@ -71,6 +71,32 @@ void DoTransFilterPass::ApplyImpl(ir::Graph* graph) const {
   Init(name_scope_, graph);
   conv2d_dilation_trans(graph);
 }
+template <class T>
+static void conv2d_dilation_trans_fn(const T* weights_data,
+                                     T* new_weights_data,
+                                     int kn,
+                                     int kc,
+                                     int kh,
+                                     int kw,
+                                     int new_kh,
+                                     int new_kw,
+                                     int dilation_h,
+                                     int dilation_w) {
+  for (int n = 0; n < kn; n++) {
+    for (int c = 0; c < kc; c++) {
+      for (int h = 0; h < kh; h++) {
+        auto h_offset = dilation_h * h;
+        for (int w = 0; w < kw; w++) {
+          auto w_offset = dilation_w * w;
+          auto new_offset = n * kc * new_kh * new_kw + c * new_kh * new_kw +
+                            h_offset * new_kw + w_offset;
+          auto old_offset = n * kc * kh * kw + c * kh * kw + h * kw + w;
+          new_weights_data[new_offset] = weights_data[old_offset];
+        }
+      }
+    }
+  }
+}
 
 void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
   GraphPatternDetector gpd;
@@ -88,13 +114,12 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
         conv2d->Op()->GetAttrIfExists<std::vector<int>>("dilations");
     auto* weights =
         scope->FindVar(weights_name)->GetMutable<phi::DenseTensor>();
-    if (weights->dtype() != phi::DataType::FLOAT32) {
-      VLOG(3) << "Transfilter only support float32 dtype of weights -- do "
-                 "nothing and break.";
-      return;  // Only support fp32 dtype
-    }
+    // if (weights->dtype() != phi::DataType::FLOAT32) {
+    //   VLOG(3) << "Transfilter only support float32 dtype of weights -- do "
+    //              "nothing and break.";
+    //   return;  // Only support fp32 dtype
+    // }
     auto weights_shape = weights->dims();
-    auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
     int kh = weights_shape[2];
     int kw = weights_shape[3];
     int new_kh = dilations[0] * (kh - 1) + 1;
@@ -104,24 +129,44 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
     auto* new_weights =
         scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>();
     new_weights->Resize({weights_shape[0], weights_shape[1], new_kh, new_kw});
-    auto* new_weights_data =
-        new_weights->mutable_data<float>(platform::CPUPlace());
-    memset(new_weights_data, 0, new_weights->numel() * sizeof(float));
-    for (int n = 0; n < weights_shape[0]; n++) {
-      for (int c = 0; c < weights_shape[1]; c++) {
-        for (int h = 0; h < kh; h++) {
-          auto h_offset = dilations[0] * h;
-          for (int w = 0; w < kw; w++) {
-            auto w_offset = dilations[1] * w;
-            auto new_offset = n * weights_shape[1] * new_kh * new_kw +
-                              c * new_kh * new_kw + h_offset * new_kw +
-                              w_offset;
-            auto old_offset =
-                n * weights_shape[1] * kh * kw + c * kh * kw + h * kw + w;
-            new_weights_data[new_offset] = weights_data[old_offset];
-          }
-        }
-      }
+    if (weights->dtype() == phi::DataType::FLOAT32) {
+      auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
+      auto* new_weights_data =
+          new_weights->mutable_data<float>(platform::CPUPlace());
+      memset(new_weights_data, 0, new_weights->numel() * sizeof(float));
+      conv2d_dilation_trans_fn<float>(weights_data,
+                                      new_weights_data,
+                                      weights_shape[0],
+                                      weights_shape[1],
+                                      kh,
+                                      kw,
+                                      new_kh,
+                                      new_kw,
+                                      dilations[0],
+                                      dilations[1]);
+    } else if (weights->dtype() == phi::DataType::FLOAT16) {
+      auto weights_data =
+          weights->mutable_data<phi::dtype::float16>(platform::CPUPlace());
+      auto* new_weights_data =
+          new_weights->mutable_data<phi::dtype::float16>(platform::CPUPlace());
+      memset(new_weights_data,
+             0,
+             new_weights->numel() * sizeof(phi::dtype::float16));
+      conv2d_dilation_trans_fn<phi::dtype::float16>(weights_data,
+                                                    new_weights_data,
+                                                    weights_shape[0],
+                                                    weights_shape[1],
+                                                    kh,
+                                                    kw,
+                                                    new_kh,
+                                                    new_kw,
+                                                    dilations[0],
+                                                    dilations[1]);
+    } else {
+      VLOG(3)
+          << "Transfilter only support float32/float16 dtype of weights -- do "
+             "nothing and break.";
+      return;  // Only support fp32/fp16 dtype
     }
 
     VarDesc new_weights_desc(new_weights_name);
