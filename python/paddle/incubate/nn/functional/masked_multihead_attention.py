@@ -35,7 +35,7 @@ def masked_multihead_attention(
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
 ):
-    """
+    r"""
     Masked Multi-head attention for text summarization.
     This is a fusion operator to compute masked multihead attention in transformer model architecture.
     This operator only supports running on GPU.
