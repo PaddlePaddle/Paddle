@@ -27,7 +27,6 @@ from paddle.fluid.framework import (
     default_startup_program,
     in_dygraph_mode,
 )
-from paddle.fluid.optimizer import Optimizer
 
 __all__ = []
 
@@ -99,7 +98,6 @@ class PipelineOptimizer:
         if in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         valid_optimizers = (
-            Optimizer,
             paddle.optimizer.Optimizer,
             paddle.static.amp.decorator.OptimizerWithMixedPrecision,
         )

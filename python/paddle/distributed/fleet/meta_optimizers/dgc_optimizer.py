@@ -21,10 +21,9 @@ __all__ = []
 import paddle
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.optimizer import Optimizer
 from paddle.framework import core, in_dynamic_mode
 from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
-from paddle.optimizer import Momentum
+from paddle.optimizer import Momentum, Optimizer
 from paddle.regularizer import L1Decay, L2Decay
 from paddle.static import create_global_var
 
@@ -58,8 +57,8 @@ class DGCMomentumOptimizer(Optimizer):
         assert momentum is not None
         super().__init__(
             learning_rate=learning_rate,
-            parameter_list=parameter_list,
-            regularization=regularization,
+            parameters=parameter_list,
+            weight_decay=regularization,
             grad_clip=grad_clip,
             name=name,
         )
