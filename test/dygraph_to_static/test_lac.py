@@ -603,8 +603,12 @@ class TestLACModel(unittest.TestCase):
                 paddle.jit.save(
                     layer=model,
                     path=self.model_save_prefix,
-                    input_spec=[input_specs[0], input_specs[-1]],
+                    input_spec=input_specs,
                     output_spec=[crf_decode],
+                    input_names_after_prune=[
+                        input_specs[0].name,
+                        input_specs[-1].name,
+                    ],
                 )
             else:
                 paddle.save(

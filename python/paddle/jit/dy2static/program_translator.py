@@ -938,7 +938,21 @@ class ASTStaticFunction(StaticFunction):
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         # NOTE(jiabin): is_prim_infer indicates this method called by paddle.jit.save and it is worked in prim mode
 
-        if cached_program_len == 0:
+        if is_prim_infer and cached_program_len != 0:
+            # if is_prim_infer, we want to save the origin program, not the prim one
+            # If more than one programs have been cached, return the recent converted program by default.
+            if cached_program_len > 1:
+                logging_utils.warn(
+                    "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
+                        self._function_spec, cached_program_len
+                    )
+                )
+            cache_key = self._program_cache._recent_cache_key
+            concrete_program, _ = self.get_concrete_program_with_cache_key(
+                cache_key
+            )
+            return concrete_program
+        else:
             desired_input_spec = input_spec
             if self._function_spec.input_spec is not None:
                 if input_spec is not None and not input_specs_compatible(
@@ -974,36 +988,6 @@ class ASTStaticFunction(StaticFunction):
                         self._function_spec
                     )
                 )
-        elif with_hook:
-            cache_key = self._program_cache._recent_cache_key
-            cache_key.kwargs["with_hook"] = True
-            if not is_prim_infer:
-                concrete_program, _ = self._program_cache[cache_key]
-                return concrete_program
-            else:
-                concrete_program, _ = self.get_concrete_program_with_cache_key(
-                    cache_key
-                )
-                return concrete_program
-        # If more than one programs have been cached, return the recent converted program by default.
-        elif cached_program_len > 1:
-            logging_utils.warn(
-                "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
-                    self._function_spec, cached_program_len
-                )
-            )
-        if not is_prim_infer:
-            cache_key, (
-                concrete_program,
-                partial_layer,
-            ) = self._program_cache.last()
-            return concrete_program
-        else:
-            cache_key = self._program_cache._recent_cache_key
-            concrete_program, _ = self.get_concrete_program_with_cache_key(
-                cache_key
-            )
-            return concrete_program
 
     @property
     def inputs(self):

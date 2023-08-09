@@ -207,7 +207,8 @@ class DlnneEngineOp : public framework::OperatorBase {
 
     std::vector<std::string> XsMap;
     num_inputs = Inputs("Xs").size();
-    std::string valid_input_name_str = Attr<std::string>("valid_input_names");
+    std::string valid_input_name_str =
+        Attr<std::string>("input_names_after_prune");
 
     for (const auto &x : Inputs("Xs")) {
       // input_names.push_back(x);

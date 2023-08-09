@@ -240,12 +240,25 @@ class TestMNISTWithToStatic(TestMNIST):
                         loss_data.append(float(avg_loss))
                         # new save load check
                         self.check_jit_save_load(
-                            mnist, [dy_x_data], [img], to_static, prediction
+                            mnist,
+                            [dy_x_data],
+                            [img, label],
+                            to_static,
+                            prediction,
+                            [img.name],
                         )
                         break
         return loss_data
 
-    def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
+    def check_jit_save_load(
+        self,
+        model,
+        inputs,
+        input_spec,
+        to_static,
+        gt_out,
+        input_names_after_prune,
+    ):
         if to_static:
             infer_model_path = os.path.join(
                 self.temp_dir.name, 'test_mnist_inference_model_by_jit_save'
@@ -259,6 +272,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 path=model_save_prefix,
                 input_spec=input_spec,
                 output_spec=[gt_out],
+                input_names_after_prune=input_names_after_prune,
             )
             # load in static graph mode
             static_infer_out = self.jit_load_and_run_inference_static(
