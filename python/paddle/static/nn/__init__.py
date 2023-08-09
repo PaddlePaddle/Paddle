@@ -58,6 +58,7 @@ from .sequence_lod import sequence_enumerate  # noqa: F401
 from .sequence_lod import sequence_reverse  # noqa: F401
 
 from .control_flow import cond
+from .static_pylayer import do_static_pylayer
 
 __all__ = [  # noqa
     'fc',
@@ -66,6 +67,7 @@ __all__ = [  # noqa
     'embedding',
     'case',
     'cond',
+    'do_static_pylayer',
     'conv2d',
     'conv2d_transpose',
     'conv3d',
