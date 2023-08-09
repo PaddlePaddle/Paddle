@@ -89,7 +89,7 @@ void GatherNdKernel(const Context &ctx,
   int ret = XPU_SUCCESS;
 #ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_type == DataType::INT32) {
-    ret = xpu::plugin::gather_nd<XPUType, int>(
+    ret = xpu::gather_nd<XPUType, int>(
         ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int>(),
