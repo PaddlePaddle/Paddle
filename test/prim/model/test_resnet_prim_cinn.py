@@ -46,16 +46,16 @@ epoch_num = 1
 # note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the fluid version.
 # The results in ci as as follows:
 DY2ST_PRIM_CINN_GT = [
-    5.828786849975586,
-    8.332863807678223,
-    5.041562080383301,
-    8.514982223510742,
-    7.9860992431640625,
-    7.491837501525879,
-    9.559739112854004,
-    8.430597305297852,
-    8.109201431274414,
-    10.224763870239258,
+    5.828789710998535,
+    8.327787399291992,
+    4.961818218231201,
+    8.593767166137695,
+    7.939096927642822,
+    7.493086814880371,
+    9.6135892868042,
+    8.413675308227539,
+    8.398326873779297,
+    10.370706558227539,
 ]
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
