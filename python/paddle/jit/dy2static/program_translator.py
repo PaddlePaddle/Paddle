@@ -27,6 +27,8 @@ from paddle.fluid.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
+from paddle.fluid.unique_name import UniqueNameGenerator
+from paddle.fluid.unique_name import guard as UniqueNameGuard
 from paddle.framework import in_dynamic_mode
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
@@ -1168,8 +1170,12 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
+        new_name_generator = UniqueNameGenerator()
+
         with framework.program_guard(main_program, startup_program):
-            with _switch_declarative_mode_guard_(is_declarative=True):
+            with _switch_declarative_mode_guard_(
+                is_declarative=True
+            ), UniqueNameGuard(new_name_generator):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
