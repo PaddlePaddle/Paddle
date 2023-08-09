@@ -53,7 +53,7 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
@@ -423,7 +423,7 @@ void RuntimeInferShapeContext::ShareAllLoD(const std::string& in,
     auto& in_tensor = in_var->Get<phi::DenseTensor>();
     auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_tensor->set_lod(in_tensor.lod());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
@@ -476,7 +476,7 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
 // Shall we have a better method to shared info between in/out phi::DenseTensor?
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Fix me: ugly workaround below
   // Correct solution:
   //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
@@ -1507,7 +1507,7 @@ bool OperatorWithKernel::SupportsKernelType(
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
@@ -1777,7 +1777,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       if (!this->DnnFallback() &&
           !paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
@@ -2097,14 +2097,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   auto expected_kernel_key =
       framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
 
-// NOTE(jiahongyu): PADDLE_WITH_MKLDNN codes are moved outside function
+// NOTE(jiahongyu): PADDLE_WITH_DNNL codes are moved outside function
 // GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
 // data_layout_ of expected_kernel_key need to be adjusted. There are three
 // statements in if condition:
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
@@ -2256,7 +2256,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
@@ -2501,7 +2501,7 @@ Scope* OperatorWithKernel::PrepareData(
       // not a thread safe. And for infershape scenario checks
       // to be omitted are not really needed
       if (should_skip_input == true) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
         // Var without buffer may be needed
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
@@ -2724,7 +2724,7 @@ Scope* OperatorWithKernel::PrepareData(
 #endif
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
     }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // For input that is Extra, only MKLDNN will use Extra Inputs
     auto& extra_input_names =
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
@@ -2985,7 +2985,7 @@ phi::KernelKey OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // When the op is first oneDNN op (there was some non oneDNN op
   // previously)
   // then we also need to rotate shape NHWC -> NCWH
@@ -3025,7 +3025,7 @@ static void SetDnnAttrIntoDeviceContext(
     const Attribute& attr,
     const std::string& attr_name,
     const operators::ExtraAttrPropertySet& attr_propertys) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::OneDNNContext::classof(dev_ctx) &&
       attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
     VLOG(4) << "Runtime attr `" << attr_name << "` is passed to OneDNNContext.";
@@ -3093,7 +3093,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   auto attr_defs = phi_kernel_->args_def().attribute_defs();
   auto output_defs = phi_kernel_->args_def().output_defs();
 
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
   if (phi::OneDNNContext::classof(dev_ctx)) {
     // Onednn holds this op's variable's name and init them here.
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
@@ -3497,7 +3497,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
 // Clear All old attrs before add new attrs,
 // because sometimes old attrs may be misused.
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
   if (phi::OneDNNContext::classof(dev_ctx)) {
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     one_dnn_ctx->ClearDnnAttr();
@@ -3520,7 +3520,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   #endif
   */
   // For compatible with Op with extra attrs for specific backend
-#if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
@@ -3547,7 +3547,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #endif
 
 // For compatible with Op with extra input for onednn backend
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::OneDNNContext::classof(dev_ctx)) {
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     auto& extra_input_names =

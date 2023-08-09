@@ -75,7 +75,7 @@
 #include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
 
@@ -997,7 +997,7 @@ bool AnalysisPredictor::LoadConverterConfig(
 #endif
 
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   std::vector<std::vector<int>> inputs_shape;
   for (const auto &input : inputs) {
     inputs_shape.emplace_back(input.shape);
@@ -1008,7 +1008,7 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 
 void AnalysisPredictor::MkldnnPreSet(
     const std::vector<paddle::Tensor> &inputs) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   std::vector<std::vector<int>> inputs_shape;
   for (const auto &input : inputs) {
     inputs_shape.emplace_back(phi::vectorize<int>(input.dims()));
@@ -1019,7 +1019,7 @@ void AnalysisPredictor::MkldnnPreSet(
 
 void AnalysisPredictor::MkldnnPreSet(
     const std::vector<std::vector<int>> &inputs_shape) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
           << phi::OneDNNContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
@@ -1044,7 +1044,7 @@ void AnalysisPredictor::MkldnnPreSet(
 }
 
 void AnalysisPredictor::MkldnnPostReset() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
       static_cast<phi::OneDNNContext *>(
@@ -1069,7 +1069,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "Predictor::predict";
@@ -1119,7 +1119,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
@@ -1135,7 +1135,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
                             std::vector<paddle::Tensor> *outputs) {
   inference::DisplayMemoryInfo(place_, "before run");
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "predict start";
@@ -1183,7 +1183,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
@@ -1476,7 +1476,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetUseCinnCompiler(config_.use_cinn_compiler_);
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.mkldnn_quantizer_enabled()) {
     LOG(INFO) << "Quantization is enabled";
     argument_->SetQuantizeEnabledOpTypes(
@@ -1796,7 +1796,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 }
 
 bool AnalysisPredictor::MkldnnQuantize() {
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   if (!mkldnn_quantizer_)
     mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
         *this, config_.mkldnn_quantizer_config());
@@ -2077,7 +2077,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) {
     std::vector<std::vector<int>> shape_vector;
     auto names = GetInputNames();
@@ -2145,7 +2145,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
   }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
@@ -2590,7 +2590,7 @@ AnalysisPredictor::~AnalysisPredictor() {
     scope_->DeleteScope(sub_scope_);
   }
 
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   if (mkldnn_quantizer_) {
     delete mkldnn_quantizer_;
     mkldnn_quantizer_ = nullptr;
