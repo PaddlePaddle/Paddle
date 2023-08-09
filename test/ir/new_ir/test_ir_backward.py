@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
+from paddle.autograd.backward import grad
 
 paddle.enable_static()
 
@@ -60,7 +61,7 @@ class TesBackward(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
-            input_grad = paddle.ir.grad(out, input, out2)
+            input_grad = grad(out, input, out2)
 
         print(newir_program)
         self.assertEqual(out.get_defining_op().name(), "pd.mean")
@@ -83,7 +84,7 @@ class TesBackward(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
-            input_grad = paddle.ir.grad(out, input)
+            input_grad = grad(out, input)
 
         print(newir_program)
         self.assertEqual(newir_program.block().ops[-3].name(), "pd.full")
@@ -98,7 +99,7 @@ class TesBackward(unittest.TestCase):
     #     paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
     #     with paddle.ir.core.program_guard(newir_program):
     #         out = paddle.mean(tanh_out)
-    #         input_grad = paddle.ir.grad(out, input)
+    #         input_grad = grad(out, input)
 
     #     print(newir_program)
     #     self.assertEqual(newir_program.block().ops[-1].name(), "pd.add_n")
