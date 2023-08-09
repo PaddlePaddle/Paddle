@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl_debug.h"  // NOLINT
 #endif
 
@@ -51,7 +51,7 @@ void TensorCopyImpl(const TENSOR& src,
   dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   dst->set_mem_desc(src.mem_desc());
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
@@ -70,7 +70,7 @@ void TensorCopyImpl(const TENSOR& src,
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   auto size = src.layout() == DataLayout::ONEDNN
                   ? src.memory_size()
                   : src.numel() * phi::SizeOf(src.dtype());
@@ -311,7 +311,7 @@ void TensorCopySync(const phi::DenseTensor& src,
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (src.layout() == DataLayout::ONEDNN) {
     dst->set_mem_desc(src.mem_desc());
   }
@@ -531,8 +531,8 @@ void TensorToStream(std::ostream& os,
 #endif
     } else if (platform::is_custom_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
-      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
       auto& custom_device_context =
           static_cast<const platform::CustomDeviceContext&>(dev_ctx);
       platform::CPUPlace cpu;
@@ -598,7 +598,7 @@ void TensorFromStream(std::istream& is,
     // proto buffer
     int32_t size;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
-    std::unique_ptr<char[]> buf(new char[size]);
+    std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
         desc.ParseFromArray(buf.get(), size),
@@ -671,7 +671,7 @@ void TensorFromStream(std::istream& is,
                       0,
                       platform::errors::InvalidArgument(
                           "phi::DenseTensor desc size should >= 0"));
-    std::unique_ptr<char[]> buf(new char[size]);
+    std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
         desc.ParseFromArray(buf.get(), size),

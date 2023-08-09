@@ -27,7 +27,7 @@ class Graph;
 class ParamsQuantizationMkldnnPass : public FusePassBase {
  public:
   ParamsQuantizationMkldnnPass();
-  virtual ~ParamsQuantizationMkldnnPass() {}
+  virtual ~ParamsQuantizationMkldnnPass() = default;
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

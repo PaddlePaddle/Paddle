@@ -245,12 +245,8 @@ void LoadModelPb(const std::string &model_dir,
   VLOG(3) << "param_file is: " << param_file;
   // Load model
   VLOG(4) << "Start load model program...";
-  std::string prog_path = model_dir + "/__model__";
-  std::string param_file_temp = param_file;
-  if (combined) {
-    // prog_path = model_file;
-    param_file_temp = model_dir + "/params";
-  }
+  std::string prog_path = model_dir + model_file;
+  std::string param_file_temp = model_dir + param_file;
   framework_proto::ProgramDesc pb_proto_prog =
       *LoadProgram(prog_path, model_from_memory);
   pb::ProgramDesc pb_prog(&pb_proto_prog);

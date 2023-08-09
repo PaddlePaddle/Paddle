@@ -111,7 +111,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::DefaultStreamGarbageCollector(place, 0));
+      gc = std::make_unique<framework::DefaultStreamGarbageCollector>(place, 0);
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -121,7 +121,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::CUDAPinnedGarbageCollector(place, 0));
+      gc = std::make_unique<framework::CUDAPinnedGarbageCollector>(place, 0);
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -132,7 +132,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new framework::XPUGarbageCollector(place, 0));
+      gc = std::make_unique<framework::XPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -140,11 +140,11 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new framework::CPUGarbageCollector(place, 0));
+      gc = std::make_unique<framework::CPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
     } else if (platform::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
-      gc.reset(new framework::IPUGarbageCollector(place, 0));
+      gc = std::make_unique<framework::IPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -154,11 +154,13 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (framework::IsFastEagerDeletionModeEnabled()) {
-        gc.reset(
-            new framework::CustomDeviceUnsafeFastGarbageCollector(place, 0));
+        gc =
+            std::make_unique<framework::CustomDeviceUnsafeFastGarbageCollector>(
+                place, 0);
         VLOG(10) << "Created UnsafeFastGarbageCollector at " << place;
       } else {
-        gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
+        gc = std::make_unique<framework::CustomDefaultStreamGarbageCollector>(
+            place, 0);
         VLOG(10) << "Created GarbageCollector at " << place;
       }
 #else

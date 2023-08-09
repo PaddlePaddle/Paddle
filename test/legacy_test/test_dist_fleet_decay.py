@@ -15,7 +15,6 @@
 import unittest
 
 import paddle
-from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -74,7 +73,7 @@ class TestNoamDecay(unittest.TestCase):
         scheduler = paddle.optimizer.lr.NoamDecay(
             d_model=0.01, warmup_steps=100, verbose=True
         )
-        optimizer = fluid.optimizer.Adam(scheduler)
+        optimizer = paddle.optimizer.Adam(scheduler)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
