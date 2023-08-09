@@ -2048,7 +2048,7 @@ void NewIRInterpreter::MultiThreadRunInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i).get());
