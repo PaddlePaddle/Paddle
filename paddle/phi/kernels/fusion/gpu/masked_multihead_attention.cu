@@ -29,12 +29,12 @@ void MMHAKernel(const Context& dev_ctx,
                 const paddle::optional<DenseTensor>& rotary_tensor,
                 const paddle::optional<DenseTensor>& beam_cache_offset,
                 const paddle::optional<DenseTensor>& qkv_out_scale,
-                const paddle::optional<DenseTensor>& out_linear_shift,
-                const paddle::optional<DenseTensor>& out_linear_smooth,
+                const paddle::optional<DenseTensor>& out_shift,
+                const paddle::optional<DenseTensor>& out_smooth,
                 int seq_len,
                 int rotary_emb_dims,
                 const bool use_neox_rotary_style,
-                const float out_linear_in_scale,
+                const float out_scale,
                 const int quant_round_type,
                 const float quant_max_bound,
                 const float quant_min_bound,
@@ -72,7 +72,7 @@ void MMHAKernel(const Context& dev_ctx,
     timestep = src_mask->dims()[3] - 1;
   }
 
-  if (out_linear_in_scale > 0) {
+  if (out_scale > 0) {
     dev_ctx.template Alloc<int8_t>(out);
   } else {
     dev_ctx.template Alloc<T>(out);
@@ -112,17 +112,17 @@ void MMHAKernel(const Context& dev_ctx,
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
 
-  if (out_linear_shift) {
+  if (out_shift) {
     DispatchFMHA<T>(dev_ctx,
                     x,
-                    *(out_linear_shift.get_ptr()),
-                    *(out_linear_smooth.get_ptr()),
+                    *(out_shift.get_ptr()),
+                    *(out_smooth.get_ptr()),
                     params,
                     num_head,
                     dim_head,
                     out,
                     qkv_out_scale.get_ptr(),
-                    out_linear_in_scale,
+                    out_scale,
                     quant_round_type,
                     quant_max_bound,
                     quant_min_bound);
@@ -134,7 +134,7 @@ void MMHAKernel(const Context& dev_ctx,
                     dim_head,
                     out,
                     qkv_out_scale.get_ptr(),
-                    out_linear_in_scale,
+                    out_scale,
                     quant_round_type,
                     quant_max_bound,
                     quant_min_bound);

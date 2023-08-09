@@ -16,9 +16,6 @@
 
 #pragma once
 
-#ifndef MMHA_UTIL_CU_H_
-#define MMHA_UTIL_CU_H_
-
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define ENABLE_BF16
 #include <cuda_bf16.h>
@@ -27,28 +24,9 @@
 #include <cuda_fp16.h>
 #include <float.h>
 #include <cub/cub.cuh>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
-#include "paddle/fluid/operators/fused/attn_gemm.h"
-#include "paddle/fluid/operators/fused/fmha_ref.h"
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
-#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
-
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/phi/common/datatype_traits.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 namespace fusion {
@@ -1706,6 +1684,5 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
 
 }  // namespace fusion
 }  // namespace phi
-#endif
 
 #endif  // PADDLE_WITH_HIP

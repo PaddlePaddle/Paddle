@@ -19,102 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
-
-
-def mmha_wrapper(
-    x,
-    cache_kv,
-    src_mask,
-    cum_offsets,
-    sequence_lengths,
-    rotary_tensor,
-    beam_cache_offset,
-    qkv_out_scale,
-    out_linear_shift,
-    out_linear_smooth,
-    seq_len,
-    rotary_emb_dims,
-    use_neox_rotary_style,
-    out_linear_in_scale,
-    quant_round_type,
-    quant_max_bound,
-    quant_min_bound,
-):
-    if in_dynamic_mode():
-        return paddle._C_ops.masked_multihead_attention_(
-            x,
-            cache_kv,
-            src_mask,
-            cum_offsets,
-            sequence_lengths,
-            rotary_tensor,
-            beam_cache_offset,
-            qkv_out_scale,
-            out_linear_shift,
-            out_linear_smooth,
-            seq_len,
-            rotary_emb_dims,
-            use_neox_rotary_style,
-            out_linear_in_scale,
-            quant_round_type,
-            quant_max_bound,
-            quant_min_bound,
-        )
-    helper = LayerHelper('masked_multihead_attention', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    inputs = {}
-    inputs['x'] = x
-    inputs['cache_kv'] = cache_kv
-    if src_mask:
-        inputs['src_mask'] = src_mask
-    if cum_offsets:
-        inputs['cum_offsets'] = cum_offsets
-    if sequence_lengths:
-        inputs['sequence_lengths'] = sequence_lengths
-    if rotary_tensor:
-        inputs['rotary_tensor'] = rotary_tensor
-    beam_cache_offset_flag = False
-    if beam_cache_offset:
-        inputs['beam_cache_offset'] = beam_cache_offset
-        beam_cache_offset_flag = True
-    else:
-        beam_cache_offset = helper.create_variable_for_type_inference(
-            dtype="int"
-        )
-    if qkv_out_scale:
-        inputs['qkv_out_scale'] = qkv_out_scale
-    if out_linear_shift:
-        inputs['out_linear_shift'] = out_linear_shift
-    if out_linear_smooth:
-        inputs['out_linear_smooth'] = out_linear_smooth
-
-    outputs = {
-        'out': out,
-        'cache_kv_out': cache_kv,
-        'beam_cache_offset_out': beam_cache_offset,
-    }
-    helper.append_op(
-        type='masked_multihead_attention',
-        inputs=inputs,
-        outputs=outputs,
-        attrs={
-            'seq_len': seq_len,
-            'rotary_emb_dims': rotary_emb_dims,
-            'use_neox_rotary_style': use_neox_rotary_style,
-            'out_linear_in_scale': out_linear_in_scale,
-            'quant_round_type': quant_round_type,
-            'quant_max_bound': quant_max_bound,
-            'quant_min_bound': quant_min_bound,
-        },
-    )
-    return (
-        (out, cache_kv, beam_cache_offset)
-        if beam_cache_offset_flag
-        else (out, cache_kv)
-    )
+from paddle.incubate.nn.functional import masked_multihead_attention
 
 
 @unittest.skipIf(
@@ -166,14 +71,14 @@ class TestMMHAOp(unittest.TestCase):
         self.qkv_out_scale = np.random.uniform(
             -0.05, 0.05, [3, self.num_head, self.dim_head]
         )
-        self.out_linear_shift = None
-        self.out_linear_smooth = None
+        self.out_shift = None
+        self.out_smooth = None
 
         self.seq_len = 1
         self.rotary_emb_dims = 0
         self.use_neox_rotary_style = False
 
-        self.out_linear_in_scale = 10
+        self.out_scale = 10
         self.quant_round_type = 1
         self.quant_max_bound = 126
         self.quant_min_bound = -126
@@ -198,7 +103,7 @@ class TestMMHAOp(unittest.TestCase):
         src_mask,
         qkv_out_scale,
         seq_len,
-        out_linear_in_scale,
+        out_scale,
         quant_round_type,
         quant_max_bound,
         quant_min_bound,
@@ -228,7 +133,7 @@ class TestMMHAOp(unittest.TestCase):
 
         normalized_out = self.quant_helper(
             out,
-            out_linear_in_scale,
+            out_scale,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
@@ -242,7 +147,7 @@ class TestMMHAOp(unittest.TestCase):
         cache_kv_mmha_out,
         src_mask,
         qkv_out_scale,
-        out_linear_in_scale,
+        out_scale,
         dtype,
     ):
         paddle.disable_static()
@@ -261,7 +166,7 @@ class TestMMHAOp(unittest.TestCase):
             src_mask,
             qkv_out_scale,
             self.seq_len,
-            out_linear_in_scale,
+            out_scale,
             self.quant_round_type,
             self.quant_max_bound,
             self.quant_min_bound,
@@ -269,7 +174,7 @@ class TestMMHAOp(unittest.TestCase):
         )
 
         x = x.reshape([self.bsz, -1])
-        paddle_mmha_out = mmha_wrapper(
+        paddle_mmha_out = masked_multihead_attention(
             x,
             cache_kv_mmha_out,
             src_mask,
@@ -283,7 +188,7 @@ class TestMMHAOp(unittest.TestCase):
             self.seq_len,
             self.rotary_emb_dims,
             self.use_neox_rotary_style,
-            out_linear_in_scale,
+            out_scale,
             self.quant_round_type,
             self.quant_max_bound,
             self.quant_min_bound,
@@ -341,7 +246,7 @@ class TestMMHAOp(unittest.TestCase):
             self.cache_kv_mmha_out,
             self.src_mask,
             None,
-            self.out_linear_in_scale,
+            self.out_scale,
             'float16',
         )
         np.testing.assert_allclose(
@@ -395,14 +300,14 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         )
 
         self.qkv_out_scale = None
-        self.out_linear_shift = None
-        self.out_linear_smooth = None
+        self.out_shift = None
+        self.out_smooth = None
 
         self.seq_len = 1
         self.rotary_emb_dims = 0
         self.use_neox_rotary_style = False
 
-        self.out_linear_in_scale = -1
+        self.out_scale = -1
         self.quant_round_type = 1
         self.quant_max_bound = 127
         self.quant_min_bound = -127
@@ -415,7 +320,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         src_mask,
         qkv_out_scale,
         seq_len,
-        out_linear_in_scale,
+        out_scale,
         quant_round_type,
         quant_max_bound,
         quant_min_bound,
@@ -450,7 +355,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         cache_kv_out,
         cache_kv_mmha_out,
         qkv_out_scale,
-        out_linear_in_scale,
+        out_scale,
         dtype,
     ):
         paddle.disable_static()
@@ -464,7 +369,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
             src_mask_tensor,
             None,
             self.seq_len,
-            out_linear_in_scale,
+            out_scale,
             self.quant_round_type,
             self.quant_max_bound,
             self.quant_min_bound,
@@ -495,7 +400,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                 dtype=dtype,
             )
 
-            outs = mmha_wrapper(
+            outs = masked_multihead_attention(
                 x_static,
                 cache_kv_mmha_out_static,
                 src_mask_static,
@@ -536,7 +441,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
             self.cache_kv_out,
             self.cache_kv_mmha_out,
             self.qkv_out_scale,
-            self.out_linear_in_scale,
+            self.out_scale,
             'float16',
         )
 

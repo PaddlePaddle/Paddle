@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def masked_multihead_attention(
@@ -26,54 +25,38 @@ def masked_multihead_attention(
     rotary_tensor=None,
     beam_cache_offset=None,
     qkv_out_scale=None,
-    out_linear_shift=None,
-    out_linear_smooth=None,
+    out_shift=None,
+    out_smooth=None,
     seq_len=1,
     rotary_emb_dims=0,
     use_neox_rotary_style=False,
-    out_linear_in_scale=-1,
+    out_scale=-1,
     quant_round_type=1,
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
 ):
-    r"""
-    Multi-head attention for text summarization.
+    """
+    Masked Multi-head attention for text summarization.
     This is a fusion operator to compute masked multihead attention in transformer model architecture.
-    This operator only supports running on GPU. The function of the transformer layer is consistent
-    with the following pseudo code:
-
-        .. code-block:: python
-            import paddle
-
-            x = paddle.rand(shape=(2, 3, 32, 128), dtype="float32")
-            x = paddle.transpose(x, [0, 2, 1, 3])  # [batch\_size, sequence\_length, num\_head, dim\_head] --> [batch\_size, num\_head, sequence_length, dim\_head]
-            q, k, v = paddle.split(x, 3, axis=2)
-            cache_k, cache_v= paddle.split(cache_kv_out, 2, axis=0)
-            k = paddle.concat([cache_k.squeeze(0), k], axis=2)
-            v = paddle.concat([cache_v.squeeze(0), v], axis=2)
-
-            product = paddle.matmul(x=q * (x.shape[3]**-0.5), y=k, transpose_y=True)
-            product = product + src_mask
-            product = paddle.nn.functional.softmax(product)
-            out = paddle.matmul(product, v).transpose([0, 2, 1, 3])
+    This operator only supports running on GPU.
 
     Args:
-        x (Tensor): The input tensor could be 2-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, 3 * num\_head * dim\_head]`.
-        cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model, the shape is `[2, batch\_size, num\_head, max\_seq\_len, head\_dim]`.
-        src_mask (Tensor): The src_mask tensor, the shape is `[batch\_size, 1, 1, sequence\_length]`.
-        sequence_lengths (Tensor, optional): The sequence_lengths tensor, the shape is `[batch\_size, 1]`.
-        rotary_tensor (Tensor, optional): The rotary_tensor tensor, the dtype must be float. the shape is `[batch\_size, 1, 1, sequence\_length, dim\_head]`.
-        beam_cache_offset (Tensor, optional): The beam_cache_offset tensor, the shape is `[batch\_size, beam\_size, max\_seq\_len + max\_dec\_len]`.
-        qkv_out_scale (Tensor, optional): The qkv_out_scale tensor, the shape is `[3, num\_head, dim\_head]`.
-        out_linear_shift (Tensor, optional): The out_linear_shift tensor.
-        out_linear_smooth (Tensor, optional): The out_linear_smooth tensor.
-        beam_size (int, optional): The beam_size of beam search. Default 1.
-        rotary_emb_dims (int, optional): The rotary_emb_dims. Default 0.
+        x (Tensor): The input tensor could be 2-D tensor. Its shape is [batch_size, 3 * num_head * head_dim].
+        cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model. Its shape is [2, batch_size, num_head, max_seq_len, head_dim].
+        src_mask (Tensor, optional): The src_mask tensor. Its shape is [batch_size, 1, 1, sequence_length].
+        sequence_lengths (Tensor, optional): The sequence_lengths tensor, used to index input. Its shape is [batch_size, 1].
+        rotary_tensor (Tensor, optional): The rotary_tensor tensor. The dtype must be float. Its shape is [batch_size, 1, 1, sequence_length, head_dim].
+        beam_cache_offset (Tensor, optional): The beam_cache_offset tensor. Its shape is [batch_size, beam_size, max_seq_len + max_dec_len].
+        qkv_out_scale (Tensor, optional): The qkv_out_scale tensor, used in quant. Its shape is [3, num_head, head_dim].
+        out_shift (Tensor, optional): The out_shift tensor, used in quant.
+        out_smooth (Tensor, optional): The out_smooth tensor, used in quant.
+        seq_len (int, optional): The seq_len, used to get input length. Default 1.
+        rotary_emb_dims (int, optional): The rotary_emb_dims. Default 1.
         use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
-        out_linear_in_scale (float, optional): The out_linear_in_scale.
-        quant_round_type (int, optional): The quant_round_type. Default 1.
-        quant_max_bound (float, optional): The quant_max_bound. Default 127.0.
-        quant_min_bound (float, optional): The quant_min_bound. Default -127.0.
+        out_scale (float, optional): The out_scale, used in quant.
+        quant_round_type (int, optional): The quant_round_type, used in quant. Default 1.
+        quant_max_bound (float, optional): The quant_max_bound, used in quant. Default 127.0.
+        quant_min_bound (float, optional): The quant_min_bound, used in quant. Default -127.0.
 
     Returns:
         Tensor|tuple: If "beam_cache_offset_out" is not none, return the
@@ -112,12 +95,12 @@ def masked_multihead_attention(
             rotary_tensor,
             beam_cache_offset,
             qkv_out_scale,
-            out_linear_shift,
-            out_linear_smooth,
+            out_shift,
+            out_smooth,
             seq_len,
             rotary_emb_dims,
             use_neox_rotary_style,
-            out_linear_in_scale,
+            out_scale,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
@@ -129,28 +112,28 @@ def masked_multihead_attention(
     inputs = {}
     inputs['x'] = x
     inputs['cache_kv'] = cache_kv
-    if src_mask:
+    if src_mask is not None:
         inputs['src_mask'] = src_mask
-    if cum_offsets:
+    if cum_offsets is not None:
         inputs['cum_offsets'] = cum_offsets
-    if sequence_lengths:
+    if sequence_lengths is not None:
         inputs['sequence_lengths'] = sequence_lengths
-    if rotary_tensor:
+    if rotary_tensor is not None:
         inputs['rotary_tensor'] = rotary_tensor
     beam_cache_offset_flag = False
-    if beam_cache_offset:
+    if beam_cache_offset is not None:
         inputs['beam_cache_offset'] = beam_cache_offset
         beam_cache_offset_flag = True
     else:
         beam_cache_offset = helper.create_variable_for_type_inference(
             dtype="int"
         )
-    if qkv_out_scale:
+    if qkv_out_scale is not None:
         inputs['qkv_out_scale'] = qkv_out_scale
-    if out_linear_shift:
-        inputs['out_linear_shift'] = out_linear_shift
-    if out_linear_smooth:
-        inputs['out_linear_smooth'] = out_linear_smooth
+    if out_shift is not None:
+        inputs['out_shift'] = out_shift
+    if out_smooth is not None:
+        inputs['out_smooth'] = out_smooth
 
     outputs = {
         'out': out,
@@ -165,7 +148,7 @@ def masked_multihead_attention(
             'seq_len': seq_len,
             'rotary_emb_dims': rotary_emb_dims,
             'use_neox_rotary_style': use_neox_rotary_style,
-            'out_linear_in_scale': out_linear_in_scale,
+            'out_scale': out_scale,
             'quant_round_type': quant_round_type,
             'quant_max_bound': quant_max_bound,
             'quant_min_bound': quant_min_bound,
@@ -173,6 +156,6 @@ def masked_multihead_attention(
     )
     return (
         (out, cache_kv, beam_cache_offset)
-        if beam_cache_offset_flag
+        if beam_cache_offset_flag is not None
         else (out, cache_kv)
     )
