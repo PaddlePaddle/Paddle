@@ -183,7 +183,7 @@ class TestGradientMergePass(AutoPallelPassTestBase):
 
             loss = mlp_forward(input, label, hidden_size)
 
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer)
         (
             _,

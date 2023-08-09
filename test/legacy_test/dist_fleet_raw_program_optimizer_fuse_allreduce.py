@@ -103,7 +103,7 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
 
-        optimizer = paddle.fluid.optimizer.Adam(0.01)
+        optimizer = paddle.optimizer.Adam(0.01)
         if single_device:
             optimizer.minimize(avg_cost)
         else:

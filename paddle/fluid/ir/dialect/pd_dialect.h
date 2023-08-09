@@ -91,6 +91,9 @@ class APIBuilder {
     ctx_ = ir::IrContext::Instance();
     ctx_->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   }
+
+  APIBuilder(const APIBuilder&) = delete;
+
   ir::IrContext* ctx_;
   std::shared_ptr<ir::Builder> builder_;
 };
