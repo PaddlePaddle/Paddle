@@ -22,27 +22,6 @@
 namespace xpu2 {
 namespace plugin {
 
-static inline __device__ void id_to_split_id(
-    _shared_ptr_ const int64_t* sm_shape,
-    int64_t* lm_split,
-    int64_t id,
-    int64_t size) {
-  for (int64_t i = size - 1; i >= 0; i--) {
-    lm_split[i] = id % sm_shape[i];
-    id = id / sm_shape[i];
-  }
-  return;
-}
-static inline __device__ int64_t split_id_to_id(
-    _shared_ptr_ const int64_t* sm_shape, int64_t* lm_split, int64_t size) {
-  int64_t id = 0;
-  for (int64_t i = 0; i < size; i++) {
-    id = id * sm_shape[i];
-    id = id + lm_split[i];
-  }
-  return id;
-}
-
 template <typename T, typename TID>
 __global__ void take_along_axis(const T* x,
                                 const TID* indices,
