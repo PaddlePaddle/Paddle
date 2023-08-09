@@ -39,6 +39,20 @@ class GpuAndCpuSearchSortedCompute {
     return std::isnan(x);
 #endif
   }
+  static HOSTDEVICE bool IsNan(phi::dtype::float16 x) {
+#ifdef __NVCC__
+    return ::isnan(x);
+#else
+    return std::isnan(x);
+#endif
+  }
+  static HOSTDEVICE bool IsNan(phi::dtype::bfloat16 x) {
+#ifdef __NVCC__
+    return ::isnan(x);
+#else
+    return std::isnan(x);
+#endif
+  }
   static HOSTDEVICE bool IsNan(int x UNUSED) { return false; }
   static HOSTDEVICE bool IsNan(int64_t x UNUSED) { return false; }
 
@@ -50,6 +64,20 @@ class GpuAndCpuSearchSortedCompute {
 #endif
   }
   static HOSTDEVICE bool IsInf(double x) {
+#ifdef __NVCC__
+    return ::isinf(x);
+#else
+    return std::isinf(x);
+#endif
+  }
+  static HOSTDEVICE bool IsInf(phi::dtype::float16 x) {
+#ifdef __NVCC__
+    return ::isinf(x);
+#else
+    return std::isinf(x);
+#endif
+  }
+  static HOSTDEVICE bool IsInf(phi::dtype::bfloat16 x) {
 #ifdef __NVCC__
     return ::isinf(x);
 #else
