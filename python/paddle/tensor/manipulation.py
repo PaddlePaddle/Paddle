@@ -178,9 +178,9 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -324,24 +324,22 @@ def slice(input, axes, starts, ends):
 
         infer_flags = [1 for i in range(len(axes))]
 
-        tmp_tensor_type = core.eager.Tensor
-
         if isinstance(starts, (list, tuple)):
             starts = [
-                item.item(0) if isinstance(item, tmp_tensor_type) else item
+                item.item(0) if isinstance(item, core.eager.Tensor) else item
                 for item in starts
             ]
-        elif isinstance(starts, tmp_tensor_type):
+        elif isinstance(starts, core.eager.Tensor):
             tensor_t = starts.numpy(False)
             starts = list(tensor_t)
             infer_flags = [-1 for i in range(len(axes))]
 
         if isinstance(ends, (list, tuple)):
             ends = [
-                item.item(0) if isinstance(item, tmp_tensor_type) else item
+                item.item(0) if isinstance(item, core.eager.Tensor) else item
                 for item in ends
             ]
-        elif isinstance(ends, tmp_tensor_type):
+        elif isinstance(ends, core.eager.Tensor):
             tensor_t = ends.numpy(False)
             ends = list(tensor_t)
             infer_flags = [-1 for i in range(len(axes))]
@@ -545,6 +543,8 @@ def unstack(x, axis=0, num=None):
         raise ValueError(
             '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
         )
+    if num is not None and (num < 0 or num > x.shape[axis]):
+        raise ValueError(f'`num` must be in the range [0, {x.shape[axis]})')
     if in_dynamic_mode():
         if num is None:
             num = x.shape[axis]
@@ -1499,7 +1499,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             end_axis = 2
 
           We get:
-            Out.shape = (3, 1000 * 100, 2)
+            Out.shape = (3, 100 * 100, 4)
 
         Case 2:
 
@@ -2038,7 +2038,7 @@ def split(x, num_or_sections, axis=0, name=None):
             attrs['axis'] = dim
 
         if isinstance(num_or_sections, int):
-            assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+            assert num_or_sections > 0, 'num_or_sections must be than 0.'
             if isinstance(dim, int) and input_shape[dim] > 0:
                 assert input_shape[dim] % num_or_sections == 0, (
                     "The input's size along the split dimension "
@@ -2851,6 +2851,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
 
     .. code-block:: python
+        :name: code-example1
 
         import paddle
         #input:
@@ -4373,7 +4374,6 @@ def repeat_interleave(x, repeats, axis=None, name=None):
     if axis is None:
         x = paddle.flatten(x)
         axis = 0
-
     if in_dynamic_mode():
         if isinstance(repeats, Variable):
             return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)
@@ -4985,6 +4985,147 @@ def unflatten(x, axis, shape, name=None):
         )
     x = x.reshape(new_shape)
     return x
+
+
+@dygraph_only
+def as_strided(x, shape, stride, offset=0, name=None):
+    """
+    View x with specified shape, stride and offset.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        shape (list|tuple): Define the target shape. Each element of it should be integer.
+        stride (list|tuple): Define the target stride. Each element of it should be integer.
+        offset (int): Define the target Tensor's offset from x's holder. Default: 0.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A as_strided Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+
+            out = paddle.as_strided(x, [8, 6], [6, 1])
+            print(out)
+            # the shape is [8, 6].
+            # the stride is [6, 1].
+    """
+    return _C_ops.as_strided(x, shape, stride, offset)
+
+
+@dygraph_only
+def view(x, shape_or_dtype, name=None):
+    """
+    View x with specified shape or dtype.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        shape_or_dtype (list|tuple|np.dtype|str|VarType): Define the target shape or dtype. If list or tuple, shape_or_dtype represents shape, each element of it should be integer. If np.dtype or str or VarType, shape_or_dtype represents dtype, it can be bool, float16, float32, float64, int8, int32, int64, uint8.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A viewed Tensor with the same data as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+
+            out = paddle.view(x, [8, 6])
+            print(out)
+
+
+            import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+
+            out = paddle.view(x, "uint8")
+            print(out)
+    """
+    if isinstance(shape_or_dtype, (list, tuple)):
+        return _C_ops.view_shape(x, shape_or_dtype)
+    else:
+        if not isinstance(shape_or_dtype, core.VarDesc.VarType):
+            shape_or_dtype = convert_np_dtype_to_dtype_(shape_or_dtype)
+        return _C_ops.view_dtype(x, shape_or_dtype)
+
+
+@dygraph_only
+def view_as(x, other, name=None):
+    """
+    View x with other's shape.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        other (Tensor): The result tensor has the same size as other.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A viewed Tensor with the same shape as ``other``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+            y = paddle.rand([8, 6], dtype="float32")
+
+            out = paddle.view_as(x, y)
+            print(out)
+    """
+    return _C_ops.view_shape(x, other.shape)
+
+
+@dygraph_only
+def unfold(x, axis, size, step, name=None):
+    """
+    View x with specified shape, stride and offset, which contains all slices of size from x in the dimension axis.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        axis (int): The axis along which the input is unfolded.
+        size (int): The size of each slice that is unfolded.
+        step (int): The step between each slice.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A unfold Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+
+            x = paddle.arange(9, dtype="float64")
+
+            out = paddle.unfold(x, 0, 2, 4)
+            print(out) # [[0, 1], [4, 5]]
+    """
+    return _C_ops.tensor_unfold(x, axis, size, step)
 
 
 # TODO(dev): We need avoid implementing it by this way.

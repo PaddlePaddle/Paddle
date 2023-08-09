@@ -16,11 +16,16 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/kernels/funcs/cublaslt.h"
+#endif
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #endif
@@ -948,6 +953,15 @@ struct MatMulDispatcher<phi::GPUContext, T> {
 #endif
   }
 };
+
+static phi::Allocator::AllocationPtr GetWorkspace(const phi::GPUContext& ctx,
+                                                  size_t workspace_size) {
+  return phi::memory_utils::Alloc(
+      ctx.GetPlace(),
+      workspace_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+}
+
 #endif  // PADDLE_WITH_CUDA
 
 template <typename Context, typename T>
@@ -962,6 +976,139 @@ void MatMulFunction(const Context& ctx,
                     bool flag = false) {
   MatMulDispatcher<Context, T>()(
       ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
+}
+
+template <typename Context>
+void MatMulInt8Function(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const std::vector<std::int64_t>& x_dims,
+                        const std::vector<std::int64_t>& y_dims,
+                        DenseTensor* out,
+                        bool trans_x,
+                        bool trans_y) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::INT8,
+      phi::errors::InvalidArgument(
+          "The type of input(x) used in int8 matmul must be (%s) does not "
+          "match the "
+          "type of data (%s) currently contained in the container.",
+          phi::CppTypeToDataType<int8_t>::Type(),
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      y.dtype(),
+      DataType::INT8,
+      phi::errors::InvalidArgument(
+          "The type of input(y) used in int8 matmul must be (%s) does not "
+          "match the "
+          "type of data (%s) currently contained in the container.",
+          phi::CppTypeToDataType<int8_t>::Type(),
+          x.dtype()));
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+  const int x_ndim = x_dims.size();
+  const int y_ndim = y_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_ndim,
+      2,
+      phi::errors::InvalidArgument("[INT8 GEMM] The number of dims of input(x) "
+                                   "must be equal to 2 but received %d",
+                                   x_ndim));
+  PADDLE_ENFORCE_EQ(
+      y_ndim,
+      2,
+      phi::errors::InvalidArgument("[INT8 GEMM] The number of dims of input(x) "
+                                   "must be equal to 2 but received %d",
+                                   y_ndim));
+  PADDLE_ENFORCE_EQ(
+      trans_x,
+      false,
+      phi::errors::InvalidArgument("[INT8 GEMM] Input(x) must be not "
+                                   "transposed to acheive better performance"));
+  PADDLE_ENFORCE_EQ(
+      trans_y,
+      true,
+      phi::errors::InvalidArgument("[INT8 GEMM] Input(y) must be transposed to "
+                                   "acheive better performance"));
+
+  const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+  const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+  if (trans_y) {
+    PADDLE_ENFORCE_EQ(
+        y_dims[y_ndim - 1],
+        K,
+        phi::errors::InvalidArgument("Input(Y) has error dim."
+                                     "Y'dims[%d] must be equal to %d"
+                                     "But received Y'dims[%d] is %d",
+                                     y_ndim - 1,
+                                     K,
+                                     y_ndim - 1,
+                                     y_dims[y_ndim - 1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        y_dims[y_ndim - 2],
+        K,
+        phi::errors::InvalidArgument("Input(Y) has error dim."
+                                     "Y'dims[%d] must be equal to %d"
+                                     "But received Y'dims[%d] is %d",
+                                     y_ndim - 2,
+                                     K,
+                                     y_ndim - 2,
+                                     y_dims[y_ndim - 2]));
+  }
+  const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+
+  size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+  phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
+
+  // TODO(wufeisheng): cublaslt_helper is a temp scheme for Int8 GEMM,
+  // and releted functions need to be integrated into
+  // phi::funcs::MatmulWithCublasLt
+  auto cublaslt_helper = CublasLtHelper(M, K, N, ctx.cublaslt_handle());
+
+  ctx.template Alloc<int32_t>(out);
+  cublaslt_helper.GEMM(x.data<int8_t>(),
+                       y.data<int8_t>(),
+                       out->data<int32_t>(),
+                       ctx.stream(),
+                       workspace->ptr());
+
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "MatmulInt8 op needs paddle with cuda and cuda version >= 11.2"));
+#endif
+}
+
+template <typename Context, typename T>
+typename std::enable_if<std::is_integral<T>::value>::type
+MatmulJudgeDtypeKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const std::vector<std::int64_t>& x_dims,
+                       const std::vector<std::int64_t>& y_dims,
+                       DenseTensor* out,
+                       bool transpose_x,
+                       bool transpose_y) {
+  auto x_tmp = phi::Cast<T, Context>(ctx, x, phi::DataType::FLOAT32);
+  auto y_tmp = phi::Cast<T, Context>(ctx, y, phi::DataType::FLOAT32);
+  DenseTensor out_tmp;
+  MatMulFunction<Context, float>(
+      ctx, x_tmp, y_tmp, x_dims, y_dims, &out_tmp, transpose_x, transpose_y);
+  phi::CastKernel<float>(ctx, out_tmp, x.dtype(), out);
+}
+
+template <typename Context, typename T>
+typename std::enable_if<!std::is_integral<T>::value>::type
+MatmulJudgeDtypeKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const std::vector<std::int64_t>& x_dims,
+                       const std::vector<std::int64_t>& y_dims,
+                       DenseTensor* out,
+                       bool transpose_x,
+                       bool transpose_y) {
+  MatMulFunction<Context, T>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }
 
 template <typename T, typename Context>
@@ -983,7 +1130,30 @@ void MatmulKernel(const Context& ctx,
                                    " but reviced dims size is 0. "));
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
-  MatMulFunction<Context, T>(
+  MatmulJudgeDtypeKernel<Context, T>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+}
+
+template <typename T, typename Context>
+void MatmulInt8Kernel(const Context& ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      bool transpose_x,
+                      bool transpose_y,
+                      DenseTensor* out) {
+  PADDLE_ENFORCE_NE(
+      phi::product(x.dims()),
+      0,
+      phi::errors::InvalidArgument("The Input(X) dims size must not be equal 0,"
+                                   " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_NE(
+      phi::product(y.dims()),
+      0,
+      phi::errors::InvalidArgument("The Input(Y) dims size must not be equal 0,"
+                                   " but reviced dims size is 0. "));
+  const std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  const std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  MatMulInt8Function<Context>(
       ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }
 

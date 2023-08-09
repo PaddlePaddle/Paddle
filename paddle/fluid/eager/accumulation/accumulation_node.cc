@@ -46,7 +46,7 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
       if (LIKELY(t.is_dense_tensor())) {
         if (LIKELY(tensor->is_dense_tensor())) {
           if (t.is_custom_device()) {
-            *tensor = add_ad_func(t, *tensor);
+            add__ad_func(*tensor, t);
           } else {
             paddle::imperative::TensorAdd<paddle::Tensor>(t, tensor);
           }
@@ -71,7 +71,7 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
           paddle::Tensor tensor_values(std::make_shared<phi::DenseTensor>(
               tensor_sparse->non_zero_elements()));
           if (t.is_custom_device()) {
-            tensor_values = add_ad_func(t_values, tensor_values);
+            add__ad_func(tensor_values, t_values);
           } else {
             paddle::imperative::TensorAdd<paddle::Tensor>(t_values,
                                                           &tensor_values);
@@ -124,7 +124,10 @@ GradNodeAccumulation::operator()(
 
   if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
-    CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
+    if (grad_out.defined() && grad_out.initialized()) {
+      CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
+    }
+    // else { do nothing since there is no valid value in grad out tensor }
     is_fake_empty_ = false;
   }
 

@@ -944,11 +944,9 @@ class TestVarBase(unittest.TestCase):
             var_tensor[var_tensor < 0.55], np_value[np_value < 0.55]
         )
 
-        with self.assertRaises(ValueError):
-            var_tensor[[False, False, False, False]]
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             var_tensor[[True, False]]
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             var_tensor[[True, False, False, False, False]]
         with self.assertRaises(IndexError):
             var_tensor[paddle.to_tensor([[True, False, False, False]])]
@@ -1365,12 +1363,10 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
 
     def _test(self, value):
         paddle.disable_static()
-        self.assertEqual(self.tensor_x.inplace_version, 0)
 
         id_origin = id(self.tensor_x)
         index_1 = paddle.to_tensor(np.array([True, False, False, False]))
         self.tensor_x[index_1] = value
-        self.assertEqual(self.tensor_x.inplace_version, 1)
 
         if isinstance(value, (int, float)):
             result = np.zeros((2, 3)).astype(self.dtype) + value
@@ -1383,13 +1379,11 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
 
         index_2 = paddle.to_tensor(np.array([False, True, False, False]))
         self.tensor_x[index_2] = value
-        self.assertEqual(self.tensor_x.inplace_version, 2)
         np.testing.assert_array_equal(self.tensor_x[1].numpy(), result)
         self.assertEqual(id_origin, id(self.tensor_x))
 
         index_3 = paddle.to_tensor(np.array([True, True, True, True]))
         self.tensor_x[index_3] = value
-        self.assertEqual(self.tensor_x.inplace_version, 3)
         np.testing.assert_array_equal(self.tensor_x[3].numpy(), result)
         self.assertEqual(id_origin, id(self.tensor_x))
 

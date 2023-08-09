@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
 
 import paddle
@@ -69,13 +69,24 @@ class TestLambOp1(OpTest):
             'always_adapt': False,
         }
 
+    def set_dtype(self):
+        self.dtype = np.float32
+
     def setUp(self):
         '''Test Lamb Op with supplied attributes'''
         self.op_type = "lamb"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment2 = np.random.random((102, 105)).astype("float32")
+        self.set_dtype()
+
+        if self.is_bfloat16_op():
+            param = np.random.uniform(-1, 1, (102, 105)).astype(np.float32)
+            grad = np.random.uniform(-1, 1, (102, 105)).astype(np.float32)
+            moment1 = np.random.uniform(-1, 1, (102, 105)).astype(np.float32)
+            moment2 = np.random.random((102, 105)).astype(np.float32)
+        else:
+            param = np.random.uniform(-1, 1, (102, 105)).astype(self.dtype)
+            grad = np.random.uniform(-1, 1, (102, 105)).astype(self.dtype)
+            moment1 = np.random.uniform(-1, 1, (102, 105)).astype(self.dtype)
+            moment2 = np.random.random((102, 105)).astype(self.dtype)
 
         learning_rate = 0.001
         self.set_attrs()
@@ -86,15 +97,33 @@ class TestLambOp1(OpTest):
         beta1_pow = self.attrs['beta1']
         beta2_pow = self.attrs['beta2']
 
-        self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Moment1': moment1,
-            'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
-        }
+        if self.is_bfloat16_op():
+            self.inputs = {
+                'Param': convert_float_to_uint16(param),
+                'Grad': convert_float_to_uint16(grad),
+                'Moment1': convert_float_to_uint16(moment1),
+                'Moment2': convert_float_to_uint16(moment2),
+                'LearningRate': convert_float_to_uint16(
+                    np.array([learning_rate]).astype(self.dtype)
+                ),
+                'Beta1Pow': convert_float_to_uint16(
+                    np.array([beta1_pow]).astype(self.dtype)
+                ),
+                'Beta2Pow': convert_float_to_uint16(
+                    np.array([beta2_pow]).astype(self.dtype)
+                ),
+            }
+
+        else:
+            self.inputs = {
+                'Param': param,
+                'Grad': grad,
+                'Moment1': moment1,
+                'Moment2': moment2,
+                'LearningRate': np.array([learning_rate]).astype(self.dtype),
+                'Beta1Pow': np.array([beta1_pow]).astype(self.dtype),
+                'Beta2Pow': np.array([beta2_pow]).astype(self.dtype),
+            }
 
         (
             param_out,
@@ -104,13 +133,22 @@ class TestLambOp1(OpTest):
             beta2_pow_out,
         ) = lamb_step(self.inputs, self.attrs)
 
-        self.outputs = {
-            'Moment1Out': moment1_out,
-            'Moment2Out': moment2_out,
-            'ParamOut': param_out,
-            'Beta1PowOut': beta1_pow_out,
-            'Beta2PowOut': beta2_pow_out,
-        }
+        if self.is_bfloat16_op():
+            self.outputs = {
+                'Moment1Out': convert_float_to_uint16(moment1_out),
+                'Moment2Out': convert_float_to_uint16(moment2_out),
+                'ParamOut': convert_float_to_uint16(param_out),
+                'Beta1PowOut': convert_float_to_uint16(beta1_pow_out),
+                'Beta2PowOut': convert_float_to_uint16(beta2_pow_out),
+            }
+        else:
+            self.outputs = {
+                'Moment1Out': moment1_out,
+                'Moment2Out': moment2_out,
+                'ParamOut': param_out,
+                'Beta1PowOut': beta1_pow_out,
+                'Beta2PowOut': beta2_pow_out,
+            }
 
     def test_check_output(self):
         self.check_output()
@@ -181,7 +219,129 @@ class TestLambOpMultipleSteps(TestLambOp1):
 
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(-1, 1, (102, 105)).astype(
-                "float32"
+                self.dtype
+            )
+
+
+class TestLambFP16Op1(TestLambOp1):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place)
+
+
+class TestLambFP16Op2(TestLambOp2):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place)
+
+
+class TestLambFP16Op3(TestLambOp3):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place)
+
+
+class TestLambFP16OpMultipleSteps(TestLambOpMultipleSteps):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.float16
+
+
+class TestLambBF16Op1(TestLambOp1):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place)
+
+
+class TestLambBF16Op2(TestLambOp2):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place)
+
+
+class TestLambBF16Op3(TestLambOp3):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place)
+
+
+class TestLambBF16OpMultipleSteps(TestLambOpMultipleSteps):
+    def set_dtype(self):
+        self.__class__.op_type = "lamb"
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        for i in range(self.num_steps):
+            (
+                param_out,
+                moment1_out,
+                moment2_out,
+                beta1_pow_out,
+                beta2_pow_out,
+            ) = lamb_step(self.inputs, self.attrs)
+
+            self.outputs = {
+                'Moment1Out': convert_float_to_uint16(moment1_out),
+                'Moment2Out': convert_float_to_uint16(moment2_out),
+                'ParamOut': convert_float_to_uint16(param_out),
+                'Beta1PowOut': convert_float_to_uint16(beta1_pow_out),
+                'Beta2PowOut': convert_float_to_uint16(beta2_pow_out),
+            }
+
+            # Verify output for this step
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_bfloat16_supported(place):
+                    self.check_output_with_place(place)
+
+            # Output of this step becomes input for next step
+            self.inputs['Param'] = convert_float_to_uint16(param_out)
+            self.inputs['Moment1'] = convert_float_to_uint16(moment1_out)
+            self.inputs['Moment2'] = convert_float_to_uint16(moment2_out)
+
+            # Update powers of Beta1 and Beta2 for next time step
+            self.inputs['Beta1Pow'] = convert_float_to_uint16(beta1_pow_out)
+            self.inputs['Beta2Pow'] = convert_float_to_uint16(beta2_pow_out)
+
+            # Randomize gradient for next step
+            self.inputs['Grad'] = convert_float_to_uint16(
+                np.random.uniform(-1, 1, (102, 105)).astype(np.float32)
             )
 
 

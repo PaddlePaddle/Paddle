@@ -15,27 +15,69 @@
 #include "paddle/ir/core/builtin_attribute.h"
 
 namespace ir {
-std::string StrAttribute::data() const { return storage()->GetAsKey(); }
 
-uint32_t StrAttribute::size() const { return storage()->GetAsKey().size(); }
+bool BoolAttribute::data() const { return storage()->data(); }
 
-bool BoolAttribute::data() const { return storage()->GetAsKey(); }
+float FloatAttribute::data() const { return storage()->data(); }
 
-float FloatAttribute::data() const { return storage()->GetAsKey(); }
+double DoubleAttribute::data() const { return storage()->data(); }
 
-double DoubleAttribute::data() const { return storage()->GetAsKey(); }
+int32_t Int32Attribute::data() const { return storage()->data(); }
 
-int32_t Int32Attribute::data() const { return storage()->GetAsKey(); }
+int64_t Int64Attribute::data() const { return storage()->data(); }
 
-int64_t Int64Attribute::data() const { return storage()->GetAsKey(); }
+void* PointerAttribute::data() const { return storage()->data(); }
 
-std::vector<Attribute> ArrayAttribute::data() const {
-  return storage()->GetAsKey();
+Type TypeAttribute::data() const { return storage()->data(); }
+
+bool StrAttribute::operator<(const StrAttribute& right) const {
+  return storage() < right.storage();
+}
+std::string StrAttribute::AsString() const { return storage()->AsString(); }
+
+size_t StrAttribute::size() const { return storage()->size(); }
+
+StrAttribute StrAttribute::get(ir::IrContext* ctx, const std::string& value) {
+  return AttributeManager::get<StrAttribute>(ctx, value);
 }
 
-void* PointerAttribute::data() const { return storage()->GetAsKey(); }
+std::vector<Attribute> ArrayAttribute::AsVector() const {
+  return storage()->AsVector();
+}
 
-Type TypeAttribute::data() const { return storage()->GetAsKey(); }
+size_t ArrayAttribute::size() const { return storage()->size(); }
+
+bool ArrayAttribute::empty() const { return storage()->empty(); }
+
+Attribute ArrayAttribute::at(size_t index) const {
+  return storage()->at(index);
+}
+
+ArrayAttribute ArrayAttribute::get(IrContext* ctx,
+                                   const std::vector<Attribute>& value) {
+  return AttributeManager::get<ArrayAttribute>(ctx, value);
+}
+
+ArrayAttributeStorage::ArrayAttributeStorage(const ParamKey& key)
+    : size_(key.size()) {
+  constexpr size_t align = alignof(Attribute);
+  if (align > __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
+    data_ = static_cast<Attribute*>(
+        ::operator new(size_ * sizeof(Attribute), std::align_val_t(align)));
+  } else {
+    data_ = static_cast<Attribute*>(::operator new(size_ * sizeof(Attribute)));
+  }
+  memcpy(data_, key.data(), sizeof(Attribute) * size_);
+}
+
+ArrayAttributeStorage::~ArrayAttributeStorage() {
+  constexpr size_t align = alignof(Attribute);
+  if (align > __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
+    ::operator delete(data_, std::align_val_t(align));
+  } else {
+    ::operator delete(data_);
+  }
+}
 
 }  // namespace ir
 

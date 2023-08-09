@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import functools
-from contextlib import ContextDecorator
+import sys
+from contextlib import ContextDecorator, contextmanager
 from typing import Any
 from warnings import warn
 
@@ -192,3 +193,34 @@ def wrap_optimizers():
             if getattr(classobject, 'step', None) is not None:
                 classobject.step = optimizer_warpper(classobject.step)
     _has_optimizer_wrapped = True
+
+
+@contextmanager
+def _nvprof_range(iter_id, start, end, exit_after_prof=True):
+    '''
+    A range profiler interface (not public yet).
+    Examples:
+        .. code-block:: python
+            model = Model()
+            for i in range(max_iter):
+                paddle.fluid.profiler._nvprof_range(i, 10, 20):
+                    out = model(in)
+    '''
+    if start >= end:
+        yield
+        return
+
+    try:
+        if iter_id == start:
+            core.nvprof_start()
+            core.nvprof_enable_record_event()
+        if iter_id >= start:
+            core.nvprof_nvtx_push(str(iter_id))
+        yield
+    finally:
+        if iter_id < end:
+            core.nvprof_nvtx_pop()
+        if iter_id == end - 1:
+            core.nvprof_stop()
+            if exit_after_prof:
+                sys.exit()

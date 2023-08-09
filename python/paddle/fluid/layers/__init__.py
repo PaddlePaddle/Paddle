@@ -16,10 +16,6 @@ from . import nn
 from .nn import *
 from . import io
 from .io import *
-from . import tensor
-from .tensor import *
-from . import control_flow
-from .control_flow import *
 from . import math_op_patch
 from .math_op_patch import *
 from .learning_rate_scheduler import *
@@ -29,6 +25,4 @@ from ..layer_helper import LayerHelper
 __all__ = []
 __all__ += nn.__all__
 __all__ += io.__all__
-__all__ += tensor.__all__
-__all__ += control_flow.__all__
 __all__ += learning_rate_scheduler.__all__

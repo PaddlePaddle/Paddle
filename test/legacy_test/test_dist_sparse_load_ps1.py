@@ -60,7 +60,7 @@ class TestSparseLoadOpCase2(SparseLoadOp):
         loss = self.net(emb_array, fc_array)
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        optimizer = fluid.optimizer.Adam(1e-3)
+        optimizer = paddle.optimizer.Adam(1e-3)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
         fleet.init_server(model_path)

@@ -32,7 +32,7 @@ namespace phi {
 
 template <typename MT, typename InT, typename OutT>
 struct MaskedSelectGradFunctor {
-  HOSTDEVICE MaskedSelectGradFunctor() {}
+  HOSTDEVICE MaskedSelectGradFunctor() = default;
 
   HOSTDEVICE inline void operator()(OutT* out,
                                     const MT* mask,

@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/poly/schedule.h"
 

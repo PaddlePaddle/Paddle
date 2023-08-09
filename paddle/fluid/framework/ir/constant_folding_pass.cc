@@ -51,7 +51,7 @@ struct ConstantFolding : public PatternBase {
 };
 }  // namespace patterns
 
-ConstantFoldingPass::ConstantFoldingPass() {}
+ConstantFoldingPass::ConstantFoldingPass() = default;
 
 void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -82,6 +82,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
       if (!in_node->Var()->Persistable()) {
+        input_persis = false;
+      } else if (!in_node->inputs.empty()) {
         input_persis = false;
       }
     }
@@ -157,7 +159,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     delete local_scope;
   }
-  LOG(INFO) << folded_op_num << " Ops are folded";
+  AddStatis(folded_op_num);
 }
 
 }  // namespace ir

@@ -37,7 +37,7 @@ VariableScope::VariableScope(Scope* scope) {
           "You have passed a nullptr to construct VariableScope."));
 }
 
-VariableScope::~VariableScope() {}
+VariableScope::~VariableScope() = default;
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
@@ -161,7 +161,7 @@ Instruction::Instruction(size_t id,
     is_artificial_ = true;
   }
 
-  if (op_func_node_.infer_meta_interface_ != nullptr) {
+  if (op_func_node_.phi_kernel_ != nullptr) {
     pre_define_context_ = true;
   }
   PADDLE_ENFORCE_GE(id,

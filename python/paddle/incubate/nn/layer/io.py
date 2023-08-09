@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import paddle
 
 from ....fluid.framework import Variable
-from ....fluid.layers.control_flow import BlockGuard
 from ....framework import LayerHelper, core
 
 
-class BlockGuardServ(BlockGuard):
+class BlockGuardServ(paddle.static.nn.control_flow.BlockGuard):
     """
     BlockGuardServ class.
 

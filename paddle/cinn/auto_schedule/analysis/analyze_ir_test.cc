@@ -23,7 +23,7 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/lower.h"

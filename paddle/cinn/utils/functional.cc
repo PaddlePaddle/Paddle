@@ -23,7 +23,7 @@ std::vector<int> GetPositiveAxes(const std::vector<int>& axes, int rank) {
   std::vector<int> new_axes(axes.size());
   for (int i = 0; i < axes.size(); ++i) {
     int axis = axes[i] + (axes[i] < 0 ? rank : 0);
-    CHECK(axis >= 0 && axis < rank)
+    CHECK(axis >= 0 && (rank == 0 || axis < rank))
         << "The axis should in [" << -rank << ", " << rank << "), but axes["
         << i << "]=" << axes[i] << " not.";
     new_axes[i] = axis;

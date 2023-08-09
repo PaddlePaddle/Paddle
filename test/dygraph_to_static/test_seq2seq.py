@@ -71,9 +71,9 @@ def train(args, attn_model=False):
             )
 
         gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
-        optimizer = fluid.optimizer.SGD(
+        optimizer = paddle.optimizer.SGD(
             args.learning_rate,
-            parameter_list=model.parameters(),
+            parameters=model.parameters(),
             grad_clip=gloabl_norm_clip,
         )
 

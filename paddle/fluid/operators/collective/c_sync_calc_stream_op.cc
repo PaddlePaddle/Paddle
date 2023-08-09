@@ -18,7 +18,7 @@ namespace operators {
 
 class CSyncCalcStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) Dependency of the variable need to sync");
     AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
     AddComment(R"DOC(

@@ -147,6 +147,8 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out);
 
 void DistBroadcastInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void DistConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+
 void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out);
@@ -731,5 +733,7 @@ void QuantForCompressInferMeta(const MetaTensor& x,
                                const std::string& layout,
                                MetaTensor* out,
                                MetaTensor* scale);
+
+void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
 }  // namespace phi
